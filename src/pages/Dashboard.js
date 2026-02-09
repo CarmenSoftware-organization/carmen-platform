@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Network, Building2, Users, ArrowRight } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { Network, Building2, Users, ArrowRight, Code } from 'lucide-react';
 
 const Dashboard = () => {
+  const { loginResponse } = useAuth();
   const cards = [
     {
       title: 'Cluster Management',
@@ -67,6 +72,37 @@ const Dashboard = () => {
             );
           })}
         </div>
+
+        {/* Debug Sheet - Development Only */}
+        {process.env.NODE_ENV === 'development' && loginResponse && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                size="icon"
+                className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+              >
+                <Code className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Code className="h-5 w-5" />
+                  Login Response
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
+                </SheetTitle>
+                <SheetDescription>
+                  POST /api/auth/login
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-4">
+                <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
+                  {JSON.stringify(loginResponse, null, 2)}
+                </pre>
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </Layout>
   );

@@ -3,9 +3,18 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+const ALLOWED_ROLES = [
+  'platform_admin',
+  'super_admin',
+  'support_manager',
+  'support_staff',
+  'security_officer',
+];
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loginResponse, setLoginResponse] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -29,6 +38,10 @@ export const AuthProvider = ({ children }) => {
     if (userData) {
       setUser(JSON.parse(userData));
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      const storedLoginResponse = localStorage.getItem('loginResponse');
+      if (storedLoginResponse) {
+        setLoginResponse(JSON.parse(storedLoginResponse));
+      }
     }
     setLoading(false);
   }, []);
@@ -49,17 +62,36 @@ export const AuthProvider = ({ children }) => {
         throw new Error('No token received from server');
       }
 
+      // Check platform_role access
+      const platformRole = response.data.platform_role || userData.platform_role;
+      if (platformRole && !ALLOWED_ROLES.includes(platformRole)) {
+        return {
+          success: false,
+          error: `Access Denied. Your role "${platformRole}" is not authorized to access this platform.`
+        };
+      }
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('loginResponse', JSON.stringify(response.data));
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
+      setLoginResponse(response.data);
 
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
+      let errorMessage = 'Login failed. Please check your credentials.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Unauthorized. Invalid email or password.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       return {
         success: false,
-        error: error.response?.data?.message || error.message || 'Login failed. Please check your credentials.'
+        error: errorMessage
       };
     }
   };
@@ -67,8 +99,10 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('loginResponse');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
+    setLoginResponse(null);
   };
 
   const value = {
@@ -76,7 +110,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     isAuthenticated: !!user,
-    loading
+    loading,
+    loginResponse
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

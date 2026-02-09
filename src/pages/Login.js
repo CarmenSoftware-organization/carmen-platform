@@ -111,7 +111,14 @@ const Login = () => {
             </div>
 
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-lg">
+              <div className={`text-sm p-3 rounded-lg ${
+                error.includes('Access Denied')
+                  ? 'text-red-700 bg-red-100 border border-red-300 font-medium'
+                  : 'text-red-600 bg-red-50 border border-red-200'
+              }`}>
+                {error.includes('Access Denied') && (
+                  <div className="font-bold text-red-800 mb-1">Access Denied</div>
+                )}
                 {error}
               </div>
             )}
