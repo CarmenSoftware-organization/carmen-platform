@@ -43,21 +43,21 @@ const UserManagement = () => {
   const fetchUsers = useCallback(async (params) => {
     try {
       setLoading(true);
-      const data = await userService.getAll(params || paginate);
+      const data = await userService.getAll(params);
       const items = data.data || data;
       setUsers(Array.isArray(items) ? items : []);
-      setTotalRows(data.total ?? data.totalCount ?? (Array.isArray(items) ? items.length : 0));
+      setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err) {
       setError('Failed to load users: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
-  }, [paginate]);
+  }, []);
 
   useEffect(() => {
     fetchUsers(paginate);
-  }, [paginate]);
+  }, [fetchUsers, paginate]);
 
   const handleSearchChange = (value) => {
     setSearchTerm(value);
@@ -93,15 +93,15 @@ const UserManagement = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
       await userService.delete(id);
-      fetchUsers(paginate);
+      setPaginate(prev => ({ ...prev }));
     } catch (err) {
       alert('Failed to delete: ' + (err.response?.data?.message || err.message));
     }
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -115,7 +115,7 @@ const UserManagement = () => {
         await userService.create(submitData);
       }
       setShowModal(false);
-      fetchUsers(paginate);
+      setPaginate(prev => ({ ...prev }));
     } catch (err) {
       alert('Failed to save: ' + (err.response?.data?.message || err.message));
     }
@@ -156,7 +156,7 @@ const UserManagement = () => {
         </div>
       ),
     },
-  ], []);
+  ], [handleDelete]);
 
   return (
     <Layout>

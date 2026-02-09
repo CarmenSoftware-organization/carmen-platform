@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check } from 'lucide-react';
 
 const ClusterManagement = () => {
   const navigate = useNavigate();
@@ -26,16 +26,23 @@ const ClusterManagement = () => {
     sort: '',
   });
 
+  const [copied, setCopied] = useState(false);
   const searchTimeout = useRef(null);
+
+  const handleCopyJson = (data) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const fetchClusters = useCallback(async (params) => {
     try {
       setLoading(true);
-      const data = await clusterService.getAll(params || paginate);
+      const data = await clusterService.getAll(params);
       setRawResponse(data);
       const items = data.data || data;
       setClusters(Array.isArray(items) ? items : []);
-      setTotalRows(data.total ?? data.totalCount ?? (Array.isArray(items) ? items.length : 0));
+      setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err) {
       setError('Failed to load clusters: ' + (err.response?.data?.message || err.message));
@@ -43,11 +50,11 @@ const ClusterManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [paginate]);
+  }, []);
 
   useEffect(() => {
     fetchClusters(paginate);
-  }, [paginate]);
+  }, [fetchClusters, paginate]);
 
   const handleSearchChange = (value) => {
     setSearchTerm(value);
@@ -65,15 +72,15 @@ const ClusterManagement = () => {
     setPaginate(prev => ({ ...prev, sort }));
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!window.confirm('Are you sure you want to delete this cluster?')) return;
     try {
       await clusterService.delete(id);
-      fetchClusters(paginate);
+      setPaginate(prev => ({ ...prev }));
     } catch (err) {
       alert('Failed to delete cluster: ' + (err.response?.data?.message || err.message));
     }
-  };
+  }, []);
 
   const columns = useMemo(() => [
     {
@@ -107,16 +114,47 @@ const ClusterManagement = () => {
     {
       id: 'bu_count',
       header: 'BU',
-      cell: ({ row }) => row.original._count?.tb_business_unit ?? 0,
+      cell: ({ row }) => row.original.bu_count ?? 0,
       meta: { cellClassName: 'text-center' },
       enableSorting: false,
     },
     {
       id: 'user_count',
       header: 'Users',
-      cell: ({ row }) => row.original._count?.tb_cluster_user ?? 0,
+      cell: ({ row }) => row.original.users_count ?? 0,
       meta: { cellClassName: 'text-center' },
       enableSorting: false,
+    },
+    {
+      id: 'created',
+      header: 'Created',
+      enableSorting: false,
+      cell: ({ row }) => {
+        const d = row.original;
+        const fmt = (v) => { if (!v) return '-'; const d = new Date(v); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
+        return (
+          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+            <div>{fmt(d.created_at)}</div>
+            {d.created_by_name && <div>{d.created_by_name}</div>}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'updated',
+      header: 'Updated',
+      enableSorting: false,
+      cell: ({ row }) => {
+        const d = row.original;
+        if (d.updated_at === d.created_at) return null;
+        const fmt = (v) => { if (!v) return '-'; const d = new Date(v); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
+        return (
+          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+            <div>{fmt(d.updated_at)}</div>
+            {d.updated_by_name && <div>{d.updated_by_name}</div>}
+          </div>
+        );
+      },
     },
     {
       id: 'actions',
@@ -143,7 +181,7 @@ const ClusterManagement = () => {
         </DropdownMenu>
       ),
     },
-  ], []);
+  ], [navigate, handleDelete]);
 
   return (
     <Layout>
@@ -217,6 +255,12 @@ const ClusterManagement = () => {
               </SheetDescription>
             </SheetHeader>
             <div className="mt-4">
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
+                  {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                  {copied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              </div>
               <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>

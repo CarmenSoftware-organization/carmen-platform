@@ -36,21 +36,21 @@ const BusinessUnitManagement = () => {
   const fetchBusinessUnits = useCallback(async (params) => {
     try {
       setLoading(true);
-      const data = await businessUnitService.getAll(params || paginate);
+      const data = await businessUnitService.getAll(params);
       const items = data.data || data;
       setBusinessUnits(Array.isArray(items) ? items : []);
-      setTotalRows(data.total ?? data.totalCount ?? (Array.isArray(items) ? items.length : 0));
+      setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err) {
       setError('Failed to load business units: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
-  }, [paginate]);
+  }, []);
 
   useEffect(() => {
     fetchBusinessUnits(paginate);
-  }, [paginate]);
+  }, [fetchBusinessUnits, paginate]);
 
   const handleSearchChange = (value) => {
     setSearchTerm(value);
@@ -85,15 +85,15 @@ const BusinessUnitManagement = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = useCallback(async (id) => {
     if (!window.confirm('Are you sure you want to delete this business unit?')) return;
     try {
       await businessUnitService.delete(id);
-      fetchBusinessUnits(paginate);
+      setPaginate(prev => ({ ...prev }));
     } catch (err) {
       alert('Failed to delete: ' + (err.response?.data?.message || err.message));
     }
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,7 +104,7 @@ const BusinessUnitManagement = () => {
         await businessUnitService.create(formData);
       }
       setShowModal(false);
-      fetchBusinessUnits(paginate);
+      setPaginate(prev => ({ ...prev }));
     } catch (err) {
       alert('Failed to save: ' + (err.response?.data?.message || err.message));
     }
@@ -141,7 +141,7 @@ const BusinessUnitManagement = () => {
         </div>
       ),
     },
-  ], []);
+  ], [handleDelete]);
 
   return (
     <Layout>

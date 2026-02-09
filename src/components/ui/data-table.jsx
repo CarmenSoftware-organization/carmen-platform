@@ -38,6 +38,12 @@ const DataTable = ({
     pageSize: serverSide ? perpage : defaultPageSize,
   });
 
+  React.useEffect(() => {
+    if (serverSide) {
+      setPagination({ pageIndex: page - 1, pageSize: perpage });
+    }
+  }, [serverSide, page, perpage]);
+
   const pageCount = serverSide ? Math.ceil(totalRows / pagination.pageSize) : undefined;
 
   const handleSortingChange = (updater) => {

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { User, Mail, Lock, Save, CheckCircle2, Code, Phone } from 'lucide-react';
+import { User, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check } from 'lucide-react';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -29,6 +29,13 @@ const Profile = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyJson = (data) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -415,6 +422,12 @@ const Profile = () => {
                 </SheetDescription>
               </SheetHeader>
               <div className="mt-4">
+                <div className="flex justify-end mb-2">
+                  <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
+                    {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                    {copied ? 'Copied!' : 'Copy JSON'}
+                  </Button>
+                </div>
                 <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
                   {JSON.stringify(rawResponse, null, 2)}
                 </pre>

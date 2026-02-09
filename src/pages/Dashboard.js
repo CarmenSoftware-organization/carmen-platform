@@ -6,10 +6,17 @@ import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/c
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Network, Building2, Users, ArrowRight, Code } from 'lucide-react';
+import { Network, Building2, Users, ArrowRight, Code, Copy, Check } from 'lucide-react';
 
 const Dashboard = () => {
   const { loginResponse } = useAuth();
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyJson = (data) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   const cards = [
     {
       title: 'Cluster Management',
@@ -96,6 +103,12 @@ const Dashboard = () => {
                 </SheetDescription>
               </SheetHeader>
               <div className="mt-4">
+                <div className="flex justify-end mb-2">
+                  <Button variant="outline" size="sm" onClick={() => handleCopyJson(loginResponse)}>
+                    {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                    {copied ? 'Copied!' : 'Copy JSON'}
+                  </Button>
+                </div>
                 <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
                   {JSON.stringify(loginResponse, null, 2)}
                 </pre>

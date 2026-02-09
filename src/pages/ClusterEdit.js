@@ -8,7 +8,7 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check } from 'lucide-react';
 
 const ClusterEdit = () => {
   const { id } = useParams();
@@ -25,6 +25,13 @@ const ClusterEdit = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyJson = (data) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     if (!isNew) {
@@ -208,6 +215,12 @@ const ClusterEdit = () => {
               </SheetDescription>
             </SheetHeader>
             <div className="mt-4">
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
+                  {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                  {copied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              </div>
               <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
