@@ -6,6 +6,7 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ClusterManagement from './pages/ClusterManagement';
+import ClusterEdit from './pages/ClusterEdit';
 import BusinessUnitManagement from './pages/BusinessUnitManagement';
 import UserManagement from './pages/UserManagement';
 import Profile from './pages/Profile';
@@ -20,7 +21,9 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-            <Route path="/clusters" element={<PrivateRoute><ClusterManagement /></PrivateRoute>} />
+            <Route path="/clusters" element={<PrivateRoute allowedRoles={['platform_admin', 'support_manager', 'support_staff']}><ClusterManagement /></PrivateRoute>} />
+            <Route path="/clusters/new" element={<PrivateRoute allowedRoles={['platform_admin', 'support_manager', 'support_staff']}><ClusterEdit /></PrivateRoute>} />
+            <Route path="/clusters/:id/edit" element={<PrivateRoute allowedRoles={['platform_admin', 'support_manager', 'support_staff']}><ClusterEdit /></PrivateRoute>} />
             <Route path="/business-units" element={<PrivateRoute><BusinessUnitManagement /></PrivateRoute>} />
             <Route path="/users" element={<PrivateRoute><UserManagement /></PrivateRoute>} />
             <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />

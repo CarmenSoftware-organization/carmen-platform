@@ -105,13 +105,22 @@ export const AuthProvider = ({ children }) => {
     setLoginResponse(null);
   };
 
+  const platformRole = loginResponse?.platform_role || user?.platform_role || null;
+
+  const hasRole = (roles) => {
+    if (!platformRole) return false;
+    return roles.includes(platformRole);
+  };
+
   const value = {
     user,
     login,
     logout,
     isAuthenticated: !!user,
     loading,
-    loginResponse
+    loginResponse,
+    platformRole,
+    hasRole
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,37 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import clusterService from '../services/clusterService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '../components/ui/card';
+import { DataTable } from '../components/ui/data-table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal } from 'lucide-react';
 
 const ClusterManagement = () => {
+  const navigate = useNavigate();
   const [clusters, setClusters] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingCluster, setEditingCluster] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    status: 'active'
-  });
   const [searchTerm, setSearchTerm] = useState('');
+  const [rawResponse, setRawResponse] = useState(null);
+  const [paginate, setPaginate] = useState({
+    page: 1,
+    perpage: 10,
+    search: '',
+    sort: '',
+  });
 
-  useEffect(() => {
-    fetchClusters();
-  }, []);
+  const searchTimeout = useRef(null);
 
-  const fetchClusters = async () => {
+  const fetchClusters = useCallback(async (params) => {
     try {
       setLoading(true);
-      const data = await clusterService.getAll();
-      setClusters(Array.isArray(data) ? data : data.data || []);
+      const data = await clusterService.getAll(params || paginate);
+      setRawResponse(data);
+      const items = data.data || data;
+      setClusters(Array.isArray(items) ? items : []);
+      setTotalRows(data.total ?? data.totalCount ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err) {
       setError('Failed to load clusters: ' + (err.response?.data?.message || err.message));
@@ -39,64 +43,107 @@ const ClusterManagement = () => {
     } finally {
       setLoading(false);
     }
+  }, [paginate]);
+
+  useEffect(() => {
+    fetchClusters(paginate);
+  }, [paginate]);
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setPaginate(prev => ({ ...prev, page: 1, search: value }));
+    }, 400);
   };
 
-  const handleAdd = () => {
-    setEditingCluster(null);
-    setFormData({ name: '', description: '', status: 'active' });
-    setShowModal(true);
+  const handlePaginateChange = ({ page, perpage }) => {
+    setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
-  const handleEdit = (cluster) => {
-    setEditingCluster(cluster);
-    setFormData({
-      name: cluster.name || '',
-      description: cluster.description || '',
-      status: cluster.status || 'active'
-    });
-    setShowModal(true);
+  const handleSortChange = (sort) => {
+    setPaginate(prev => ({ ...prev, sort }));
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this cluster?')) {
-      return;
-    }
-
+    if (!window.confirm('Are you sure you want to delete this cluster?')) return;
     try {
       await clusterService.delete(id);
-      fetchClusters();
+      fetchClusters(paginate);
     } catch (err) {
       alert('Failed to delete cluster: ' + (err.response?.data?.message || err.message));
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      if (editingCluster) {
-        await clusterService.update(editingCluster.id, formData);
-      } else {
-        await clusterService.create(formData);
-      }
-      setShowModal(false);
-      fetchClusters();
-    } catch (err) {
-      alert('Failed to save cluster: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const filteredClusters = clusters.filter(cluster =>
-    cluster.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cluster.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const columns = useMemo(() => [
+    {
+      accessorKey: 'code',
+      header: 'Code',
+      cell: ({ row }) => (
+        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clusters/${row.original.id}/edit`)}>
+          {row.original.code}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => (
+        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clusters/${row.original.id}/edit`)}>
+          {row.original.name}
+        </span>
+      ),
+    },
+    { accessorKey: 'description', header: 'Description' },
+    {
+      accessorKey: 'is_active',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
+          {row.original.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      ),
+    },
+    {
+      id: 'bu_count',
+      header: 'BU',
+      cell: ({ row }) => row.original._count?.tb_business_unit ?? 0,
+      meta: { cellClassName: 'text-center' },
+      enableSorting: false,
+    },
+    {
+      id: 'user_count',
+      header: 'Users',
+      cell: ({ row }) => row.original._count?.tb_cluster_user ?? 0,
+      meta: { cellClassName: 'text-center' },
+      enableSorting: false,
+    },
+    {
+      id: 'actions',
+      header: '',
+      meta: { headerClassName: 'w-10', cellClassName: 'text-center' },
+      enableSorting: false,
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate(`/clusters/${row.original.id}/edit`)} className="cursor-pointer">
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ], []);
 
   return (
     <Layout>
@@ -106,7 +153,7 @@ const ClusterManagement = () => {
             <h1 className="text-3xl font-bold tracking-tight">Cluster Management</h1>
             <p className="text-muted-foreground mt-2">Manage and configure clusters</p>
           </div>
-          <Button onClick={handleAdd}>
+          <Button onClick={() => navigate('/clusters/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add Cluster
           </Button>
@@ -121,7 +168,7 @@ const ClusterManagement = () => {
                   type="text"
                   placeholder="Search clusters..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9"
                 />
               </div>
@@ -132,113 +179,51 @@ const ClusterManagement = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 
             {!loading && !error && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClusters.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No clusters found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredClusters.map((cluster) => (
-                      <TableRow key={cluster.id}>
-                        <TableCell className="font-medium">{cluster.id}</TableCell>
-                        <TableCell>{cluster.name}</TableCell>
-                        <TableCell>{cluster.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={cluster.status === 'active' ? 'success' : 'secondary'}>
-                            {cluster.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button onClick={() => handleEdit(cluster)} variant="outline" size="sm">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleDelete(cluster.id)} variant="destructive" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                data={clusters}
+                serverSide
+                totalRows={totalRows}
+                page={paginate.page}
+                perpage={paginate.perpage}
+                onPaginateChange={handlePaginateChange}
+                onSortChange={handleSortChange}
+              />
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingCluster ? 'Edit Cluster' : 'Add Cluster'}</DialogTitle>
-            <DialogDescription>
-              {editingCluster ? 'Update cluster information' : 'Create a new cluster'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
+      {/* Debug Sheet - Development Only */}
+      {process.env.NODE_ENV === 'development' && rawResponse && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              size="icon"
+              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+            >
+              <Code className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                API Response
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
+              </SheetTitle>
+              <SheetDescription>
+                GET /api-system/cluster
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-4">
+              <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
+                {JSON.stringify(rawResponse, null, 2)}
+              </pre>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows="3"
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingCluster ? 'Update' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </SheetContent>
+        </Sheet>
+      )}
     </Layout>
   );
 };

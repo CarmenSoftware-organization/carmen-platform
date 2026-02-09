@@ -14,7 +14,7 @@ import {
 import { LayoutDashboard, Network, Building2, Users, LogOut, User, ChevronDown } from 'lucide-react';
 
 const Layout = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,12 +27,14 @@ const Layout = ({ children }) => {
     return location.pathname === path;
   };
 
-  const navItems = [
+  const allNavItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/clusters', label: 'Clusters', icon: Network },
+    { path: '/clusters', label: 'Clusters', icon: Network, roles: ['platform_admin', 'support_manager', 'support_staff'] },
     { path: '/business-units', label: 'Business Units', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
   ];
+
+  const navItems = allNavItems.filter(item => !item.roles || hasRole(item.roles));
 
   const getUserInitials = () => {
     if (user?.name) {

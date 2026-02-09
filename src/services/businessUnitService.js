@@ -1,31 +1,39 @@
 import api from './api';
+import QueryParams from '../utils/QueryParams';
+
+const defaultSearchFields = ['name', 'code', 'description'];
 
 const businessUnitService = {
-  // Get all business units
-  getAll: async () => {
-    const response = await api.get('/api/business-units');
+  getAll: async (paginate = {}) => {
+    const q = new QueryParams(
+      paginate.page,
+      paginate.perpage,
+      paginate.search,
+      paginate.searchfields,
+      defaultSearchFields,
+      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter) ? paginate.filter : {},
+      paginate.sort,
+      paginate.advance,
+    );
+    const response = await api.get(`/api/business-units?${q.toQueryString()}`);
     return response.data;
   },
 
-  // Get business unit by ID
   getById: async (id) => {
     const response = await api.get(`/api/business-units/${id}`);
     return response.data;
   },
 
-  // Create new business unit
   create: async (businessUnitData) => {
     const response = await api.post('/api/business-units', businessUnitData);
     return response.data;
   },
 
-  // Update business unit
   update: async (id, businessUnitData) => {
     const response = await api.put(`/api/business-units/${id}`, businessUnitData);
     return response.data;
   },
 
-  // Delete business unit
   delete: async (id) => {
     const response = await api.delete(`/api/business-units/${id}`);
     return response.data;

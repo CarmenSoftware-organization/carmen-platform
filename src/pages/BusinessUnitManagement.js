@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
 import { Button } from '../components/ui/button';
@@ -6,12 +6,13 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { DataTable } from '../components/ui/data-table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 
 const BusinessUnitManagement = () => {
   const [businessUnits, setBusinessUnits] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -23,22 +24,48 @@ const BusinessUnitManagement = () => {
     status: 'active'
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [paginate, setPaginate] = useState({
+    page: 1,
+    perpage: 10,
+    search: '',
+    sort: '',
+  });
 
-  useEffect(() => {
-    fetchBusinessUnits();
-  }, []);
+  const searchTimeout = useRef(null);
 
-  const fetchBusinessUnits = async () => {
+  const fetchBusinessUnits = useCallback(async (params) => {
     try {
       setLoading(true);
-      const data = await businessUnitService.getAll();
-      setBusinessUnits(Array.isArray(data) ? data : data.data || []);
+      const data = await businessUnitService.getAll(params || paginate);
+      const items = data.data || data;
+      setBusinessUnits(Array.isArray(items) ? items : []);
+      setTotalRows(data.total ?? data.totalCount ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err) {
       setError('Failed to load business units: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
+  }, [paginate]);
+
+  useEffect(() => {
+    fetchBusinessUnits(paginate);
+  }, [paginate]);
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setPaginate(prev => ({ ...prev, page: 1, search: value }));
+    }, 400);
+  };
+
+  const handlePaginateChange = ({ page, perpage }) => {
+    setPaginate(prev => ({ ...prev, page, perpage }));
+  };
+
+  const handleSortChange = (sort) => {
+    setPaginate(prev => ({ ...prev, sort }));
   };
 
   const handleAdd = () => {
@@ -62,7 +89,7 @@ const BusinessUnitManagement = () => {
     if (!window.confirm('Are you sure you want to delete this business unit?')) return;
     try {
       await businessUnitService.delete(id);
-      fetchBusinessUnits();
+      fetchBusinessUnits(paginate);
     } catch (err) {
       alert('Failed to delete: ' + (err.response?.data?.message || err.message));
     }
@@ -77,7 +104,7 @@ const BusinessUnitManagement = () => {
         await businessUnitService.create(formData);
       }
       setShowModal(false);
-      fetchBusinessUnits();
+      fetchBusinessUnits(paginate);
     } catch (err) {
       alert('Failed to save: ' + (err.response?.data?.message || err.message));
     }
@@ -85,10 +112,36 @@ const BusinessUnitManagement = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const filtered = businessUnits.filter(u =>
-    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.code?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const columns = useMemo(() => [
+    { accessorKey: 'code', header: 'Code' },
+    { accessorKey: 'name', header: 'Name' },
+    { accessorKey: 'description', header: 'Description', enableSorting: false },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant={row.original.status === 'active' ? 'success' : 'secondary'}>
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-2">
+          <Button onClick={() => handleEdit(row.original)} variant="outline" size="sm">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => handleDelete(row.original.id)} variant="destructive" size="sm">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ], []);
 
   return (
     <Layout>
@@ -111,7 +164,7 @@ const BusinessUnitManagement = () => {
               <Input
                 placeholder="Search business units..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -120,47 +173,16 @@ const BusinessUnitManagement = () => {
             {loading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
             {!loading && !error && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">No business units found</TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.map((unit) => (
-                      <TableRow key={unit.id}>
-                        <TableCell className="font-medium">{unit.id}</TableCell>
-                        <TableCell>{unit.code}</TableCell>
-                        <TableCell>{unit.name}</TableCell>
-                        <TableCell>{unit.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={unit.status === 'active' ? 'success' : 'secondary'}>{unit.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button onClick={() => handleEdit(unit)} variant="outline" size="sm">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleDelete(unit.id)} variant="destructive" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                data={businessUnits}
+                serverSide
+                totalRows={totalRows}
+                page={paginate.page}
+                perpage={paginate.perpage}
+                onPaginateChange={handlePaginateChange}
+                onSortChange={handleSortChange}
+              />
             )}
           </CardContent>
         </Card>
@@ -186,21 +208,14 @@ const BusinessUnitManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows="3"
+                id="description" name="description" value={formData.description} onChange={handleChange} rows="3"
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
+                id="status" name="status" value={formData.status} onChange={handleChange}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="active">Active</option>

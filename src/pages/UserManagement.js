@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import userService from '../services/userService';
 import { Button } from '../components/ui/button';
@@ -6,12 +6,19 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { DataTable } from '../components/ui/data-table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 
+const getRoleBadgeVariant = (role) => {
+  if (role === 'admin') return 'default';
+  if (role === 'manager') return 'secondary';
+  return 'outline';
+};
+
 const UserManagement = () => {
   const [users, setUsers] = useState([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -24,22 +31,48 @@ const UserManagement = () => {
     status: 'active'
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [paginate, setPaginate] = useState({
+    page: 1,
+    perpage: 10,
+    search: '',
+    sort: '',
+  });
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const searchTimeout = useRef(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async (params) => {
     try {
       setLoading(true);
-      const data = await userService.getAll();
-      setUsers(Array.isArray(data) ? data : data.data || []);
+      const data = await userService.getAll(params || paginate);
+      const items = data.data || data;
+      setUsers(Array.isArray(items) ? items : []);
+      setTotalRows(data.total ?? data.totalCount ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err) {
       setError('Failed to load users: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
+  }, [paginate]);
+
+  useEffect(() => {
+    fetchUsers(paginate);
+  }, [paginate]);
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setPaginate(prev => ({ ...prev, page: 1, search: value }));
+    }, 400);
+  };
+
+  const handlePaginateChange = ({ page, perpage }) => {
+    setPaginate(prev => ({ ...prev, page, perpage }));
+  };
+
+  const handleSortChange = (sort) => {
+    setPaginate(prev => ({ ...prev, sort }));
   };
 
   const handleAdd = () => {
@@ -64,7 +97,7 @@ const UserManagement = () => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     try {
       await userService.delete(id);
-      fetchUsers();
+      fetchUsers(paginate);
     } catch (err) {
       alert('Failed to delete: ' + (err.response?.data?.message || err.message));
     }
@@ -75,14 +108,14 @@ const UserManagement = () => {
     try {
       const submitData = { ...formData };
       if (editingUser && !submitData.password) delete submitData.password;
-      
+
       if (editingUser) {
         await userService.update(editingUser.id, submitData);
       } else {
         await userService.create(submitData);
       }
       setShowModal(false);
-      fetchUsers();
+      fetchUsers(paginate);
     } catch (err) {
       alert('Failed to save: ' + (err.response?.data?.message || err.message));
     }
@@ -90,17 +123,40 @@ const UserManagement = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const filtered = users.filter(u =>
-    u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getRoleBadgeVariant = (role) => {
-    if (role === 'admin') return 'default';
-    if (role === 'manager') return 'secondary';
-    return 'outline';
-  };
+  const columns = useMemo(() => [
+    { accessorKey: 'name', header: 'Name' },
+    { accessorKey: 'email', header: 'Email' },
+    {
+      accessorKey: 'role',
+      header: 'Role',
+      cell: ({ row }) => (
+        <Badge variant={getRoleBadgeVariant(row.original.role)}>{row.original.role}</Badge>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant={row.original.status === 'active' ? 'success' : 'secondary'}>{row.original.status}</Badge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+      enableSorting: false,
+      cell: ({ row }) => (
+        <div className="flex justify-end gap-2">
+          <Button onClick={() => handleEdit(row.original)} variant="outline" size="sm">
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button onClick={() => handleDelete(row.original.id)} variant="destructive" size="sm">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ], []);
 
   return (
     <Layout>
@@ -123,7 +179,7 @@ const UserManagement = () => {
               <Input
                 placeholder="Search users..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -132,49 +188,16 @@ const UserManagement = () => {
             {loading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
             {!loading && !error && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">No users found</TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.id}</TableCell>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={getRoleBadgeVariant(user.role)}>{user.role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.status === 'active' ? 'success' : 'secondary'}>{user.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button onClick={() => handleEdit(user)} variant="outline" size="sm">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleDelete(user.id)} variant="destructive" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <DataTable
+                columns={columns}
+                data={users}
+                serverSide
+                totalRows={totalRows}
+                page={paginate.page}
+                perpage={paginate.perpage}
+                onPaginateChange={handlePaginateChange}
+                onSortChange={handleSortChange}
+              />
             )}
           </CardContent>
         </Card>
@@ -200,21 +223,14 @@ const UserManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="password">Password {editingUser && '(leave blank to keep current)'}</Label>
               <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                required={!editingUser}
+                id="password" name="password" type="password"
+                value={formData.password} onChange={handleChange} required={!editingUser}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <select
-                id="role"
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
+                id="role" name="role" value={formData.role} onChange={handleChange}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="user">User</option>
@@ -225,10 +241,7 @@ const UserManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <select
-                id="status"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
+                id="status" name="status" value={formData.status} onChange={handleChange}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <option value="active">Active</option>
