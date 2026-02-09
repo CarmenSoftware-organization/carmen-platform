@@ -40,7 +40,12 @@ export interface BusinessUnit {
   code: string;
   name: string;
   description?: string;
-  status: string;
+  is_active: boolean;
+  cluster_name?: string;
+  created_at?: string;
+  created_by_name?: string;
+  updated_at?: string;
+  updated_by_name?: string;
 }
 
 export interface UserInfo {
