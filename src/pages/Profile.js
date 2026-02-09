@@ -1,38 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
-import { User, Mail, Lock, Save, CheckCircle2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { User, Mail, Lock, Save, CheckCircle2, Code, Phone } from 'lucide-react';
 
 const Profile = () => {
   const { user } = useAuth();
+  const [profile, setProfile] = useState(user);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    firstname: '',
+    middlename: '',
+    lastname: '',
+    telephone: '',
     email: user?.email || '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(true);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [rawResponse, setRawResponse] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/api/user/profile');
+        setRawResponse(response.data);
+        const data = response.data.data || response.data;
+        const userInfo = data.user_info || {};
+        setProfile(data);
+        setFormData(prev => ({
+          ...prev,
+          firstname: userInfo.firstname || '',
+          middlename: userInfo.middlename || '',
+          lastname: userInfo.lastname || '',
+          telephone: userInfo.telephone || '',
+          email: data.email || prev.email,
+        }));
+        // Update localStorage with fresh profile data
+        localStorage.setItem('user', JSON.stringify(data));
+      } catch (err) {
+        console.error('Failed to fetch profile:', err);
+      } finally {
+        setFetchingProfile(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const getDisplayName = () => {
+    const info = profile?.user_info;
+    if (info?.firstname || info?.lastname) {
+      return [info.firstname, info.middlename, info.lastname].filter(Boolean).join(' ');
+    }
+    return profile?.name || profile?.email || 'User';
+  };
 
   const getUserInitials = () => {
-    if (user?.name) {
-      return user.name
-        .split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+    if (profile?.alias_name) {
+      return profile.alias_name.toUpperCase();
     }
-    if (user?.email) {
-      return user.email.slice(0, 2).toUpperCase();
+    if (profile?.email) {
+      return profile.email.slice(0, 2).toUpperCase();
     }
     return 'U';
   };
@@ -53,24 +92,21 @@ const Profile = () => {
     setSuccess('');
 
     try {
-      // TODO: Implement actual API call to update profile
-      // await userService.updateProfile({
-      //   name: formData.name,
-      //   email: formData.email
-      // });
+      const response = await api.put('/api/user/profile', {
+        user_info: {
+          firstname: formData.firstname,
+          middlename: formData.middlename,
+          lastname: formData.lastname,
+          telephone: formData.telephone || null,
+        }
+      });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      const updatedData = response.data.data || response.data;
+      setRawResponse(response.data);
+      setProfile(updatedData);
       setSuccess('Profile updated successfully!');
 
-      // Update local user data
-      const updatedUser = {
-        ...user,
-        name: formData.name,
-        email: formData.email
-      };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('user', JSON.stringify(updatedData));
     } catch (err) {
       setError('Failed to update profile: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -98,14 +134,10 @@ const Profile = () => {
     }
 
     try {
-      // TODO: Implement actual API call to change password
-      // await userService.changePassword({
-      //   currentPassword: formData.currentPassword,
-      //   newPassword: formData.newPassword
-      // });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await api.put('/api/user/profile', {
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword
+      });
 
       setSuccess('Password changed successfully!');
 
@@ -122,6 +154,19 @@ const Profile = () => {
       setLoading(false);
     }
   };
+
+  if (fetchingProfile) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+            <p className="text-muted-foreground mt-2">Loading profile...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -157,13 +202,13 @@ const Profile = () => {
                 </AvatarFallback>
               </Avatar>
               <div className="text-center space-y-2">
-                <h3 className="font-semibold text-lg">{user?.name || user?.email}</h3>
-                {user?.email && user?.name && (
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                <h3 className="font-semibold text-lg">{getDisplayName()}</h3>
+                {profile?.email && (
+                  <p className="text-sm text-muted-foreground">{profile.email}</p>
                 )}
-                {user?.role && (
+                {profile?.role && (
                   <Badge variant="secondary" className="capitalize">
-                    {user.role}
+                    {profile.role}
                   </Badge>
                 )}
               </div>
@@ -171,11 +216,11 @@ const Profile = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Member since</span>
-                    <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                    <span className="font-medium">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account ID</span>
-                    <span className="font-medium">{user?.id || 'N/A'}</span>
+                    <span className="font-medium">{profile?.id || 'N/A'}</span>
                   </div>
                 </div>
               </div>
@@ -190,16 +235,60 @@ const Profile = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstname">First Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="firstname"
+                        name="firstname"
+                        value={formData.firstname}
+                        onChange={handleChange}
+                        placeholder="First name"
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="middlename">Middle Name</Label>
+                    <Input
+                      id="middlename"
+                      name="middlename"
+                      value={formData.middlename}
+                      onChange={handleChange}
+                      placeholder="Middle name (optional)"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="lastname">Last Name</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="name"
-                      name="name"
-                      value={formData.name}
+                      id="lastname"
+                      name="lastname"
+                      value={formData.lastname}
                       onChange={handleChange}
-                      placeholder="Enter your full name"
+                      placeholder="Last name"
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="telephone">Telephone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="telephone"
+                      name="telephone"
+                      type="tel"
+                      value={formData.telephone}
+                      onChange={handleChange}
+                      placeholder="Phone number (optional)"
                       className="pl-9"
                     />
                   </div>
@@ -215,10 +304,12 @@ const Profile = () => {
                       type="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="Enter your email"
+                      placeholder="Email address"
                       className="pl-9"
+                      disabled
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                 </div>
 
                 <div className="pt-4">
@@ -300,6 +391,37 @@ const Profile = () => {
             </form>
           </CardContent>
         </Card>
+
+        {/* Debug Sheet - Development Only (floating button) */}
+        {process.env.NODE_ENV === 'development' && rawResponse && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                size="icon"
+                className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+              >
+                <Code className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <Code className="h-5 w-5" />
+                  API Response
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
+                </SheetTitle>
+                <SheetDescription>
+                  GET /api/user/profile
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-4">
+                <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
+                  {JSON.stringify(rawResponse, null, 2)}
+                </pre>
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </Layout>
   );
