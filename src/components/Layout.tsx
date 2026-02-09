@@ -11,9 +11,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { LayoutDashboard, Network, Building2, Users, LogOut, User, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Network, Building2, Users, LogOut, User, ChevronDown, type LucideIcon } from 'lucide-react';
 
-const Layout = ({ children }) => {
+interface NavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  roles?: string[];
+}
+
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,11 +34,11 @@ const Layout = ({ children }) => {
     navigate('/login');
   };
 
-  const isActive = (path) => {
+  const isActive = (path: string): boolean => {
     return location.pathname === path;
   };
 
-  const allNavItems = [
+  const allNavItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/clusters', label: 'Clusters', icon: Network, roles: ['platform_admin', 'support_manager', 'support_staff'] },
     { path: '/business-units', label: 'Business Units', icon: Building2 },
@@ -36,7 +47,7 @@ const Layout = ({ children }) => {
 
   const navItems = allNavItems.filter(item => !item.roles || hasRole(item.roles));
 
-  const getUserInitials = () => {
+  const getUserInitials = (): string => {
     if (user?.name) {
       return user.name
         .split(' ')
@@ -51,11 +62,11 @@ const Layout = ({ children }) => {
     return 'U';
   };
 
-  const getUserDisplayName = () => {
+  const getUserDisplayName = (): string => {
     return user?.name || user?.email || 'User';
   };
 
-  const getUserEmail = () => {
+  const getUserEmail = (): string => {
     return user?.email || '';
   };
 

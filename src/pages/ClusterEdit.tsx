@@ -10,12 +10,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { ArrowLeft, Save, Code, Copy, Check } from 'lucide-react';
 
-const ClusterEdit = () => {
-  const { id } = useParams();
+interface ClusterFormData {
+  code: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+}
+
+const ClusterEdit: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
     name: '',
     description: '',
@@ -24,10 +31,10 @@ const ClusterEdit = () => {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [rawResponse, setRawResponse] = useState(null);
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
 
-  const handleCopyJson = (data) => {
+  const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -37,12 +44,13 @@ const ClusterEdit = () => {
     if (!isNew) {
       fetchCluster();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchCluster = async () => {
     try {
       setLoading(true);
-      const data = await clusterService.getById(id);
+      const data = await clusterService.getById(id!);
       setRawResponse(data);
       const cluster = data.data || data;
       setFormData({
@@ -51,23 +59,24 @@ const ClusterEdit = () => {
         description: cluster.description || '',
         is_active: cluster.is_active ?? true,
       });
-    } catch (err) {
-      setError('Failed to load cluster: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError('Failed to load cluster: ' + (e.response?.data?.message || e.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? e.target.checked : value,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
     setError('');
@@ -76,11 +85,12 @@ const ClusterEdit = () => {
       if (isNew) {
         await clusterService.create(formData);
       } else {
-        await clusterService.update(id, formData);
+        await clusterService.update(id!, formData);
       }
       navigate('/clusters');
-    } catch (err) {
-      setError('Failed to save cluster: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError('Failed to save cluster: ' + (e.response?.data?.message || e.message));
     } finally {
       setSaving(false);
     }
@@ -160,7 +170,7 @@ const ClusterEdit = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  rows="3"
+                  rows={3}
                   placeholder="Cluster description (optional)"
                   className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
@@ -193,7 +203,7 @@ const ClusterEdit = () => {
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && !isNew && rawResponse && (
+      {process.env.NODE_ENV === 'development' && !isNew && !!rawResponse && (
         <Sheet>
           <SheetTrigger asChild>
             <Button
@@ -211,7 +221,7 @@ const ClusterEdit = () => {
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
               <SheetDescription>
-                GET /api-system/cluster/{id}
+                {`GET /api-system/cluster/${id}`}
               </SheetDescription>
             </SheetHeader>
             <div className="mt-4">

@@ -5,9 +5,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import type { LoginCredentials } from '../types';
 
-const Login = () => {
-  const [credentials, setCredentials] = useState({
+const Login: React.FC = () => {
+  const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: ''
   });
@@ -24,7 +25,7 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials({
       ...credentials,
       [e.target.name]: e.target.value
@@ -32,7 +33,7 @@ const Login = () => {
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -42,7 +43,7 @@ const Login = () => {
     if (result.success) {
       navigate('/dashboard', { replace: true });
     } else {
-      setError(result.error);
+      setError(result.error || 'Login failed');
     }
 
     setLoading(false);

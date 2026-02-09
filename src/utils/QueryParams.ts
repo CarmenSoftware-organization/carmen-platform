@@ -1,5 +1,22 @@
 class QueryParams {
-  constructor(page, perpage, search, searchfields, defaultSearchFields, filter, sort, advance) {
+  page: number;
+  perpage: number;
+  search: string;
+  searchfields: string[];
+  filter: Record<string, unknown>;
+  sort: string;
+  advance: string;
+
+  constructor(
+    page?: number,
+    perpage?: number,
+    search?: string,
+    searchfields?: string[],
+    defaultSearchFields?: string[],
+    filter?: Record<string, unknown>,
+    sort?: string,
+    advance?: string
+  ) {
     this.page = page || 1;
     this.perpage = perpage || 10;
     this.search = search || '';
@@ -9,10 +26,10 @@ class QueryParams {
     this.advance = advance || '';
   }
 
-  toQueryString() {
+  toQueryString(): string {
     const params = new URLSearchParams();
-    params.set('page', this.page);
-    params.set('perpage', this.perpage);
+    params.set('page', String(this.page));
+    params.set('perpage', String(this.perpage));
 
     if (this.search) {
       params.set('search', this.search);

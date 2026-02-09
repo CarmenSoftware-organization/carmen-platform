@@ -9,12 +9,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { User, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check } from 'lucide-react';
+import type { User } from '../types';
 
-const Profile = () => {
+interface ProfileFormData {
+  firstname: string;
+  middlename: string;
+  lastname: string;
+  telephone: string;
+  email: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+const Profile: React.FC = () => {
   const { user } = useAuth();
-  const [profile, setProfile] = useState(user);
-  const [formData, setFormData] = useState({
+  const [profile, setProfile] = useState<User | null>(user);
+  const [formData, setFormData] = useState<ProfileFormData>({
     firstname: '',
     middlename: '',
     lastname: '',
@@ -28,10 +40,10 @@ const Profile = () => {
   const [fetchingProfile, setFetchingProfile] = useState(true);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [rawResponse, setRawResponse] = useState(null);
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
 
-  const handleCopyJson = (data) => {
+  const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -65,7 +77,7 @@ const Profile = () => {
     fetchProfile();
   }, []);
 
-  const getDisplayName = () => {
+  const getDisplayName = (): string => {
     const info = profile?.user_info;
     if (info?.firstname || info?.lastname) {
       return [info.firstname, info.middlename, info.lastname].filter(Boolean).join(' ');
@@ -73,7 +85,7 @@ const Profile = () => {
     return profile?.name || profile?.email || 'User';
   };
 
-  const getUserInitials = () => {
+  const getUserInitials = (): string => {
     if (profile?.alias_name) {
       return profile.alias_name.toUpperCase();
     }
@@ -83,7 +95,7 @@ const Profile = () => {
     return 'U';
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -92,7 +104,7 @@ const Profile = () => {
     setSuccess('');
   };
 
-  const handleProfileUpdate = async (e) => {
+  const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -114,14 +126,15 @@ const Profile = () => {
       setSuccess('Profile updated successfully!');
 
       localStorage.setItem('user', JSON.stringify(updatedData));
-    } catch (err) {
-      setError('Failed to update profile: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError('Failed to update profile: ' + (e.response?.data?.message || e.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePasswordChange = async (e) => {
+  const handlePasswordChange = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -155,8 +168,9 @@ const Profile = () => {
         newPassword: '',
         confirmPassword: ''
       });
-    } catch (err) {
-      setError('Failed to change password: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError('Failed to change password: ' + (e.response?.data?.message || e.message));
     } finally {
       setLoading(false);
     }
@@ -246,7 +260,7 @@ const Profile = () => {
                   <div className="space-y-2">
                     <Label htmlFor="firstname">First Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="firstname"
                         name="firstname"
@@ -273,7 +287,7 @@ const Profile = () => {
                 <div className="space-y-2">
                   <Label htmlFor="lastname">Last Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="lastname"
                       name="lastname"
@@ -400,7 +414,7 @@ const Profile = () => {
         </Card>
 
         {/* Debug Sheet - Development Only (floating button) */}
-        {process.env.NODE_ENV === 'development' && rawResponse && (
+        {process.env.NODE_ENV === 'development' && !!rawResponse && (
           <Sheet>
             <SheetTrigger asChild>
               <Button

@@ -6,6 +6,10 @@ import {
   getSortedRowModel,
   getPaginationRowModel,
   flexRender,
+  type ColumnDef,
+  type SortingState,
+  type PaginationState,
+  type Updater,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -18,22 +22,35 @@ import {
 import { Button } from './button';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
-const DataTable = ({
+interface DataTableProps<TData> {
+  columns: ColumnDef<TData, unknown>[];
+  data: TData[];
+  globalFilter?: string;
+  onGlobalFilterChange?: (value: string) => void;
+  pageSize?: number;
+  serverSide?: boolean;
+  totalRows?: number;
+  page?: number;
+  perpage?: number;
+  onPaginateChange?: (params: { page: number; perpage: number }) => void;
+  onSortChange?: (sort: string) => void;
+}
+
+function DataTable<TData>({
   columns,
   data,
   globalFilter,
   onGlobalFilterChange,
   pageSize: defaultPageSize = 10,
-  // Server-side pagination props
   serverSide = false,
   totalRows = 0,
   page = 1,
   perpage = 10,
   onPaginateChange,
   onSortChange,
-}) => {
-  const [sorting, setSorting] = React.useState([]);
-  const [pagination, setPagination] = React.useState({
+}: DataTableProps<TData>) {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: serverSide ? page - 1 : 0,
     pageSize: serverSide ? perpage : defaultPageSize,
   });
@@ -46,7 +63,7 @@ const DataTable = ({
 
   const pageCount = serverSide ? Math.ceil(totalRows / pagination.pageSize) : undefined;
 
-  const handleSortingChange = (updater) => {
+  const handleSortingChange = (updater: Updater<SortingState>) => {
     setSorting(updater);
     if (serverSide && onSortChange) {
       const newSorting = typeof updater === 'function' ? updater(sorting) : updater;
@@ -59,7 +76,7 @@ const DataTable = ({
     }
   };
 
-  const handlePaginationChange = (updater) => {
+  const handlePaginationChange = (updater: Updater<PaginationState> | PaginationState) => {
     const newPagination = typeof updater === 'function' ? updater(pagination) : updater;
     setPagination(newPagination);
     if (serverSide && onPaginateChange) {
@@ -70,7 +87,7 @@ const DataTable = ({
     }
   };
 
-  const columnsWithIndex = React.useMemo(() => [
+  const columnsWithIndex = React.useMemo<ColumnDef<TData, unknown>[]>(() => [
     {
       id: 'rowIndex',
       header: '#',
@@ -116,7 +133,7 @@ const DataTable = ({
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className={header.column.columnDef.meta?.headerClassName || ''}
+                  className={(header.column.columnDef.meta as Record<string, string>)?.headerClassName || ''}
                 >
                   {header.isPlaceholder ? null : header.column.getCanSort() ? (
                     <button
@@ -127,7 +144,7 @@ const DataTable = ({
                       {{
                         asc: <ArrowUp className="h-3.5 w-3.5" />,
                         desc: <ArrowDown className="h-3.5 w-3.5" />,
-                      }[header.column.getIsSorted()] ?? <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />}
+                      }[header.column.getIsSorted() as string] ?? <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />}
                     </button>
                   ) : (
                     flexRender(header.column.columnDef.header, header.getContext())
@@ -150,7 +167,7 @@ const DataTable = ({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={cell.column.columnDef.meta?.cellClassName || ''}
+                    className={(cell.column.columnDef.meta as Record<string, string>)?.cellClassName || ''}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
@@ -171,7 +188,7 @@ const DataTable = ({
             <span className="text-sm text-muted-foreground">Rows per page</span>
             <select
               value={pagination.pageSize}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 const newSize = Number(e.target.value);
                 handlePaginationChange({ pageIndex: 0, pageSize: newSize });
               }}
@@ -227,6 +244,7 @@ const DataTable = ({
       </div>
     </div>
   );
-};
+}
 
 export { DataTable };
+export type { DataTableProps };

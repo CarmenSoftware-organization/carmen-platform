@@ -10,16 +10,18 @@ import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check } from 'lucide-react';
+import type { Cluster, PaginateParams } from '../types';
+import type { ColumnDef } from '@tanstack/react-table';
 
-const ClusterManagement = () => {
+const ClusterManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [clusters, setClusters] = useState([]);
+  const [clusters, setClusters] = useState<Cluster[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [rawResponse, setRawResponse] = useState(null);
-  const [paginate, setPaginate] = useState({
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
     perpage: 10,
     search: '',
@@ -27,15 +29,15 @@ const ClusterManagement = () => {
   });
 
   const [copied, setCopied] = useState(false);
-  const searchTimeout = useRef(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopyJson = (data) => {
+  const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const fetchClusters = useCallback(async (params) => {
+  const fetchClusters = useCallback(async (params: PaginateParams) => {
     try {
       setLoading(true);
       const data = await clusterService.getAll(params);
@@ -44,8 +46,9 @@ const ClusterManagement = () => {
       setClusters(Array.isArray(items) ? items : []);
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
-    } catch (err) {
-      setError('Failed to load clusters: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError('Failed to load clusters: ' + (e.response?.data?.message || e.message));
       console.error('Error fetching clusters:', err);
     } finally {
       setLoading(false);
@@ -56,7 +59,7 @@ const ClusterManagement = () => {
     fetchClusters(paginate);
   }, [fetchClusters, paginate]);
 
-  const handleSearchChange = (value) => {
+  const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
@@ -64,25 +67,26 @@ const ClusterManagement = () => {
     }, 400);
   };
 
-  const handlePaginateChange = ({ page, perpage }) => {
+  const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
-  const handleSortChange = (sort) => {
+  const handleSortChange = (sort: string) => {
     setPaginate(prev => ({ ...prev, sort }));
   };
 
-  const handleDelete = useCallback(async (id) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this cluster?')) return;
     try {
       await clusterService.delete(id);
       setPaginate(prev => ({ ...prev }));
-    } catch (err) {
-      alert('Failed to delete cluster: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      alert('Failed to delete cluster: ' + (e.response?.data?.message || e.message));
     }
   }, []);
 
-  const columns = useMemo(() => [
+  const columns = useMemo<ColumnDef<Cluster, unknown>[]>(() => [
     {
       accessorKey: 'code',
       header: 'Code',
@@ -131,7 +135,7 @@ const ClusterManagement = () => {
       enableSorting: false,
       cell: ({ row }) => {
         const d = row.original;
-        const fmt = (v) => { if (!v) return '-'; const d = new Date(v); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
+        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
         return (
           <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
             <div>{fmt(d.created_at)}</div>
@@ -147,7 +151,7 @@ const ClusterManagement = () => {
       cell: ({ row }) => {
         const d = row.original;
         if (d.updated_at === d.created_at) return null;
-        const fmt = (v) => { if (!v) return '-'; const d = new Date(v); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
+        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
         return (
           <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
             <div>{fmt(d.updated_at)}</div>
@@ -233,7 +237,7 @@ const ClusterManagement = () => {
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && rawResponse && (
+      {process.env.NODE_ENV === 'development' && !!rawResponse && (
         <Sheet>
           <SheetTrigger asChild>
             <Button

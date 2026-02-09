@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
+import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue } from '../types';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 const ALLOWED_ROLES = [
   'platform_admin',
@@ -11,10 +12,14 @@ const ALLOWED_ROLES = [
   'security_officer',
 ];
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loginResponse, setLoginResponse] = useState(null);
+  const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -46,14 +51,15 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (credentials) => {
+  const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
     try {
       // Update this endpoint based on your actual API
       const response = await api.post('/api/auth/login', credentials);
 
       // Handle both token and access_token response formats
       const token = response.data.access_token || response.data.token;
-      const userData = response.data.user || response.data.data || {
+      const userData: User = response.data.user || response.data.data || {
+        id: '',
         email: credentials.email,
         name: response.data.name || credentials.email
       };
@@ -79,15 +85,16 @@ export const AuthProvider = ({ children }) => {
       setLoginResponse(response.data);
 
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       let errorMessage = 'Login failed. Please check your credentials.';
-      if (error.response?.status === 401) {
+      const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      if (err.response?.status === 401) {
         errorMessage = 'Unauthorized. Invalid email or password.';
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       return {
         success: false,
@@ -107,12 +114,12 @@ export const AuthProvider = ({ children }) => {
 
   const platformRole = loginResponse?.platform_role || user?.platform_role || null;
 
-  const hasRole = (roles) => {
+  const hasRole = (roles: string[]): boolean => {
     if (!platformRole) return false;
     return roles.includes(platformRole);
   };
 
-  const value = {
+  const value: AuthContextValue = {
     user,
     login,
     logout,
@@ -126,7 +133,7 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextValue => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');

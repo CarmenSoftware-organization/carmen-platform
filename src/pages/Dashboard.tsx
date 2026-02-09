@@ -6,18 +6,28 @@ import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/c
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Network, Building2, Users, ArrowRight, Code, Copy, Check } from 'lucide-react';
+import { Network, Building2, Users, ArrowRight, Code, Copy, Check, type LucideIcon } from 'lucide-react';
 
-const Dashboard = () => {
+interface DashboardCard {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  path: string;
+  gradient: string;
+  iconColor: string;
+  iconBg: string;
+}
+
+const Dashboard: React.FC = () => {
   const { loginResponse } = useAuth();
   const [copied, setCopied] = React.useState(false);
 
-  const handleCopyJson = (data) => {
+  const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-  const cards = [
+  const cards: DashboardCard[] = [
     {
       title: 'Cluster Management',
       description: 'Manage and configure clusters',

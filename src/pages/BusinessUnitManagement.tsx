@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
-import userService from '../services/userService';
+import businessUnitService from '../services/businessUnitService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -9,57 +9,60 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import type { BusinessUnit, PaginateParams } from '../types';
+import type { ColumnDef } from '@tanstack/react-table';
 
-const getRoleBadgeVariant = (role) => {
-  if (role === 'admin') return 'default';
-  if (role === 'manager') return 'secondary';
-  return 'outline';
-};
+interface BusinessUnitFormData {
+  name: string;
+  code: string;
+  description: string;
+  status: string;
+}
 
-const UserManagement = () => {
-  const [users, setUsers] = useState([]);
+const BusinessUnitManagement: React.FC = () => {
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [formData, setFormData] = useState({
+  const [editingUnit, setEditingUnit] = useState<BusinessUnit | null>(null);
+  const [formData, setFormData] = useState<BusinessUnitFormData>({
     name: '',
-    email: '',
-    password: '',
-    role: 'user',
+    code: '',
+    description: '',
     status: 'active'
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [paginate, setPaginate] = useState({
+  const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
     perpage: 10,
     search: '',
     sort: '',
   });
 
-  const searchTimeout = useRef(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchUsers = useCallback(async (params) => {
+  const fetchBusinessUnits = useCallback(async (params: PaginateParams) => {
     try {
       setLoading(true);
-      const data = await userService.getAll(params);
+      const data = await businessUnitService.getAll(params);
       const items = data.data || data;
-      setUsers(Array.isArray(items) ? items : []);
+      setBusinessUnits(Array.isArray(items) ? items : []);
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
-    } catch (err) {
-      setError('Failed to load users: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError('Failed to load business units: ' + (e.response?.data?.message || e.message));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchUsers(paginate);
-  }, [fetchUsers, paginate]);
+    fetchBusinessUnits(paginate);
+  }, [fetchBusinessUnits, paginate]);
 
-  const handleSearchChange = (value) => {
+  const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
@@ -67,77 +70,73 @@ const UserManagement = () => {
     }, 400);
   };
 
-  const handlePaginateChange = ({ page, perpage }) => {
+  const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
-  const handleSortChange = (sort) => {
+  const handleSortChange = (sort: string) => {
     setPaginate(prev => ({ ...prev, sort }));
   };
 
   const handleAdd = () => {
-    setEditingUser(null);
-    setFormData({ name: '', email: '', password: '', role: 'user', status: 'active' });
+    setEditingUnit(null);
+    setFormData({ name: '', code: '', description: '', status: 'active' });
     setShowModal(true);
   };
 
-  const handleEdit = (user) => {
-    setEditingUser(user);
+  const handleEdit = (unit: BusinessUnit) => {
+    setEditingUnit(unit);
     setFormData({
-      name: user.name || '',
-      email: user.email || '',
-      password: '',
-      role: user.role || 'user',
-      status: user.status || 'active'
+      name: unit.name || '',
+      code: unit.code || '',
+      description: unit.description || '',
+      status: unit.status || 'active'
     });
     setShowModal(true);
   };
 
-  const handleDelete = useCallback(async (id) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const handleDelete = useCallback(async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this business unit?')) return;
     try {
-      await userService.delete(id);
+      await businessUnitService.delete(id);
       setPaginate(prev => ({ ...prev }));
-    } catch (err) {
-      alert('Failed to delete: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      alert('Failed to delete: ' + (e.response?.data?.message || e.message));
     }
   }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const submitData = { ...formData };
-      if (editingUser && !submitData.password) delete submitData.password;
-
-      if (editingUser) {
-        await userService.update(editingUser.id, submitData);
+      if (editingUnit) {
+        await businessUnitService.update(editingUnit.id, formData);
       } else {
-        await userService.create(submitData);
+        await businessUnitService.create(formData);
       }
       setShowModal(false);
       setPaginate(prev => ({ ...prev }));
-    } catch (err) {
-      alert('Failed to save: ' + (err.response?.data?.message || err.message));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      alert('Failed to save: ' + (e.response?.data?.message || e.message));
     }
   };
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  const columns = useMemo(() => [
+  const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
+    { accessorKey: 'code', header: 'Code' },
     { accessorKey: 'name', header: 'Name' },
-    { accessorKey: 'email', header: 'Email' },
-    {
-      accessorKey: 'role',
-      header: 'Role',
-      cell: ({ row }) => (
-        <Badge variant={getRoleBadgeVariant(row.original.role)}>{row.original.role}</Badge>
-      ),
-    },
+    { accessorKey: 'description', header: 'Description', enableSorting: false },
     {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <Badge variant={row.original.status === 'active' ? 'success' : 'secondary'}>{row.original.status}</Badge>
+        <Badge variant={row.original.status === 'active' ? 'success' : 'secondary'}>
+          {row.original.status}
+        </Badge>
       ),
     },
     {
@@ -163,12 +162,12 @@ const UserManagement = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground mt-2">Manage users and permissions</p>
+            <h1 className="text-3xl font-bold tracking-tight">Business Unit Management</h1>
+            <p className="text-muted-foreground mt-2">Manage business units and departments</p>
           </div>
           <Button onClick={handleAdd}>
             <Plus className="mr-2 h-4 w-4" />
-            Add User
+            Add Business Unit
           </Button>
         </div>
 
@@ -177,7 +176,7 @@ const UserManagement = () => {
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder="Search business units..."
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
@@ -190,7 +189,7 @@ const UserManagement = () => {
             {!loading && !error && (
               <DataTable
                 columns={columns}
-                data={users}
+                data={businessUnits}
                 serverSide
                 totalRows={totalRows}
                 page={paginate.page}
@@ -206,37 +205,26 @@ const UserManagement = () => {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingUser ? 'Edit User' : 'Add User'}</DialogTitle>
+            <DialogTitle>{editingUnit ? 'Edit Business Unit' : 'Add Business Unit'}</DialogTitle>
             <DialogDescription>
-              {editingUser ? 'Update user information' : 'Create a new user'}
+              {editingUnit ? 'Update business unit information' : 'Create a new business unit'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="code">Code *</Label>
+              <Input id="code" name="code" value={formData.code} onChange={handleChange} required />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="name">Name *</Label>
               <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password {editingUser && '(leave blank to keep current)'}</Label>
-              <Input
-                id="password" name="password" type="password"
-                value={formData.password} onChange={handleChange} required={!editingUser}
+              <Label htmlFor="description">Description</Label>
+              <textarea
+                id="description" name="description" value={formData.description} onChange={handleChange} rows={3}
+                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <select
-                id="role" name="role" value={formData.role} onChange={handleChange}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="user">User</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
@@ -250,7 +238,7 @@ const UserManagement = () => {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">{editingUser ? 'Update' : 'Create'}</Button>
+              <Button type="submit">{editingUnit ? 'Update' : 'Create'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -259,4 +247,4 @@ const UserManagement = () => {
   );
 };
 
-export default UserManagement;
+export default BusinessUnitManagement;

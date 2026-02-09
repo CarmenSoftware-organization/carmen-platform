@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ShieldX, ArrowLeft } from 'lucide-react';
 
-const AccessDenied = () => {
+const AccessDenied: React.FC = () => {
   const navigate = useNavigate();
   const { platformRole } = useAuth();
 
@@ -37,7 +37,12 @@ const AccessDenied = () => {
   );
 };
 
-const PrivateRoute = ({ children, allowedRoles }) => {
+interface PrivateRouteProps {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles }) => {
   const { isAuthenticated, loading, hasRole } = useAuth();
 
   if (loading) {
@@ -52,7 +57,7 @@ const PrivateRoute = ({ children, allowedRoles }) => {
     return <AccessDenied />;
   }
 
-  return children;
+  return <>{children}</>;
 };
 
 export default PrivateRoute;

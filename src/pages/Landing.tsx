@@ -2,9 +2,17 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Network, Building2, Users, ArrowRight } from 'lucide-react';
+import { Network, Building2, Users, ArrowRight, type LucideIcon } from 'lucide-react';
 
-const Landing = () => {
+interface Feature {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  iconColor: string;
+  iconBg: string;
+}
+
+const Landing: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -24,7 +32,7 @@ const Landing = () => {
     );
   }
 
-  const features = [
+  const features: Feature[] = [
     {
       icon: Network,
       title: 'Cluster Management',
