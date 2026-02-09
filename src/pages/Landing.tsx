@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Network, Building2, Users, ArrowRight, type LucideIcon } from 'lucide-react';
+import { Ripple } from '../components/magicui/ripple';
+import { RippleButton } from '../components/magicui/ripple-button';
 
 interface Feature {
   icon: LucideIcon;
@@ -69,6 +71,9 @@ const Landing: React.FC = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-sky-200/30 blur-3xl" />
       </div>
 
+      {/* Ripple effect */}
+      <Ripple mainCircleSize={210} mainCircleOpacity={0.12} numCircles={8} />
+
       {/* Header */}
       <header className="relative z-10 container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
@@ -79,12 +84,12 @@ const Landing: React.FC = () => {
             <span className="text-xl font-bold text-blue-900">Carmen Platform</span>
           </div>
           <Link to="/login">
-            <Button
-              variant="ghost"
-              className="text-blue-600 hover:text-blue-800 hover:bg-blue-100/60 border border-blue-200"
+            <RippleButton
+              rippleColor="#3b82f6"
+              className="border-blue-200 bg-white/60 text-blue-600 hover:text-blue-800 hover:bg-blue-100/60"
             >
               Login
-            </Button>
+            </RippleButton>
           </Link>
         </div>
       </header>
@@ -106,13 +111,13 @@ const Landing: React.FC = () => {
             business units, and users — all in one place.
           </p>
           <Link to="/login">
-            <Button
-              size="lg"
-              className="bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25 text-lg px-8 py-6 rounded-xl"
+            <RippleButton
+              rippleColor="#93c5fd"
+              className="border-0 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25 text-lg px-8 py-4 rounded-xl"
             >
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            </RippleButton>
           </Link>
         </div>
       </section>

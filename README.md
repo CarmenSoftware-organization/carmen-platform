@@ -1,10 +1,12 @@
 # Carmen Platform
 
-A React-based management application for managing clusters, business units, and users via the Carmen API.
+A React + TypeScript management application for managing clusters, business units, and users via the Carmen API.
 
 > **Powered by Bun** - This project uses [Bun](https://bun.sh) for 3-10x faster package installation and better performance. See [docs/WHY_BUN.md](docs/WHY_BUN.md) for details.
 
 > **Built with shadcn/ui** - Modern, accessible UI components built with Tailwind CSS and Radix UI. See [docs/SHADCN_MIGRATION.md](docs/SHADCN_MIGRATION.md) for details.
+
+> **TypeScript** - The entire codebase is written in TypeScript with strict mode enabled for type safety.
 
 ## Features
 
@@ -62,8 +64,8 @@ The application is configured to connect to `https://dev.blueledgers.com:4001`. 
 
 #### Update Authentication Endpoint
 
-Edit `src/context/AuthContext.js` to match your API's login endpoint:
-```javascript
+Edit `src/context/AuthContext.tsx` to match your API's login endpoint:
+```typescript
 const response = await api.post('/api/auth/login', credentials);
 ```
 
@@ -71,9 +73,9 @@ const response = await api.post('/api/auth/login', credentials);
 
 The following service files may need endpoint adjustments based on your API's actual structure:
 
-- `src/services/clusterService.js` - Cluster API endpoints
-- `src/services/businessUnitService.js` - Business unit API endpoints
-- `src/services/userService.js` - User API endpoints
+- `src/services/clusterService.ts` - Cluster API endpoints
+- `src/services/businessUnitService.ts` - Business unit API endpoints
+- `src/services/userService.ts` - User API endpoints
 
 **Note**: The current endpoints are set to:
 - Clusters: `/api/clusters`
@@ -84,7 +86,7 @@ Check your Swagger documentation and update these paths accordingly.
 
 ### SSL Certificate Issues
 
-If you encounter SSL certificate errors with the development API, the application is configured to ignore SSL verification in development mode (see `src/services/api.js`).
+If you encounter SSL certificate errors with the development API, the application is configured to ignore SSL verification in development mode (see `src/services/api.ts`).
 
 **Warning**: This should only be used in development environments. For production, ensure proper SSL certificates are configured.
 
@@ -93,34 +95,41 @@ If you encounter SSL certificate errors with the development API, the applicatio
 ```
 carmen-platform/
 ├── public/
-│   └── index.html          # HTML template
+│   └── index.html              # HTML template
 ├── src/
 │   ├── components/
-│   │   ├── ui/             # shadcn/ui components
-│   │   ├── Layout.js       # Main layout with navigation
-│   │   └── PrivateRoute.js # Route protection component
+│   │   ├── ui/                 # shadcn/ui components (*.tsx)
+│   │   ├── Layout.tsx          # Main layout with navigation
+│   │   └── PrivateRoute.tsx    # Route protection component
 │   ├── context/
-│   │   └── AuthContext.js  # Authentication context
+│   │   └── AuthContext.tsx     # Authentication context
 │   ├── lib/
-│   │   └── utils.js        # Utility functions
+│   │   └── utils.ts            # Utility functions (cn)
 │   ├── pages/
-│   │   ├── Landing.js      # Public landing page
-│   │   ├── Login.js        # Login page
-│   │   ├── Dashboard.js    # Dashboard page
-│   │   ├── Profile.js      # User profile page
-│   │   ├── ClusterManagement.js
-│   │   ├── BusinessUnitManagement.js
-│   │   └── UserManagement.js
+│   │   ├── Landing.tsx         # Public landing page
+│   │   ├── Login.tsx           # Login page
+│   │   ├── Dashboard.tsx       # Dashboard page
+│   │   ├── Profile.tsx         # User profile page
+│   │   ├── ClusterManagement.tsx
+│   │   ├── ClusterEdit.tsx
+│   │   ├── BusinessUnitManagement.tsx
+│   │   └── UserManagement.tsx
 │   ├── services/
-│   │   ├── api.js          # Axios configuration
-│   │   ├── clusterService.js
-│   │   ├── businessUnitService.js
-│   │   └── userService.js
-│   ├── App.js              # Main app component with routing
+│   │   ├── api.ts              # Axios configuration
+│   │   ├── clusterService.ts
+│   │   ├── businessUnitService.ts
+│   │   └── userService.ts
+│   ├── types/
+│   │   └── index.ts            # Shared TypeScript interfaces
+│   ├── utils/
+│   │   └── QueryParams.ts      # Query parameter builder
+│   ├── App.tsx                  # Main app component with routing
 │   ├── App.css
-│   ├── index.js
-│   └── index.css
-├── docs/                    # Documentation
+│   ├── index.tsx
+│   ├── index.css
+│   └── react-app-env.d.ts
+├── docs/                        # Documentation
+├── tsconfig.json
 ├── package.json
 └── README.md
 ```
@@ -206,13 +215,13 @@ If you encounter CORS errors, make sure your API server has CORS properly config
 
 ### API Connection Issues
 
-1. Check that the API URL in `src/services/api.js` is correct
+1. Check that the API URL in `src/services/api.ts` is correct
 2. Verify that the API endpoints in service files match your Swagger documentation
 3. Check browser console for detailed error messages
 
 ### Authentication Issues
 
-1. Verify the login endpoint in `src/context/AuthContext.js`
+1. Verify the login endpoint in `src/context/AuthContext.tsx`
 2. Check that your API returns a token and user object in the expected format
 
 ## Security Notes

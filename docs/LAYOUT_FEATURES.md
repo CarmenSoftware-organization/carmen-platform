@@ -76,11 +76,11 @@ The Carmen Platform layout includes a professional menu bar with user profile dr
 
 ### shadcn/ui Components Used
 
-1. **Avatar** (`src/components/ui/avatar.jsx`)
+1. **Avatar** (`src/components/ui/avatar.tsx`)
    - Avatar container
    - AvatarFallback for initials
 
-2. **DropdownMenu** (`src/components/ui/dropdown-menu.jsx`)
+2. **DropdownMenu** (`src/components/ui/dropdown-menu.tsx`)
    - DropdownMenu root
    - DropdownMenuTrigger
    - DropdownMenuContent
@@ -88,7 +88,7 @@ The Carmen Platform layout includes a professional menu bar with user profile dr
    - DropdownMenuLabel
    - DropdownMenuSeparator
 
-3. **Button** (`src/components/ui/button.jsx`)
+3. **Button** (`src/components/ui/button.tsx`)
    - Ghost variant for menu trigger
 
 ### Icons Used (Lucide React)

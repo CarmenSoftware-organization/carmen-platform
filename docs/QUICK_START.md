@@ -14,18 +14,18 @@ You need to update the API endpoints to match your Swagger documentation.
 
 **Quick Configuration Checklist:**
 
-1. **Update Login Endpoint** - `src/context/AuthContext.js`
+1. **Update Login Endpoint** - `src/context/AuthContext.tsx`
    ```javascript
    const response = await api.post('/api/auth/login', credentials);
    ```
 
-2. **Update Cluster Endpoints** - `src/services/clusterService.js`
+2. **Update Cluster Endpoints** - `src/services/clusterService.ts`
    - Replace `/api/clusters` with your actual endpoint
 
-3. **Update Business Unit Endpoints** - `src/services/businessUnitService.js`
+3. **Update Business Unit Endpoints** - `src/services/businessUnitService.ts`
    - Replace `/api/business-units` with your actual endpoint
 
-4. **Update User Endpoints** - `src/services/userService.js`
+4. **Update User Endpoints** - `src/services/userService.ts`
    - Replace `/api/users` with your actual endpoint
 
 **Need detailed instructions?** See `API_CONFIGURATION.md`
@@ -99,13 +99,13 @@ The app will open at `http://localhost:3000`
 ### Issue: "SSL Certificate Error"
 
 **Solution:**
-- Already handled in development mode (see `src/services/api.js`)
+- Already handled in development mode (see `src/services/api.ts`)
 - The app ignores SSL errors in development
 
 ### Issue: "401 Unauthorized" after login
 
 **Possible causes:**
-1. Wrong endpoint in `AuthContext.js`
+1. Wrong endpoint in `AuthContext.tsx`
 2. Wrong credentials
 3. API response format doesn't match expected format
 
@@ -131,10 +131,10 @@ The app will open at `http://localhost:3000`
 
 **Only need to modify these files:**
 
-- `src/context/AuthContext.js` - Login endpoint and auth logic
-- `src/services/clusterService.js` - Cluster API calls
-- `src/services/businessUnitService.js` - Business unit API calls
-- `src/services/userService.js` - User API calls
+- `src/context/AuthContext.tsx` - Login endpoint and auth logic
+- `src/services/clusterService.ts` - Cluster API calls
+- `src/services/businessUnitService.ts` - Business unit API calls
+- `src/services/userService.ts` - User API calls
 
 **Everything else works automatically!**
 
@@ -164,13 +164,13 @@ This creates a `build/` folder with optimized files ready for deployment. The bu
 
 | What to Change | File Location |
 |----------------|---------------|
-| Login API endpoint | `src/context/AuthContext.js` |
-| Cluster endpoints | `src/services/clusterService.js` |
-| Business Unit endpoints | `src/services/businessUnitService.js` |
-| User endpoints | `src/services/userService.js` |
-| API base URL | `src/services/api.js` |
-| Landing page | `src/pages/Landing.js` |
-| Routes | `src/App.js` |
+| Login API endpoint | `src/context/AuthContext.tsx` |
+| Cluster endpoints | `src/services/clusterService.ts` |
+| Business Unit endpoints | `src/services/businessUnitService.ts` |
+| User endpoints | `src/services/userService.ts` |
+| API base URL | `src/services/api.ts` |
+| Landing page | `src/pages/Landing.tsx` |
+| Routes | `src/App.tsx` |
 
 ## Getting Help
 

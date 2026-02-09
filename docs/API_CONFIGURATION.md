@@ -28,7 +28,7 @@ You can modify these values in the `.env` file to match your environment.
 
 ## Step 2: Update Authentication Endpoint
 
-### File: `src/context/AuthContext.js`
+### File: `src/context/AuthContext.tsx`
 
 Find line 22 and update the login endpoint:
 
@@ -58,7 +58,7 @@ If your API returns a different format, update lines 23-26 accordingly.
 
 ## Step 3: Update Service Endpoints
 
-### Cluster Service (`src/services/clusterService.js`)
+### Cluster Service (`src/services/clusterService.ts`)
 
 Update the endpoints if they differ from `/api/clusters`:
 
@@ -90,7 +90,7 @@ delete: async (id) => {
 }
 ```
 
-### Business Unit Service (`src/services/businessUnitService.js`)
+### Business Unit Service (`src/services/businessUnitService.ts`)
 
 Update all occurrences of `/api/business-units` to match your API:
 
@@ -102,7 +102,7 @@ Update all occurrences of `/api/business-units` to match your API:
 // etc.
 ```
 
-### User Service (`src/services/userService.js`)
+### User Service (`src/services/userService.ts`)
 
 Update all occurrences of `/api/users` to match your API:
 
@@ -145,7 +145,7 @@ Check if your API uses different field names. Common differences:
 
 ### Example: If your API uses `status_code` instead of `status`:
 
-**In ClusterManagement.js** (and similar for other management pages):
+**In ClusterManagement.tsx** (and similar for other management pages):
 
 ```javascript
 // Update formData state
@@ -183,7 +183,7 @@ If you encounter CORS errors:
 
 ## Step 7: SSL Certificate Handling
 
-The app currently bypasses SSL verification for development. This is configured in `src/services/api.js`:
+The app currently bypasses SSL verification for development. This is configured in `src/services/api.ts`:
 
 ```javascript
 httpsAgent: process.env.NODE_ENV === 'development' ? {
@@ -246,7 +246,7 @@ If your API uses this structure:
 - Methods: `list`, `create`, `get`, `update`, `remove`
 - Response: `{ success: true, data: {...} }`
 
-Update `clusterService.js`:
+Update `clusterService.ts`:
 
 ```javascript
 import api from './api';
@@ -293,11 +293,11 @@ export default clusterService;
 
 ## Quick Checklist
 
-- [ ] Updated login endpoint in `AuthContext.js`
+- [ ] Updated login endpoint in `AuthContext.tsx`
 - [ ] Verified authentication response format
-- [ ] Updated cluster endpoints in `clusterService.js`
-- [ ] Updated business unit endpoints in `businessUnitService.js`
-- [ ] Updated user endpoints in `userService.js`
+- [ ] Updated cluster endpoints in `clusterService.ts`
+- [ ] Updated business unit endpoints in `businessUnitService.ts`
+- [ ] Updated user endpoints in `userService.ts`
 - [ ] Tested login functionality
 - [ ] Tested data fetching
 - [ ] Tested create, update, delete operations

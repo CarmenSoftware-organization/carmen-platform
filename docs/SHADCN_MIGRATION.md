@@ -31,31 +31,31 @@ The Carmen Platform UI has been successfully migrated to use **shadcn/ui** - a m
 2. **postcss.config.js**
    - PostCSS configuration for Tailwind
 
-3. **src/lib/utils.js**
+3. **src/lib/utils.ts**
    - `cn()` utility function for merging class names
 
 ### ✅ shadcn/ui Components Created
 
 All components are in `src/components/ui/`:
 
-1. **button.jsx** - Versatile button component with variants:
+1. **button.tsx** - Versatile button component with variants:
    - default, destructive, outline, secondary, ghost, link
    - Sizes: default, sm, lg, icon
 
-2. **card.jsx** - Card container components:
+2. **card.tsx** - Card container components:
    - Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter
 
-3. **input.jsx** - Styled input field component
+3. **input.tsx** - Styled input field component
 
-4. **label.jsx** - Accessible label component
+4. **label.tsx** - Accessible label component
 
-5. **badge.jsx** - Badge/tag component with variants:
+5. **badge.tsx** - Badge/tag component with variants:
    - default, secondary, destructive, outline, success, warning
 
-6. **table.jsx** - Complete table components:
+6. **table.tsx** - Complete table components:
    - Table, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell, TableCaption
 
-7. **dialog.jsx** - Modal/dialog component (Radix UI):
+7. **dialog.tsx** - Modal/dialog component (Radix UI):
    - Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 
 ### ✅ Updated Styles
@@ -77,37 +77,37 @@ All components are in `src/components/ui/`:
 
 All components rewritten with shadcn/ui:
 
-1. **Login.js**
+1. **Login.tsx**
    - Modern gradient background
    - Card-based layout
    - shadcn Button, Input, Label components
    - Professional error handling
 
-2. **Dashboard.js**
+2. **Dashboard.tsx**
    - Clean grid layout
    - Interactive hover effects
    - Icon-based navigation cards
    - Responsive design
 
-3. **Layout.js**
+3. **Layout.tsx**
    - Professional header with navigation
    - Icon-enhanced menu items
    - Active state indicators
    - Logout button with icon
 
-4. **ClusterManagement.js**
+4. **ClusterManagement.tsx**
    - Data table with shadcn Table component
    - Dialog-based forms (replaces old modals)
    - Search functionality with icons
    - Badge status indicators
    - Icon buttons for actions
 
-5. **BusinessUnitManagement.js**
+5. **BusinessUnitManagement.tsx**
    - Consistent with ClusterManagement
    - All shadcn components
    - Professional table layout
 
-6. **UserManagement.js**
+6. **UserManagement.tsx**
    - Enhanced user table
    - Role-based badge variants
    - Password field with conditional requirement
@@ -344,7 +344,7 @@ theme: {
 
 ### Add New Variants
 
-In component files (e.g., `button.jsx`):
+In component files (e.g., `button.tsx`):
 
 ```js
 const buttonVariants = cva(

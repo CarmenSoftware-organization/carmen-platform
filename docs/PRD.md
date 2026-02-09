@@ -22,6 +22,7 @@ Carmen Platform is a web-based management system for administering clusters, bus
 | Layer | Technology |
 |-------|-----------|
 | Frontend Framework | React 18 |
+| Language | TypeScript |
 | Routing | React Router 6 |
 | State Management | React Context API |
 | HTTP Client | Axios |

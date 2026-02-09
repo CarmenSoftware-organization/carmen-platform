@@ -2,7 +2,7 @@
 
 ## What Has Been Created
 
-A complete React-based management application with a public landing page, authentication, and CRUD operations for managing:
+A complete React + TypeScript management application with a public landing page, authentication, and CRUD operations for managing:
 - **Clusters**
 - **Business Units**
 - **Users**
@@ -18,42 +18,52 @@ carmen-platform/
 ├── src/
 │   ├── components/
 │   │   ├── ui/                             # shadcn/ui components
-│   │   │   ├── avatar.jsx
-│   │   │   ├── button.jsx
-│   │   │   ├── card.jsx
-│   │   │   ├── input.jsx
-│   │   │   ├── label.jsx
-│   │   │   ├── badge.jsx
-│   │   │   ├── table.jsx
-│   │   │   ├── dialog.jsx
-│   │   │   └── dropdown-menu.jsx
-│   │   ├── Layout.js                       # Main layout with navigation
-│   │   └── PrivateRoute.js                 # Route protection component
+│   │   │   ├── avatar.tsx
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── badge.tsx
+│   │   │   ├── data-table.tsx
+│   │   │   ├── table.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   └── sheet.tsx
+│   │   ├── Layout.tsx                      # Main layout with navigation
+│   │   └── PrivateRoute.tsx                # Route protection component
 │   │
 │   ├── context/
-│   │   └── AuthContext.js                  # Authentication context & state management
+│   │   └── AuthContext.tsx                  # Authentication context & state management
 │   │
 │   ├── lib/
-│   │   └── utils.js                        # Utility functions (cn)
+│   │   └── utils.ts                        # Utility functions (cn)
+│   │
+│   ├── types/
+│   │   └── index.ts                        # Shared TypeScript interfaces
+│   │
+│   ├── utils/
+│   │   └── QueryParams.ts                  # Query parameter builder
 │   │
 │   ├── pages/
-│   │   ├── Landing.js                      # Public landing page (pastel blue theme)
-│   │   ├── Login.js                        # Login page with form
-│   │   ├── Dashboard.js                    # Main dashboard with navigation cards
-│   │   ├── Profile.js                      # User profile page
-│   │   ├── ClusterManagement.js            # Cluster CRUD operations
-│   │   ├── BusinessUnitManagement.js       # Business unit CRUD operations
-│   │   └── UserManagement.js               # User CRUD operations
+│   │   ├── Landing.tsx                     # Public landing page (pastel blue theme)
+│   │   ├── Login.tsx                       # Login page with form
+│   │   ├── Dashboard.tsx                   # Main dashboard with navigation cards
+│   │   ├── Profile.tsx                     # User profile page
+│   │   ├── ClusterManagement.tsx           # Cluster CRUD operations
+│   │   ├── ClusterEdit.tsx                 # Cluster edit with side sheet
+│   │   ├── BusinessUnitManagement.tsx      # Business unit CRUD operations
+│   │   └── UserManagement.tsx              # User CRUD operations
 │   │
 │   ├── services/
-│   │   ├── api.js                          # Axios configuration & interceptors
-│   │   ├── clusterService.js               # Cluster API calls
-│   │   ├── businessUnitService.js          # Business unit API calls
-│   │   └── userService.js                  # User API calls
+│   │   ├── api.ts                          # Axios configuration & interceptors
+│   │   ├── clusterService.ts              # Cluster API calls
+│   │   ├── businessUnitService.ts         # Business unit API calls
+│   │   └── userService.ts                 # User API calls
 │   │
-│   ├── App.js                              # Main app with routing
+│   ├── react-app-env.d.ts                  # CRA TypeScript declarations
+│   ├── App.tsx                             # Main app with routing
 │   ├── App.css                             # Minimal global styles
-│   ├── index.js                            # React entry point
+│   ├── index.tsx                           # React entry point
 │   └── index.css                           # Tailwind CSS & base styles
 │
 ├── docs/                                    # Documentation folder
@@ -72,6 +82,7 @@ carmen-platform/
 ├── .env.example                             # Environment variables template
 ├── .gitignore                               # Git ignore rules
 ├── package.json                             # Dependencies & scripts
+├── tsconfig.json                            # TypeScript configuration
 ├── tailwind.config.js                       # Tailwind CSS configuration
 ├── postcss.config.js                        # PostCSS configuration
 ├── bun.lock                                 # Bun lock file
@@ -168,11 +179,11 @@ carmen-platform/
 ```
 1. User visits / → sees Landing page
 2. Clicks "Get Started" → navigates to /login
-3. User enters credentials → Login.js
+3. User enters credentials → Login.tsx
 4. Credentials sent to API → AuthContext.login()
 5. API returns token + user data
 6. Token saved to localStorage
-7. Token added to Axios headers → api.js interceptor
+7. Token added to Axios headers → api.ts interceptor
 8. User redirected to /dashboard
 9. All subsequent API calls include token
 10. On 401 response → Auto logout + redirect to /login
@@ -209,6 +220,7 @@ Creates optimized production build in `build/` folder with build date in footer.
 ## Technologies Used
 
 - **React 18** - UI framework
+- **TypeScript** - Type-safe JavaScript
 - **React Router 6** - Routing
 - **Axios** - HTTP client
 - **React Context** - State management
@@ -221,6 +233,6 @@ Creates optimized production build in `build/` folder with build date in footer.
 
 ## Credits
 
-Built with React and modern JavaScript practices.
+Built with React, TypeScript, and modern development practices.
 
 design by @carmensoftware 2025

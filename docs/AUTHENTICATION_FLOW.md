@@ -18,7 +18,7 @@ User Login → Get access_token → Store in localStorage → Redirect to /dashb
 
 ### 1. Landing Page (Public)
 
-**File:** `src/pages/Landing.js`
+**File:** `src/pages/Landing.tsx`
 
 - Accessible without authentication
 - If already authenticated, auto-redirects to `/dashboard`
@@ -34,7 +34,7 @@ useEffect(() => {
 
 ### 2. Login Process
 
-**File:** `src/pages/Login.js`
+**File:** `src/pages/Login.tsx`
 
 1. User enters credentials (email + password)
 2. Form submits to `login()` function
@@ -54,7 +54,7 @@ if (result.success) {
 
 ### 3. Authentication Context
 
-**File:** `src/context/AuthContext.js`
+**File:** `src/context/AuthContext.tsx`
 
 Handles both `access_token` and `token` response formats:
 
@@ -102,7 +102,7 @@ if (!token) {
 
 ### 5. Protected Routes
 
-**File:** `src/components/PrivateRoute.js`
+**File:** `src/components/PrivateRoute.tsx`
 
 Routes that require authentication redirect to `/login` if not authenticated:
 
@@ -187,7 +187,7 @@ localStorage.setItem('user', JSON.stringify(userData));
 
 The token is automatically included in all API requests via:
 - Default Axios header set on login
-- Request interceptor in `src/services/api.js`
+- Request interceptor in `src/services/api.ts`
 
 All requests include:
 ```
@@ -219,7 +219,7 @@ x-app-id: <app-id>
 ### Issue: "Login fails but credentials are correct"
 
 **Check:**
-1. API endpoint in `src/context/AuthContext.js`
+1. API endpoint in `src/context/AuthContext.tsx`
 2. Response format matches expected format
 3. CORS is properly configured on API
 4. Network tab shows actual API response
