@@ -2,7 +2,7 @@ import api from "./api";
 import QueryParams from "../utils/QueryParams";
 import type { PaginateParams, User, ApiListResponse } from "../types";
 
-const defaultSearchFields = ["name", "email", "role"];
+const defaultSearchFields = ["username", "email"];
 
 const userService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<User>> => {
