@@ -1,8 +1,8 @@
-import api from './api';
-import QueryParams from '../utils/QueryParams';
-import type { PaginateParams, User, ApiListResponse } from '../types';
+import api from "./api";
+import QueryParams from "../utils/QueryParams";
+import type { PaginateParams, User, ApiListResponse } from "../types";
 
-const defaultSearchFields = ['name', 'email', 'role'];
+const defaultSearchFields = ["name", "email", "role"];
 
 const userService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<User>> => {
@@ -12,33 +12,35 @@ const userService = {
       paginate.search,
       paginate.searchfields,
       defaultSearchFields,
-      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter) ? paginate.filter as Record<string, unknown> : {},
+      typeof paginate.filter === "object" && !Array.isArray(paginate.filter)
+        ? (paginate.filter as Record<string, unknown>)
+        : {},
       paginate.sort,
       paginate.advance,
     );
-    const response = await api.get(`/api/users?${q.toQueryString()}`);
+    const response = await api.get(`/api-system/user?${q.toQueryString()}`);
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/api/users/${id}`);
+    const response = await api.get(`/api-system/user/${id}`);
     return response.data;
   },
 
-  create: async (userData: Partial<User> & { password?: string }) => {
-    const response = await api.post('/api/users', userData);
+  create: async (userData: Record<string, unknown>) => {
+    const response = await api.post("/api-system/user", userData);
     return response.data;
   },
 
-  update: async (id: string, userData: Partial<User> & { password?: string }) => {
-    const response = await api.put(`/api/users/${id}`, userData);
+  update: async (id: string, userData: Record<string, unknown>) => {
+    const response = await api.put(`/api-system/user/${id}`, userData);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/api/users/${id}`);
+    const response = await api.delete(`/api-system/user/${id}`);
     return response.data;
-  }
+  },
 };
 
 export default userService;
