@@ -14,7 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { Plus, Pencil, Trash2, Search, MoreHorizontal } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
+import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X } from "lucide-react";
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -28,7 +29,22 @@ interface UserRecord {
   firstname?: string;
   middlename?: string;
   lastname?: string;
+  created_at?: string;
+  created_by_name?: string;
+  platform_role?: string;
+  updated_at?: string;
+  updated_by_name?: string;
 }
+
+const PLATFORM_ROLES = [
+  "super_admin",
+  "platform_admin",
+  "support_manager",
+  "support_staff",
+  "security_officer",
+  "integration_developer",
+  "user",
+];
 
 const UserManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -37,9 +53,14 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [copied, setCopied] = useState(false);
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
-    perpage: 10,
+    perpage: Number(localStorage.getItem("perpage_users")) || 10,
     search: "",
     sort: "",
   });
@@ -50,6 +71,7 @@ const UserManagement: React.FC = () => {
     try {
       setLoading(true);
       const data = (await userService.getAll(params)) as unknown as Record<string, unknown>;
+      setRawResponse(data);
       const items = (data.data || data) as UserRecord[];
       setUsers(Array.isArray(items) ? items : []);
       const pag = data.paginate as Record<string, number> | undefined;
@@ -67,6 +89,12 @@ const UserManagement: React.FC = () => {
     fetchUsers(paginate);
   }, [fetchUsers, paginate]);
 
+  const handleCopyJson = (data: unknown) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -76,8 +104,50 @@ const UserManagement: React.FC = () => {
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
+    localStorage.setItem("perpage_users", String(perpage));
     setPaginate((prev) => ({ ...prev, page, perpage }));
   };
+
+  const buildAdvance = (roles: string[], statuses: string[]) => {
+    const where: Record<string, unknown> = {};
+    if (roles.length > 0) where.platform_role = { in: roles };
+    if (statuses.length === 1) where.is_active = statuses[0] === "true";
+    return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
+  };
+
+  const handleRoleFilter = (role: string) => {
+    const next = roleFilter.includes(role)
+      ? roleFilter.filter((r) => r !== role)
+      : [...roleFilter, role];
+    setRoleFilter(next);
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, statusFilter), filter: {} }));
+  };
+
+  const handleClearRoleFilter = () => {
+    setRoleFilter([]);
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], statusFilter), filter: {} }));
+  };
+
+  const handleStatusFilter = (status: string) => {
+    const next = statusFilter.includes(status)
+      ? statusFilter.filter((s) => s !== status)
+      : [...statusFilter, status];
+    setStatusFilter(next);
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, next), filter: {} }));
+  };
+
+  const handleClearStatusFilter = () => {
+    setStatusFilter([]);
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, []), filter: {} }));
+  };
+
+  const handleClearAllFilters = () => {
+    setRoleFilter([]);
+    setStatusFilter([]);
+    setPaginate((prev) => ({ ...prev, page: 1, advance: "", filter: {} }));
+  };
+
+  const activeFilterCount = (roleFilter.length > 0 ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     setPaginate((prev) => ({ ...prev, sort }));
@@ -127,6 +197,15 @@ const UserManagement: React.FC = () => {
       },
 
       {
+        accessorKey: "platform_role",
+        header: "Role",
+        cell: ({ row }) => (
+          <Badge variant="outline" className="capitalize">
+            {row.original.platform_role || "-"}
+          </Badge>
+        ),
+      },
+      {
         accessorKey: "is_active",
         header: "Status",
         cell: ({ row }) => (
@@ -134,6 +213,37 @@ const UserManagement: React.FC = () => {
             {row.original.is_active ? "Active" : "Inactive"}
           </Badge>
         ),
+      },
+      {
+        accessorKey: "created_at",
+        id: "created_at",
+        header: "Created",
+        cell: ({ row }) => {
+          const d = row.original;
+          const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
+          return (
+            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+              <div>{fmt(d.created_at)}</div>
+              {d.created_by_name && <div>{d.created_by_name}</div>}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "updated_at",
+        id: "updated_at",
+        header: "Updated",
+        cell: ({ row }) => {
+          const d = row.original;
+          if (d.updated_at === d.created_at) return null;
+          const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
+          return (
+            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+              <div>{fmt(d.updated_at)}</div>
+              {d.updated_by_name && <div>{d.updated_by_name}</div>}
+            </div>
+          );
+        },
       },
       {
         id: "actions",
@@ -182,35 +292,177 @@ const UserManagement: React.FC = () => {
         </div>
 
         <Card>
-          <CardHeader>
-            <div className="relative w-full sm:max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9"
-              />
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="shrink-0">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                    {activeFilterCount > 0 && (
+                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
+                  <SheetHeader>
+                    <SheetTitle>Filters</SheetTitle>
+                    <SheetDescription>Filter users by role and status</SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-6 px-1">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Role</span>
+                        {roleFilter.length > 0 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearRoleFilter}>Clear</Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {PLATFORM_ROLES.map((role) => (
+                          <Button
+                            key={role}
+                            variant={roleFilter.includes(role) ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleRoleFilter(role)}
+                          >
+                            {role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Status</span>
+                        {statusFilter.length > 0 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant={statusFilter.includes("true") ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleStatusFilter("true")}
+                        >
+                          Active
+                        </Button>
+                        <Button
+                          variant={statusFilter.includes("false") ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleStatusFilter("false")}
+                        >
+                          Inactive
+                        </Button>
+                      </div>
+                    </div>
+                    {activeFilterCount > 0 && (
+                      <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
+                        Clear All Filters
+                      </Button>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Filters:</span>
+                {roleFilter.map((role) => (
+                  <Badge key={role} variant="secondary" className="text-xs gap-1 pr-1">
+                    {role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    <button onClick={() => handleRoleFilter(role)} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {statusFilter.map((s) => (
+                  <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                    {s === "true" ? "Active" : "Inactive"}
+                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
+                  Clear all
+                </button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
-            {loading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
-            {!loading && !error && (
-              <DataTable
-                columns={columns}
-                data={users}
-                serverSide
-                totalRows={totalRows}
-                page={paginate.page}
-                perpage={paginate.perpage}
-                onPaginateChange={handlePaginateChange}
-                onSortChange={handleSortChange}
-              />
+            {!error && (
+              <div className="relative">
+                {loading && (
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                    <div className="text-muted-foreground">Loading...</div>
+                  </div>
+                )}
+                <DataTable
+                  columns={columns}
+                  data={users}
+                  serverSide
+                  totalRows={totalRows}
+                  page={paginate.page}
+                  perpage={paginate.perpage}
+                  onPaginateChange={handlePaginateChange}
+                  onSortChange={handleSortChange}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Debug Sheet - Development Only */}
+      {process.env.NODE_ENV === 'development' && !!rawResponse && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              size="icon"
+              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+            >
+              <Code className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
+                API Response
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
+              </SheetTitle>
+              <SheetDescription className="text-xs sm:text-sm">
+                GET /api-system/user
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-3 sm:mt-4">
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
+                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
+                  {copied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              </div>
+              <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
+                {JSON.stringify(rawResponse, null, 2)}
+              </pre>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </Layout>
   );
 };

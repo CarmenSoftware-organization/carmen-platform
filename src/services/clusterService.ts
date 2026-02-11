@@ -2,7 +2,7 @@ import api from './api';
 import QueryParams from '../utils/QueryParams';
 import type { PaginateParams, Cluster, ApiListResponse } from '../types';
 
-const defaultSearchFields = ['name', 'description'];
+const defaultSearchFields = ['name', 'code'];
 
 const clusterService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<Cluster>> => {

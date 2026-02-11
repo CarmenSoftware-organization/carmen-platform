@@ -7,7 +7,22 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { ArrowLeft, Save, Pencil, X } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
+import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2 } from "lucide-react";
+
+interface UserBusinessUnit {
+  id: string;
+  role: string;
+  is_default: boolean;
+  is_active: boolean;
+  business_unit: {
+    id: string;
+    code: string;
+    name: string;
+    is_active: boolean;
+    cluster_id?: string;
+  } | null;
+}
 
 interface UserFormData extends Record<string, unknown> {
   username: string;
@@ -35,8 +50,17 @@ const UserEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [copied, setCopied] = useState(false);
+  const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
 
   const [savedFormData, setSavedFormData] = useState<UserFormData>(formData);
+
+  const handleCopyJson = (data: unknown) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleEditToggle = () => {
     setSavedFormData(formData);
@@ -60,17 +84,20 @@ const UserEdit: React.FC = () => {
     try {
       setLoading(true);
       const data = await userService.getById(id!);
+      setRawResponse(data);
       const user = data.data || data;
+      const profile = user.profile || {};
       const loaded: UserFormData = {
         username: user.username || "",
         email: user.email || "",
-        firstname: user.firstname || "",
-        middlename: user.middlename || "",
-        lastname: user.lastname || "",
+        firstname: profile.firstname || user.firstname || "",
+        middlename: profile.middlename || user.middlename || "",
+        lastname: profile.lastname || user.lastname || "",
         is_active: user.is_active ?? true,
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError("Failed to load user: " + (e.response?.data?.message || e.message));
@@ -303,7 +330,77 @@ const UserEdit: React.FC = () => {
             </form>
           </CardContent>
         </Card>
+        {/* Business Units */}
+        {!isNew && businessUnits.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Business Units
+              </CardTitle>
+              <CardDescription>Business units assigned to this user</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {businessUnits.map((ub) => (
+                  <Card key={ub.id} className="border">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{ub.business_unit?.name || "-"}</span>
+                        <Badge variant={ub.is_active ? "success" : "secondary"} className="text-[10px]">
+                          {ub.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">{ub.business_unit?.code || "-"}</div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] capitalize">{ub.role}</Badge>
+                        {ub.is_default && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">Default</Badge>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Debug Sheet - Development Only */}
+      {process.env.NODE_ENV === 'development' && !!rawResponse && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              size="icon"
+              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+            >
+              <Code className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
+                API Response
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
+              </SheetTitle>
+              <SheetDescription className="text-xs sm:text-sm">
+                GET /api-system/user/{id}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-3 sm:mt-4">
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
+                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
+                  {copied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+              </div>
+              <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
+                {JSON.stringify(rawResponse, null, 2)}
+              </pre>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </Layout>
   );
 };

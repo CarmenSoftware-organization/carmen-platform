@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
-import { Plus, Pencil, Trash2, Search, Code, Copy, Check, MoreHorizontal } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Code, Copy, Check, MoreHorizontal, Filter, X } from 'lucide-react';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -20,11 +20,13 @@ const BusinessUnitManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
-    perpage: 10,
+    perpage: Number(localStorage.getItem("perpage_business_units")) || 10,
     search: '',
     sort: 'created_at:desc',
   });
@@ -67,8 +69,33 @@ const BusinessUnitManagement: React.FC = () => {
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
+    localStorage.setItem("perpage_business_units", String(perpage));
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
+
+  const handleStatusFilter = (status: string) => {
+    const next = statusFilter.includes(status)
+      ? statusFilter.filter((s) => s !== status)
+      : [...statusFilter, status];
+    setStatusFilter(next);
+    let advance = '';
+    if (next.length === 1) {
+      advance = JSON.stringify({ where: { is_active: next[0] === 'true' } });
+    }
+    setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
+  };
+
+  const handleClearStatusFilter = () => {
+    setStatusFilter([]);
+    setPaginate(prev => ({ ...prev, page: 1, advance: '', filter: {} }));
+  };
+
+  const handleClearAllFilters = () => {
+    setStatusFilter([]);
+    setPaginate(prev => ({ ...prev, page: 1, advance: '', filter: {} }));
+  };
+
+  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
   const handleSortChange = (sort: string) => {
     setPaginate(prev => ({ ...prev, sort, page: 1 }));
@@ -188,16 +215,86 @@ const BusinessUnitManagement: React.FC = () => {
         </div>
 
         <Card>
-          <CardHeader>
-            <div className="relative w-full sm:max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search business units..."
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9"
-              />
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search business units..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="shrink-0">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                    {activeFilterCount > 0 && (
+                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
+                  <SheetHeader>
+                    <SheetTitle>Filters</SheetTitle>
+                    <SheetDescription>Filter business units by status</SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-6 space-y-6 px-1">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Status</span>
+                        {statusFilter.length > 0 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          variant={statusFilter.includes("true") ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleStatusFilter("true")}
+                        >
+                          Active
+                        </Button>
+                        <Button
+                          variant={statusFilter.includes("false") ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleStatusFilter("false")}
+                        >
+                          Inactive
+                        </Button>
+                      </div>
+                    </div>
+                    {activeFilterCount > 0 && (
+                      <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
+                        Clear All Filters
+                      </Button>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
+            {activeFilterCount > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Filters:</span>
+                {statusFilter.map((s) => (
+                  <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                    {s === "true" ? "Active" : "Inactive"}
+                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
+                  Clear all
+                </button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
