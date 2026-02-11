@@ -30,6 +30,10 @@
     "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') react-scripts build",
     "test": "react-scripts test",
     "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:debug": "npx playwright test --debug",
+    "test:e2e:report": "npx playwright show-report",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -51,6 +55,7 @@
   },
   "proxy": "https://dev.blueledgers.com:4001",
   "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
     "@playwright/test": "^1.58.2",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
