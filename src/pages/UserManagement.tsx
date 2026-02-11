@@ -175,13 +175,13 @@ const UserManagement: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground mt-2">Manage users and permissions</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage users and permissions</p>
           </div>
-          <Button onClick={handleAdd}>
+          <Button onClick={handleAdd} className="self-start sm:self-auto">
             <Plus className="mr-2 h-4 w-4" />
             Add User
           </Button>
@@ -189,7 +189,7 @@ const UserManagement: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <div className="relative max-w-sm">
+            <div className="relative w-full sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search users..."

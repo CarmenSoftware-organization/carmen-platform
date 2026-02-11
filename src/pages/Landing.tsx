@@ -75,13 +75,13 @@ const Landing: React.FC = () => {
       <Ripple mainCircleSize={210} mainCircleOpacity={0.12} numCircles={8} />
 
       {/* Header */}
-      <header className="relative z-10 container mx-auto px-4 py-6">
+      <header className="relative z-10 container mx-auto px-4 py-4 sm:py-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-md shadow-blue-500/20">
-              <span className="text-white font-bold text-xl">C</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-md shadow-blue-500/20">
+              <span className="text-white font-bold text-lg sm:text-xl">C</span>
             </div>
-            <span className="text-xl font-bold text-blue-900">Carmen Platform</span>
+            <span className="text-lg sm:text-xl font-bold text-blue-900">Carmen Platform</span>
           </div>
           <Link to="/login">
             <RippleButton
@@ -95,18 +95,18 @@ const Landing: React.FC = () => {
       </header>
 
       {/* Hero */}
-      <section className="relative z-10 container mx-auto px-4 pt-16 pb-24 text-center">
+      <section className="relative z-10 container mx-auto px-4 pt-10 sm:pt-16 pb-16 sm:pb-24 text-center">
         <div className="max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-blue-200 text-blue-600 text-sm mb-8">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/60 backdrop-blur-sm border border-blue-200 text-blue-600 text-xs sm:text-sm mb-6 sm:mb-8">
             Platform Management System
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold text-blue-900 mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold text-blue-900 mb-4 sm:mb-6 leading-tight">
             Manage Your Platform{' '}
             <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               with Confidence
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-blue-700/70 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-blue-700/70 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
             Carmen Platform provides a unified management system for clusters,
             business units, and users — all in one place.
           </p>
@@ -123,8 +123,8 @@ const Landing: React.FC = () => {
       </section>
 
       {/* Features */}
-      <section className="relative z-10 container mx-auto px-4 pb-24">
-        <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+      <section className="relative z-10 container mx-auto px-4 pb-16 sm:pb-24">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 max-w-5xl mx-auto">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (

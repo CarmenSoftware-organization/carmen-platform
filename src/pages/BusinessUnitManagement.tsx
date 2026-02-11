@@ -174,21 +174,22 @@ const BusinessUnitManagement: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Business Unit Management</h1>
-            <p className="text-muted-foreground mt-2">Manage business units and departments</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Business Unit Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage business units and departments</p>
           </div>
-          <Button onClick={() => navigate('/business-units/new')}>
+          <Button onClick={() => navigate('/business-units/new')} className="self-start sm:self-auto">
             <Plus className="mr-2 h-4 w-4" />
-            Add Business Unit
+            <span className="hidden sm:inline">Add Business Unit</span>
+            <span className="sm:hidden">Add BU</span>
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="relative max-w-sm">
+            <div className="relative w-full sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search business units..."
@@ -235,25 +236,25 @@ const BusinessUnitManagement: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
+              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
                 API Response
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
-              <SheetDescription>
+              <SheetDescription className="text-xs sm:text-sm">
                 GET /api-system/business-unit
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-4">
+            <div className="mt-3 sm:mt-4">
               <div className="flex justify-end mb-2">
                 <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
                   {copied ? 'Copied!' : 'Copy JSON'}
                 </Button>
               </div>
-              <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
+              <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
             </div>

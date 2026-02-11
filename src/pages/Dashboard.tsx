@@ -59,15 +59,15 @@ const Dashboard: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
             Welcome to Carmen Platform Management System
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((card) => {
             const Icon = card.icon;
             return (
@@ -101,25 +101,25 @@ const Dashboard: React.FC = () => {
                 <Code className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <Code className="h-5 w-5" />
+                <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Code className="h-4 w-4 sm:h-5 sm:w-5" />
                   Login Response
                   <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
                 </SheetTitle>
-                <SheetDescription>
+                <SheetDescription className="text-xs sm:text-sm">
                   POST /api/auth/login
                 </SheetDescription>
               </SheetHeader>
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <div className="flex justify-end mb-2">
                   <Button variant="outline" size="sm" onClick={() => handleCopyJson(loginResponse)}>
-                    {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                    {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
                     {copied ? 'Copied!' : 'Copy JSON'}
                   </Button>
                 </div>
-                <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
+                <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                   {JSON.stringify(loginResponse, null, 2)}
                 </pre>
               </div>

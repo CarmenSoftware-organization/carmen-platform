@@ -76,8 +76,8 @@ const Login: React.FC = () => {
               <span className="text-white font-bold text-2xl">C</span>
             </div>
           </div>
-          <CardTitle className="text-3xl text-center text-blue-900">Carmen Platform</CardTitle>
-          <CardDescription className="text-center text-base text-blue-500">
+          <CardTitle className="text-2xl sm:text-3xl text-center text-blue-900">Carmen Platform</CardTitle>
+          <CardDescription className="text-center text-sm sm:text-base text-blue-500">
             Enter your credentials to access the system
           </CardDescription>
         </CardHeader>

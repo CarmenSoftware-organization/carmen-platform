@@ -193,8 +193,8 @@ const Profile: React.FC = () => {
       <Layout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-            <p className="text-muted-foreground mt-2">Loading profile...</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Loading profile...</p>
           </div>
         </div>
       </Layout>
@@ -203,10 +203,10 @@ const Profile: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-          <p className="text-muted-foreground mt-2">Manage your account settings and preferences</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage your account settings and preferences</p>
         </div>
 
         {success && (
@@ -222,7 +222,7 @@ const Profile: React.FC = () => {
           </div>
         )}
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
           {/* Profile Overview Card */}
           <Card className="md:col-span-1">
             <CardHeader>
@@ -451,25 +451,25 @@ const Profile: React.FC = () => {
                 <Code className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+            <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2">
-                  <Code className="h-5 w-5" />
+                <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Code className="h-4 w-4 sm:h-5 sm:w-5" />
                   API Response
                   <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
                 </SheetTitle>
-                <SheetDescription>
+                <SheetDescription className="text-xs sm:text-sm">
                   GET /api/user/profile
                 </SheetDescription>
               </SheetHeader>
-              <div className="mt-4">
+              <div className="mt-3 sm:mt-4">
                 <div className="flex justify-end mb-2">
                   <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                    {copied ? <Check className="mr-2 h-3 w-3" /> : <Copy className="mr-2 h-3 w-3" />}
+                    {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
                     {copied ? 'Copied!' : 'Copy JSON'}
                   </Button>
                 </div>
-                <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-[calc(100vh-10rem)]">
+                <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                   {JSON.stringify(rawResponse, null, 2)}
                 </pre>
               </div>
