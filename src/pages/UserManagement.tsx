@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+import { Plus, Pencil, Trash2, Search, MoreHorizontal } from "lucide-react";
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -32,22 +30,12 @@ interface UserRecord {
   lastname?: string;
 }
 
-interface UserFormData {
-  user_id: string;
-  is_active: boolean;
-}
-
 const UserManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
-  const [formData, setFormData] = useState<UserFormData>({
-    user_id: "",
-    is_active: true,
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
@@ -95,21 +83,6 @@ const UserManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev, sort }));
   };
 
-  const handleAdd = () => {
-    setEditingUser(null);
-    setFormData({ user_id: "", is_active: true });
-    setShowModal(true);
-  };
-
-  const handleEdit = (record: UserRecord) => {
-    setEditingUser(record);
-    setFormData({
-      user_id: record.user_id || "",
-      is_active: record.is_active ?? true,
-    });
-    setShowModal(true);
-  };
-
   const handleDelete = useCallback(async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
@@ -120,36 +93,6 @@ const UserManagement: React.FC = () => {
       alert("Failed to delete: " + (e.response?.data?.message || e.message));
     }
   }, []);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      if (editingUser) {
-        await userService.update(editingUser.id, {
-          user_id: formData.user_id,
-          is_active: formData.is_active,
-        });
-      } else {
-        await userService.create({
-          user_id: formData.user_id,
-          is_active: formData.is_active,
-        });
-      }
-      setShowModal(false);
-      setPaginate((prev) => ({ ...prev }));
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      alert("Failed to save: " + (e.response?.data?.message || e.message));
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
-    }));
-  };
 
   const getNameDisplay = (record: UserRecord): string => {
     if (record.firstname || record.middlename || record.lastname) {
@@ -163,7 +106,14 @@ const UserManagement: React.FC = () => {
       {
         accessorKey: "username",
         header: "Username",
-        cell: ({ row }) => row.original.username || row.original.user_id || "-",
+        cell: ({ row }) => (
+          <span
+            className="cursor-pointer text-primary hover:underline"
+            onClick={() => navigate(`/users/${row.original.id}/edit`)}
+          >
+            {row.original.username || row.original.user_id || "-"}
+          </span>
+        ),
       },
       {
         accessorKey: "name",
@@ -187,22 +137,34 @@ const UserManagement: React.FC = () => {
       },
       {
         id: "actions",
-        header: "Actions",
-        meta: { headerClassName: "text-right", cellClassName: "text-right" },
+        header: "",
+        meta: { headerClassName: "w-10", cellClassName: "text-center" },
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => handleEdit(row.original)} variant="outline" size="sm">
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button onClick={() => handleDelete(row.original.id)} variant="destructive" size="sm">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate(`/users/${row.original.id}/edit`)} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleDelete(row.original.id)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ),
       },
     ],
-    [handleDelete],
+    [handleDelete, navigate],
   );
 
   return (
@@ -213,7 +175,7 @@ const UserManagement: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage users and permissions</p>
           </div>
-          <Button onClick={handleAdd} className="self-start sm:self-auto">
+          <Button onClick={() => navigate("/users/new")} className="self-start sm:self-auto">
             <Plus className="mr-2 h-4 w-4" />
             Add User
           </Button>
@@ -249,48 +211,6 @@ const UserManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
-            <DialogDescription>{editingUser ? "Update user details" : "Add a new user"}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="user_id">User ID *</Label>
-              <Input
-                id="user_id"
-                name="user_id"
-                value={formData.user_id}
-                onChange={handleChange}
-                placeholder="User ID"
-                required
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                name="is_active"
-                checked={formData.is_active}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-input"
-              />
-              <Label htmlFor="is_active">Active</Label>
-            </div>
-            <DialogFooter>
-              <Button type="button" size="sm" variant="outline" onClick={() => setShowModal(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" size="sm">
-                {editingUser ? "Update" : "Create"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 };
