@@ -13,6 +13,7 @@ import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Ch
 import type { User } from '../types';
 
 interface ProfileFormData {
+  alias_name: string;
   firstname: string;
   middlename: string;
   lastname: string;
@@ -27,6 +28,7 @@ const Profile: React.FC = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<User | null>(user);
   const [formData, setFormData] = useState<ProfileFormData>({
+    alias_name: '',
     firstname: '',
     middlename: '',
     lastname: '',
@@ -55,14 +57,15 @@ const Profile: React.FC = () => {
         const response = await api.get('/api/user/profile');
         setRawResponse(response.data);
         const data = response.data.data || response.data;
-        const userInfo = data.user_info || {};
-        setProfile(data);
+        const info = data.user_info || data;
+        setProfile({ ...data, firstname: info.firstname, middlename: info.middlename, lastname: info.lastname, telephone: info.telephone });
         setFormData(prev => ({
           ...prev,
-          firstname: userInfo.firstname || '',
-          middlename: userInfo.middlename || '',
-          lastname: userInfo.lastname || '',
-          telephone: userInfo.telephone || '',
+          alias_name: data.alias_name || '',
+          firstname: info.firstname || '',
+          middlename: info.middlename || '',
+          lastname: info.lastname || '',
+          telephone: info.telephone || '',
           email: data.email || prev.email,
         }));
         // Update localStorage with fresh profile data
@@ -78,9 +81,8 @@ const Profile: React.FC = () => {
   }, []);
 
   const getDisplayName = (): string => {
-    const info = profile?.user_info;
-    if (info?.firstname || info?.lastname) {
-      return [info.firstname, info.middlename, info.lastname].filter(Boolean).join(' ');
+    if (profile?.firstname || profile?.lastname) {
+      return [profile.firstname, profile.middlename, profile.lastname].filter(Boolean).join(' ');
     }
     return profile?.name || profile?.email || 'User';
   };
@@ -111,21 +113,31 @@ const Profile: React.FC = () => {
     setSuccess('');
 
     try {
-      const response = await api.put('/api/user/profile', {
-        user_info: {
-          firstname: formData.firstname,
-          middlename: formData.middlename,
-          lastname: formData.lastname,
-          telephone: formData.telephone || null,
-        }
+      await api.put('/api/user/profile', {
+        alias_name: formData.alias_name || null,
+        firstname: formData.firstname,
+        middlename: formData.middlename || null,
+        lastname: formData.lastname,
+        telephone: formData.telephone || null,
       });
 
-      const updatedData = response.data.data || response.data;
-      setRawResponse(response.data);
-      setProfile(updatedData);
+      // Re-fetch profile to get fresh data
+      const refreshed = await api.get('/api/user/profile');
+      setRawResponse(refreshed.data);
+      const data = refreshed.data.data || refreshed.data;
+      const info = data.user_info || data;
+      setProfile({ ...data, firstname: info.firstname, middlename: info.middlename, lastname: info.lastname, telephone: info.telephone });
+      setFormData(prev => ({
+        ...prev,
+        alias_name: data.alias_name || '',
+        firstname: info.firstname || '',
+        middlename: info.middlename || '',
+        lastname: info.lastname || '',
+        telephone: info.telephone || '',
+        email: data.email || prev.email,
+      }));
+      localStorage.setItem('user', JSON.stringify(data));
       setSuccess('Profile updated successfully!');
-
-      localStorage.setItem('user', JSON.stringify(updatedData));
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to update profile: ' + (e.response?.data?.message || e.message));
@@ -227,9 +239,9 @@ const Profile: React.FC = () => {
                 {profile?.email && (
                   <p className="text-sm text-muted-foreground">{profile.email}</p>
                 )}
-                {profile?.role && (
+                {(profile?.platform_role || profile?.role) && (
                   <Badge variant="secondary" className="capitalize">
-                    {profile.role}
+                    {profile?.platform_role || profile?.role}
                   </Badge>
                 )}
               </div>
@@ -256,6 +268,21 @@ const Profile: React.FC = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="alias_name">Alias Name</Label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="alias_name"
+                      name="alias_name"
+                      value={formData.alias_name}
+                      onChange={handleChange}
+                      placeholder="Alias name (optional)"
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="firstname">First Name</Label>

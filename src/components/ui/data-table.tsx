@@ -34,6 +34,7 @@ interface DataTableProps<TData> {
   perpage?: number;
   onPaginateChange?: (params: { page: number; perpage: number }) => void;
   onSortChange?: (sort: string) => void;
+  defaultSort?: { id: string; desc: boolean };
 }
 
 function DataTable<TData>({
@@ -48,8 +49,11 @@ function DataTable<TData>({
   perpage = 10,
   onPaginateChange,
   onSortChange,
+  defaultSort,
 }: DataTableProps<TData>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>(
+    defaultSort ? [defaultSort] : []
+  );
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: serverSide ? page - 1 : 0,
     pageSize: serverSide ? perpage : defaultPageSize,

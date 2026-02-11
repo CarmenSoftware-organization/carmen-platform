@@ -63,8 +63,13 @@ export interface User {
   status?: string;
   platform_role?: string;
   alias_name?: string;
+  firstname?: string;
+  middlename?: string;
+  lastname?: string;
+  telephone?: string;
   user_info?: UserInfo;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface LoginResponse {

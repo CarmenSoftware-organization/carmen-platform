@@ -26,7 +26,7 @@ const BusinessUnitManagement: React.FC = () => {
     page: 1,
     perpage: 10,
     search: '',
-    sort: '',
+    sort: 'created_at:desc',
   });
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -71,7 +71,7 @@ const BusinessUnitManagement: React.FC = () => {
   };
 
   const handleSortChange = (sort: string) => {
-    setPaginate(prev => ({ ...prev, sort }));
+    setPaginate(prev => ({ ...prev, sort, page: 1 }));
   };
 
   const handleDelete = useCallback(async (id: string) => {
@@ -104,7 +104,7 @@ const BusinessUnitManagement: React.FC = () => {
         </span>
       ),
     },
-    { accessorKey: 'cluster_name', header: 'Cluster' },
+    { accessorKey: 'cluster_name', id: 'tb_cluster.name', header: 'Cluster' },
     {
       accessorKey: 'is_active',
       header: 'Status',
@@ -115,9 +115,9 @@ const BusinessUnitManagement: React.FC = () => {
       ),
     },
     {
-      id: 'created',
+      accessorKey: 'created_at',
+      id: 'created_at',
       header: 'Created',
-      enableSorting: false,
       cell: ({ row }) => {
         const d = row.original;
         const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
@@ -130,9 +130,9 @@ const BusinessUnitManagement: React.FC = () => {
       },
     },
     {
-      id: 'updated',
+      accessorKey: 'updated_at',
+      id: 'updated_at',
       header: 'Updated',
-      enableSorting: false,
       cell: ({ row }) => {
         const d = row.original;
         if (d.updated_at === d.created_at) return null;
@@ -199,19 +199,26 @@ const BusinessUnitManagement: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {loading && <div className="text-center py-8 text-muted-foreground">Loading...</div>}
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
-            {!loading && !error && (
-              <DataTable
-                columns={columns}
-                data={businessUnits}
-                serverSide
-                totalRows={totalRows}
-                page={paginate.page}
-                perpage={paginate.perpage}
-                onPaginateChange={handlePaginateChange}
-                onSortChange={handleSortChange}
-              />
+            {!error && (
+              <div className="relative">
+                {loading && (
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                    <div className="text-muted-foreground">Loading...</div>
+                  </div>
+                )}
+                <DataTable
+                  columns={columns}
+                  data={businessUnits}
+                  serverSide
+                  totalRows={totalRows}
+                  page={paginate.page}
+                  perpage={paginate.perpage}
+                  onPaginateChange={handlePaginateChange}
+                  onSortChange={handleSortChange}
+                  defaultSort={{ id: 'created_at', desc: true }}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
