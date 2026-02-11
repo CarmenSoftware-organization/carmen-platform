@@ -112,6 +112,7 @@ export interface User {
   lastname?: string;
   telephone?: string;
   user_info?: UserInfo;
+  business_unit?: BusinessUnit[];
   created_at?: string;
   updated_at?: string;
 }

@@ -8,9 +8,10 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X } from 'lucide-react';
-import type { User } from '../types';
+import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X, Building2 } from 'lucide-react';
+import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
   alias_name: string;
@@ -53,6 +54,8 @@ const Profile: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [savedProfileData, setSavedProfileData] = useState<ProfileFieldsData>({
     alias_name: '',
     firstname: '',
@@ -112,6 +115,7 @@ const Profile: React.FC = () => {
           lastname: info.lastname || '',
           telephone: info.telephone || '',
         });
+        setBusinessUnits(Array.isArray(data.business_unit) ? data.business_unit : []);
         // Update localStorage with fresh profile data
         localStorage.setItem('user', JSON.stringify(data));
       } catch (err) {
@@ -187,6 +191,7 @@ const Profile: React.FC = () => {
         lastname: info.lastname || '',
         telephone: info.telephone || '',
       });
+      setBusinessUnits(Array.isArray(data.business_unit) ? data.business_unit : []);
       localStorage.setItem('user', JSON.stringify(data));
       setSuccess('Profile updated successfully!');
       setEditingProfile(false);
@@ -223,8 +228,6 @@ const Profile: React.FC = () => {
         newPassword: formData.newPassword
       });
 
-      setSuccess('Password changed successfully!');
-
       // Clear password fields
       setFormData({
         ...formData,
@@ -232,6 +235,8 @@ const Profile: React.FC = () => {
         newPassword: '',
         confirmPassword: ''
       });
+      setShowPasswordDialog(false);
+      setSuccess('Password changed successfully!');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to change password: ' + (e.response?.data?.message || e.message));
@@ -322,12 +327,20 @@ const Profile: React.FC = () => {
                     {editingProfile ? 'Update your account details' : 'View your account details'}
                   </CardDescription>
                 </div>
-                {!editingProfile && (
-                  <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!editingProfile && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setShowPasswordDialog(true)}>
+                        <Lock className="mr-2 h-4 w-4" />
+                        Change Password
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -464,14 +477,69 @@ const Profile: React.FC = () => {
           </Card>
         </div>
 
-        {/* Change Password Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Change Password</CardTitle>
-            <CardDescription>Update your password to keep your account secure</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+        {/* Business Units Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Business Units
+              </CardTitle>
+              <CardDescription>
+                {businessUnits.length > 0
+                  ? `${businessUnits.length} business unit${businessUnits.length !== 1 ? 's' : ''} assigned to your account`
+                  : 'No business units assigned'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {businessUnits.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No business units found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left font-medium px-4 py-2">Code</th>
+                        <th className="text-left font-medium px-4 py-2">Name</th>
+                        <th className="text-left font-medium px-4 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {businessUnits.map((bu) => (
+                        <tr key={bu.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2">
+                            <Badge variant="outline" className="text-xs">{bu.code}</Badge>
+                          </td>
+                          <td className="px-4 py-2">{bu.name}</td>
+                          <td className="px-4 py-2">
+                            {bu.is_active ? (
+                              <Badge className="text-xs bg-green-100 text-green-700">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+        {/* Change Password Dialog */}
+        <Dialog open={showPasswordDialog} onOpenChange={(open) => {
+          setShowPasswordDialog(open);
+          if (!open) {
+            setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+            setError('');
+          }
+        }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+              <DialogDescription>Update your password to keep your account secure</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Current Password</Label>
                 <div className="relative">
@@ -523,15 +591,18 @@ const Profile: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4">
-                <Button type="submit" size="sm" disabled={loading} variant="secondary">
+              <DialogFooter className="gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => setShowPasswordDialog(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={loading}>
                   <Lock className="mr-2 h-4 w-4" />
                   {loading ? 'Updating...' : 'Update Password'}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
         {/* Debug Sheet - Development Only (floating button) */}
         {process.env.NODE_ENV === 'development' && !!rawResponse && (
