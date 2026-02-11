@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
@@ -15,9 +16,19 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X, Building2, Users, Download } from "lucide-react";
+import { toast } from 'sonner';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { EmptyState } from '../components/EmptyState';
+import { generateCSV, downloadCSV } from '../utils/csvExport';
+import { TableSkeleton } from '../components/TableSkeleton';
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
+
+interface UserBU {
+  id: string;
+  is_active: boolean;
+}
 
 interface UserRecord {
   id: string;
@@ -34,6 +45,7 @@ interface UserRecord {
   platform_role?: string;
   updated_at?: string;
   updated_by_name?: string;
+  business_unit?: UserBU[];
 }
 
 const PLATFORM_ROLES = [
@@ -58,6 +70,13 @@ const UserManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useGlobalShortcuts({
+    onSearch: () => searchInputRef.current?.focus(),
+  });
+
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
     perpage: Number(localStorage.getItem("perpage_users")) || 10,
@@ -153,16 +172,34 @@ const UserManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev, sort }));
   };
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+  const handleDelete = useCallback((id: string) => {
+    setDeleteId(id);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
     try {
-      await userService.delete(id);
+      await userService.delete(deleteId);
+      toast.success('User deleted successfully');
+      setDeleteId(null);
       setPaginate((prev) => ({ ...prev }));
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
-      alert("Failed to delete: " + (e.response?.data?.message || e.message));
+      toast.error('Failed to delete user', { description: e.response?.data?.message || e.message });
     }
-  }, []);
+  };
+
+  const handleExport = () => {
+    const csv = generateCSV(users, [
+      { key: 'username', label: 'Username' },
+      { key: 'email', label: 'Email' },
+      { key: 'platform_role', label: 'Role' },
+      { key: 'is_active', label: 'Status' },
+      { key: 'created_at', label: 'Created' },
+    ]);
+    downloadCSV(csv, `users-${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success('Data exported successfully');
+  };
 
   const getNameDisplay = (record: UserRecord): string => {
     if (record.firstname || record.middlename || record.lastname) {
@@ -204,6 +241,25 @@ const UserManagement: React.FC = () => {
             {row.original.platform_role || "-"}
           </Badge>
         ),
+      },
+      {
+        id: "bu_count",
+        header: "BU",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const bus = row.original.business_unit || [];
+          const active = bus.filter(b => b.is_active).length;
+          const total = bus.length;
+          if (total === 0) return <span className="text-muted-foreground">-</span>;
+          return (
+            <div className="flex items-center gap-1">
+              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-green-600 font-medium">{active}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground">{total}</span>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "is_active",
@@ -253,7 +309,7 @@ const UserManagement: React.FC = () => {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.username || row.original.email}`}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -285,10 +341,16 @@ const UserManagement: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage users and permissions</p>
           </div>
-          <Button onClick={() => navigate("/users/new")} className="self-start sm:self-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            Add User
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button onClick={() => navigate("/users/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add User
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -297,11 +359,22 @@ const UserManagement: React.FC = () => {
               <div className="relative flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 pr-9"
+                  aria-label="Search users"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => handleSearchChange('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
@@ -403,11 +476,27 @@ const UserManagement: React.FC = () => {
             )}
           </CardHeader>
           <CardContent>
-            {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
-            {!error && (
+            {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
+            {!error && users.length === 0 && !loading ? (
+              <EmptyState
+                icon={Users}
+                title="No users yet"
+                description={searchTerm ? `No users matching "${searchTerm}"` : "Get started by creating your first user."}
+                action={!searchTerm ? (
+                  <Button size="sm" onClick={() => navigate('/users/new')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add User
+                  </Button>
+                ) : undefined}
+              />
+            ) : !error ? (
               <div className="relative">
+                {loading && users.length === 0 ? (
+                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                ) : (
+                <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
                     <div className="text-muted-foreground">Loading...</div>
                   </div>
                 )}
@@ -421,11 +510,23 @@ const UserManagement: React.FC = () => {
                   onPaginateChange={handlePaginateChange}
                   onSortChange={handleSortChange}
                 />
+                </>
+                )}
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Delete User"
+        description="Are you sure you want to delete this user? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
 
       {/* Debug Sheet - Development Only */}
       {process.env.NODE_ENV === 'development' && !!rawResponse && (

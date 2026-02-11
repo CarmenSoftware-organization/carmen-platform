@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
@@ -9,7 +10,12 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
-import { Plus, Pencil, Trash2, Search, Code, Copy, Check, MoreHorizontal, Filter, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Code, Copy, Check, MoreHorizontal, Filter, X, Building2, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { EmptyState } from '../components/EmptyState';
+import { generateCSV, downloadCSV } from '../utils/csvExport';
+import { TableSkeleton } from '../components/TableSkeleton';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -24,6 +30,13 @@ const BusinessUnitManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useGlobalShortcuts({
+    onSearch: () => searchInputRef.current?.focus(),
+  });
+
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: 1,
     perpage: Number(localStorage.getItem("perpage_business_units")) || 10,
@@ -101,16 +114,34 @@ const BusinessUnitManagement: React.FC = () => {
     setPaginate(prev => ({ ...prev, sort, page: 1 }));
   };
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this business unit?')) return;
+  const handleDelete = useCallback((id: string) => {
+    setDeleteId(id);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteId) return;
     try {
-      await businessUnitService.delete(id);
+      await businessUnitService.delete(deleteId);
+      toast.success('Business unit deleted successfully');
+      setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
-      alert('Failed to delete: ' + (e.response?.data?.message || e.message));
+      toast.error('Failed to delete business unit', { description: e.response?.data?.message || e.message });
     }
-  }, []);
+  };
+
+  const handleExport = () => {
+    const csv = generateCSV(businessUnits, [
+      { key: 'code', label: 'Code' },
+      { key: 'name', label: 'Name' },
+      { key: 'cluster_name', label: 'Cluster' },
+      { key: 'is_active', label: 'Status' },
+      { key: 'created_at', label: 'Created' },
+    ]);
+    downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success('Data exported successfully');
+  };
 
   const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
     {
@@ -180,7 +211,7 @@ const BusinessUnitManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name || row.original.code}`}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -207,11 +238,17 @@ const BusinessUnitManagement: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Business Unit Management</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage business units and departments</p>
           </div>
-          <Button onClick={() => navigate('/business-units/new')} className="self-start sm:self-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Add Business Unit</span>
-            <span className="sm:hidden">Add BU</span>
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || businessUnits.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            <Button onClick={() => navigate('/business-units/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Add Business Unit</span>
+              <span className="sm:hidden">Add BU</span>
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -220,11 +257,22 @@ const BusinessUnitManagement: React.FC = () => {
               <div className="relative flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   placeholder="Search business units..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 pr-9"
+                  aria-label="Search business units"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => handleSearchChange('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
@@ -297,11 +345,27 @@ const BusinessUnitManagement: React.FC = () => {
             )}
           </CardHeader>
           <CardContent>
-            {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
-            {!error && (
+            {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
+            {!error && businessUnits.length === 0 && !loading ? (
+              <EmptyState
+                icon={Building2}
+                title="No business units yet"
+                description={searchTerm ? `No business units matching "${searchTerm}"` : "Get started by creating your first business unit."}
+                action={!searchTerm ? (
+                  <Button size="sm" onClick={() => navigate('/business-units/new')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Business Unit
+                  </Button>
+                ) : undefined}
+              />
+            ) : !error ? (
               <div className="relative">
+                {loading && businessUnits.length === 0 ? (
+                  <TableSkeleton columns={6} rows={paginate.perpage || 5} />
+                ) : (
+                <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading business units">
                     <div className="text-muted-foreground">Loading...</div>
                   </div>
                 )}
@@ -316,11 +380,23 @@ const BusinessUnitManagement: React.FC = () => {
                   onSortChange={handleSortChange}
                   defaultSort={{ id: 'created_at', desc: true }}
                 />
+                </>
+                )}
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        title="Delete Business Unit"
+        description="Are you sure you want to delete this business unit? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
 
       {/* Debug Sheet - Development Only */}
       {process.env.NODE_ENV === 'development' && !!rawResponse && (

@@ -2,33 +2,20 @@
 
 ## Get Started in 3 Steps
 
-### Step 1: Install Dependencies (Already Done!)
-The dependencies are already installed. If you need to reinstall:
+### Step 1: Install Dependencies
+
 ```bash
 bun install
 ```
 
-### Step 2: Configure Your API
+### Step 2: Configure Environment
 
-You need to update the API endpoints to match your Swagger documentation.
+The `.env` file is pre-configured. Verify these values match your API:
 
-**Quick Configuration Checklist:**
-
-1. **Update Login Endpoint** - `src/context/AuthContext.tsx`
-   ```javascript
-   const response = await api.post('/api/auth/login', credentials);
-   ```
-
-2. **Update Cluster Endpoints** - `src/services/clusterService.ts`
-   - Replace `/api/clusters` with your actual endpoint
-
-3. **Update Business Unit Endpoints** - `src/services/businessUnitService.ts`
-   - Replace `/api/business-units` with your actual endpoint
-
-4. **Update User Endpoints** - `src/services/userService.ts`
-   - Replace `/api/users` with your actual endpoint
-
-**Need detailed instructions?** See `API_CONFIGURATION.md`
+```env
+REACT_APP_API_BASE_URL=https://dev.blueledgers.com:4001
+REACT_APP_API_APP_ID=bc1ade0a-a189-48c4-9445-807a3ea38253
+```
 
 ### Step 3: Start the App
 
@@ -36,107 +23,100 @@ You need to update the API endpoints to match your Swagger documentation.
 bun start
 ```
 
-The app will open at `http://localhost:3000`
+Opens at `http://localhost:3000`
 
 ## What You'll See
 
-1. **Landing Page** - Public page with feature highlights and "Get Started" button
-2. **Login Page** - Enter your credentials (click "Get Started" or "Login")
-3. **Dashboard** - Three cards for Cluster, Business Unit, and User management
-4. **Management Pages** - Click any card or use the top navigation
+1. **Landing Page** (`/`) - Feature highlights with glassmorphism and ripple effects
+2. **Login Page** (`/login`) - Click "Get Started" to log in
+3. **Dashboard** (`/dashboard`) - Navigation cards to management sections
+4. **Management Pages** - Click any card or use the sidebar navigation (or hamburger menu on mobile)
 
 ## Testing the Application
 
 ### Test Landing Page
 1. Go to `http://localhost:3000`
-2. You'll see the landing page with feature cards
+2. You'll see the landing page with feature cards and pastel blue theme
 3. Click "Get Started" to go to login
 
 ### Test Authentication
-1. Click "Get Started" or "Login" on the landing page
-2. Enter your credentials on `/login`
-3. If successful, redirects to `/dashboard`
-4. If failed, see error message
-5. Click "Back to home" to return to the landing page
+1. Enter your credentials on `/login`
+2. If successful, redirects to `/dashboard`
+3. The sidebar shows: Dashboard, Clusters, Business Units, Users
+4. Your avatar and name appear at the bottom of the sidebar
 
-**Tip:** Open browser DevTools (F12) and Network tab to see API requests
+### Test Cluster Management
+1. Click "Clusters" in the sidebar
+2. Server-side DataTable loads with search and filter options
+3. Use the search bar to filter by name or code (400ms debounce)
+4. Click "Filters" button to open the Sheet-based status filter
+5. Click any cluster code/name to view details
+6. On the detail page, click "Edit" to switch to edit mode
+7. Related Business Units and Users tables appear on the right
 
-### Test Data Loading
-1. Click on "Clusters" (or any management section)
-2. Check if data loads from your API
-3. If you see errors, check the browser console
+### Test Business Unit Management
+1. Click "Business Units" in the sidebar
+2. DataTable shows all BUs with cluster name column
+3. Click any BU to view the 9-section detail form
+4. Sections: Basic Info, Hotel, Company, Tax, Date/Time, Number Formats, Calculation, Config, DB Connection
+5. In the Users card, click "Add User" to assign users from the cluster
+6. Click the pencil icon to edit a user's BU role or status
 
-### Test CRUD Operations
+### Test User Management
+1. Click "Users" in the sidebar
+2. Click "Filters" to see both Role and Status filter options
+3. 7 platform roles available: super_admin, platform_admin, support_manager, support_staff, security_officer, integration_developer, user
+4. Click any username to view/edit user details
+5. BU assignments shown as cards on the edit page
 
-**Create:**
-1. Click "Add [Item]" button
-2. Fill in the form
-3. Click "Create"
-4. Item should appear in the table
+### Test Debug Sheets (Development Only)
+1. On any page, look for the floating amber circle button (bottom-right)
+2. Click it to open the debug Sheet showing raw API JSON responses
+3. On edit pages, the debug Sheet has tabs for different API endpoints
+4. Use the "Copy" button to copy JSON to clipboard
 
-**Read:**
-- Data loads automatically when you open a management page
-
-**Update:**
-1. Click "Edit" on any item
-2. Modify the data
-3. Click "Update"
-4. Changes should be reflected in the table
-
-**Delete:**
-1. Click "Delete" on any item
-2. Confirm the deletion
-3. Item should be removed from the table
+### Test Profile
+1. Click your avatar at the bottom of the sidebar > "Profile"
+2. Click "Edit" to modify your profile information
+3. Click "Change Password" to open the password dialog
 
 ## Common First-Time Issues
 
-### Issue: "Network Error" or "CORS Error"
+### "Network Error" or "CORS Error"
+Your API needs to allow requests from `http://localhost:3000`. Contact your backend team to configure CORS.
 
-**Solution:**
-- Your API needs to allow requests from `http://localhost:3000`
-- Contact your backend team to configure CORS
+### "SSL Certificate Error"
+Already handled in development mode. The app ignores SSL errors when `NODE_ENV=development`.
 
-### Issue: "SSL Certificate Error"
+### "401 Unauthorized" after login
+1. Check login endpoint in `src/context/AuthContext.tsx` (currently `/api/auth/login`)
+2. Verify the API returns `access_token` or `token` field
+3. Check browser DevTools > Network tab for the actual response
 
-**Solution:**
-- Already handled in development mode (see `src/services/api.ts`)
-- The app ignores SSL errors in development
+### Data doesn't load
+1. Verify service endpoints use `/api-system/` prefix (not `/api/`)
+2. Check that the `x-app-id` header is being sent
+3. Open DevTools > Network tab to see actual requests
+4. Use the debug Sheet to inspect raw API responses
 
-### Issue: "401 Unauthorized" after login
+### Filters don't work
+1. Verify the API supports the `advance` query parameter
+2. Check the advance JSON format: `{"where":{"is_active":true}}`
+3. The sort format is `field:asc` or `field:desc`
 
-**Possible causes:**
-1. Wrong endpoint in `AuthContext.tsx`
-2. Wrong credentials
-3. API response format doesn't match expected format
+## Key Files to Know
 
-**Solution:**
-- Check browser console and Network tab
-- Verify login endpoint in Swagger
-- Check API response format
-
-### Issue: Data doesn't load
-
-**Possible causes:**
-1. Wrong API endpoints in service files
-2. Authentication token not being sent
-3. API response format is different
-
-**Solution:**
-- Open DevTools and Network tab
-- Check the actual API calls being made
-- Verify endpoints match Swagger documentation
-- Check response format
-
-## Understanding the File Structure
-
-**Only need to modify these files:**
-
-- `src/context/AuthContext.tsx` - Login endpoint and auth logic
-- `src/services/clusterService.ts` - Cluster API calls
-- `src/services/businessUnitService.ts` - Business unit API calls
-- `src/services/userService.ts` - User API calls
-
-**Everything else works automatically!**
+| Purpose | File |
+|---------|------|
+| Login endpoint | `src/context/AuthContext.tsx` |
+| API base config | `src/services/api.ts` |
+| Cluster API | `src/services/clusterService.ts` |
+| Business Unit API | `src/services/businessUnitService.ts` |
+| User API | `src/services/userService.ts` |
+| Type definitions | `src/types/index.ts` |
+| Query builder | `src/utils/QueryParams.ts` |
+| Route config | `src/App.tsx` |
+| AI coding guide | `CLAUDE.md` (root) |
 
 ## Development Workflow
 
@@ -145,43 +125,31 @@ The app will open at `http://localhost:3000`
 2. Open http://localhost:3000   -> Landing page
 3. Click "Get Started"          -> Login page
 4. Login                        -> Dashboard
-5. Make code changes            -> App auto-reloads
-6. Check browser console        -> See errors/logs
-7. Check Network tab            -> See API calls
+5. Make code changes            -> App auto-reloads (hot reload)
+6. Check debug Sheet            -> Inspect raw API responses
+7. Check browser console        -> See errors/logs
+8. Check Network tab            -> See API calls
 ```
 
 ## Build for Production
-
-When you're ready to deploy:
 
 ```bash
 bun run build
 ```
 
-This creates a `build/` folder with optimized files ready for deployment. The build date is automatically displayed in the landing page footer.
-
-## Quick Reference: File Locations
-
-| What to Change | File Location |
-|----------------|---------------|
-| Login API endpoint | `src/context/AuthContext.tsx` |
-| Cluster endpoints | `src/services/clusterService.ts` |
-| Business Unit endpoints | `src/services/businessUnitService.ts` |
-| User endpoints | `src/services/userService.ts` |
-| API base URL | `src/services/api.ts` |
-| Landing page | `src/pages/Landing.tsx` |
-| Routes | `src/App.tsx` |
+Creates a `build/` folder with optimized files. `REACT_APP_BUILD_DATE` is automatically set.
 
 ## Getting Help
 
-1. **Product Requirements:** Check `PRD.md`
-2. **API Issues:** Check `API_CONFIGURATION.md`
-3. **General Info:** Check `README.md`
-4. **Project Overview:** Check `PROJECT_SUMMARY.md`
-5. **Swagger Docs:** `https://dev.blueledgers.com:4001/swagger`
+| Need | Resource |
+|------|----------|
+| Product requirements | [PRD.md](PRD.md) |
+| API endpoints | [API_CONFIGURATION.md](API_CONFIGURATION.md) |
+| Auth flow | [AUTHENTICATION_FLOW.md](AUTHENTICATION_FLOW.md) |
+| Project overview | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) |
+| Coding conventions | [CLAUDE.md](../CLAUDE.md) |
+| Swagger docs | `https://dev.blueledgers.com:4001/swagger` |
 
 ---
-
-**You're all set!** Start with `bun start` and begin configuring your API endpoints.
 
 design by @carmensoftware 2025

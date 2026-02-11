@@ -1,23 +1,29 @@
 # Carmen Platform
 
-A React + TypeScript management application for managing clusters, business units, and users via the Carmen API.
+A React + TypeScript admin dashboard for managing clusters, business units, and users via the Carmen API.
 
-> **Powered by Bun** - This project uses [Bun](https://bun.sh) for 3-10x faster package installation and better performance. See [docs/WHY_BUN.md](docs/WHY_BUN.md) for details.
+> **Powered by Bun** - This project uses [Bun](https://bun.sh) for fast package installation. See [docs/WHY_BUN.md](docs/WHY_BUN.md).
 
-> **Built with shadcn/ui** - Modern, accessible UI components built with Tailwind CSS and Radix UI. See [docs/SHADCN_MIGRATION.md](docs/SHADCN_MIGRATION.md) for details.
+> **Built with shadcn/ui** - Modern, accessible UI components built with Tailwind CSS and Radix UI.
 
-> **TypeScript** - The entire codebase is written in TypeScript with strict mode enabled for type safety.
+> **TypeScript** - The entire codebase is written in TypeScript with strict mode enabled.
 
 ## Features
 
-- **Landing Page**: Public pastel-themed landing page with feature highlights
-- **Authentication System**: Secure login with JWT token management
-- **Cluster Management**: Create, read, update, and delete clusters
-- **Business Unit Management**: Manage business units with full CRUD operations
-- **User Management**: Comprehensive user administration
-- **Protected Routes**: Route protection with authentication
-- **Responsive Design**: Mobile-friendly user interface
-- **Search Functionality**: Search across all management pages
+- **Landing Page** - Public pastel-themed page with glassmorphism and Magic UI ripple effects
+- **Authentication** - JWT login with role-based access control (`super_admin`, `platform_admin`, `support_manager`, `support_staff`, `security_officer`, `integration_developer`, `user`)
+- **Cluster Management** - Server-side DataTable with sorting, search (debounced 400ms), Sheet-based status filters, debug Sheet, and CRUD via dedicated edit page
+- **Business Unit Management** - Full CRUD with 9-section collapsible form (basic info, hotel, company, tax, date/time formats, number formats, calculation settings, configuration, DB connection), user assignment, default currency display
+- **User Management** - Multi-filter (role + status) DataTable, user create/edit with profile fields, business unit assignments
+- **Profile** - View/edit profile info, change password dialog, view assigned business units
+- **Server-Side Pagination & Sorting** - All list pages use TanStack Table with server-side data
+- **Sheet-Based Filters** - Filters open in a right-side Sheet with active filter badge counts and summary pills
+- **Debug Sheets** - Dev-only floating amber button opens raw API JSON viewer with tabs and copy-to-clipboard
+- **Read-Only / Edit Mode Toggle** - Edit pages show read-only by default with an Edit button to switch modes
+- **Collapsible Sidebar Navigation** - Desktop sidebar (240px/64px) with localStorage persistence, tooltips when collapsed
+- **Mobile Sheet Navigation** - Hamburger menu triggers Sheet drawer from left with full navigation
+- **Responsive Design** - Mobile-first with `sm:`, `md:`, `lg:` breakpoints, glassmorphism styling
+- **Per-Page Persistence** - Rows-per-page preference saved to localStorage per entity type
 
 ## Prerequisites
 
@@ -26,225 +32,176 @@ A React + TypeScript management application for managing clusters, business unit
 
 ## Installation
 
-1. Install dependencies:
 ```bash
 bun install
 ```
 
-2. Configure environment variables (already set up in `.env` file):
-```env
-REACT_APP_API_BASE_URL=https://dev.blueledgers.com:4001
-REACT_APP_API_APP_ID=bc1ade0a-a189-48c4-9445-807a3ea38253
-```
+## Configuration
 
-3. Configure API endpoints (see Configuration section below)
+Environment variables (configured in `.env`):
 
-4. Start the development server:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REACT_APP_API_BASE_URL` | API base URL | `https://dev.blueledgers.com:4001` |
+| `REACT_APP_API_APP_ID` | Application ID for `x-app-id` header | `bc1ade0a-a189-48c4-9445-807a3ea38253` |
+| `REACT_APP_BUILD_DATE` | Build timestamp (auto-set during `bun run build`) | - |
+
+## Start Development Server
+
 ```bash
 bun start
 ```
 
-The application will open at `http://localhost:3000`
-
-## Configuration
-
-### Environment Variables
-
-The application uses the following environment variables (configured in `.env`):
-
-- **REACT_APP_API_BASE_URL**: Base URL for the API (default: `https://dev.blueledgers.com:4001`)
-- **REACT_APP_API_APP_ID**: Application ID sent in the `x-app-id` header with every request
-- **REACT_APP_BUILD_DATE**: Automatically set during `bun run build` with the build timestamp
-
-**Important**: The `x-app-id` header is automatically included in all API requests for authentication/authorization purposes.
-
-### API Endpoints
-
-The application is configured to connect to `https://dev.blueledgers.com:4001`. You need to update the API endpoints in the service files to match your actual API structure.
-
-#### Update Authentication Endpoint
-
-Edit `src/context/AuthContext.tsx` to match your API's login endpoint:
-```typescript
-const response = await api.post('/api/auth/login', credentials);
-```
-
-#### Update Service Endpoints
-
-The following service files may need endpoint adjustments based on your API's actual structure:
-
-- `src/services/clusterService.ts` - Cluster API endpoints
-- `src/services/businessUnitService.ts` - Business unit API endpoints
-- `src/services/userService.ts` - User API endpoints
-
-**Note**: The current endpoints are set to:
-- Clusters: `/api/clusters`
-- Business Units: `/api/business-units`
-- Users: `/api/users`
-
-Check your Swagger documentation and update these paths accordingly.
-
-### SSL Certificate Issues
-
-If you encounter SSL certificate errors with the development API, the application is configured to ignore SSL verification in development mode (see `src/services/api.ts`).
-
-**Warning**: This should only be used in development environments. For production, ensure proper SSL certificates are configured.
+Opens at `http://localhost:3000`
 
 ## Project Structure
 
 ```
 carmen-platform/
 ├── public/
-│   └── index.html              # HTML template
+│   └── index.html
 ├── src/
 │   ├── components/
-│   │   ├── ui/                 # shadcn/ui components (*.tsx)
-│   │   ├── Layout.tsx          # Main layout with navigation
-│   │   └── PrivateRoute.tsx    # Route protection component
+│   │   ├── ui/                         # shadcn/ui primitives
+│   │   │   ├── avatar.tsx
+│   │   │   ├── badge.tsx               # Variants: default, secondary, destructive, outline, success, warning
+│   │   │   ├── button.tsx              # Variants: default, destructive, outline, secondary, ghost, link
+│   │   │   ├── card.tsx
+│   │   │   ├── data-table.tsx          # TanStack Table wrapper with server-side pagination/sorting
+│   │   │   ├── dialog.tsx
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── label.tsx
+│   │   │   ├── separator.tsx            # Visual dividers
+│   │   │   ├── sheet.tsx               # Side panel for filters, debug, mobile nav
+│   │   │   ├── table.tsx
+│   │   │   └── tooltip.tsx             # Tooltips (sidebar collapsed labels)
+│   │   ├── magicui/                    # Magic UI effects
+│   │   │   ├── ripple.tsx
+│   │   │   └── ripple-button.tsx
+│   │   ├── Layout.tsx                  # App shell: sidebar state, mobile header, main wrapper
+│   │   ├── Sidebar.tsx                 # Collapsible sidebar (desktop) + Sheet drawer (mobile)
+│   │   └── PrivateRoute.tsx            # Auth guard with optional role-based access
 │   ├── context/
-│   │   └── AuthContext.tsx     # Authentication context
+│   │   └── AuthContext.tsx             # Auth state, JWT token, role management
 │   ├── lib/
-│   │   └── utils.ts            # Utility functions (cn)
+│   │   └── utils.ts                    # cn() helper (clsx + tailwind-merge)
 │   ├── pages/
-│   │   ├── Landing.tsx         # Public landing page
-│   │   ├── Login.tsx           # Login page
-│   │   ├── Dashboard.tsx       # Dashboard page
-│   │   ├── Profile.tsx         # User profile page
-│   │   ├── ClusterManagement.tsx
-│   │   ├── ClusterEdit.tsx
-│   │   ├── BusinessUnitManagement.tsx
-│   │   └── UserManagement.tsx
+│   │   ├── Landing.tsx                 # Public landing page with ripple effects
+│   │   ├── Login.tsx                   # Login form with glassmorphism card
+│   │   ├── Dashboard.tsx               # Navigation cards + login debug Sheet
+│   │   ├── Profile.tsx                 # Profile edit, password change, BU list
+│   │   ├── ClusterManagement.tsx       # DataTable list with search, filters, debug Sheet
+│   │   ├── ClusterEdit.tsx             # Create/view/edit form, BU table, users table, 3-tab debug Sheet
+│   │   ├── BusinessUnitManagement.tsx  # DataTable list with search, filters, debug Sheet
+│   │   ├── BusinessUnitEdit.tsx        # 9-section collapsible form, users table, dialogs, 2-tab debug Sheet
+│   │   ├── UserManagement.tsx          # DataTable list with role+status filters, debug Sheet
+│   │   └── UserEdit.tsx                # Create/view/edit form, BU cards, debug Sheet
 │   ├── services/
-│   │   ├── api.ts              # Axios configuration
-│   │   ├── clusterService.ts
-│   │   ├── businessUnitService.ts
-│   │   └── userService.ts
+│   │   ├── api.ts                      # Axios instance with auth interceptors + x-app-id header
+│   │   ├── clusterService.ts           # GET/POST/PUT/DELETE /api-system/cluster
+│   │   ├── businessUnitService.ts      # GET/POST/PUT/DELETE /api-system/business-unit + user assignment
+│   │   └── userService.ts             # GET/POST/PUT/DELETE /api-system/user
 │   ├── types/
-│   │   └── index.ts            # Shared TypeScript interfaces
+│   │   └── index.ts                    # Shared interfaces: PaginateParams, Cluster, BusinessUnit, User, etc.
 │   ├── utils/
-│   │   └── QueryParams.ts      # Query parameter builder
-│   ├── App.tsx                  # Main app component with routing
+│   │   └── QueryParams.ts             # Query string builder for paginated API calls
+│   ├── App.tsx                         # Route configuration
 │   ├── App.css
 │   ├── index.tsx
-│   ├── index.css
-│   └── react-app-env.d.ts
-├── docs/                        # Documentation
+│   └── index.css                       # Tailwind + CSS variables + glass effects
+├── docs/                               # Documentation
+├── CLAUDE.md                           # AI style guide and coding conventions
 ├── tsconfig.json
+├── tailwind.config.js
 ├── package.json
 └── README.md
 ```
 
 ## Routes
 
-| Path | Page | Access |
-|------|------|--------|
-| `/` | Landing Page | Public |
-| `/login` | Login | Public |
-| `/dashboard` | Dashboard | Private |
-| `/clusters` | Cluster Management | Private |
-| `/business-units` | Business Unit Management | Private |
-| `/users` | User Management | Private |
-| `/profile` | User Profile | Private |
+| Path | Page | Access | Description |
+|------|------|--------|-------------|
+| `/` | Landing | Public | Feature highlights, auto-redirect if authenticated |
+| `/login` | Login | Public | Email/password login form |
+| `/dashboard` | Dashboard | Private | Navigation cards to management sections |
+| `/clusters` | Cluster Management | Private (role-gated) | Server-side DataTable with search, status filter |
+| `/clusters/new` | Cluster Edit | Private (role-gated) | Create new cluster form |
+| `/clusters/:id` | Cluster Edit | Private (role-gated) | View/edit cluster, BU list, users list |
+| `/business-units` | BU Management | Private | Server-side DataTable with search, status filter |
+| `/business-units/new` | BU Edit | Private | Create new BU with 9-section form |
+| `/business-units/:id/edit` | BU Edit | Private | View/edit BU, user management, debug tabs |
+| `/users` | User Management | Private | Server-side DataTable with role + status filters |
+| `/users/new` | User Edit | Private | Create new user form |
+| `/users/:id/edit` | User Edit | Private | View/edit user, BU assignments |
+| `/profile` | Profile | Private | Edit profile, change password |
+| `*` | Redirect | - | Redirects to `/` |
 
-## Usage
+## API Endpoints
 
-### Landing Page
+All services communicate with the backend via `/api-system/` prefix:
 
-1. Visit `http://localhost:3000` to see the public landing page
-2. Click "Get Started" or "Login" to navigate to the login page
-3. If already authenticated, you are automatically redirected to `/dashboard`
+| Resource | Base Endpoint | Methods |
+|----------|--------------|---------|
+| Authentication | `POST /api/auth/login` | Login |
+| Clusters | `/api-system/cluster` | GET, POST, PUT, DELETE |
+| Business Units | `/api-system/business-unit` | GET, POST, PUT, DELETE |
+| Users | `/api-system/user` | GET, POST, PUT, DELETE, PATCH |
+| User Profile | `/api/user/profile` | GET, PUT, PATCH |
+| Cluster Users | `/api-system/user/cluster/:id` | GET |
+| BU User Assignment | `/api-system/user/business-unit` | POST |
+| BU User Update | `/api-system/user/business-unit/:id` | PATCH |
 
-### Login
-
-1. Navigate to the login page
-2. Enter your credentials (email and password)
-3. Click "Login"
-4. The application will store your authentication token and redirect you to `/dashboard`
-
-### Managing Clusters
-
-1. Navigate to "Clusters" from the main menu
-2. Click "Add Cluster" to create a new cluster
-3. Use the search box to filter clusters
-4. Click "Edit" to modify an existing cluster
-5. Click "Delete" to remove a cluster (with confirmation)
-
-### Managing Business Units
-
-1. Navigate to "Business Units" from the main menu
-2. Click "Add Business Unit" to create a new unit
-3. Fill in the code, name, description, and status
-4. Use search to find specific business units
-5. Edit or delete as needed
-
-### Managing Users
-
-1. Navigate to "Users" from the main menu
-2. Click "Add User" to create a new user
-3. Assign roles (User, Manager, Admin)
-4. Set user status (Active, Inactive)
-5. When editing, leave password blank to keep the current password
-
-## Authentication
-
-The application uses JWT (JSON Web Token) for authentication:
-
-1. After successful login, the token is stored in localStorage
-2. The token is automatically included in all API requests via Axios interceptors
-3. If the token expires (401 response), the user is automatically redirected to login
-4. On logout, the token is removed from localStorage
-5. Public pages (`/` and `/login`) are accessible without a token
-6. All other routes require authentication via `PrivateRoute`
+All requests include `Authorization: Bearer <token>` and `x-app-id` headers.
 
 ## Available Scripts
 
-### `bun start`
-Runs the app in development mode at `http://localhost:3000`
+| Command | Description |
+|---------|-------------|
+| `bun start` | Start dev server at `http://localhost:3000` |
+| `bun run build` | Production build with `REACT_APP_BUILD_DATE` |
+| `bun test` | Run tests |
+| `npx playwright test` | Run E2E tests |
 
-### `bun run build`
-Builds the app for production to the `build` folder. Automatically sets `REACT_APP_BUILD_DATE` with the build timestamp.
+## Documentation
 
-### `bun test`
-Launches the test runner
+| Document | Description |
+|----------|-------------|
+| [CLAUDE.md](CLAUDE.md) | AI style guide and coding conventions |
+| [PRD](docs/PRD.md) | Product Requirements Document |
+| [Quick Start](docs/QUICK_START.md) | Get started in 3 steps |
+| [API Configuration](docs/API_CONFIGURATION.md) | Configure API endpoints |
+| [Authentication Flow](docs/AUTHENTICATION_FLOW.md) | Login and token management |
+| [Project Summary](docs/PROJECT_SUMMARY.md) | Complete project overview |
+| [Layout Features](docs/LAYOUT_FEATURES.md) | Navigation and layout details |
+| [Why Bun?](docs/WHY_BUN.md) | Benefits of using Bun |
+| [Bun Migration](docs/BUN_MIGRATION.md) | npm to Bun migration details |
 
 ## Troubleshooting
 
 ### CORS Errors
+Ensure the API server allows requests from `http://localhost:3000`.
 
-If you encounter CORS errors, make sure your API server has CORS properly configured to allow requests from `http://localhost:3000` (development) or your production domain.
-
-### API Connection Issues
-
-1. Check that the API URL in `src/services/api.ts` is correct
-2. Verify that the API endpoints in service files match your Swagger documentation
-3. Check browser console for detailed error messages
+### SSL Certificate Errors
+Handled automatically in development mode (`src/services/api.ts` ignores SSL in dev). Do not use in production.
 
 ### Authentication Issues
+1. Verify login endpoint in `src/context/AuthContext.tsx`
+2. Check token format (`access_token` or `token` field)
+3. Check browser DevTools Network tab for 401 responses
 
-1. Verify the login endpoint in `src/context/AuthContext.tsx`
-2. Check that your API returns a token and user object in the expected format
+### Data Not Loading
+1. Verify service endpoints match `/api-system/` prefix
+2. Check QueryParams builder output in Network tab
+3. Verify response shape: `{ data: [...], paginate: { total, page, perpage } }`
 
 ## Security Notes
 
-- Never commit sensitive credentials to version control
-- The development SSL bypass should not be used in production
-- Ensure HTTPS is used in production environments
-- Implement proper CORS configuration on the API server
-- Use environment variables for sensitive configuration
-
-## Documentation
-
-Comprehensive documentation is available in the `docs/` folder:
-
-- **[PRD](docs/PRD.md)** - Product Requirements Document
-- **[Quick Start Guide](docs/QUICK_START.md)** - Get started in 3 steps
-- **[API Configuration](docs/API_CONFIGURATION.md)** - Configure API endpoints
-- **[Authentication Flow](docs/AUTHENTICATION_FLOW.md)** - Login and token management
-- **[Project Summary](docs/PROJECT_SUMMARY.md)** - Complete project overview
-- **[Layout Features](docs/LAYOUT_FEATURES.md)** - Navigation and layout details
-- **[Why Bun?](docs/WHY_BUN.md)** - Benefits of using Bun
-- **[Bun Migration](docs/BUN_MIGRATION.md)** - npm to Bun migration details
-- **[shadcn/ui Migration](docs/SHADCN_MIGRATION.md)** - UI component library details
+- Never commit `.env` files with real credentials
+- SSL bypass is development-only
+- Use HTTPS in production
+- JWT tokens stored in localStorage (consider httpOnly cookies for production)
+- Role-based route protection via `PrivateRoute` with `allowedRoles` prop
 
 ## License
 
@@ -254,5 +211,4 @@ design by @carmensoftware 2025
 
 ## Support
 
-For issues and questions, please check the Swagger API documentation at:
-`https://dev.blueledgers.com:4001/swagger`
+Swagger API documentation: `https://dev.blueledgers.com:4001/swagger`

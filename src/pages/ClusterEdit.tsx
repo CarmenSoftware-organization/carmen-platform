@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
+import userService from '../services/userService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { validateField } from '../utils/validation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import type { BusinessUnit, User } from '../types';
 
@@ -18,6 +24,16 @@ interface ClusterFormData {
   name: string;
   is_active: boolean;
 }
+
+interface AllUser {
+  id: string;
+  username?: string;
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+}
+
+const CLUSTER_ROLES = ['admin', 'user'] as const;
 
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,8 +58,29 @@ const ClusterEdit: React.FC = () => {
   const [buLoading, setBuLoading] = useState(false);
   const [clusterUsers, setClusterUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [searchUsers, setSearchUsers] = useState<AllUser[]>([]);
+  const [searchUsersTerm, setSearchUsersTerm] = useState('');
+  const [searchUsersTotal, setSearchUsersTotal] = useState(0);
+  const [searchUsersPage, setSearchUsersPage] = useState(1);
+  const [loadingSearchUsers, setLoadingSearchUsers] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AllUser | null>(null);
+  const [addUserRole, setAddUserRole] = useState('user');
+  const [addingUser, setAddingUser] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const searchUsersPerPage = 10;
+
+  useGlobalShortcuts({
+    onSave: () => { if (editing && !saving) formRef.current?.requestSubmit(); },
+    onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
+  });
 
   const [savedFormData, setSavedFormData] = useState<ClusterFormData>(formData);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  useUnsavedChanges(hasChanges);
 
   const handleEditToggle = () => {
     setSavedFormData(formData);
@@ -122,6 +159,74 @@ const ClusterEdit: React.FC = () => {
     }
   };
 
+  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+  const fetchSearchUsers = useCallback(async (search: string, page: number) => {
+    setLoadingSearchUsers(true);
+    try {
+      const data = await userService.getAll({ search, page, perpage: searchUsersPerPage });
+      const items = (data as any).data || data;
+      const pag = (data as any).paginate;
+      setSearchUsers(Array.isArray(items) ? items : []);
+      setSearchUsersTotal(pag?.total ?? (data as any).total ?? 0);
+    } catch {
+      setSearchUsers([]);
+      setSearchUsersTotal(0);
+    } finally {
+      setLoadingSearchUsers(false);
+    }
+  }, [searchUsersPerPage]);
+
+  const handleOpenAddUser = () => {
+    setShowAddUser(true);
+    setSelectedUser(null);
+    setAddUserRole('user');
+    setSearchUsersTerm('');
+    setSearchUsersPage(1);
+    fetchSearchUsers('', 1);
+  };
+
+  const handleSearchUsersChange = (value: string) => {
+    setSearchUsersTerm(value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      setSearchUsersPage(1);
+      fetchSearchUsers(value, 1);
+    }, 400);
+  };
+
+  const handleSearchUsersPageChange = (page: number) => {
+    setSearchUsersPage(page);
+    fetchSearchUsers(searchUsersTerm, page);
+  };
+
+  const searchUsersTotalPages = Math.max(1, Math.ceil(searchUsersTotal / searchUsersPerPage));
+
+  const availableUsers = searchUsers.filter(
+    u => u.id && !clusterUsers.some((cu: any) => (cu.user_id || cu.id) === u.id)
+  );
+
+  const handleAddUser = async () => {
+    if (!selectedUser || !id) return;
+    setAddingUser(true);
+    try {
+      await api.post('/api-system/user/cluster', {
+        user_id: selectedUser.id,
+        cluster_id: id,
+        role: addUserRole,
+        is_active: true,
+      });
+      setShowAddUser(false);
+      toast.success('User added to cluster successfully');
+      await fetchClusterUsers();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error('Failed to add user', { description: e.response?.data?.message || e.message });
+    } finally {
+      setAddingUser(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
@@ -129,6 +234,16 @@ const ClusterEdit: React.FC = () => {
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
     setError('');
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setFieldErrors(prev => ({ ...prev, [name]: error }));
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFieldErrors(prev => ({ ...prev, [e.target.name]: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -140,6 +255,7 @@ const ClusterEdit: React.FC = () => {
       if (isNew) {
         const result = await clusterService.create(formData);
         const created = result.data || result;
+        toast.success('Cluster created successfully');
         if (created?.id) {
           navigate(`/clusters/${created.id}`, { replace: true });
         } else {
@@ -147,6 +263,7 @@ const ClusterEdit: React.FC = () => {
         }
       } else {
         await clusterService.update(id!, formData);
+        toast.success('Changes saved successfully');
         await fetchCluster();
         setEditing(false);
       }
@@ -175,7 +292,7 @@ const ClusterEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/clusters')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/clusters')} aria-label="Back to clusters">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -195,7 +312,7 @@ const ClusterEdit: React.FC = () => {
         </div>
 
         {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
         <div className={`grid gap-4 sm:gap-6 ${!isNew ? 'grid-cols-1 lg:grid-cols-2' : ''}`}>
@@ -207,19 +324,27 @@ const ClusterEdit: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="code">Code {editing && '*'}</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="code"
-                      name="code"
-                      value={formData.code}
-                      onChange={handleChange}
-                      placeholder="Cluster code"
-                      required
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="code"
+                        name="code"
+                        value={formData.code}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Cluster code"
+                        className={fieldErrors.code ? 'border-destructive' : ''}
+                        required
+                      />
+                      {fieldErrors.code && (
+                        <p className="text-xs text-destructive">{fieldErrors.code}</p>
+                      )}
+                    </>
                   ) : (
                     <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
                   )}
@@ -268,7 +393,7 @@ const ClusterEdit: React.FC = () => {
                 {editing && (
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" size="sm" disabled={saving}>
-                      <Save className="mr-2 h-4 w-4" />
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       {saving ? 'Saving...' : isNew ? 'Create Cluster' : 'Save Changes'}
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/clusters') : handleCancelEdit}>
@@ -295,11 +420,16 @@ const ClusterEdit: React.FC = () => {
                     <CardDescription>
                       {buLoading
                         ? 'Loading...'
-                        : `${businessUnits.length} business unit${businessUnits.length !== 1 ? 's' : ''} in this cluster`}
+                        : (
+                          <span className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
+                            <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
+                          </span>
+                        )}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={fetchBusinessUnits} disabled={buLoading} className="h-8 w-8">
+                    <Button variant="outline" size="icon" onClick={fetchBusinessUnits} disabled={buLoading} className="h-8 w-8" aria-label="Refresh business units">
                       <RefreshCw className={`h-4 w-4 ${buLoading ? 'animate-spin' : ''}`} />
                     </Button>
                     <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)}>
@@ -330,11 +460,9 @@ const ClusterEdit: React.FC = () => {
                           </td>
                           <td className="px-4 py-2">{bu.name}</td>
                           <td className="px-4 py-2">
-                            {bu.is_active ? (
-                              <Badge className="text-xs bg-green-100 text-green-700">Active</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs">Inactive</Badge>
-                            )}
+                            <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
+                              {bu.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
                           </td>
                           <td className="px-4 py-2 text-right">
                             <Button
@@ -367,12 +495,23 @@ const ClusterEdit: React.FC = () => {
                     <CardDescription>
                       {usersLoading
                         ? 'Loading...'
-                        : `${clusterUsers.length} user${clusterUsers.length !== 1 ? 's' : ''} in this cluster`}
+                        : (
+                          <span className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{clusterUsers.filter((u: any) => u.is_active !== false).length} Active</Badge>
+                            <span className="text-muted-foreground text-xs">of {clusterUsers.length} total</span>
+                          </span>
+                        )}
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="icon" onClick={fetchClusterUsers} disabled={usersLoading} className="h-8 w-8">
-                    <RefreshCw className={`h-4 w-4 ${usersLoading ? 'animate-spin' : ''}`} />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={fetchClusterUsers} disabled={usersLoading} className="h-8 w-8" aria-label="Refresh users">
+                      <RefreshCw className={`h-4 w-4 ${usersLoading ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleOpenAddUser}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Add User
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -386,11 +525,12 @@ const ClusterEdit: React.FC = () => {
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-left font-medium px-4 py-2">Email</th>
                         <th className="text-left font-medium px-4 py-2">Role</th>
+                        <th className="text-center font-medium px-4 py-2">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {clusterUsers.map((user) => (
-                        <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      {clusterUsers.map((user: any) => (
+                        <tr key={user.id || user.user_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-2">
                             {user.firstname || user.lastname
                               ? `${user.firstname || ''} ${user.lastname || ''}`.trim()
@@ -404,12 +544,136 @@ const ClusterEdit: React.FC = () => {
                               <Badge variant="outline" className="text-xs">{user.role}</Badge>
                             ) : null}
                           </td>
+                          <td className="px-4 py-2 text-center">
+                            <Badge variant={user.is_active !== false ? 'success' : 'secondary'} className="text-xs">
+                              {user.is_active !== false ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                   </div>
                 )}
+
+                {/* Add User Dialog */}
+                <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Add User to Cluster</DialogTitle>
+                      <DialogDescription>Search and select a user to add</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      {/* Selected user display */}
+                      {selectedUser && (
+                        <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                          <div>
+                            <div className="text-sm font-medium">{selectedUser.username || selectedUser.email}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {[selectedUser.firstname, selectedUser.lastname].filter(Boolean).join(' ') || selectedUser.email}
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedUser(null)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Search input */}
+                      {!selectedUser && (
+                        <>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              placeholder="Search by username or email..."
+                              value={searchUsersTerm}
+                              onChange={(e) => handleSearchUsersChange(e.target.value)}
+                              className="pl-9"
+                              autoFocus
+                            />
+                          </div>
+
+                          {/* User list */}
+                          <div className="border rounded-md max-h-60 overflow-y-auto">
+                            {loadingSearchUsers ? (
+                              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
+                            ) : availableUsers.length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-4">
+                                {searchUsers.length > 0 ? 'All matching users are already in this cluster.' : 'No users found.'}
+                              </p>
+                            ) : (
+                              <div className="divide-y">
+                                {availableUsers.map((u) => (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
+                                    onClick={() => setSelectedUser(u)}
+                                  >
+                                    <div className="text-sm font-medium">{u.username || u.email}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {[u.firstname, u.lastname].filter(Boolean).join(' ') || u.email}
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Pagination */}
+                          {searchUsersTotalPages > 1 && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Page {searchUsersPage} of {searchUsersTotalPages} ({searchUsersTotal} users)
+                              </span>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs px-2"
+                                  disabled={searchUsersPage <= 1}
+                                  onClick={() => handleSearchUsersPageChange(searchUsersPage - 1)}
+                                >
+                                  Prev
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs px-2"
+                                  disabled={searchUsersPage >= searchUsersTotalPages}
+                                  onClick={() => handleSearchUsersPageChange(searchUsersPage + 1)}
+                                >
+                                  Next
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {/* Role select */}
+                      <div className="space-y-2">
+                        <Label>Cluster Role</Label>
+                        <select
+                          value={addUserRole}
+                          onChange={(e) => setAddUserRole(e.target.value)}
+                          className={selectClassName}
+                        >
+                          {CLUSTER_ROLES.map((r) => (
+                            <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
+                      <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUser}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        {addingUser ? 'Adding...' : 'Add User'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
             </div>

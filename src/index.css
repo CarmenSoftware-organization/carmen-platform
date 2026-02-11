@@ -109,6 +109,16 @@ body {
     radial-gradient(at 50% 80%, rgba(59, 130, 246, 0.06) 0px, transparent 50%);
 }
 
+/* Sidebar transitions */
+.sidebar-transition {
+  transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+              margin 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-item-transition {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

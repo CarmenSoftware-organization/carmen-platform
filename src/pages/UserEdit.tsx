@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
+import businessUnitService from "../services/businessUnitService";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2 } from "lucide-react";
+import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus, Trash2, Loader2 } from "lucide-react";
+import { toast } from 'sonner';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { validateField } from '../utils/validation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 
 interface UserBusinessUnit {
   id: string;
@@ -23,6 +30,27 @@ interface UserBusinessUnit {
     cluster_id?: string;
   } | null;
 }
+
+interface UserCluster {
+  id: string;
+  cluster_id: string;
+  role: string;
+  cluster: {
+    id: string;
+    code: string;
+    name: string;
+    is_active: boolean;
+  } | null;
+}
+
+interface ClusterBU {
+  id: string;
+  code: string;
+  name: string;
+  is_active: boolean;
+}
+
+const BU_ROLES = ['admin', 'user'] as const;
 
 interface UserFormData extends Record<string, unknown> {
   username: string;
@@ -53,8 +81,26 @@ const UserEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
-
+  const [userClusters, setUserClusters] = useState<UserCluster[]>([]);
+  const [showAddBU, setShowAddBU] = useState(false);
+  const [selectedClusterId, setSelectedClusterId] = useState('');
+  const [clusterBUs, setClusterBUs] = useState<ClusterBU[]>([]);
+  const [loadingBUs, setLoadingBUs] = useState(false);
+  const [selectedBUId, setSelectedBUId] = useState('');
+  const [addBURole, setAddBURole] = useState('user');
+  const [addingBU, setAddingBU] = useState(false);
+  const [deleteBU, setDeleteBU] = useState<UserBusinessUnit | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<UserFormData>(formData);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  useUnsavedChanges(hasChanges);
+
+  useGlobalShortcuts({
+    onSave: () => { if (editing && !saving) formRef.current?.requestSubmit(); },
+    onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
+  });
 
   const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -98,11 +144,82 @@ const UserEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
+      setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError("Failed to load user: " + (e.response?.data?.message || e.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+  const handleOpenAddBU = () => {
+    setShowAddBU(true);
+    setSelectedClusterId('');
+    setSelectedBUId('');
+    setAddBURole('user');
+    setClusterBUs([]);
+  };
+
+  const handleClusterSelect = async (clusterId: string) => {
+    setSelectedClusterId(clusterId);
+    setSelectedBUId('');
+    if (!clusterId) { setClusterBUs([]); return; }
+    setLoadingBUs(true);
+    try {
+      const data = await businessUnitService.getAll({
+        perpage: -1,
+        advance: JSON.stringify({ where: { cluster_id: clusterId } }),
+      });
+      const items = data.data || data;
+      setClusterBUs(Array.isArray(items) ? items : []);
+    } catch {
+      setClusterBUs([]);
+    } finally {
+      setLoadingBUs(false);
+    }
+  };
+
+  const availableBUs = clusterBUs.filter(
+    bu => !businessUnits.some(ub => ub.business_unit?.id === bu.id)
+  );
+
+  const handleAddBU = async () => {
+    if (!selectedBUId || !id) return;
+    setAddingBU(true);
+    try {
+      await businessUnitService.createUserBusinessUnit({
+        user_id: id,
+        business_unit_id: selectedBUId,
+        role: addBURole,
+      });
+      setShowAddBU(false);
+      toast.success('Business unit assigned successfully');
+      await fetchUser();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error('Failed to add business unit', { description: e.response?.data?.message || e.message });
+    } finally {
+      setAddingBU(false);
+    }
+  };
+
+  const handleDeleteBU = (ub: UserBusinessUnit) => {
+    setDeleteBU(ub);
+  };
+
+  const handleConfirmDeleteBU = async () => {
+    if (!deleteBU) return;
+    try {
+      await businessUnitService.deleteUserBusinessUnit(deleteBU.id);
+      toast.success('Business unit removed successfully');
+      setBusinessUnits(prev => prev.filter(b => b.id !== deleteBU.id));
+      setDeleteBU(null);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error('Failed to remove business unit', { description: e.response?.data?.message || e.message });
     }
   };
 
@@ -115,6 +232,16 @@ const UserEdit: React.FC = () => {
     setError("");
   };
 
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setFieldErrors(prev => ({ ...prev, [name]: error }));
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFieldErrors(prev => ({ ...prev, [e.target.name]: '' }));
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSaving(true);
@@ -124,6 +251,7 @@ const UserEdit: React.FC = () => {
       if (isNew) {
         const result = await userService.create(formData);
         const created = result.data || result;
+        toast.success('User created successfully');
         if (created?.id) {
           navigate(`/users/${created.id}/edit`, { replace: true });
         } else {
@@ -131,6 +259,7 @@ const UserEdit: React.FC = () => {
         }
       } else {
         await userService.update(id!, formData);
+        toast.success('Changes saved successfully');
         await fetchUser();
         setEditing(false);
       }
@@ -159,7 +288,7 @@ const UserEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/users")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/users")} aria-label="Back to users">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -178,7 +307,7 @@ const UserEdit: React.FC = () => {
           )}
         </div>
 
-        {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+        {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
         <Card>
           <CardHeader>
@@ -192,19 +321,27 @@ const UserEdit: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username {editing && "*"}</Label>
                 {editing ? (
-                  <Input
-                    type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Username"
-                    required
-                  />
+                  <>
+                    <Input
+                      type="text"
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      onFocus={handleFocus}
+                      placeholder="Username"
+                      className={fieldErrors.username ? 'border-destructive' : ''}
+                      required
+                    />
+                    {fieldErrors.username && (
+                      <p className="text-xs text-destructive">{fieldErrors.username}</p>
+                    )}
+                  </>
                 ) : (
                   <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
                     {formData.username || "-"}
@@ -215,15 +352,23 @@ const UserEdit: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="email">Email {editing && "*"}</Label>
                 {editing ? (
-                  <Input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Email address"
-                    required
-                  />
+                  <>
+                    <Input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      onFocus={handleFocus}
+                      placeholder="Email address"
+                      className={fieldErrors.email ? 'border-destructive' : ''}
+                      required
+                    />
+                    {fieldErrors.email && (
+                      <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                    )}
+                  </>
                 ) : (
                   <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
                     {formData.email || "-"}
@@ -313,7 +458,7 @@ const UserEdit: React.FC = () => {
               {editing && (
                 <div className="flex gap-3 pt-4">
                   <Button type="submit" size="sm" disabled={saving}>
-                    <Save className="mr-2 h-4 w-4" />
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {saving ? "Saving..." : isNew ? "Create User" : "Save Changes"}
                   </Button>
                   <Button
@@ -330,36 +475,219 @@ const UserEdit: React.FC = () => {
             </form>
           </CardContent>
         </Card>
-        {/* Business Units */}
-        {!isNew && businessUnits.length > 0 && (
+        {/* Clusters */}
+        {!isNew && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                Business Units
+                <Network className="h-5 w-5" />
+                Clusters
               </CardTitle>
-              <CardDescription>Business units assigned to this user</CardDescription>
+              <CardDescription>
+                <span className="flex items-center gap-2 mt-0.5">
+                  <Badge variant="success" className="text-[10px] px-1.5 py-0">{userClusters.filter(uc => uc.cluster?.is_active).length} Active</Badge>
+                  <span className="text-muted-foreground text-xs">of {userClusters.length} total</span>
+                </span>
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {businessUnits.map((ub) => (
-                  <Card key={ub.id} className="border">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{ub.business_unit?.name || "-"}</span>
-                        <Badge variant={ub.is_active ? "success" : "secondary"} className="text-[10px]">
-                          {ub.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">{ub.business_unit?.code || "-"}</div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] capitalize">{ub.role}</Badge>
-                        {ub.is_default && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">Default</Badge>}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              {userClusters.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Not assigned to any cluster.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {userClusters.map((uc) => (
+                    <Card key={uc.id} className="border">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          {uc.cluster?.id ? (
+                            <div>
+                              <span
+                                className="font-medium text-sm cursor-pointer text-primary hover:underline"
+                                onClick={() => navigate(`/clusters/${uc.cluster!.id}`)}
+                              >
+                                {uc.cluster.name || "-"}
+                              </span>
+                              <div className="text-xs text-muted-foreground">{uc.cluster.code || "-"}</div>
+                            </div>
+                          ) : (
+                            <span className="font-medium text-sm">-</span>
+                          )}
+                          <Badge variant={uc.cluster?.is_active ? "success" : "secondary"} className="text-[10px]">
+                            {uc.cluster?.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] capitalize">{uc.role}</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Business Units */}
+        {!isNew && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Business Units
+                  </CardTitle>
+                  <CardDescription>
+                    <span className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(ub => ub.is_active).length} Active</Badge>
+                      <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
+                    </span>
+                  </CardDescription>
+                </div>
+                {userClusters.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={handleOpenAddBU}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add BU
+                  </Button>
+                )}
               </div>
+            </CardHeader>
+            <CardContent>
+              {businessUnits.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No business units assigned yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {businessUnits.map((ub) => (
+                    <Card key={ub.id} className="border">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          {ub.business_unit?.id ? (
+                            <div>
+                              <span
+                                className="font-medium text-sm cursor-pointer text-primary hover:underline"
+                                onClick={() => navigate(`/business-units/${ub.business_unit!.id}/edit`)}
+                              >
+                                {ub.business_unit.name || "-"}
+                              </span>
+                              <div className="text-xs text-muted-foreground">{ub.business_unit.code || "-"}</div>
+                            </div>
+                          ) : (
+                            <span className="font-medium text-sm">-</span>
+                          )}
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={ub.is_active ? "success" : "secondary"} className="text-[10px]">
+                              {ub.is_active ? "Active" : "Inactive"}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => handleDeleteBU(ub)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        {ub.business_unit?.cluster_id && (() => {
+                          const cluster = userClusters.find(uc => uc.cluster_id === ub.business_unit!.cluster_id)?.cluster;
+                          return cluster ? (
+                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                              <Network className="h-3 w-3" />
+                              <span
+                                className="cursor-pointer hover:underline hover:text-foreground"
+                                onClick={() => navigate(`/clusters/${cluster.id}`)}
+                              >
+                                {cluster.name}
+                              </span>
+                            </div>
+                          ) : null;
+                        })()}
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] capitalize">{ub.role}</Badge>
+                          {ub.is_default && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">Default</Badge>}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              <ConfirmDialog
+                open={deleteBU !== null}
+                onOpenChange={(open) => { if (!open) setDeleteBU(null); }}
+                title="Remove Business Unit"
+                description={`Are you sure you want to remove "${deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || 'this business unit'}" from this user?`}
+                confirmText="Remove"
+                confirmVariant="destructive"
+                onConfirm={handleConfirmDeleteBU}
+              />
+
+              {/* Add BU Dialog */}
+              <Dialog open={showAddBU} onOpenChange={setShowAddBU}>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Add Business Unit</DialogTitle>
+                    <DialogDescription>Select a cluster, then choose a business unit to assign</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label>Cluster</Label>
+                      <select
+                        value={selectedClusterId}
+                        onChange={(e) => handleClusterSelect(e.target.value)}
+                        className={selectClassName}
+                      >
+                        <option value="">Select a cluster</option>
+                        {userClusters.map((uc) => (
+                          <option key={uc.cluster_id} value={uc.cluster_id}>
+                            {uc.cluster?.name || uc.cluster_id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {selectedClusterId && (
+                      <>
+                        <div className="space-y-2">
+                          <Label>Business Unit</Label>
+                          {loadingBUs ? (
+                            <p className="text-sm text-muted-foreground">Loading business units...</p>
+                          ) : availableBUs.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No available business units in this cluster.</p>
+                          ) : (
+                            <select
+                              value={selectedBUId}
+                              onChange={(e) => setSelectedBUId(e.target.value)}
+                              className={selectClassName}
+                            >
+                              <option value="">Select a business unit</option>
+                              {availableBUs.map((bu) => (
+                                <option key={bu.id} value={bu.id}>
+                                  {bu.name} ({bu.code})
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <Label>BU Role</Label>
+                          <select
+                            value={addBURole}
+                            onChange={(e) => setAddBURole(e.target.value)}
+                            className={selectClassName}
+                          >
+                            {BU_ROLES.map((r) => (
+                              <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={() => setShowAddBU(false)}>Cancel</Button>
+                    <Button size="sm" onClick={handleAddBU} disabled={addingBU || !selectedBUId}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      {addingBU ? 'Adding...' : 'Add'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         )}

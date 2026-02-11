@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
@@ -10,7 +11,11 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { validateField } from '../utils/validation';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import type { Cluster, BusinessUnitConfig } from '../types';
 
 const BU_ROLES = ['admin', 'user'] as const;
@@ -193,11 +198,23 @@ const BusinessUnitEdit: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [addingUser, setAddingUser] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [rawClusterUsersResponse, setRawClusterUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
-
+  const [debugTab, setDebugTab] = useState<'bu' | 'users'>('bu');
+  const [deleteUser, setDeleteUser] = useState<BUUser | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<BusinessUnitFormData>({
     ...initialFormData,
     cluster_id: searchParams.get('cluster_id') || '',
+  });
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  useUnsavedChanges(hasChanges);
+
+  useGlobalShortcuts({
+    onSave: () => { if (editing && !saving) formRef.current?.requestSubmit(); },
+    onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
   });
 
   const handleEditToggle = () => {
@@ -224,6 +241,20 @@ const BusinessUnitEdit: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Pre-fetch cluster users for debug tab
+  useEffect(() => {
+    if (!isNew && formData.cluster_id && !rawClusterUsersResponse) {
+      clusterService.getClusterUsers(formData.cluster_id)
+        .then(data => {
+          setRawClusterUsersResponse(data);
+          const items: ClusterUser[] = data.data || data;
+          setClusterUsers(Array.isArray(items) ? items : []);
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.cluster_id]);
 
   const fetchClusters = async () => {
     try {
@@ -295,6 +326,23 @@ const BusinessUnitEdit: React.FC = () => {
     }
   };
 
+  const handleDeleteUser = (user: BUUser) => {
+    setDeleteUser(user);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteUser) return;
+    try {
+      await businessUnitService.deleteUserBusinessUnit(deleteUser.id);
+      toast.success('User removed from business unit');
+      setBuUsers(prev => prev.filter(u => u.id !== deleteUser.id));
+      setDeleteUser(null);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error('Failed to remove user', { description: e.response?.data?.message || e.message });
+    }
+  };
+
   const handleOpenEditUser = (user: BUUser) => {
     setEditingUser(user);
     setEditUserForm({ role: user.role || 'user', is_active: user.is_active });
@@ -305,11 +353,12 @@ const BusinessUnitEdit: React.FC = () => {
     setSavingUser(true);
     try {
       await businessUnitService.updateUserBusinessUnit(editingUser.id, editUserForm);
+      toast.success('User role updated successfully');
       setBuUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editUserForm } : u));
       setEditingUser(null);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
-      alert('Failed to update: ' + (e.response?.data?.message || e.message));
+      toast.error('Failed to update user', { description: e.response?.data?.message || e.message });
     } finally {
       setSavingUser(false);
     }
@@ -323,6 +372,7 @@ const BusinessUnitEdit: React.FC = () => {
     setLoadingClusterUsers(true);
     try {
       const data = await clusterService.getClusterUsers(formData.cluster_id);
+      setRawClusterUsersResponse(data);
       const items: ClusterUser[] = data.data || data;
       setClusterUsers(Array.isArray(items) ? items : []);
     } catch {
@@ -346,10 +396,11 @@ const BusinessUnitEdit: React.FC = () => {
         role: addUserRole,
       });
       setShowAddUser(false);
+      toast.success('User added to business unit');
       await fetchBusinessUnit();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
-      alert('Failed to add user: ' + (e.response?.data?.message || e.message));
+      toast.error('Failed to add user', { description: e.response?.data?.message || e.message });
     } finally {
       setAddingUser(false);
     }
@@ -362,6 +413,16 @@ const BusinessUnitEdit: React.FC = () => {
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
     setError('');
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setFieldErrors(prev => ({ ...prev, [name]: error }));
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFieldErrors(prev => ({ ...prev, [e.target.name]: '' }));
   };
 
   const handleConfigChange = (index: number, field: keyof BusinessUnitConfig, value: string) => {
@@ -433,6 +494,7 @@ const BusinessUnitEdit: React.FC = () => {
       if (isNew) {
         const result = await businessUnitService.create(payload);
         const created = result.data || result;
+        toast.success('Business unit created successfully');
         if (created?.id) {
           navigate(`/business-units/${created.id}`, { replace: true });
         } else {
@@ -440,6 +502,7 @@ const BusinessUnitEdit: React.FC = () => {
         }
       } else {
         await businessUnitService.update(id!, payload);
+        toast.success('Changes saved successfully');
         await fetchBusinessUnit();
         setEditing(false);
       }
@@ -485,7 +548,7 @@ const BusinessUnitEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/business-units')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/business-units')} aria-label="Back to business units">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -505,10 +568,10 @@ const BusinessUnitEdit: React.FC = () => {
         </div>
 
         {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
           {/* Section 1: Basic Information */}
           <CollapsibleSection title="Basic Information" description="Core business unit details" defaultOpen={true} forceOpen>
             <div className="space-y-4">
@@ -539,15 +602,23 @@ const BusinessUnitEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="code">Code {editing && '*'}</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="code"
-                      name="code"
-                      value={formData.code}
-                      onChange={handleChange}
-                      placeholder="Business unit code"
-                      required
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="code"
+                        name="code"
+                        value={formData.code}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Business unit code"
+                        className={fieldErrors.code ? 'border-destructive' : ''}
+                        required
+                      />
+                      {fieldErrors.code && (
+                        <p className="text-xs text-destructive">{fieldErrors.code}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyText value={formData.code} />
                   )}
@@ -671,14 +742,22 @@ const BusinessUnitEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="hotel_tel">Telephone</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="hotel_tel"
-                      name="hotel_tel"
-                      value={formData.hotel_tel}
-                      onChange={handleChange}
-                      placeholder="Hotel telephone"
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="hotel_tel"
+                        name="hotel_tel"
+                        value={formData.hotel_tel}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Hotel telephone"
+                        className={fieldErrors.hotel_tel ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.hotel_tel && (
+                        <p className="text-xs text-destructive">{fieldErrors.hotel_tel}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyText value={formData.hotel_tel} />
                   )}
@@ -686,14 +765,22 @@ const BusinessUnitEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="hotel_email">Email</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="hotel_email"
-                      name="hotel_email"
-                      value={formData.hotel_email}
-                      onChange={handleChange}
-                      placeholder="Hotel email"
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="hotel_email"
+                        name="hotel_email"
+                        value={formData.hotel_email}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Hotel email"
+                        className={fieldErrors.hotel_email ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.hotel_email && (
+                        <p className="text-xs text-destructive">{fieldErrors.hotel_email}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyText value={formData.hotel_email} />
                   )}
@@ -755,14 +842,22 @@ const BusinessUnitEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="company_tel">Telephone</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="company_tel"
-                      name="company_tel"
-                      value={formData.company_tel}
-                      onChange={handleChange}
-                      placeholder="Company telephone"
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="company_tel"
+                        name="company_tel"
+                        value={formData.company_tel}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Company telephone"
+                        className={fieldErrors.company_tel ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.company_tel && (
+                        <p className="text-xs text-destructive">{fieldErrors.company_tel}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyText value={formData.company_tel} />
                   )}
@@ -770,14 +865,22 @@ const BusinessUnitEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="company_email">Email</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="company_email"
-                      name="company_email"
-                      value={formData.company_email}
-                      onChange={handleChange}
-                      placeholder="Company email"
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="company_email"
+                        name="company_email"
+                        value={formData.company_email}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Company email"
+                        className={fieldErrors.company_email ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.company_email && (
+                        <p className="text-xs text-destructive">{fieldErrors.company_email}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyText value={formData.company_email} />
                   )}
@@ -1202,7 +1305,7 @@ const BusinessUnitEdit: React.FC = () => {
           {editing && (
             <div className="flex gap-3 pt-2 lg:col-span-2">
               <Button type="submit" size="sm" disabled={saving}>
-                <Save className="mr-2 h-4 w-4" />
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {saving ? 'Saving...' : isNew ? 'Create Business Unit' : 'Save Changes'}
               </Button>
               <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/business-units') : handleCancelEdit}>
@@ -1220,7 +1323,12 @@ const BusinessUnitEdit: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-base">Users</CardTitle>
-                  <CardDescription>Users assigned to this business unit ({buUsers.length})</CardDescription>
+                  <CardDescription>
+                    <span className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="success" className="text-[10px] px-1.5 py-0">{buUsers.filter(u => u.is_active).length} Active</Badge>
+                      <span className="text-muted-foreground text-xs">of {buUsers.length} total</span>
+                    </span>
+                  </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleOpenAddUser}>
                   <UserPlus className="mr-2 h-4 w-4" />
@@ -1278,9 +1386,14 @@ const BusinessUnitEdit: React.FC = () => {
                             </Badge>
                           </td>
                           <td className="px-4 py-2 text-center">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditUser(u)}>
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditUser(u)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteUser(u)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1334,6 +1447,16 @@ const BusinessUnitEdit: React.FC = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              <ConfirmDialog
+                open={deleteUser !== null}
+                onOpenChange={(open) => { if (!open) setDeleteUser(null); }}
+                title="Remove User"
+                description={`Are you sure you want to remove "${deleteUser ? ([deleteUser.firstname, deleteUser.middlename, deleteUser.lastname].filter(Boolean).join(' ') || deleteUser.username || deleteUser.email || 'this user') : ''}" from this business unit?`}
+                confirmText="Remove"
+                confirmVariant="destructive"
+                onConfirm={handleConfirmDeleteUser}
+              />
 
               {/* Add User Dialog */}
               <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
@@ -1394,7 +1517,7 @@ const BusinessUnitEdit: React.FC = () => {
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && !isNew && !!rawResponse && (
+      {process.env.NODE_ENV === 'development' && !isNew && !!(rawResponse || rawClusterUsersResponse) && (
         <Sheet>
           <SheetTrigger asChild>
             <Button
@@ -1408,23 +1531,55 @@ const BusinessUnitEdit: React.FC = () => {
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
+                API Responses
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">
-                {`GET /api-system/business-unit/${id}`}
-              </SheetDescription>
+              <SheetDescription className="text-xs sm:text-sm">Raw JSON responses from all endpoints</SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
+              <div className="flex border-b mb-3 sm:mb-4 overflow-x-auto">
+                <button
+                  onClick={() => setDebugTab('bu')}
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'bu' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                >
+                  Business Unit
+                </button>
+                <button
+                  onClick={() => setDebugTab('users')}
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'users' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                >
+                  Cluster Users
+                </button>
               </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
+
+              {debugTab === 'bu' && (
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/business-unit/${id}`}</span>
+                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
+                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
+                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[70vh]">
+                    {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
+                  </pre>
+                </div>
+              )}
+              {debugTab === 'users' && (
+                <div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/cluster/${formData.cluster_id}`}</span>
+                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawClusterUsersResponse)}>
+                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </Button>
+                  </div>
+                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[70vh]">
+                    {rawClusterUsersResponse ? JSON.stringify(rawClusterUsersResponse, null, 2) : 'No data'}
+                  </pre>
+                </div>
+              )}
             </div>
           </SheetContent>
         </Sheet>

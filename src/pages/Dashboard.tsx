@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import clusterService from '../services/clusterService';
+import businessUnitService from '../services/businessUnitService';
+import userService from '../services/userService';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -16,11 +19,45 @@ interface DashboardCard {
   gradient: string;
   iconColor: string;
   iconBg: string;
+  key: string;
+}
+
+interface Counts {
+  active: number | null;
+  total: number | null;
 }
 
 const Dashboard: React.FC = () => {
   const { loginResponse } = useAuth();
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
+  const [counts, setCounts] = useState<Record<string, Counts>>({
+    clusters: { active: null, total: null },
+    'business-units': { active: null, total: null },
+    users: { active: null, total: null },
+  });
+
+  useEffect(() => {
+    const fetchCounts = async (
+      key: string,
+      service: { getAll: (p: any) => Promise<any> },
+    ) => {
+      try {
+        const [totalRes, activeRes] = await Promise.all([
+          service.getAll({ page: 1, perpage: 1 }),
+          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { is_active: true } }) }),
+        ]);
+        const total = (totalRes as any).paginate?.total ?? (totalRes as any).total ?? 0;
+        const active = (activeRes as any).paginate?.total ?? (activeRes as any).total ?? 0;
+        setCounts(prev => ({ ...prev, [key]: { active, total } }));
+      } catch {
+        // leave as null
+      }
+    };
+
+    fetchCounts('clusters', clusterService);
+    fetchCounts('business-units', businessUnitService);
+    fetchCounts('users', userService);
+  }, []);
 
   const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -36,6 +73,7 @@ const Dashboard: React.FC = () => {
       gradient: 'from-blue-500/20 to-cyan-500/20',
       iconColor: 'text-blue-600',
       iconBg: 'bg-blue-500/10 border border-blue-500/20',
+      key: 'clusters',
     },
     {
       title: 'Business Units',
@@ -45,6 +83,7 @@ const Dashboard: React.FC = () => {
       gradient: 'from-purple-500/20 to-pink-500/20',
       iconColor: 'text-purple-600',
       iconBg: 'bg-purple-500/10 border border-purple-500/20',
+      key: 'business-units',
     },
     {
       title: 'User Management',
@@ -54,6 +93,7 @@ const Dashboard: React.FC = () => {
       gradient: 'from-emerald-500/20 to-teal-500/20',
       iconColor: 'text-emerald-600',
       iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
+      key: 'users',
     },
   ];
 
@@ -75,14 +115,31 @@ const Dashboard: React.FC = () => {
                 <Card className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer overflow-hidden relative">
                   <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                   <CardHeader className="relative">
-                    <div className={`w-12 h-12 rounded-xl ${card.iconBg} flex items-center justify-center mb-4 backdrop-blur-sm`}>
-                      <Icon className={`h-6 w-6 ${card.iconColor}`} />
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-xl ${card.iconBg} flex items-center justify-center backdrop-blur-sm`}>
+                        <Icon className={`h-6 w-6 ${card.iconColor}`} />
+                      </div>
+                      {counts[card.key]?.total !== null && (
+                        <div className="text-right leading-tight">
+                          <div className={`text-3xl font-bold text-green-600`}>
+                            {counts[card.key].active}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">active</div>
+                        </div>
+                      )}
                     </div>
                     <CardTitle className="flex items-center justify-between">
                       {card.title}
                       <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </CardTitle>
-                    <CardDescription>{card.description}</CardDescription>
+                    <CardDescription>
+                      {card.description}
+                      {counts[card.key]?.total !== null && (
+                        <span className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+                          {counts[card.key].total} total &middot; {(counts[card.key].total ?? 0) - (counts[card.key].active ?? 0)} inactive
+                        </span>
+                      )}
+                    </CardDescription>
                   </CardHeader>
                 </Card>
               </Link>

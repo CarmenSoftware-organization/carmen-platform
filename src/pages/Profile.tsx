@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -10,7 +11,9 @@ import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X, Building2 } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X, Building2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -34,7 +37,7 @@ interface ProfileFieldsData {
 }
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [profile, setProfile] = useState<User | null>(user);
   const [formData, setFormData] = useState<ProfileFormData>({
     alias_name: '',
@@ -62,6 +65,22 @@ const Profile: React.FC = () => {
     middlename: '',
     lastname: '',
     telephone: '',
+  });
+
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const hasProfileChanges = editingProfile && JSON.stringify({
+    alias_name: formData.alias_name,
+    firstname: formData.firstname,
+    middlename: formData.middlename,
+    lastname: formData.lastname,
+    telephone: formData.telephone,
+  }) !== JSON.stringify(savedProfileData);
+  useUnsavedChanges(hasProfileChanges);
+
+  useGlobalShortcuts({
+    onSave: () => { if (editingProfile && !loading) formRef.current?.requestSubmit(); },
+    onCancel: () => { if (editingProfile) handleCancelEdit(); },
   });
 
   const handleCopyJson = (data: unknown) => {
@@ -116,8 +135,9 @@ const Profile: React.FC = () => {
           telephone: info.telephone || '',
         });
         setBusinessUnits(Array.isArray(data.business_unit) ? data.business_unit : []);
-        // Update localStorage with fresh profile data
+        // Update localStorage and auth context with fresh profile data
         localStorage.setItem('user', JSON.stringify(data));
+        refreshUser();
       } catch (err) {
         console.error('Failed to fetch profile:', err);
       } finally {
@@ -126,7 +146,7 @@ const Profile: React.FC = () => {
     };
 
     fetchProfile();
-  }, []);
+  }, [refreshUser]);
 
   const getDisplayName = (): string => {
     if (profile?.firstname || profile?.lastname) {
@@ -193,11 +213,14 @@ const Profile: React.FC = () => {
       });
       setBusinessUnits(Array.isArray(data.business_unit) ? data.business_unit : []);
       localStorage.setItem('user', JSON.stringify(data));
+      refreshUser();
       setSuccess('Profile updated successfully!');
+      toast.success('Profile updated successfully');
       setEditingProfile(false);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to update profile: ' + (e.response?.data?.message || e.message));
+      toast.error('Failed to update profile', { description: e.response?.data?.message || e.message });
     } finally {
       setLoading(false);
     }
@@ -237,9 +260,11 @@ const Profile: React.FC = () => {
       });
       setShowPasswordDialog(false);
       setSuccess('Password changed successfully!');
+      toast.success('Password changed successfully');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to change password: ' + (e.response?.data?.message || e.message));
+      toast.error('Failed to change password', { description: e.response?.data?.message || e.message });
     } finally {
       setLoading(false);
     }
@@ -267,14 +292,14 @@ const Profile: React.FC = () => {
         </div>
 
         {success && (
-          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 p-3 rounded-md">
+          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 p-3 rounded-md" role="status" aria-live="polite">
             <CheckCircle2 className="h-4 w-4" />
             {success}
           </div>
         )}
 
         {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">
             {error}
           </div>
         )}
@@ -344,7 +369,7 @@ const Profile: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleProfileUpdate} className="space-y-4">
+              <form ref={formRef} onSubmit={handleProfileUpdate} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="alias_name">Alias Name</Label>
                   {editingProfile ? (
@@ -463,7 +488,7 @@ const Profile: React.FC = () => {
                 {editingProfile && (
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" size="sm" disabled={loading}>
-                      <Save className="mr-2 h-4 w-4" />
+                      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                       {loading ? 'Saving...' : 'Save Changes'}
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>
@@ -511,11 +536,9 @@ const Profile: React.FC = () => {
                           </td>
                           <td className="px-4 py-2">{bu.name}</td>
                           <td className="px-4 py-2">
-                            {bu.is_active ? (
-                              <Badge className="text-xs bg-green-100 text-green-700">Active</Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs">Inactive</Badge>
-                            )}
+                            <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
+                              {bu.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
                           </td>
                         </tr>
                       ))}
@@ -596,7 +619,7 @@ const Profile: React.FC = () => {
                   Cancel
                 </Button>
                 <Button type="submit" size="sm" disabled={loading}>
-                  <Lock className="mr-2 h-4 w-4" />
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
                   {loading ? 'Updating...' : 'Update Password'}
                 </Button>
               </DialogFooter>

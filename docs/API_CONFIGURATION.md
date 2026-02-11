@@ -1,305 +1,287 @@
 # API Configuration Guide
 
-This guide will help you configure the application to work with your specific API endpoints from the Swagger documentation at `https://dev.blueledgers.com:4001/swagger`.
+This guide explains how the application communicates with the Carmen API at `https://dev.blueledgers.com:4001`.
 
-## Important: Environment Variables
+## Environment Variables
 
-The application uses environment variables for API configuration. These are configured in the `.env` file:
+Configured in `.env`:
 
 ```env
 REACT_APP_API_BASE_URL=https://dev.blueledgers.com:4001
 REACT_APP_API_APP_ID=bc1ade0a-a189-48c4-9445-807a3ea38253
 ```
 
-**Key Configuration:**
-- **x-app-id Header**: All API requests automatically include the `x-app-id` header with the value from `REACT_APP_API_APP_ID`
-- **Base URL**: The API base URL is configured via `REACT_APP_API_BASE_URL`
+- **`REACT_APP_API_BASE_URL`** - Base URL for all API requests
+- **`REACT_APP_API_APP_ID`** - Sent as `x-app-id` header with every request
 
-You can modify these values in the `.env` file to match your environment.
+## API Base Configuration
 
-## Step 1: Check Your Swagger Documentation
+**File:** `src/services/api.ts`
 
-1. Access your Swagger UI at: `https://dev.blueledgers.com:4001/swagger`
-2. Note down the actual endpoint paths for:
-   - Authentication/Login
-   - Cluster management
-   - Business unit management
-   - User management
-
-## Step 2: Update Authentication Endpoint
-
-### File: `src/context/AuthContext.tsx`
-
-Find line 22 and update the login endpoint:
-
-```javascript
-// Current (line 22):
-const response = await api.post('/api/auth/login', credentials);
-
-// Update to match your API, for example:
-const response = await api.post('/auth/login', credentials);
-// or
-const response = await api.post('/api/v1/login', credentials);
+```typescript
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'https://dev.blueledgers.com:4001',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-app-id': process.env.REACT_APP_API_APP_ID || 'bc1ade0a-a189-48c4-9445-807a3ea38253',
+  },
+});
 ```
 
-Also check the response format. The app expects:
-```javascript
+### Request Headers
+
+All requests automatically include:
+- `Authorization: Bearer <token>` (added by request interceptor)
+- `x-app-id: <app-id>` (set in Axios defaults)
+- `Content-Type: application/json`
+
+## Current API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Service |
+|--------|----------|---------|
+| POST | `/api/auth/login` | `AuthContext.tsx` |
+
+### Clusters
+
+| Method | Endpoint | Service Method |
+|--------|----------|---------------|
+| GET | `/api-system/cluster?{queryParams}` | `clusterService.getAll()` |
+| GET | `/api-system/cluster/:id` | `clusterService.getById()` |
+| POST | `/api-system/cluster` | `clusterService.create()` |
+| PUT | `/api-system/cluster/:id` | `clusterService.update()` |
+| DELETE | `/api-system/cluster/:id` | `clusterService.delete()` |
+| GET | `/api-system/user/cluster/:clusterId` | `clusterService.getClusterUsers()` |
+
+### Business Units
+
+| Method | Endpoint | Service Method |
+|--------|----------|---------------|
+| GET | `/api-system/business-unit?{queryParams}` | `businessUnitService.getAll()` |
+| GET | `/api-system/business-unit/:id` | `businessUnitService.getById()` |
+| POST | `/api-system/business-unit` | `businessUnitService.create()` |
+| PUT | `/api-system/business-unit/:id` | `businessUnitService.update()` |
+| DELETE | `/api-system/business-unit/:id` | `businessUnitService.delete()` |
+| PATCH | `/api-system/user/business-unit/:id` | `businessUnitService.updateUserBusinessUnit()` |
+| POST | `/api-system/user/business-unit` | `businessUnitService.createUserBusinessUnit()` |
+
+### Users
+
+| Method | Endpoint | Service Method |
+|--------|----------|---------------|
+| GET | `/api-system/user?{queryParams}` | `userService.getAll()` |
+| GET | `/api-system/user/:id` | `userService.getById()` |
+| POST | `/api-system/user` | `userService.create()` |
+| PUT | `/api-system/user/:id` | `userService.update()` |
+| DELETE | `/api-system/user/:id` | `userService.delete()` |
+
+### User Profile
+
+| Method | Endpoint | Used In |
+|--------|----------|---------|
+| GET | `/api/user/profile` | `Profile.tsx` |
+| PUT | `/api/user/profile` | `Profile.tsx` (profile update) |
+| PATCH | `/api/user/profile/password` | `Profile.tsx` (password change) |
+
+## Query Parameters
+
+List endpoints use the `QueryParams` utility class (`src/utils/QueryParams.ts`) to build query strings:
+
+```
+GET /api-system/cluster?page=1&perpage=10&search=test&searchfields=name,code&sort=created_at:desc&advance={"where":{"is_active":true}}
+```
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `page` | number | Page number (1-indexed) | `1` |
+| `perpage` | number | Items per page (or `-1` for all) | `10` |
+| `search` | string | Search term | `hotel` |
+| `searchfields` | string | Comma-separated fields to search | `name,code` |
+| `filter` | JSON | Field-level filter object | `{"status":"active"}` |
+| `sort` | string | Sort field and direction | `created_at:desc` |
+| `advance` | JSON | Advanced filter with Prisma-like where clause | `{"where":{"is_active":true}}` |
+
+### Default Search Fields Per Entity
+
+| Entity | Search Fields |
+|--------|--------------|
+| Cluster | `name`, `code` |
+| Business Unit | `name`, `code`, `description` |
+| User | `username`, `email` |
+
+## Response Formats
+
+### List Response
+
+```typescript
 {
-  token: "jwt-token-here",
-  user: {
-    id: 1,
-    name: "User Name",
-    email: "user@email.com"
+  data: T[],
+  paginate: {
+    total: number,
+    page: number,
+    perpage: number,
+    totalPages?: number
   }
 }
 ```
 
-If your API returns a different format, update lines 23-26 accordingly.
+### Detail Response
 
-## Step 3: Update Service Endpoints
-
-### Cluster Service (`src/services/clusterService.ts`)
-
-Update the endpoints if they differ from `/api/clusters`:
-
-```javascript
-// Lines to check and update:
-getAll: async () => {
-  const response = await api.get('/api/clusters'); // Update this path
-  return response.data;
-},
-
-getById: async (id) => {
-  const response = await api.get(`/api/clusters/${id}`); // Update this path
-  return response.data;
-},
-
-create: async (clusterData) => {
-  const response = await api.post('/api/clusters', clusterData); // Update this path
-  return response.data;
-},
-
-update: async (id, clusterData) => {
-  const response = await api.put(`/api/clusters/${id}`, clusterData); // Update this path
-  return response.data;
-},
-
-delete: async (id) => {
-  const response = await api.delete(`/api/clusters/${id}`); // Update this path
-  return response.data;
-}
-```
-
-### Business Unit Service (`src/services/businessUnitService.ts`)
-
-Update all occurrences of `/api/business-units` to match your API:
-
-```javascript
-// Example alternatives:
-'/api/businessunits'
-'/api/v1/business-units'
-'/business-units'
-// etc.
-```
-
-### User Service (`src/services/userService.ts`)
-
-Update all occurrences of `/api/users` to match your API:
-
-```javascript
-// Example alternatives:
-'/api/v1/users'
-'/users'
-'/api/user'
-// etc.
-```
-
-## Step 4: Handle Different Response Formats
-
-The application currently handles two response formats:
-
-1. **Direct array**: `[{...}, {...}]`
-2. **Data wrapper**: `{ data: [{...}, {...}] }`
-
-If your API uses a different format, update the service methods. For example, if your API returns:
-
-```javascript
+```typescript
 {
-  success: true,
-  result: [{...}, {...}]
+  data: T
 }
 ```
 
-Update the service methods like this:
+### Mutation Response
 
-```javascript
-getAll: async () => {
-  const response = await api.get('/api/clusters');
-  return response.data.result; // Changed from response.data
-}
-```
-
-## Step 5: Update Request/Response Field Names
-
-Check if your API uses different field names. Common differences:
-
-### Example: If your API uses `status_code` instead of `status`:
-
-**In ClusterManagement.tsx** (and similar for other management pages):
-
-```javascript
-// Update formData state
-const [formData, setFormData] = useState({
-  name: '',
-  description: '',
-  status_code: 'active' // Changed from status
-});
-
-// Update form fields
-<select
-  id="status_code"
-  name="status_code"
-  value={formData.status_code}
-  onChange={handleChange}
->
-```
-
-### Example: If your API uses `_id` instead of `id`:
-
-Update all references from `cluster.id` to `cluster._id` in the management pages.
-
-## Step 6: Configure CORS (if needed)
-
-If you encounter CORS errors:
-
-1. Contact your backend team to add your development URL to the CORS whitelist
-2. The proxy in `package.json` can help during development:
-
-```json
+```typescript
 {
-  "proxy": "https://dev.blueledgers.com:4001"
+  data: {
+    id: string
+  }
 }
 ```
 
-## Step 7: SSL Certificate Handling
+### Login Response
 
-The app currently bypasses SSL verification for development. This is configured in `src/services/api.ts`:
-
-```javascript
-httpsAgent: process.env.NODE_ENV === 'development' ? {
-  rejectUnauthorized: false
-} : undefined
+```typescript
+{
+  access_token: string,    // or "token"
+  user?: {
+    id: string,
+    email: string,
+    name?: string,
+    platform_role?: string
+  },
+  data?: User              // alternative user field
+}
 ```
 
-**For Production**: Remove this or ensure proper SSL certificates are in place.
+## Service Layer Pattern
 
-## Common API Endpoint Patterns
+All services follow the same CRUD pattern using `QueryParams`:
 
-### Pattern 1: RESTful with version
-```
-GET    /api/v1/clusters
-POST   /api/v1/clusters
-GET    /api/v1/clusters/:id
-PUT    /api/v1/clusters/:id
-DELETE /api/v1/clusters/:id
-```
-
-### Pattern 2: Simple RESTful
-```
-GET    /clusters
-POST   /clusters
-GET    /clusters/:id
-PUT    /clusters/:id
-DELETE /clusters/:id
-```
-
-### Pattern 3: Action-based
-```
-GET    /cluster/list
-POST   /cluster/create
-GET    /cluster/get/:id
-POST   /cluster/update/:id
-POST   /cluster/delete/:id
-```
-
-If your API follows Pattern 3, you'll need to update both the HTTP methods and paths in the service files.
-
-## Testing Your Configuration
-
-1. Start the development server:
-```bash
-npm start
-```
-
-2. Open browser console (F12)
-
-3. Try to login and watch for network requests
-
-4. Check the actual API calls being made and verify they match your Swagger documentation
-
-5. Look for error messages that indicate incorrect endpoints or data formats
-
-## Example: Full Service Update for Non-Standard API
-
-If your API uses this structure:
-- Base: `/api/v1`
-- Methods: `list`, `create`, `get`, `update`, `remove`
-- Response: `{ success: true, data: {...} }`
-
-Update `clusterService.ts`:
-
-```javascript
+```typescript
+// src/services/clusterService.ts
 import api from './api';
+import QueryParams from '../utils/QueryParams';
+import type { PaginateParams, Cluster, ApiListResponse } from '../types';
 
-const BASE_URL = '/api/v1/cluster';
+const defaultSearchFields = ['name', 'code'];
 
 const clusterService = {
-  getAll: async () => {
-    const response = await api.get(`${BASE_URL}/list`);
-    return response.data.data;
+  getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<Cluster>> => {
+    const q = new QueryParams(
+      paginate.page, paginate.perpage, paginate.search,
+      paginate.searchfields, defaultSearchFields,
+      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter)
+        ? paginate.filter as Record<string, unknown> : {},
+      paginate.sort, paginate.advance,
+    );
+    const response = await api.get(`/api-system/cluster?${q.toQueryString()}`);
+    return response.data;
   },
 
-  getById: async (id) => {
-    const response = await api.get(`${BASE_URL}/get/${id}`);
-    return response.data.data;
+  getById: async (id: string) => {
+    const response = await api.get(`/api-system/cluster/${id}`);
+    return response.data;
   },
 
-  create: async (clusterData) => {
-    const response = await api.post(`${BASE_URL}/create`, clusterData);
-    return response.data.data;
+  create: async (data: Partial<Cluster>) => {
+    const response = await api.post('/api-system/cluster', data);
+    return response.data;
   },
 
-  update: async (id, clusterData) => {
-    const response = await api.post(`${BASE_URL}/update/${id}`, clusterData);
-    return response.data.data;
+  update: async (id: string, data: Partial<Cluster>) => {
+    const response = await api.put(`/api-system/cluster/${id}`, data);
+    return response.data;
   },
 
-  delete: async (id) => {
-    const response = await api.post(`${BASE_URL}/remove/${id}`);
-    return response.data.data;
-  }
+  delete: async (id: string) => {
+    const response = await api.delete(`/api-system/cluster/${id}`);
+    return response.data;
+  },
+
+  getClusterUsers: async (clusterId: string) => {
+    const response = await api.get(`/api-system/user/cluster/${clusterId}`);
+    return response.data;
+  },
 };
 
 export default clusterService;
 ```
 
-## Need Help?
+## Updating Endpoints
 
-1. Check your Swagger documentation for exact endpoint paths
-2. Use browser DevTools Network tab to see actual requests/responses
-3. Verify authentication token is being sent in requests
-4. Check API server logs for errors
-5. Ensure CORS is properly configured on the API server
+If your API uses different endpoint paths, update these service files:
 
-## Quick Checklist
+| File | Current Base Path |
+|------|-------------------|
+| `src/context/AuthContext.tsx` | `/api/auth/login` |
+| `src/services/clusterService.ts` | `/api-system/cluster` |
+| `src/services/businessUnitService.ts` | `/api-system/business-unit` |
+| `src/services/userService.ts` | `/api-system/user` |
 
-- [ ] Updated login endpoint in `AuthContext.tsx`
-- [ ] Verified authentication response format
-- [ ] Updated cluster endpoints in `clusterService.ts`
-- [ ] Updated business unit endpoints in `businessUnitService.ts`
-- [ ] Updated user endpoints in `userService.ts`
-- [ ] Tested login functionality
-- [ ] Tested data fetching
-- [ ] Tested create, update, delete operations
-- [ ] Verified error handling
-- [ ] Checked CORS configuration
+## Advanced Filter Examples
+
+### Filter by status (boolean)
+
+```typescript
+// Single status filter
+const advance = JSON.stringify({ where: { is_active: true } });
+setPaginate(prev => ({ ...prev, advance }));
+```
+
+### Filter by role (enum, multiple values)
+
+```typescript
+// Multiple role filter
+const advance = JSON.stringify({
+  where: {
+    platform_role: { in: ['admin', 'user'] },
+    is_active: true
+  }
+});
+```
+
+### Filter by relation field
+
+```typescript
+// Sort by related table field (e.g. cluster name for BU)
+const sort = 'tb_cluster.name:asc';
+```
+
+## SSL Certificate Handling
+
+In development, SSL verification is bypassed:
+
+```typescript
+httpsAgent: process.env.NODE_ENV === 'development'
+  ? { rejectUnauthorized: false }
+  : undefined
+```
+
+**Production**: Remove this or use proper SSL certificates.
+
+## CORS Configuration
+
+If encountering CORS errors, ensure the API server allows:
+- Origin: `http://localhost:3000` (development)
+- Headers: `Authorization`, `x-app-id`, `Content-Type`
+- Methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+
+The `package.json` proxy is set to `https://dev.blueledgers.com:4001` for development.
+
+## Testing Configuration
+
+1. Start the dev server: `bun start`
+2. Open browser DevTools (F12) > Network tab
+3. Login and verify the token is sent in subsequent requests
+4. Check API calls match the endpoints listed above
+5. Use the dev-only debug Sheet (amber button, bottom-right) to inspect raw responses
+
+## Swagger Documentation
+
+API documentation: `https://dev.blueledgers.com:4001/swagger`

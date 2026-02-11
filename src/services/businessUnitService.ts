@@ -49,6 +49,11 @@ const businessUnitService = {
     const response = await api.post('/api-system/user/business-unit', data);
     return response.data;
   },
+
+  deleteUserBusinessUnit: async (id: string) => {
+    const response = await api.delete(`/api-system/user/business-unit/${id}`);
+    return response.data;
+  },
 };
 
 export default businessUnitService;

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue } from '../types';
 
@@ -47,9 +47,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (storedLoginResponse) {
         setLoginResponse(JSON.parse(storedLoginResponse));
       }
+      // Fetch fresh profile to get firstname/middlename/lastname
+      fetchProfile();
     }
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/api/user/profile');
+      const data = response.data.data || response.data;
+      const info = data.user_info || data;
+      const merged = {
+        ...data,
+        firstname: info.firstname,
+        middlename: info.middlename,
+        lastname: info.lastname,
+        telephone: info.telephone,
+      };
+      localStorage.setItem('user', JSON.stringify(merged));
+      setUser(merged);
+    } catch {
+      // Profile fetch failed silently — user data from login is still available
+    }
+  };
 
   const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
     try {
@@ -84,6 +106,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       setLoginResponse(response.data);
 
+      // Fetch full profile to get firstname/middlename/lastname
+      fetchProfile();
+
       return { success: true };
     } catch (error: unknown) {
       console.error('Login error:', error);
@@ -102,6 +127,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
     }
   };
+
+  const refreshUser = useCallback(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+  }, []);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -123,6 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     login,
     logout,
+    refreshUser,
     isAuthenticated: !!user,
     loading,
     loginResponse,
