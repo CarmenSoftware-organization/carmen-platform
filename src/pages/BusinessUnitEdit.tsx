@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
 
 const BU_ROLES = ['admin', 'user'] as const;
@@ -530,13 +531,103 @@ const BusinessUnitEdit: React.FC = () => {
   };
 
   if (loading) {
+    const FieldSkeleton = () => (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    );
+    const SectionSkeleton: React.FC<{ fields?: number; twoCol?: boolean }> = ({ fields = 4, twoCol = false }) => (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-4 w-52 mt-1" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {twoCol ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {Array.from({ length: fields }).map((_, i) => (
+                <FieldSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            Array.from({ length: fields }).map((_, i) => (
+              <FieldSkeleton key={i} />
+            ))
+          )}
+        </CardContent>
+      </Card>
+    );
+
     return (
       <Layout>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{isNew ? 'Add Business Unit' : 'Business Unit Details'}</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Loading...</p>
+        <div className="space-y-4 sm:space-y-6">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Skeleton className="h-9 w-9 rounded-md" />
+            <div className="flex-1">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-64 mt-2" />
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+            {/* Basic Information */}
+            <SectionSkeleton fields={5} />
+            {/* Hotel Information */}
+            <SectionSkeleton fields={5} />
+            {/* Company Information */}
+            <SectionSkeleton fields={5} />
+            {/* Tax Information */}
+            <SectionSkeleton fields={2} twoCol />
+            {/* Date/Time Formats */}
+            <SectionSkeleton fields={6} twoCol />
+            {/* Number Formats */}
+            <SectionSkeleton fields={4} twoCol />
+            {/* Calculation Settings */}
+            <SectionSkeleton fields={2} twoCol />
+            {/* Configuration */}
+            <SectionSkeleton fields={3} />
+            {/* Database Connection */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-56 mt-1" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-28 mb-2" />
+                <Skeleton className="h-[4.5rem] w-full" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Users Card */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-4 w-36 mt-1" />
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <div className="w-full">
+                  <div className="border-b">
+                    <div className="flex gap-4 px-4 py-3">
+                      {Array.from({ length: 7 }).map((_, i) => (
+                        <Skeleton key={i} className="h-4 flex-1" />
+                      ))}
+                    </div>
+                  </div>
+                  {Array.from({ length: 3 }).map((_, rowIdx) => (
+                    <div key={rowIdx} className="flex gap-4 px-4 py-3 border-b last:border-0">
+                      {Array.from({ length: 7 }).map((_, colIdx) => (
+                        <Skeleton key={colIdx} className="h-4 flex-1" />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );

@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { Skeleton } from '../components/ui/skeleton';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -273,11 +274,76 @@ const Profile: React.FC = () => {
   if (fetchingProfile) {
     return (
       <Layout>
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Loading profile...</p>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage your account settings and preferences</p>
           </div>
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
+            {/* Profile Overview Skeleton */}
+            <Card className="md:col-span-1">
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+              </CardHeader>
+              <CardContent className="flex flex-col items-center space-y-4">
+                <Skeleton className="h-24 w-24 rounded-full" />
+                <div className="space-y-2 w-full flex flex-col items-center">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <div className="w-full pt-4 border-t space-y-3">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {/* Profile Information Skeleton */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-52 mt-1" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+          {/* Business Units Skeleton */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-56 mt-1" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="border">
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                        </div>
+                        <Skeleton className="h-5 w-14 rounded-full" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -515,35 +581,26 @@ const Profile: React.FC = () => {
                   : 'No business units assigned'}
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
               {businessUnits.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No business units found.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="text-left font-medium px-4 py-2">Code</th>
-                        <th className="text-left font-medium px-4 py-2">Name</th>
-                        <th className="text-left font-medium px-4 py-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {businessUnits.map((bu) => (
-                        <tr key={bu.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-2">
-                            <Badge variant="outline" className="text-xs">{bu.code}</Badge>
-                          </td>
-                          <td className="px-4 py-2">{bu.name}</td>
-                          <td className="px-4 py-2">
-                            <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
-                              {bu.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {businessUnits.map((bu) => (
+                    <Card key={bu.id} className="border">
+                      <CardContent className="p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-sm">{bu.name || '-'}</div>
+                            <Badge variant="outline" className="text-xs mt-1">{bu.code}</Badge>
+                          </div>
+                          <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-[10px]">
+                            {bu.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </CardContent>

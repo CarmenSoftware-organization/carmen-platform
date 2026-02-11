@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
+import { Skeleton } from '../components/ui/skeleton';
+import { TableSkeleton } from '../components/TableSkeleton';
 import type { BusinessUnit, User } from '../types';
 
 interface ClusterFormData {
@@ -278,10 +280,56 @@ const ClusterEdit: React.FC = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{isNew ? 'Add Cluster' : 'Edit Cluster'}</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Loading...</p>
+        <div className="space-y-4 sm:space-y-6">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Skeleton className="h-9 w-9 rounded-md" />
+            <div className="flex-1">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-4 w-56 mt-2" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+            {/* Cluster Details Card */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-48 mt-1" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className="space-y-6">
+              {/* Business Units Card */}
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-40 mt-1" />
+                </CardHeader>
+                <CardContent className="p-0">
+                  <TableSkeleton columns={4} rows={3} />
+                </CardContent>
+              </Card>
+
+              {/* Users Card */}
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-36 mt-1" />
+                </CardHeader>
+                <CardContent className="p-0">
+                  <TableSkeleton columns={4} rows={3} />
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </Layout>

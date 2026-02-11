@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Network, Building2, Users, ArrowRight, type LucideIcon } from 'lucide-react';
+import { Network, Building2, Users, ArrowRight, Loader2, type LucideIcon } from 'lucide-react';
 import { Ripple } from '../components/magicui/ripple';
 import { RippleButton } from '../components/magicui/ripple-button';
 
@@ -29,7 +29,13 @@ const Landing: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #ede9fe 100%)' }}
       >
-        <div className="text-blue-600 text-lg">Loading...</div>
+        <div className="text-center space-y-4">
+          <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center shadow-md shadow-blue-500/20 mx-auto">
+            <span className="text-white font-bold text-xl">C</span>
+          </div>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+          <p className="text-sm text-blue-400">Loading...</p>
+        </div>
       </div>
     );
   }
