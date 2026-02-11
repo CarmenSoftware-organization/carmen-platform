@@ -13,6 +13,7 @@ Carmen Platform is a React + TypeScript admin dashboard for managing clusters, b
 - **Routing:** react-router-dom v6
 - **HTTP:** Axios with interceptors (`src/services/api.ts`)
 - **Icons:** lucide-react (tree-shakeable)
+- **Toast:** sonner (Sonner toast library, v2.0.7+)
 - **Backend API base:** `https://dev.blueledgers.com:4001`
 
 ---
@@ -25,11 +26,15 @@ src/
     Layout.tsx                  # App shell: sidebar state, mobile header, main wrapper
     Sidebar.tsx                 # Collapsible sidebar (desktop) + Sheet drawer (mobile)
     PrivateRoute.tsx            # Auth guard with role-based access
+    TableSkeleton.tsx           # Table skeleton loader for initial data loading
+    EmptyState.tsx              # Empty state component (no data after load)
+    KeyboardShortcuts.tsx       # Keyboard shortcuts help dialog + useGlobalShortcuts hook
     ui/                         # shadcn/ui primitives (do NOT modify without reason)
       avatar.tsx                badge.tsx              button.tsx
-      card.tsx                  data-table.tsx         dialog.tsx
-      dropdown-menu.tsx         input.tsx              label.tsx
-      separator.tsx             sheet.tsx              table.tsx
+      card.tsx                  confirm-dialog.tsx     data-table.tsx
+      dialog.tsx                dropdown-menu.tsx      input.tsx
+      label.tsx                 separator.tsx          sheet.tsx
+      skeleton.tsx              table.tsx              toaster.tsx
       tooltip.tsx
     magicui/                    # Magic UI effects (ripple)
   pages/
@@ -52,6 +57,11 @@ src/
     index.ts                    # All shared TypeScript interfaces
   utils/
     QueryParams.ts              # Query string builder for API calls
+    csvExport.ts                # CSV generation and download utilities
+    validation.ts               # Field validation (email, code, phone, username)
+    errorParser.ts              # API error parsing with field-level errors
+  hooks/
+    useUnsavedChanges.ts        # Browser warning on unsaved form changes
   context/
     AuthContext.tsx              # Auth state (user, token, roles)
   lib/
@@ -778,6 +788,505 @@ const handleCopyJson = (data: unknown) => {
 
 ---
 
+## Loading States & Empty States Pattern
+
+Use distinct components for initial loading, data refresh, and empty results.
+
+### When to Use Each
+
+| State | Component | When |
+|-------|-----------|------|
+| **Initial load** | `<TableSkeleton>` | `loading && items.length === 0` (first fetch) |
+| **Data refresh** | Loading overlay | `loading && items.length > 0` (re-fetch with existing data) |
+| **No data** | `<EmptyState>` | `!loading && items.length === 0` (successful load, zero results) |
+
+### TableSkeleton (Initial Load)
+
+```tsx
+import { TableSkeleton } from '../components/TableSkeleton';
+
+// In Management page CardContent:
+<CardContent className="p-0">
+  {loading && items.length === 0 ? (
+    <TableSkeleton columns={5} rows={5} />
+  ) : !loading && items.length === 0 ? (
+    <EmptyState
+      icon={Network}
+      title="No clusters found"
+      description="Create your first cluster to get started."
+      action={
+        <Button size="sm" onClick={() => navigate('/clusters/new')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Cluster
+        </Button>
+      }
+    />
+  ) : (
+    <div className="relative">
+      {loading && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      )}
+      <DataTable ... />
+    </div>
+  )}
+</CardContent>
+```
+
+### TableSkeleton Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `columns` | `number` | `5` | Number of skeleton columns |
+| `rows` | `number` | `5` | Number of skeleton rows |
+
+### EmptyState Props
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `icon` | `LucideIcon` | Yes | Icon displayed in circle |
+| `title` | `string` | Yes | Main message |
+| `description` | `string` | No | Secondary message |
+| `action` | `ReactNode` | No | Action button (e.g., "Add New") |
+
+```tsx
+import { EmptyState } from '../components/EmptyState';
+import { Network } from 'lucide-react';
+
+<EmptyState
+  icon={Network}
+  title="No clusters found"
+  description="Create your first cluster to get started."
+  action={
+    <Button size="sm" onClick={() => navigate('/clusters/new')}>
+      <Plus className="mr-2 h-4 w-4" />
+      Add Cluster
+    </Button>
+  }
+/>
+```
+
+---
+
+## Toast Notifications (Sonner)
+
+Use toast notifications for all user feedback. **Never use browser `alert()`.**
+
+### Setup
+
+Already configured in `App.tsx` via `<Toaster />` from `src/components/ui/toaster.tsx`. Config: `position="top-right"`, `duration={4000}`, `richColors`, `closeButton`.
+
+### Usage
+
+```tsx
+import { toast } from 'sonner';
+
+// Success (after create, update, delete)
+toast.success('Cluster created successfully');
+
+// Error (in catch blocks)
+toast.error('Failed to create cluster', { description: 'Server returned 500' });
+
+// Info (general notifications)
+toast.info('Changes saved as draft');
+
+// Warning
+toast.warning('This action cannot be undone');
+```
+
+### When to Use
+
+| Scenario | Toast Type | Example |
+|----------|-----------|---------|
+| Successful CRUD | `toast.success()` | `'Cluster created successfully'` |
+| API error in catch | `toast.error()` | `'Failed to save: ' + message` |
+| Non-critical info | `toast.info()` | `'Exported 25 records to CSV'` |
+| Copy to clipboard | `toast.success()` | `'Copied to clipboard'` |
+| Delete confirmation result | `toast.success()` | `'Cluster deleted'` |
+
+### Notes
+
+- **Never** use `alert()`, `window.alert()`, or `window.confirm()` anywhere
+- Toast messages should be concise (under 60 characters)
+- Use `description` option for additional context on errors
+- Toasts auto-dismiss after 4 seconds; users can close earlier via close button
+
+---
+
+## Confirm Dialog Pattern
+
+Use `<ConfirmDialog>` for all destructive or irreversible actions. **Never use `window.confirm()`.**
+
+### Usage
+
+```tsx
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { toast } from 'sonner';
+
+// State
+const [deleteId, setDeleteId] = useState<string | null>(null);
+
+// Trigger (in actions dropdown)
+<DropdownMenuItem
+  onClick={() => setDeleteId(row.original.id)}
+  className="text-destructive focus:text-destructive"
+>
+  <Trash2 className="mr-2 h-4 w-4" /> Delete
+</DropdownMenuItem>
+
+// Dialog (at page bottom, before debug sheet)
+<ConfirmDialog
+  open={!!deleteId}
+  onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+  title="Delete Cluster"
+  description="Are you sure you want to delete this cluster? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmVariant="destructive"
+  onConfirm={async () => {
+    await clusterService.delete(deleteId!);
+    setDeleteId(null);
+    toast.success('Cluster deleted successfully');
+    fetchData(); // Refresh list
+  }}
+/>
+```
+
+### ConfirmDialog Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `open` | `boolean` | - | Controls dialog visibility |
+| `onOpenChange` | `(open: boolean) => void` | - | Called when dialog should close |
+| `title` | `string` | - | Dialog title |
+| `description` | `string` | - | Explanation of the action |
+| `confirmText` | `string` | `'Confirm'` | Confirm button label |
+| `cancelText` | `string` | `'Cancel'` | Cancel button label |
+| `confirmVariant` | `'default' \| 'destructive'` | `'default'` | Confirm button style |
+| `onConfirm` | `() => void \| Promise<void>` | - | Async-safe handler; shows loading spinner automatically |
+
+### Notes
+
+- `onConfirm` supports async functions; the dialog shows a `Loader2` spinner and disables buttons during execution
+- Dialog cannot be closed while `onConfirm` is executing
+- Always wrap API calls in `onConfirm` with error handling and toast feedback
+- Use `confirmVariant="destructive"` for delete operations
+
+---
+
+## Keyboard Shortcuts
+
+All pages should integrate keyboard shortcuts via `useGlobalShortcuts`.
+
+### Available Shortcuts
+
+| Shortcut | Action | Context |
+|----------|--------|---------|
+| `Ctrl/⌘ + S` | Save changes | Edit pages (when editing) |
+| `Ctrl/⌘ + K` | Focus search input | Management pages |
+| `Escape` | Cancel edit / Close dialog | Edit pages |
+| `?` | Toggle keyboard shortcuts help | All pages (outside inputs) |
+
+### Usage in Management Pages
+
+```tsx
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+
+// Inside component:
+const searchInputRef = useRef<HTMLInputElement>(null);
+
+useGlobalShortcuts({
+  onSearch: () => searchInputRef.current?.focus(),
+});
+
+// Add ref to search input:
+<Input ref={searchInputRef} placeholder="Search..." ... />
+```
+
+### Usage in Edit Pages
+
+```tsx
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+
+useGlobalShortcuts({
+  onSave: () => { if (editing) handleSubmit(); },
+  onCancel: () => { if (editing) handleCancelEdit(); },
+});
+```
+
+### Help Dialog
+
+`<KeyboardShortcutsHelp />` is already included in `Layout.tsx`. Users toggle it with `?`. No additional setup needed per page.
+
+### Notes
+
+- Platform-aware: shows `⌘` on Mac, `Ctrl` on Windows/Linux
+- `?` shortcut is ignored when focus is on input/textarea fields
+- Callbacks object should be stable (wrap handlers before passing)
+
+---
+
+## Unsaved Changes Warning
+
+Warn users before they accidentally lose form changes by closing the tab/window.
+
+### Usage
+
+```tsx
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+
+// In Edit page component:
+const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+useUnsavedChanges(hasChanges);
+```
+
+### How It Works
+
+- Listens to browser `beforeunload` event
+- Shows native browser confirmation dialog when `hasChanges` is `true` and user tries to close/refresh
+- Automatically cleans up listener when component unmounts or `hasChanges` becomes `false`
+
+### Notes
+
+- Add to **all** Edit pages
+- Compare `formData` vs `savedFormData` to detect changes
+- The `savedFormData` is set when entering edit mode (via `handleEditToggle`)
+- For new items (`isNew`), compare against `initialFormData`
+
+---
+
+## Field Validation Pattern
+
+Validate form fields in real-time on blur with inline error messages.
+
+### Setup
+
+```tsx
+import { validateField } from '../utils/validation';
+
+// State
+const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+```
+
+### onChange - Clear Error
+
+```tsx
+const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const { name, value, type } = e.target;
+  const checked = (e.target as HTMLInputElement).checked;
+  setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  // Clear error when user starts typing
+  if (fieldErrors[name]) {
+    setFieldErrors(prev => ({ ...prev, [name]: '' }));
+  }
+};
+```
+
+### onBlur - Validate
+
+```tsx
+const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const { name, value } = e.target;
+  const error = validateField(name, value);
+  if (error) {
+    setFieldErrors(prev => ({ ...prev, [name]: error }));
+  }
+};
+```
+
+### Field with Error Display
+
+```tsx
+<div className="space-y-2">
+  <Label htmlFor="email">Email {editing && '*'}</Label>
+  {editing ? (
+    <>
+      <Input
+        type="email"
+        id="email"
+        name="email"
+        value={formData.email}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        placeholder="user@example.com"
+        className={fieldErrors.email ? 'border-destructive' : ''}
+        required
+      />
+      {fieldErrors.email && (
+        <p className="text-xs text-destructive">{fieldErrors.email}</p>
+      )}
+    </>
+  ) : (
+    <ReadOnlyText value={formData.email} />
+  )}
+</div>
+```
+
+### Available Validators
+
+| Function | Field Names | Validation |
+|----------|-------------|------------|
+| `isValidEmail(email)` | `email`, `hotel_email`, `company_email` | Standard email format |
+| `isValidCode(code)` | `code` | 2-20 alphanumeric chars, `_`, `-` |
+| `isValidPhone(phone)` | `telephone`, `hotel_tel`, `company_tel` | 8-20 digits with optional `+`, spaces, `-`, `()` |
+| `validateField(name, value)` | Any of above | Auto-detects field type by name, returns error string or `''` |
+
+### Pre-submit Validation
+
+```tsx
+const handleSubmit = async (e?: React.FormEvent) => {
+  e?.preventDefault();
+  // Validate all required fields before submit
+  const errors: Record<string, string> = {};
+  ['code', 'email'].forEach(field => {
+    const error = validateField(field, formData[field as keyof typeof formData] as string);
+    if (error) errors[field] = error;
+  });
+  if (Object.keys(errors).length > 0) {
+    setFieldErrors(errors);
+    return;
+  }
+  // Proceed with save...
+};
+```
+
+---
+
+## CSV Export Pattern
+
+Add CSV export to all Management pages.
+
+### Usage
+
+```tsx
+import { generateCSV, downloadCSV } from '../utils/csvExport';
+import { toast } from 'sonner';
+import { Download } from 'lucide-react';
+
+const handleExport = () => {
+  const csv = generateCSV(items, [
+    { key: 'code', label: 'Code' },
+    { key: 'name', label: 'Name' },
+    { key: 'is_active', label: 'Status' },
+    { key: 'created_at', label: 'Created' },
+  ]);
+  downloadCSV(csv, 'clusters.csv');
+  toast.success(`Exported ${items.length} records to CSV`);
+};
+```
+
+### Button Placement
+
+Place in the header row, next to the "Add" button:
+
+```tsx
+<div className="flex items-center gap-3">
+  <Button variant="outline" size="sm" onClick={handleExport} disabled={items.length === 0}>
+    <Download className="mr-2 h-4 w-4" />
+    Export CSV
+  </Button>
+  <Button size="sm" onClick={() => navigate('/clusters/new')}>
+    <Plus className="mr-2 h-4 w-4" />
+    Add Cluster
+  </Button>
+</div>
+```
+
+### API
+
+**`generateCSV<T>(data: T[], columns: { key: keyof T; label: string }[]): string`**
+- Generates a CSV string with headers and properly escaped values
+- Handles commas, quotes, and newlines in values
+
+**`downloadCSV(csv: string, filename: string): void`**
+- Creates a Blob and triggers browser download
+- Automatically revokes the object URL after download
+
+---
+
+## Error Parsing Pattern
+
+Use `parseApiError` in all catch blocks for consistent error extraction.
+
+### Usage
+
+```tsx
+import { parseApiError } from '../utils/errorParser';
+import { toast } from 'sonner';
+
+try {
+  await service.create(formData);
+  toast.success('Item created successfully');
+} catch (err) {
+  const { message, fields } = parseApiError(err);
+  toast.error('Failed to create item', { description: message });
+  if (fields) {
+    setFieldErrors(fields); // Set field-level validation errors from API
+  }
+}
+```
+
+### Return Type
+
+```tsx
+interface ParsedError {
+  message: string;                    // Human-readable error message
+  fields?: Record<string, string>;    // Field-name → error-message map (from API validation errors)
+}
+```
+
+### How It Works
+
+- Extracts `message` from `response.data.message`, `response.data.error`, or `error.message`
+- Falls back to `'An unexpected error occurred'` if nothing found
+- Parses `response.data.errors` (field-level validation) into a flat `Record<string, string>`
+
+### Notes
+
+- Replaces the old manual pattern: `e.response?.data?.message || e.message`
+- When `fields` is returned, set them as `fieldErrors` for inline display
+- Always pair with `toast.error()` for the general message
+
+---
+
+## Loading Button States
+
+Show spinner on all async action buttons to prevent double-submission.
+
+### Pattern
+
+```tsx
+import { Loader2 } from 'lucide-react';
+
+// Save button
+<Button type="submit" size="sm" disabled={saving}>
+  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+  {saving ? 'Saving...' : 'Save Changes'}
+</Button>
+
+// Delete button (in dialog)
+<Button variant="destructive" size="sm" disabled={deleting}>
+  {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+  {deleting ? 'Deleting...' : 'Delete'}
+</Button>
+
+// Any async action
+<Button variant="outline" size="sm" disabled={adding}>
+  {adding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+  {adding ? 'Adding...' : 'Add User'}
+</Button>
+```
+
+### Notes
+
+- Always `disabled={loading}` to prevent double-clicks
+- Replace the static icon with `Loader2 animate-spin` during loading
+- Use descriptive state names: `saving`, `deleting`, `adding`, `loading`
+- `ConfirmDialog` handles its own loading state automatically (no extra work needed)
+
+---
+
 ## Service Layer Pattern
 
 All services follow identical CRUD structure:
@@ -924,6 +1433,9 @@ When adding fields to a type, add them as **optional** with `?` unless the API a
 | `Network` | Cluster nav/icon |
 | `Users` | Users nav/icon |
 | `LayoutDashboard` | Dashboard nav |
+| `Download` | CSV export button |
+| `Loader2` | Loading spinner (always with `animate-spin`) |
+| `Keyboard` | Keyboard shortcuts (help dialog) |
 
 **Pattern:** Icons in buttons use `className="mr-2 h-4 w-4"`. Standalone icon buttons use `size="icon"`.
 
@@ -931,23 +1443,29 @@ When adding fields to a type, add them as **optional** with `?` unless the API a
 
 ## Error Handling
 
+**Preferred:** Use `parseApiError()` + `toast.error()` (see Error Parsing Pattern section above).
+
 ```tsx
-// API error extraction pattern
+import { parseApiError } from '../utils/errorParser';
+import { toast } from 'sonner';
+
+// Modern pattern (preferred)
 try {
   const data = await service.operation();
-} catch (err: unknown) {
-  const e = err as { response?: { data?: { message?: string } }; message?: string };
-  setError('Failed to load: ' + (e.response?.data?.message || e.message));
+  toast.success('Operation completed');
+} catch (err) {
+  const { message, fields } = parseApiError(err);
+  toast.error('Failed to load', { description: message });
+  if (fields) setFieldErrors(fields);
 }
 
-// Error display
+// Inline error display (for persistent form errors)
 {error && (
   <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
 )}
-
-// Alert for dialog errors
-alert('Failed to update: ' + (e.response?.data?.message || e.message));
 ```
+
+**Never** use `alert()` or `window.alert()`. Use `toast.error()` instead.
 
 ---
 
@@ -1028,3 +1546,11 @@ const fmt = (v: string | undefined) => {
 13. **Debug sheets** are dev-only (`process.env.NODE_ENV === 'development'`). Always store raw API responses.
 14. **Column definitions** must be wrapped in `useMemo` with proper dependencies.
 15. **Form handleChange** uses a single generic handler for text/checkbox/select via `e.target.name`.
+16. **Always use toast notifications** (`toast.success()`, `toast.error()` from `sonner`) instead of browser `alert()` or `window.confirm()`. Use `<ConfirmDialog>` for confirmations.
+17. **Show skeleton loaders** during initial data fetch (`loading && items.length === 0` → `<TableSkeleton>`). Show loading overlay only when refreshing existing data. Show `<EmptyState>` when load completes with no data.
+18. **Add keyboard shortcuts** to all pages via `useGlobalShortcuts`: `Ctrl/⌘+K` for search (Management pages), `Ctrl/⌘+S` for save (Edit pages), `Escape` for cancel. Help dialog (`?`) is automatic via Layout.
+19. **Warn on unsaved changes** in all Edit pages with `useUnsavedChanges(hasChanges)`. Compute `hasChanges` by comparing `formData` vs `savedFormData`.
+20. **Validate fields in real-time** with `validateField(name, value)` on blur. Display inline errors with `<p className="text-xs text-destructive">`. Clear errors on change.
+21. **Add CSV export** to all Management pages with `generateCSV()` + `downloadCSV()`. Place the export button in the header row next to "Add" button.
+22. **Parse API errors** with `parseApiError(err)` in all catch blocks. Display message with `toast.error()`, set field-level errors with `setFieldErrors(fields)` when returned.
+23. **Use EmptyState component** when no data exists after successful load. Always include `icon`, `title`, `description`, and an action button to guide the user.
