@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X } from 'lucide-react';
 import type { User } from '../types';
 
 interface ProfileFormData {
@@ -22,6 +22,14 @@ interface ProfileFormData {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+}
+
+interface ProfileFieldsData {
+  alias_name: string;
+  firstname: string;
+  middlename: string;
+  lastname: string;
+  telephone: string;
 }
 
 const Profile: React.FC = () => {
@@ -44,11 +52,40 @@ const Profile: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savedProfileData, setSavedProfileData] = useState<ProfileFieldsData>({
+    alias_name: '',
+    firstname: '',
+    middlename: '',
+    lastname: '',
+    telephone: '',
+  });
 
   const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleEditToggle = () => {
+    setSavedProfileData({
+      alias_name: formData.alias_name,
+      firstname: formData.firstname,
+      middlename: formData.middlename,
+      lastname: formData.lastname,
+      telephone: formData.telephone,
+    });
+    setEditingProfile(true);
+  };
+
+  const handleCancelEdit = () => {
+    setFormData(prev => ({
+      ...prev,
+      ...savedProfileData,
+    }));
+    setEditingProfile(false);
+    setError('');
+    setSuccess('');
   };
 
   useEffect(() => {
@@ -68,6 +105,13 @@ const Profile: React.FC = () => {
           telephone: info.telephone || '',
           email: data.email || prev.email,
         }));
+        setSavedProfileData({
+          alias_name: data.alias_name || '',
+          firstname: info.firstname || '',
+          middlename: info.middlename || '',
+          lastname: info.lastname || '',
+          telephone: info.telephone || '',
+        });
         // Update localStorage with fresh profile data
         localStorage.setItem('user', JSON.stringify(data));
       } catch (err) {
@@ -136,8 +180,16 @@ const Profile: React.FC = () => {
         telephone: info.telephone || '',
         email: data.email || prev.email,
       }));
+      setSavedProfileData({
+        alias_name: data.alias_name || '',
+        firstname: info.firstname || '',
+        middlename: info.middlename || '',
+        lastname: info.lastname || '',
+        telephone: info.telephone || '',
+      });
       localStorage.setItem('user', JSON.stringify(data));
       setSuccess('Profile updated successfully!');
+      setEditingProfile(false);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to update profile: ' + (e.response?.data?.message || e.message));
@@ -263,109 +315,150 @@ const Profile: React.FC = () => {
           {/* Profile Information Card */}
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
-              <CardDescription>Update your account details</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Profile Information</CardTitle>
+                  <CardDescription>
+                    {editingProfile ? 'Update your account details' : 'View your account details'}
+                  </CardDescription>
+                </div>
+                {!editingProfile && (
+                  <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="alias_name">Alias Name</Label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="alias_name"
-                      name="alias_name"
-                      value={formData.alias_name}
-                      onChange={handleChange}
-                      placeholder="Alias name (optional)"
-                      className="pl-9"
-                    />
-                  </div>
+                  {editingProfile ? (
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="alias_name"
+                        name="alias_name"
+                        value={formData.alias_name}
+                        onChange={handleChange}
+                        placeholder="Alias name (optional)"
+                        className="pl-9"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.alias_name || '-'}</div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="firstname">First Name</Label>
-                    <div className="relative">
-                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="firstname"
-                        name="firstname"
-                        value={formData.firstname}
-                        onChange={handleChange}
-                        placeholder="First name"
-                        className="pl-9"
-                      />
-                    </div>
+                    {editingProfile ? (
+                      <div className="relative">
+                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="firstname"
+                          name="firstname"
+                          value={formData.firstname}
+                          onChange={handleChange}
+                          placeholder="First name"
+                          className="pl-9"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.firstname || '-'}</div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="middlename">Middle Name</Label>
-                    <Input
-                      id="middlename"
-                      name="middlename"
-                      value={formData.middlename}
-                      onChange={handleChange}
-                      placeholder="Middle name (optional)"
-                    />
+                    {editingProfile ? (
+                      <Input
+                        id="middlename"
+                        name="middlename"
+                        value={formData.middlename}
+                        onChange={handleChange}
+                        placeholder="Middle name (optional)"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.middlename || '-'}</div>
+                    )}
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="lastname">Last Name</Label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="lastname"
-                      name="lastname"
-                      value={formData.lastname}
-                      onChange={handleChange}
-                      placeholder="Last name"
-                      className="pl-9"
-                    />
-                  </div>
+                  {editingProfile ? (
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="lastname"
+                        name="lastname"
+                        value={formData.lastname}
+                        onChange={handleChange}
+                        placeholder="Last name"
+                        className="pl-9"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.lastname || '-'}</div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="telephone">Telephone</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="telephone"
-                      name="telephone"
-                      type="tel"
-                      value={formData.telephone}
-                      onChange={handleChange}
-                      placeholder="Phone number (optional)"
-                      className="pl-9"
-                    />
-                  </div>
+                  {editingProfile ? (
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="telephone"
+                        name="telephone"
+                        type="tel"
+                        value={formData.telephone}
+                        onChange={handleChange}
+                        placeholder="Phone number (optional)"
+                        className="pl-9"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.telephone || '-'}</div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Email address"
-                      className="pl-9"
-                      disabled
-                    />
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.email || '-'}</div>
                   </div>
                   <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                 </div>
 
-                <div className="pt-4">
-                  <Button type="submit" disabled={loading}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {loading ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </div>
+                {editingProfile && (
+                  <div className="flex gap-3 pt-4">
+                    <Button type="submit" size="sm" disabled={loading}>
+                      <Save className="mr-2 h-4 w-4" />
+                      {loading ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>
+                      <X className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -431,7 +524,7 @@ const Profile: React.FC = () => {
               </div>
 
               <div className="pt-4">
-                <Button type="submit" disabled={loading} variant="secondary">
+                <Button type="submit" size="sm" disabled={loading} variant="secondary">
                   <Lock className="mr-2 h-4 w-4" />
                   {loading ? 'Updating...' : 'Update Password'}
                 </Button>

@@ -9,14 +9,13 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X } from 'lucide-react';
 import api from '../services/api';
 import type { BusinessUnit, User } from '../types';
 
 interface ClusterFormData {
   code: string;
   name: string;
-  description: string;
   is_active: boolean;
 }
 
@@ -28,10 +27,10 @@ const ClusterEdit: React.FC = () => {
   const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
     name: '',
-    description: '',
     is_active: true,
   });
   const [loading, setLoading] = useState(!isNew);
+  const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
@@ -43,6 +42,19 @@ const ClusterEdit: React.FC = () => {
   const [buLoading, setBuLoading] = useState(false);
   const [clusterUsers, setClusterUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+
+  const [savedFormData, setSavedFormData] = useState<ClusterFormData>(formData);
+
+  const handleEditToggle = () => {
+    setSavedFormData(formData);
+    setEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setFormData(savedFormData);
+    setEditing(false);
+    setError('');
+  };
 
   const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -65,12 +77,13 @@ const ClusterEdit: React.FC = () => {
       const data = await clusterService.getById(id!);
       setRawResponse(data);
       const cluster = data.data || data;
-      setFormData({
+      const loaded = {
         code: cluster.code || '',
         name: cluster.name || '',
-        description: cluster.description || '',
         is_active: cluster.is_active ?? true,
-      });
+      };
+      setFormData(loaded);
+      setSavedFormData(loaded);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to load cluster: ' + (e.response?.data?.message || e.message));
@@ -125,11 +138,18 @@ const ClusterEdit: React.FC = () => {
 
     try {
       if (isNew) {
-        await clusterService.create(formData);
+        const result = await clusterService.create(formData);
+        const created = result.data || result;
+        if (created?.id) {
+          navigate(`/clusters/${created.id}`, { replace: true });
+        } else {
+          navigate('/clusters');
+        }
       } else {
         await clusterService.update(id!, formData);
+        await fetchCluster();
+        setEditing(false);
       }
-      navigate('/clusters');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to save cluster: ' + (e.response?.data?.message || e.message));
@@ -158,12 +178,20 @@ const ClusterEdit: React.FC = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate('/clusters')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{isNew ? 'Add Cluster' : 'Edit Cluster'}</h1>
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              {isNew ? 'Add Cluster' : editing ? 'Edit Cluster' : 'Cluster Details'}
+            </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new cluster' : 'Update cluster information'}
+              {isNew ? 'Create a new cluster' : editing ? 'Update cluster information' : 'View cluster information'}
             </p>
           </div>
+          {!isNew && !editing && (
+            <Button variant="outline" size="sm" onClick={handleEditToggle}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+          )}
         </div>
 
         {error && (
@@ -175,71 +203,80 @@ const ClusterEdit: React.FC = () => {
             <CardHeader>
               <CardTitle>Cluster Details</CardTitle>
               <CardDescription>
-                {isNew ? 'Fill in the details for the new cluster' : 'Modify the cluster details below'}
+                {isNew ? 'Fill in the details for the new cluster' : editing ? 'Modify the cluster details below' : 'Cluster information'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="code">Code *</Label>
-                  <Input
-                    type="text"
-                    id="code"
-                    name="code"
-                    value={formData.code}
-                    onChange={handleChange}
-                    placeholder="Cluster code"
-                    required
-                  />
+                  <Label htmlFor="code">Code {editing && '*'}</Label>
+                  {editing ? (
+                    <Input
+                      type="text"
+                      id="code"
+                      name="code"
+                      value={formData.code}
+                      onChange={handleChange}
+                      placeholder="Cluster code"
+                      required
+                    />
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Cluster name"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Cluster description (optional)"
-                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  />
+                  <Label htmlFor="name">Name {editing && '*'}</Label>
+                  {editing ? (
+                    <Input
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Cluster name"
+                      required
+                    />
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.name || '-'}</div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleChange}
-                    className="h-4 w-4 rounded border-input"
-                  />
-                  <Label htmlFor="is_active">Active</Label>
+                  {editing ? (
+                    <>
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        name="is_active"
+                        checked={formData.is_active}
+                        onChange={handleChange}
+                        className="h-4 w-4 rounded border-input"
+                      />
+                      <Label htmlFor="is_active">Active</Label>
+                    </>
+                  ) : (
+                    <>
+                      <Label>Status</Label>
+                      <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
+                        {formData.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </>
+                  )}
                 </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit" disabled={saving}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {saving ? 'Saving...' : isNew ? 'Create Cluster' : 'Save Changes'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => navigate('/clusters')}>
-                    Cancel
-                  </Button>
-                </div>
+                {editing && (
+                  <div className="flex gap-3 pt-4">
+                    <Button type="submit" size="sm" disabled={saving}>
+                      <Save className="mr-2 h-4 w-4" />
+                      {saving ? 'Saving...' : isNew ? 'Create Cluster' : 'Save Changes'}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/clusters') : handleCancelEdit}>
+                      <X className="mr-2 h-4 w-4" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>

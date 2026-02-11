@@ -264,8 +264,8 @@ const UserManagement: React.FC = () => {
               </select>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">{editingUser ? 'Update' : 'Create'}</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button type="submit" size="sm">{editingUser ? 'Update' : 'Create'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
