@@ -26,6 +26,7 @@
     "start": "WATCHPACK_POLLING=true react-scripts start",
     "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') react-scripts build",
     "test": "react-scripts test",
+    "test:e2e": "npx playwright test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -47,6 +48,7 @@
   },
   "proxy": "https://dev.blueledgers.com:4001",
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
     "tailwindcss": "3.4.1"

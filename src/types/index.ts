@@ -35,12 +35,56 @@ export interface Cluster {
   updated_by_name?: string;
 }
 
+export interface BusinessUnitConfig {
+  id?: string;
+  key: string;
+  label: string;
+  datatype?: string;
+  value?: unknown;
+}
+
 export interface BusinessUnit {
   id: string;
+  cluster_id?: string;
   code: string;
   name: string;
+  alias_name?: string;
   description?: string;
+  is_hq?: boolean;
   is_active: boolean;
+  // Hotel Information
+  hotel_name?: string;
+  hotel_tel?: string;
+  hotel_email?: string;
+  hotel_address?: string;
+  hotel_zip_code?: string;
+  // Company Information
+  company_name?: string;
+  company_tel?: string;
+  company_email?: string;
+  company_address?: string;
+  company_zip_code?: string;
+  // Tax Information
+  tax_no?: string;
+  branch_no?: string;
+  // Date/Time Formats
+  date_format?: string;
+  date_time_format?: string;
+  time_format?: string;
+  long_time_format?: string;
+  short_time_format?: string;
+  timezone?: string;
+  // Number Formats
+  perpage_format?: string;
+  amount_format?: string;
+  quantity_format?: string;
+  recipe_format?: string;
+  // Calculation Settings
+  calculation_method?: string;
+  default_currency_id?: string;
+  // Config & Connection
+  db_connection?: unknown;
+  config?: BusinessUnitConfig[] | null;
   cluster_name?: string;
   created_at?: string;
   created_by_name?: string;
