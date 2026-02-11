@@ -9,8 +9,48 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
+import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig } from '../types';
+
+const BU_ROLES = ['admin', 'user'] as const;
+
+interface ClusterUser {
+  user_id: string;
+  username: string | null;
+  email: string | null;
+  role: string | null;
+  userInfo?: {
+    firstname?: string | null;
+    lastname?: string | null;
+    middlename?: string | null;
+  } | null;
+}
+
+interface BUUser {
+  id: string;
+  user_id: string;
+  role: string;
+  is_default: boolean;
+  is_active: boolean;
+  username: string | null;
+  email: string | null;
+  platform_role: string | null;
+  user_is_active: boolean | null;
+  firstname: string | null;
+  middlename: string | null;
+  lastname: string | null;
+}
+
+interface DefaultCurrency {
+  id: string;
+  code: string;
+  name: string;
+  symbol: string;
+  description?: string;
+  decimal_places?: number;
+  is_active?: boolean;
+}
 
 interface BusinessUnitFormData {
   cluster_id: string;
@@ -141,6 +181,17 @@ const BusinessUnitEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
+  const [buUsers, setBuUsers] = useState<BUUser[]>([]);
+  const [editingUser, setEditingUser] = useState<BUUser | null>(null);
+  const [editUserForm, setEditUserForm] = useState<{ role: string; is_active: boolean }>({ role: '', is_active: true });
+  const [savingUser, setSavingUser] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
+  const [loadingClusterUsers, setLoadingClusterUsers] = useState(false);
+  const [addUserRole, setAddUserRole] = useState('user');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [addingUser, setAddingUser] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
 
@@ -234,11 +285,73 @@ const BusinessUnitEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDefaultCurrency(bu.default_currency || null);
+      setBuUsers(Array.isArray(bu.users) ? bu.users : []);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } }; message?: string };
       setError('Failed to load business unit: ' + (e.response?.data?.message || e.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEditUser = (user: BUUser) => {
+    setEditingUser(user);
+    setEditUserForm({ role: user.role || 'user', is_active: user.is_active });
+  };
+
+  const handleSaveEditUser = async () => {
+    if (!editingUser) return;
+    setSavingUser(true);
+    try {
+      await businessUnitService.updateUserBusinessUnit(editingUser.id, editUserForm);
+      setBuUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editUserForm } : u));
+      setEditingUser(null);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      alert('Failed to update: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleOpenAddUser = async () => {
+    setShowAddUser(true);
+    setSelectedUserId('');
+    setAddUserRole('user');
+    if (!formData.cluster_id) return;
+    setLoadingClusterUsers(true);
+    try {
+      const data = await clusterService.getClusterUsers(formData.cluster_id);
+      const items: ClusterUser[] = data.data || data;
+      setClusterUsers(Array.isArray(items) ? items : []);
+    } catch {
+      setClusterUsers([]);
+    } finally {
+      setLoadingClusterUsers(false);
+    }
+  };
+
+  const availableClusterUsers = clusterUsers.filter(
+    cu => cu.user_id && !buUsers.some(bu => bu.user_id === cu.user_id)
+  );
+
+  const handleAddUser = async () => {
+    if (!selectedUserId || !id) return;
+    setAddingUser(true);
+    try {
+      await businessUnitService.createUserBusinessUnit({
+        user_id: selectedUserId,
+        business_unit_id: id,
+        role: addUserRole,
+      });
+      setShowAddUser(false);
+      await fetchBusinessUnit();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      alert('Failed to add user: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setAddingUser(false);
     }
   };
 
@@ -910,40 +1023,76 @@ const BusinessUnitEdit: React.FC = () => {
 
           {/* Section 7: Calculation Settings */}
           <CollapsibleSection title="Calculation Settings" description="Calculation method and currency configuration" forceOpen>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="calculation_method">Calculation Method</Label>
-                {editing ? (
-                  <select
-                    id="calculation_method"
-                    name="calculation_method"
-                    value={formData.calculation_method}
-                    onChange={handleChange}
-                    className={selectClassName}
-                  >
-                    <option value="">Select method</option>
-                    <option value="average">Average</option>
-                    <option value="fifo">FIFO</option>
-                  </select>
-                ) : (
-                  <ReadOnlyText value={getCalculationMethodLabel(formData.calculation_method)} />
-                )}
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="calculation_method">Calculation Method</Label>
+                  {editing ? (
+                    <select
+                      id="calculation_method"
+                      name="calculation_method"
+                      value={formData.calculation_method}
+                      onChange={handleChange}
+                      className={selectClassName}
+                    >
+                      <option value="">Select method</option>
+                      <option value="average">Average</option>
+                      <option value="fifo">FIFO</option>
+                    </select>
+                  ) : (
+                    <ReadOnlyText value={getCalculationMethodLabel(formData.calculation_method)} />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="default_currency_id">Default Currency ID</Label>
+                  {editing ? (
+                    <Input
+                      type="text"
+                      id="default_currency_id"
+                      name="default_currency_id"
+                      value={formData.default_currency_id}
+                      onChange={handleChange}
+                      placeholder="Default currency ID"
+                    />
+                  ) : (
+                    <ReadOnlyText value={formData.default_currency_id} />
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="default_currency_id">Default Currency ID</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="default_currency_id"
-                    name="default_currency_id"
-                    value={formData.default_currency_id}
-                    onChange={handleChange}
-                    placeholder="Default currency ID"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.default_currency_id} />
-                )}
-              </div>
+              {!editing && defaultCurrency && (
+                <div className="rounded-md border p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Default Currency</span>
+                    <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-[10px]">
+                      {defaultCurrency.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Code</span>
+                      <div className="text-sm font-medium">{defaultCurrency.code || '-'}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Name</span>
+                      <div className="text-sm">{defaultCurrency.name || '-'}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Symbol</span>
+                      <div className="text-sm">{defaultCurrency.symbol || '-'}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Decimal Places</span>
+                      <div className="text-sm">{defaultCurrency.decimal_places ?? '-'}</div>
+                    </div>
+                  </div>
+                  {defaultCurrency.description && (
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">Description</span>
+                      <div className="text-sm">{defaultCurrency.description}</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </CollapsibleSection>
 
@@ -1063,6 +1212,185 @@ const BusinessUnitEdit: React.FC = () => {
             </div>
           )}
         </form>
+
+        {/* Users in this Business Unit */}
+        {!isNew && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Users</CardTitle>
+                  <CardDescription>Users assigned to this business unit ({buUsers.length})</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleOpenAddUser}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {buUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No users assigned yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-center font-medium px-4 py-2 w-10">#</th>
+                        <th className="text-left font-medium px-4 py-2">Username</th>
+                        <th className="text-left font-medium px-4 py-2">Name</th>
+                        <th className="text-left font-medium px-4 py-2">Email</th>
+                        <th className="text-left font-medium px-4 py-2">BU Role</th>
+                        <th className="text-left font-medium px-4 py-2">Platform Role</th>
+                        <th className="text-center font-medium px-4 py-2">BU Status</th>
+                        <th className="w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {buUsers.map((u, idx) => (
+                        <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-2 text-center text-muted-foreground">{idx + 1}</td>
+                          <td className="px-4 py-2">
+                            <span
+                              className="cursor-pointer text-primary hover:underline"
+                              onClick={() => navigate(`/users/${u.user_id}/edit`)}
+                            >
+                              {u.username || '-'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
+                          </td>
+                          <td className="px-4 py-2">{u.email || '-'}</td>
+                          <td className="px-4 py-2">
+                            <Badge variant="outline" className="capitalize text-xs">
+                              {u.role || '-'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2">
+                            <Badge variant="outline" className="capitalize text-xs">
+                              {u.platform_role?.replace(/_/g, ' ') || '-'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
+                              {u.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditUser(u)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Edit User BU Dialog */}
+              <Dialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Edit User in Business Unit</DialogTitle>
+                    <DialogDescription>
+                      {editingUser && (
+                        <span>{editingUser.username} — {[editingUser.firstname, editingUser.middlename, editingUser.lastname].filter(Boolean).join(' ') || editingUser.email}</span>
+                      )}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label>BU Role</Label>
+                      <select
+                        value={editUserForm.role}
+                        onChange={(e) => setEditUserForm(prev => ({ ...prev, role: e.target.value }))}
+                        className={selectClassName}
+                      >
+                        {BU_ROLES.map((r) => (
+                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>BU Status</Label>
+                      <select
+                        value={editUserForm.is_active ? 'true' : 'false'}
+                        onChange={(e) => setEditUserForm(prev => ({ ...prev, is_active: e.target.value === 'true' }))}
+                        className={selectClassName}
+                      >
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={() => setEditingUser(null)}>Cancel</Button>
+                    <Button size="sm" onClick={handleSaveEditUser} disabled={savingUser}>
+                      <Save className="mr-2 h-4 w-4" />
+                      {savingUser ? 'Saving...' : 'Save'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Add User Dialog */}
+              <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Add User to Business Unit</DialogTitle>
+                    <DialogDescription>Select a user from the cluster to add</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    {loadingClusterUsers ? (
+                      <p className="text-sm text-muted-foreground">Loading cluster users...</p>
+                    ) : availableClusterUsers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No available users in this cluster to add.</p>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label>User</Label>
+                          <select
+                            value={selectedUserId}
+                            onChange={(e) => setSelectedUserId(e.target.value)}
+                            className={selectClassName}
+                          >
+                            <option value="">Select a user</option>
+                            {availableClusterUsers.map((cu) => (
+                              <option key={cu.user_id} value={cu.user_id}>
+                                {cu.username || cu.email} — {[cu.userInfo?.firstname, cu.userInfo?.middlename, cu.userInfo?.lastname].filter(Boolean).join(' ') || ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>BU Role</Label>
+                          <select
+                            value={addUserRole}
+                            onChange={(e) => setAddUserRole(e.target.value)}
+                            className={selectClassName}
+                          >
+                            {BU_ROLES.map((r) => (
+                              <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
+                    <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUserId}>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      {addingUser ? 'Adding...' : 'Add User'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Debug Sheet - Development Only */}

@@ -38,7 +38,12 @@ const clusterService = {
   delete: async (id: string) => {
     const response = await api.delete(`/api-system/cluster/${id}`);
     return response.data;
-  }
+  },
+
+  getClusterUsers: async (clusterId: string) => {
+    const response = await api.get(`/api-system/user/cluster/${clusterId}`);
+    return response.data;
+  },
 };
 
 export default clusterService;

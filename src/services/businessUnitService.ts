@@ -38,7 +38,17 @@ const businessUnitService = {
   delete: async (id: string) => {
     const response = await api.delete(`/api-system/business-unit/${id}`);
     return response.data;
-  }
+  },
+
+  updateUserBusinessUnit: async (id: string, data: { role?: string; is_active?: boolean }) => {
+    const response = await api.patch(`/api-system/user/business-unit/${id}`, data);
+    return response.data;
+  },
+
+  createUserBusinessUnit: async (data: { user_id: string; business_unit_id: string; role: string }) => {
+    const response = await api.post('/api-system/user/business-unit', data);
+    return response.data;
+  },
 };
 
 export default businessUnitService;
