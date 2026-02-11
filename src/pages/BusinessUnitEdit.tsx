@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
@@ -119,9 +119,13 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, descript
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isNew = !id;
 
-  const [formData, setFormData] = useState<BusinessUnitFormData>({ ...initialFormData });
+  const [formData, setFormData] = useState<BusinessUnitFormData>({
+    ...initialFormData,
+    cluster_id: searchParams.get('cluster_id') || '',
+  });
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
