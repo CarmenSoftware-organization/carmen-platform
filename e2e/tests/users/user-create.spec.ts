@@ -102,4 +102,27 @@ test.describe('User - Create', () => {
       await expect(page).toHaveURL(/\/users\/new/);
     }
   });
+
+  test('should validate username as email format', async ({ page }) => {
+    const editPage = new UserEditPage(page);
+
+    await editPage.gotoNew();
+
+    await editPage.fillForm({
+      ...userData,
+      username: 'not-an-email',
+    });
+
+    // Blur the username field to trigger validation
+    await editPage.usernameInput.blur();
+    await page.waitForTimeout(500);
+
+    // Should show validation error for non-email username
+    const errorVisible = await page.locator('.text-destructive').first().isVisible({ timeout: 3_000 }).catch(() => false);
+    // Either browser validation (type="email") or custom validation prevents submission
+    if (!errorVisible) {
+      await editPage.submit();
+      await expect(page).toHaveURL(/\/users\/new/);
+    }
+  });
 });

@@ -25,7 +25,7 @@ export const validateField = (name: string, value: string): string => {
     case 'company_tel':
       return isValidPhone(value) ? '' : 'Invalid phone number format';
     case 'username':
-      return /^[a-zA-Z0-9._@-]{3,30}$/.test(value) ? '' : 'Username must be 3-30 characters (letters, numbers, . _ @ -)';
+      return isValidEmail(value) ? '' : 'Username must be a valid email address';
     default:
       return '';
   }

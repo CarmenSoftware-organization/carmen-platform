@@ -20,14 +20,29 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
+const getStoredJSON = <T,>(key: string, fallback: T): T => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const BusinessUnitManagement: React.FC = () => {
   const navigate = useNavigate();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const storedSearch = localStorage.getItem('search_business_units') || '';
+  const storedFilters = getStoredJSON<string[]>('filters_business_units', []);
+  const storedPage = Number(localStorage.getItem('page_business_units')) || 1;
+  const storedSort = localStorage.getItem('sort_business_units') || 'created_at:desc';
+
+  const [searchTerm, setSearchTerm] = useState(storedSearch);
+  const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
@@ -38,11 +53,20 @@ const BusinessUnitManagement: React.FC = () => {
     onSearch: () => searchInputRef.current?.focus(),
   });
 
+  const buildStatusAdvance = (filters: string[]) => {
+    if (filters.length === 1) {
+      return JSON.stringify({ where: { is_active: filters[0] === 'true' } });
+    }
+    return '';
+  };
+
   const [paginate, setPaginate] = useState<PaginateParams>({
-    page: 1,
+    page: storedPage,
     perpage: Number(localStorage.getItem("perpage_business_units")) || 10,
-    search: '',
-    sort: 'created_at:desc',
+    search: storedSearch,
+    sort: storedSort,
+    advance: buildStatusAdvance(storedFilters),
+    filter: {},
   });
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,14 +99,17 @@ const BusinessUnitManagement: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
+    localStorage.setItem('search_business_units', value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
+      localStorage.setItem('page_business_units', '1');
       setPaginate(prev => ({ ...prev, page: 1, search: value }));
     }, 400);
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     localStorage.setItem("perpage_business_units", String(perpage));
+    localStorage.setItem('page_business_units', String(page));
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
@@ -91,26 +118,31 @@ const BusinessUnitManagement: React.FC = () => {
       ? statusFilter.filter((s) => s !== status)
       : [...statusFilter, status];
     setStatusFilter(next);
-    let advance = '';
-    if (next.length === 1) {
-      advance = JSON.stringify({ where: { is_active: next[0] === 'true' } });
-    }
+    localStorage.setItem('filters_business_units', JSON.stringify(next));
+    localStorage.setItem('page_business_units', '1');
+    const advance = buildStatusAdvance(next);
     setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
   };
 
   const handleClearStatusFilter = () => {
     setStatusFilter([]);
+    localStorage.setItem('filters_business_units', JSON.stringify([]));
+    localStorage.setItem('page_business_units', '1');
     setPaginate(prev => ({ ...prev, page: 1, advance: '', filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
+    localStorage.setItem('filters_business_units', JSON.stringify([]));
+    localStorage.setItem('page_business_units', '1');
     setPaginate(prev => ({ ...prev, page: 1, advance: '', filter: {} }));
   };
 
   const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
   const handleSortChange = (sort: string) => {
+    localStorage.setItem('sort_business_units', sort);
+    localStorage.setItem('page_business_units', '1');
     setPaginate(prev => ({ ...prev, sort, page: 1 }));
   };
 

@@ -59,15 +59,31 @@ const PLATFORM_ROLES = [
   "user",
 ];
 
+const getStoredJSON = <T,>(key: string, fallback: T): T => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const UserManagement: React.FC = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const storedSearch = localStorage.getItem('search_users') || '';
+  const storedRoleFilters = getStoredJSON<string[]>('role_filters_users', []);
+  const storedStatusFilters = getStoredJSON<string[]>('status_filters_users', []);
+  const storedPage = Number(localStorage.getItem('page_users')) || 1;
+  const storedSort = localStorage.getItem('sort_users') || '';
+
+  const [searchTerm, setSearchTerm] = useState(storedSearch);
+  const [roleFilter, setRoleFilter] = useState<string[]>(storedRoleFilters);
+  const [statusFilter, setStatusFilter] = useState<string[]>(storedStatusFilters);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
@@ -78,11 +94,20 @@ const UserManagement: React.FC = () => {
     onSearch: () => searchInputRef.current?.focus(),
   });
 
+  const buildInitialAdvance = () => {
+    const where: Record<string, unknown> = {};
+    if (storedRoleFilters.length > 0) where.platform_role = { in: storedRoleFilters };
+    if (storedStatusFilters.length === 1) where.is_active = storedStatusFilters[0] === "true";
+    return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
+  };
+
   const [paginate, setPaginate] = useState<PaginateParams>({
-    page: 1,
+    page: storedPage,
     perpage: Number(localStorage.getItem("perpage_users")) || 10,
-    search: "",
-    sort: "",
+    search: storedSearch,
+    sort: storedSort,
+    advance: buildInitialAdvance(),
+    filter: {},
   });
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,14 +141,17 @@ const UserManagement: React.FC = () => {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
+    localStorage.setItem('search_users', value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
+      localStorage.setItem('page_users', '1');
       setPaginate((prev) => ({ ...prev, page: 1, search: value }));
     }, 400);
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     localStorage.setItem("perpage_users", String(perpage));
+    localStorage.setItem('page_users', String(page));
     setPaginate((prev) => ({ ...prev, page, perpage }));
   };
 
@@ -139,11 +167,15 @@ const UserManagement: React.FC = () => {
       ? roleFilter.filter((r) => r !== role)
       : [...roleFilter, role];
     setRoleFilter(next);
+    localStorage.setItem('role_filters_users', JSON.stringify(next));
+    localStorage.setItem('page_users', '1');
     setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, statusFilter), filter: {} }));
   };
 
   const handleClearRoleFilter = () => {
     setRoleFilter([]);
+    localStorage.setItem('role_filters_users', JSON.stringify([]));
+    localStorage.setItem('page_users', '1');
     setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], statusFilter), filter: {} }));
   };
 
@@ -152,24 +184,33 @@ const UserManagement: React.FC = () => {
       ? statusFilter.filter((s) => s !== status)
       : [...statusFilter, status];
     setStatusFilter(next);
+    localStorage.setItem('status_filters_users', JSON.stringify(next));
+    localStorage.setItem('page_users', '1');
     setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, next), filter: {} }));
   };
 
   const handleClearStatusFilter = () => {
     setStatusFilter([]);
+    localStorage.setItem('status_filters_users', JSON.stringify([]));
+    localStorage.setItem('page_users', '1');
     setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, []), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setRoleFilter([]);
     setStatusFilter([]);
+    localStorage.setItem('role_filters_users', JSON.stringify([]));
+    localStorage.setItem('status_filters_users', JSON.stringify([]));
+    localStorage.setItem('page_users', '1');
     setPaginate((prev) => ({ ...prev, page: 1, advance: "", filter: {} }));
   };
 
   const activeFilterCount = (roleFilter.length > 0 ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
-    setPaginate((prev) => ({ ...prev, sort }));
+    localStorage.setItem('sort_users', sort);
+    localStorage.setItem('page_users', '1');
+    setPaginate((prev) => ({ ...prev, sort, page: 1 }));
   };
 
   const handleDelete = useCallback((id: string) => {

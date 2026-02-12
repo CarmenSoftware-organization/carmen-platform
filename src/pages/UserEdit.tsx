@@ -429,14 +429,14 @@ const UserEdit: React.FC = () => {
                   {editing ? (
                     <>
                       <Input
-                        type="text"
+                        type="email"
                         id="username"
                         name="username"
                         value={formData.username}
                         onChange={handleChange}
                         onBlur={handleBlur}
                         onFocus={handleFocus}
-                        placeholder="Username"
+                        placeholder="user@example.com"
                         className={fieldErrors.username ? 'border-destructive' : ''}
                         required
                       />

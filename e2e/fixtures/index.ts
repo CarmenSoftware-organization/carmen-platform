@@ -76,7 +76,7 @@ export const generateBusinessUnitData = () => {
 export const generateUserData = () => {
   const suffix = Date.now().toString().slice(-6);
   return {
-    username: `user${suffix}`,
+    username: `user${suffix}@example.com`,
     email: `test${suffix}@example.com`,
     firstname: faker.person.firstName(),
     middlename: '',
