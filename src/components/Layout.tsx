@@ -65,6 +65,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const getUserInitials = (): string => {
+    if (user?.alias_name) {
+      return user.alias_name.toUpperCase().slice(0, 2);
+    }
     const fullName = getFullName();
     if (fullName) {
       return fullName
