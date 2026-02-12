@@ -1,0 +1,16 @@
+{
+  "buildCommand": "CI=false react-scripts build",
+  "installCommand": "npm install --force",
+  "outputDirectory": "build",
+  "framework": "create-react-app",
+  "rewrites": [
+    {
+      "source": "/api-system/:path*",
+      "destination": "https://dev.blueledgers.com:4001/api-system/:path*"
+    },
+    {
+      "source": "/((?!static|favicon|manifest|logo|asset-manifest).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

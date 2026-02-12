@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/button';
 import { Network, Building2, Users, ArrowRight, Loader2, type LucideIcon } from 'lucide-react';
 import { Ripple } from '../components/magicui/ripple';
 import { RippleButton } from '../components/magicui/ripple-button';
@@ -116,13 +115,15 @@ const Landing: React.FC = () => {
             Carmen Platform provides a unified management system for clusters,
             business units, and users — all in one place.
           </p>
-          <Link to="/login">
+          <Link to="/login" className="inline-block">
             <RippleButton
               rippleColor="#93c5fd"
-              className="border-0 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25 text-lg px-8 py-4 rounded-xl"
+              className="inline-flex items-center border-0 bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25 text-lg px-8 py-4 rounded-xl"
             >
-              Get Started
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <span className="flex items-center gap-2">
+                Get Started
+                <ArrowRight className="h-5 w-5" />
+              </span>
             </RippleButton>
           </Link>
         </div>
