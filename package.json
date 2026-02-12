@@ -25,8 +25,11 @@
     "react-scripts": "5.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "tailwindcss": "3.4.1",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6"
   },
   "scripts": {
     "start": "WATCHPACK_POLLING=true react-scripts start",
@@ -59,9 +62,6 @@
   "proxy": "https://dev.blueledgers.com:4001",
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
-    "@playwright/test": "^1.58.2",
-    "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
-    "tailwindcss": "3.4.1"
+    "@playwright/test": "^1.58.2"
   }
 }
