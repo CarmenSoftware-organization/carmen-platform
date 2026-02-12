@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import clusterService from '../services/clusterService';
+import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -61,9 +62,8 @@ const ClusterManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to load clusters: ' + (e.response?.data?.message || e.message));
-      console.error('Error fetching clusters:', err);
+      setError('Failed to load clusters: ' + getErrorDetail(err));
+      devLog('Error fetching clusters:', err);
     } finally {
       setLoading(false);
     }
@@ -127,8 +127,7 @@ const ClusterManagement: React.FC = () => {
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to delete cluster', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to delete cluster', { description: getErrorDetail(err) });
     }
   };
 

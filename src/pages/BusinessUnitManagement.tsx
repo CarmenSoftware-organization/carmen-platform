@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
+import { getErrorDetail } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -62,8 +63,7 @@ const BusinessUnitManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to load business units: ' + (e.response?.data?.message || e.message));
+      setError('Failed to load business units: ' + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
@@ -126,8 +126,7 @@ const BusinessUnitManagement: React.FC = () => {
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to delete business unit', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to delete business unit', { description: getErrorDetail(err) });
     }
   };
 

@@ -15,6 +15,7 @@ import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, 
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
+import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
@@ -263,7 +264,7 @@ const BusinessUnitEdit: React.FC = () => {
       const items = data.data || data;
       setClusters(Array.isArray(items) ? items : []);
     } catch (err) {
-      console.error('Failed to load clusters:', err);
+      devLog('Failed to load clusters:', err);
     }
   };
 
@@ -320,8 +321,7 @@ const BusinessUnitEdit: React.FC = () => {
       setDefaultCurrency(bu.default_currency || null);
       setBuUsers(Array.isArray(bu.users) ? bu.users : []);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to load business unit: ' + (e.response?.data?.message || e.message));
+      setError('Failed to load business unit: ' + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
@@ -339,8 +339,7 @@ const BusinessUnitEdit: React.FC = () => {
       setBuUsers(prev => prev.filter(u => u.id !== deleteUser.id));
       setDeleteUser(null);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to remove user', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to remove user', { description: getErrorDetail(err) });
     }
   };
 
@@ -358,8 +357,7 @@ const BusinessUnitEdit: React.FC = () => {
       setBuUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editUserForm } : u));
       setEditingUser(null);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to update user', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to update user', { description: getErrorDetail(err) });
     } finally {
       setSavingUser(false);
     }
@@ -400,8 +398,7 @@ const BusinessUnitEdit: React.FC = () => {
       toast.success('User added to business unit');
       await fetchBusinessUnit();
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to add user', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to add user', { description: getErrorDetail(err) });
     } finally {
       setAddingUser(false);
     }
@@ -508,8 +505,7 @@ const BusinessUnitEdit: React.FC = () => {
         setEditing(false);
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to save business unit: ' + (e.response?.data?.message || e.message));
+      setError('Failed to save business unit: ' + getErrorDetail(err));
     } finally {
       setSaving(false);
     }

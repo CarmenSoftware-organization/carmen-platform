@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
+import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
@@ -124,8 +125,7 @@ const ClusterEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to load cluster: ' + (e.response?.data?.message || e.message));
+      setError('Failed to load cluster: ' + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ const ClusterEdit: React.FC = () => {
       const allBus: BusinessUnit[] = Array.isArray(items) ? items : [];
       setBusinessUnits(allBus.filter(bu => bu.cluster_id === id));
     } catch (err) {
-      console.error('Failed to load business units:', err);
+      devLog('Failed to load business units:', err);
     } finally {
       setBuLoading(false);
     }
@@ -155,7 +155,7 @@ const ClusterEdit: React.FC = () => {
       const items = data.data || data;
       setClusterUsers(Array.isArray(items) ? items : []);
     } catch (err) {
-      console.error('Failed to load cluster users:', err);
+      devLog('Failed to load cluster users:', err);
     } finally {
       setUsersLoading(false);
     }
@@ -222,8 +222,7 @@ const ClusterEdit: React.FC = () => {
       toast.success('User added to cluster successfully');
       await fetchClusterUsers();
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to add user', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to add user', { description: getErrorDetail(err) });
     } finally {
       setAddingUser(false);
     }
@@ -270,8 +269,7 @@ const ClusterEdit: React.FC = () => {
         setEditing(false);
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to save cluster: ' + (e.response?.data?.message || e.message));
+      setError('Failed to save cluster: ' + getErrorDetail(err));
     } finally {
       setSaving(false);
     }

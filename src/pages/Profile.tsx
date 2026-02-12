@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { User, BusinessUnit } from '../types';
@@ -140,7 +141,7 @@ const Profile: React.FC = () => {
         localStorage.setItem('user', JSON.stringify(data));
         refreshUser();
       } catch (err) {
-        console.error('Failed to fetch profile:', err);
+        devLog('Failed to fetch profile:', err);
       } finally {
         setFetchingProfile(false);
       }
@@ -219,9 +220,9 @@ const Profile: React.FC = () => {
       toast.success('Profile updated successfully');
       setEditingProfile(false);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to update profile: ' + (e.response?.data?.message || e.message));
-      toast.error('Failed to update profile', { description: e.response?.data?.message || e.message });
+      const detail = getErrorDetail(err);
+      setError('Failed to update profile: ' + detail);
+      toast.error('Failed to update profile', { description: detail });
     } finally {
       setLoading(false);
     }
@@ -263,9 +264,9 @@ const Profile: React.FC = () => {
       setSuccess('Password changed successfully!');
       toast.success('Password changed successfully');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError('Failed to change password: ' + (e.response?.data?.message || e.message));
-      toast.error('Failed to change password', { description: e.response?.data?.message || e.message });
+      const detail = getErrorDetail(err);
+      setError('Failed to change password: ' + detail);
+      toast.error('Failed to change password', { description: detail });
     } finally {
       setLoading(false);
     }

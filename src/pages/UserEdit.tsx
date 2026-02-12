@@ -15,6 +15,7 @@ import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
+import { getErrorDetail } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -147,8 +148,7 @@ const UserEdit: React.FC = () => {
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError("Failed to load user: " + (e.response?.data?.message || e.message));
+      setError("Failed to load user: " + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
@@ -200,8 +200,7 @@ const UserEdit: React.FC = () => {
       toast.success('Business unit assigned successfully');
       await fetchUser();
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to add business unit', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to add business unit', { description: getErrorDetail(err) });
     } finally {
       setAddingBU(false);
     }
@@ -219,8 +218,7 @@ const UserEdit: React.FC = () => {
       setBusinessUnits(prev => prev.filter(b => b.id !== deleteBU.id));
       setDeleteBU(null);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to remove business unit', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to remove business unit', { description: getErrorDetail(err) });
     }
   };
 
@@ -265,8 +263,7 @@ const UserEdit: React.FC = () => {
         setEditing(false);
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError("Failed to save user: " + (e.response?.data?.message || e.message));
+      setError("Failed to save user: " + getErrorDetail(err));
     } finally {
       setSaving(false);
     }

@@ -4,6 +4,8 @@ import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextVal
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const ALLOWED_ROLES = [
   'platform_admin',
   'super_admin',
@@ -95,7 +97,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (platformRole && !ALLOWED_ROLES.includes(platformRole)) {
         return {
           success: false,
-          error: `Access Denied. Your role "${platformRole}" is not authorized to access this platform.`
+          error: isDev
+            ? `Access Denied. Your role "${platformRole}" is not authorized. Allowed: ${ALLOWED_ROLES.join(', ')}`
+            : 'Access Denied. You are not authorized to access this platform.'
         };
       }
 
@@ -111,20 +115,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       return { success: true };
     } catch (error: unknown) {
-      console.error('Login error:', error);
-      let errorMessage = 'Login failed. Please check your credentials.';
       const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string };
-      if (err.response?.status === 401) {
-        errorMessage = 'Unauthorized. Invalid email or password.';
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.message) {
-        errorMessage = err.message;
+
+      // Development: show full error details for debugging
+      if (isDev) {
+        console.error('Login error:', error);
+        let devMessage = `[${err.response?.status || 'Network Error'}] `;
+        if (err.response?.data?.message) {
+          devMessage += err.response.data.message;
+        } else if (err.message) {
+          devMessage += err.message;
+        } else {
+          devMessage += 'Unknown error';
+        }
+        return { success: false, error: devMessage };
       }
-      return {
-        success: false,
-        error: errorMessage
-      };
+
+      // Production: generic messages only
+      let errorMessage = 'Unable to login. Please try again later.';
+      if (err.response?.status === 401) {
+        errorMessage = 'Invalid email or password.';
+      } else if (err.response?.status === 429) {
+        errorMessage = 'Too many login attempts. Please try again later.';
+      }
+      return { success: false, error: errorMessage };
     }
   };
 

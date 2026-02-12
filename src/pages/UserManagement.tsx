@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
+import { getErrorDetail } from '../utils/errorParser';
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -97,8 +98,7 @@ const UserManagement: React.FC = () => {
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      setError("Failed to load users: " + (e.response?.data?.message || e.message));
+      setError("Failed to load users: " + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
@@ -184,8 +184,7 @@ const UserManagement: React.FC = () => {
       setDeleteId(null);
       setPaginate((prev) => ({ ...prev }));
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } }; message?: string };
-      toast.error('Failed to delete user', { description: e.response?.data?.message || e.message });
+      toast.error('Failed to delete user', { description: getErrorDetail(err) });
     }
   };
 
