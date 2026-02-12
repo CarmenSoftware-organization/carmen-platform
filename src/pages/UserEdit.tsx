@@ -54,9 +54,21 @@ interface ClusterBU {
 
 const BU_ROLES = ['admin', 'user'] as const;
 
+const PLATFORM_ROLES = [
+  'super_admin',
+  'platform_admin',
+  'support_manager',
+  'support_staff',
+  'security_officer',
+  'integration_developer',
+  'user',
+] as const;
+
 interface UserFormData extends Record<string, unknown> {
   username: string;
   email: string;
+  platform_role: string;
+  alias_name: string;
   firstname: string;
   middlename: string;
   lastname: string;
@@ -71,6 +83,8 @@ const UserEdit: React.FC = () => {
   const [formData, setFormData] = useState<UserFormData>({
     username: "",
     email: "",
+    platform_role: "user",
+    alias_name: "",
     firstname: "",
     middlename: "",
     lastname: "",
@@ -138,6 +152,8 @@ const UserEdit: React.FC = () => {
       const loaded: UserFormData = {
         username: user.username || "",
         email: user.email || "",
+        platform_role: user.platform_role || "user",
+        alias_name: profile.alias_name || user.alias_name || "",
         firstname: profile.firstname || user.firstname || "",
         middlename: profile.middlename || user.middlename || "",
         lastname: profile.lastname || user.lastname || "",
@@ -222,7 +238,7 @@ const UserEdit: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -407,61 +423,104 @@ const UserEdit: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username {editing && "*"}</Label>
-                {editing ? (
-                  <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username {editing && "*"}</Label>
+                  {editing ? (
+                    <>
+                      <Input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Username"
+                        className={fieldErrors.username ? 'border-destructive' : ''}
+                        required
+                      />
+                      {fieldErrors.username && (
+                        <p className="text-xs text-destructive">{fieldErrors.username}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                      {formData.username || "-"}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email {editing && "*"}</Label>
+                  {editing ? (
+                    <>
+                      <Input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Email address"
+                        className={fieldErrors.email ? 'border-destructive' : ''}
+                        required
+                      />
+                      {fieldErrors.email && (
+                        <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                      {formData.email || "-"}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="platform_role">Platform Role {editing && "*"}</Label>
+                  {editing ? (
+                    <select
+                      id="platform_role"
+                      name="platform_role"
+                      value={formData.platform_role}
+                      onChange={handleChange}
+                      className={selectClassName}
+                    >
+                      {PLATFORM_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                      <Badge variant="outline" className="capitalize text-xs">
+                        {formData.platform_role?.replace(/_/g, ' ') || "-"}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="alias_name">Alias Name</Label>
+                  {editing ? (
                     <Input
                       type="text"
-                      id="username"
-                      name="username"
-                      value={formData.username}
+                      id="alias_name"
+                      name="alias_name"
+                      value={formData.alias_name}
                       onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="Username"
-                      className={fieldErrors.username ? 'border-destructive' : ''}
-                      required
+                      placeholder="Alias name"
                     />
-                    {fieldErrors.username && (
-                      <p className="text-xs text-destructive">{fieldErrors.username}</p>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                    {formData.username || "-"}
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                      {formData.alias_name || "-"}
+                    </div>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email {editing && "*"}</Label>
-                {editing ? (
-                  <>
-                    <Input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="Email address"
-                      className={fieldErrors.email ? 'border-destructive' : ''}
-                      required
-                    />
-                    {fieldErrors.email && (
-                      <p className="text-xs text-destructive">{fieldErrors.email}</p>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                    {formData.email || "-"}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstname">First Name</Label>
                   {editing ? (
@@ -476,6 +535,24 @@ const UserEdit: React.FC = () => {
                   ) : (
                     <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
                       {formData.firstname || "-"}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastname">Last Name</Label>
+                  {editing ? (
+                    <Input
+                      type="text"
+                      id="lastname"
+                      name="lastname"
+                      value={formData.lastname}
+                      onChange={handleChange}
+                      placeholder="Last name"
+                    />
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                      {formData.lastname || "-"}
                     </div>
                   )}
                 </div>
@@ -498,46 +575,28 @@ const UserEdit: React.FC = () => {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="lastname">Last Name</Label>
+                <div className="flex items-center gap-2 sm:pt-6">
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="lastname"
-                      name="lastname"
-                      value={formData.lastname}
-                      onChange={handleChange}
-                      placeholder="Last name"
-                    />
+                    <>
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        name="is_active"
+                        checked={formData.is_active}
+                        onChange={handleChange}
+                        className="h-4 w-4 rounded border-input"
+                      />
+                      <Label htmlFor="is_active">Active</Label>
+                    </>
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.lastname || "-"}
-                    </div>
+                    <>
+                      <Label>Status</Label>
+                      <Badge variant={formData.is_active ? "success" : "secondary"} className="ml-2">
+                        {formData.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </>
                   )}
                 </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {editing ? (
-                  <>
-                    <input
-                      type="checkbox"
-                      id="is_active"
-                      name="is_active"
-                      checked={formData.is_active}
-                      onChange={handleChange}
-                      className="h-4 w-4 rounded border-input"
-                    />
-                    <Label htmlFor="is_active">Active</Label>
-                  </>
-                ) : (
-                  <>
-                    <Label>Status</Label>
-                    <Badge variant={formData.is_active ? "success" : "secondary"} className="ml-2">
-                      {formData.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </>
-                )}
               </div>
 
               {editing && (

@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
-import { Toaster } from "./components/ui/toaster";
+import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -114,7 +114,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          <Toaster />
+          <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
           <KeyboardShortcutsHelp />
         </div>
       </Router>
