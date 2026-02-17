@@ -1,0 +1,150 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ECR_REPOSITORY: carmen-platform
+  AWS_REGION_ECR: ap-southeast-7
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION_ECR }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image metadata
+        id: meta
+        run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/arm64
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.meta.outputs.short_sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha,scope=platform
+          cache-to: type=gha,mode=max,scope=platform
+
+  deploy-ec2:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Verify SSM connectivity
+        run: |
+          echo "Checking SSM agent status for frontend instance..."
+          aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=${{ secrets.FRONTEND_INSTANCE_ID }}" \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'InstanceInformationList[0].PingStatus' --output text
+
+      - name: Deploy to EC2 via SSM
+        env:
+          INSTANCE_ID: ${{ secrets.FRONTEND_INSTANCE_ID }}
+          ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+          GH_TOKEN_SECRET: ${{ secrets.GH_TOKEN }}
+          SSM_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          IMAGE_TAG=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          COMMAND_ID=$(aws ssm send-command \
+            --region "$SSM_REGION" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --timeout-seconds 600 \
+            --comment "Deploy carmen-platform SHA: $IMAGE_TAG" \
+            --parameters '{"commands":[
+              "#!/bin/bash",
+              "set -e",
+              "export HOME=/root",
+              "export PATH=/usr/local/bin:/usr/bin:/bin:$PATH",
+              "export AWS_DEFAULT_REGION='"$SSM_REGION"'",
+              "export ECR_REGISTRY='"$ECR_REGISTRY"'",
+              "export IMAGE_TAG='"$IMAGE_TAG"'",
+              "aws ecr get-login-password --region '"$SSM_REGION"' | docker login --username AWS --password-stdin $ECR_REGISTRY",
+              "PROJECT_DIR=/home/ec2-user/carmen-develop/carmen-platform",
+              "git config --global --add safe.directory $PROJECT_DIR",
+              "if [ ! -d $PROJECT_DIR ]; then mkdir -p /home/ec2-user/carmen-develop && git clone https://'"$GH_TOKEN_SECRET"'@github.com/${{ github.repository }}.git $PROJECT_DIR; fi",
+              "cd $PROJECT_DIR",
+              "git remote set-url origin https://'"$GH_TOKEN_SECRET"'@github.com/${{ github.repository }}.git",
+              "git fetch origin main",
+              "git reset --hard origin/main",
+              "docker-compose down --remove-orphans",
+              "docker-compose pull",
+              "docker-compose up -d",
+              "docker image prune -f",
+              "echo Deploy complete: carmen-platform SHA='"$IMAGE_TAG"'",
+              "docker-compose ps"
+            ]}' \
+            --query 'Command.CommandId' --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+          echo "Waiting for deployment to complete..."
+
+          for i in $(seq 1 36); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --region "$SSM_REGION" \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' --output text 2>/dev/null || echo "Pending")
+
+            echo "  Status: $STATUS (attempt $i/36)"
+
+            if [ "$STATUS" = "Success" ]; then
+              echo "Deployment completed successfully!"
+              aws ssm get-command-invocation \
+                --region "$SSM_REGION" \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query 'StandardOutputContent' --output text
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ] || [ "$STATUS" = "TimedOut" ]; then
+              echo "::error::Deployment failed with status: $STATUS"
+              aws ssm get-command-invocation \
+                --region "$SSM_REGION" \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query 'StandardErrorContent' --output text
+              exit 1
+            fi
+          done
+
+          echo "::error::Deployment timed out after 6 minutes"
+          exit 1
