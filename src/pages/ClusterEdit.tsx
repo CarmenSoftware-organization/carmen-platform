@@ -578,8 +578,8 @@ const ClusterEdit: React.FC = () => {
                       {clusterUsers.map((user: any) => (
                         <tr key={user.id || user.user_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-2">
-                            {user.firstname || user.lastname
-                              ? `${user.firstname || ''} ${user.lastname || ''}`.trim()
+                            {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
+                              ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
                               : user.name || user.email}
                           </td>
                           <td className="px-4 py-2 text-muted-foreground">{user.email}</td>
