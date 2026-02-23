@@ -1,0 +1,38 @@
+# docker-compose.yml - Carmen Platform
+#
+# Usage:
+#   # Pull from ECR:
+#   export ECR_REGISTRY=697697503013.dkr.ecr.ap-southeast-7.amazonaws.com
+#   export IMAGE_TAG=latest
+#   docker-compose up -d
+#
+#   # Or build locally:
+#   docker-compose up -d --build
+
+services:
+  carmen-platform:
+    image: ${ECR_REGISTRY:-local}/carmen-platform:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: carmen-platform
+    ports:
+      - "127.0.0.1:3001:3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - carmen-frontend-network
+
+networks:
+  carmen-frontend-network:
+    driver: bridge
+    name: carmen-frontend-network
