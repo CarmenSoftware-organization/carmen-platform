@@ -11,7 +11,7 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -109,6 +109,11 @@ const UserEdit: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<UserFormData>(formData);
   const formRef = useRef<HTMLFormElement>(null);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -133,6 +138,40 @@ const UserEdit: React.FC = () => {
     setFormData(savedFormData);
     setEditing(false);
     setError("");
+  };
+
+  const handleOpenPasswordDialog = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setShowPasswordDialog(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await userService.resetPassword(id!, newPassword);
+      setShowPasswordDialog(false);
+      toast.success('Password changed successfully');
+    } catch (err: unknown) {
+      const detail = getErrorDetail(err);
+      setPasswordError('Failed to change password: ' + detail);
+      toast.error('Failed to change password', { description: detail });
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   useEffect(() => {
@@ -401,10 +440,16 @@ const UserEdit: React.FC = () => {
             </p>
           </div>
           {!isNew && !editing && (
-            <Button variant="outline" size="sm" onClick={handleEditToggle}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Change Password
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </div>
           )}
         </div>
 
@@ -429,7 +474,7 @@ const UserEdit: React.FC = () => {
                   {editing ? (
                     <>
                       <Input
-                        type="email"
+                        type="text"
                         id="username"
                         name="username"
                         value={formData.username}
@@ -438,6 +483,7 @@ const UserEdit: React.FC = () => {
                         onFocus={handleFocus}
                         placeholder="user@example.com"
                         className={fieldErrors.username ? 'border-destructive' : ''}
+                        disabled={!isNew}
                         required
                       />
                       {fieldErrors.username && (
@@ -836,6 +882,56 @@ const UserEdit: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={(open) => {
+        setShowPasswordDialog(open);
+        if (!open) { setNewPassword(''); setConfirmPassword(''); setPasswordError(''); }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>Set a new password for this user</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            {passwordError && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{passwordError}</div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password *</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                required
+              />
+              <p className="text-xs text-muted-foreground">Password must be at least 6 characters</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" size="sm" variant="outline" onClick={() => setShowPasswordDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={savingPassword}>
+                {savingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                {savingPassword ? 'Updating...' : 'Update Password'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Debug Sheet - Development Only */}
       {process.env.NODE_ENV === 'development' && !!rawResponse && (

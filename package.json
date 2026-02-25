@@ -59,7 +59,7 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://dev.blueledgers.com:4001",
+  "proxy": "https://43.209.126.252",
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
     "@playwright/test": "^1.58.2"
