@@ -12,8 +12,9 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -33,6 +34,7 @@ interface AllUser {
   username?: string;
   email?: string;
   firstname?: string;
+  middlename?: string;
   lastname?: string;
 }
 
@@ -70,6 +72,7 @@ const ClusterEdit: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<AllUser | null>(null);
   const [addUserRole, setAddUserRole] = useState('user');
   const [addingUser, setAddingUser] = useState(false);
+  const [deleteClusterUser, setDeleteClusterUser] = useState<any>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const searchUsersPerPage = 10;
@@ -163,17 +166,20 @@ const ClusterEdit: React.FC = () => {
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
-  const fetchSearchUsers = useCallback(async (search: string, page: number) => {
+  const fetchSearchUsers = useCallback(async (search: string, page: number, append = false) => {
     setLoadingSearchUsers(true);
     try {
-      const data = await userService.getAll({ search, page, perpage: searchUsersPerPage });
+      const data = await userService.getAll({ search, page, perpage: searchUsersPerPage, searchfields: ['username', 'email', 'firstname', 'lastname'] });
       const items = (data as any).data || data;
       const pag = (data as any).paginate;
-      setSearchUsers(Array.isArray(items) ? items : []);
+      const newItems = Array.isArray(items) ? items : [];
+      setSearchUsers(prev => append ? [...prev, ...newItems] : newItems);
       setSearchUsersTotal(pag?.total ?? (data as any).total ?? 0);
     } catch {
-      setSearchUsers([]);
-      setSearchUsersTotal(0);
+      if (!append) {
+        setSearchUsers([]);
+        setSearchUsersTotal(0);
+      }
     } finally {
       setLoadingSearchUsers(false);
     }
@@ -185,6 +191,7 @@ const ClusterEdit: React.FC = () => {
     setAddUserRole('user');
     setSearchUsersTerm('');
     setSearchUsersPage(1);
+    setSearchUsers([]);
     fetchSearchUsers('', 1);
   };
 
@@ -193,16 +200,30 @@ const ClusterEdit: React.FC = () => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       setSearchUsersPage(1);
+      setSearchUsers([]);
       fetchSearchUsers(value, 1);
     }, 400);
   };
 
-  const handleSearchUsersPageChange = (page: number) => {
-    setSearchUsersPage(page);
-    fetchSearchUsers(searchUsersTerm, page);
+  const searchUsersTotalPages = Math.max(1, Math.ceil(searchUsersTotal / searchUsersPerPage));
+  const hasMoreUsers = searchUsersPage < searchUsersTotalPages;
+
+  const handleLoadMoreUsers = () => {
+    if (loadingSearchUsers || !hasMoreUsers) return;
+    const nextPage = searchUsersPage + 1;
+    setSearchUsersPage(nextPage);
+    fetchSearchUsers(searchUsersTerm, nextPage, true);
   };
 
-  const searchUsersTotalPages = Math.max(1, Math.ceil(searchUsersTotal / searchUsersPerPage));
+  const userListRef = useRef<HTMLDivElement>(null);
+
+  const handleUserListScroll = () => {
+    const el = userListRef.current;
+    if (!el || loadingSearchUsers || !hasMoreUsers) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
+      handleLoadMoreUsers();
+    }
+  };
 
   const availableUsers = searchUsers.filter(
     u => u.id && !clusterUsers.some((cu: any) => (cu.user_id || cu.id) === u.id)
@@ -225,6 +246,19 @@ const ClusterEdit: React.FC = () => {
       toast.error('Failed to add user', { description: getErrorDetail(err) });
     } finally {
       setAddingUser(false);
+    }
+  };
+
+  const handleConfirmRemoveClusterUser = async () => {
+    if (!deleteClusterUser) return;
+    const userId = deleteClusterUser.id || deleteClusterUser.user_id;
+    try {
+      await api.delete(`/api-system/user/cluster/${userId}`);
+      toast.success('User removed from cluster');
+      setDeleteClusterUser(null);
+      await fetchClusterUsers();
+    } catch (err: unknown) {
+      toast.error('Failed to remove user', { description: getErrorDetail(err) });
     }
   };
 
@@ -572,6 +606,7 @@ const ClusterEdit: React.FC = () => {
                         <th className="text-left font-medium px-4 py-2">Email</th>
                         <th className="text-left font-medium px-4 py-2">Role</th>
                         <th className="text-center font-medium px-4 py-2">Status</th>
+                        <th className="w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -595,6 +630,11 @@ const ClusterEdit: React.FC = () => {
                               {user.is_active !== false ? 'Active' : 'Inactive'}
                             </Badge>
                           </td>
+                          <td className="px-4 py-2 text-center">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteClusterUser(user)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -614,9 +654,10 @@ const ClusterEdit: React.FC = () => {
                       {selectedUser && (
                         <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                           <div>
-                            <div className="text-sm font-medium">{selectedUser.username || selectedUser.email}</div>
+                            <div className="text-sm font-medium">{selectedUser.username || '-'}</div>
+                            <div className="text-xs text-muted-foreground">{selectedUser.email || '-'}</div>
                             <div className="text-xs text-muted-foreground">
-                              {[selectedUser.firstname, selectedUser.lastname].filter(Boolean).join(' ') || selectedUser.email}
+                              {[selectedUser.firstname, selectedUser.middlename, selectedUser.lastname].filter(Boolean).join(' ') || '-'}
                             </div>
                           </div>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedUser(null)}>
@@ -640,10 +681,12 @@ const ClusterEdit: React.FC = () => {
                           </div>
 
                           {/* User list */}
-                          <div className="border rounded-md max-h-60 overflow-y-auto">
-                            {loadingSearchUsers ? (
-                              <p className="text-sm text-muted-foreground text-center py-4">Loading...</p>
-                            ) : availableUsers.length === 0 ? (
+                          <div
+                            ref={userListRef}
+                            className="border rounded-md max-h-60 overflow-y-auto"
+                            onScroll={handleUserListScroll}
+                          >
+                            {!loadingSearchUsers && availableUsers.length === 0 ? (
                               <p className="text-sm text-muted-foreground text-center py-4">
                                 {searchUsers.length > 0 ? 'All matching users are already in this cluster.' : 'No users found.'}
                               </p>
@@ -656,42 +699,22 @@ const ClusterEdit: React.FC = () => {
                                     className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
                                     onClick={() => setSelectedUser(u)}
                                   >
-                                    <div className="text-sm font-medium">{u.username || u.email}</div>
+                                    <div className="text-sm font-medium">{u.username || '-'}</div>
+                                    <div className="text-xs text-muted-foreground">{u.email || '-'}</div>
                                     <div className="text-xs text-muted-foreground">
-                                      {[u.firstname, u.lastname].filter(Boolean).join(' ') || u.email}
+                                      {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
                                     </div>
                                   </button>
                                 ))}
+                                {loadingSearchUsers && (
+                                  <div className="text-sm text-muted-foreground text-center py-3">Loading...</div>
+                                )}
                               </div>
                             )}
                           </div>
-
-                          {/* Pagination */}
-                          {searchUsersTotalPages > 1 && (
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">
-                                Page {searchUsersPage} of {searchUsersTotalPages} ({searchUsersTotal} users)
-                              </span>
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs px-2"
-                                  disabled={searchUsersPage <= 1}
-                                  onClick={() => handleSearchUsersPageChange(searchUsersPage - 1)}
-                                >
-                                  Prev
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs px-2"
-                                  disabled={searchUsersPage >= searchUsersTotalPages}
-                                  onClick={() => handleSearchUsersPageChange(searchUsersPage + 1)}
-                                >
-                                  Next
-                                </Button>
-                              </div>
+                          {searchUsersTotal > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Showing {availableUsers.length} of {searchUsersTotal} users
                             </div>
                           )}
                         </>
@@ -726,6 +749,16 @@ const ClusterEdit: React.FC = () => {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteClusterUser !== null}
+        onOpenChange={(open) => { if (!open) setDeleteClusterUser(null); }}
+        title="Remove User from Cluster"
+        description={`Are you sure you want to remove "${deleteClusterUser ? (deleteClusterUser.userInfo ? [deleteClusterUser.userInfo.firstname, deleteClusterUser.userInfo.middlename, deleteClusterUser.userInfo.lastname].filter(Boolean).join(' ') : deleteClusterUser.username || deleteClusterUser.email || 'this user') : ''}" from this cluster?`}
+        confirmText="Remove"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmRemoveClusterUser}
+      />
 
       {/* Debug Sheet - Development Only */}
       {process.env.NODE_ENV === 'development' && !isNew && !!(rawResponse || rawBuResponse || rawUsersResponse) && (
