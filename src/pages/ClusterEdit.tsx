@@ -251,9 +251,14 @@ const ClusterEdit: React.FC = () => {
 
   const handleConfirmRemoveClusterUser = async () => {
     if (!deleteClusterUser) return;
-    const userId = deleteClusterUser.id || deleteClusterUser.user_id;
+    // Use tb_cluster_user.id (returned as 'id' from GET /api-system/user/cluster/:clusterId)
+    const clusterUserId = deleteClusterUser.id;
+    if (!clusterUserId) {
+      toast.error('Cannot remove user', { description: 'Missing cluster user ID' });
+      return;
+    }
     try {
-      await api.delete(`/api-system/user/cluster/${userId}`);
+      await api.delete(`/api-system/user/cluster/${clusterUserId}`);
       toast.success('User removed from cluster');
       setDeleteClusterUser(null);
       await fetchClusterUsers();
