@@ -141,6 +141,7 @@ export interface AuthContextValue {
   loginResponse: LoginResponse | null;
   platformRole: string | null;
   hasRole: (roles: string[]) => boolean;
+  userCount: number | null;
 }
 
 export interface LoginCredentials {

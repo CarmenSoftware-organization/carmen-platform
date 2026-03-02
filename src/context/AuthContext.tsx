@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import userService from '../services/userService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue } from '../types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -22,6 +23,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
+  const [userCount, setUserCount] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,6 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       // Fetch fresh profile to get firstname/middlename/lastname
       fetchProfile();
+      fetchUserCount();
     }
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -72,6 +75,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(merged);
     } catch {
       // Profile fetch failed silently — user data from login is still available
+    }
+  };
+
+  const fetchUserCount = async () => {
+    try {
+      const response = await userService.getAll({ page: 1, perpage: 1 });
+      const total = response.paginate?.total ?? response.total ?? response.data?.length ?? 0;
+      setUserCount(total);
+    } catch {
+      // User count fetch failed silently — default to null (enforce role checks)
     }
   };
 
@@ -112,6 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Fetch full profile to get firstname/middlename/lastname
       fetchProfile();
+      fetchUserCount();
 
       return { success: true };
     } catch (error: unknown) {
@@ -161,6 +175,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const platformRole = loginResponse?.platform_role || user?.platform_role || null;
 
   const hasRole = (roles: string[]): boolean => {
+    // Allow all access when there are 0 or 1 users (initial setup)
+    if (userCount !== null && userCount <= 1) return true;
     if (!platformRole) return false;
     return roles.includes(platformRole);
   };
@@ -174,7 +190,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     loginResponse,
     platformRole,
-    hasRole
+    hasRole,
+    userCount
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
