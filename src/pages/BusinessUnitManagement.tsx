@@ -292,7 +292,7 @@ const BusinessUnitManagement: React.FC = () => {
                   placeholder="Search business units..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 pr-9"
+                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
                   aria-label="Search business units"
                 />
                 {searchTerm && (

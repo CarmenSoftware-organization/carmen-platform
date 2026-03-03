@@ -37,6 +37,10 @@ const Dashboard: React.FC = () => {
   });
 
   useEffect(() => {
+    const extractTotal = (res: any): number => {
+      return res?.paginate?.total ?? res?.data?.paginate?.total ?? res?.total ?? res?.data?.total ?? 0;
+    };
+
     const fetchCounts = async (
       key: string,
       service: { getAll: (p: any) => Promise<any> },
@@ -46,8 +50,8 @@ const Dashboard: React.FC = () => {
           service.getAll({ page: 1, perpage: 1 }),
           service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { is_active: true } }) }),
         ]);
-        const total = (totalRes as any).paginate?.total ?? (totalRes as any).total ?? 0;
-        const active = (activeRes as any).paginate?.total ?? (activeRes as any).total ?? 0;
+        const total = extractTotal(totalRes);
+        const active = extractTotal(activeRes);
         setCounts(prev => ({ ...prev, [key]: { active, total } }));
       } catch {
         // leave as null

@@ -119,10 +119,9 @@ export interface User {
 
 export interface LoginResponse {
   access_token?: string;
-  token?: string;
-  user?: User;
-  data?: User;
-  name?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  token_type?: string;
   platform_role?: string;
 }
 
@@ -141,6 +140,7 @@ export interface AuthContextValue {
   loginResponse: LoginResponse | null;
   platformRole: string | null;
   hasRole: (roles: string[]) => boolean;
+  userCount: number | null;
 }
 
 export interface LoginCredentials {

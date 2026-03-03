@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
+import userService from '../services/userService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -11,7 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -19,6 +20,15 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
+
+interface AllUser {
+  id: string;
+  username?: string;
+  email?: string;
+  firstname?: string;
+  middlename?: string;
+  lastname?: string;
+}
 
 const BU_ROLES = ['admin', 'user'] as const;
 
@@ -197,8 +207,16 @@ const BusinessUnitEdit: React.FC = () => {
   const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
   const [loadingClusterUsers, setLoadingClusterUsers] = useState(false);
   const [addUserRole, setAddUserRole] = useState('user');
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState<AllUser | null>(null);
   const [addingUser, setAddingUser] = useState(false);
+  const [searchUsers, setSearchUsers] = useState<AllUser[]>([]);
+  const [searchUsersTerm, setSearchUsersTerm] = useState('');
+  const [searchUsersTotal, setSearchUsersTotal] = useState(0);
+  const [searchUsersPage, setSearchUsersPage] = useState(1);
+  const [loadingSearchUsers, setLoadingSearchUsers] = useState(false);
+  const searchUsersPerPage = 10;
+  const searchUsersTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userListRef = useRef<HTMLDivElement>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawClusterUsersResponse, setRawClusterUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
@@ -327,6 +345,16 @@ const BusinessUnitEdit: React.FC = () => {
     }
   };
 
+  const fetchBuUsers = async () => {
+    try {
+      const data = await businessUnitService.getById(id!);
+      const bu = data.data || data;
+      setBuUsers(Array.isArray(bu.users) ? bu.users : []);
+    } catch {
+      // silent — user list refresh failed
+    }
+  };
+
   const handleDeleteUser = (user: BUUser) => {
     setDeleteUser(user);
   };
@@ -363,40 +391,79 @@ const BusinessUnitEdit: React.FC = () => {
     }
   };
 
-  const handleOpenAddUser = async () => {
-    setShowAddUser(true);
-    setSelectedUserId('');
-    setAddUserRole('user');
-    if (!formData.cluster_id) return;
-    setLoadingClusterUsers(true);
+  const fetchSearchUsers = async (search: string, page: number, append = false) => {
+    setLoadingSearchUsers(true);
     try {
-      const data = await clusterService.getClusterUsers(formData.cluster_id);
-      setRawClusterUsersResponse(data);
-      const items: ClusterUser[] = data.data || data;
-      setClusterUsers(Array.isArray(items) ? items : []);
+      const data = await userService.getAll({ search, page, perpage: searchUsersPerPage, searchfields: ['username', 'email', 'firstname', 'lastname'] });
+      const items = (data as any).data || data;
+      const pag = (data as any).paginate;
+      const newItems: AllUser[] = Array.isArray(items) ? items : [];
+      setSearchUsers(prev => append ? [...prev, ...newItems] : newItems);
+      setSearchUsersTotal(pag?.total ?? (data as any).total ?? 0);
     } catch {
-      setClusterUsers([]);
+      if (!append) {
+        setSearchUsers([]);
+        setSearchUsersTotal(0);
+      }
     } finally {
-      setLoadingClusterUsers(false);
+      setLoadingSearchUsers(false);
     }
   };
 
-  const availableClusterUsers = clusterUsers.filter(
-    cu => cu.user_id && !buUsers.some(bu => bu.user_id === cu.user_id)
+  const searchUsersTotalPages = Math.max(1, Math.ceil(searchUsersTotal / searchUsersPerPage));
+  const hasMoreUsers = searchUsersPage < searchUsersTotalPages;
+
+  const handleOpenAddUser = () => {
+    setShowAddUser(true);
+    setSelectedUser(null);
+    setAddUserRole('user');
+    setSearchUsersTerm('');
+    setSearchUsersPage(1);
+    setSearchUsers([]);
+    fetchSearchUsers('', 1);
+  };
+
+  const handleSearchUsersChange = (value: string) => {
+    setSearchUsersTerm(value);
+    if (searchUsersTimeout.current) clearTimeout(searchUsersTimeout.current);
+    searchUsersTimeout.current = setTimeout(() => {
+      setSearchUsersPage(1);
+      setSearchUsers([]);
+      fetchSearchUsers(value, 1);
+    }, 400);
+  };
+
+  const handleLoadMoreUsers = () => {
+    if (loadingSearchUsers || !hasMoreUsers) return;
+    const nextPage = searchUsersPage + 1;
+    setSearchUsersPage(nextPage);
+    fetchSearchUsers(searchUsersTerm, nextPage, true);
+  };
+
+  const handleUserListScroll = () => {
+    const el = userListRef.current;
+    if (!el || loadingSearchUsers || !hasMoreUsers) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
+      handleLoadMoreUsers();
+    }
+  };
+
+  const availableUsers = searchUsers.filter(
+    u => u.id && !buUsers.some(bu => bu.user_id === u.id)
   );
 
   const handleAddUser = async () => {
-    if (!selectedUserId || !id) return;
+    if (!selectedUser || !id) return;
     setAddingUser(true);
     try {
       await businessUnitService.createUserBusinessUnit({
-        user_id: selectedUserId,
+        user_id: selectedUser.id,
         business_unit_id: id,
         role: addUserRole,
       });
       setShowAddUser(false);
       toast.success('User added to business unit');
-      await fetchBusinessUnit();
+      await fetchBuUsers();
     } catch (err: unknown) {
       toast.error('Failed to add user', { description: getErrorDetail(err) });
     } finally {
@@ -1550,48 +1617,95 @@ const BusinessUnitEdit: React.FC = () => {
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
                     <DialogTitle>Add User to Business Unit</DialogTitle>
-                    <DialogDescription>Select a user from the cluster to add</DialogDescription>
+                    <DialogDescription>Search and select a user to add</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
-                    {loadingClusterUsers ? (
-                      <p className="text-sm text-muted-foreground">Loading cluster users...</p>
-                    ) : availableClusterUsers.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No available users in this cluster to add.</p>
-                    ) : (
+                    {/* Selected user display */}
+                    {selectedUser && (
+                      <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                        <div>
+                          <div className="text-sm font-medium">{selectedUser.username || '-'}</div>
+                          <div className="text-xs text-muted-foreground">{selectedUser.email || '-'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {[selectedUser.firstname, selectedUser.middlename, selectedUser.lastname].filter(Boolean).join(' ') || '-'}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedUser(null)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Search + user list */}
+                    {!selectedUser && (
                       <>
-                        <div className="space-y-2">
-                          <Label>User</Label>
-                          <select
-                            value={selectedUserId}
-                            onChange={(e) => setSelectedUserId(e.target.value)}
-                            className={selectClassName}
-                          >
-                            <option value="">Select a user</option>
-                            {availableClusterUsers.map((cu) => (
-                              <option key={cu.user_id} value={cu.user_id}>
-                                {cu.username || cu.email} — {[cu.userInfo?.firstname, cu.userInfo?.middlename, cu.userInfo?.lastname].filter(Boolean).join(' ') || ''}
-                              </option>
-                            ))}
-                          </select>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            placeholder="Search by username or email..."
+                            value={searchUsersTerm}
+                            onChange={(e) => handleSearchUsersChange(e.target.value)}
+                            className="pl-9"
+                            autoFocus
+                          />
                         </div>
-                        <div className="space-y-2">
-                          <Label>BU Role</Label>
-                          <select
-                            value={addUserRole}
-                            onChange={(e) => setAddUserRole(e.target.value)}
-                            className={selectClassName}
-                          >
-                            {BU_ROLES.map((r) => (
-                              <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
-                            ))}
-                          </select>
+
+                        <div
+                          ref={userListRef}
+                          className="border rounded-md max-h-60 overflow-y-auto"
+                          onScroll={handleUserListScroll}
+                        >
+                          {!loadingSearchUsers && availableUsers.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              {searchUsers.length > 0 ? 'All matching users are already in this business unit.' : 'No users found.'}
+                            </p>
+                          ) : (
+                            <div className="divide-y">
+                              {availableUsers.map((u) => (
+                                <button
+                                  key={u.id}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
+                                  onClick={() => setSelectedUser(u)}
+                                >
+                                  <div className="text-sm font-medium">{u.username || '-'}</div>
+                                  <div className="text-xs text-muted-foreground">{u.email || '-'}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
+                                  </div>
+                                </button>
+                              ))}
+                              {loadingSearchUsers && (
+                                <div className="text-sm text-muted-foreground text-center py-3">Loading...</div>
+                              )}
+                            </div>
+                          )}
                         </div>
+                        {searchUsersTotal > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Showing {availableUsers.length} of {searchUsersTotal} users
+                          </div>
+                        )}
                       </>
                     )}
+
+                    {/* Role select */}
+                    <div className="space-y-2">
+                      <Label>BU Role</Label>
+                      <select
+                        value={addUserRole}
+                        onChange={(e) => setAddUserRole(e.target.value)}
+                        className={selectClassName}
+                      >
+                        {BU_ROLES.map((r) => (
+                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <DialogFooter>
                     <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
-                    <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUserId}>
+                    <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUser}>
                       <UserPlus className="mr-2 h-4 w-4" />
                       {addingUser ? 'Adding...' : 'Add User'}
                     </Button>

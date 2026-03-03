@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import userService from '../services/userService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue } from '../types';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -22,6 +23,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
+  const [userCount, setUserCount] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,6 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       // Fetch fresh profile to get firstname/middlename/lastname
       fetchProfile();
+      fetchUserCount();
     }
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,43 +78,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const fetchUserCount = async () => {
+    try {
+      const response = await userService.getAll({ page: 1, perpage: 1 });
+      const total = response.paginate?.total ?? response.total ?? response.data?.length ?? 0;
+      setUserCount(total);
+    } catch {
+      // User count fetch failed silently — default to null (enforce role checks)
+    }
+  };
+
   const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
     try {
-      // Update this endpoint based on your actual API
       const response = await api.post('/api/auth/login', credentials);
 
-      // Handle both token and access_token response formats
-      const token = response.data.access_token || response.data.token;
-      const userData: User = response.data.user || response.data.data || {
-        id: '',
-        email: credentials.email,
-        name: response.data.name || credentials.email
-      };
+      // Backend wraps login data inside response.data.data
+      const loginData: LoginResponse = response.data.data || response.data;
+      const token = loginData.access_token;
 
       if (!token) {
         throw new Error('No token received from server');
       }
 
       // Check platform_role access
-      const platformRole = response.data.platform_role || userData.platform_role;
-      if (platformRole && !ALLOWED_ROLES.includes(platformRole)) {
+      const role = loginData.platform_role;
+      if (role && !ALLOWED_ROLES.includes(role)) {
         return {
           success: false,
           error: isDev
-            ? `Access Denied. Your role "${platformRole}" is not authorized. Allowed: ${ALLOWED_ROLES.join(', ')}`
+            ? `Access Denied. Your role "${role}" is not authorized. Allowed: ${ALLOWED_ROLES.join(', ')}`
             : 'Access Denied. You are not authorized to access this platform.'
         };
       }
 
+      // Build initial user object from login data
+      const userData: User = {
+        id: '',
+        email: credentials.email,
+        name: credentials.email,
+        platform_role: role,
+      };
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('loginResponse', JSON.stringify(response.data));
+      localStorage.setItem('loginResponse', JSON.stringify(loginData));
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
-      setLoginResponse(response.data);
+      setLoginResponse(loginData);
 
       // Fetch full profile to get firstname/middlename/lastname
       fetchProfile();
+      fetchUserCount();
 
       return { success: true };
     } catch (error: unknown) {
@@ -161,6 +178,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const platformRole = loginResponse?.platform_role || user?.platform_role || null;
 
   const hasRole = (roles: string[]): boolean => {
+    // Allow all access when there are 0 or 1 users (initial setup)
+    if (userCount !== null && userCount <= 1) return true;
     if (!platformRole) return false;
     return roles.includes(platformRole);
   };
@@ -174,7 +193,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     loginResponse,
     platformRole,
-    hasRole
+    hasRole,
+    userCount
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
