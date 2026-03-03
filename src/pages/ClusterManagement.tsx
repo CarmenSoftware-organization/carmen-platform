@@ -328,7 +328,7 @@ const ClusterManagement: React.FC = () => {
                   placeholder="Search clusters..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 pr-9"
+                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
                   aria-label="Search clusters"
                 />
                 {searchTerm && (
