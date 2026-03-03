@@ -119,10 +119,9 @@ export interface User {
 
 export interface LoginResponse {
   access_token?: string;
-  token?: string;
-  user?: User;
-  data?: User;
-  name?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  token_type?: string;
   platform_role?: string;
 }
 

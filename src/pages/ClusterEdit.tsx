@@ -609,7 +609,7 @@ const ClusterEdit: React.FC = () => {
                       <tr className="border-b bg-muted/50">
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-left font-medium px-4 py-2">Email</th>
-                        <th className="text-left font-medium px-4 py-2">Role</th>
+                        <th className="text-left font-medium px-4 py-2">Platform Role</th>
                         <th className="text-center font-medium px-4 py-2">Status</th>
                         <th className="w-10"></th>
                       </tr>
