@@ -83,8 +83,13 @@ const ClusterManagement: React.FC = () => {
       const data = await clusterService.getAll(params);
       setRawResponse(data);
       const items = data.data || data;
-      setClusters(Array.isArray(items) ? items : []);
-      setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
+      const mapped = (Array.isArray(items) ? items : []).map((item: any) => ({
+        ...item,
+        bu_count: item.bu_count ?? item._count?.tb_business_unit ?? 0,
+        users_count: item.users_count ?? item._count?.tb_cluster_user ?? 0,
+      }));
+      setClusters(mapped);
+      setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load clusters: ' + getErrorDetail(err));
@@ -323,7 +328,7 @@ const ClusterManagement: React.FC = () => {
                   placeholder="Search clusters..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 pr-9"
+                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
                   aria-label="Search clusters"
                 />
                 {searchTerm && (

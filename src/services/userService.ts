@@ -46,6 +46,11 @@ const userService = {
     const response = await api.put(`/api-system/user/${id}/reset-password`, { newPassword });
     return response.data;
   },
+
+  fetchKeycloakUsers: async () => {
+    const response = await api.post("/api-system/fetch-user");
+    return response.data;
+  },
 };
 
 export default userService;

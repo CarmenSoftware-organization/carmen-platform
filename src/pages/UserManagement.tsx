@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X, Building2, Users, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
@@ -88,6 +88,7 @@ const UserManagement: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -241,6 +242,19 @@ const UserManagement: React.FC = () => {
     toast.success('Data exported successfully');
   };
 
+  const handleFetchKeycloak = async () => {
+    try {
+      setSyncing(true);
+      await userService.fetchKeycloakUsers();
+      toast.success('Users fetched from Keycloak successfully');
+      setPaginate(prev => ({ ...prev }));
+    } catch (err: unknown) {
+      toast.error('Failed to fetch users from Keycloak', { description: getErrorDetail(err) });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const getNameDisplay = (record: UserRecord): string => {
     if (record.firstname || record.middlename || record.lastname) {
       return [record.firstname, record.middlename, record.lastname].filter(Boolean).join(" ");
@@ -382,6 +396,10 @@ const UserManagement: React.FC = () => {
             <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage users and permissions</p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
+              {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {syncing ? 'Fetching...' : 'Fetch Keycloak'}
+            </Button>
             <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
               <Download className="mr-2 h-4 w-4" />
               Export
@@ -403,7 +421,7 @@ const UserManagement: React.FC = () => {
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 pr-9"
+                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
                   aria-label="Search users"
                 />
                 {searchTerm && (
