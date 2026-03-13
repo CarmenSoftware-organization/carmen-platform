@@ -9,7 +9,7 @@ import type { LoginCredentials } from '../types';
 
 const Login: React.FC = () => {
   const [credentials, setCredentials] = useState<LoginCredentials>({
-    email: '',
+    username: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -84,15 +84,15 @@ const Login: React.FC = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-blue-800">Email</Label>
+              <Label htmlFor="username" className="text-blue-800">Email or Username</Label>
               <Input
-                type="email"
-                id="email"
-                name="email"
-                value={credentials.email}
+                type="text"
+                id="username"
+                name="username"
+                value={credentials.username}
                 onChange={handleChange}
                 required
-                placeholder="Enter your email"
+                placeholder="Enter your email or username"
                 className="bg-white/60 border-blue-200 text-blue-900 placeholder:text-blue-300 focus-visible:ring-blue-400/50"
               />
             </div>

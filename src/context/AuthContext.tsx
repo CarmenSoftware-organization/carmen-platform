@@ -114,8 +114,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Build initial user object from login data
       const userData: User = {
         id: '',
-        email: credentials.email,
-        name: credentials.email,
+        email: credentials.username,
+        name: credentials.username,
         platform_role: role,
       };
 
@@ -151,7 +151,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Production: generic messages only
       let errorMessage = 'Unable to login. Please try again later.';
       if (err.response?.status === 401) {
-        errorMessage = 'Invalid email or password.';
+        errorMessage = 'Invalid email/username or password.';
       } else if (err.response?.status === 429) {
         errorMessage = 'Too many login attempts. Please try again later.';
       }
