@@ -88,6 +88,7 @@ const ClusterManagement: React.FC = () => {
         bu_count: item.bu_count ?? item._count?.tb_business_unit ?? 0,
         users_count: item.users_count ?? item._count?.tb_cluster_user ?? 0,
         max_license_bu: item.max_license_bu ?? undefined,
+        total_max_license_users: item.total_max_license_users ?? undefined,
       }));
       setClusters(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
@@ -176,6 +177,8 @@ const ClusterManagement: React.FC = () => {
       { key: 'alias_name', label: 'Alias' },
       { key: 'is_active', label: 'Status' },
       { key: 'max_license_bu', label: 'Max Licensed BUs' },
+      { key: 'users_count', label: 'Users' },
+      { key: 'total_max_license_users', label: 'Max Licensed Users' },
       { key: 'created_at', label: 'Created' },
     ]);
     downloadCSV(csv, `clusters-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -234,11 +237,14 @@ const ClusterManagement: React.FC = () => {
       header: 'Users',
       cell: ({ row }) => {
         const count = row.original.users_count ?? 0;
-        if (count === 0) return <span className="text-muted-foreground">-</span>;
+        const max = row.original.total_max_license_users;
+        if (count === 0 && !max) return <span className="text-muted-foreground">-</span>;
         return (
           <div className="flex items-center justify-center gap-1">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-green-600 font-medium">{count}</span>
+            <span className={`font-medium ${max && count >= max ? 'text-destructive' : 'text-green-600'}`}>
+              {max ? `${count} / ${max}` : count}
+            </span>
           </div>
         );
       },

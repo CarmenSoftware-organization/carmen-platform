@@ -33,6 +33,7 @@ export interface Cluster {
   is_active: boolean;
   bu_count?: number;
   users_count?: number;
+  total_max_license_users?: number;
   created_at?: string;
   created_by_name?: string;
   updated_at?: string;
