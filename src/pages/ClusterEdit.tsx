@@ -12,7 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -26,6 +26,9 @@ import type { BusinessUnit, User } from '../types';
 interface ClusterFormData {
   code: string;
   name: string;
+  alias_name: string;
+  logo_url: string;
+  max_license_bu: string;
   is_active: boolean;
 }
 
@@ -48,6 +51,9 @@ const ClusterEdit: React.FC = () => {
   const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
     name: '',
+    alias_name: '',
+    logo_url: '',
+    max_license_bu: '',
     is_active: true,
   });
   const [loading, setLoading] = useState(!isNew);
@@ -123,6 +129,9 @@ const ClusterEdit: React.FC = () => {
       const loaded = {
         code: cluster.code || '',
         name: cluster.name || '',
+        alias_name: cluster.alias_name || '',
+        logo_url: cluster.logo_url || '',
+        max_license_bu: cluster.max_license_bu != null ? String(cluster.max_license_bu) : '',
         is_active: cluster.is_active ?? true,
       };
       setFormData(loaded);
@@ -292,8 +301,15 @@ const ClusterEdit: React.FC = () => {
     setError('');
 
     try {
+      const payload: Record<string, unknown> = { ...formData };
+      // Convert max_license_bu to number for API
+      if (formData.max_license_bu) {
+        payload.max_license_bu = Number(formData.max_license_bu);
+      } else {
+        delete payload.max_license_bu;
+      }
       if (isNew) {
-        const result = await clusterService.create(formData);
+        const result = await clusterService.create(payload);
         const created = result.data || result;
         toast.success('Cluster created successfully');
         if (created?.id) {
@@ -302,7 +318,7 @@ const ClusterEdit: React.FC = () => {
           navigate('/clusters');
         }
       } else {
-        await clusterService.update(id!, formData);
+        await clusterService.update(id!, payload);
         toast.success('Changes saved successfully');
         await fetchCluster();
         setEditing(false);
@@ -335,7 +351,7 @@ const ClusterEdit: React.FC = () => {
                 <Skeleton className="h-4 w-48 mt-1" />
               </CardHeader>
               <CardContent className="space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
+                {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="space-y-2">
                     <Skeleton className="h-4 w-20" />
                     <Skeleton className="h-9 w-full" />
@@ -410,29 +426,56 @@ const ClusterEdit: React.FC = () => {
             </CardHeader>
             <CardContent>
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Code {editing && '*'}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="code"
-                        name="code"
-                        value={formData.code}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Cluster code"
-                        className={fieldErrors.code ? 'border-destructive' : ''}
-                        required
-                      />
-                      {fieldErrors.code && (
-                        <p className="text-xs text-destructive">{fieldErrors.code}</p>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
-                  )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="code">Code {editing && '*'}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="code"
+                          name="code"
+                          value={formData.code}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="Cluster code"
+                          className={fieldErrors.code ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.code && (
+                          <p className="text-xs text-destructive">{fieldErrors.code}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="alias_name">Alias Name</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="alias_name"
+                          name="alias_name"
+                          value={formData.alias_name}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="Max 3 chars"
+                          maxLength={3}
+                          className={fieldErrors.alias_name ? 'border-destructive' : ''}
+                        />
+                        {fieldErrors.alias_name && (
+                          <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.alias_name || '-'}</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -449,6 +492,59 @@ const ClusterEdit: React.FC = () => {
                     />
                   ) : (
                     <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.name || '-'}</div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="logo_url">Logo URL</Label>
+                  {editing ? (
+                    <Input
+                      type="url"
+                      id="logo_url"
+                      name="logo_url"
+                      value={formData.logo_url}
+                      onChange={handleChange}
+                      placeholder="https://example.com/logo.png"
+                    />
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.logo_url || '-'}</div>
+                  )}
+                  {formData.logo_url && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <img
+                        src={formData.logo_url}
+                        alt="Cluster logo"
+                        className="h-10 w-10 rounded object-contain border"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max_license_bu">Max Licensed BUs</Label>
+                  {editing ? (
+                    <>
+                      <Input
+                        type="number"
+                        id="max_license_bu"
+                        name="max_license_bu"
+                        value={formData.max_license_bu}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Unlimited"
+                        min={1}
+                        className={fieldErrors.max_license_bu ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.max_license_bu && (
+                        <p className="text-xs text-destructive">{fieldErrors.max_license_bu}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                      {formData.max_license_bu || 'Unlimited'}
+                    </div>
                   )}
                 </div>
 
@@ -508,7 +604,10 @@ const ClusterEdit: React.FC = () => {
                         : (
                           <span className="flex items-center gap-2 mt-0.5">
                             <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
-                            <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
+                            <span className="text-muted-foreground text-xs">
+                              of {businessUnits.length} total
+                              {formData.max_license_bu && ` (${businessUnits.length} of ${formData.max_license_bu} licensed)`}
+                            </span>
                           </span>
                         )}
                     </CardDescription>

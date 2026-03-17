@@ -77,6 +77,7 @@ interface BusinessUnitFormData {
   description: string;
   is_hq: boolean;
   is_active: boolean;
+  max_license_users: string;
   // Hotel Information
   hotel_name: string;
   hotel_tel: string;
@@ -120,6 +121,7 @@ const initialFormData: BusinessUnitFormData = {
   description: '',
   is_hq: false,
   is_active: true,
+  max_license_users: '',
   hotel_name: '',
   hotel_tel: '',
   hotel_email: '',
@@ -307,6 +309,7 @@ const BusinessUnitEdit: React.FC = () => {
         description: bu.description || '',
         is_hq: bu.is_hq ?? false,
         is_active: bu.is_active ?? true,
+        max_license_users: bu.max_license_users != null ? String(bu.max_license_users) : '',
         hotel_name: bu.hotel_name || '',
         hotel_tel: bu.hotel_tel || '',
         hotel_email: bu.hotel_email || '',
@@ -526,6 +529,13 @@ const BusinessUnitEdit: React.FC = () => {
       } else if (val !== '' && val !== undefined && val !== null) {
         payload[key] = val;
       }
+    }
+
+    // Convert max_license_users to number
+    if (data.max_license_users) {
+      payload.max_license_users = Number(data.max_license_users);
+    } else {
+      delete payload.max_license_users;
     }
 
     // Parse number format fields from JSON strings to objects
@@ -825,6 +835,33 @@ const BusinessUnitEdit: React.FC = () => {
                   />
                 ) : (
                   <ReadOnlyTextarea value={formData.description} />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max_license_users">Max Licensed Users</Label>
+                {editing ? (
+                  <>
+                    <Input
+                      type="number"
+                      id="max_license_users"
+                      name="max_license_users"
+                      value={formData.max_license_users}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      onFocus={handleFocus}
+                      placeholder="Unlimited"
+                      min={1}
+                      className={fieldErrors.max_license_users ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.max_license_users && (
+                      <p className="text-xs text-destructive">{fieldErrors.max_license_users}</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                    {formData.max_license_users || 'Unlimited'}
+                  </div>
                 )}
               </div>
 

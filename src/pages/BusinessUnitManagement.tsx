@@ -168,6 +168,7 @@ const BusinessUnitManagement: React.FC = () => {
       { key: 'name', label: 'Name' },
       { key: 'cluster_name', label: 'Cluster' },
       { key: 'is_active', label: 'Status' },
+      { key: 'max_license_users', label: 'Max Licensed Users' },
       { key: 'created_at', label: 'Created' },
     ]);
     downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
