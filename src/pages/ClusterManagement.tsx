@@ -43,14 +43,19 @@ const ClusterManagement: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
+  const [showDeleted, setShowDeleted] = useState<boolean>(getStoredJSON<boolean>('filter_clusters_deleted', false));
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const buildStatusAdvance = (filters: string[]) => {
+  const buildAdvance = (filters: string[], includeDeleted: boolean) => {
+    const where: Record<string, unknown> = {};
     if (filters.length === 1) {
-      return JSON.stringify({ where: { is_active: filters[0] === 'true' } });
+      where.is_active = filters[0] === 'true';
     }
-    return '';
+    if (!includeDeleted) {
+      where.deleted_at = null;
+    }
+    return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
   };
 
   const [paginate, setPaginate] = useState<PaginateParams>({
@@ -58,7 +63,7 @@ const ClusterManagement: React.FC = () => {
     perpage: Number(localStorage.getItem("perpage_clusters")) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildStatusAdvance(storedFilters),
+    advance: buildAdvance(storedFilters, getStoredJSON<boolean>('filter_clusters_deleted', false)),
     filter: {},
   });
 
@@ -128,7 +133,16 @@ const ClusterManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_clusters', JSON.stringify(next));
     localStorage.setItem('page_clusters', '1');
-    const advance = buildStatusAdvance(next);
+    const advance = buildAdvance(next, showDeleted);
+    setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
+  };
+
+  const handleShowDeletedToggle = () => {
+    const next = !showDeleted;
+    setShowDeleted(next);
+    localStorage.setItem('filter_clusters_deleted', JSON.stringify(next));
+    localStorage.setItem('page_clusters', '1');
+    const advance = buildAdvance(statusFilter, next);
     setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
   };
 
@@ -136,17 +150,19 @@ const ClusterManagement: React.FC = () => {
     setStatusFilter([]);
     localStorage.setItem('filters_clusters', JSON.stringify([]));
     localStorage.setItem('page_clusters', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: '', filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], showDeleted), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
+    setShowDeleted(false);
     localStorage.setItem('filters_clusters', JSON.stringify([]));
+    localStorage.setItem('filter_clusters_deleted', JSON.stringify(false));
     localStorage.setItem('page_clusters', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: '', filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], false), filter: {} }));
   };
 
-  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_clusters', sort);
@@ -199,9 +215,16 @@ const ClusterManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clusters/${row.original.id}/edit`)}>
-          {row.original.name}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clusters/${row.original.id}/edit`)}>
+            {row.original.name}
+          </span>
+          {row.original.deleted_at && (
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
+              Deleted
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -282,6 +305,22 @@ const ClusterManagement: React.FC = () => {
         );
       },
     },
+    ...(showDeleted ? [{
+      id: 'deleted_at',
+      header: 'Deleted By',
+      cell: ({ row }: { row: { original: Cluster } }) => {
+        const d = row.original;
+        if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
+        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
+        return (
+          <div className="text-[11px] leading-tight text-destructive space-y-0.5">
+            <div>{fmt(d.deleted_at)}</div>
+            {d.deleted_by_name && <div>{d.deleted_by_name}</div>}
+          </div>
+        );
+      },
+      enableSorting: false,
+    } as ColumnDef<Cluster, unknown>] : []),
     {
       id: 'actions',
       header: '',
@@ -307,7 +346,7 @@ const ClusterManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete]);
+  ], [navigate, handleDelete, showDeleted]);
 
   return (
     <Layout>
@@ -397,6 +436,21 @@ const ClusterManagement: React.FC = () => {
                         </Button>
                       </div>
                     </div>
+                    <div className="space-y-3">
+                      <span className="text-sm font-medium">Deleted</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="showDeleted"
+                          checked={showDeleted}
+                          onChange={handleShowDeletedToggle}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                        <label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
+                          Show soft-deleted clusters
+                        </label>
+                      </div>
+                    </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         Clear All Filters
@@ -417,6 +471,14 @@ const ClusterManagement: React.FC = () => {
                     </button>
                   </Badge>
                 ))}
+                {showDeleted && (
+                  <Badge variant="secondary" className="text-xs gap-1 pr-1">
+                    Show Deleted
+                    <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
                   Clear all
                 </button>

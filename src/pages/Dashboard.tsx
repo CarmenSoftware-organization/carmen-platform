@@ -25,15 +25,16 @@ interface DashboardCard {
 interface Counts {
   active: number | null;
   total: number | null;
+  deleted: number | null;
 }
 
 const Dashboard: React.FC = () => {
   const { loginResponse } = useAuth();
   const [copied, setCopied] = useState(false);
   const [counts, setCounts] = useState<Record<string, Counts>>({
-    clusters: { active: null, total: null },
-    'business-units': { active: null, total: null },
-    users: { active: null, total: null },
+    clusters: { active: null, total: null, deleted: null },
+    'business-units': { active: null, total: null, deleted: null },
+    users: { active: null, total: null, deleted: null },
   });
 
   useEffect(() => {
@@ -44,21 +45,29 @@ const Dashboard: React.FC = () => {
     const fetchCounts = async (
       key: string,
       service: { getAll: (p: any) => Promise<any> },
+      includeDeleted?: boolean,
     ) => {
       try {
-        const [totalRes, activeRes] = await Promise.all([
-          service.getAll({ page: 1, perpage: 1 }),
-          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { is_active: true } }) }),
-        ]);
-        const total = extractTotal(totalRes);
-        const active = extractTotal(activeRes);
-        setCounts(prev => ({ ...prev, [key]: { active, total } }));
+        const promises: Promise<any>[] = [
+          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
+          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { is_active: true, deleted_at: null } }) }),
+        ];
+        if (includeDeleted) {
+          promises.push(
+            service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
+          );
+        }
+        const results = await Promise.all(promises);
+        const total = extractTotal(results[0]);
+        const active = extractTotal(results[1]);
+        const deleted = includeDeleted ? extractTotal(results[2]) : 0;
+        setCounts(prev => ({ ...prev, [key]: { active, total, deleted } }));
       } catch {
         // leave as null
       }
     };
 
-    fetchCounts('clusters', clusterService);
+    fetchCounts('clusters', clusterService, true);
     fetchCounts('business-units', businessUnitService);
     fetchCounts('users', userService);
   }, []);
@@ -141,6 +150,9 @@ const Dashboard: React.FC = () => {
                       {counts[card.key]?.total !== null && (
                         <span className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
                           {counts[card.key].total} total &middot; {(counts[card.key].total ?? 0) - (counts[card.key].active ?? 0)} inactive
+                          {(counts[card.key].deleted ?? 0) > 0 && (
+                            <>&middot; <span className="text-destructive">{counts[card.key].deleted} deleted</span></>
+                          )}
                         </span>
                       )}
                     </CardDescription>

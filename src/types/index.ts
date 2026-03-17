@@ -38,6 +38,8 @@ export interface Cluster {
   created_by_name?: string;
   updated_at?: string;
   updated_by_name?: string;
+  deleted_at?: string;
+  deleted_by_name?: string;
 }
 
 export interface BusinessUnitConfig {
