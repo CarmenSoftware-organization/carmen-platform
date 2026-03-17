@@ -14,7 +14,8 @@ Carmen Platform is a React + TypeScript admin dashboard for managing clusters, b
 - **HTTP:** Axios with interceptors (`src/services/api.ts`)
 - **Icons:** lucide-react (tree-shakeable)
 - **Toast:** sonner (Sonner toast library, v2.0.7+)
-- **Backend API base:** `https://dev.blueledgers.com:4001`
+- **Proxy:** `setupProxy.js` proxies `/api` and `/api-system` to backend (default `https://43.209.126.252`)
+- **Env vars:** `REACT_APP_API_BASE_URL` (API base), `REACT_APP_API_APP_ID` (x-app-id header)
 
 ---
 
@@ -36,7 +37,7 @@ src/
       label.tsx                 separator.tsx          sheet.tsx
       skeleton.tsx              table.tsx              toaster.tsx
       tooltip.tsx
-    magicui/                    # Magic UI effects (ripple)
+    magicui/                    # Magic UI effects (ripple, ripple-button)
   pages/
     Landing.tsx                 # Public landing page
     Login.tsx                   # Auth page
@@ -48,8 +49,9 @@ src/
     UserManagement.tsx          # List page
     UserEdit.tsx                # CRUD page
     Profile.tsx                 # User profile
+  setupProxy.js                 # Dev proxy for /api and /api-system routes
   services/
-    api.ts                      # Axios instance + auth interceptors
+    api.ts                      # Axios instance + auth interceptors + x-app-id header
     clusterService.ts           # Cluster CRUD
     businessUnitService.ts      # Business Unit CRUD
     userService.ts              # User CRUD
@@ -875,7 +877,7 @@ Use toast notifications for all user feedback. **Never use browser `alert()`.**
 
 ### Setup
 
-Already configured in `App.tsx` via `<Toaster />` from `src/components/ui/toaster.tsx`. Config: `position="top-right"`, `duration={4000}`, `richColors`, `closeButton`.
+Already configured in `App.tsx` via `<Toaster />`. Config: `position="top-center"`, `duration={4000}`, `richColors`.
 
 ### Usage
 
@@ -1130,7 +1132,12 @@ const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
 | `isValidEmail(email)` | `email`, `hotel_email`, `company_email` | Standard email format |
 | `isValidCode(code)` | `code` | 2-20 alphanumeric chars, `_`, `-` |
 | `isValidPhone(phone)` | `telephone`, `hotel_tel`, `company_tel` | 8-20 digits with optional `+`, spaces, `-`, `()` |
-| `validateField(name, value)` | Any of above | Auto-detects field type by name, returns error string or `''` |
+| `validateField(name, value)` | Any of above + `username`, `alias_name`, `max_license_bu`, `max_license_users` | Auto-detects field type by name, returns error string or `''` |
+
+Additional field validations in `validateField`:
+- `username`: must be a valid email address
+- `alias_name`: 1-3 alphanumeric characters
+- `max_license_bu`, `max_license_users`: positive integer
 
 ### Pre-submit Validation
 
@@ -1236,6 +1243,16 @@ interface ParsedError {
 }
 ```
 
+### Additional Utilities
+
+```tsx
+// Environment-aware error detail (dev shows full message, prod shows generic)
+import { getErrorDetail, devLog } from '../utils/errorParser';
+
+const detail = getErrorDetail(err);  // Dev: full message, Prod: "Please try again later."
+devLog('Operation failed', err);     // Only logs in development
+```
+
 ### How It Works
 
 - Extracts `message` from `response.data.message`, `response.data.error`, or `error.message`
@@ -1247,6 +1264,8 @@ interface ParsedError {
 - Replaces the old manual pattern: `e.response?.data?.message || e.message`
 - When `fields` is returned, set them as `fieldErrors` for inline display
 - Always pair with `toast.error()` for the general message
+- Use `devLog()` for console error logging (auto-suppressed in production)
+- Use `getErrorDetail()` when you need a user-facing error string that's safe for production
 
 ---
 
@@ -1331,9 +1350,10 @@ const typeService = {
 export default typeService;
 ```
 
-**API base path:** `/api-system/`
+**API base path:** `/api-system/` (proxied via `setupProxy.js` in development)
 **Response shape:** `{ data: T | T[], paginate?: { total, page, perpage } }`
 **Always unwrap:** `const items = response.data.data || response.data;`
+**Headers:** `Content-Type: application/json`, `x-app-id` (from env), `Authorization: Bearer <token>`
 
 ---
 
@@ -1345,10 +1365,15 @@ All shared types live in `src/types/index.ts`. Key interfaces:
 PaginateParams    // { page, perpage, search, searchfields, filter, sort, advance }
 PaginateInfo      // { total, page, perpage, totalPages? }
 ApiListResponse<T>// { data: T[], paginate?, total? }
-Cluster           // { id, code, name, is_active, bu_count?, users_count?, created_at?, ... }
-BusinessUnit      // { id, cluster_id?, code, name, is_active, hotel_*, company_*, ... }
-User              // { id, email, platform_role?, firstname?, lastname?, ... }
+Cluster           // { id, code, name, alias_name?, logo_url?, max_license_bu?, is_active, bu_count?, users_count?, ... }
+BusinessUnit      // { id, cluster_id?, code, name, alias_name?, max_license_users?, is_active, hotel_*, company_*, ... }
+User              // { id, email, alias_name?, platform_role?, firstname?, lastname?, user_info?, business_unit[]?, ... }
+UserInfo          // { firstname?, middlename?, lastname?, telephone? }
 BusinessUnitConfig// { key, label, datatype?, value? }
+LoginResponse     // { access_token?, refresh_token?, expires_in?, token_type?, platform_role? }
+LoginCredentials  // { username, password }
+LoginResult       // { success, error? }
+AuthContextValue  // { user, login, logout, refreshUser, isAuthenticated, loading, loginResponse, platformRole, hasRole, userCount }
 ```
 
 When adding fields to a type, add them as **optional** with `?` unless the API always returns them.
