@@ -210,7 +210,7 @@ const ClusterManagement: React.FC = () => {
         </Badge>
       ),
     },
-    {
+{
       id: 'bu_count',
       header: 'BU',
       cell: ({ row }) => {

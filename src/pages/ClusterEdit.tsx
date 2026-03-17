@@ -616,9 +616,16 @@ const ClusterEdit: React.FC = () => {
                     <Button variant="outline" size="icon" onClick={fetchBusinessUnits} disabled={buLoading} className="h-8 w-8" aria-label="Refresh business units">
                       <RefreshCw className={`h-4 w-4 ${buLoading ? 'animate-spin' : ''}`} />
                     </Button>
-                    <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)}>
-                      Add
-                    </Button>
+                    {(() => {
+                      const maxBu = formData.max_license_bu ? Number(formData.max_license_bu) : null;
+                      const atLimit = maxBu != null && businessUnits.length >= maxBu;
+                      return (
+                        <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)} disabled={atLimit}
+                          title={atLimit ? `License limit reached (${businessUnits.length}/${maxBu})` : undefined}>
+                          Add
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardHeader>
