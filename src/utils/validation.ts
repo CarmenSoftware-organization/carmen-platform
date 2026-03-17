@@ -30,7 +30,7 @@ export const validateField = (name: string, value: string): string => {
       return /^[a-zA-Z0-9]{0,3}$/.test(value) ? '' : 'Alias must be 1-3 alphanumeric characters';
     case 'max_license_bu':
     case 'max_license_users':
-      return /^\d+$/.test(value) && Number(value) > 0 ? '' : 'Must be a positive integer';
+      return /^\d+$/.test(value) && Number(value) >= 0 ? '' : 'Must be a non-negative integer';
     default:
       return '';
   }

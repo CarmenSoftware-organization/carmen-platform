@@ -80,6 +80,9 @@ const ClusterEdit: React.FC = () => {
   const [addUserBuId, setAddUserBuId] = useState('');
   const [addingUser, setAddingUser] = useState(false);
   const [deleteClusterUser, setDeleteClusterUser] = useState<any>(null);
+  const [editClusterUser, setEditClusterUser] = useState<any>(null);
+  const [editClusterUserForm, setEditClusterUserForm] = useState<{ role: string; parent_bu_id: string }>({ role: 'user', parent_bu_id: '' });
+  const [savingClusterUser, setSavingClusterUser] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const searchUsersPerPage = 10;
@@ -276,6 +279,29 @@ const ClusterEdit: React.FC = () => {
       await fetchClusterUsers();
     } catch (err: unknown) {
       toast.error('Failed to remove user', { description: getErrorDetail(err) });
+    }
+  };
+
+  const handleOpenEditClusterUser = (user: any) => {
+    setEditClusterUser(user);
+    setEditClusterUserForm({
+      role: user.role || 'user',
+      parent_bu_id: user.parent_bu_id || '',
+    });
+  };
+
+  const handleSaveEditClusterUser = async () => {
+    if (!editClusterUser) return;
+    setSavingClusterUser(true);
+    try {
+      await api.put(`/api-system/user/cluster/${editClusterUser.id}`, editClusterUserForm);
+      toast.success('User updated successfully');
+      setEditClusterUser(null);
+      await fetchClusterUsers();
+    } catch (err: unknown) {
+      toast.error('Failed to update user', { description: getErrorDetail(err) });
+    } finally {
+      setSavingClusterUser(false);
     }
   };
 
@@ -510,7 +536,7 @@ const ClusterEdit: React.FC = () => {
                           onBlur={handleBlur}
                           onFocus={handleFocus}
                           placeholder="Unlimited"
-                          min={1}
+                          min={0}
                           className={fieldErrors.max_license_bu ? 'border-destructive' : ''}
                         />
                         {fieldErrors.max_license_bu && (
@@ -738,9 +764,14 @@ const ClusterEdit: React.FC = () => {
                       {clusterUsers.map((user: any) => (
                         <tr key={user.id || user.user_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-2">
-                            {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
-                              ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
-                              : user.name || user.email}
+                            <span
+                              className="cursor-pointer text-primary hover:underline"
+                              onClick={() => handleOpenEditClusterUser(user)}
+                            >
+                              {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
+                                ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
+                                : user.name || user.email}
+                            </span>
                           </td>
                           <td className="px-4 py-2 text-muted-foreground">{user.email}</td>
                           <td className="px-4 py-2">
@@ -919,6 +950,63 @@ const ClusterEdit: React.FC = () => {
                           </Button>
                         );
                       })()}
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Cluster User Dialog */}
+                <Dialog open={!!editClusterUser} onOpenChange={(open) => { if (!open) setEditClusterUser(null); }}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Edit Cluster User</DialogTitle>
+                      <DialogDescription>
+                        {editClusterUser && (editClusterUser.userInfo?.firstname || editClusterUser.userInfo?.lastname
+                          ? [editClusterUser.userInfo.firstname, editClusterUser.userInfo.middlename, editClusterUser.userInfo.lastname].filter(Boolean).join(' ')
+                          : editClusterUser?.email)}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label>Cluster Role</Label>
+                        <select
+                          value={editClusterUserForm.role}
+                          onChange={(e) => setEditClusterUserForm(prev => ({ ...prev, role: e.target.value }))}
+                          className={selectClassName}
+                        >
+                          {CLUSTER_ROLES.map((r) => (
+                            <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Parent Business Unit</Label>
+                        <select
+                          value={editClusterUserForm.parent_bu_id}
+                          onChange={(e) => setEditClusterUserForm(prev => ({ ...prev, parent_bu_id: e.target.value }))}
+                          className={selectClassName}
+                        >
+                          <option value="">Select business unit</option>
+                          {businessUnits.map((bu) => {
+                            const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                            const max = bu.max_license_users;
+                            const isCurrentBu = editClusterUser?.parent_bu_id === bu.id;
+                            const atLimit = max != null && buUserCount >= max && !isCurrentBu;
+                            return (
+                              <option key={bu.id} value={bu.id} disabled={atLimit}>
+                                {bu.code} - {bu.name} ({buUserCount}{max != null ? `/${max}` : ''} users){atLimit ? ' - Limit reached' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" size="sm" onClick={() => setEditClusterUser(null)}>Cancel</Button>
+                      <Button size="sm" onClick={handleSaveEditClusterUser} disabled={savingClusterUser}>
+                        {savingClusterUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {savingClusterUser ? 'Saving...' : 'Save'}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>

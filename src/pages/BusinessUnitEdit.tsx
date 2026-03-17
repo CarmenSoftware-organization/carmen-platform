@@ -865,7 +865,7 @@ const BusinessUnitEdit: React.FC = () => {
                       onBlur={handleBlur}
                       onFocus={handleFocus}
                       placeholder="Unlimited"
-                      min={1}
+                      min={0}
                       className={fieldErrors.max_license_users ? 'border-destructive' : ''}
                     />
                     {fieldErrors.max_license_users && (
