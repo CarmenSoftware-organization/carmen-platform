@@ -68,8 +68,8 @@ const Dashboard: React.FC = () => {
     };
 
     fetchCounts('clusters', clusterService, true);
-    fetchCounts('business-units', businessUnitService);
-    fetchCounts('users', userService);
+    fetchCounts('business-units', businessUnitService, true);
+    fetchCounts('users', userService, true);
   }, []);
 
   const handleCopyJson = (data: unknown) => {
