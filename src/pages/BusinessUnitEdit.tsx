@@ -4,7 +4,6 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
-import userService from '../services/userService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -20,15 +19,6 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
-
-interface AllUser {
-  id: string;
-  username?: string;
-  email?: string;
-  firstname?: string;
-  middlename?: string;
-  lastname?: string;
-}
 
 const BU_ROLES = ['admin', 'user'] as const;
 
@@ -209,16 +199,9 @@ const BusinessUnitEdit: React.FC = () => {
   const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
   const [loadingClusterUsers, setLoadingClusterUsers] = useState(false);
   const [addUserRole, setAddUserRole] = useState('user');
-  const [selectedUser, setSelectedUser] = useState<AllUser | null>(null);
+  const [selectedClusterUser, setSelectedClusterUser] = useState<ClusterUser | null>(null);
   const [addingUser, setAddingUser] = useState(false);
-  const [searchUsers, setSearchUsers] = useState<AllUser[]>([]);
-  const [searchUsersTerm, setSearchUsersTerm] = useState('');
-  const [searchUsersTotal, setSearchUsersTotal] = useState(0);
-  const [searchUsersPage, setSearchUsersPage] = useState(1);
-  const [loadingSearchUsers, setLoadingSearchUsers] = useState(false);
-  const searchUsersPerPage = 10;
-  const searchUsersTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const userListRef = useRef<HTMLDivElement>(null);
+  const [addUserSearchTerm, setAddUserSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawClusterUsersResponse, setRawClusterUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
@@ -264,16 +247,18 @@ const BusinessUnitEdit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Pre-fetch cluster users for debug tab
+  // Fetch cluster users for add-user dialog and debug tab
   useEffect(() => {
     if (!isNew && formData.cluster_id && !rawClusterUsersResponse) {
+      setLoadingClusterUsers(true);
       clusterService.getClusterUsers(formData.cluster_id)
         .then(data => {
           setRawClusterUsersResponse(data);
           const items: ClusterUser[] = data.data || data;
           setClusterUsers(Array.isArray(items) ? items : []);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setLoadingClusterUsers(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.cluster_id]);
@@ -394,73 +379,31 @@ const BusinessUnitEdit: React.FC = () => {
     }
   };
 
-  const fetchSearchUsers = async (search: string, page: number, append = false) => {
-    setLoadingSearchUsers(true);
-    try {
-      const data = await userService.getAll({ search, page, perpage: searchUsersPerPage, searchfields: ['username', 'email', 'firstname', 'lastname'] });
-      const items = (data as any).data || data;
-      const pag = (data as any).paginate;
-      const newItems: AllUser[] = Array.isArray(items) ? items : [];
-      setSearchUsers(prev => append ? [...prev, ...newItems] : newItems);
-      setSearchUsersTotal(pag?.total ?? (data as any).total ?? 0);
-    } catch {
-      if (!append) {
-        setSearchUsers([]);
-        setSearchUsersTotal(0);
-      }
-    } finally {
-      setLoadingSearchUsers(false);
-    }
-  };
-
-  const searchUsersTotalPages = Math.max(1, Math.ceil(searchUsersTotal / searchUsersPerPage));
-  const hasMoreUsers = searchUsersPage < searchUsersTotalPages;
-
   const handleOpenAddUser = () => {
     setShowAddUser(true);
-    setSelectedUser(null);
+    setSelectedClusterUser(null);
     setAddUserRole('user');
-    setSearchUsersTerm('');
-    setSearchUsersPage(1);
-    setSearchUsers([]);
-    fetchSearchUsers('', 1);
+    setAddUserSearchTerm('');
   };
 
-  const handleSearchUsersChange = (value: string) => {
-    setSearchUsersTerm(value);
-    if (searchUsersTimeout.current) clearTimeout(searchUsersTimeout.current);
-    searchUsersTimeout.current = setTimeout(() => {
-      setSearchUsersPage(1);
-      setSearchUsers([]);
-      fetchSearchUsers(value, 1);
-    }, 400);
-  };
-
-  const handleLoadMoreUsers = () => {
-    if (loadingSearchUsers || !hasMoreUsers) return;
-    const nextPage = searchUsersPage + 1;
-    setSearchUsersPage(nextPage);
-    fetchSearchUsers(searchUsersTerm, nextPage, true);
-  };
-
-  const handleUserListScroll = () => {
-    const el = userListRef.current;
-    if (!el || loadingSearchUsers || !hasMoreUsers) return;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
-      handleLoadMoreUsers();
+  const availableClusterUsers = clusterUsers.filter(cu => {
+    // Exclude users already in this BU
+    if (buUsers.some(bu => bu.user_id === cu.user_id)) return false;
+    // Apply local search filter
+    if (addUserSearchTerm) {
+      const term = addUserSearchTerm.toLowerCase();
+      const name = [cu.userInfo?.firstname, cu.userInfo?.middlename, cu.userInfo?.lastname].filter(Boolean).join(' ').toLowerCase();
+      return (cu.username?.toLowerCase().includes(term) || cu.email?.toLowerCase().includes(term) || name.includes(term));
     }
-  };
-
-  const availableUsers = searchUsers.filter(
-    u => u.id && !buUsers.some(bu => bu.user_id === u.id)
-  );
+    return true;
+  });
 
   const handleAddUser = async () => {
-    if (!selectedUser || !id) return;
+    if (!selectedClusterUser || !id) return;
     setAddingUser(true);
     try {
       await businessUnitService.createUserBusinessUnit({
-        user_id: selectedUser.id,
+        user_id: selectedClusterUser.user_id,
         business_unit_id: id,
         role: addUserRole,
       });
@@ -1663,80 +1606,73 @@ const BusinessUnitEdit: React.FC = () => {
                 onConfirm={handleConfirmDeleteUser}
               />
 
-              {/* Add User Dialog */}
+              {/* Add User Dialog - picks from cluster users */}
               <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
                     <DialogTitle>Add User to Business Unit</DialogTitle>
-                    <DialogDescription>Search and select a user to add</DialogDescription>
+                    <DialogDescription>Select a user from this cluster to add</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     {/* Selected user display */}
-                    {selectedUser && (
+                    {selectedClusterUser && (
                       <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                         <div>
-                          <div className="text-sm font-medium">{selectedUser.username || '-'}</div>
-                          <div className="text-xs text-muted-foreground">{selectedUser.email || '-'}</div>
+                          <div className="text-sm font-medium">{selectedClusterUser.username || selectedClusterUser.email || '-'}</div>
+                          <div className="text-xs text-muted-foreground">{selectedClusterUser.email || '-'}</div>
                           <div className="text-xs text-muted-foreground">
-                            {[selectedUser.firstname, selectedUser.middlename, selectedUser.lastname].filter(Boolean).join(' ') || '-'}
+                            {[selectedClusterUser.userInfo?.firstname, selectedClusterUser.userInfo?.middlename, selectedClusterUser.userInfo?.lastname].filter(Boolean).join(' ') || '-'}
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedUser(null)}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedClusterUser(null)}>
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     )}
 
-                    {/* Search + user list */}
-                    {!selectedUser && (
+                    {/* Search + cluster user list */}
+                    {!selectedClusterUser && (
                       <>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
-                            placeholder="Search by username or email..."
-                            value={searchUsersTerm}
-                            onChange={(e) => handleSearchUsersChange(e.target.value)}
+                            placeholder="Search cluster users..."
+                            value={addUserSearchTerm}
+                            onChange={(e) => setAddUserSearchTerm(e.target.value)}
                             className="pl-9"
                             autoFocus
                           />
                         </div>
 
-                        <div
-                          ref={userListRef}
-                          className="border rounded-md max-h-60 overflow-y-auto"
-                          onScroll={handleUserListScroll}
-                        >
-                          {!loadingSearchUsers && availableUsers.length === 0 ? (
+                        <div className="border rounded-md max-h-60 overflow-y-auto">
+                          {loadingClusterUsers ? (
+                            <div className="text-sm text-muted-foreground text-center py-4">Loading cluster users...</div>
+                          ) : availableClusterUsers.length === 0 ? (
                             <p className="text-sm text-muted-foreground text-center py-4">
-                              {searchUsers.length > 0 ? 'All matching users are already in this business unit.' : 'No users found.'}
+                              {clusterUsers.length > 0 ? 'All cluster users are already in this business unit.' : 'No users in this cluster.'}
                             </p>
                           ) : (
                             <div className="divide-y">
-                              {availableUsers.map((u) => (
+                              {availableClusterUsers.map((cu) => (
                                 <button
-                                  key={u.id}
+                                  key={cu.user_id}
                                   type="button"
                                   className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
-                                  onClick={() => setSelectedUser(u)}
+                                  onClick={() => setSelectedClusterUser(cu)}
                                 >
-                                  <div className="text-sm font-medium">{u.username || '-'}</div>
-                                  <div className="text-xs text-muted-foreground">{u.email || '-'}</div>
+                                  <div className="text-sm font-medium">{cu.username || cu.email || '-'}</div>
+                                  <div className="text-xs text-muted-foreground">{cu.email || '-'}</div>
                                   <div className="text-xs text-muted-foreground">
-                                    {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
+                                    {[cu.userInfo?.firstname, cu.userInfo?.middlename, cu.userInfo?.lastname].filter(Boolean).join(' ') || '-'}
                                   </div>
                                 </button>
                               ))}
-                              {loadingSearchUsers && (
-                                <div className="text-sm text-muted-foreground text-center py-3">Loading...</div>
-                              )}
                             </div>
                           )}
                         </div>
-                        {searchUsersTotal > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            Showing {availableUsers.length} of {searchUsersTotal} users
-                          </div>
-                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {availableClusterUsers.length} available of {clusterUsers.length} cluster users
+                        </div>
                       </>
                     )}
 
@@ -1756,7 +1692,7 @@ const BusinessUnitEdit: React.FC = () => {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
-                    <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUser}>
+                    <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedClusterUser}>
                       <UserPlus className="mr-2 h-4 w-4" />
                       {addingUser ? 'Adding...' : 'Add User'}
                     </Button>
