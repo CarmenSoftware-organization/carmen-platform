@@ -42,6 +42,11 @@ const userService = {
     return response.data;
   },
 
+  hardDelete: async (id: string) => {
+    const response = await api.delete(`/api-system/user/${id}/hard`);
+    return response.data;
+  },
+
   resetPassword: async (id: string, newPassword: string) => {
     const response = await api.put(`/api-system/user/${id}/reset-password`, { newPassword });
     return response.data;

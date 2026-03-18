@@ -14,10 +14,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
+import { Label } from "../components/ui/label";
+import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
@@ -46,6 +49,8 @@ interface UserRecord {
   platform_role?: string;
   updated_at?: string;
   updated_by_name?: string;
+  deleted_at?: string;
+  deleted_by_name?: string;
   business_unit?: UserBU[];
 }
 
@@ -84,10 +89,14 @@ const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [roleFilter, setRoleFilter] = useState<string[]>(storedRoleFilters);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedStatusFilters);
+  const [showDeleted, setShowDeleted] = useState<boolean>(getStoredJSON<boolean>('filter_users_deleted', false));
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [hardDeleteUser, setHardDeleteUser] = useState<UserRecord | null>(null);
+  const [hardDeleteConfirm, setHardDeleteConfirm] = useState('');
+  const [hardDeleting, setHardDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,6 +108,7 @@ const UserManagement: React.FC = () => {
     const where: Record<string, unknown> = {};
     if (storedRoleFilters.length > 0) where.platform_role = { in: storedRoleFilters };
     if (storedStatusFilters.length === 1) where.is_active = storedStatusFilters[0] === "true";
+    if (!getStoredJSON<boolean>('filter_users_deleted', false)) where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
   };
 
@@ -156,10 +166,11 @@ const UserManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev, page, perpage }));
   };
 
-  const buildAdvance = (roles: string[], statuses: string[]) => {
+  const buildAdvance = (roles: string[], statuses: string[], includeDeleted: boolean) => {
     const where: Record<string, unknown> = {};
     if (roles.length > 0) where.platform_role = { in: roles };
     if (statuses.length === 1) where.is_active = statuses[0] === "true";
+    if (!includeDeleted) where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
   };
 
@@ -170,14 +181,14 @@ const UserManagement: React.FC = () => {
     setRoleFilter(next);
     localStorage.setItem('role_filters_users', JSON.stringify(next));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, statusFilter), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, statusFilter, showDeleted), filter: {} }));
   };
 
   const handleClearRoleFilter = () => {
     setRoleFilter([]);
     localStorage.setItem('role_filters_users', JSON.stringify([]));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], statusFilter), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], statusFilter, showDeleted), filter: {} }));
   };
 
   const handleStatusFilter = (status: string) => {
@@ -187,26 +198,36 @@ const UserManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('status_filters_users', JSON.stringify(next));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, next), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, next, showDeleted), filter: {} }));
   };
 
   const handleClearStatusFilter = () => {
     setStatusFilter([]);
     localStorage.setItem('status_filters_users', JSON.stringify([]));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, []), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, [], showDeleted), filter: {} }));
+  };
+
+  const handleShowDeletedToggle = () => {
+    const next = !showDeleted;
+    setShowDeleted(next);
+    localStorage.setItem('filter_users_deleted', JSON.stringify(next));
+    localStorage.setItem('page_users', '1');
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, statusFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setRoleFilter([]);
     setStatusFilter([]);
+    setShowDeleted(false);
     localStorage.setItem('role_filters_users', JSON.stringify([]));
     localStorage.setItem('status_filters_users', JSON.stringify([]));
+    localStorage.setItem('filter_users_deleted', JSON.stringify(false));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: "", filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], [], false), filter: {} }));
   };
 
-  const activeFilterCount = (roleFilter.length > 0 ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
+  const activeFilterCount = (roleFilter.length > 0 ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_users', sort);
@@ -227,6 +248,26 @@ const UserManagement: React.FC = () => {
       setPaginate((prev) => ({ ...prev }));
     } catch (err: unknown) {
       toast.error('Failed to delete user', { description: getErrorDetail(err) });
+    }
+  };
+
+  const handleHardDelete = useCallback((user: UserRecord) => {
+    setHardDeleteUser(user);
+    setHardDeleteConfirm('');
+  }, []);
+
+  const handleConfirmHardDelete = async () => {
+    if (!hardDeleteUser) return;
+    setHardDeleting(true);
+    try {
+      await userService.hardDelete(hardDeleteUser.id);
+      toast.success('User permanently deleted');
+      setHardDeleteUser(null);
+      setPaginate((prev) => ({ ...prev }));
+    } catch (err: unknown) {
+      toast.error('Failed to permanently delete user', { description: getErrorDetail(err) });
+    } finally {
+      setHardDeleting(false);
     }
   };
 
@@ -279,7 +320,16 @@ const UserManagement: React.FC = () => {
       {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => getNameDisplay(row.original),
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <span>{getNameDisplay(row.original)}</span>
+            {row.original.deleted_at && (
+              <Badge variant="destructive" className="text-[10px] px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
+                Deleted
+              </Badge>
+            )}
+          </div>
+        ),
       },
       {
         accessorKey: "email",
@@ -355,6 +405,22 @@ const UserManagement: React.FC = () => {
           );
         },
       },
+      ...(showDeleted ? [{
+        id: 'deleted_at',
+        header: 'Deleted By',
+        cell: ({ row }: { row: { original: UserRecord } }) => {
+          const d = row.original;
+          if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
+          const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
+          return (
+            <div className="text-[11px] leading-tight text-destructive space-y-0.5">
+              <div>{fmt(d.deleted_at)}</div>
+              {d.deleted_by_name && <div>{d.deleted_by_name}</div>}
+            </div>
+          );
+        },
+        enableSorting: false,
+      } as ColumnDef<UserRecord, unknown>] : []),
       {
         id: "actions",
         header: "",
@@ -379,12 +445,20 @@ const UserManagement: React.FC = () => {
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleHardDelete(row.original)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Hard Delete
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
     ],
-    [handleDelete, navigate],
+    [handleDelete, handleHardDelete, navigate, showDeleted],
   );
 
   return (
@@ -499,6 +573,21 @@ const UserManagement: React.FC = () => {
                         </Button>
                       </div>
                     </div>
+                    <div className="space-y-3">
+                      <span className="text-sm font-medium">Deleted</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="showDeleted"
+                          checked={showDeleted}
+                          onChange={handleShowDeletedToggle}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                        <label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
+                          Show soft-deleted users
+                        </label>
+                      </div>
+                    </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         Clear All Filters
@@ -527,6 +616,14 @@ const UserManagement: React.FC = () => {
                     </button>
                   </Badge>
                 ))}
+                {showDeleted && (
+                  <Badge variant="secondary" className="text-xs gap-1 pr-1">
+                    Show Deleted
+                    <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
                   Clear all
                 </button>
@@ -585,6 +682,55 @@ const UserManagement: React.FC = () => {
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
+
+      {/* Hard Delete Dialog with username confirmation */}
+      <Dialog open={hardDeleteUser !== null} onOpenChange={(open) => { if (!open && !hardDeleting) { setHardDeleteUser(null); setHardDeleteConfirm(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently Delete User
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently remove the user and all associated data. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <div className="text-sm font-medium">{hardDeleteUser?.username || hardDeleteUser?.email || '-'}</div>
+              <div className="text-xs text-muted-foreground">
+                {[hardDeleteUser?.firstname, hardDeleteUser?.middlename, hardDeleteUser?.lastname].filter(Boolean).join(' ') || hardDeleteUser?.email || '-'}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hardDeleteConfirm">
+                Type <span className="font-mono font-semibold text-destructive">{hardDeleteUser?.username || hardDeleteUser?.email || ''}</span> to confirm
+              </Label>
+              <Input
+                id="hardDeleteConfirm"
+                value={hardDeleteConfirm}
+                onChange={(e) => setHardDeleteConfirm(e.target.value)}
+                placeholder="Enter username to confirm"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setHardDeleteUser(null); setHardDeleteConfirm(''); }} disabled={hardDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmHardDelete}
+              disabled={hardDeleting || hardDeleteConfirm !== (hardDeleteUser?.username || hardDeleteUser?.email || '')}
+            >
+              {hardDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {hardDeleting ? 'Deleting...' : 'Permanently Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Debug Sheet - Development Only */}
       {process.env.NODE_ENV === 'development' && !!rawResponse && (
