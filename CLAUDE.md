@@ -1,13 +1,17 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Carmen Platform - AI Style Guide & Conventions
 
 > Read this file completely before making any changes to the codebase.
 
 ## Project Overview
 
-Carmen Platform is a React + TypeScript admin dashboard for managing clusters, business units, and users. It uses a glassmorphism design language with shadcn/ui components, Tailwind CSS, and a NestJS/Prisma backend.
+Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, and users. It uses a glassmorphism design language with shadcn/ui components, Tailwind CSS. The backend (NestJS/Prisma) is a separate service accessed via API proxy.
 
-- **Framework:** React 18 + TypeScript (CRA)
-- **Styling:** Tailwind CSS with CSS custom properties (HSL color system)
+- **Framework:** React 18 + TypeScript (CRA via react-scripts 5.0.1)
+- **Styling:** Tailwind CSS 3.4 with CSS custom properties (HSL color system)
 - **Components:** shadcn/ui (Radix UI primitives + CVA variants)
 - **Tables:** TanStack Table v8 via custom `DataTable` wrapper
 - **Routing:** react-router-dom v6
@@ -16,6 +20,71 @@ Carmen Platform is a React + TypeScript admin dashboard for managing clusters, b
 - **Toast:** sonner (Sonner toast library, v2.0.7+)
 - **Proxy:** `setupProxy.js` proxies `/api` and `/api-system` to backend (default `https://43.209.126.252`)
 - **Env vars:** `REACT_APP_API_BASE_URL` (API base), `REACT_APP_API_APP_ID` (x-app-id header)
+- **Node version:** 20.x (enforced via `.nvmrc` and `engines`)
+- **Package manager:** Bun (primary) or npm; `.npmrc` sets `legacy-peer-deps=true`
+- **TypeScript:** Strict mode enabled
+
+---
+
+## Development Commands
+
+```bash
+# Install dependencies
+bun install          # preferred
+npm install          # alternative
+
+# Start dev server (with hot reload polling)
+bun start            # or: npm start
+
+# Production build (sets REACT_APP_BUILD_DATE automatically)
+bun run build        # or: npm run build
+
+# Run unit tests (react-scripts test runner)
+bun test             # or: npm test
+
+# E2E tests (Playwright)
+bun run test:e2e          # headless
+bun run test:e2e:ui       # with Playwright UI
+bun run test:e2e:headed   # with visible browser
+bun run test:e2e:debug    # debug mode
+bun run test:e2e:report   # show last test report
+```
+
+No separate lint command is configured; linting comes from CRA's built-in ESLint (react-app preset) during `start` and `build`.
+
+---
+
+## Environment Setup
+
+Copy `.env.example` to `.env`. Key variables:
+
+| Variable | Purpose |
+|----------|---------|
+| `REACT_APP_API_BASE_URL` | Backend API base URL (proxied in dev via `setupProxy.js`) |
+| `REACT_APP_API_APP_ID` | Sent as `x-app-id` header on all API requests |
+| `REACT_APP_ENV` | Environment identifier (`development`, `uat`, `production`) |
+
+In development, `setupProxy.js` proxies `/api` and `/api-system` to the backend with `secure: false` (allows self-signed certs).
+
+---
+
+## Deployment
+
+- **Docker:** Multi-stage build (Node 20 builder → nginx:stable-alpine), serves on port 3001
+- **CI/CD:** GitHub Actions (`.github/workflows/build.yml`) builds ARM64 Docker image, pushes to AWS ECR, deploys to EC2 via SSM
+- **docker-compose:** Runs on `127.0.0.1:3001` (behind reverse proxy), health-checked every 30s
+
+---
+
+## E2E Testing (Playwright)
+
+Tests live in `e2e/` with page-object pattern:
+- `e2e/tests/` — test specs organized by feature (auth, clusters, business-units)
+- `e2e/pages/` — page objects
+- `e2e/helpers/` — shared utilities
+- `e2e/fixtures/` — test fixtures
+
+Config: `playwright.config.ts` (Chromium, screenshots on failure, video retention)
 
 ---
 

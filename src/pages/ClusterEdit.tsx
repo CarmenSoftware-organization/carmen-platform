@@ -668,6 +668,7 @@ const ClusterEdit: React.FC = () => {
                       <tr className="border-b bg-muted/50">
                         <th className="text-left font-medium px-4 py-2">Code</th>
                         <th className="text-left font-medium px-4 py-2">Name</th>
+                        <th className="text-center font-medium px-4 py-2">Users</th>
                         <th className="text-left font-medium px-4 py-2">Status</th>
                         <th className="text-right font-medium px-4 py-2 w-12"></th>
                       </tr>
@@ -679,6 +680,18 @@ const ClusterEdit: React.FC = () => {
                             <Badge variant="outline" className="text-xs">{bu.code}</Badge>
                           </td>
                           <td className="px-4 py-2">{bu.name}</td>
+                          <td className="px-4 py-2 text-center">
+                            {(() => {
+                              const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                              const max = bu.max_license_users;
+                              const atLimit = max != null && buUserCount >= max;
+                              return (
+                                <span className={`text-xs ${atLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                                  {buUserCount}{max != null ? `/${max}` : ''}
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td className="px-4 py-2">
                             <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
                               {bu.is_active ? 'Active' : 'Inactive'}
