@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { LayoutDashboard, Network, Building2, Users, Menu } from 'lucide-react';
+import { LayoutDashboard, Network, Building2, Users, FileText, Menu } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 
 interface LayoutProps {
@@ -51,6 +51,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/clusters', label: 'Clusters', icon: Network, roles: ['platform_admin', 'support_manager', 'support_staff'] },
     { path: '/business-units', label: 'Business Units', icon: Building2 },
     { path: '/users', label: 'Users', icon: Users },
+    { path: '/report-templates', label: 'Report Templates', icon: FileText, roles: ['platform_admin', 'support_manager', 'support_staff'] },
   ];
 
   const navItems = allNavItems.filter(item => !item.roles || hasRole(item.roles));

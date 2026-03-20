@@ -13,6 +13,8 @@ import BusinessUnitManagement from "./pages/BusinessUnitManagement";
 import BusinessUnitEdit from "./pages/BusinessUnitEdit";
 import UserManagement from "./pages/UserManagement";
 import UserEdit from "./pages/UserEdit";
+import ReportTemplateManagement from "./pages/ReportTemplateManagement";
+import ReportTemplateEdit from "./pages/ReportTemplateEdit";
 import Profile from "./pages/Profile";
 import "./App.css";
 
@@ -101,6 +103,30 @@ function App() {
               element={
                 <PrivateRoute>
                   <UserEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/report-templates"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                  <ReportTemplateManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/report-templates/new"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                  <ReportTemplateEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/report-templates/:id/edit"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                  <ReportTemplateEdit />
                 </PrivateRoute>
               }
             />
