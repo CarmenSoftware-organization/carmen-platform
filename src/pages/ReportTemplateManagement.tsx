@@ -82,12 +82,13 @@ const ReportTemplateManagement: React.FC = () => {
   const fetchTemplates = useCallback(async (params: PaginateParams) => {
     try {
       setLoading(true);
-      const data = await reportTemplateService.getAll(params);
-      setRawResponse(data);
-      const items = data.data || data;
-      const mapped = Array.isArray(items) ? items : [];
-      setTemplates(mapped);
-      setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
+      const response: any = await reportTemplateService.getAll(params);
+      setRawResponse(response);
+      const inner = response.data?.data ?? response.data ?? response;
+      const items = Array.isArray(inner) ? inner : (inner?.data ?? []);
+      const pagInfo = inner?.paginate ?? response.data?.paginate ?? response.paginate;
+      setTemplates(Array.isArray(items) ? items : []);
+      setTotalRows(pagInfo?.total ?? items.length);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load report templates: ' + getErrorDetail(err));

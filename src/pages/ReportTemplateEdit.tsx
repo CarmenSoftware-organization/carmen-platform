@@ -22,6 +22,8 @@ interface ReportTemplateFormData {
   dialog: string;
   content: string;
   is_standard: boolean;
+  allow_business_unit: string;
+  deny_business_unit: string;
   is_active: boolean;
 }
 
@@ -37,6 +39,8 @@ const ReportTemplateEdit: React.FC = () => {
     dialog: '',
     content: '',
     is_standard: true,
+    allow_business_unit: '',
+    deny_business_unit: '',
     is_active: true,
   });
   const [loading, setLoading] = useState(!isNew);
@@ -95,6 +99,8 @@ const ReportTemplateEdit: React.FC = () => {
         dialog: template.dialog || '',
         content: template.content || '',
         is_standard: template.is_standard ?? true,
+        allow_business_unit: template.allow_business_unit || '',
+        deny_business_unit: template.deny_business_unit || '',
         is_active: template.is_active ?? true,
       };
       setFormData(loaded);
@@ -129,13 +135,36 @@ const ReportTemplateEdit: React.FC = () => {
     setFieldErrors(prev => ({ ...prev, [e.target.name]: '' }));
   };
 
+  const formatXml = (xml: string): string => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml.trim(), 'application/xml');
+      if (doc.querySelector('parsererror')) return xml;
+      const serializer = new XMLSerializer();
+      const raw = serializer.serializeToString(doc);
+      // Pretty-print with indentation
+      let formatted = '';
+      let indent = 0;
+      raw.replace(/>\s*</g, '><').split(/(<[^>]+>)/g).filter(Boolean).forEach(node => {
+        if (node.match(/^<\/\w/)) indent--;
+        formatted += '  '.repeat(Math.max(indent, 0)) + node + '\n';
+        if (node.match(/^<\w[^/]*[^/]>$/)) indent++;
+      });
+      return formatted.trim();
+    } catch {
+      return xml;
+    }
+  };
+
   const handleFileUpload = (field: 'dialog' | 'content') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
       const text = reader.result as string;
-      setFormData(prev => ({ ...prev, [field]: text }));
+      const formatted = formatXml(text);
+      setFormData(prev => ({ ...prev, [field]: formatted }));
+      toast.success(`${file.name} uploaded and formatted as XML`);
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -320,6 +349,28 @@ const ReportTemplateEdit: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
+                        <Label htmlFor="allow_business_unit">Allow Business Unit</Label>
+                        {editing ? (
+                          <Input
+                            type="text" id="allow_business_unit" name="allow_business_unit"
+                            value={formData.allow_business_unit} onChange={handleChange}
+                            placeholder="e.g. BU001,BU002 (comma-separated, blank = all)"
+                          />
+                        ) : readOnlyField(formData.allow_business_unit)}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="deny_business_unit">Deny Business Unit</Label>
+                        {editing ? (
+                          <Input
+                            type="text" id="deny_business_unit" name="deny_business_unit"
+                            value={formData.deny_business_unit} onChange={handleChange}
+                            placeholder="e.g. BU003 (comma-separated, blank = none)"
+                          />
+                        ) : readOnlyField(formData.deny_business_unit)}
+                      </div>
+
+                      <div className="space-y-2">
                         <Label>Active</Label>
                         {editing ? (
                           <div className="flex items-center gap-2">
@@ -361,11 +412,9 @@ const ReportTemplateEdit: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle>Dialog (XML)</CardTitle>
                     {editing && (
-                      <label className="cursor-pointer">
+                      <label className="cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-lg text-xs font-medium border border-input bg-background/80 shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 transition-all duration-200">
                         <input type="file" accept=".xml,.txt" className="hidden" onChange={handleFileUpload('dialog')} />
-                        <Button variant="outline" size="sm" type="button" asChild>
-                          <span>Upload XML</span>
-                        </Button>
+                        Upload XML
                       </label>
                     )}
                   </div>
@@ -390,11 +439,9 @@ const ReportTemplateEdit: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle>Content (.frx to XML)</CardTitle>
                     {editing && (
-                      <label className="cursor-pointer">
+                      <label className="cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-lg text-xs font-medium border border-input bg-background/80 shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 transition-all duration-200">
                         <input type="file" accept=".frx,.xml,.txt" className="hidden" onChange={handleFileUpload('content')} />
-                        <Button variant="outline" size="sm" type="button" asChild>
-                          <span>Upload .frx / XML</span>
-                        </Button>
+                        Upload .frx / XML
                       </label>
                     )}
                   </div>
