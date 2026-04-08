@@ -182,6 +182,7 @@ const BusinessUnitManagement: React.FC = () => {
     const csv = generateCSV(businessUnits, [
       { key: 'code', label: 'Code' },
       { key: 'name', label: 'Name' },
+      { key: 'alias_name', label: 'Alias Name' },
       { key: 'cluster_name', label: 'Cluster' },
       { key: 'is_active', label: 'Status' },
       { key: 'max_license_users', label: 'Max Licensed Users' },
@@ -215,6 +216,13 @@ const BusinessUnitManagement: React.FC = () => {
             </Badge>
           )}
         </div>
+      ),
+    },
+    {
+      accessorKey: 'alias_name',
+      header: 'Alias',
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">{row.original.alias_name || '-'}</span>
       ),
     },
     { accessorKey: 'cluster_name', id: 'tb_cluster.name', header: 'Cluster' },
