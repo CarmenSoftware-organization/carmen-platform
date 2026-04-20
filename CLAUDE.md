@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, and users. It uses a glassmorphism design language with shadcn/ui components, Tailwind CSS. The backend (NestJS/Prisma) is a separate service accessed via API proxy.
+Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. It uses a glassmorphism design language with shadcn/ui components, Tailwind CSS. The backend (NestJS/Prisma) is a separate service accessed via API proxy.
 
 - **Framework:** React 18 + TypeScript (CRA via react-scripts 5.0.1)
 - **Styling:** Tailwind CSS 3.4 with CSS custom properties (HSL color system)
@@ -99,13 +99,15 @@ src/
     TableSkeleton.tsx           # Table skeleton loader for initial data loading
     EmptyState.tsx              # Empty state component (no data after load)
     KeyboardShortcuts.tsx       # Keyboard shortcuts help dialog + useGlobalShortcuts hook
+    XmlEditor.tsx               # CodeMirror 6 XML editor with toolbar + validation
+    DialogPreview.tsx           # Renders Dialog XML as a read-only form preview
     ui/                         # shadcn/ui primitives (do NOT modify without reason)
       avatar.tsx                badge.tsx              button.tsx
-      card.tsx                  confirm-dialog.tsx     data-table.tsx
-      dialog.tsx                dropdown-menu.tsx      input.tsx
-      label.tsx                 separator.tsx          sheet.tsx
-      skeleton.tsx              table.tsx              toaster.tsx
-      tooltip.tsx
+      card.tsx                  chip-input.tsx         confirm-dialog.tsx
+      data-table.tsx            dialog.tsx             dropdown-menu.tsx
+      input.tsx                 label.tsx              separator.tsx
+      sheet.tsx                 skeleton.tsx           table.tsx
+      tabs.tsx                  tooltip.tsx
     magicui/                    # Magic UI effects (ripple, ripple-button)
   pages/
     Landing.tsx                 # Public landing page
@@ -117,6 +119,8 @@ src/
     BusinessUnitEdit.tsx        # CRUD page
     UserManagement.tsx          # List page
     UserEdit.tsx                # CRUD page
+    ReportTemplateManagement.tsx # List page
+    ReportTemplateEdit.tsx      # CRUD page with tabbed XML editors + preview
     Profile.tsx                 # User profile
   setupProxy.js                 # Dev proxy for /api and /api-system routes
   services/
@@ -124,6 +128,7 @@ src/
     clusterService.ts           # Cluster CRUD
     businessUnitService.ts      # Business Unit CRUD
     userService.ts              # User CRUD
+    reportTemplateService.ts    # Report Template CRUD
   types/
     index.ts                    # All shared TypeScript interfaces
   utils/
@@ -131,6 +136,7 @@ src/
     csvExport.ts                # CSV generation and download utilities
     validation.ts               # Field validation (email, code, phone, username)
     errorParser.ts              # API error parsing with field-level errors
+    xml.ts                      # formatXml, validateXml, countLines, downloadText
   hooks/
     useUnsavedChanges.ts        # Browser warning on unsaved form changes
   context/
@@ -211,6 +217,7 @@ const allNavItems: NavItem[] = [
   { path: '/clusters', label: 'Clusters', icon: Network, roles: ['platform_admin', 'support_manager', 'support_staff'] },
   { path: '/business-units', label: 'Business Units', icon: Building2 },
   { path: '/users', label: 'Users', icon: Users },
+  { path: '/report-templates', label: 'Report Templates', icon: FileText, roles: ['platform_admin', 'support_manager', 'support_staff'] },
   // Add new item:
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -1445,6 +1452,13 @@ LoginResult       // { success, error? }
 AuthContextValue  // { user, login, logout, refreshUser, isAuthenticated, loading, loginResponse, platformRole, hasRole, userCount }
 ```
 
+Report template types (also in `src/types/` or inline per service):
+
+```tsx
+ReportTemplate    // { id, name, description?, report_group, dialog?, content?, is_standard, allow_business_unit?, deny_business_unit?, is_active, timestamps }
+XmlValidation     // { valid: boolean, message?, line?, column? }  (from src/utils/xml.ts)
+```
+
 When adding fields to a type, add them as **optional** with `?` unless the API always returns them.
 
 ---
@@ -1530,6 +1544,11 @@ When adding fields to a type, add them as **optional** with `?` unless the API a
 | `Download` | CSV export button |
 | `Loader2` | Loading spinner (always with `animate-spin`) |
 | `Keyboard` | Keyboard shortcuts (help dialog) |
+| `FileText` | Report templates nav/icon |
+| `Upload` | Upload XML / file button |
+| `Wand2` | Format XML button |
+| `AlertCircle` | Validation error indicator |
+| `Eye` | Preview indicator |
 
 **Pattern:** Icons in buttons use `className="mr-2 h-4 w-4"`. Standalone icon buttons use `size="icon"`.
 
@@ -1620,6 +1639,128 @@ const fmt = (v: string | undefined) => {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`;
 };
 ```
+
+---
+
+## Report Template Edit Patterns
+
+The Report Template edit page (`src/pages/ReportTemplateEdit.tsx`) uses a layout that's different from the rest of the Edit pages: a sticky left column (Template Info + BU Scope + Metadata) with a tabbed right column (Dialog XML / Content XML / Preview), plus a sticky bottom action bar in edit mode. Reuse the components described here before building anything custom.
+
+### XmlEditor
+
+`src/components/XmlEditor.tsx` — CodeMirror 6 wrapper with syntax highlighting, folding, search, autocomplete, and a toolbar. Reports validity via `onParseChange`. Falls back to a read-only mode with just Copy + Download when `readOnly` is true.
+
+```tsx
+import { XmlEditor } from '../components/XmlEditor';
+
+<XmlEditor
+  value={formData.dialog}
+  onChange={(v) => setFormData(prev => ({ ...prev, dialog: v }))}
+  onParseChange={setDialogValidation}
+  label="Dialog"
+  filename="dialog.xml"
+  uploadAccept=".xml,.txt"
+  readOnly={!editing}
+  minHeight={360}
+  maxHeight={560}
+/>
+```
+
+Props (full list in `XmlEditor.tsx`): `value`, `onChange`, `placeholder`, `minHeight`, `maxHeight`, `label`, `filename`, `onParseChange`, `readOnly`, `uploadAccept`.
+
+### DialogPreview
+
+`src/components/DialogPreview.tsx` — parses a `<Dialog>` XML string and renders a read-only form preview. Pairs each `<Label Text="X"/>` with its next non-Label sibling (`<Date>` or `<Lookup>`). Unknown elements render a neutral fallback. Invalid XML shows an error card.
+
+```tsx
+import { DialogPreview } from '../components/DialogPreview';
+
+<DialogPreview xml={formData.dialog} />
+```
+
+Supported elements: `<Label Text="...">`, `<Date Name="...">`, `<Lookup Name="..." DataSource="@x_list">`. When extending, update the `renderControl` switch in `DialogPreview.tsx`.
+
+### ChipInput
+
+`src/components/ui/chip-input.tsx` — tag-style input over a comma-separated string value. Enter/comma/Tab commits; Backspace on empty removes last chip; X button removes a specific chip.
+
+```tsx
+import { ChipInput } from '../components/ui/chip-input';
+
+<ChipInput
+  id="allow_business_unit"
+  name="allow_business_unit"
+  value={formData.allow_business_unit}
+  onChange={(v) => setFormData(prev => ({ ...prev, allow_business_unit: v }))}
+  placeholder="Type BU code + Enter (blank = all)"
+  disabled={!editing}
+/>
+```
+
+Because the API accepts a comma-joined string, `ChipInput` wraps parsing/joining internally — pass the raw string, get the raw string back.
+
+### Tabs
+
+`src/components/ui/tabs.tsx` — shadcn wrapper around Radix Tabs.
+
+```tsx
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+
+<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'dialog' | 'content' | 'preview')}>
+  <TabsList>
+    <TabsTrigger value="dialog">
+      Dialog XML
+      <Badge variant="outline" className="ml-2 text-[10px]">{lines}</Badge>
+    </TabsTrigger>
+    {/* ... */}
+  </TabsList>
+</Tabs>
+```
+
+For tab content, use plain `<div hidden={activeTab !== 'x'}>` instead of `<TabsContent>` if children need to remain mounted (e.g. CodeMirror instances that are expensive to re-create).
+
+### Sticky action bar
+
+Only visible in edit mode. Sits at the bottom with a pulsing amber dot when `hasChanges === true`. The offset matches the sidebar (`md:left-16 lg:left-60`). Wrap page content in `pb-20` so the bar doesn't overlap.
+
+```tsx
+{editing && (
+  <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-white/10 bg-background/85 backdrop-blur-xl">
+    <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+      <div className="flex items-center gap-2 text-xs sm:text-sm">
+        {hasChanges ? (
+          <><span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" /> Unsaved changes</>
+        ) : (
+          <span className="text-muted-foreground">No changes</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {!isNew && (
+          <Button variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
+            <X className="mr-2 h-4 w-4" /> Cancel
+          </Button>
+        )}
+        <Button size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {saving ? 'Saving...' : isNew ? 'Create' : 'Save Changes'}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+```
+
+### XML utilities
+
+`src/utils/xml.ts` exports:
+
+- `formatXml(xml)` → pretty-prints via `DOMParser`/`XMLSerializer`; returns input unchanged if parse fails
+- `validateXml(xml)` → `{ valid, message?, line?, column? }`
+- `countLines(text)` → number
+- `byteSize(text)` / `formatBytes(n)` → size helpers
+- `downloadText(text, filename)` → triggers a browser download
+
+Prefer `XmlEditor`/`XmlViewer` over raw `formatXml`/`validateXml` calls unless you're building a new editor-like component.
 
 ---
 
