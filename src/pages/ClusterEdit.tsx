@@ -665,7 +665,7 @@ const ClusterEdit: React.FC = () => {
                   <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
+                      <tr className="border-b-2 border-border bg-muted">
                         <th className="text-left font-medium px-4 py-2">Code</th>
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-center font-medium px-4 py-2">Users</th>
@@ -675,7 +675,7 @@ const ClusterEdit: React.FC = () => {
                     </thead>
                     <tbody>
                       {businessUnits.map((bu) => (
-                        <tr key={bu.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <tr key={bu.id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
                             <Badge variant="outline" className="text-xs">{bu.code}</Badge>
                           </td>
@@ -764,7 +764,7 @@ const ClusterEdit: React.FC = () => {
                   <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
+                      <tr className="border-b-2 border-border bg-muted">
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-left font-medium px-4 py-2">Email</th>
                         <th className="text-left font-medium px-4 py-2">Parent Business Unit</th>
@@ -775,7 +775,7 @@ const ClusterEdit: React.FC = () => {
                     </thead>
                     <tbody>
                       {clusterUsers.map((user: any) => (
-                        <tr key={user.id || user.user_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <tr key={user.id || user.user_id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
                             <span
                               className="cursor-pointer text-primary hover:underline"

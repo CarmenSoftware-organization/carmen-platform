@@ -1414,7 +1414,7 @@ const BusinessUnitEdit: React.FC = () => {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b bg-muted/50">
+                          <tr className="border-b-2 border-border bg-muted">
                             <th className="text-left font-medium px-4 py-2">Key</th>
                             <th className="text-left font-medium px-4 py-2">Label</th>
                             <th className="text-left font-medium px-4 py-2">Type</th>
@@ -1423,7 +1423,7 @@ const BusinessUnitEdit: React.FC = () => {
                         </thead>
                         <tbody>
                           {formData.config.map((item, index) => (
-                            <tr key={index} className="border-b last:border-0">
+                            <tr key={index} className="zebra-row border-b last:border-0">
                               <td className="px-4 py-2">{item.key || '-'}</td>
                               <td className="px-4 py-2">{item.label || '-'}</td>
                               <td className="px-4 py-2">{item.datatype || '-'}</td>
@@ -1491,11 +1491,11 @@ const BusinessUnitEdit: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
+                      <tr className="border-b-2 border-border bg-muted">
                         <th className="text-center font-medium px-4 py-2 w-10">#</th>
-                        <th className="text-left font-medium px-4 py-2">Username</th>
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-left font-medium px-4 py-2">Email</th>
+                        <th className="text-left font-medium px-4 py-2">Username</th>
                         <th className="text-left font-medium px-4 py-2">BU Role</th>
                         <th className="text-left font-medium px-4 py-2">Platform Role</th>
                         <th className="text-center font-medium px-4 py-2">BU Status</th>
@@ -1503,21 +1503,27 @@ const BusinessUnitEdit: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {buUsers.map((u, idx) => (
-                        <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
+                      {[...buUsers].sort((a, b) => {
+                        const nameA = [a.firstname, a.middlename, a.lastname].filter(Boolean).join(' ').toLowerCase();
+                        const nameB = [b.firstname, b.middlename, b.lastname].filter(Boolean).join(' ').toLowerCase();
+                        if (nameA !== nameB) return nameA.localeCompare(nameB);
+                        const emailA = (a.email || '').toLowerCase();
+                        const emailB = (b.email || '').toLowerCase();
+                        if (emailA !== emailB) return emailA.localeCompare(emailB);
+                        return (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase());
+                      }).map((u, idx) => (
+                        <tr key={u.id} className="zebra-row border-b last:border-0">
                           <td className="px-4 py-2 text-center text-muted-foreground">{idx + 1}</td>
                           <td className="px-4 py-2">
                             <span
                               className="cursor-pointer text-primary hover:underline"
                               onClick={() => navigate(`/users/${u.user_id}/edit`)}
                             >
-                              {u.username || '-'}
+                              {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
                             </span>
                           </td>
-                          <td className="px-4 py-2">
-                            {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
-                          </td>
                           <td className="px-4 py-2">{u.email || '-'}</td>
+                          <td className="px-4 py-2">{u.username || '-'}</td>
                           <td className="px-4 py-2">
                             <Badge variant="outline" className="capitalize text-xs">
                               {u.role || '-'}
