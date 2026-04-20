@@ -19,8 +19,23 @@ import {
   TableHeader,
   TableRow,
 } from './table';
-import { Button } from './button';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZES = [10, 25, 50, 100];
+
+type PageItem = number | 'ellipsis-left' | 'ellipsis-right';
+
+function getPageItems(current: number, total: number): PageItem[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items: PageItem[] = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  if (left > 2) items.push('ellipsis-left');
+  for (let i = left; i <= right; i++) items.push(i);
+  if (right < total - 1) items.push('ellipsis-right');
+  items.push(total);
+  return items;
+}
 
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
@@ -128,10 +143,29 @@ function DataTable<TData>({
   const totalDisplay = serverSide ? totalRows : table.getFilteredRowModel().rows.length;
   const totalPages = serverSide ? (pageCount || 1) : (table.getPageCount() || 1);
 
+  const firstRow = totalDisplay === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;
+  const lastRow = Math.min((pagination.pageIndex + 1) * pagination.pageSize, totalDisplay);
+
+  const sizeOptions = PAGE_SIZES.includes(pagination.pageSize)
+    ? PAGE_SIZES
+    : [pagination.pageSize, ...PAGE_SIZES];
+
+  const currentPage = pagination.pageIndex + 1;
+  const isFirstPage = pagination.pageIndex === 0;
+  const isLastPage = pagination.pageIndex >= totalPages - 1;
+  const pageItems = getPageItems(currentPage, totalPages);
+
+  const goToPage = (p: number) => handlePaginationChange({ ...pagination, pageIndex: p - 1 });
+
+  const navBtn = "h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground transition-colors";
+  const numBtnBase = "h-8 min-w-[2rem] px-2 inline-flex items-center justify-center rounded-md text-sm tabular-nums transition-colors";
+  const numBtnInactive = "text-muted-foreground hover:bg-muted/50 hover:text-foreground";
+  const numBtnActive = "bg-primary text-primary-foreground font-medium shadow-sm";
+
   return (
-    <div className="space-y-4">
+    <div>
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -182,67 +216,130 @@ function DataTable<TData>({
         </TableBody>
       </Table>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-muted-foreground">
-          {totalDisplay} row(s) total
+      {/* Pagination — sticky at bottom of viewport */}
+      <div className="sticky bottom-0 z-20 border-t border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-4 sm:justify-start">
+          <div className="text-sm text-muted-foreground tabular-nums">
+            {totalDisplay === 0
+              ? 'No results'
+              : `Showing ${firstRow}\u2013${lastRow} of ${totalDisplay}`}
+          </div>
+          <div role="group" aria-label="Rows per page" className="flex sm:hidden items-center gap-0.5 rounded-md border border-input bg-background p-0.5">
+            {sizeOptions.map((size) => {
+              const active = size === pagination.pageSize;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => handlePaginationChange({ pageIndex: 0, pageSize: size })}
+                  className={`h-7 min-w-[2rem] px-2 rounded text-xs tabular-nums transition-colors ${
+                    active
+                      ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                  }`}
+                >
+                  {size}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Rows per page</span>
-            <select
-              value={pagination.pageSize}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                const newSize = Number(e.target.value);
-                handlePaginationChange({ pageIndex: 0, pageSize: newSize });
-              }}
-              className="h-8 w-16 rounded-md border border-input bg-transparent px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              {[10, 20, 30, 50, 100].map((size) => (
-                <option key={size} value={size}>{size}</option>
-              ))}
-            </select>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Page {pagination.pageIndex + 1} of {totalPages}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handlePaginationChange({ ...pagination, pageIndex: 0 })}
-              disabled={pagination.pageIndex === 0}
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handlePaginationChange({ ...pagination, pageIndex: pagination.pageIndex - 1 })}
-              disabled={pagination.pageIndex === 0}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handlePaginationChange({ ...pagination, pageIndex: pagination.pageIndex + 1 })}
-              disabled={pagination.pageIndex >= totalPages - 1}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => handlePaginationChange({ ...pagination, pageIndex: totalPages - 1 })}
-              disabled={pagination.pageIndex >= totalPages - 1}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </Button>
+
+        {/* Desktop: numbered page buttons */}
+        <nav aria-label="Pagination" className="hidden sm:flex items-center gap-1">
+          <button
+            type="button"
+            aria-label="Previous page"
+            className={navBtn}
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={isFirstPage}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {pageItems.map((item, idx) => {
+            if (item === 'ellipsis-left' || item === 'ellipsis-right') {
+              return (
+                <span
+                  key={`${item}-${idx}`}
+                  className="h-8 w-8 inline-flex items-center justify-center text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  &#8230;
+                </span>
+              );
+            }
+            const active = item === currentPage;
+            return (
+              <button
+                key={item}
+                type="button"
+                aria-label={`Page ${item}`}
+                aria-current={active ? 'page' : undefined}
+                className={`${numBtnBase} ${active ? numBtnActive : numBtnInactive}`}
+                onClick={() => goToPage(item)}
+              >
+                {item}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            aria-label="Next page"
+            className={navBtn}
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={isLastPage}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </nav>
+
+        {/* Mobile: simple prev/next with page indicator */}
+        <nav aria-label="Pagination" className="flex sm:hidden items-center justify-center gap-2">
+          <button
+            type="button"
+            aria-label="Previous page"
+            className={navBtn}
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={isFirstPage}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-sm text-muted-foreground tabular-nums min-w-[7rem] text-center">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            aria-label="Next page"
+            className={navBtn}
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={isLastPage}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </nav>
+
+        <div className="hidden sm:flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Show</span>
+          <div role="group" aria-label="Rows per page" className="flex items-center gap-0.5 rounded-md border border-input bg-background p-0.5">
+            {sizeOptions.map((size) => {
+              const active = size === pagination.pageSize;
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => handlePaginationChange({ pageIndex: 0, pageSize: size })}
+                  className={`h-7 min-w-[2rem] px-2 rounded text-xs tabular-nums transition-colors ${
+                    active
+                      ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                  }`}
+                >
+                  {size}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
