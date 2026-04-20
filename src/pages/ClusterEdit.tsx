@@ -154,7 +154,11 @@ const ClusterEdit: React.FC = () => {
       setRawBuResponse(data);
       const items = data.data || data;
       const allBus: BusinessUnit[] = Array.isArray(items) ? items : [];
-      setBusinessUnits(allBus.filter(bu => bu.cluster_id === id));
+      const filtered = allBus.filter(bu => bu.cluster_id === id);
+      const sorted = [...filtered].sort((a, b) =>
+        (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
+      );
+      setBusinessUnits(sorted);
     } catch (err) {
       devLog('Failed to load business units:', err);
     } finally {
@@ -169,7 +173,17 @@ const ClusterEdit: React.FC = () => {
       const data = response.data;
       setRawUsersResponse(data);
       const items = data.data || data;
-      setClusterUsers(Array.isArray(items) ? items : []);
+      const list = Array.isArray(items) ? items : [];
+      const getName = (u: any) =>
+        (u.userInfo?.firstname || u.userInfo?.middlename || u.userInfo?.lastname
+          ? [u.userInfo.firstname, u.userInfo.middlename, u.userInfo.lastname].filter(Boolean).join(' ')
+          : u.name || u.email || '').toLowerCase();
+      const sorted = [...list].sort((a, b) => {
+        const nameCmp = getName(a).localeCompare(getName(b));
+        if (nameCmp !== 0) return nameCmp;
+        return (a.email || '').toLowerCase().localeCompare((b.email || '').toLowerCase());
+      });
+      setClusterUsers(sorted);
     } catch (err) {
       devLog('Failed to load cluster users:', err);
     } finally {
