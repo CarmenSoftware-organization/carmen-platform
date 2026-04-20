@@ -1,6 +1,23 @@
 # Carmen Platform
 
-React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. Backed by a separate NestJS/Prisma API.
+**Version 0.1.0** · React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. Backed by a separate NestJS/Prisma API.
+
+## What's in this version
+
+- **Cluster management** — CRUD, user/BU assignment, license limits
+- **Business Unit management** — multi-section form (hotel/company info, formats, timezone, DB connection, config array)
+- **User management** — role + status filters, per-cluster BU assignments, hard/soft delete, password reset
+- **Report Templates** — XML-based report definitions with a tabbed editor:
+  - CodeMirror 6 syntax-highlighted XML editors (Dialog + Content) with line numbers, folding, search, format, upload, download
+  - Live validation with line/col error markers
+  - Dialog Preview tab renders `<Label>` + `<Date>` / `<Lookup>` pairs as a disabled form
+  - Chip inputs for business unit allow/deny lists
+  - Sticky bottom action bar with unsaved-changes indicator
+- **Profile** — view/edit, change password
+- **Auth** — JWT + role gates (`platform_admin`, `super_admin`, `support_manager`, `support_staff`, `security_officer`)
+- **List pages** — server-side DataTable (TanStack Table v8 + virtual rows), debounced search, Sheet filters, CSV export
+- **Layout** — collapsible sidebar (240px / 64px), mobile drawer, global keyboard shortcuts (`?` for help)
+- **Dev tooling** — per-page debug sheets showing raw API responses
 
 ## Quick start
 
@@ -16,8 +33,8 @@ bun start                     # dev server at http://localhost:3001
 
 - React 18 + TypeScript 5 (strict), react-scripts 5, react-router-dom 6
 - Tailwind CSS 3.4 + shadcn/ui (Radix UI primitives)
-- TanStack Table v8 + React Virtual
-- CodeMirror 6 for XML editing
+- TanStack Table v8 + `@tanstack/react-virtual`
+- CodeMirror 6 (XML syntax + folding + search)
 - Axios, Sonner, lucide-react
 - Bun (primary) / npm, Node 20.x
 - Playwright for e2e tests
@@ -33,7 +50,7 @@ bun start                     # dev server at http://localhost:3001
 
 ## Deployment
 
-Docker (multi-stage, nginx on port 3001) → AWS ECR → EC2 via GitHub Actions + SSM. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#docker-and-deployment).
+Docker (multi-stage build, nginx on port 3001) → AWS ECR (`linux/arm64`) → EC2 via GitHub Actions + SSM. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#docker-and-deployment).
 
 ---
 
