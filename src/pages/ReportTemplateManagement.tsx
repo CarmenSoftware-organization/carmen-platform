@@ -38,18 +38,25 @@ const ReportTemplateManagement: React.FC = () => {
 
   const storedSearch = localStorage.getItem('search_report_templates') || '';
   const storedFilters = getStoredJSON<string[]>('filters_report_templates', []);
+  const storedSourceTypes = getStoredJSON<string[]>('filters_report_templates_source_type', []);
   const storedPage = Number(localStorage.getItem('page_report_templates')) || 1;
   const storedSort = localStorage.getItem('sort_report_templates') || 'created_at:desc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<string[]>(storedSourceTypes);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const buildAdvance = (filters: string[]) => {
+  const buildAdvance = (filters: string[], sourceTypes: string[]) => {
     const where: Record<string, unknown> = {};
     if (filters.length === 1) {
       where.is_active = filters[0] === 'true';
+    }
+    if (sourceTypes.length === 1) {
+      where.source_type = sourceTypes[0];
+    } else if (sourceTypes.length > 1) {
+      where.source_type = { in: sourceTypes };
     }
     where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
@@ -60,7 +67,7 @@ const ReportTemplateManagement: React.FC = () => {
     perpage: Number(localStorage.getItem('perpage_report_templates')) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters),
+    advance: buildAdvance(storedFilters, storedSourceTypes),
     filter: {},
   });
 
@@ -125,18 +132,29 @@ const ReportTemplateManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_report_templates', JSON.stringify(next));
     localStorage.setItem('page_report_templates', '1');
-    const advance = buildAdvance(next);
-    setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, sourceTypeFilter), filter: {} }));
+  };
+
+  const handleSourceTypeFilter = (type: string) => {
+    const next = sourceTypeFilter.includes(type)
+      ? sourceTypeFilter.filter((s) => s !== type)
+      : [...sourceTypeFilter, type];
+    setSourceTypeFilter(next);
+    localStorage.setItem('filters_report_templates_source_type', JSON.stringify(next));
+    localStorage.setItem('page_report_templates', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
+    setSourceTypeFilter([]);
     localStorage.setItem('filters_report_templates', JSON.stringify([]));
+    localStorage.setItem('filters_report_templates_source_type', JSON.stringify([]));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], []), filter: {} }));
   };
 
-  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_report_templates', sort);
@@ -198,6 +216,29 @@ const ReportTemplateManagement: React.FC = () => {
       cell: ({ row }) => (
         <Badge variant="outline">{row.original.report_group}</Badge>
       ),
+    },
+    {
+      accessorKey: 'source_type',
+      header: 'Source',
+      cell: ({ row }) => {
+        const r = row.original as ReportTemplate & { view_name?: string };
+        const t: string = r.source_type || (r.view_name ? 'view' : '-');
+        const name = r.source_name || r.view_name || '';
+        const variant: 'secondary' | 'default' | 'outline' =
+          t === 'function' ? 'default' : t === 'procedure' ? 'secondary' : 'outline';
+        return (
+          <div className="flex flex-col gap-0.5">
+            <Badge variant={variant} className="w-fit text-[10px] capitalize">
+              {t}
+            </Badge>
+            {name && (
+              <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[200px]">
+                {name}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'is_standard',
@@ -338,9 +379,6 @@ const ReportTemplateManagement: React.FC = () => {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
-                        {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearAllFilters}>Clear</Button>
-                        )}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         <Button
@@ -361,6 +399,26 @@ const ReportTemplateManagement: React.FC = () => {
                         </Button>
                       </div>
                     </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Source Type</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {(['view', 'function', 'procedure'] as const).map((t) => (
+                          <Button
+                            key={t}
+                            variant={sourceTypeFilter.includes(t) ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-xs capitalize"
+                            onClick={() => handleSourceTypeFilter(t)}
+                          >
+                            {t}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         Clear All Filters
@@ -374,9 +432,17 @@ const ReportTemplateManagement: React.FC = () => {
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Filters:</span>
                 {statusFilter.map((s) => (
-                  <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                  <Badge key={`status-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {sourceTypeFilter.map((t) => (
+                  <Badge key={`source-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
+                    {t}
+                    <button onClick={() => handleSourceTypeFilter(t)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>

@@ -15,6 +15,8 @@ import UserManagement from "./pages/UserManagement";
 import UserEdit from "./pages/UserEdit";
 import ReportTemplateManagement from "./pages/ReportTemplateManagement";
 import ReportTemplateEdit from "./pages/ReportTemplateEdit";
+import PrintTemplateMappingManagement from "./pages/PrintTemplateMappingManagement";
+import PrintTemplateMappingEdit from "./pages/PrintTemplateMappingEdit";
 import Profile from "./pages/Profile";
 import "./App.css";
 
@@ -127,6 +129,30 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
                   <ReportTemplateEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/print-template-mapping"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                  <PrintTemplateMappingManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/print-template-mapping/new"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                  <PrintTemplateMappingEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/print-template-mapping/:id/edit"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                  <PrintTemplateMappingEdit />
                 </PrivateRoute>
               }
             />

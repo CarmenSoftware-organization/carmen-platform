@@ -27,6 +27,12 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
 
+interface SourceParamRow {
+  filter: string;
+  type: string;
+  nullable: boolean;
+}
+
 interface ReportTemplateFormData {
   name: string;
   description: string;
@@ -37,6 +43,10 @@ interface ReportTemplateFormData {
   allow_business_unit: string;
   deny_business_unit: string;
   is_active: boolean;
+  builder_key: string;
+  source_type: "view" | "function" | "procedure";
+  source_name: string;
+  source_params: SourceParamRow[];
 }
 
 interface MetadataFields {
@@ -71,9 +81,27 @@ const ReportTemplateEdit: React.FC = () => {
   const navigate = useNavigate();
   const isNew = !id;
 
+<<<<<<< HEAD
   const [formData, setFormData] = useState<ReportTemplateFormData>(initialFormData);
   const [savedFormData, setSavedFormData] = useState<ReportTemplateFormData>(initialFormData);
   const [metadata, setMetadata] = useState<MetadataFields>({});
+=======
+  const [formData, setFormData] = useState<ReportTemplateFormData>({
+    name: '',
+    description: '',
+    report_group: '',
+    dialog: '',
+    content: '',
+    is_standard: true,
+    allow_business_unit: '',
+    deny_business_unit: '',
+    is_active: true,
+    builder_key: '',
+    source_type: 'view',
+    source_name: '',
+    source_params: [],
+  });
+>>>>>>> 3f75133 (mapping report-template and view)
   const [loading, setLoading] = useState(!isNew);
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
@@ -85,6 +113,40 @@ const ReportTemplateEdit: React.FC = () => {
   const [dialogValidation, setDialogValidation] = useState<XmlValidation>({ valid: true });
   const [contentValidation, setContentValidation] = useState<XmlValidation>({ valid: true });
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Probe BU + DB-objects picker — lets admin browse views/functions/procedures
+  // that actually exist in a chosen tenant schema instead of typing source_name from memory.
+  const [probeBuCode, setProbeBuCode] = useState<string>(
+    () => localStorage.getItem('report_template_probe_bu') || '',
+  );
+  const [dbObjects, setDbObjects] = useState<{
+    views: Array<{ name: string; kind: string }>;
+    functions: Array<{ name: string; kind: string }>;
+    procedures: Array<{ name: string; kind: string }>;
+  } | null>(null);
+  const [loadingDbObjects, setLoadingDbObjects] = useState(false);
+
+  const loadDbObjects = async (bu: string) => {
+    if (!bu) {
+      setDbObjects(null);
+      return;
+    }
+    setLoadingDbObjects(true);
+    try {
+      const data = await reportTemplateService.listDbObjects(bu);
+      setDbObjects(data);
+    } catch (err) {
+      toast.error(`Failed to load DB objects from ${bu}: ${getErrorDetail(err)}`);
+      setDbObjects(null);
+    } finally {
+      setLoadingDbObjects(false);
+    }
+  };
+
+  useEffect(() => {
+    if (probeBuCode) loadDbObjects(probeBuCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -133,6 +195,16 @@ const ReportTemplateEdit: React.FC = () => {
         allow_business_unit: template.allow_business_unit || '',
         deny_business_unit: template.deny_business_unit || '',
         is_active: template.is_active ?? true,
+        builder_key: template.builder_key || '',
+        source_type: (template.source_type as 'view' | 'function' | 'procedure') || 'view',
+        source_name: template.source_name || template.view_name || '',
+        source_params: Array.isArray(template.source_params?.params)
+          ? template.source_params.params.map((p: { filter?: string; type?: string; nullable?: boolean }) => ({
+              filter: p.filter || '',
+              type: p.type || '',
+              nullable: !!p.nullable,
+            }))
+          : [],
       };
       setFormData(loaded);
       setSavedFormData(loaded);
@@ -200,9 +272,25 @@ const ReportTemplateEdit: React.FC = () => {
       return;
     }
 
+    if ((formData.source_type === 'function' || formData.source_type === 'procedure') && !formData.source_name.trim()) {
+      setFieldErrors(prev => ({ ...prev, source_name: `source_name is required when source_type is ${formData.source_type}` }));
+      setSaving(false);
+      return;
+    }
+
+    const cleanParams = formData.source_params
+      .map(p => ({ filter: p.filter.trim(), type: p.type.trim(), nullable: p.nullable }))
+      .filter(p => p.filter.length > 0);
+
+    const payload = {
+      ...formData,
+      source_name: formData.source_name.trim() || undefined,
+      source_params: { params: cleanParams },
+    };
+
     try {
       if (isNew) {
-        const result = await reportTemplateService.create(formData);
+        const result = await reportTemplateService.create(payload);
         const created = result.data || result;
         toast.success('Report template created successfully');
         if (created?.id) {
@@ -211,7 +299,7 @@ const ReportTemplateEdit: React.FC = () => {
           navigate('/report-templates');
         }
       } else {
-        await reportTemplateService.update(id!, formData);
+        await reportTemplateService.update(id!, payload);
         toast.success('Changes saved successfully');
         await fetchTemplate();
         setEditing(false);
@@ -447,6 +535,7 @@ const ReportTemplateEdit: React.FC = () => {
                 </CardContent>
               </Card>
 
+<<<<<<< HEAD
               {!isNew && !loading && (metadata.created_at || metadata.updated_at) && (
                 <Card>
                   <CardHeader>
@@ -469,6 +558,279 @@ const ReportTemplateEdit: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
+=======
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Data Source</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="source_type">Source Type</Label>
+                    {editing ? (
+                      <select
+                        id="source_type"
+                        name="source_type"
+                        value={formData.source_type}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            source_type: e.target.value as 'view' | 'function' | 'procedure',
+                          }))
+                        }
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="view">View</option>
+                        <option value="function">Function</option>
+                        <option value="procedure">Procedure</option>
+                      </select>
+                    ) : (
+                      <Badge variant="outline">{formData.source_type}</Badge>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="source_name">
+                      Source Name {formData.source_type !== 'view' && editing && '*'}
+                    </Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="source_name"
+                          name="source_name"
+                          value={formData.source_name}
+                          onChange={handleChange}
+                          onFocus={handleFocus}
+                          placeholder={
+                            formData.source_type === 'view'
+                              ? 'e.g. v_pr_summary'
+                              : formData.source_type === 'function'
+                                ? 'e.g. fn_pr_report'
+                                : 'e.g. sp_pr_report'
+                          }
+                          className={fieldErrors.source_name ? 'border-destructive' : ''}
+                        />
+                        {fieldErrors.source_name && (
+                          <p className="text-xs text-destructive">{fieldErrors.source_name}</p>
+                        )}
+
+                        {/* Probe-BU picker — browse what exists in a tenant schema */}
+                        <div className="rounded-md border border-dashed border-border p-2 bg-muted/30">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor="probe_bu" className="text-xs whitespace-nowrap">
+                              Browse in BU:
+                            </Label>
+                            <Input
+                              id="probe_bu"
+                              type="text"
+                              value={probeBuCode}
+                              onChange={(e) => {
+                                setProbeBuCode(e.target.value);
+                                localStorage.setItem('report_template_probe_bu', e.target.value);
+                              }}
+                              placeholder="e.g. T03"
+                              className="h-7 text-xs"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => loadDbObjects(probeBuCode)}
+                              disabled={!probeBuCode || loadingDbObjects}
+                            >
+                              {loadingDbObjects ? 'Loading…' : 'Load'}
+                            </Button>
+                          </div>
+                          {dbObjects && (
+                            <div className="mt-2 space-y-1">
+                              {(() => {
+                                const list =
+                                  formData.source_type === 'view'
+                                    ? dbObjects.views
+                                    : formData.source_type === 'function'
+                                      ? dbObjects.functions
+                                      : dbObjects.procedures;
+                                if (list.length === 0) {
+                                  return (
+                                    <p className="text-[11px] text-muted-foreground italic">
+                                      No {formData.source_type}s found in {probeBuCode}.
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <select
+                                    className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+                                    value={
+                                      list.some((o) => o.name === formData.source_name)
+                                        ? formData.source_name
+                                        : ''
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        setFormData((prev) => ({ ...prev, source_name: e.target.value }));
+                                      }
+                                    }}
+                                  >
+                                    <option value="">
+                                      — pick from {list.length} {formData.source_type}
+                                      {list.length === 1 ? '' : 's'} in {probeBuCode} —
+                                    </option>
+                                    {list.map((o) => (
+                                      <option key={o.name} value={o.name}>
+                                        {o.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                          Plain identifier only — no schema prefix, no quotes. Resolved against each tenant&apos;s schema at runtime.
+                        </p>
+                      </>
+                    ) : (
+                      readOnlyField(formData.source_name)
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Source Parameters {formData.source_type === 'view' && <span className="text-xs text-muted-foreground">(not used for views)</span>}</Label>
+                      {editing && formData.source_type !== 'view' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              source_params: [...prev.source_params, { filter: '', type: '', nullable: false }],
+                            }))
+                          }
+                        >
+                          + Add Param
+                        </Button>
+                      )}
+                    </div>
+
+                    {formData.source_params.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        {formData.source_type === 'view'
+                          ? 'Views do not take parameters — filters apply via WHERE clause.'
+                          : 'No parameters defined yet. Add one to bind a dialog filter to the function/procedure argument list.'}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-[2fr_1fr_auto_auto] gap-2 text-xs font-medium text-muted-foreground">
+                          <div>Filter Field (ReportFilters)</div>
+                          <div>PG Type</div>
+                          <div>Nullable</div>
+                          <div></div>
+                        </div>
+                        {formData.source_params.map((p, i) => (
+                          <div key={i} className="grid grid-cols-[2fr_1fr_auto_auto] gap-2 items-center">
+                            {editing ? (
+                              <>
+                                <Input
+                                  type="text"
+                                  value={p.filter}
+                                  onChange={(e) =>
+                                    setFormData((prev) => {
+                                      const next = [...prev.source_params];
+                                      next[i] = { ...next[i], filter: e.target.value };
+                                      return { ...prev, source_params: next };
+                                    })
+                                  }
+                                  placeholder="e.g. DateFrom"
+                                />
+                                <Input
+                                  type="text"
+                                  value={p.type}
+                                  onChange={(e) =>
+                                    setFormData((prev) => {
+                                      const next = [...prev.source_params];
+                                      next[i] = { ...next[i], type: e.target.value };
+                                      return { ...prev, source_params: next };
+                                    })
+                                  }
+                                  placeholder="date / uuid / text..."
+                                />
+                                <input
+                                  type="checkbox"
+                                  checked={p.nullable}
+                                  onChange={(e) =>
+                                    setFormData((prev) => {
+                                      const next = [...prev.source_params];
+                                      next[i] = { ...next[i], nullable: e.target.checked };
+                                      return { ...prev, source_params: next };
+                                    })
+                                  }
+                                  className="h-4 w-4 mx-2"
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      source_params: prev.source_params.filter((_, idx) => idx !== i),
+                                    }))
+                                  }
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-sm font-mono">{p.filter}</div>
+                                <div className="text-sm font-mono text-muted-foreground">{p.type || '-'}</div>
+                                <div className="text-xs">{p.nullable ? 'yes' : 'no'}</div>
+                                <div></div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {formData.source_type === 'procedure' && editing && (
+                      <p className="text-xs text-muted-foreground italic">
+                        Procedure must accept these positional args plus an INOUT refcursor at the end (default name "rs"). Filters are applied inside the procedure — executor will not add a WHERE clause.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="builder_key">Builder Key (optional)</Label>
+                    {editing ? (
+                      <Input
+                        type="text"
+                        id="builder_key"
+                        name="builder_key"
+                        value={formData.builder_key}
+                        onChange={handleChange}
+                        placeholder="e.g. pr-summary"
+                      />
+                    ) : (
+                      readOnlyField(formData.builder_key)
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {editing && (
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={saving} className="flex-1">
+                    <Save className="mr-2 h-4 w-4" />
+                    {saving ? 'Saving...' : isNew ? 'Create Template' : 'Save Changes'}
+                  </Button>
+                </div>
+>>>>>>> 3f75133 (mapping report-template and view)
               )}
             </div>
 
