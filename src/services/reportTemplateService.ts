@@ -19,6 +19,7 @@ export interface ReportTemplate {
   name: string;
   description?: string;
   report_group: string;
+  kind: 'report' | 'print';
   dialog: string;
   content: string;
   is_standard: boolean;

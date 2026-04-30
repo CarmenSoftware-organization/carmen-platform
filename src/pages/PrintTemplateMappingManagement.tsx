@@ -29,7 +29,14 @@ const PrintTemplateMappingManagement: React.FC = () => {
         document_type: docType || undefined,
         active_only: activeFlag,
       });
-      setRows(res.data || []);
+      // Unwrap any chain of `.data` keys until we hit an array (backend may
+      // wrap as response.data, response.data.data, or response.data.data.data).
+      let cur: unknown = res;
+      for (let i = 0; i < 5 && cur; i++) {
+        if (Array.isArray(cur)) break;
+        cur = (cur as { data?: unknown }).data;
+      }
+      setRows(Array.isArray(cur) ? (cur as PrintTemplateMapping[]) : []);
       setError('');
     } catch (err) {
       setError('Failed to load print mappings: ' + getErrorDetail(err));
@@ -42,7 +49,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
     void (async () => {
       try {
         const dt = await printTemplateMappingService.listDocumentTypes();
-        setDocTypes(dt.document_types || []);
+        setDocTypes(Array.isArray(dt?.document_types) ? dt.document_types : []);
       } catch (err) {
         toast.error('Failed to load document types: ' + getErrorDetail(err));
       }
@@ -54,7 +61,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
   }, [filterDocType, activeOnly]);
 
   const handleDelete = async (id: string, label: string) => {
-    if (!confirm(`Delete mapping "${label}"? This cannot be undone (soft delete).`)) return;
+    if (!window.confirm(`Delete mapping "${label}"? This cannot be undone (soft delete).`)) return;
     try {
       setDeletingId(id);
       await printTemplateMappingService.delete(id);

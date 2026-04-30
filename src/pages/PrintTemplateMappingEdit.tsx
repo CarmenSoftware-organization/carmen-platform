@@ -56,10 +56,19 @@ const PrintTemplateMappingEdit: React.FC = () => {
           printTemplateMappingService.listDocumentTypes(),
           reportTemplateService.getAll({ perpage: 500 }),
         ]);
-        setDocTypes(dt.document_types || []);
-        const inner = (tpls as { data?: { data?: ReportTemplate[] } | ReportTemplate[] }).data;
-        const items = Array.isArray(inner) ? inner : inner?.data || [];
-        setTemplates(items);
+        setDocTypes(Array.isArray(dt?.document_types) ? dt.document_types : []);
+        // Backend sometimes wraps the array as deep as response.data.data.data
+        // (StdResponse → service result → paginated payload). Unwrap any
+        // chain of `.data` keys until we hit an array.
+        const findArray = (node: unknown): ReportTemplate[] => {
+          let cur: unknown = node;
+          for (let i = 0; i < 5 && cur; i++) {
+            if (Array.isArray(cur)) return cur as ReportTemplate[];
+            cur = (cur as { data?: unknown }).data;
+          }
+          return [];
+        };
+        setTemplates(findArray(tpls));
       } catch (err) {
         toast.error('Failed to load lookups: ' + getErrorDetail(err));
       }
@@ -138,13 +147,20 @@ const PrintTemplateMappingEdit: React.FC = () => {
     }
   };
 
-  // Filter templates by document type's hint (report_group convention often
-  // matches document type — e.g., PR templates have report_group="PR" or "PR_DOC").
-  const filteredTemplates = templates.filter((t) => {
-    if (!form.document_type) return true;
-    const grp = t.report_group?.toUpperCase() ?? '';
-    return grp === form.document_type || grp.startsWith(`${form.document_type}_`);
-  });
+  // Mapping is "use template T to print document D". Matched = template kind
+  // is 'print' AND report_group == document_type (PR/PO/CN/...). Sort matched
+  // first; admin can still pick any template if needed for ad-hoc layouts.
+  const matches = (t: ReportTemplate) => {
+    if (!form.document_type) return false;
+    return t.kind === 'print' && t.report_group === form.document_type;
+  };
+  const filteredTemplates = (() => {
+    if (!form.document_type) return templates;
+    const matched = templates.filter(matches);
+    const rest = templates.filter((t) => !matches(t));
+    return [...matched, ...rest];
+  })();
+  const matchedCount = form.document_type ? templates.filter(matches).length : templates.length;
 
   return (
     <Layout>
@@ -202,8 +218,10 @@ const PrintTemplateMappingEdit: React.FC = () => {
                   >
                     <option value="">
                       {filteredTemplates.length === 0
-                        ? '— no templates match document type —'
-                        : `Select template (${filteredTemplates.length} match)…`}
+                        ? '— no templates available —'
+                        : form.document_type
+                          ? `Select template (${matchedCount} match / ${filteredTemplates.length} total)…`
+                          : `Select template (${filteredTemplates.length} total)…`}
                     </option>
                     {filteredTemplates.map((t) => (
                       <option key={t.id} value={t.id}>
