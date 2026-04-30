@@ -15,6 +15,10 @@ export interface ChipInputProps {
 
 function parseChips(value: string): string[] {
   if (!value) return [];
+  if (Array.isArray(value)) {
+    return (value as unknown[]).map((c) => String(c).trim()).filter(Boolean);
+  }
+  if (typeof value !== 'string') return [];
   return value
     .split(',')
     .map((c) => c.trim())

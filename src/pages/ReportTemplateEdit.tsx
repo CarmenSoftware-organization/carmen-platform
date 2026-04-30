@@ -66,7 +66,17 @@ const initialFormData: ReportTemplateFormData = {
   allow_business_unit: '',
   deny_business_unit: '',
   is_active: true,
+  builder_key: '',
+  source_type: 'view',
+  source_name: '',
+  source_params: [],
 };
+
+const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
+  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+    {value || '-'}
+  </div>
+);
 
 const fmtDateTime = (v?: string) => {
   if (!v) return '-';
@@ -81,27 +91,9 @@ const ReportTemplateEdit: React.FC = () => {
   const navigate = useNavigate();
   const isNew = !id;
 
-<<<<<<< HEAD
   const [formData, setFormData] = useState<ReportTemplateFormData>(initialFormData);
   const [savedFormData, setSavedFormData] = useState<ReportTemplateFormData>(initialFormData);
   const [metadata, setMetadata] = useState<MetadataFields>({});
-=======
-  const [formData, setFormData] = useState<ReportTemplateFormData>({
-    name: '',
-    description: '',
-    report_group: '',
-    dialog: '',
-    content: '',
-    is_standard: true,
-    allow_business_unit: '',
-    deny_business_unit: '',
-    is_active: true,
-    builder_key: '',
-    source_type: 'view',
-    source_name: '',
-    source_params: [],
-  });
->>>>>>> 3f75133 (mapping report-template and view)
   const [loading, setLoading] = useState(!isNew);
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
@@ -185,6 +177,11 @@ const ReportTemplateEdit: React.FC = () => {
       const data = await reportTemplateService.getById(id);
       setRawResponse(data);
       const template = data.data || data;
+      const toCsv = (v: unknown): string => {
+        if (!v) return '';
+        if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean).join(',');
+        return String(v);
+      };
       const loaded: ReportTemplateFormData = {
         name: template.name || '',
         description: template.description || '',
@@ -192,8 +189,8 @@ const ReportTemplateEdit: React.FC = () => {
         dialog: template.dialog || '',
         content: template.content || '',
         is_standard: template.is_standard ?? true,
-        allow_business_unit: template.allow_business_unit || '',
-        deny_business_unit: template.deny_business_unit || '',
+        allow_business_unit: toCsv(template.allow_business_unit),
+        deny_business_unit: toCsv(template.deny_business_unit),
         is_active: template.is_active ?? true,
         builder_key: template.builder_key || '',
         source_type: (template.source_type as 'view' | 'function' | 'procedure') || 'view',
@@ -535,7 +532,6 @@ const ReportTemplateEdit: React.FC = () => {
                 </CardContent>
               </Card>
 
-<<<<<<< HEAD
               {!isNew && !loading && (metadata.created_at || metadata.updated_at) && (
                 <Card>
                   <CardHeader>
@@ -558,7 +554,9 @@ const ReportTemplateEdit: React.FC = () => {
                     </div>
                   </CardContent>
                 </Card>
-=======
+              )}
+
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Data Source</CardTitle>
@@ -693,7 +691,7 @@ const ReportTemplateEdit: React.FC = () => {
                         </p>
                       </>
                     ) : (
-                      readOnlyField(formData.source_name)
+                      <ReadOnlyText value={formData.source_name} />
                     )}
                   </div>
 
@@ -817,21 +815,12 @@ const ReportTemplateEdit: React.FC = () => {
                         placeholder="e.g. pr-summary"
                       />
                     ) : (
-                      readOnlyField(formData.builder_key)
+                      <ReadOnlyText value={formData.builder_key} />
                     )}
                   </div>
                 </CardContent>
               </Card>
 
-              {editing && (
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saving} className="flex-1">
-                    <Save className="mr-2 h-4 w-4" />
-                    {saving ? 'Saving...' : isNew ? 'Create Template' : 'Save Changes'}
-                  </Button>
-                </div>
->>>>>>> 3f75133 (mapping report-template and view)
-              )}
             </div>
 
             {/* Right column */}
