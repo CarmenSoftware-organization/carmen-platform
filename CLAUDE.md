@@ -6,7 +6,7 @@ Guidance for Claude Code working in this repo. Read fully before changing code.
 
 Frontend-only React + TypeScript admin dashboard for clusters, business units, users, report templates, and print-template mappings. Glassmorphism design with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
 
-- **Framework:** React 18 + TypeScript (CRA, `react-scripts` 5.0.1) — strict mode on
+- **Framework:** React 18 + TypeScript (Vite 8) — strict mode on
 - **Styling:** Tailwind 3.4 with HSL CSS custom properties
 - **Components:** shadcn/ui (Radix + CVA) — primitives live in `src/components/ui/`
 - **Tables:** TanStack Table v8 via `DataTable` wrapper (`src/components/ui/data-table.tsx`)
@@ -21,16 +21,16 @@ Frontend-only React + TypeScript admin dashboard for clusters, business units, u
 
 ```bash
 bun install                 # or: npm install
-bun start                   # dev server (hot reload polling)
-bun run build               # production build (sets REACT_APP_BUILD_DATE)
-bun test                    # CRA test runner
+bun start                   # Vite dev server on :3001
+bun run build               # production build (sets REACT_APP_BUILD_DATE, emits to build/)
+bun run preview             # serve the production build locally on :3001
 bun run test:e2e            # Playwright headless
 bun run test:e2e:ui         # Playwright UI
 bun run test:e2e:headed     # visible browser
 bun run test:e2e:debug      # debug mode
 ```
 
-No separate lint command — CRA's ESLint (react-app preset) runs during `start`/`build`.
+No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pass `CI=true` to treat warnings as errors.
 
 ## Environment
 
@@ -42,7 +42,7 @@ Copy `.env.example` → `.env`. Variables:
 | `REACT_APP_API_APP_ID`   | Sent as `x-app-id` on every request |
 | `REACT_APP_ENV`          | `development` \| `uat` \| `production` |
 
-`setupProxy.js` proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK).
+`vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK).
 
 ## Deployment
 

@@ -157,9 +157,9 @@ const Landing: React.FC = () => {
       <footer className="relative z-10 container mx-auto px-4 py-8 border-t border-blue-200/50">
         <p className="text-center text-blue-400 text-sm">
           design by @carmensoftware 2025
-          {process.env.REACT_APP_BUILD_DATE && (
+          {import.meta.env.REACT_APP_BUILD_DATE && (
             <span className="block mt-1 text-blue-300 text-xs">
-              Build: {process.env.REACT_APP_BUILD_DATE}
+              Build: {import.meta.env.REACT_APP_BUILD_DATE}
             </span>
           )}
         </p>
