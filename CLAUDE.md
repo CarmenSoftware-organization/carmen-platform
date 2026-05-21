@@ -229,6 +229,17 @@ After create: `navigate(\`/items/\${created.id}\`, { replace: true })`.
 
 XML utils in `src/utils/xml.ts`: `formatXml`, `validateXml`, `countLines`, `byteSize`, `formatBytes`, `downloadText`. Prefer `XmlEditor`/`DialogPreview` over raw util calls.
 
+## Print Template Mapping Specifics
+
+`src/pages/PrintTemplateMappingManagement.tsx` is a **configuration page**, not a standard Management page, and intentionally deviates from rule 13:
+
+- Data set is small (one row per `document_type` × template), so it uses a card-grouped layout (group by document type) instead of a server-side DataTable.
+- No debounced search, no Sheet filter, no CSV export — replaced by a `document_type` select + an "Active only" checkbox.
+- Backend service is filter-based (`document_type`, `active_only` query params), not paginated.
+- The companion `PrintTemplateMappingEdit.tsx` is a single-mode form (no edit/read-only toggle) — appropriate for a config row that's always editable when opened.
+
+When adding similar small-dimension configuration pages, follow this pattern rather than rule 13.
+
 ## Styling Reference
 
 **Color tokens (HSL):** `--primary` 220 90% 56% (blue) · `--accent` 260 60% 58% (purple) · `--destructive` 0 84% 60% · `--muted-foreground` 220 10% 46% · `--border` / `--input` 220 15% 90%.

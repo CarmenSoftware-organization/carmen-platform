@@ -11,6 +11,7 @@ import printTemplateMappingService, {
   type DocumentType,
 } from '../services/printTemplateMappingService';
 import { getErrorDetail } from '../utils/errorParser';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 
 const PrintTemplateMappingManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
   const [activeOnly, setActiveOnly] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
 
   const fetchAll = async (docType?: string, activeFlag?: boolean) => {
     try {
@@ -60,17 +61,15 @@ const PrintTemplateMappingManagement: React.FC = () => {
     fetchAll(filterDocType, activeOnly);
   }, [filterDocType, activeOnly]);
 
-  const handleDelete = async (id: string, label: string) => {
-    if (!window.confirm(`Delete mapping "${label}"? This cannot be undone (soft delete).`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      setDeletingId(id);
-      await printTemplateMappingService.delete(id);
+      await printTemplateMappingService.delete(deleteTarget.id);
       toast.success('Mapping deleted');
+      setDeleteTarget(null);
       await fetchAll(filterDocType, activeOnly);
     } catch (err) {
       toast.error('Failed to delete: ' + getErrorDetail(err));
-    } finally {
-      setDeletingId(null);
     }
   };
 
@@ -214,12 +213,11 @@ const PrintTemplateMappingManagement: React.FC = () => {
                                 variant="ghost"
                                 className="h-7 px-2 text-destructive"
                                 onClick={() =>
-                                  handleDelete(
-                                    r.id,
-                                    `${r.document_type} → ${r.template_name || r.report_template_id}`,
-                                  )
+                                  setDeleteTarget({
+                                    id: r.id,
+                                    label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
+                                  })
                                 }
-                                disabled={deletingId === r.id}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -235,6 +233,16 @@ const PrintTemplateMappingManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="Delete Print Template Mapping"
+        description={`Delete mapping "${deleteTarget?.label ?? ''}"? This cannot be undone (soft delete).`}
+        confirmText="Delete"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
     </Layout>
   );
 };
