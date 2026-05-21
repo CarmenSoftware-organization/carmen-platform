@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
@@ -6,25 +6,33 @@ import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import ClusterManagement from "./pages/ClusterManagement";
-import ClusterEdit from "./pages/ClusterEdit";
-import BusinessUnitManagement from "./pages/BusinessUnitManagement";
-import BusinessUnitEdit from "./pages/BusinessUnitEdit";
-import UserManagement from "./pages/UserManagement";
-import UserEdit from "./pages/UserEdit";
-import ReportTemplateManagement from "./pages/ReportTemplateManagement";
-import ReportTemplateEdit from "./pages/ReportTemplateEdit";
-import PrintTemplateMappingManagement from "./pages/PrintTemplateMappingManagement";
-import PrintTemplateMappingEdit from "./pages/PrintTemplateMappingEdit";
-import Profile from "./pages/Profile";
 import "./App.css";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ClusterManagement = lazy(() => import("./pages/ClusterManagement"));
+const ClusterEdit = lazy(() => import("./pages/ClusterEdit"));
+const BusinessUnitManagement = lazy(() => import("./pages/BusinessUnitManagement"));
+const BusinessUnitEdit = lazy(() => import("./pages/BusinessUnitEdit"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const UserEdit = lazy(() => import("./pages/UserEdit"));
+const ReportTemplateManagement = lazy(() => import("./pages/ReportTemplateManagement"));
+const ReportTemplateEdit = lazy(() => import("./pages/ReportTemplateEdit"));
+const PrintTemplateMappingManagement = lazy(() => import("./pages/PrintTemplateMappingManagement"));
+const PrintTemplateMappingEdit = lazy(() => import("./pages/PrintTemplateMappingEdit"));
+const Profile = lazy(() => import("./pages/Profile"));
+
+const RouteLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
+    <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+  </div>
+);
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="App">
+          <Suspense fallback={<RouteLoader />}>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -166,6 +174,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
           <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
           <KeyboardShortcutsHelp />
         </div>
