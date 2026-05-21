@@ -75,7 +75,10 @@
   "proxy": "https://43.209.126.252",
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
-    "@playwright/test": "^1.58.2"
+    "@playwright/test": "^1.58.2",
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.14",
+    "vite-plugin-eslint": "^1.8.1"
   },
   "overrides": {
     "nth-check": "^2.1.1",
