@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
 import { getErrorDetail } from '../utils/errorParser';
@@ -309,12 +309,12 @@ const UserManagement: React.FC = () => {
         accessorKey: "username",
         header: "Username",
         cell: ({ row }) => (
-          <span
-            className="cursor-pointer text-primary hover:underline"
-            onClick={() => navigate(`/users/${row.original.id}/edit`)}
+          <Link
+            to={`/users/${row.original.id}/edit`}
+            className="text-primary hover:underline"
           >
             {row.original.username || row.original.user_id || "-"}
-          </span>
+          </Link>
         ),
       },
       {

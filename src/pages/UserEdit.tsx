@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
 import businessUnitService from "../services/businessUnitService";
@@ -691,12 +691,12 @@ const UserEdit: React.FC = () => {
                         <div className="flex items-center justify-between">
                           {uc.cluster?.id ? (
                             <div>
-                              <span
-                                className="font-medium text-sm cursor-pointer text-primary hover:underline"
-                                onClick={() => navigate(`/clusters/${uc.cluster!.id}`)}
+                              <Link
+                                to={`/clusters/${uc.cluster.id}`}
+                                className="font-medium text-sm text-primary hover:underline"
                               >
                                 {uc.cluster.name || "-"}
-                              </span>
+                              </Link>
                               <div className="text-xs text-muted-foreground">{uc.cluster.code || "-"}</div>
                             </div>
                           ) : (
@@ -754,12 +754,12 @@ const UserEdit: React.FC = () => {
                         <div className="flex items-center justify-between">
                           {ub.business_unit?.id ? (
                             <div>
-                              <span
-                                className="font-medium text-sm cursor-pointer text-primary hover:underline"
-                                onClick={() => navigate(`/business-units/${ub.business_unit!.id}/edit`)}
+                              <Link
+                                to={`/business-units/${ub.business_unit.id}/edit`}
+                                className="font-medium text-sm text-primary hover:underline"
                               >
                                 {ub.business_unit.name || "-"}
-                              </span>
+                              </Link>
                               <div className="text-xs text-muted-foreground">{ub.business_unit.code || "-"}</div>
                             </div>
                           ) : (
@@ -779,12 +779,12 @@ const UserEdit: React.FC = () => {
                           return cluster ? (
                             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                               <Network className="h-3 w-3" />
-                              <span
-                                className="cursor-pointer hover:underline hover:text-foreground"
-                                onClick={() => navigate(`/clusters/${cluster.id}`)}
+                              <Link
+                                to={`/clusters/${cluster.id}`}
+                                className="hover:underline hover:text-foreground"
                               >
                                 {cluster.name}
-                              </span>
+                              </Link>
                             </div>
                           ) : null;
                         })()}

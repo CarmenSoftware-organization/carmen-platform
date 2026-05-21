@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -196,9 +196,9 @@ const ReportTemplateManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/report-templates/${row.original.id}/edit`)}>
+        <Link to={`/report-templates/${row.original.id}/edit`} className="text-primary hover:underline">
           {row.original.name}
-        </span>
+        </Link>
       ),
     },
     {
