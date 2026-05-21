@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import eslint from 'vite-plugin-eslint';
+import checker from 'vite-plugin-checker';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'REACT_APP_');
@@ -9,10 +9,16 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      eslint({
-        failOnError: ci,
-        failOnWarning: ci,
-        cache: false,
+      checker({
+        typescript: true,
+        eslint: {
+          useFlatConfig: false,
+          lintCommand: 'eslint "./src/**/*.{ts,tsx}"',
+          dev: { logLevel: ['error'] },
+        },
+        terminal: true,
+        overlay: !ci,
+        enableBuild: true,
       }),
     ],
     envPrefix: 'REACT_APP_',
