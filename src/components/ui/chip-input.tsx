@@ -90,6 +90,9 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   }
 
   return (
+    // Mouse-only convenience: clicking anywhere on the wrapper focuses the
+    // input. Keyboard users tab directly to the input, so no a11y regression.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       className={cn(
         'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm shadow-sm focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
