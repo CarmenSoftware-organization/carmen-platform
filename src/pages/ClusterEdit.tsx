@@ -12,7 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -26,6 +26,9 @@ import type { BusinessUnit, User } from '../types';
 interface ClusterFormData {
   code: string;
   name: string;
+  alias_name: string;
+  logo_url: string;
+  max_license_bu: string;
   is_active: boolean;
 }
 
@@ -48,6 +51,9 @@ const ClusterEdit: React.FC = () => {
   const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
     name: '',
+    alias_name: '',
+    logo_url: '',
+    max_license_bu: '',
     is_active: true,
   });
   const [loading, setLoading] = useState(!isNew);
@@ -71,8 +77,12 @@ const ClusterEdit: React.FC = () => {
   const [loadingSearchUsers, setLoadingSearchUsers] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AllUser | null>(null);
   const [addUserRole, setAddUserRole] = useState('user');
+  const [addUserBuId, setAddUserBuId] = useState('');
   const [addingUser, setAddingUser] = useState(false);
   const [deleteClusterUser, setDeleteClusterUser] = useState<any>(null);
+  const [editClusterUser, setEditClusterUser] = useState<any>(null);
+  const [editClusterUserForm, setEditClusterUserForm] = useState<{ role: string; parent_bu_id: string }>({ role: 'user', parent_bu_id: '' });
+  const [savingClusterUser, setSavingClusterUser] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const searchUsersPerPage = 10;
@@ -123,6 +133,9 @@ const ClusterEdit: React.FC = () => {
       const loaded = {
         code: cluster.code || '',
         name: cluster.name || '',
+        alias_name: cluster.alias_name || '',
+        logo_url: cluster.logo_url || '',
+        max_license_bu: cluster.max_license_bu != null ? String(cluster.max_license_bu) : '',
         is_active: cluster.is_active ?? true,
       };
       setFormData(loaded);
@@ -141,7 +154,11 @@ const ClusterEdit: React.FC = () => {
       setRawBuResponse(data);
       const items = data.data || data;
       const allBus: BusinessUnit[] = Array.isArray(items) ? items : [];
-      setBusinessUnits(allBus.filter(bu => bu.cluster_id === id));
+      const filtered = allBus.filter(bu => bu.cluster_id === id);
+      const sorted = [...filtered].sort((a, b) =>
+        (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase())
+      );
+      setBusinessUnits(sorted);
     } catch (err) {
       devLog('Failed to load business units:', err);
     } finally {
@@ -156,7 +173,17 @@ const ClusterEdit: React.FC = () => {
       const data = response.data;
       setRawUsersResponse(data);
       const items = data.data || data;
-      setClusterUsers(Array.isArray(items) ? items : []);
+      const list = Array.isArray(items) ? items : [];
+      const getName = (u: any) =>
+        (u.userInfo?.firstname || u.userInfo?.middlename || u.userInfo?.lastname
+          ? [u.userInfo.firstname, u.userInfo.middlename, u.userInfo.lastname].filter(Boolean).join(' ')
+          : u.name || u.email || '').toLowerCase();
+      const sorted = [...list].sort((a, b) => {
+        const nameCmp = getName(a).localeCompare(getName(b));
+        if (nameCmp !== 0) return nameCmp;
+        return (a.email || '').toLowerCase().localeCompare((b.email || '').toLowerCase());
+      });
+      setClusterUsers(sorted);
     } catch (err) {
       devLog('Failed to load cluster users:', err);
     } finally {
@@ -189,6 +216,7 @@ const ClusterEdit: React.FC = () => {
     setShowAddUser(true);
     setSelectedUser(null);
     setAddUserRole('user');
+    setAddUserBuId('');
     setSearchUsersTerm('');
     setSearchUsersPage(1);
     setSearchUsers([]);
@@ -238,6 +266,7 @@ const ClusterEdit: React.FC = () => {
         cluster_id: id,
         role: addUserRole,
         is_active: true,
+        ...(addUserBuId ? { parent_bu_id: addUserBuId } : {}),
       });
       setShowAddUser(false);
       toast.success('User added to cluster successfully');
@@ -267,6 +296,29 @@ const ClusterEdit: React.FC = () => {
     }
   };
 
+  const handleOpenEditClusterUser = (user: any) => {
+    setEditClusterUser(user);
+    setEditClusterUserForm({
+      role: user.role || 'user',
+      parent_bu_id: user.parent_bu_id || '',
+    });
+  };
+
+  const handleSaveEditClusterUser = async () => {
+    if (!editClusterUser) return;
+    setSavingClusterUser(true);
+    try {
+      await api.put(`/api-system/user/cluster/${editClusterUser.id}`, editClusterUserForm);
+      toast.success('User updated successfully');
+      setEditClusterUser(null);
+      await fetchClusterUsers();
+    } catch (err: unknown) {
+      toast.error('Failed to update user', { description: getErrorDetail(err) });
+    } finally {
+      setSavingClusterUser(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
@@ -292,8 +344,15 @@ const ClusterEdit: React.FC = () => {
     setError('');
 
     try {
+      const payload: Record<string, unknown> = { ...formData };
+      // Convert max_license_bu to number for API
+      if (formData.max_license_bu) {
+        payload.max_license_bu = Number(formData.max_license_bu);
+      } else {
+        delete payload.max_license_bu;
+      }
       if (isNew) {
-        const result = await clusterService.create(formData);
+        const result = await clusterService.create(payload);
         const created = result.data || result;
         toast.success('Cluster created successfully');
         if (created?.id) {
@@ -302,7 +361,7 @@ const ClusterEdit: React.FC = () => {
           navigate('/clusters');
         }
       } else {
-        await clusterService.update(id!, formData);
+        await clusterService.update(id!, payload);
         toast.success('Changes saved successfully');
         await fetchCluster();
         setEditing(false);
@@ -335,7 +394,7 @@ const ClusterEdit: React.FC = () => {
                 <Skeleton className="h-4 w-48 mt-1" />
               </CardHeader>
               <CardContent className="space-y-4">
-                {Array.from({ length: 3 }).map((_, i) => (
+                {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="space-y-2">
                     <Skeleton className="h-4 w-20" />
                     <Skeleton className="h-9 w-full" />
@@ -400,7 +459,7 @@ const ClusterEdit: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <div className={`grid gap-4 sm:gap-6 ${!isNew ? 'grid-cols-1 lg:grid-cols-2' : ''}`}>
+        <div className={`grid gap-4 sm:gap-6 ${!isNew ? 'grid-cols-1 lg:grid-cols-3' : ''}`}>
           <Card>
             <CardHeader>
               <CardTitle>Cluster Details</CardTitle>
@@ -410,69 +469,149 @@ const ClusterEdit: React.FC = () => {
             </CardHeader>
             <CardContent>
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Code {editing && '*'}</Label>
-                  {editing ? (
-                    <>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="code">Code {editing && '*'}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="code"
+                          name="code"
+                          value={formData.code}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="Cluster code"
+                          className={fieldErrors.code ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.code && (
+                          <p className="text-xs text-destructive">{fieldErrors.code}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="alias_name">Alias Name</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="alias_name"
+                          name="alias_name"
+                          value={formData.alias_name}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="Max 3 chars"
+                          maxLength={3}
+                          className={fieldErrors.alias_name ? 'border-destructive' : ''}
+                        />
+                        {fieldErrors.alias_name && (
+                          <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.alias_name || '-'}</div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name {editing && '*'}</Label>
+                    {editing ? (
                       <Input
                         type="text"
-                        id="code"
-                        name="code"
-                        value={formData.code}
+                        id="name"
+                        name="name"
+                        value={formData.name}
                         onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Cluster code"
-                        className={fieldErrors.code ? 'border-destructive' : ''}
+                        placeholder="Cluster name"
                         required
                       />
-                      {fieldErrors.code && (
-                        <p className="text-xs text-destructive">{fieldErrors.code}</p>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.name || '-'}</div>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name {editing && '*'}</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="Cluster name"
-                      required
-                    />
-                  ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.name || '-'}</div>
-                  )}
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="max_license_bu">Max Licensed BUs</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="number"
+                          id="max_license_bu"
+                          name="max_license_bu"
+                          value={formData.max_license_bu}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="Unlimited"
+                          min={0}
+                          className={fieldErrors.max_license_bu ? 'border-destructive' : ''}
+                        />
+                        {fieldErrors.max_license_bu && (
+                          <p className="text-xs text-destructive">{fieldErrors.max_license_bu}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
+                        {formData.max_license_bu || 'Unlimited'}
+                      </div>
+                    )}
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  {editing ? (
-                    <>
-                      <input
-                        type="checkbox"
-                        id="is_active"
-                        name="is_active"
-                        checked={formData.is_active}
+                  <div className="space-y-2">
+                    <Label htmlFor="logo_url">Logo URL</Label>
+                    {editing ? (
+                      <Input
+                        type="url"
+                        id="logo_url"
+                        name="logo_url"
+                        value={formData.logo_url}
                         onChange={handleChange}
-                        className="h-4 w-4 rounded border-input"
+                        placeholder="https://example.com/logo.png"
                       />
-                      <Label htmlFor="is_active">Active</Label>
-                    </>
-                  ) : (
-                    <>
-                      <Label>Status</Label>
-                      <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
-                        {formData.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </>
-                  )}
+                    ) : (
+                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.logo_url || '-'}</div>
+                    )}
+                    {formData.logo_url && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <img
+                          src={formData.logo_url}
+                          alt="Cluster logo"
+                          className="h-10 w-10 rounded object-contain border"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {editing ? (
+                      <>
+                        <input
+                          type="checkbox"
+                          id="is_active"
+                          name="is_active"
+                          checked={formData.is_active}
+                          onChange={handleChange}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                        <Label htmlFor="is_active">Active</Label>
+                      </>
+                    ) : (
+                      <>
+                        <Label>Status</Label>
+                        <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
+                          {formData.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {editing && (
@@ -493,7 +632,7 @@ const ClusterEdit: React.FC = () => {
 
           {/* Right column - Edit mode only */}
           {!isNew && (
-            <div className="space-y-6">
+            <div className="space-y-6 lg:col-span-2">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -508,7 +647,10 @@ const ClusterEdit: React.FC = () => {
                         : (
                           <span className="flex items-center gap-2 mt-0.5">
                             <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
-                            <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
+                            <span className="text-muted-foreground text-xs">
+                              of {businessUnits.length} total
+                              {formData.max_license_bu && ` (${businessUnits.length} of ${formData.max_license_bu} licensed)`}
+                            </span>
                           </span>
                         )}
                     </CardDescription>
@@ -517,9 +659,16 @@ const ClusterEdit: React.FC = () => {
                     <Button variant="outline" size="icon" onClick={fetchBusinessUnits} disabled={buLoading} className="h-8 w-8" aria-label="Refresh business units">
                       <RefreshCw className={`h-4 w-4 ${buLoading ? 'animate-spin' : ''}`} />
                     </Button>
-                    <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)}>
-                      Add
-                    </Button>
+                    {(() => {
+                      const maxBu = formData.max_license_bu ? Number(formData.max_license_bu) : null;
+                      const atLimit = maxBu != null && businessUnits.length >= maxBu;
+                      return (
+                        <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)} disabled={atLimit}
+                          title={atLimit ? `License limit reached (${businessUnits.length}/${maxBu})` : undefined}>
+                          Add
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardHeader>
@@ -530,20 +679,33 @@ const ClusterEdit: React.FC = () => {
                   <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
+                      <tr className="border-b-2 border-border bg-muted">
                         <th className="text-left font-medium px-4 py-2">Code</th>
                         <th className="text-left font-medium px-4 py-2">Name</th>
+                        <th className="text-center font-medium px-4 py-2">Users</th>
                         <th className="text-left font-medium px-4 py-2">Status</th>
                         <th className="text-right font-medium px-4 py-2 w-12"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {businessUnits.map((bu) => (
-                        <tr key={bu.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <tr key={bu.id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
                             <Badge variant="outline" className="text-xs">{bu.code}</Badge>
                           </td>
                           <td className="px-4 py-2">{bu.name}</td>
+                          <td className="px-4 py-2 text-center">
+                            {(() => {
+                              const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                              const max = bu.max_license_users;
+                              const atLimit = max != null && buUserCount >= max;
+                              return (
+                                <span className={`text-xs ${atLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                                  {buUserCount}{max != null ? `/${max}` : ''}
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td className="px-4 py-2">
                             <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
                               {bu.is_active ? 'Active' : 'Inactive'}
@@ -581,9 +743,19 @@ const ClusterEdit: React.FC = () => {
                       {usersLoading
                         ? 'Loading...'
                         : (
-                          <span className="flex items-center gap-2 mt-0.5">
+                          <span className="flex items-center gap-2 flex-wrap mt-0.5">
                             <Badge variant="success" className="text-[10px] px-1.5 py-0">{clusterUsers.filter((u: any) => u.is_active !== false).length} Active</Badge>
                             <span className="text-muted-foreground text-xs">of {clusterUsers.length} total</span>
+                            {(() => {
+                              const totalMaxLicense = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);
+                              const hasLicense = businessUnits.some(bu => bu.max_license_users != null);
+                              if (!hasLicense) return null;
+                              return (
+                                <span className={`text-xs ${clusterUsers.length >= totalMaxLicense ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                  ({clusterUsers.length}/{totalMaxLicense} licensed)
+                                </span>
+                              );
+                            })()}
                           </span>
                         )}
                     </CardDescription>
@@ -606,9 +778,10 @@ const ClusterEdit: React.FC = () => {
                   <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
+                      <tr className="border-b-2 border-border bg-muted">
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-left font-medium px-4 py-2">Email</th>
+                        <th className="text-left font-medium px-4 py-2">Parent Business Unit</th>
                         <th className="text-left font-medium px-4 py-2">Platform Role</th>
                         <th className="text-center font-medium px-4 py-2">Status</th>
                         <th className="w-10"></th>
@@ -616,13 +789,28 @@ const ClusterEdit: React.FC = () => {
                     </thead>
                     <tbody>
                       {clusterUsers.map((user: any) => (
-                        <tr key={user.id || user.user_id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <tr key={user.id || user.user_id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
-                            {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
-                              ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
-                              : user.name || user.email}
+                            <span
+                              className="cursor-pointer text-primary hover:underline"
+                              onClick={() => handleOpenEditClusterUser(user)}
+                            >
+                              {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
+                                ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
+                                : user.name || user.email}
+                            </span>
                           </td>
                           <td className="px-4 py-2 text-muted-foreground">{user.email}</td>
+                          <td className="px-4 py-2">
+                            {(() => {
+                              const bu = user.parent_bu_id ? businessUnits.find(b => b.id === user.parent_bu_id) : null;
+                              return bu ? (
+                                <Badge variant="outline" className="text-xs">{bu.code} - {bu.name}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">-</span>
+                              );
+                            })()}
+                          </td>
                           <td className="px-4 py-2">
                             {user.platform_role ? (
                               <Badge variant="outline" className="text-xs">{user.platform_role}</Badge>
@@ -738,12 +926,113 @@ const ClusterEdit: React.FC = () => {
                           ))}
                         </select>
                       </div>
+
+                      {/* Business Unit select */}
+                      <div className="space-y-2">
+                        <Label>Business Unit</Label>
+                        <select
+                          value={addUserBuId}
+                          onChange={(e) => setAddUserBuId(e.target.value)}
+                          className={selectClassName}
+                        >
+                          <option value="">Select business unit</option>
+                          {businessUnits.map((bu) => {
+                            const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                            const max = bu.max_license_users;
+                            const atLimit = max != null && buUserCount >= max;
+                            return (
+                              <option key={bu.id} value={bu.id} disabled={atLimit}>
+                                {bu.code} - {bu.name} ({buUserCount}{max != null ? `/${max}` : ''} users){atLimit ? ' - Limit reached' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        {addUserBuId && (() => {
+                          const selectedBu = businessUnits.find(bu => bu.id === addUserBuId);
+                          if (!selectedBu) return null;
+                          const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === addUserBuId).length;
+                          const max = selectedBu.max_license_users;
+                          if (max == null) return null;
+                          const atLimit = buUserCount >= max;
+                          return (
+                            <p className={`text-xs ${atLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
+                              {atLimit
+                                ? `License limit reached (${buUserCount}/${max})`
+                                : `${buUserCount} of ${max} licensed users`}
+                            </p>
+                          );
+                        })()}
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
-                      <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUser}>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        {addingUser ? 'Adding...' : 'Add User'}
+                      {(() => {
+                        const selectedBu = addUserBuId ? businessUnits.find(bu => bu.id === addUserBuId) : null;
+                        const buAtLimit = selectedBu && selectedBu.max_license_users != null
+                          && clusterUsers.filter((cu: any) => cu.parent_bu_id === addUserBuId).length >= selectedBu.max_license_users;
+                        return (
+                          <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUser || !!buAtLimit}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            {addingUser ? 'Adding...' : 'Add User'}
+                          </Button>
+                        );
+                      })()}
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Edit Cluster User Dialog */}
+                <Dialog open={!!editClusterUser} onOpenChange={(open) => { if (!open) setEditClusterUser(null); }}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Edit Cluster User</DialogTitle>
+                      <DialogDescription>
+                        {editClusterUser && (editClusterUser.userInfo?.firstname || editClusterUser.userInfo?.lastname
+                          ? [editClusterUser.userInfo.firstname, editClusterUser.userInfo.middlename, editClusterUser.userInfo.lastname].filter(Boolean).join(' ')
+                          : editClusterUser?.email)}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label>Cluster Role</Label>
+                        <select
+                          value={editClusterUserForm.role}
+                          onChange={(e) => setEditClusterUserForm(prev => ({ ...prev, role: e.target.value }))}
+                          className={selectClassName}
+                        >
+                          {CLUSTER_ROLES.map((r) => (
+                            <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Parent Business Unit</Label>
+                        <select
+                          value={editClusterUserForm.parent_bu_id}
+                          onChange={(e) => setEditClusterUserForm(prev => ({ ...prev, parent_bu_id: e.target.value }))}
+                          className={selectClassName}
+                        >
+                          <option value="">Select business unit</option>
+                          {businessUnits.map((bu) => {
+                            const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                            const max = bu.max_license_users;
+                            const isCurrentBu = editClusterUser?.parent_bu_id === bu.id;
+                            const atLimit = max != null && buUserCount >= max && !isCurrentBu;
+                            return (
+                              <option key={bu.id} value={bu.id} disabled={atLimit}>
+                                {bu.code} - {bu.name} ({buUserCount}{max != null ? `/${max}` : ''} users){atLimit ? ' - Limit reached' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" size="sm" onClick={() => setEditClusterUser(null)}>Cancel</Button>
+                      <Button size="sm" onClick={handleSaveEditClusterUser} disabled={savingClusterUser}>
+                        {savingClusterUser ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {savingClusterUser ? 'Saving...' : 'Save'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
