@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
@@ -1515,12 +1515,12 @@ const BusinessUnitEdit: React.FC = () => {
                         <tr key={u.id} className="zebra-row border-b last:border-0">
                           <td className="px-4 py-2 text-center text-muted-foreground">{idx + 1}</td>
                           <td className="px-4 py-2">
-                            <span
-                              className="cursor-pointer text-primary hover:underline"
-                              onClick={() => navigate(`/users/${u.user_id}/edit`)}
+                            <Link
+                              to={`/users/${u.user_id}/edit`}
+                              className="text-primary hover:underline"
                             >
                               {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
-                            </span>
+                            </Link>
                           </td>
                           <td className="px-4 py-2">{u.email || '-'}</td>
                           <td className="px-4 py-2">{u.username || '-'}</td>
@@ -1646,6 +1646,7 @@ const BusinessUnitEdit: React.FC = () => {
                             value={addUserSearchTerm}
                             onChange={(e) => setAddUserSearchTerm(e.target.value)}
                             className="pl-9"
+                            // eslint-disable-next-line jsx-a11y/no-autofocus
                             autoFocus
                           />
                         </div>

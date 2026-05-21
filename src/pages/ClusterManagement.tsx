@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import clusterService from '../services/clusterService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -206,9 +206,9 @@ const ClusterManagement: React.FC = () => {
       accessorKey: 'code',
       header: 'Code',
       cell: ({ row }) => (
-        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clusters/${row.original.id}/edit`)}>
+        <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline">
           {row.original.code}
-        </span>
+        </Link>
       ),
     },
     {
@@ -216,9 +216,9 @@ const ClusterManagement: React.FC = () => {
       header: 'Name',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clusters/${row.original.id}/edit`)}>
+          <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline">
             {row.original.name}
-          </span>
+          </Link>
           {row.original.deleted_at && (
             <Badge variant="destructive" className="text-[10px] px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
               Deleted

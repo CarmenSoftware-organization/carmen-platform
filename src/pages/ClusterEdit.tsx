@@ -791,14 +791,15 @@ const ClusterEdit: React.FC = () => {
                       {clusterUsers.map((user: any) => (
                         <tr key={user.id || user.user_id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
-                            <span
-                              className="cursor-pointer text-primary hover:underline"
+                            <button
+                              type="button"
+                              className="text-primary hover:underline bg-transparent border-0 p-0 cursor-pointer text-left"
                               onClick={() => handleOpenEditClusterUser(user)}
                             >
                               {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
                                 ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
                                 : user.name || user.email}
-                            </span>
+                            </button>
                           </td>
                           <td className="px-4 py-2 text-muted-foreground">{user.email}</td>
                           <td className="px-4 py-2">
@@ -869,6 +870,7 @@ const ClusterEdit: React.FC = () => {
                               value={searchUsersTerm}
                               onChange={(e) => handleSearchUsersChange(e.target.value)}
                               className="pl-9"
+                              // eslint-disable-next-line jsx-a11y/no-autofocus
                               autoFocus
                             />
                           </div>
