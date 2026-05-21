@@ -32,7 +32,7 @@ bun start                     # dev server at http://localhost:3001
 
 ## Tech stack
 
-- React 18 + TypeScript 5 (strict), react-scripts 5, react-router-dom 6
+- React 18 + TypeScript 5 (strict), Vite 8, react-router-dom 6
 - Tailwind CSS 3.4 + shadcn/ui (Radix UI primitives)
 - TanStack Table v8 + `@tanstack/react-virtual`
 - CodeMirror 6 (XML syntax + folding + search)

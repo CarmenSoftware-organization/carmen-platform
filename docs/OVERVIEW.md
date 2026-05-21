@@ -48,13 +48,13 @@ Users outside this list are rejected at login with an "access denied" message. S
 └────────────────────────────────────────────┘
 ```
 
-- **In development:** `src/setupProxy.js` proxies `/api` and `/api-system` to the backend (`secure: false` allows self-signed certs).
+- **In development:** `vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` to the backend (`secure: false` allows self-signed certs).
 - **In production:** nginx serves the SPA; the browser calls the backend directly over HTTPS. CORS is handled by the backend.
 - **Auth:** JWT stored in `localStorage`, sent as `Authorization: Bearer <token>` by an axios request interceptor. A response interceptor clears storage and redirects to `/login` on 401/403.
 
 ## Tech stack
 
-- **Language & framework:** React 18, TypeScript 5 (strict mode), react-scripts 5
+- **Language & framework:** React 18, TypeScript 5 (strict mode), Vite 8
 - **Routing:** react-router-dom v6
 - **Styling:** Tailwind CSS 3.4 + CSS custom properties (HSL); glassmorphism via `.glass*` classes
 - **Components:** shadcn/ui primitives (Radix UI + CVA)
@@ -71,7 +71,6 @@ Users outside this list are rejected at login with an "access denied" message. S
 ```
 src/
   App.tsx                 # Router config with role guards
-  setupProxy.js           # Dev proxy: /api + /api-system → backend
   components/
     Layout.tsx            # App shell, sidebar state, mobile header
     Sidebar.tsx           # Collapsible sidebar (desktop) + drawer (mobile)
@@ -109,6 +108,8 @@ src/
 Top-level:
 
 ```
+vite.config.ts            # Vite config: React plugin, proxy, envPrefix, outDir
+src/vite-env.d.ts         # import.meta.env type declarations
 CLAUDE.md                 # AI coding guide (auto-loaded into Claude Code)
 README.md                 # GitHub landing
 SITEMAP.md                # Route/nav map

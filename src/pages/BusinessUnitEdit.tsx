@@ -1711,7 +1711,7 @@ const BusinessUnitEdit: React.FC = () => {
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && !isNew && !!(rawResponse || rawClusterUsersResponse) && (
+      {import.meta.env.DEV && !isNew && !!(rawResponse || rawClusterUsersResponse) && (
         <Sheet>
           <SheetTrigger asChild>
             <Button

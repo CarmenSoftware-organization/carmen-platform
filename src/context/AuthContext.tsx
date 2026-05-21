@@ -5,7 +5,7 @@ import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextVal
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = import.meta.env.DEV;
 
 const ALLOWED_ROLES = [
   'platform_admin',
