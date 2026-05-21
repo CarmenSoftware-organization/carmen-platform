@@ -127,6 +127,29 @@ export interface User {
   updated_at?: string;
 }
 
+// Row returned by GET /api-system/user/cluster/:clusterId — a tb_cluster_user
+// join row, not a plain User. Carries cluster-membership fields plus a
+// nested userInfo (note the camelCase shape from the backend).
+export interface ClusterUser {
+  id: string;          // tb_cluster_user.id (membership row id, NOT the user's id)
+  user_id?: string;    // links to User.id
+  cluster_id?: string;
+  parent_bu_id?: string | null;
+  role?: string;
+  platform_role?: string;
+  is_active?: boolean;
+  username?: string;
+  email?: string;
+  name?: string;
+  userInfo?: {
+    firstname?: string;
+    middlename?: string;
+    lastname?: string;
+  };
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;

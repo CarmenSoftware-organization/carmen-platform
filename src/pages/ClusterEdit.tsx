@@ -21,7 +21,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { TableSkeleton } from '../components/TableSkeleton';
-import type { BusinessUnit, User } from '../types';
+import type { BusinessUnit, ClusterUser } from '../types';
 
 interface ClusterFormData {
   code: string;
@@ -67,7 +67,7 @@ const ClusterEdit: React.FC = () => {
   const [debugTab, setDebugTab] = useState<'cluster' | 'bu' | 'users'>('cluster');
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
-  const [clusterUsers, setClusterUsers] = useState<User[]>([]);
+  const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [searchUsers, setSearchUsers] = useState<AllUser[]>([]);
@@ -79,8 +79,8 @@ const ClusterEdit: React.FC = () => {
   const [addUserRole, setAddUserRole] = useState('user');
   const [addUserBuId, setAddUserBuId] = useState('');
   const [addingUser, setAddingUser] = useState(false);
-  const [deleteClusterUser, setDeleteClusterUser] = useState<any>(null);
-  const [editClusterUser, setEditClusterUser] = useState<any>(null);
+  const [deleteClusterUser, setDeleteClusterUser] = useState<ClusterUser | null>(null);
+  const [editClusterUser, setEditClusterUser] = useState<ClusterUser | null>(null);
   const [editClusterUserForm, setEditClusterUserForm] = useState<{ role: string; parent_bu_id: string }>({ role: 'user', parent_bu_id: '' });
   const [savingClusterUser, setSavingClusterUser] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -174,7 +174,7 @@ const ClusterEdit: React.FC = () => {
       setRawUsersResponse(data);
       const items = data.data || data;
       const list = Array.isArray(items) ? items : [];
-      const getName = (u: any) =>
+      const getName = (u: ClusterUser) =>
         (u.userInfo?.firstname || u.userInfo?.middlename || u.userInfo?.lastname
           ? [u.userInfo.firstname, u.userInfo.middlename, u.userInfo.lastname].filter(Boolean).join(' ')
           : u.name || u.email || '').toLowerCase();
@@ -254,7 +254,7 @@ const ClusterEdit: React.FC = () => {
   };
 
   const availableUsers = searchUsers.filter(
-    u => u.id && !clusterUsers.some((cu: any) => (cu.user_id || cu.id) === u.id)
+    u => u.id && !clusterUsers.some((cu) => (cu.user_id || cu.id) === u.id)
   );
 
   const handleAddUser = async () => {
@@ -296,7 +296,7 @@ const ClusterEdit: React.FC = () => {
     }
   };
 
-  const handleOpenEditClusterUser = (user: any) => {
+  const handleOpenEditClusterUser = (user: ClusterUser) => {
     setEditClusterUser(user);
     setEditClusterUserForm({
       role: user.role || 'user',
@@ -696,7 +696,7 @@ const ClusterEdit: React.FC = () => {
                           <td className="px-4 py-2">{bu.name}</td>
                           <td className="px-4 py-2 text-center">
                             {(() => {
-                              const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                              const buUserCount = clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length;
                               const max = bu.max_license_users;
                               const atLimit = max != null && buUserCount >= max;
                               return (
@@ -744,7 +744,7 @@ const ClusterEdit: React.FC = () => {
                         ? 'Loading...'
                         : (
                           <span className="flex items-center gap-2 flex-wrap mt-0.5">
-                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{clusterUsers.filter((u: any) => u.is_active !== false).length} Active</Badge>
+                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{clusterUsers.filter((u) => u.is_active !== false).length} Active</Badge>
                             <span className="text-muted-foreground text-xs">of {clusterUsers.length} total</span>
                             {(() => {
                               const totalMaxLicense = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);
@@ -788,7 +788,7 @@ const ClusterEdit: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {clusterUsers.map((user: any) => (
+                      {clusterUsers.map((user) => (
                         <tr key={user.id || user.user_id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
                             <button
@@ -939,7 +939,7 @@ const ClusterEdit: React.FC = () => {
                         >
                           <option value="">Select business unit</option>
                           {businessUnits.map((bu) => {
-                            const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                            const buUserCount = clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length;
                             const max = bu.max_license_users;
                             const atLimit = max != null && buUserCount >= max;
                             return (
@@ -952,7 +952,7 @@ const ClusterEdit: React.FC = () => {
                         {addUserBuId && (() => {
                           const selectedBu = businessUnits.find(bu => bu.id === addUserBuId);
                           if (!selectedBu) return null;
-                          const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === addUserBuId).length;
+                          const buUserCount = clusterUsers.filter((cu) => cu.parent_bu_id === addUserBuId).length;
                           const max = selectedBu.max_license_users;
                           if (max == null) return null;
                           const atLimit = buUserCount >= max;
@@ -971,7 +971,7 @@ const ClusterEdit: React.FC = () => {
                       {(() => {
                         const selectedBu = addUserBuId ? businessUnits.find(bu => bu.id === addUserBuId) : null;
                         const buAtLimit = selectedBu && selectedBu.max_license_users != null
-                          && clusterUsers.filter((cu: any) => cu.parent_bu_id === addUserBuId).length >= selectedBu.max_license_users;
+                          && clusterUsers.filter((cu) => cu.parent_bu_id === addUserBuId).length >= selectedBu.max_license_users;
                         return (
                           <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedUser || !!buAtLimit}>
                             <UserPlus className="mr-2 h-4 w-4" />
@@ -1017,7 +1017,7 @@ const ClusterEdit: React.FC = () => {
                         >
                           <option value="">Select business unit</option>
                           {businessUnits.map((bu) => {
-                            const buUserCount = clusterUsers.filter((cu: any) => cu.parent_bu_id === bu.id).length;
+                            const buUserCount = clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length;
                             const max = bu.max_license_users;
                             const isCurrentBu = editClusterUser?.parent_bu_id === bu.id;
                             const atLimit = max != null && buUserCount >= max && !isCurrentBu;
