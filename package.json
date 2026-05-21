@@ -44,16 +44,15 @@
     "vercel": "^53.1.1"
   },
   "scripts": {
-    "start": "WATCHPACK_POLLING=true react-scripts start",
-    "dev": "WATCHPACK_POLLING=true react-scripts start",
-    "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') react-scripts build",
-    "test": "react-scripts test",
+    "start": "vite",
+    "dev": "vite",
+    "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build",
+    "preview": "vite preview --port 3001",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:debug": "npx playwright test --debug",
-    "test:e2e:report": "npx playwright show-report",
-    "eject": "react-scripts eject"
+    "test:e2e:report": "npx playwright show-report"
   },
   "eslintConfig": {
     "extends": [

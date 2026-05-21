@@ -1055,7 +1055,7 @@ const ClusterEdit: React.FC = () => {
       />
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && !isNew && !!(rawResponse || rawBuResponse || rawUsersResponse) && (
+      {import.meta.env.DEV && !isNew && !!(rawResponse || rawBuResponse || rawUsersResponse) && (
         <Sheet>
           <SheetTrigger asChild>
             <Button

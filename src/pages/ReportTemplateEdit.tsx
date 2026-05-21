@@ -949,7 +949,7 @@ const ReportTemplateEdit: React.FC = () => {
       )}
 
       {/* Debug Sheet */}
-      {process.env.NODE_ENV === 'development' && !!rawResponse && (
+      {import.meta.env.DEV && !!rawResponse && (
         <Sheet>
           <SheetTrigger asChild>
             <Button
