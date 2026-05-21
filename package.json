@@ -54,9 +54,43 @@
     "test:e2e:report": "npx playwright show-report"
   },
   "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    },
     "extends": [
-      "react-app"
-    ]
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:react/recommended",
+      "plugin:react/jsx-runtime",
+      "plugin:react-hooks/recommended",
+      "plugin:jsx-a11y/recommended"
+    ],
+    "rules": {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^(_|React$)"
+        }
+      ],
+      "@typescript-eslint/no-explicit-any": "off",
+      "react/prop-types": "off",
+      "react/no-unescaped-entities": "off",
+      "jsx-a11y/click-events-have-key-events": "off",
+      "jsx-a11y/no-static-element-interactions": "off",
+      "jsx-a11y/label-has-associated-control": "off",
+      "jsx-a11y/no-autofocus": "off"
+    }
   },
   "browserslist": {
     "production": [
@@ -74,7 +108,13 @@
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
     "@playwright/test": "^1.58.2",
+    "@typescript-eslint/eslint-plugin": "^7",
+    "@typescript-eslint/parser": "^7",
     "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^8",
+    "eslint-plugin-jsx-a11y": "^6",
+    "eslint-plugin-react": "^7",
+    "eslint-plugin-react-hooks": "^4",
     "vite": "^8.0.14",
     "vite-plugin-eslint": "^1.8.1"
   },
@@ -92,7 +132,6 @@
     "fast-uri": "^2.4.0",
     "flatted": "^3.3.2",
     "underscore": "^1.13.6",
-    "ajv": "^8.12.0",
     "@babel/plugin-transform-modules-systemjs": "^7.23.9"
   },
   "resolutions": {
@@ -109,7 +148,6 @@
     "fast-uri": "^2.4.0",
     "flatted": "^3.3.2",
     "underscore": "^1.13.6",
-    "ajv": "^8.12.0",
     "@babel/plugin-transform-modules-systemjs": "^7.23.9"
   }
 }
