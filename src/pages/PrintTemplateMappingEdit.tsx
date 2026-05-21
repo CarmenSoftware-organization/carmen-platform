@@ -486,7 +486,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && !isNew && !!rawResponse && (
+      {import.meta.env.DEV && !isNew && !!rawResponse && (
         <Sheet>
           <SheetTrigger asChild>
             <Button

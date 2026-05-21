@@ -934,7 +934,7 @@ const UserEdit: React.FC = () => {
       </Dialog>
 
       {/* Debug Sheet - Development Only */}
-      {process.env.NODE_ENV === 'development' && !!rawResponse && (
+      {import.meta.env.DEV && !!rawResponse && (
         <Sheet>
           <SheetTrigger asChild>
             <Button

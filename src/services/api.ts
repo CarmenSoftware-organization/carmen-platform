@@ -1,18 +1,17 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL,
+  baseURL: import.meta.env.REACT_APP_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
-    "x-app-id": process.env.REACT_APP_API_APP_ID,
+    "x-app-id": import.meta.env.REACT_APP_API_APP_ID,
   },
   // Disable SSL verification for development (not recommended for production)
-  httpsAgent:
-    process.env.NODE_ENV === "development"
-      ? {
-          rejectUnauthorized: false,
-        }
-      : undefined,
+  httpsAgent: import.meta.env.DEV
+    ? {
+        rejectUnauthorized: false,
+      }
+    : undefined,
 });
 
 // Request interceptor - redirect to login if no token

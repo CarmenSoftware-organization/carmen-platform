@@ -164,7 +164,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Debug Sheet - Development Only */}
-        {process.env.NODE_ENV === 'development' && loginResponse && (
+        {import.meta.env.DEV && loginResponse && (
           <Sheet>
             <SheetTrigger asChild>
               <Button
