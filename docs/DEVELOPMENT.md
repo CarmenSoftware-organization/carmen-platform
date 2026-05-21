@@ -19,7 +19,7 @@ bun install        # or: npm install
 bun start          # or: npm start
 ```
 
-Dev server runs on `http://localhost:3001` (port set by react-scripts default + docker-compose override).
+Dev server runs on `http://localhost:3001` (port set in `vite.config.ts`).
 
 ## Environment variables
 
@@ -37,9 +37,9 @@ Changing `.env` requires restarting the dev server.
 ## Commands
 
 ```bash
-bun start                 # Dev server with hot reload (WATCHPACK_POLLING=true)
-bun run build             # Production build; sets REACT_APP_BUILD_DATE
-bun test                  # react-scripts unit test runner
+bun start                 # Vite dev server on :3001
+bun run build             # Production build via vite build; sets REACT_APP_BUILD_DATE
+bun run preview           # Serve the production build locally on :3001
 
 bun run test:e2e          # Playwright e2e, headless
 bun run test:e2e:ui       # with Playwright UI
@@ -48,11 +48,11 @@ bun run test:e2e:debug    # debug mode
 bun run test:e2e:report   # show last HTML report
 ```
 
-No separate lint command. ESLint runs automatically via `react-scripts` during `start` and `build` (react-app preset).
+No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
 
 ## Dev proxy
 
-`src/setupProxy.js` proxies two paths to the backend during local development:
+`vite.config.ts` (`server.proxy`) proxies two paths to the backend during local development:
 
 | Path | Target | Flags |
 |---|---|---|
@@ -213,6 +213,7 @@ Running tests assumes the dev server (or a deployed build) is reachable at the `
 - `noFallthroughCasesInSwitch: true`
 - `resolveJsonModule: true`
 - `isolatedModules: true`, `noEmit: true`
+- `vite/client` types are referenced from `src/vite-env.d.ts` for `import.meta.env` typing
 
 ## Troubleshooting
 
