@@ -2,22 +2,22 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import businessUnitService from '../services/businessUnitService';
-import { getErrorDetail } from '../utils/errorParser';
+import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
+import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
-import { Plus, Pencil, Trash2, Search, Code, Copy, Check, MoreHorizontal, Filter, X, Building2, Download } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
-import type { BusinessUnit, PaginateParams } from '../types';
+import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
@@ -29,52 +29,56 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   }
 };
 
-const BusinessUnitManagement: React.FC = () => {
+const ReportTemplateManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const storedSearch = localStorage.getItem('search_business_units') || '';
-  const storedFilters = getStoredJSON<string[]>('filters_business_units', []);
-  const storedPage = Number(localStorage.getItem('page_business_units')) || 1;
-  const storedSort = localStorage.getItem('sort_business_units') || 'created_at:desc';
+  const storedSearch = localStorage.getItem('search_report_templates') || '';
+  const storedFilters = getStoredJSON<string[]>('filters_report_templates', []);
+  const storedSourceTypes = getStoredJSON<string[]>('filters_report_templates_source_type', []);
+  const storedPage = Number(localStorage.getItem('page_report_templates')) || 1;
+  const storedSort = localStorage.getItem('sort_report_templates') || 'created_at:desc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
-  const [showDeleted, setShowDeleted] = useState<boolean>(getStoredJSON<boolean>('filter_business_units_deleted', false));
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<string[]>(storedSourceTypes);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useGlobalShortcuts({
-    onSearch: () => searchInputRef.current?.focus(),
-  });
-
-  const buildAdvance = (filters: string[], includeDeleted: boolean) => {
+  const buildAdvance = (filters: string[], sourceTypes: string[]) => {
     const where: Record<string, unknown> = {};
     if (filters.length === 1) {
       where.is_active = filters[0] === 'true';
     }
-    if (!includeDeleted) {
-      where.deleted_at = null;
+    if (sourceTypes.length === 1) {
+      where.source_type = sourceTypes[0];
+    } else if (sourceTypes.length > 1) {
+      where.source_type = { in: sourceTypes };
     }
+    where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
   };
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem("perpage_business_units")) || 10,
+    perpage: Number(localStorage.getItem('perpage_report_templates')) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters, getStoredJSON<boolean>('filter_business_units_deleted', false)),
+    advance: buildAdvance(storedFilters, storedSourceTypes),
     filter: {},
   });
 
+  const [copied, setCopied] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useGlobalShortcuts({
+    onSearch: () => searchInputRef.current?.focus(),
+  });
 
   const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -82,39 +86,42 @@ const BusinessUnitManagement: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const fetchBusinessUnits = useCallback(async (params: PaginateParams) => {
+  const fetchTemplates = useCallback(async (params: PaginateParams) => {
     try {
       setLoading(true);
-      const data = await businessUnitService.getAll(params);
-      setRawResponse(data);
-      const items = data.data || data;
-      setBusinessUnits(Array.isArray(items) ? items : []);
-      setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
+      const response: any = await reportTemplateService.getAll(params);
+      setRawResponse(response);
+      const inner = response.data?.data ?? response.data ?? response;
+      const items = Array.isArray(inner) ? inner : (inner?.data ?? []);
+      const pagInfo = inner?.paginate ?? response.data?.paginate ?? response.paginate;
+      setTemplates(Array.isArray(items) ? items : []);
+      setTotalRows(pagInfo?.total ?? items.length);
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load business units: ' + getErrorDetail(err));
+      setError('Failed to load report templates: ' + getErrorDetail(err));
+      devLog('Error fetching report templates:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchBusinessUnits(paginate);
-  }, [fetchBusinessUnits, paginate]);
+    fetchTemplates(paginate);
+  }, [fetchTemplates, paginate]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    localStorage.setItem('search_business_units', value);
+    localStorage.setItem('search_report_templates', value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
-      localStorage.setItem('page_business_units', '1');
+      localStorage.setItem('page_report_templates', '1');
       setPaginate(prev => ({ ...prev, page: 1, search: value }));
     }, 400);
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
-    localStorage.setItem("perpage_business_units", String(perpage));
-    localStorage.setItem('page_business_units', String(page));
+    localStorage.setItem('perpage_report_templates', String(perpage));
+    localStorage.setItem('page_report_templates', String(page));
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
@@ -123,42 +130,35 @@ const BusinessUnitManagement: React.FC = () => {
       ? statusFilter.filter((s) => s !== status)
       : [...statusFilter, status];
     setStatusFilter(next);
-    localStorage.setItem('filters_business_units', JSON.stringify(next));
-    localStorage.setItem('page_business_units', '1');
-    const advance = buildAdvance(next, showDeleted);
-    setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
+    localStorage.setItem('filters_report_templates', JSON.stringify(next));
+    localStorage.setItem('page_report_templates', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, sourceTypeFilter), filter: {} }));
   };
 
-  const handleShowDeletedToggle = () => {
-    const next = !showDeleted;
-    setShowDeleted(next);
-    localStorage.setItem('filter_business_units_deleted', JSON.stringify(next));
-    localStorage.setItem('page_business_units', '1');
-    const advance = buildAdvance(statusFilter, next);
-    setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
-  };
-
-  const handleClearStatusFilter = () => {
-    setStatusFilter([]);
-    localStorage.setItem('filters_business_units', JSON.stringify([]));
-    localStorage.setItem('page_business_units', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], showDeleted), filter: {} }));
+  const handleSourceTypeFilter = (type: string) => {
+    const next = sourceTypeFilter.includes(type)
+      ? sourceTypeFilter.filter((s) => s !== type)
+      : [...sourceTypeFilter, type];
+    setSourceTypeFilter(next);
+    localStorage.setItem('filters_report_templates_source_type', JSON.stringify(next));
+    localStorage.setItem('page_report_templates', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
-    setShowDeleted(false);
-    localStorage.setItem('filters_business_units', JSON.stringify([]));
-    localStorage.setItem('filter_business_units_deleted', JSON.stringify(false));
-    localStorage.setItem('page_business_units', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], false), filter: {} }));
+    setSourceTypeFilter([]);
+    localStorage.setItem('filters_report_templates', JSON.stringify([]));
+    localStorage.setItem('filters_report_templates_source_type', JSON.stringify([]));
+    localStorage.setItem('page_report_templates', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], []), filter: {} }));
   };
 
-  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
-    localStorage.setItem('sort_business_units', sort);
-    localStorage.setItem('page_business_units', '1');
+    localStorage.setItem('sort_report_templates', sort);
+    localStorage.setItem('page_report_templates', '1');
     setPaginate(prev => ({ ...prev, sort, page: 1 }));
   };
 
@@ -169,63 +169,86 @@ const BusinessUnitManagement: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     try {
-      await businessUnitService.delete(deleteId);
-      toast.success('Business unit deleted successfully');
+      await reportTemplateService.delete(deleteId);
+      toast.success('Report template deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      toast.error('Failed to delete business unit', { description: getErrorDetail(err) });
+      toast.error('Failed to delete report template', { description: getErrorDetail(err) });
     }
   };
 
   const handleExport = () => {
-    const csv = generateCSV(businessUnits, [
-      { key: 'code', label: 'Code' },
+    const csv = generateCSV(templates, [
       { key: 'name', label: 'Name' },
-      { key: 'alias_name', label: 'Alias Name' },
-      { key: 'cluster_name', label: 'Cluster' },
+      { key: 'description', label: 'Description' },
+      { key: 'report_group', label: 'Report Group' },
+      { key: 'is_standard', label: 'Standard' },
       { key: 'is_active', label: 'Status' },
-      { key: 'max_license_users', label: 'Max Licensed Users' },
       { key: 'created_at', label: 'Created' },
     ]);
-    downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
+    downloadCSV(csv, `report-templates-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
   };
 
-  const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
-    {
-      accessorKey: 'code',
-      header: 'Code',
-      cell: ({ row }) => (
-        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/business-units/${row.original.id}/edit`)}>
-          {row.original.code}
-        </span>
-      ),
-    },
+  const columns = useMemo<ColumnDef<ReportTemplate, unknown>[]>(() => [
     {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/business-units/${row.original.id}/edit`)}>
-            {row.original.name}
-          </span>
-          {row.original.deleted_at && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
-              Deleted
-            </Badge>
-          )}
-        </div>
+        <span className="cursor-pointer text-primary hover:underline" onClick={() => navigate(`/report-templates/${row.original.id}/edit`)}>
+          {row.original.name}
+        </span>
       ),
     },
     {
-      accessorKey: 'alias_name',
-      header: 'Alias',
+      accessorKey: 'description',
+      header: 'Description',
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.alias_name || '-'}</span>
+        <span className="text-muted-foreground text-sm truncate max-w-[200px] block">
+          {row.original.description || '-'}
+        </span>
       ),
     },
-    { accessorKey: 'cluster_name', id: 'tb_cluster.name', header: 'Cluster' },
+    {
+      accessorKey: 'report_group',
+      header: 'Report Group',
+      cell: ({ row }) => (
+        <Badge variant="outline">{row.original.report_group}</Badge>
+      ),
+    },
+    {
+      accessorKey: 'source_type',
+      header: 'Source',
+      cell: ({ row }) => {
+        const r = row.original as ReportTemplate & { view_name?: string };
+        const t: string = r.source_type || (r.view_name ? 'view' : '-');
+        const name = r.source_name || r.view_name || '';
+        const variant: 'secondary' | 'default' | 'outline' =
+          t === 'function' ? 'default' : t === 'procedure' ? 'secondary' : 'outline';
+        return (
+          <div className="flex flex-col gap-0.5">
+            <Badge variant={variant} className="w-fit text-[10px] capitalize">
+              {t}
+            </Badge>
+            {name && (
+              <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[200px]">
+                {name}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'is_standard',
+      header: 'Standard',
+      cell: ({ row }) => (
+        <Badge variant={row.original.is_standard ? 'default' : 'secondary'}>
+          {row.original.is_standard ? 'Standard' : 'Custom'}
+        </Badge>
+      ),
+    },
     {
       accessorKey: 'is_active',
       header: 'Status',
@@ -243,9 +266,8 @@ const BusinessUnitManagement: React.FC = () => {
         const d = row.original;
         const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
         return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+          <div className="text-[11px] leading-tight text-muted-foreground">
             <div>{fmt(d.created_at)}</div>
-            {d.created_by_name && <div>{d.created_by_name}</div>}
           </div>
         );
       },
@@ -259,29 +281,12 @@ const BusinessUnitManagement: React.FC = () => {
         if (d.updated_at === d.created_at) return null;
         const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
         return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+          <div className="text-[11px] leading-tight text-muted-foreground">
             <div>{fmt(d.updated_at)}</div>
-            {d.updated_by_name && <div>{d.updated_by_name}</div>}
           </div>
         );
       },
     },
-    ...(showDeleted ? [{
-      id: 'deleted_at',
-      header: 'Deleted By',
-      cell: ({ row }: { row: { original: BusinessUnit } }) => {
-        const d = row.original;
-        if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-destructive space-y-0.5">
-            <div>{fmt(d.deleted_at)}</div>
-            {d.deleted_by_name && <div>{d.deleted_by_name}</div>}
-          </div>
-        );
-      },
-      enableSorting: false,
-    } as ColumnDef<BusinessUnit, unknown>] : []),
     {
       id: 'actions',
       header: '',
@@ -290,12 +295,12 @@ const BusinessUnitManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name || row.original.code}`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name}`}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate(`/business-units/${row.original.id}/edit`)} className="cursor-pointer">
+            <DropdownMenuItem onClick={() => navigate(`/report-templates/${row.original.id}/edit`)} className="cursor-pointer">
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
@@ -307,25 +312,24 @@ const BusinessUnitManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, showDeleted]);
+  ], [navigate, handleDelete]);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Business Unit Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage business units and departments</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Report Templates</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage report templates with dialog (XML) and content (.frx to XML)</p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || businessUnits.length === 0}>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || templates.length === 0}>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button onClick={() => navigate('/business-units/new')}>
+            <Button onClick={() => navigate('/report-templates/new')}>
               <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Add Business Unit</span>
-              <span className="sm:hidden">Add BU</span>
+              Add Template
             </Button>
           </div>
         </div>
@@ -337,11 +341,12 @@ const BusinessUnitManagement: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search business units..."
+                  type="text"
+                  placeholder="Search report templates..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search business units"
+                  aria-label="Search report templates"
                 />
                 {searchTerm && (
                   <button
@@ -368,15 +373,12 @@ const BusinessUnitManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter business units by status</SheetDescription>
+                    <SheetDescription>Filter report templates by status</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
-                        {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
-                        )}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         <Button
@@ -397,21 +399,26 @@ const BusinessUnitManagement: React.FC = () => {
                         </Button>
                       </div>
                     </div>
+
                     <div className="space-y-3">
-                      <span className="text-sm font-medium">Deleted</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="showDeleted"
-                          checked={showDeleted}
-                          onChange={handleShowDeletedToggle}
-                          className="h-4 w-4 rounded border-input"
-                        />
-                        <label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
-                          Show soft-deleted business units
-                        </label>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Source Type</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {(['view', 'function', 'procedure'] as const).map((t) => (
+                          <Button
+                            key={t}
+                            variant={sourceTypeFilter.includes(t) ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-xs capitalize"
+                            onClick={() => handleSourceTypeFilter(t)}
+                          >
+                            {t}
+                          </Button>
+                        ))}
                       </div>
                     </div>
+
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         Clear All Filters
@@ -425,21 +432,21 @@ const BusinessUnitManagement: React.FC = () => {
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Filters:</span>
                 {statusFilter.map((s) => (
-                  <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                  <Badge key={`status-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
-                {showDeleted && (
-                  <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    Show Deleted
-                    <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
+                {sourceTypeFilter.map((t) => (
+                  <Badge key={`source-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
+                    {t}
+                    <button onClick={() => handleSourceTypeFilter(t)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
-                )}
+                ))}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
                   Clear all
                 </button>
@@ -448,32 +455,33 @@ const BusinessUnitManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
-            {!error && businessUnits.length === 0 && !loading ? (
+
+            {!error && templates.length === 0 && !loading ? (
               <EmptyState
-                icon={Building2}
-                title="No business units yet"
-                description={searchTerm ? `No business units matching "${searchTerm}"` : "Get started by creating your first business unit."}
+                icon={FileText}
+                title="No report templates yet"
+                description={searchTerm ? `No report templates matching "${searchTerm}"` : "Get started by creating your first report template."}
                 action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/business-units/new')}>
+                  <Button size="sm" onClick={() => navigate('/report-templates/new')}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Business Unit
+                    Add Template
                   </Button>
                 ) : undefined}
               />
             ) : !error ? (
               <div className="relative">
-                {loading && businessUnits.length === 0 ? (
-                  <TableSkeleton columns={6} rows={paginate.perpage || 5} />
+                {loading && templates.length === 0 ? (
+                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading business units">
-                    <div className="text-muted-foreground">Loading...</div>
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading report templates">
+                    <div className="text-muted-foreground">Loading report templates...</div>
                   </div>
                 )}
                 <DataTable
                   columns={columns}
-                  data={businessUnits}
+                  data={templates}
                   serverSide
                   totalRows={totalRows}
                   page={paginate.page}
@@ -493,14 +501,13 @@ const BusinessUnitManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Business Unit"
-        description="Are you sure you want to delete this business unit? This action cannot be undone."
+        title="Delete Report Template"
+        description="Are you sure you want to delete this report template? This action cannot be undone."
         confirmText="Delete"
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
 
-      {/* Debug Sheet - Development Only */}
       {process.env.NODE_ENV === 'development' && !!rawResponse && (
         <Sheet>
           <SheetTrigger asChild>
@@ -519,7 +526,7 @@ const BusinessUnitManagement: React.FC = () => {
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
               <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/business-unit
+                GET /api-system/report-template
               </SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">
@@ -540,4 +547,4 @@ const BusinessUnitManagement: React.FC = () => {
   );
 };
 
-export default BusinessUnitManagement;
+export default ReportTemplateManagement;

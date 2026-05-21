@@ -26,13 +26,20 @@ export interface Cluster {
   code: string;
   name: string;
   description?: string;
+  alias_name?: string;
+  logo_url?: string;
+  max_license_bu?: number;
+  info?: unknown;
   is_active: boolean;
   bu_count?: number;
   users_count?: number;
+  total_max_license_users?: number;
   created_at?: string;
   created_by_name?: string;
   updated_at?: string;
   updated_by_name?: string;
+  deleted_at?: string;
+  deleted_by_name?: string;
 }
 
 export interface BusinessUnitConfig {
@@ -52,6 +59,7 @@ export interface BusinessUnit {
   description?: string;
   is_hq?: boolean;
   is_active: boolean;
+  max_license_users?: number;
   // Hotel Information
   hotel_name?: string;
   hotel_tel?: string;
@@ -90,6 +98,8 @@ export interface BusinessUnit {
   created_by_name?: string;
   updated_at?: string;
   updated_by_name?: string;
+  deleted_at?: string;
+  deleted_by_name?: string;
 }
 
 export interface UserInfo {
@@ -144,6 +154,6 @@ export interface AuthContextValue {
 }
 
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
