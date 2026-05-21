@@ -13,6 +13,7 @@
   - Dialog Preview tab renders `<Label>` + `<Date>` / `<Lookup>` pairs as a disabled form
   - Chip inputs for business unit allow/deny lists
   - Sticky bottom action bar with unsaved-changes indicator
+- **Print Template Mapping** — maps document types (invoices, receipts, etc.) to report templates with default + per-BU allow/deny rules, grouped by document type
 - **Profile** — view/edit, change password
 - **Auth** — JWT + role gates (`platform_admin`, `super_admin`, `support_manager`, `support_staff`, `security_officer`)
 - **List pages** — server-side DataTable (TanStack Table v8 + virtual rows), debounced search, Sheet filters, CSV export

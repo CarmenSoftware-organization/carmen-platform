@@ -21,6 +21,9 @@ All routes in the Carmen Platform SPA. Source: `src/App.tsx`.
 | `/report-templates` | `ReportTemplateManagement` | `platform_admin`, `support_manager`, `support_staff` | Report template list |
 | `/report-templates/new` | `ReportTemplateEdit` | `platform_admin`, `support_manager`, `support_staff` | Create report template |
 | `/report-templates/:id/edit` | `ReportTemplateEdit` | `platform_admin`, `support_manager`, `support_staff` | View/edit report template (XML editors + preview) |
+| `/print-template-mapping` | `PrintTemplateMappingManagement` | `platform_admin`, `support_manager`, `support_staff` | Mapping list grouped by document type |
+| `/print-template-mapping/new` | `PrintTemplateMappingEdit` | `platform_admin`, `support_manager`, `support_staff` | Create print template mapping |
+| `/print-template-mapping/:id/edit` | `PrintTemplateMappingEdit` | `platform_admin`, `support_manager`, `support_staff` | View/edit print template mapping |
 | `/profile` | `Profile` | Authenticated | View/edit own profile, change password |
 | `*` | `<Navigate to="/" />` | — | Catch-all redirect to Landing |
 
@@ -35,6 +38,7 @@ Defined in `src/components/Layout.tsx`; items are filtered through `hasRole()` f
 3. Business Units — `/business-units` — all authenticated users
 4. Users — `/users` — all authenticated users
 5. Report Templates — `/report-templates` — `platform_admin`, `support_manager`, `support_staff`
+6. Print Mapping — `/print-template-mapping` — `platform_admin`, `support_manager`, `support_staff`
 
 The user profile + logout menu lives at the bottom of the sidebar (no route — `/profile` is reached from the avatar menu).
 

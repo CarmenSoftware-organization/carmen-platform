@@ -4,7 +4,7 @@ Product and architecture overview. For setup and operations, see [DEVELOPMENT.md
 
 ## What it is
 
-Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. It talks to a separate NestJS/Prisma backend over HTTPS. The frontend is packaged as a Docker image (nginx serving the static build) and deployed to AWS EC2 via GitHub Actions + ECR + SSM.
+Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, users, report templates, and print-template mappings. It talks to a separate NestJS/Prisma backend over HTTPS. The frontend is packaged as a Docker image (nginx serving the static build) and deployed to AWS EC2 via GitHub Actions + ECR + SSM.
 
 ## Users and roles
 
@@ -29,6 +29,8 @@ Users outside this list are rejected at login with an "access denied" message. S
 **User.** A person with login credentials. Holds email, platform_role, first/middle/last name, and a list of business unit assignments per cluster. Managed under `/users`.
 
 **Report Template.** An XML-based report definition. Holds a Dialog XML (form parameters) and a Content XML (report layout, often imported from `.frx` files). Can be restricted per BU via allow/deny lists. Managed under `/report-templates`.
+
+**Print Template Mapping.** Resolves which report template prints for a given document type (e.g. invoice, receipt). Holds a `document_type`, a `report_template_id`, an `is_default` flag, a `display_order`, optional `display_label`, and optional per-BU `allow_business_unit` / `deny_business_unit` rules. The backend exposes a `resolve` endpoint that returns the effective mapping for a `(document_type, bu_code)` pair. Managed under `/print-template-mapping`; the list view groups rows by document type rather than using the standard DataTable.
 
 ## Architecture
 
@@ -87,6 +89,7 @@ src/
     businessUnitService.ts
     userService.ts
     reportTemplateService.ts
+    printTemplateMappingService.ts
   context/
     AuthContext.tsx       # Auth state, login/logout, hasRole()
   hooks/

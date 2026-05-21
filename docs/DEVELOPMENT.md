@@ -91,7 +91,9 @@ const entityService = {
 };
 ```
 
-Current services: `clusterService`, `businessUnitService`, `userService`, `reportTemplateService`.
+Current services: `clusterService`, `businessUnitService`, `userService`, `reportTemplateService`, `printTemplateMappingService`.
+
+`printTemplateMappingService` is filter-based rather than paginated, and adds two non-CRUD endpoints: `listDocumentTypes()` (catalog of document codes) and `resolve(documentType, buCode?)` (effective mapping for a given document + BU).
 
 ## Authentication
 
@@ -147,6 +149,7 @@ See `src/components/PrivateRoute.tsx` for the route-guard usage and `src/App.tsx
 | `/business-units` | Business Units | (all) |
 | `/users` | Users | (all) |
 | `/report-templates` | Report Templates | `platform_admin`, `support_manager`, `support_staff` |
+| `/print-template-mapping` | Print Mapping | `platform_admin`, `support_manager`, `support_staff` |
 
 See [../SITEMAP.md](../SITEMAP.md) for the authoritative route list.
 
