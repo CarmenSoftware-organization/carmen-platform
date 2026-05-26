@@ -16,7 +16,7 @@ export class NewsEditPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.titleInput = page.locator('input[name="title"]');
-    this.contentTextarea = page.locator('textarea');
+    this.contentTextarea = page.locator('[data-testid="markdown-textarea"]');
     this.urlInput = page.locator('input[name="url"]');
     this.imageInput = page.locator('input[name="image"]');
     this.statusSelect = page.locator('select[name="status"]');
@@ -71,6 +71,10 @@ export class NewsEditPage extends BasePage {
 
   async clickEdit() {
     await this.editButton.click();
+  }
+
+  async clickCancel() {
+    await this.cancelButton.click();
   }
 
   async clickBack() {

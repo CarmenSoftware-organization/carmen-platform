@@ -43,7 +43,7 @@ export class NewsManagementPage extends BasePage {
   }
 
   async selectStatusFilter(status: 'Draft' | 'Published' | 'Archived') {
-    await this.page.locator(`button:has-text("${status}")`).last().click();
+    await this.page.locator(`[role="dialog"] button:has-text("${status}")`).first().click();
     await this.page.waitForTimeout(500);
   }
 

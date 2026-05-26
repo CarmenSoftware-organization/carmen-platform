@@ -42,6 +42,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange,
       </TabsList>
       <TabsContent value="write">
         <Textarea
+          data-testid="markdown-textarea"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder || 'Write your news content in Markdown...'}
