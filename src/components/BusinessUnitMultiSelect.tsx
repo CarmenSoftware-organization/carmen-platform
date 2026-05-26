@@ -25,7 +25,7 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
       try {
         setLoading(true);
         const data = await businessUnitService.getAll({ perpage: -1 });
-        const items = (data as { data?: BusinessUnit[] }).data || data;
+        const items = data.data || data;
         const list: BusinessUnit[] = Array.isArray(items) ? items : [];
         const sorted = [...list].sort((a, b) =>
           (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase()),
@@ -55,6 +55,7 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
   }, [businessUnits, search]);
 
   const toggle = (buId: string) => {
+    if (disabled) return;
     if (value.includes(buId)) onChange(value.filter((v) => v !== buId));
     else onChange([...value, buId]);
   };
