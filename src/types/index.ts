@@ -180,3 +180,30 @@ export interface LoginCredentials {
   username: string;
   password: string;
 }
+
+export type NewsStatus = 'draft' | 'published' | 'archived';
+
+export interface AuditEntry {
+  at?: string;
+  id?: string;
+  name?: string;
+  avatar?: string;
+}
+
+export interface Audit {
+  created?: AuditEntry;
+  updated?: AuditEntry;
+  deleted?: AuditEntry;
+}
+
+export interface News {
+  id: string;
+  title: string;
+  contents?: string;            // Markdown body
+  url?: string;                 // source URL
+  image?: string;               // image URL
+  business_unit_ids?: string[]; // [] = global (all BUs); non-empty = those BUs
+  status?: NewsStatus;
+  published_at?: string;
+  audit?: Audit;                // enriched audit object (NOT flat created_at/created_by_name)
+}
