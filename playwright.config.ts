@@ -13,7 +13,7 @@ export default defineConfig({
     ['html', { open: 'never' }],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3001',
+    baseURL: process.env.BASE_URL || 'http://localhost:3100',
     headless: !!process.env.CI,
     ignoreHTTPSErrors: true,
     screenshot: 'only-on-failure',
@@ -25,7 +25,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm start',
-    url: 'http://localhost:3001',
+    url: 'http://localhost:3100',
     reuseExistingServer: true,
     timeout: 120_000,
   },

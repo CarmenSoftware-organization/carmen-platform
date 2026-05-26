@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
     ],
     envPrefix: 'REACT_APP_',
     server: {
-      port: 3001,
+      port: 3100,
       proxy: {
         '/api': {
           target: env.REACT_APP_API_BASE_URL || 'https://43.209.126.252',

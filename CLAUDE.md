@@ -21,9 +21,9 @@ Frontend-only React + TypeScript admin dashboard for clusters, business units, u
 
 ```bash
 bun install                 # or: npm install
-bun start                   # Vite dev server on :3001
+bun start                   # Vite dev server on :3100
 bun run build               # production build (sets REACT_APP_BUILD_DATE, emits to build/)
-bun run preview             # serve the production build locally on :3001
+bun run preview             # serve the production build locally on :3100
 bun run test:e2e            # Playwright headless
 bun run test:e2e:ui         # Playwright UI
 bun run test:e2e:headed     # visible browser

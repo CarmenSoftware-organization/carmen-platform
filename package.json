@@ -40,7 +40,7 @@
     "start": "vite",
     "dev": "vite",
     "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build",
-    "preview": "vite preview --port 3001",
+    "preview": "vite preview --port 3100",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:headed": "npx playwright test --headed",
