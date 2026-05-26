@@ -10,6 +10,15 @@ export const isValidPhone = (phone: string): boolean => {
   return /^\+?[\d\s\-()]{8,20}$/.test(phone);
 };
 
+export const isValidUrl = (value: string): boolean => {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 export const validateField = (name: string, value: string): string => {
   if (!value) return '';
 
@@ -31,6 +40,9 @@ export const validateField = (name: string, value: string): string => {
     case 'max_license_bu':
     case 'max_license_users':
       return /^\d+$/.test(value) && Number(value) >= 0 ? '' : 'Must be a non-negative integer';
+    case 'url':
+    case 'image':
+      return isValidUrl(value) ? '' : 'Must be a valid http(s) URL';
     default:
       return '';
   }
