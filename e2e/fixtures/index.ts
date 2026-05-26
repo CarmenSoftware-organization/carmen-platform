@@ -93,3 +93,11 @@ export const generateProfileData = () => ({
   lastname: faker.person.lastName(),
   telephone: `+66-${faker.string.numeric(2)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
 });
+
+/** Generate unique news test data */
+export const generateNewsData = () => ({
+  title: `Test News ${Date.now().toString().slice(-6)}`,
+  contents: `## ${faker.company.catchPhrase()}\n\n${faker.lorem.paragraph()}`,
+  url: faker.internet.url(),
+  image: faker.image.url(),
+});
