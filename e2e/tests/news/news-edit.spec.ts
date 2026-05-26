@@ -30,6 +30,8 @@ test.describe('News - Edit', () => {
     expect([200, 201]).toContain(response.status());
 
     await editPage.expectReadOnlyMode();
+    await managementPage.goto();
+    await managementPage.search(updatedTitle);
     await managementPage.expectNewsVisible(updatedTitle);
   });
 
