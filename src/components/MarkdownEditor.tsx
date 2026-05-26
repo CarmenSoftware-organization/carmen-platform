@@ -9,6 +9,7 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void;
   readOnly?: boolean;
   placeholder?: string;
+  id?: string;
 }
 
 const proseClass =
@@ -19,7 +20,7 @@ const proseClass =
   '[&_table]:w-full [&_table]:my-2 [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_td]:border [&_td]:px-2 [&_td]:py-1 ' +
   '[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground';
 
-export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange, readOnly, placeholder }) => {
+export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange, readOnly, placeholder, id }) => {
   if (readOnly) {
     return (
       <div className="rounded-md border border-input bg-muted/50 px-3 py-2 min-h-[120px]">
@@ -42,6 +43,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange,
       </TabsList>
       <TabsContent value="write">
         <Textarea
+          id={id}
           data-testid="markdown-textarea"
           value={value}
           onChange={(e) => onChange(e.target.value)}

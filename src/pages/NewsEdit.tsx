@@ -305,6 +305,7 @@ const NewsEdit: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="contents">Content (Markdown)</Label>
                 <MarkdownEditor
+                  id="contents"
                   value={formData.contents}
                   onChange={(v) => { setFormData(prev => ({ ...prev, contents: v })); setError(''); }}
                   readOnly={!editing}
