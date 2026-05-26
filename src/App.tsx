@@ -19,6 +19,8 @@ const ReportTemplateManagement = lazy(() => import("./pages/ReportTemplateManage
 const ReportTemplateEdit = lazy(() => import("./pages/ReportTemplateEdit"));
 const PrintTemplateMappingManagement = lazy(() => import("./pages/PrintTemplateMappingManagement"));
 const PrintTemplateMappingEdit = lazy(() => import("./pages/PrintTemplateMappingEdit"));
+const NewsManagement = lazy(() => import("./pages/NewsManagement"));
+const NewsEdit = lazy(() => import("./pages/NewsEdit"));
 const Profile = lazy(() => import("./pages/Profile"));
 
 const RouteLoader = () => (
@@ -161,6 +163,30 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
                   <PrintTemplateMappingEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/news"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin"]}>
+                  <NewsManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/news/new"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin"]}>
+                  <NewsEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/news/:id/edit"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin"]}>
+                  <NewsEdit />
                 </PrivateRoute>
               }
             />
