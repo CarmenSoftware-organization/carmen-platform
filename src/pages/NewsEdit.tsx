@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { getErrorDetail } from '../utils/errorParser';
+import { getErrorDetail, parseApiError } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { MarkdownEditor } from '../components/MarkdownEditor';
@@ -28,6 +28,16 @@ interface NewsFormData {
   isGlobal: boolean;
   business_unit_ids: string[];
 }
+
+const initialForm: NewsFormData = {
+  title: '',
+  contents: '',
+  url: '',
+  image: '',
+  status: 'draft',
+  isGlobal: true,
+  business_unit_ids: [],
+};
 
 const NEWS_STATUSES: NewsStatus[] = ['draft', 'published', 'archived'];
 
@@ -56,16 +66,6 @@ const NewsEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
-
-  const initialForm: NewsFormData = {
-    title: '',
-    contents: '',
-    url: '',
-    image: '',
-    status: 'draft',
-    isGlobal: true,
-    business_unit_ids: [],
-  };
 
   const [formData, setFormData] = useState<NewsFormData>(initialForm);
   const [savedFormData, setSavedFormData] = useState<NewsFormData>(initialForm);
@@ -145,6 +145,11 @@ const NewsEdit: React.FC = () => {
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
     setError('');
+    setFieldErrors(prev => ({
+      ...prev,
+      [name]: '',
+      ...(name === 'isGlobal' ? { business_unit_ids: '' } : {}),
+    }));
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -199,7 +204,9 @@ const NewsEdit: React.FC = () => {
         setEditing(false);
       }
     } catch (err: unknown) {
-      setError('Failed to save news: ' + getErrorDetail(err));
+      const { message, fields } = parseApiError(err);
+      setError('Failed to save news: ' + message);
+      if (fields) setFieldErrors(prev => ({ ...prev, ...fields }));
     } finally {
       setSaving(false);
     }
@@ -282,6 +289,8 @@ const NewsEdit: React.FC = () => {
                       name="title"
                       value={formData.title}
                       onChange={handleChange}
+                      onBlur={handleBlur}
+                      onFocus={handleFocus}
                       placeholder="News title"
                       className={fieldErrors.title ? 'border-destructive' : ''}
                       required
