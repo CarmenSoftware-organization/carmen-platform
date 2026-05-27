@@ -96,6 +96,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         data-testid="image-drop-zone"
         role="button"
         tabIndex={0}
+        aria-label="Upload image"
         onClick={() => !uploading && inputRef.current?.click()}
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ' ') && !uploading) {
@@ -104,7 +105,10 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           }
         }}
         onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-        onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragActive(false);
+        }}
         onDrop={onDrop}
         className={cn(
           'flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-input bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground transition-colors cursor-pointer hover:bg-muted/50',
@@ -137,6 +141,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           data-testid="image-upload-input"
           accept={accept.join(',')}
           className="hidden"
+          disabled={uploading}
           onChange={onInputChange}
         />
       </div>
