@@ -8,7 +8,7 @@ import { getErrorDetail } from '../utils/errorParser';
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
 import {
@@ -42,6 +42,7 @@ interface UserRecord {
   username?: string;
   name?: string;
   email?: string;
+  avatar_url?: string;          // presigned avatar URL (user list + detail)
   firstname?: string;
   middlename?: string;
   lastname?: string;
@@ -324,6 +325,14 @@ const UserManagement: React.FC = () => {
             <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
               {getInitials(row.original)}
             </AvatarFallback>
+            {row.original.avatar_url && (
+              <AvatarImage
+                src={row.original.avatar_url}
+                alt=""
+                className="absolute inset-0 object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            )}
           </Avatar>
         ),
       },
