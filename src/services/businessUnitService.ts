@@ -16,42 +16,42 @@ const businessUnitService = {
       paginate.sort,
       paginate.advance,
     );
-    const response = await api.get(`/api-system/business-unit?${q.toQueryString()}`);
+    const response = await api.get(`/api-system/business-units?${q.toQueryString()}`);
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/api-system/business-unit/${id}`);
+    const response = await api.get(`/api-system/business-units/${id}`);
     return response.data;
   },
 
   create: async (businessUnitData: Partial<BusinessUnit>) => {
-    const response = await api.post('/api-system/business-unit', businessUnitData);
+    const response = await api.post('/api-system/business-units', businessUnitData);
     return response.data;
   },
 
   update: async (id: string, businessUnitData: Partial<BusinessUnit>) => {
-    const response = await api.put(`/api-system/business-unit/${id}`, businessUnitData);
+    const response = await api.put(`/api-system/business-units/${id}`, businessUnitData);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/api-system/business-unit/${id}`);
+    const response = await api.delete(`/api-system/business-units/${id}`);
     return response.data;
   },
 
   updateUserBusinessUnit: async (id: string, data: { role?: string; is_active?: boolean }) => {
-    const response = await api.patch(`/api-system/user/business-unit/${id}`, data);
+    const response = await api.patch(`/api-system/user/business-units/${id}`, data);
     return response.data;
   },
 
   createUserBusinessUnit: async (data: { user_id: string; business_unit_id: string; role: string }) => {
-    const response = await api.post('/api-system/user/business-unit', data);
+    const response = await api.post('/api-system/user/business-units', data);
     return response.data;
   },
 
   deleteUserBusinessUnit: async (id: string) => {
-    const response = await api.delete(`/api-system/user/business-unit/${id}`);
+    const response = await api.delete(`/api-system/user/business-units/${id}`);
     return response.data;
   },
 };
