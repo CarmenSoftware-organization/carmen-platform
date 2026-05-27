@@ -5,7 +5,7 @@ export class NewsEditPage extends BasePage {
   readonly titleInput: Locator;
   readonly contentTextarea: Locator;
   readonly urlInput: Locator;
-  readonly imageInput: Locator;
+  readonly imageInput: Locator; // image URL text field
   readonly statusSelect: Locator;
   readonly isGlobalCheckbox: Locator;
   readonly saveButton: Locator;
@@ -13,7 +13,7 @@ export class NewsEditPage extends BasePage {
   readonly cancelButton: Locator;
   readonly backButton: Locator;
   readonly imageDropZone: Locator;
-  readonly imageFileInput: Locator;
+  readonly imageFileInput: Locator; // hidden file <input> that triggers the upload flow
   readonly imagePreview: Locator;
   readonly imageRemoveButton: Locator;
 

@@ -63,10 +63,18 @@ test.describe('News - Image Upload', () => {
     await editPage.uploadImageFile({ name: 'big.png', mimeType: 'image/png', buffer: big });
 
     await expect(page.getByText(/too large/i)).toBeVisible({ timeout: 5_000 });
+    // Let any deferred dispatch flush before asserting the presign was never called.
+    await page.waitForTimeout(200);
     expect(presignCalled).toBe(false);
   });
 
   test('rejects an unsupported file type', async ({ page }) => {
+    let presignCalled = false;
+    await page.route('**/api/upload/presign', (route) => {
+      presignCalled = true;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+
     const editPage = new NewsEditPage(page);
     await editPage.gotoNew();
 
@@ -77,5 +85,7 @@ test.describe('News - Image Upload', () => {
     });
 
     await expect(page.getByText(/unsupported file type/i)).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(200);
+    expect(presignCalled).toBe(false);
   });
 });
