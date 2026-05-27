@@ -169,7 +169,7 @@ const ClusterEdit: React.FC = () => {
   const fetchClusterUsers = async () => {
     try {
       setUsersLoading(true);
-      const response = await api.get(`/api-system/user/cluster/${id}`);
+      const response = await api.get(`/api-system/user/clusters/${id}`);
       const data = response.data;
       setRawUsersResponse(data);
       const items = data.data || data;
@@ -261,7 +261,7 @@ const ClusterEdit: React.FC = () => {
     if (!selectedUser || !id) return;
     setAddingUser(true);
     try {
-      await api.post('/api-system/user/cluster', {
+      await api.post('/api-system/user/clusters', {
         user_id: selectedUser.id,
         cluster_id: id,
         role: addUserRole,
@@ -280,14 +280,14 @@ const ClusterEdit: React.FC = () => {
 
   const handleConfirmRemoveClusterUser = async () => {
     if (!deleteClusterUser) return;
-    // Use tb_cluster_user.id (returned as 'id' from GET /api-system/user/cluster/:clusterId)
+    // Use tb_cluster_user.id (returned as 'id' from GET /api-system/user/clusters/:clusterId)
     const clusterUserId = deleteClusterUser.id;
     if (!clusterUserId) {
       toast.error('Cannot remove user', { description: 'Missing cluster user ID' });
       return;
     }
     try {
-      await api.delete(`/api-system/user/cluster/${clusterUserId}`);
+      await api.delete(`/api-system/user/clusters/${clusterUserId}`);
       toast.success('User removed from cluster');
       setDeleteClusterUser(null);
       await fetchClusterUsers();
@@ -308,7 +308,7 @@ const ClusterEdit: React.FC = () => {
     if (!editClusterUser) return;
     setSavingClusterUser(true);
     try {
-      await api.put(`/api-system/user/cluster/${editClusterUser.id}`, editClusterUserForm);
+      await api.put(`/api-system/user/clusters/${editClusterUser.id}`, editClusterUserForm);
       toast.success('User updated successfully');
       setEditClusterUser(null);
       await fetchClusterUsers();
@@ -1129,7 +1129,7 @@ const ClusterEdit: React.FC = () => {
               {debugTab === 'users' && (
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/cluster/${id}`}</span>
+                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/clusters/${id}`}</span>
                     <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawUsersResponse)}>
                       {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
                       {copied ? 'Copied!' : 'Copy'}

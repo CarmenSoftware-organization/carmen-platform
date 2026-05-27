@@ -50,27 +50,27 @@ const reportTemplateService = {
       paginate.sort,
       paginate.advance,
     );
-    const response = await api.get(`/api-system/report-template?${q.toQueryString()}`);
+    const response = await api.get(`/api-system/report-templates?${q.toQueryString()}`);
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/api-system/report-template/${id}`);
+    const response = await api.get(`/api-system/report-templates/${id}`);
     return response.data;
   },
 
   create: async (data: Partial<ReportTemplate>) => {
-    const response = await api.post('/api-system/report-template', data);
+    const response = await api.post('/api-system/report-templates', data);
     return response.data;
   },
 
   update: async (id: string, data: Partial<ReportTemplate>) => {
-    const response = await api.put(`/api-system/report-template/${id}`, data);
+    const response = await api.put(`/api-system/report-templates/${id}`, data);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/api-system/report-template/${id}`);
+    const response = await api.delete(`/api-system/report-templates/${id}`);
     return response.data;
   },
 
@@ -87,7 +87,7 @@ const reportTemplateService = {
     procedures: Array<{ name: string; kind: string }>;
   }> => {
     const response = await api.get(
-      `/api-system/report-template/db-objects?bu_code=${encodeURIComponent(buCode)}`,
+      `/api-system/report-templates/db-objects?bu_code=${encodeURIComponent(buCode)}`,
     );
     // Gateway wraps data in `data` field per Result.ok
     return response.data?.data ?? response.data;

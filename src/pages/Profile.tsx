@@ -183,7 +183,7 @@ const Profile: React.FC = () => {
     setSuccess('');
 
     try {
-      await api.put('/api/user/profile', {
+      await api.patch('/api/user/profile', {
         alias_name: formData.alias_name || null,
         firstname: formData.firstname,
         middlename: formData.middlename || null,
@@ -248,7 +248,7 @@ const Profile: React.FC = () => {
     }
 
     try {
-      await api.put('/api/user/profile', {
+      await api.patch('/api/user/profile', {
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword
       });

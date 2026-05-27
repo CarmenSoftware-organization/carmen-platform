@@ -16,32 +16,32 @@ const clusterService = {
       paginate.sort,
       paginate.advance,
     );
-    const response = await api.get(`/api-system/cluster?${q.toQueryString()}`);
+    const response = await api.get(`/api-system/clusters?${q.toQueryString()}`);
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/api-system/cluster/${id}`);
+    const response = await api.get(`/api-system/clusters/${id}`);
     return response.data;
   },
 
   create: async (clusterData: Partial<Cluster>) => {
-    const response = await api.post('/api-system/cluster', clusterData);
+    const response = await api.post('/api-system/clusters', clusterData);
     return response.data;
   },
 
   update: async (id: string, clusterData: Partial<Cluster>) => {
-    const response = await api.put(`/api-system/cluster/${id}`, clusterData);
+    const response = await api.put(`/api-system/clusters/${id}`, clusterData);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/api-system/cluster/${id}`);
+    const response = await api.delete(`/api-system/clusters/${id}`);
     return response.data;
   },
 
   getClusterUsers: async (clusterId: string) => {
-    const response = await api.get(`/api-system/user/cluster/${clusterId}`);
+    const response = await api.get(`/api-system/user/clusters/${clusterId}`);
     return response.data;
   },
 };

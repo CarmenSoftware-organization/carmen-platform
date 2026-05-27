@@ -44,39 +44,39 @@ const printTemplateMappingService = {
     if (params?.document_type) qs.set('document_type', params.document_type);
     if (params?.active_only) qs.set('active_only', 'true');
     const tail = qs.toString() ? `?${qs.toString()}` : '';
-    const response = await api.get(`/api-system/print-template-mapping${tail}`);
+    const response = await api.get(`/api-system/print-template-mappings${tail}`);
     return response.data as { success: boolean; data: PrintTemplateMapping[]; total: number };
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/api-system/print-template-mapping/${id}`);
+    const response = await api.get(`/api-system/print-template-mappings/${id}`);
     return response.data as { success: boolean; data: PrintTemplateMapping };
   },
 
   listDocumentTypes: async () => {
-    const response = await api.get(`/api-system/print-template-mapping/document-types`);
+    const response = await api.get(`/api-system/print-template-mappings/document-types`);
     return response.data as { success: boolean; document_types: DocumentType[] };
   },
 
   resolve: async (documentType: string, buCode?: string) => {
     const qs = new URLSearchParams({ document_type: documentType });
     if (buCode) qs.set('bu_code', buCode);
-    const response = await api.get(`/api-system/print-template-mapping/resolve?${qs.toString()}`);
+    const response = await api.get(`/api-system/print-template-mappings/resolve?${qs.toString()}`);
     return response.data as { success: boolean; data: PrintTemplateMapping };
   },
 
   create: async (input: PrintTemplateMappingCreateInput) => {
-    const response = await api.post(`/api-system/print-template-mapping`, input);
+    const response = await api.post(`/api-system/print-template-mappings`, input);
     return response.data as { success: boolean; data: PrintTemplateMapping };
   },
 
   update: async (id: string, input: PrintTemplateMappingUpdateInput) => {
-    const response = await api.put(`/api-system/print-template-mapping/${id}`, input);
+    const response = await api.put(`/api-system/print-template-mappings/${id}`, input);
     return response.data as { success: boolean; data: PrintTemplateMapping };
   },
 
   delete: async (id: string) => {
-    const response = await api.delete(`/api-system/print-template-mapping/${id}`);
+    const response = await api.delete(`/api-system/print-template-mappings/${id}`);
     return response.data;
   },
 };
