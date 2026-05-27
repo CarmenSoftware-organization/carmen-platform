@@ -17,7 +17,7 @@ export class AuthHelper {
     password = TEST_CREDENTIALS.password
   ) {
     await this.page.goto('/login');
-    await this.page.fill('input[name="email"]', email);
+    await this.page.fill('input[name="username"]', email);
     await this.page.fill('input[name="password"]', password);
     await this.page.click('button[type="submit"]');
     await this.page.waitForURL('**/dashboard', { timeout: 15_000 });
