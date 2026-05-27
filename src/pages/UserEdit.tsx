@@ -8,6 +8,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
@@ -95,6 +96,7 @@ const UserEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
   const [userClusters, setUserClusters] = useState<UserCluster[]>([]);
@@ -200,6 +202,7 @@ const UserEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setAvatarUrl(user.avatar_url || profile.avatar_url || "");
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
     } catch (err: unknown) {
@@ -431,6 +434,22 @@ const UserEdit: React.FC = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate("/users")} aria-label="Back to users">
             <ArrowLeft className="h-5 w-5" />
           </Button>
+          {!isNew && (
+            <Avatar className="h-12 w-12">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
+                  || (formData.username || formData.email || "?").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+              {avatarUrl && (
+                <AvatarImage
+                  src={avatarUrl}
+                  alt=""
+                  className="absolute inset-0 object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+            </Avatar>
+          )}
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               {isNew ? "Add User" : editing ? "Edit User" : "User Details"}
