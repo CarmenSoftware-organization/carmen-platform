@@ -8,6 +8,7 @@ import { getErrorDetail } from '../utils/errorParser';
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
 import {
@@ -53,6 +54,14 @@ interface UserRecord {
   deleted_by_name?: string;
   business_unit?: UserBU[];
 }
+
+const getInitials = (record: UserRecord): string => {
+  const f = record.firstname?.trim();
+  const l = record.lastname?.trim();
+  if (f || l) return ((f?.[0] || "") + (l?.[0] || "")).toUpperCase();
+  const base = (record.name || record.username || record.email || "").trim();
+  return base ? base.slice(0, 2).toUpperCase() : "?";
+};
 
 const PLATFORM_ROLES = [
   "super_admin",
@@ -305,6 +314,19 @@ const UserManagement: React.FC = () => {
 
   const columns = useMemo<ColumnDef<UserRecord, unknown>[]>(
     () => [
+      {
+        id: "avatar",
+        header: "",
+        enableSorting: false,
+        meta: { headerClassName: "w-12", cellClassName: "" },
+        cell: ({ row }) => (
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+              {getInitials(row.original)}
+            </AvatarFallback>
+          </Avatar>
+        ),
+      },
       {
         accessorKey: "username",
         header: "Username",
@@ -647,7 +669,7 @@ const UserManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && users.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={9} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
