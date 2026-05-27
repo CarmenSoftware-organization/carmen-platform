@@ -4,6 +4,21 @@ import type { PaginateParams, News, ApiListResponse, PaginateInfo } from '../typ
 
 const defaultSearchFields = ['title', 'contents'];
 
+// Backend create/update accept multipart/form-data with a binary `image` field.
+// Under multipart, business_unit_ids must be a JSON-encoded string.
+const buildNewsFormData = (data: Partial<News>, image: File): FormData => {
+  const fd = new FormData();
+  if (data.title !== undefined) fd.append('title', data.title);
+  if (data.contents !== undefined) fd.append('contents', data.contents);
+  if (data.url !== undefined) fd.append('url', data.url);
+  if (data.status !== undefined) fd.append('status', data.status);
+  if (data.business_unit_ids !== undefined) {
+    fd.append('business_unit_ids', JSON.stringify(data.business_unit_ids));
+  }
+  fd.append('image', image);
+  return fd;
+};
+
 const newsService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<News>> => {
     const q = new QueryParams(
@@ -41,12 +56,24 @@ const newsService = {
     return response.data;
   },
 
-  create: async (newsData: Partial<News>) => {
+  create: async (newsData: Partial<News>, image?: File) => {
+    if (image) {
+      const response = await api.post('/api/news', buildNewsFormData(newsData, image), {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    }
     const response = await api.post('/api/news', newsData);
     return response.data;
   },
 
-  update: async (id: string, newsData: Partial<News>) => {
+  update: async (id: string, newsData: Partial<News>, image?: File) => {
+    if (image) {
+      const response = await api.put(`/api/news/${id}`, buildNewsFormData(newsData, image), {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    }
     const response = await api.put(`/api/news/${id}`, newsData);
     return response.data;
   },
