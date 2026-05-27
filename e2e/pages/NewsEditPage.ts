@@ -12,6 +12,10 @@ export class NewsEditPage extends BasePage {
   readonly editButton: Locator;
   readonly cancelButton: Locator;
   readonly backButton: Locator;
+  readonly imageDropZone: Locator;
+  readonly imageFileInput: Locator;
+  readonly imagePreview: Locator;
+  readonly imageRemoveButton: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -25,6 +29,10 @@ export class NewsEditPage extends BasePage {
     this.editButton = page.locator('button:has-text("Edit")');
     this.cancelButton = page.locator('button:has-text("Cancel")');
     this.backButton = page.locator('[aria-label="Back to news"]');
+    this.imageDropZone = page.locator('[data-testid="image-drop-zone"]');
+    this.imageFileInput = page.locator('[data-testid="image-upload-input"]');
+    this.imagePreview = page.locator('[data-testid="image-preview"]');
+    this.imageRemoveButton = page.locator('[data-testid="image-remove"]');
   }
 
   async gotoNew() {
@@ -94,5 +102,13 @@ export class NewsEditPage extends BasePage {
   async getNewsIdFromUrl(): Promise<string> {
     const match = this.page.url().match(/\/news\/([^/]+)\/edit/);
     return match ? match[1] : '';
+  }
+
+  async uploadImageFile(file: { name: string; mimeType: string; buffer: Buffer }) {
+    await this.imageFileInput.setInputFiles(file);
+  }
+
+  async expectImageValue(url: string) {
+    await expect(this.imageInput).toHaveValue(url, { timeout: 10_000 });
   }
 }
