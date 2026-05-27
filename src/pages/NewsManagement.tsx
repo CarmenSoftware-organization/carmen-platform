@@ -182,7 +182,7 @@ const NewsManagement: React.FC = () => {
       id: 'image',
       header: '',
       enableSorting: false,
-      meta: { headerClassName: 'w-14', cellClassName: '' },
+      meta: { headerClassName: 'w-28', cellClassName: '' },
       cell: ({ row }) => {
         // List payload exposes the presigned URL as `image_url`; tolerate `image` too.
         const src = row.original.image_url || row.original.image;
@@ -190,7 +190,7 @@ const NewsManagement: React.FC = () => {
           <img
             src={src}
             alt=""
-            className="h-10 w-10 rounded object-cover border"
+            className="h-10 w-auto max-w-[96px] rounded object-contain border"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         ) : (
