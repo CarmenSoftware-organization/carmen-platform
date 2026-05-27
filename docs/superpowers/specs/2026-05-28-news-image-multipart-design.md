@@ -85,11 +85,13 @@ Net effect: image upload does not work against this backend at all.
   - append `title`, and `contents` / `url` / `status` when present;
   - append `business_unit_ids` as `JSON.stringify(ids)`;
   - append `image` (the `File`);
-  - POST/PUT the `FormData` with **no** explicit `Content-Type` header — axios 1.16
-    strips the instance's JSON default for any `FormData` body (`resolveConfig.js`
-    `setContentType(undefined)` in browser env), letting the browser set
-    `multipart/form-data` with the correct boundary. (Setting the header manually
-    without a boundary would break parsing.)
+  - POST/PUT the `FormData` with an explicit `{ 'Content-Type': 'multipart/form-data' }`
+    per-request header. This is **required**: the `api` instance defaults to
+    `application/json`, and axios's `transformRequest` JSON-serializes a `FormData`
+    body (dropping the `File`) whenever the content type is `application/json`
+    (`defaults/index.js`). Setting multipart makes axios pass the `FormData` through;
+    the adapter then strips the boundary-less header (`resolveConfig.js`) and the
+    browser sets `multipart/form-data; boundary=…`.
 - When no `image`, send JSON exactly as today (text fields + `business_unit_ids`
   array). Do **not** include an `image` key in the JSON body.
 - Response unwrapping unchanged; `image` returns as a presigned URL.
