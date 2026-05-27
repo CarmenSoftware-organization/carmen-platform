@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { BrandingImageUpload } from '../components/BrandingImageUpload';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -203,6 +204,8 @@ const BusinessUnitEdit: React.FC = () => {
   const [addingUser, setAddingUser] = useState(false);
   const [addUserSearchTerm, setAddUserSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [rawClusterUsersResponse, setRawClusterUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [debugTab, setDebugTab] = useState<'bu' | 'users'>('bu');
@@ -324,6 +327,8 @@ const BusinessUnitEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setLogoUrl(bu.logo?.url || '');
+      setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
       setBuUsers(Array.isArray(bu.users) ? bu.users : []);
     } catch (err: unknown) {
@@ -331,6 +336,18 @@ const BusinessUnitEdit: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Logo/avatar upload via dedicated endpoints; use the returned presigned URL so we
+  // don't refetch (which would clobber unsaved form edits).
+  const handleUploadLogo = async (file: File) => {
+    const res = await businessUnitService.uploadLogo(id!, file);
+    setLogoUrl((res?.data?.url ?? res?.url ?? '') as string);
+  };
+
+  const handleUploadAvatar = async (file: File) => {
+    const res = await businessUnitService.uploadAvatar(id!, file);
+    setAvatarUrl((res?.data?.url ?? res?.url ?? '') as string);
   };
 
   const fetchBuUsers = async () => {
@@ -1463,6 +1480,32 @@ const BusinessUnitEdit: React.FC = () => {
             </div>
           )}
         </form>
+
+        {/* Branding: logo / avatar (existing BU only — uploaded via dedicated endpoints) */}
+        {!isNew && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Branding</CardTitle>
+              <CardDescription>Logo and avatar shown across the platform</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-6 sm:flex-row sm:gap-10">
+              <BrandingImageUpload
+                label="Logo"
+                value={logoUrl}
+                disabled={!editing}
+                shape="rect"
+                onUpload={handleUploadLogo}
+              />
+              <BrandingImageUpload
+                label="Avatar"
+                value={avatarUrl}
+                disabled={!editing}
+                shape="square"
+                onUpload={handleUploadAvatar}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Users in this Business Unit */}
         {!isNew && (

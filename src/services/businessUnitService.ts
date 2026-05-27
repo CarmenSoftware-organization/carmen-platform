@@ -40,6 +40,26 @@ const businessUnitService = {
     return response.data;
   },
 
+  // Dedicated logo/avatar upload endpoints (multipart). Return { file_token, url, expires_at }.
+  // The multipart Content-Type header is required so axios doesn't JSON-serialize the FormData.
+  uploadLogo: async (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append('logo', file);
+    const response = await api.post(`/api-system/business-units/${id}/logo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  uploadAvatar: async (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append('avatar', file);
+    const response = await api.post(`/api-system/business-units/${id}/avatar`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   updateUserBusinessUnit: async (id: string, data: { role?: string; is_active?: boolean }) => {
     const response = await api.patch(`/api-system/user/business-units/${id}`, data);
     return response.data;
