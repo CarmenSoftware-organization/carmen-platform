@@ -79,13 +79,17 @@ const NewsEdit: React.FC = () => {
   const [publishedAt, setPublishedAt] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  const hasChanges = editing && (
+    JSON.stringify(formData) !== JSON.stringify(savedFormData) || selectedImageFile !== null
+  );
   useUnsavedChanges(hasChanges);
 
   const handleCancelEdit = () => {
     setFormData(savedFormData);
+    setSelectedImageFile(null);
     setEditing(false);
     setError('');
     setFieldErrors({});
@@ -168,7 +172,6 @@ const NewsEdit: React.FC = () => {
     const errs: Record<string, string> = {};
     if (!formData.title.trim()) errs.title = 'Title is required';
     if (formData.url) errs.url = validateField('url', formData.url);
-    if (formData.image) errs.image = validateField('image', formData.image);
     if (!formData.isGlobal && formData.business_unit_ids.length === 0) {
       errs.business_unit_ids = 'Select at least one business unit, or enable "Visible to all business units".';
     }
@@ -185,14 +188,14 @@ const NewsEdit: React.FC = () => {
         title: formData.title,
         contents: formData.contents || undefined,
         url: formData.url || undefined,
-        image: formData.image || undefined,
         status: formData.status,
         business_unit_ids: formData.isGlobal ? [] : formData.business_unit_ids,
       };
       if (isNew) {
-        const result = await newsService.create(payload);
+        const result = await newsService.create(payload, selectedImageFile ?? undefined);
         const created = result.data || result;
         toast.success('News created successfully');
+        setSelectedImageFile(null);
         if (created?.id) {
           setEditing(false);
           navigate(`/news/${created.id}/edit`, { replace: true });
@@ -200,9 +203,10 @@ const NewsEdit: React.FC = () => {
           navigate('/news');
         }
       } else {
-        await newsService.update(id!, payload);
+        await newsService.update(id!, payload, selectedImageFile ?? undefined);
         toast.success('Changes saved successfully');
         await fetchNews();
+        setSelectedImageFile(null);
         setEditing(false);
       }
     } catch (err: unknown) {
@@ -337,34 +341,11 @@ const NewsEdit: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Image URL</Label>
-                {editing ? (
-                  <>
-                    <Input
-                      type="url"
-                      id="image"
-                      name="image"
-                      value={formData.image}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="https://example.com/images/news-123.jpg"
-                      className={fieldErrors.image ? 'border-destructive' : ''}
-                    />
-                    {fieldErrors.image && <p className="text-xs text-destructive">{fieldErrors.image}</p>}
-                  </>
-                ) : (
-                  <ReadOnlyText value={formData.image} />
-                )}
+                <Label htmlFor="image">Image</Label>
                 <ImageUpload
                   value={formData.image}
-                  onChange={(url) => {
-                    setFormData((prev) => ({ ...prev, image: url }));
-                    setError('');
-                    setFieldErrors((prev) => ({ ...prev, image: '' }));
-                  }}
+                  onFileSelect={setSelectedImageFile}
                   disabled={!editing}
-                  folder="news"
                 />
               </div>
             </CardContent>
