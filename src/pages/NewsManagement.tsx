@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, Download, Newspaper, Globe, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, Download, Newspaper, Globe, Building2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
@@ -178,6 +178,28 @@ const NewsManagement: React.FC = () => {
   };
 
   const columns = useMemo<ColumnDef<News, unknown>[]>(() => [
+    {
+      id: 'image',
+      header: '',
+      enableSorting: false,
+      meta: { headerClassName: 'w-14', cellClassName: '' },
+      cell: ({ row }) => {
+        // List payload exposes the presigned URL as `image_url`; tolerate `image` too.
+        const src = row.original.image_url || row.original.image;
+        return src ? (
+          <img
+            src={src}
+            alt=""
+            className="h-10 w-10 rounded object-cover border"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded border bg-muted/40 text-muted-foreground">
+            <ImageIcon className="h-4 w-4" />
+          </div>
+        );
+      },
+    },
     {
       accessorKey: 'title',
       header: 'Title',
@@ -390,7 +412,7 @@ const NewsManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && newsItems.length === 0 ? (
-                  <TableSkeleton columns={6} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
