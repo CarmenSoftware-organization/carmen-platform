@@ -208,7 +208,7 @@ const ClusterManagement: React.FC = () => {
       enableSorting: false,
       meta: { headerClassName: 'w-28', cellClassName: '' },
       cell: ({ row }) => {
-        const src = row.original.logo_url;
+        const src = row.original.logo?.url || row.original.avatar?.url;
         return src ? (
           <img
             src={src}

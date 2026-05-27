@@ -27,7 +27,8 @@ export interface Cluster {
   name: string;
   description?: string;
   alias_name?: string;
-  logo_url?: string;
+  logo?: PresignedImage | null;   // resolved presigned logo (list + detail)
+  avatar?: PresignedImage | null; // resolved presigned avatar (list + detail)
   max_license_bu?: number;
   info?: unknown;
   is_active: boolean;

@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { BrandingImageUpload } from '../components/BrandingImageUpload';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -27,7 +28,6 @@ interface ClusterFormData {
   code: string;
   name: string;
   alias_name: string;
-  logo_url: string;
   max_license_bu: string;
   is_active: boolean;
 }
@@ -52,10 +52,11 @@ const ClusterEdit: React.FC = () => {
     code: '',
     name: '',
     alias_name: '',
-    logo_url: '',
     max_license_bu: '',
     is_active: true,
   });
+  const [logoUrl, setLogoUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [loading, setLoading] = useState(!isNew);
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
@@ -134,17 +135,30 @@ const ClusterEdit: React.FC = () => {
         code: cluster.code || '',
         name: cluster.name || '',
         alias_name: cluster.alias_name || '',
-        logo_url: cluster.logo_url || '',
         max_license_bu: cluster.max_license_bu != null ? String(cluster.max_license_bu) : '',
         is_active: cluster.is_active ?? true,
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setLogoUrl(cluster.logo?.url || '');
+      setAvatarUrl(cluster.avatar?.url || '');
     } catch (err: unknown) {
       setError('Failed to load cluster: ' + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
+  };
+
+  // Logo/avatar upload via dedicated endpoints; use the returned presigned URL so we
+  // don't refetch (which would clobber unsaved form edits).
+  const handleUploadLogo = async (file: File) => {
+    const res = await clusterService.uploadLogo(id!, file);
+    setLogoUrl((res?.data?.url ?? res?.url ?? '') as string);
+  };
+
+  const handleUploadAvatar = async (file: File) => {
+    const res = await clusterService.uploadAvatar(id!, file);
+    setAvatarUrl((res?.data?.url ?? res?.url ?? '') as string);
   };
 
   const fetchBusinessUnits = async () => {
@@ -564,32 +578,6 @@ const ClusterEdit: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="logo_url">Logo URL</Label>
-                    {editing ? (
-                      <Input
-                        type="url"
-                        id="logo_url"
-                        name="logo_url"
-                        value={formData.logo_url}
-                        onChange={handleChange}
-                        placeholder="https://example.com/logo.png"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.logo_url || '-'}</div>
-                    )}
-                    {formData.logo_url && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <img
-                          src={formData.logo_url}
-                          alt="Cluster logo"
-                          className="h-10 w-10 rounded object-contain border"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      </div>
-                    )}
-                  </div>
-
                   <div className="flex items-center gap-2">
                     {editing ? (
                       <>
@@ -633,6 +621,28 @@ const ClusterEdit: React.FC = () => {
           {/* Right column - Edit mode only */}
           {!isNew && (
             <div className="space-y-6 lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Branding</CardTitle>
+                <CardDescription>Logo and avatar shown across the platform</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6 sm:flex-row sm:gap-10">
+                <BrandingImageUpload
+                  label="Logo"
+                  value={logoUrl}
+                  disabled={!editing}
+                  shape="rect"
+                  onUpload={handleUploadLogo}
+                />
+                <BrandingImageUpload
+                  label="Avatar"
+                  value={avatarUrl}
+                  disabled={!editing}
+                  shape="square"
+                  onUpload={handleUploadAvatar}
+                />
+              </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">

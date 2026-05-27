@@ -44,6 +44,26 @@ const clusterService = {
     const response = await api.get(`/api-system/user/clusters/${clusterId}`);
     return response.data;
   },
+
+  // Dedicated logo/avatar upload endpoints (multipart). Return { file_token, url, expires_at }.
+  // The multipart Content-Type header is required so axios doesn't JSON-serialize the FormData.
+  uploadLogo: async (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append('logo', file);
+    const response = await api.post(`/api-system/clusters/${id}/logo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  uploadAvatar: async (id: string, file: File) => {
+    const fd = new FormData();
+    fd.append('avatar', file);
+    const response = await api.post(`/api-system/clusters/${id}/avatar`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
 };
 
 export default clusterService;
