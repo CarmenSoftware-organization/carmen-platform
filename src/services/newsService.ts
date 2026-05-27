@@ -58,9 +58,9 @@ const newsService = {
 
   create: async (newsData: Partial<News>, image?: File) => {
     if (image) {
-      const response = await api.post('/api/news', buildNewsFormData(newsData, image), {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      // Pass FormData as-is: axios strips the default JSON Content-Type and lets the
+      // browser set multipart/form-data with the boundary.
+      const response = await api.post('/api/news', buildNewsFormData(newsData, image));
       return response.data;
     }
     const response = await api.post('/api/news', newsData);
@@ -69,9 +69,7 @@ const newsService = {
 
   update: async (id: string, newsData: Partial<News>, image?: File) => {
     if (image) {
-      const response = await api.put(`/api/news/${id}`, buildNewsFormData(newsData, image), {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.put(`/api/news/${id}`, buildNewsFormData(newsData, image));
       return response.data;
     }
     const response = await api.put(`/api/news/${id}`, newsData);
