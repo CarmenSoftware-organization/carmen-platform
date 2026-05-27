@@ -58,9 +58,14 @@ const newsService = {
 
   create: async (newsData: Partial<News>, image?: File) => {
     if (image) {
-      // Pass FormData as-is: axios strips the default JSON Content-Type and lets the
-      // browser set multipart/form-data with the boundary.
-      const response = await api.post('/api/news', buildNewsFormData(newsData, image));
+      // The explicit multipart Content-Type is REQUIRED, not redundant: the `api`
+      // instance defaults to application/json, and axios's transformRequest will
+      // JSON-serialize a FormData body (dropping the File) whenever the content type
+      // is application/json. Setting multipart here makes axios pass the FormData
+      // through; the browser then fills in the boundary.
+      const response = await api.post('/api/news', buildNewsFormData(newsData, image), {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       return response.data;
     }
     const response = await api.post('/api/news', newsData);
@@ -69,7 +74,9 @@ const newsService = {
 
   update: async (id: string, newsData: Partial<News>, image?: File) => {
     if (image) {
-      const response = await api.put(`/api/news/${id}`, buildNewsFormData(newsData, image));
+      const response = await api.put(`/api/news/${id}`, buildNewsFormData(newsData, image), {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       return response.data;
     }
     const response = await api.put(`/api/news/${id}`, newsData);
