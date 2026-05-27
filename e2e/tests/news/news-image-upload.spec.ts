@@ -3,7 +3,8 @@ import { AuthHelper } from '../../helpers/auth';
 import { NewsEditPage } from '../../pages/NewsEditPage';
 
 const NEWS_ID = '019638a6-2a00-7c4f-8e46-9b7a52c80c4d';
-const IMAGE_URL = 'https://cdn.test/news/presigned-abc.png';
+// What the mock backend returns as the record's presigned image URL (for preview render).
+const MOCK_IMAGE_URL = 'https://cdn.test/news/presigned-abc.png';
 
 // 1x1 transparent PNG.
 const PNG_BUFFER = Buffer.from(
@@ -16,7 +17,7 @@ const newsRecord = {
   title: 'Hello',
   contents: '',
   url: '',
-  image: IMAGE_URL,
+  image: MOCK_IMAGE_URL,
   business_unit_ids: [],
   status: 'draft',
 };
@@ -85,7 +86,7 @@ test.describe('News - Image Upload (multipart)', () => {
     await editPage.uploadImageFile({ name: 'big.png', mimeType: 'image/png', buffer: big });
 
     await expect(page.getByText(/too large/i)).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(200);
+    // Toast visible ⇒ rejection path is done; upload only fires on Save (never clicked here).
     expect(wrote).toBe(false);
     await expect(editPage.imagePreview).toHaveCount(0);
   });
