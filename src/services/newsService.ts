@@ -1,6 +1,6 @@
 import api from './api';
 import QueryParams from '../utils/QueryParams';
-import type { PaginateParams, News, ApiListResponse } from '../types';
+import type { PaginateParams, News, ApiListResponse, PaginateInfo } from '../types';
 
 const defaultSearchFields = ['title', 'contents'];
 
@@ -17,7 +17,22 @@ const newsService = {
       paginate.advance,
     );
     const response = await api.get(`/api/news?${q.toQueryString()}`);
-    return response.data;
+    // The backend wraps the paginated payload in a global { data, status, ... }
+    // envelope and nests the list one level deeper. Walk down `.data` until we
+    // reach the { paginate, data: [] } payload (or a bare array), tolerating both
+    // the new and legacy shapes.
+    let node: unknown = response.data;
+    while (
+      node && typeof node === 'object' && !Array.isArray(node) &&
+      (node as { data?: unknown }).data != null &&
+      !Array.isArray((node as { data?: unknown }).data)
+    ) {
+      node = (node as { data: unknown }).data;
+    }
+    const payload = node as { data?: News[]; paginate?: PaginateInfo } | News[];
+    const list = Array.isArray(payload) ? payload : payload?.data ?? [];
+    const paginateInfo = Array.isArray(payload) ? undefined : payload?.paginate;
+    return { data: list, paginate: paginateInfo };
   },
 
   getById: async (id: string) => {
