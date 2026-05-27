@@ -519,7 +519,7 @@ const BusinessUnitManagement: React.FC = () => {
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
               <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/business-unit
+                GET /api-system/business-units
               </SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">

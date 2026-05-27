@@ -559,7 +559,7 @@ const ClusterManagement: React.FC = () => {
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
               <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/cluster
+                GET /api-system/clusters
               </SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">

@@ -127,7 +127,7 @@ export interface User {
   updated_at?: string;
 }
 
-// Row returned by GET /api-system/user/cluster/:clusterId — a tb_cluster_user
+// Row returned by GET /api-system/user/clusters/:clusterId — a tb_cluster_user
 // join row, not a plain User. Carries cluster-membership fields plus a
 // nested userInfo (note the camelCase shape from the backend).
 export interface ClusterUser {

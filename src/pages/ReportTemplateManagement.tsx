@@ -526,7 +526,7 @@ const ReportTemplateManagement: React.FC = () => {
                 <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
               </SheetTitle>
               <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/report-template
+                GET /api-system/report-templates
               </SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">

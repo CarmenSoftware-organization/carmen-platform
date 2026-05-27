@@ -1750,7 +1750,7 @@ const BusinessUnitEdit: React.FC = () => {
               {debugTab === 'bu' && (
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/business-unit/${id}`}</span>
+                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/business-units/${id}`}</span>
                     <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
                       {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
                       {copied ? 'Copied!' : 'Copy'}
@@ -1764,7 +1764,7 @@ const BusinessUnitEdit: React.FC = () => {
               {debugTab === 'users' && (
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/cluster/${formData.cluster_id}`}</span>
+                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/clusters/${formData.cluster_id}`}</span>
                     <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawClusterUsersResponse)}>
                       {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
                       {copied ? 'Copied!' : 'Copy'}

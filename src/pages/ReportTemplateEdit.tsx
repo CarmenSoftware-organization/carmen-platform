@@ -972,7 +972,7 @@ const ReportTemplateEdit: React.FC = () => {
                 </Badge>
               </SheetTitle>
               <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/report-template/{id}
+                GET /api-system/report-templates/{id}
               </SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">
