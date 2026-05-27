@@ -203,6 +203,27 @@ const ClusterManagement: React.FC = () => {
 
   const columns = useMemo<ColumnDef<Cluster, unknown>[]>(() => [
     {
+      id: 'logo',
+      header: '',
+      enableSorting: false,
+      meta: { headerClassName: 'w-28', cellClassName: '' },
+      cell: ({ row }) => {
+        const src = row.original.logo_url;
+        return src ? (
+          <img
+            src={src}
+            alt=""
+            className="h-10 w-auto max-w-[96px] rounded object-contain border"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded border bg-muted/40 text-muted-foreground">
+            <Network className="h-4 w-4" />
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'code',
       header: 'Code',
       cell: ({ row }) => (
@@ -503,7 +524,7 @@ const ClusterManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && clusters.length === 0 ? (
-                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
