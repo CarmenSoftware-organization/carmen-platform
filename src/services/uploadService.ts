@@ -33,9 +33,12 @@ const uploadService = {
   ): Promise<void> => {
     await axios.request({
       url: presign.uploadUrl,
-      method: presign.method || 'PUT',
+      method: presign.method ?? 'PUT',
       data: file,
-      headers: presign.headers ?? { 'Content-Type': file.type },
+      headers:
+        presign.headers && Object.keys(presign.headers).length > 0
+          ? presign.headers
+          : { 'Content-Type': file.type },
       onUploadProgress: (e) => {
         if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
       },
