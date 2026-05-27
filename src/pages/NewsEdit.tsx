@@ -17,6 +17,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { BusinessUnitMultiSelect } from '../components/BusinessUnitMultiSelect';
+import { ImageUpload } from '../components/ImageUpload';
 import type { Audit, NewsStatus } from '../types';
 
 interface NewsFormData {
@@ -354,16 +355,16 @@ const NewsEdit: React.FC = () => {
                 ) : (
                   <ReadOnlyText value={formData.image} />
                 )}
-                {formData.image && (
-                  <div className="mt-1">
-                    <img
-                      src={formData.image}
-                      alt="News"
-                      className="h-16 w-auto rounded object-contain border"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  </div>
-                )}
+                <ImageUpload
+                  value={formData.image}
+                  onChange={(url) => {
+                    setFormData((prev) => ({ ...prev, image: url }));
+                    setError('');
+                    setFieldErrors((prev) => ({ ...prev, image: '' }));
+                  }}
+                  disabled={!editing}
+                  folder="news"
+                />
               </div>
             </CardContent>
           </Card>
