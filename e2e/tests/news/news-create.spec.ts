@@ -50,8 +50,9 @@ test.describe('News - Create', () => {
     await editPage.gotoNew();
     await editPage.submit();
 
+    // The title input is `required`, so the browser's native validation blocks
+    // submission and keeps us on the form (same assertion as cluster-create).
     await expect(page).toHaveURL(/\/news\/new/);
-    await expect(page.locator('.text-destructive, .border-destructive').first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('should navigate back to list from the back button', async ({ page }) => {

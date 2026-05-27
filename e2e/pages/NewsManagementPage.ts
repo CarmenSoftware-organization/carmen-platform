@@ -60,11 +60,13 @@ export class NewsManagementPage extends BasePage {
   }
 
   async expectNewsVisible(text: string) {
-    await expect(this.page.locator(`text=${text}`).first()).toBeVisible({ timeout: 10_000 });
+    // Scope to a table row so the empty-state message ("No news matching ...")
+    // — which echoes the search term — can't produce a false match.
+    await expect(this.page.locator(`tr:has-text("${text}")`).first()).toBeVisible({ timeout: 10_000 });
   }
 
   async expectNewsNotVisible(text: string) {
-    await expect(this.page.locator(`text=${text}`).first()).not.toBeVisible({ timeout: 5_000 });
+    await expect(this.page.locator(`tr:has-text("${text}")`)).toHaveCount(0, { timeout: 5_000 });
   }
 
   async getRowCount(): Promise<number> {

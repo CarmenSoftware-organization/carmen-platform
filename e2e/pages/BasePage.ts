@@ -19,7 +19,7 @@ export class BasePage {
 
   /** Click the confirm button in a ConfirmDialog */
   async confirmDialog(buttonText = 'Delete') {
-    const dialog = this.page.locator('[role="alertdialog"]');
+    const dialog = this.page.locator('[role="dialog"]');
     await dialog.waitFor({ state: 'visible', timeout: 5_000 });
     await dialog.locator(`button:has-text("${buttonText}")`).click();
   }
