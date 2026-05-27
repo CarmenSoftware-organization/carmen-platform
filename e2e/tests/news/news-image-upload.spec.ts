@@ -35,6 +35,10 @@ test.describe('News - Image Upload', () => {
     await page.route('https://storage.test/**', (route) =>
       route.fulfill({ status: 200, body: '' }),
     );
+    // Serve the preview image so the <img> renders (otherwise onError hides it).
+    await page.route('https://cdn.test/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'image/png', body: PNG_BUFFER }),
+    );
 
     const editPage = new NewsEditPage(page);
     await editPage.gotoNew();
