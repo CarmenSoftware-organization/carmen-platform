@@ -47,8 +47,13 @@ const newsService = {
     const payload = node as { data?: News[]; paginate?: PaginateInfo } | News[];
     const list = Array.isArray(payload) ? payload : payload?.data ?? [];
     const paginateInfo = Array.isArray(payload) ? undefined : payload?.paginate;
-    // The list endpoint includes soft-deleted records; hide them from the UI.
-    return { data: list.filter((n) => !n.deleted_at), paginate: paginateInfo };
+    // The list endpoint includes soft-deleted records; hide them. The deletion flag
+    // is exposed as nested `audit.deleted.at` (older payloads used top-level
+    // `deleted_at`), so check both.
+    return {
+      data: list.filter((n) => !n.deleted_at && !n.audit?.deleted?.at),
+      paginate: paginateInfo,
+    };
   },
 
   getById: async (id: string) => {
