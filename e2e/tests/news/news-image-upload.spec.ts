@@ -36,10 +36,10 @@ test.describe('News - Image Upload (multipart)', () => {
     let postWasMultipart = false;
 
     // Exact path = create/list endpoint; detail uses /api/news/:id (not matched here).
-    await page.route('**/api/news', (route) => {
+    await page.route('**/api/news', async (route) => {
       if (route.request().method() === 'POST') {
-        postWasMultipart = (route.request().headers()['content-type'] || '')
-          .includes('multipart/form-data');
+        const headers = await route.request().allHeaders();
+        postWasMultipart = (headers['content-type'] || '').includes('multipart/form-data');
         return route.fulfill({
           status: 201,
           contentType: 'application/json',
