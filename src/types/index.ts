@@ -205,5 +205,6 @@ export interface News {
   business_unit_ids?: string[]; // [] = global (all BUs); non-empty = those BUs
   status?: NewsStatus;
   published_at?: string;
-  audit?: Audit;                // enriched audit object (NOT flat created_at/created_by_name)
+  audit?: Audit;                // enriched audit object (from getById)
+  deleted_at?: string;          // set on soft-deleted records (present in the list payload)
 }

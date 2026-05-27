@@ -194,6 +194,7 @@ const NewsEdit: React.FC = () => {
         const created = result.data || result;
         toast.success('News created successfully');
         if (created?.id) {
+          setEditing(false);
           navigate(`/news/${created.id}/edit`, { replace: true });
         } else {
           navigate('/news');

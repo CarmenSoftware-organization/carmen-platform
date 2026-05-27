@@ -32,7 +32,8 @@ const newsService = {
     const payload = node as { data?: News[]; paginate?: PaginateInfo } | News[];
     const list = Array.isArray(payload) ? payload : payload?.data ?? [];
     const paginateInfo = Array.isArray(payload) ? undefined : payload?.paginate;
-    return { data: list, paginate: paginateInfo };
+    // The list endpoint includes soft-deleted records; hide them from the UI.
+    return { data: list.filter((n) => !n.deleted_at), paginate: paginateInfo };
   },
 
   getById: async (id: string) => {
