@@ -5,7 +5,6 @@ export class NewsEditPage extends BasePage {
   readonly titleInput: Locator;
   readonly contentTextarea: Locator;
   readonly urlInput: Locator;
-  readonly imageInput: Locator; // image URL text field
   readonly statusSelect: Locator;
   readonly isGlobalCheckbox: Locator;
   readonly saveButton: Locator;
@@ -22,7 +21,6 @@ export class NewsEditPage extends BasePage {
     this.titleInput = page.locator('input[name="title"]');
     this.contentTextarea = page.locator('[data-testid="markdown-textarea"]');
     this.urlInput = page.locator('input[name="url"]');
-    this.imageInput = page.locator('input[name="image"]');
     this.statusSelect = page.locator('select[name="status"]');
     this.isGlobalCheckbox = page.locator('input[name="isGlobal"]');
     this.saveButton = page.locator('button[type="submit"]');
@@ -49,7 +47,6 @@ export class NewsEditPage extends BasePage {
     title: string;
     contents?: string;
     url?: string;
-    image?: string;
     status?: 'draft' | 'published' | 'archived';
   }) {
     await this.titleInput.fill(data.title);
@@ -57,7 +54,6 @@ export class NewsEditPage extends BasePage {
       await this.contentTextarea.first().fill(data.contents);
     }
     if (data.url) await this.urlInput.fill(data.url);
-    if (data.image) await this.imageInput.fill(data.image);
     if (data.status) await this.statusSelect.selectOption(data.status);
   }
 
@@ -108,7 +104,7 @@ export class NewsEditPage extends BasePage {
     await this.imageFileInput.setInputFiles(file);
   }
 
-  async expectImageValue(url: string) {
-    await expect(this.imageInput).toHaveValue(url, { timeout: 10_000 });
+  async expectImagePreviewVisible() {
+    await expect(this.imagePreview).toBeVisible({ timeout: 10_000 });
   }
 }
