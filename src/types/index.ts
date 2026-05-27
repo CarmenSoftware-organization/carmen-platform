@@ -201,8 +201,8 @@ export interface News {
   title: string;
   contents?: string;            // Markdown body
   url?: string;                 // source URL
-  image?: string;               // presigned image URL (detail/getById payload)
-  image_url?: string;           // presigned image URL (list/getAll payload)
+  image_url?: string;           // presigned image URL returned by list + detail
+  image?: string;               // legacy field name (older payloads); kept as fallback
   business_unit_ids?: string[]; // [] = global (all BUs); non-empty = those BUs
   status?: NewsStatus;
   published_at?: string;

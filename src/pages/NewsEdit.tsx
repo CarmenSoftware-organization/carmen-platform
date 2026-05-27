@@ -116,7 +116,7 @@ const NewsEdit: React.FC = () => {
         title: item.title || '',
         contents: item.contents || '',
         url: item.url || '',
-        image: item.image || '',
+        image: item.image_url || item.image || '',
         status: (item.status as NewsStatus) || 'draft',
         isGlobal: ids.length === 0,
         business_unit_ids: ids,

@@ -17,7 +17,7 @@ const newsRecord = {
   title: 'Hello',
   contents: '',
   url: '',
-  image: MOCK_IMAGE_URL,
+  image_url: MOCK_IMAGE_URL,
   business_unit_ids: [],
   status: 'draft',
 };
