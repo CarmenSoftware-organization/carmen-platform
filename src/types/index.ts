@@ -50,11 +50,18 @@ export interface BusinessUnitConfig {
   value?: unknown;
 }
 
+export interface PresignedImage {
+  url: string;
+  expires_at?: string;
+}
+
 export interface BusinessUnit {
   id: string;
   cluster_id?: string;
   code: string;
   name: string;
+  logo?: PresignedImage | null;   // resolved presigned brand logo (list + detail)
+  avatar?: PresignedImage | null; // resolved presigned square avatar (list + detail)
   alias_name?: string;
   description?: string;
   is_hq?: boolean;

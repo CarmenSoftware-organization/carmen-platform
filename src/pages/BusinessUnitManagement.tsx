@@ -194,6 +194,27 @@ const BusinessUnitManagement: React.FC = () => {
 
   const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
     {
+      id: 'logo',
+      header: '',
+      enableSorting: false,
+      meta: { headerClassName: 'w-28', cellClassName: '' },
+      cell: ({ row }) => {
+        const src = row.original.logo?.url || row.original.avatar?.url;
+        return src ? (
+          <img
+            src={src}
+            alt=""
+            className="h-10 w-auto max-w-[96px] rounded object-contain border"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded border bg-muted/40 text-muted-foreground">
+            <Building2 className="h-4 w-4" />
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'code',
       header: 'Code',
       cell: ({ row }) => (
@@ -463,7 +484,7 @@ const BusinessUnitManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && businessUnits.length === 0 ? (
-                  <TableSkeleton columns={6} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
