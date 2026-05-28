@@ -7,10 +7,13 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { UserMultiSelect } from '../components/UserMultiSelect';
-import { Megaphone, Send, Loader2, Calendar, Globe, Users, Building2 } from 'lucide-react';
+import { Megaphone, Send, Loader2, Calendar, Globe, Users, Building2, Code, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import broadcastService from '../services/broadcastService';
 import businessUnitService from '../services/businessUnitService';
 import { parseApiError } from '../utils/errorParser';
@@ -101,6 +104,8 @@ const BroadcastCompose: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [copied, setCopied] = useState(false);
 
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -214,11 +219,10 @@ const BroadcastCompose: React.FC = () => {
   const handleConfirmedSend = async () => {
     setSending(true);
     try {
-      if (targetMode === 'bu') {
-        await broadcastService.sendBu(buildBuPayload(formData));
-      } else {
-        await broadcastService.sendSystem(buildSystemPayload(formData, recipients));
-      }
+      const response = targetMode === 'bu'
+        ? await broadcastService.sendBu(buildBuPayload(formData))
+        : await broadcastService.sendSystem(buildSystemPayload(formData, recipients));
+      setRawResponse(response);
       const scheduledMsg =
         formData.sendMode === 'schedule'
           ? `Broadcast scheduled for ${new Date(formData.scheduledAtLocal).toLocaleString()}`
@@ -242,6 +246,32 @@ const BroadcastCompose: React.FC = () => {
     setFormData(initialForm);
     setRecipients([]);
     setFieldErrors({});
+  };
+
+  const isDirty =
+    formData.title.length > 0 ||
+    formData.message.length > 0 ||
+    formData.typePreset !== 'INFO' ||
+    formData.typeCustom.length > 0 ||
+    formData.sendMode !== 'now' ||
+    formData.scheduledAtLocal.length > 0 ||
+    formData.buCode.length > 0 ||
+    recipients.length > 0;
+
+  useUnsavedChanges(isDirty);
+  useGlobalShortcuts({
+    onSave: () => {
+      if (!sending && !confirmOpen) handleSend();
+    },
+    onCancel: () => {
+      if (!sending && !confirmOpen) handleReset();
+    },
+  });
+
+  const handleCopyJson = (data: unknown) => {
+    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -458,6 +488,42 @@ const BroadcastCompose: React.FC = () => {
         confirmVariant={targetMode === 'system_all' ? 'destructive' : 'default'}
         onConfirm={handleConfirmedSend}
       />
+
+      {process.env.NODE_ENV === 'development' && (
+        <Sheet>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full bg-amber-500 text-white shadow-lg hover:bg-amber-600 flex items-center justify-center"
+              aria-label="Open dev debug"
+            >
+              <Code className="h-5 w-5" />
+            </button>
+          </SheetTrigger>
+          <SheetContent className="glass-strong w-full sm:max-w-lg overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Dev Debug</SheetTitle>
+              <SheetDescription>Last API response from this session.</SheetDescription>
+            </SheetHeader>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!rawResponse}
+                  onClick={() => handleCopyJson(rawResponse)}
+                >
+                  {copied ? <Check className="mr-2 h-3.5 w-3.5" /> : <Copy className="mr-2 h-3.5 w-3.5" />}
+                  {copied ? 'Copied' : 'Copy JSON'}
+                </Button>
+              </div>
+              <pre className="text-[10px] sm:text-xs font-mono whitespace-pre-wrap break-words bg-muted/50 p-3 rounded-md max-h-[60vh] overflow-y-auto">
+                {rawResponse ? JSON.stringify(rawResponse, null, 2) : '// no response yet'}
+              </pre>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </Layout>
   );
 };
