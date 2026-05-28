@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm install --force",
+  "installCommand": "npm install --include=dev --force",
   "outputDirectory": "build",
   "framework": "vite",
   "rewrites": [
