@@ -217,3 +217,33 @@ export interface News {
   audit?: Audit;                // enriched audit object (from getById)
   deleted_at?: string;          // set on soft-deleted records (present in the list payload)
 }
+
+// ===== Broadcasts =====
+
+export type BroadcastTargetMode = 'system_all' | 'system_users' | 'bu';
+
+export type BroadcastTypePreset = 'INFO' | 'WARNING' | 'CRITICAL' | 'MAINTENANCE' | 'OTHER';
+
+export interface BroadcastSystemPayload {
+  title: string;
+  message: string;
+  type?: string;
+  metadata?: Record<string, unknown>;
+  scheduled_at?: string; // ISO date-time
+  userIds?: string[];    // UUIDs; when present, fans out as personal rows
+}
+
+export interface BroadcastBuPayload {
+  bu_code: string;
+  title: string;
+  message: string;
+  type?: string;
+  metadata?: Record<string, unknown>;
+  scheduled_at?: string; // ISO date-time
+}
+
+export interface UserOption {
+  id: string;
+  name: string;
+  email?: string;
+}
