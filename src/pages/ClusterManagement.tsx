@@ -94,6 +94,14 @@ const ClusterManagement: React.FC = () => {
         users_count: item.users_count ?? item._count?.tb_cluster_user ?? 0,
         max_license_bu: item.max_license_bu ?? undefined,
         total_max_license_users: item.total_max_license_users ?? undefined,
+        // Audit moved into a nested `audit` object; flatten for the date columns
+        // (tolerate the older flat shape too).
+        created_at: item.created_at ?? item.audit?.created?.at,
+        created_by_name: item.created_by_name ?? item.audit?.created?.name,
+        updated_at: item.updated_at ?? item.audit?.updated?.at,
+        updated_by_name: item.updated_by_name ?? item.audit?.updated?.name,
+        deleted_at: item.deleted_at ?? item.audit?.deleted?.at,
+        deleted_by_name: item.deleted_by_name ?? item.audit?.deleted?.name,
       }));
       setClusters(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
