@@ -21,6 +21,7 @@ const PrintTemplateMappingManagement = lazy(() => import("./pages/PrintTemplateM
 const PrintTemplateMappingEdit = lazy(() => import("./pages/PrintTemplateMappingEdit"));
 const NewsManagement = lazy(() => import("./pages/NewsManagement"));
 const NewsEdit = lazy(() => import("./pages/NewsEdit"));
+const BroadcastCompose = lazy(() => import("./pages/BroadcastCompose"));
 const Profile = lazy(() => import("./pages/Profile"));
 
 const RouteLoader = () => (
@@ -187,6 +188,14 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={["platform_admin"]}>
                   <NewsEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/broadcasts/new"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin", "support_manager"]}>
+                  <BroadcastCompose />
                 </PrivateRoute>
               }
             />
