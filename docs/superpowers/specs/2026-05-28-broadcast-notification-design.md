@@ -24,13 +24,13 @@
 
 ## 3. API Reference
 
-Two POST endpoints (proxied via `/api-system` in dev — same convention as every other service):
+Two POST endpoints (proxied via `/api` in dev — notifications live on the main `/api` backend, not the `/api-system` admin backend that other services use):
 
-### `POST /api-system/notifications/broadcasts/system`
+### `POST /api/notifications/broadcasts/system`
 Required: `title`, `message`.
 Optional: `type` (free string; defaults to `SYS_INFO`), `metadata`, `scheduled_at` (ISO date-time), `userIds` (UUID[]). When `userIds` is present, the row is fanned out as personal notifications to those users only.
 
-### `POST /api-system/notifications/broadcasts/bu`
+### `POST /api/notifications/broadcasts/bu`
 Required: `bu_code`, `title`, `message`.
 Optional: `type` (defaults to `BU_INFO`), `metadata`, `scheduled_at`.
 
