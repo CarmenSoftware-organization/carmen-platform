@@ -88,7 +88,18 @@ const BusinessUnitManagement: React.FC = () => {
       const data = await businessUnitService.getAll(params);
       setRawResponse(data);
       const items = data.data || data;
-      setBusinessUnits(Array.isArray(items) ? items : []);
+      // Audit moved into a nested `audit` object; flatten for the date columns
+      // (tolerate the older flat shape too).
+      const mapped = (Array.isArray(items) ? items : []).map((item: any) => ({
+        ...item,
+        created_at: item.created_at ?? item.audit?.created?.at,
+        created_by_name: item.created_by_name ?? item.audit?.created?.name,
+        updated_at: item.updated_at ?? item.audit?.updated?.at,
+        updated_by_name: item.updated_by_name ?? item.audit?.updated?.name,
+        deleted_at: item.deleted_at ?? item.audit?.deleted?.at,
+        deleted_by_name: item.deleted_by_name ?? item.audit?.deleted?.name,
+      }));
+      setBusinessUnits(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
