@@ -139,7 +139,21 @@ const UserManagement: React.FC = () => {
       const data = (await userService.getAll(params)) as unknown as Record<string, unknown>;
       setRawResponse(data);
       const items = (data.data || data) as UserRecord[];
-      setUsers(Array.isArray(items) ? items : []);
+      // Audit moved into a nested `audit` object; flatten for the date columns
+      // (tolerate the older flat shape too).
+      const mapped = (Array.isArray(items) ? items : []).map((item) => {
+        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string }; deleted?: { at?: string; name?: string } } }).audit;
+        return {
+          ...item,
+          created_at: item.created_at ?? audit?.created?.at,
+          created_by_name: item.created_by_name ?? audit?.created?.name,
+          updated_at: item.updated_at ?? audit?.updated?.at,
+          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
+          deleted_at: item.deleted_at ?? audit?.deleted?.at,
+          deleted_by_name: item.deleted_by_name ?? audit?.deleted?.name,
+        };
+      });
+      setUsers(mapped);
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
