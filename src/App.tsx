@@ -23,6 +23,7 @@ const NewsManagement = lazy(() => import("./pages/NewsManagement"));
 const NewsEdit = lazy(() => import("./pages/NewsEdit"));
 const BroadcastCompose = lazy(() => import("./pages/BroadcastCompose"));
 const Profile = lazy(() => import("./pages/Profile"));
+const Changelog = lazy(() => import("./pages/Changelog"));
 
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
@@ -39,6 +40,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/changelog" element={<Changelog />} />
             <Route
               path="/dashboard"
               element={
