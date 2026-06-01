@@ -5,6 +5,7 @@ import { PanelLeft, PanelLeftClose, LogOut, User, type LucideIcon } from 'lucide
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import VersionBadge from './VersionBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -201,6 +202,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom: User Profile + Toggle */}
         <div className="shrink-0 border-t border-white/10 p-2 space-y-1">
+          <div className={cn('flex pb-1', isCollapsed ? 'justify-center' : 'justify-start px-1')}>
+            <VersionBadge collapsed={isCollapsed} />
+          </div>
           {isCollapsed ? (
             <TooltipProvider delayDuration={200}>
               <Tooltip>
