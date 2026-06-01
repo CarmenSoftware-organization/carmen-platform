@@ -117,3 +117,12 @@ test('promoteUnreleased throws when buffer is empty', () => {
     /Nothing to release/,
   );
 });
+
+test('validateChangelog flags non-object unreleased', () => {
+  const errors = validateChangelog({ unreleased: [], versions: [] });
+  assert.ok(errors.some((e) => e.includes('"unreleased" must be an object')));
+});
+
+test('validateChangelog passes when unreleased is omitted', () => {
+  assert.deepEqual(validateChangelog({ versions: [] }), []);
+});

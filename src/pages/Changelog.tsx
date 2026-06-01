@@ -4,18 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import type { Changelog as ChangelogData, ChangelogCategory, ChangelogChanges } from '../types';
 import changelogData from '../data/changelog.json';
 
+// Must stay in sync with CATEGORY_ORDER in scripts/lib/changelog-format.mjs
+// (the .mjs script and this Vite/TS module can't share a module).
 const CATEGORY_ORDER: ChangelogCategory[] = [
   'Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security',
 ];
 
 const data = changelogData as unknown as ChangelogData;
 
-const fmtDate = (v?: string) => {
-  if (!v) return '';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
+// Dates are authored as YYYY-MM-DD in changelog.json; render them verbatim.
+// Avoid `new Date(v)`, which parses a date-only string as UTC midnight and
+// shifts to the previous day for users in timezones west of UTC.
+const fmtDate = (v?: string) => v ?? '';
 
 const hasChanges = (c: ChangelogChanges) => CATEGORY_ORDER.some((cat) => c[cat]?.length);
 

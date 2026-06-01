@@ -1,3 +1,5 @@
+// Must stay in sync with CATEGORY_ORDER in src/pages/Changelog.tsx
+// (this .mjs script and the Vite/TS app can't share a module).
 export const CATEGORY_ORDER = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
 
 const HEADER = `# Changelog
@@ -37,6 +39,10 @@ export function renderMarkdown(changelog) {
 export function validateChangelog(changelog) {
   if (!changelog || typeof changelog !== 'object') return ['Root must be an object.'];
   const errors = [];
+  if (changelog.unreleased !== undefined &&
+      (typeof changelog.unreleased !== 'object' || changelog.unreleased === null || Array.isArray(changelog.unreleased))) {
+    errors.push('"unreleased" must be an object when present.');
+  }
   if (!Array.isArray(changelog.versions)) {
     errors.push('"versions" must be an array.');
   } else {
