@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Network, Building2, Users, ArrowRight, Loader2, type LucideIcon } from 'lucide-react';
 import { Ripple } from '../components/magicui/ripple';
 import { RippleButton } from '../components/magicui/ripple-button';
+import VersionBadge from '../components/VersionBadge';
 
 interface Feature {
   icon: LucideIcon;
@@ -163,6 +164,9 @@ const Landing: React.FC = () => {
             </span>
           )}
         </p>
+        <div className="mt-2 flex justify-center">
+          <VersionBadge />
+        </div>
       </footer>
     </div>
   );
