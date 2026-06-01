@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setLoading(false);
 
-      const publicPaths = ['/', '/login'];
+      const publicPaths = ['/', '/login', '/changelog'];
       if (!publicPaths.includes(window.location.pathname)) {
         window.location.href = '/login';
       }

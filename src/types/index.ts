@@ -247,3 +247,21 @@ export interface UserOption {
   name: string;
   email?: string;
 }
+
+// ===== Changelog =====
+
+export type ChangelogCategory =
+  | 'Added' | 'Changed' | 'Deprecated' | 'Removed' | 'Fixed' | 'Security';
+
+export type ChangelogChanges = Partial<Record<ChangelogCategory, string[]>>;
+
+export interface ChangelogVersion {
+  version: string;            // semver, e.g. "0.1.0"
+  date: string;               // "YYYY-MM-DD"
+  changes: ChangelogChanges;
+}
+
+export interface Changelog {
+  unreleased: ChangelogChanges;
+  versions: ChangelogVersion[];
+}
