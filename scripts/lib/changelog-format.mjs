@@ -50,3 +50,29 @@ export function validateChangelog(changelog) {
   }
   return errors;
 }
+
+export function nextVersion(current, level = 'patch') {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(current);
+  if (!match) throw new Error(`Invalid semver: "${current}"`);
+  let [major, minor, patch] = match.slice(1).map(Number);
+  if (level === 'major') { major += 1; minor = 0; patch = 0; }
+  else if (level === 'minor') { minor += 1; patch = 0; }
+  else if (level === 'patch') { patch += 1; }
+  else throw new Error(`Invalid bump level: "${level}" (expected patch|minor|major)`);
+  return `${major}.${minor}.${patch}`;
+}
+
+export function promoteUnreleased(changelog, level, today) {
+  if (!hasChanges(changelog.unreleased)) {
+    throw new Error('Nothing to release: "unreleased" is empty.');
+  }
+  const current = changelog.versions[0]?.version ?? '0.0.0';
+  const version = nextVersion(current, level);
+  return {
+    unreleased: {},
+    versions: [
+      { version, date: today, changes: changelog.unreleased },
+      ...changelog.versions,
+    ],
+  };
+}

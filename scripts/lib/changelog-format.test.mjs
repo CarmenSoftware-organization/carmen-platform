@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderMarkdown, validateChangelog } from './changelog-format.mjs';
+import { renderMarkdown, validateChangelog, nextVersion, promoteUnreleased } from './changelog-format.mjs';
 
 const sample = {
   unreleased: { Added: ['New thing'] },
@@ -76,4 +76,44 @@ test('validateChangelog flags non-object changes', () => {
     versions: [{ version: '1.0.0', date: '2026-01-01', changes: null }],
   });
   assert.ok(errors.some((e) => e.includes('"changes" must be an object')));
+});
+
+test('nextVersion bumps patch by default', () => {
+  assert.equal(nextVersion('0.1.0'), '0.1.1');
+});
+
+test('nextVersion bumps minor and resets patch', () => {
+  assert.equal(nextVersion('0.1.5', 'minor'), '0.2.0');
+});
+
+test('nextVersion bumps major and resets minor+patch', () => {
+  assert.equal(nextVersion('1.4.2', 'major'), '2.0.0');
+});
+
+test('nextVersion throws on invalid semver', () => {
+  assert.throws(() => nextVersion('1.2', 'patch'));
+});
+
+test('nextVersion throws on invalid level', () => {
+  assert.throws(() => nextVersion('1.2.3', 'huge'));
+});
+
+test('promoteUnreleased moves buffer into a new dated top version', () => {
+  const input = {
+    unreleased: { Added: ['Shiny'] },
+    versions: [{ version: '0.1.0', date: '2026-06-01', changes: { Fixed: ['old'] } }],
+  };
+  const out = promoteUnreleased(input, 'minor', '2026-06-02');
+  assert.deepEqual(out.unreleased, {});
+  assert.equal(out.versions[0].version, '0.2.0');
+  assert.equal(out.versions[0].date, '2026-06-02');
+  assert.deepEqual(out.versions[0].changes, { Added: ['Shiny'] });
+  assert.equal(out.versions[1].version, '0.1.0');
+});
+
+test('promoteUnreleased throws when buffer is empty', () => {
+  assert.throws(
+    () => promoteUnreleased({ unreleased: {}, versions: [{ version: '0.1.0', date: 'x', changes: {} }] }, 'patch', '2026-06-02'),
+    /Nothing to release/,
+  );
 });
