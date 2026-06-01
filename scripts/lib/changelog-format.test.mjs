@@ -48,3 +48,32 @@ test('validateChangelog flags missing version and date', () => {
 test('validateChangelog passes for valid input', () => {
   assert.deepEqual(validateChangelog(sample), []);
 });
+
+test('renderMarkdown with empty versions produces header only', () => {
+  const md = renderMarkdown({ unreleased: {}, versions: [] });
+  assert.match(md, /^# Changelog/);
+  assert.ok(!md.includes('## ['));
+});
+
+test('renderMarkdown throws on invalid input', () => {
+  assert.throws(() => renderMarkdown(null), TypeError);
+  assert.throws(() => renderMarkdown({}), TypeError);
+});
+
+test('renderMarkdown joins multiple categories with a blank line', () => {
+  const md = renderMarkdown({ unreleased: { Added: ['a'], Fixed: ['b'] }, versions: [] });
+  assert.match(md, /### Added\n- a\n\n### Fixed\n- b/);
+});
+
+test('validateChangelog rejects non-object root', () => {
+  assert.deepEqual(validateChangelog(null), ['Root must be an object.']);
+  assert.deepEqual(validateChangelog('bad'), ['Root must be an object.']);
+});
+
+test('validateChangelog flags non-object changes', () => {
+  const errors = validateChangelog({
+    unreleased: {},
+    versions: [{ version: '1.0.0', date: '2026-01-01', changes: null }],
+  });
+  assert.ok(errors.some((e) => e.includes('"changes" must be an object')));
+});

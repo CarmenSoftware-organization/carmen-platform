@@ -21,6 +21,9 @@ function renderChanges(changes) {
 }
 
 export function renderMarkdown(changelog) {
+  if (!changelog || !Array.isArray(changelog.versions)) {
+    throw new TypeError('renderMarkdown: changelog must be a validated object with a versions array');
+  }
   const sections = [];
   if (hasChanges(changelog.unreleased)) {
     sections.push(`## [Unreleased]\n\n${renderChanges(changelog.unreleased)}`);
@@ -40,6 +43,9 @@ export function validateChangelog(changelog) {
     changelog.versions.forEach((v, i) => {
       if (!v || !v.version) errors.push(`versions[${i}] is missing "version".`);
       if (!v || !v.date) errors.push(`versions[${i}] is missing "date".`);
+      if (v && v.changes !== undefined && (typeof v.changes !== 'object' || v.changes === null || Array.isArray(v.changes))) {
+        errors.push(`versions[${i}] "changes" must be an object.`);
+      }
     });
   }
   return errors;
