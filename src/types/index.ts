@@ -43,6 +43,26 @@ export interface Cluster {
   deleted_by_name?: string;
 }
 
+export interface Application {
+  id: string;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+  allow_all?: boolean;
+  api_names?: string[]; // read model (flat list of api_name strings)
+}
+
+// Write payload for create/update. The backend is asymmetric to the read model:
+// selected api_names are sent through details.add[]. Update uses replace semantics
+// (send the full desired set).
+export interface ApplicationWritePayload {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+  allow_all?: boolean;
+  details?: { add: { api_name: string }[] };
+}
+
 export interface BusinessUnitConfig {
   id?: string;
   key: string;

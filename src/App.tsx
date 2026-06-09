@@ -11,6 +11,8 @@ import "./App.css";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ClusterManagement = lazy(() => import("./pages/ClusterManagement"));
 const ClusterEdit = lazy(() => import("./pages/ClusterEdit"));
+const ApplicationManagement = lazy(() => import("./pages/ApplicationManagement"));
+const ApplicationEdit = lazy(() => import("./pages/ApplicationEdit"));
 const BusinessUnitManagement = lazy(() => import("./pages/BusinessUnitManagement"));
 const BusinessUnitEdit = lazy(() => import("./pages/BusinessUnitEdit"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -70,6 +72,30 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
                   <ClusterEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/applications"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin"]}>
+                  <ApplicationManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/applications/new"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin"]}>
+                  <ApplicationEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/applications/:id/edit"
+              element={
+                <PrivateRoute allowedRoles={["platform_admin"]}>
+                  <ApplicationEdit />
                 </PrivateRoute>
               }
             />
