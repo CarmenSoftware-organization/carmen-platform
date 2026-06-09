@@ -377,7 +377,7 @@ const ApplicationEdit: React.FC = () => {
                             </button>
                           )}
                         </div>
-                        <div className="rounded-md border border-input max-h-60 overflow-y-auto divide-y">
+                        <div className="rounded-md border border-input max-h-60 overflow-y-auto p-2">
                           {catalog.length === 0 ? (
                             <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
                           ) : (() => {
@@ -385,17 +385,27 @@ const ApplicationEdit: React.FC = () => {
                             if (filtered.length === 0) {
                               return <p className="text-sm text-muted-foreground text-center py-4">No API names matching &ldquo;{apiSearch}&rdquo;</p>;
                             }
-                            return filtered.map((api) => (
-                              <label key={api} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-input"
-                                  checked={formData.api_names.includes(api)}
-                                  onChange={() => toggleApiName(api)}
-                                />
-                                <span className="text-sm">{api}</span>
-                              </label>
-                            ));
+                            return (
+                              <div className="flex flex-wrap gap-1.5">
+                                {filtered.map((api) => {
+                                  const selected = formData.api_names.includes(api);
+                                  return (
+                                    <Button
+                                      key={api}
+                                      type="button"
+                                      variant={selected ? 'default' : 'outline'}
+                                      size="sm"
+                                      className="h-7 text-xs gap-1"
+                                      onClick={() => toggleApiName(api)}
+                                      aria-pressed={selected}
+                                    >
+                                      {api}
+                                      {selected && <X className="h-3 w-3" />}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            );
                           })()}
                         </div>
                       </div>
