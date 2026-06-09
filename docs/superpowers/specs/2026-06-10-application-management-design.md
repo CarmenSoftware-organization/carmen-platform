@@ -51,7 +51,8 @@ Access is restricted to `platform_admin`.
   `details.add` (the schema has no `remove`/`update`, confirmed acceptable).
 
 ### api-catalog
-- Returns a flat `string[]` of available `api_name` values (confirmed).
+- Returns `{ api_names: string[] }` (may be inside the standard `{ data }` envelope)
+  — the available `api_name` values. `getApiCatalog()` extracts `api_names`.
 - Used to populate the api_names multi-select on the Edit page.
 
 ## Notes vs. the original verbal description
