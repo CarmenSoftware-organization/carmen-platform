@@ -48,11 +48,14 @@ const applicationService = {
     return response.data;
   },
 
-  // Catalog of selectable api_name values (flat string[]).
+  // Catalog of selectable api_name values. The endpoint returns
+  // { api_names: string[] } (optionally inside the standard { data } envelope).
+  // Tolerate a bare string[] too, just in case.
   getApiCatalog: async (): Promise<string[]> => {
     const response = await api.get('/api-system/applications/api-catalog');
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    const body = response.data?.data ?? response.data;
+    const names = Array.isArray(body) ? body : body?.api_names;
+    return Array.isArray(names) ? names : [];
   },
 
   create: async (data: Parameters<typeof toWritePayload>[0]) => {
