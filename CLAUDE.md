@@ -44,6 +44,8 @@ Copy `.env.example` → `.env`. Variables:
 
 `vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK).
 
+Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagger`) — there is **no `/swagger-json`**. The full OpenAPI 3.0 spec is HTML-entity-embedded in that page; extract it by unescaping the HTML and brace-matching from `"openapi":"3.0.0"`. Always confirm endpoint paths/DTO shapes against swagger (this repo has two backends — `/api` and `/api-system`).
+
 ## Deployment
 
 Multi-stage Docker (Node 20 builder → nginx:stable-alpine, port 3001). CI in `.github/workflows/build.yml` pushes ARM64 image to ECR and deploys via SSM. `docker-compose` binds `127.0.0.1:3001` behind a reverse proxy with 30s healthcheck.
@@ -239,6 +241,16 @@ XML utils in `src/utils/xml.ts`: `formatXml`, `validateXml`, `countLines`, `byte
 - The companion `PrintTemplateMappingEdit.tsx` is a single-mode form (no edit/read-only toggle) — appropriate for a config row that's always editable when opened.
 
 When adding similar small-dimension configuration pages, follow this pattern rather than rule 13.
+
+## Application Management Specifics
+
+`Application*` pages follow the standard two-page pattern (copied from Cluster), but the
+backend read/write models are **asymmetric** — `src/services/applicationService.ts` translates:
+
+- **Read** (`ApplicationResponseDto`): `{ id, name, description, is_active, allow_all, api_names: string[] }`. There is **no `app_id` field** — the record `id` (UUID) *is* the `x-app-id` value; surface it as "App ID".
+- **Write** (create/update): `{ name, description, is_active, allow_all, details: { add: [{ api_name }] } }`. Map the form's flat `api_names: string[]` → `details.add[]`; **skip `details` when `allow_all` is true**. Update uses **replace semantics** (send the full desired set).
+- **Catalog:** `GET /api-system/applications/api-catalog` returns `{ api_names: string[] }` (not a bare array; may be inside the `{ data }` envelope). Powers the Edit-page api_name picker (toggle tag buttons + search filter); falls back to `<ChipInput>` if the fetch fails.
+- `allow_all` hides the api_name selector entirely. Page is `platform_admin`-only (route + nav `roles`).
 
 ## Styling Reference
 
