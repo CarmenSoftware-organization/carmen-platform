@@ -268,6 +268,16 @@ const ApplicationEdit: React.FC = () => {
                 )}
               </div>
 
+              {/* App ID — the record's UUID, used as x-app-id. Server-generated, always read-only. */}
+              {!isNew && (
+                <div className="space-y-2">
+                  <Label htmlFor="app_id">App ID</Label>
+                  <div className={`${readOnlyBox} font-mono text-xs text-muted-foreground`}>
+                    <span className="truncate">{id}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 {editing ? (

@@ -155,12 +155,14 @@ const ApplicationManagement: React.FC = () => {
     const csv = generateCSV(
       applications.map((a) => ({
         name: a.name,
+        app_id: a.id,
         description: a.description ?? '',
         access: a.allow_all ? 'All APIs' : String(a.api_names?.length ?? 0) + ' APIs',
         is_active: a.is_active ? 'Active' : 'Inactive',
       })),
       [
         { key: 'name', label: 'Name' },
+        { key: 'app_id', label: 'App ID' },
         { key: 'description', label: 'Description' },
         { key: 'access', label: 'Access' },
         { key: 'is_active', label: 'Status' },
@@ -178,6 +180,16 @@ const ApplicationManagement: React.FC = () => {
         <Link to={`/applications/${row.original.id}/edit`} className="text-primary hover:underline">
           {row.original.name}
         </Link>
+      ),
+    },
+    {
+      id: 'app_id',
+      header: 'App ID',
+      enableSorting: false,
+      cell: ({ row }) => (
+        <span className="font-mono text-[10px] sm:text-xs text-muted-foreground" title={row.original.id}>
+          {row.original.id}
+        </span>
       ),
     },
     {
