@@ -139,9 +139,9 @@ State shape: `id` (from `useParams`), `isNew = !id`, `formData`, `loading`, `edi
 ### 6. Sidebar — `src/components/Layout.tsx`
 Add to `allNavItems`:
 ```tsx
-{ path: '/applications', label: 'Applications', icon: <icon>, roles: ['platform_admin'] }
+{ path: '/applications', label: 'Applications', icon: AppWindow, roles: ['platform_admin'] }
 ```
-Pick a lucide icon (e.g. `AppWindow` / `LayoutGrid`).
+Use the `AppWindow` lucide icon.
 
 ## Error handling
 Every catch block uses `parseApiError(err)` + `toast.error()` (plus
