@@ -10,7 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { ChipInput } from '../components/ui/chip-input';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -49,6 +49,7 @@ const ApplicationEdit: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [catalog, setCatalog] = useState<string[]>([]);
   const [catalogFailed, setCatalogFailed] = useState(false);
+  const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
@@ -354,22 +355,49 @@ const ApplicationEdit: React.FC = () => {
                         placeholder="Type an api_name and press Enter"
                       />
                     ) : (
-                      <div className="rounded-md border border-input max-h-60 overflow-y-auto divide-y">
-                        {catalog.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
-                        ) : (
-                          catalog.map((api) => (
-                            <label key={api} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-input"
-                                checked={formData.api_names.includes(api)}
-                                onChange={() => toggleApiName(api)}
-                              />
-                              <span className="text-sm">{api}</span>
-                            </label>
-                          ))
-                        )}
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            value={apiSearch}
+                            onChange={(e) => setApiSearch(e.target.value)}
+                            placeholder="Filter API names..."
+                            className="pl-9 pr-9"
+                            aria-label="Filter API names"
+                          />
+                          {apiSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setApiSearch('')}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              aria-label="Clear filter"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="rounded-md border border-input max-h-60 overflow-y-auto divide-y">
+                          {catalog.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
+                          ) : (() => {
+                            const filtered = catalog.filter((api) => api.toLowerCase().includes(apiSearch.trim().toLowerCase()));
+                            if (filtered.length === 0) {
+                              return <p className="text-sm text-muted-foreground text-center py-4">No API names matching &ldquo;{apiSearch}&rdquo;</p>;
+                            }
+                            return filtered.map((api) => (
+                              <label key={api} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-input"
+                                  checked={formData.api_names.includes(api)}
+                                  onChange={() => toggleApiName(api)}
+                                />
+                                <span className="text-sm">{api}</span>
+                              </label>
+                            ));
+                          })()}
+                        </div>
                       </div>
                     )
                   ) : (
