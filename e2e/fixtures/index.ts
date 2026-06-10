@@ -11,7 +11,7 @@ const uniqueSuffix = () =>
 /** Generate unique cluster test data */
 export const generateClusterData = () => ({
   code: `CLT${uniqueSuffix()}`,
-  name: `${faker.company.name()} Cluster`,
+  name: `E2E_${faker.company.name()} Cluster`,
   description: faker.company.catchPhrase(),
   is_active: true,
 });
@@ -22,7 +22,7 @@ export const generateBusinessUnitData = () => {
   return {
     // Basic Information
     code: `BU${suffix}`,
-    name: `${faker.company.name()} Hotel`,
+    name: `E2E_${faker.company.name()} Hotel`,
     alias_name: faker.string.alpha({ length: 3, casing: 'upper' }),
     description: faker.commerce.productDescription(),
     is_hq: false,
@@ -104,8 +104,31 @@ export const generateProfileData = () => ({
 
 /** Generate unique news test data */
 export const generateNewsData = () => ({
-  title: `Test News ${uniqueSuffix()}`,
+  title: `E2E_News_${uniqueSuffix()}`,
   contents: `## ${faker.company.catchPhrase()}\n\n${faker.lorem.paragraph()}`,
   url: faker.internet.url(),
   image: faker.image.url(),
+});
+
+/** Generate unique application test data */
+export const generateApplicationData = () => ({
+  name: `E2E_App_${uniqueSuffix()}`,
+  description: faker.company.catchPhrase(),
+});
+
+/** Generate unique platform role test data */
+export const generateRoleData = () => ({
+  name: `E2E_Role_${uniqueSuffix()}`,
+  description: faker.company.catchPhrase(),
+});
+
+/** Generate unique report template test data */
+export const generateReportTemplateData = () => ({
+  name: `E2E_Report_${uniqueSuffix()}`,
+  description: faker.commerce.productDescription(),
+});
+
+/** Generate unique print template mapping test data */
+export const generatePrintMappingData = () => ({
+  display_label: `E2E_Mapping_${uniqueSuffix()}`,
 });
