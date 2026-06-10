@@ -34,6 +34,7 @@ export interface NavItem {
   roles?: string[];
   permission?: string;
   superAdminOnly?: boolean;
+  group?: string;
 }
 
 interface UserInfo {
@@ -68,6 +69,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
+
+  // Group nav items by their `group` label, preserving order. Consecutive items
+  // sharing a label form one section; items with no group form a leading section.
+  const navGroups = React.useMemo(() => {
+    const groups: { label: string | null; items: NavItem[] }[] = [];
+    for (const item of navItems) {
+      const label = item.group ?? null;
+      const last = groups[groups.length - 1];
+      if (last && last.label === label) last.items.push(item);
+      else groups.push({ label, items: [item] });
+    }
+    return groups;
+  }, [navItems]);
 
   const NavLink: React.FC<{ item: NavItem; showLabel: boolean }> = ({ item, showLabel }) => {
     const Icon = item.icon;
@@ -180,26 +194,36 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-4">
-          <div className="space-y-1">
-            <TooltipProvider delayDuration={200}>
-              {navItems.map((item) =>
-                isCollapsed ? (
-                  <Tooltip key={item.path}>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <NavLink item={item} showLabel={false} />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="font-medium">
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <NavLink key={item.path} item={item} showLabel={true} />
-                )
-              )}
-            </TooltipProvider>
-          </div>
+          <TooltipProvider delayDuration={200}>
+            {navGroups.map((g, gi) => (
+              <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
+                {!isCollapsed && g.label && (
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {g.label}
+                  </p>
+                )}
+                {isCollapsed && gi > 0 && <Separator className="!my-2" />}
+                <div className="space-y-1">
+                  {g.items.map((item) =>
+                    isCollapsed ? (
+                      <Tooltip key={item.path}>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <NavLink item={item} showLabel={false} />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="font-medium">
+                          {item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <NavLink key={item.path} item={item} showLabel={true} />
+                    )
+                  )}
+                </div>
+              </div>
+            ))}
+          </TooltipProvider>
         </nav>
 
         {/* Bottom: User Profile + Toggle */}
@@ -275,29 +299,38 @@ const Sidebar: React.FC<SidebarProps> = ({
             </SheetTitle>
           </SheetHeader>
           <Separator className="my-2" />
-          <nav className="flex-1 px-2 py-2">
-            <div className="space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.path);
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => onMobileOpenChange(false)}
-                    className={cn(
-                      'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
-                      active
-                        ? 'bg-primary/15 text-primary shadow-sm'
-                        : 'text-muted-foreground hover:bg-white/50 hover:text-foreground hover:shadow-sm'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+          <nav className="flex-1 overflow-y-auto px-2 py-2">
+            {navGroups.map((g, gi) => (
+              <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
+                {g.label && (
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {g.label}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  {g.items.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.path);
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => onMobileOpenChange(false)}
+                        className={cn(
+                          'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+                          active
+                            ? 'bg-primary/15 text-primary shadow-sm'
+                            : 'text-muted-foreground hover:bg-white/50 hover:text-foreground hover:shadow-sm'
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
           {/* Mobile User Profile */}
           <div className="shrink-0 border-t border-white/10 p-2">
