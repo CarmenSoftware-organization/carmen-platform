@@ -97,11 +97,12 @@ Edit/Cancel: stash `formData` into `savedFormData` on Edit; restore on Cancel.
 
 `Layout.tsx` owns sidebar state (persisted to `localStorage('sidebar-collapsed')`); `Sidebar.tsx` renders desktop fixed sidebar (`w-60` / `w-16`) and a mobile Sheet drawer. Main content margin: `md:ml-16` ↔ `md:ml-60`. Transitions via `.sidebar-transition`.
 
-Add a nav item by editing `allNavItems` in `Layout.tsx`:
+Add a nav item by editing `allNavItems` in `Layout.tsx`. Items carry a `group` (`'Organization' | 'Content' | 'Platform'`) and gate on either a single `permission` or `superAdminOnly`:
 ```tsx
-{ path: '/settings', label: 'Settings', icon: Settings, roles?: ['platform_admin'] }
+{ path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read', group: 'Organization' }
+{ path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' }
 ```
-`roles` is filtered through `hasRole()` from `AuthContext`. Collapsed state shows icons only, with right-side tooltips (`delayDuration={200}`).
+Filtered via `(!item.permission || hasPermission(item.permission)) && (!item.superAdminOnly || isSuperAdmin)` from `AuthContext`. Items with no `group` (e.g. Dashboard) render ungrouped at top. Collapsed state shows icons only, with right-side tooltips (`delayDuration={200}`).
 
 ## Service Layer
 
@@ -219,8 +220,10 @@ const handleSortChange = (sort: string) => setPaginate(p => ({ ...p, sort })); /
 <Route path="/items"          element={<PrivateRoute><ItemManagement /></PrivateRoute>} />
 <Route path="/items/new"      element={<PrivateRoute><ItemEdit /></PrivateRoute>} />
 <Route path="/items/:id/edit" element={<PrivateRoute><ItemEdit /></PrivateRoute>} />
-// Role-guarded:
-<Route path="/x" element={<PrivateRoute allowedRoles={['platform_admin']}><X /></PrivateRoute>} />
+// Permission-guarded:
+<Route path="/x" element={<PrivateRoute requiredPermission="role.read"><X /></PrivateRoute>} />
+// Super-admin-only:
+<Route path="/x" element={<PrivateRoute requireSuperAdmin><X /></PrivateRoute>} />
 ```
 
 After create: `navigate(\`/items/\${created.id}\`, { replace: true })`.
