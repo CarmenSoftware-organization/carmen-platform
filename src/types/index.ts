@@ -183,6 +183,7 @@ export type Scope = { type: 'platform' } | { type: 'cluster'; cluster_id: string
 export interface EffectivePermissions {
   platform: string[];                    // permission keys "resource.action"
   clusters: Record<string, string[]>;    // clusterId -> permission keys
+  is_super_admin?: boolean;              // god-mode bypass flag from the backend
 }
 
 export interface Role {
@@ -233,6 +234,7 @@ export interface AuthContextValue {
   userCount: number | null;
   effectivePermissions: EffectivePermissions | null;
   hasPermission: (key: string, opts?: { clusterId?: string }) => boolean;
+  isSuperAdmin: boolean;
 }
 
 export interface LoginCredentials {

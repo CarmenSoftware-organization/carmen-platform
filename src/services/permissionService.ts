@@ -18,7 +18,7 @@ const permissionService = {
     const response = await api.get('/api/user/permission/platform');
     const body = response.data?.data ?? response.data;
     if (body && typeof body === 'object' && Array.isArray(body.platform)) {
-      return { platform: body.platform ?? [], clusters: body.clusters ?? {} };
+      return { platform: body.platform ?? [], clusters: body.clusters ?? {}, is_super_admin: body.is_super_admin ?? false };
     }
     return null;
   },

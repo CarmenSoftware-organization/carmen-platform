@@ -128,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Permission-based access gate: resolve platform permissions + user count.
       const [eff, count] = await Promise.all([fetchEffectivePermissions(), fetchUserCount()]);
-      const hasAnyPermission = !!eff && (eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
+      const hasAnyPermission = !!eff && (eff.is_super_admin || eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
       const isBootstrap = count !== null && count <= 1; // first-admin escape hatch
       if (!hasAnyPermission && !isBootstrap) {
         // Not authorized for the platform admin — tear down the partial session.
@@ -204,6 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const platformRole = user?.platform_role || null;
+  const isSuperAdmin = !!effectivePermissions?.is_super_admin;
 
   const hasRole = (roles: string[]): boolean => {
     // Allow all access when there are 0 or 1 users (initial setup)
@@ -231,6 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userCount,
     effectivePermissions,
     hasPermission,
+    isSuperAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
