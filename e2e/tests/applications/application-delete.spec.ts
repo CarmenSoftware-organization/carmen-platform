@@ -20,11 +20,13 @@ test.describe('Application - Delete', () => {
     await managementPage.expectApplicationVisible(appData.name);
     await managementPage.deleteApplication(appData.name); // confirms + waits for "deleted" toast
 
-    // KNOWN DEV-BACKEND BUG: applications are soft-deleted and the LIST endpoint
-    // still returns soft-deleted rows (GET /:id 404s, a repeat DELETE 404s, yet
-    // the row stays in list/search responses indefinitely). Until that is fixed
-    // we cannot assert list absence — instead verify the record itself is gone:
-    // its edit page must fail to load with a not-found error.
+    // The list endpoint excludes soft-deleted rows (micro-cluster
+    // application.service findAll merges deleted_at: null), so a fresh
+    // search must no longer find the record.
+    await managementPage.search(appData.name);
+    await managementPage.expectApplicationNotVisible(appData.name);
+
+    // And the record itself is gone: its edit page fails with not-found.
     await editPage.gotoEdit(appId);
     await expect(page.getByRole('alert')).toContainText('Failed to load application', {
       timeout: 10_000,

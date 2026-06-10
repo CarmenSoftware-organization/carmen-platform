@@ -209,8 +209,15 @@ export class EntityManagementPage extends BasePage {
     await expect(this.page.locator(`text=${text}`).first()).toBeVisible({ timeout: 10_000 });
   }
 
+  /**
+   * Row-scoped absence check: the EmptyState copy echoes the search term
+   * (e.g. `No applications matching "<name>"`), so a bare `text=` locator
+   * would stay visible forever. Assert no TABLE ROW contains the text.
+   */
   async expectNotVisible(text: string) {
-    await expect(this.page.locator(`text=${text}`).first()).not.toBeVisible({ timeout: 5_000 });
+    await expect(this.page.locator(`table tbody tr:has-text("${text}")`)).toHaveCount(0, {
+      timeout: 5_000,
+    });
   }
 
   async expectEmptyState() {
