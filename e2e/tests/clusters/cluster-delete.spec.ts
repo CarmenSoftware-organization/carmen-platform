@@ -15,11 +15,12 @@ test.describe('Cluster - Delete', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
     // Now delete it from the list
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(clusterData.code);
     await managementPage.waitForTableData();
 
@@ -46,7 +47,7 @@ test.describe('Cluster - Delete', () => {
     await page.click('text=Delete');
 
     // Confirm dialog should appear
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     await expect(dialog.locator('text=Delete Cluster')).toBeVisible();
     await expect(dialog.locator('text=cannot be undone')).toBeVisible();
@@ -61,9 +62,10 @@ test.describe('Cluster - Delete', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(clusterData.code);
     await managementPage.waitForTableData();
 
@@ -72,7 +74,7 @@ test.describe('Cluster - Delete', () => {
     await page.click('text=Delete');
 
     // Cancel
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await dialog.locator('button:has-text("Cancel")').click();
 
     // Cluster should still be visible

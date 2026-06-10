@@ -15,10 +15,11 @@ test.describe('Cluster - Search', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search for it
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(clusterData.code);
 
     // Should find the cluster
@@ -83,10 +84,11 @@ test.describe('Cluster - Search', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search by name
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     const namePart = clusterData.name.split(' ')[0]; // First word of name
     await managementPage.search(namePart);
 

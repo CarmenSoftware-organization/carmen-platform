@@ -28,7 +28,7 @@ test.describe('Cluster - Filter', () => {
     const rowCount = await rows.count();
     if (rowCount > 0) {
       for (let i = 0; i < Math.min(rowCount, 5); i++) {
-        const statusCell = rows.nth(i).locator('text=Active, text=Inactive');
+        const statusCell = rows.nth(i).getByText(/^(Active|Inactive)$/);
         const text = await statusCell.first().textContent();
         expect(text).toContain('Active');
       }
