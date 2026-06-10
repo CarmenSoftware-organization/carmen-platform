@@ -1,5 +1,5 @@
 import api from './api';
-import type { PermissionCatalogItem } from '../types';
+import type { PermissionCatalogItem, EffectivePermissions } from '../types';
 
 const permissionService = {
   getCatalog: async (): Promise<PermissionCatalogItem[]> => {
@@ -12,6 +12,15 @@ const permissionService = {
       action: p.action ?? '',
       description: p.description,
     }));
+  },
+
+  getMyPlatformPermissions: async (): Promise<EffectivePermissions | null> => {
+    const response = await api.get('/api/user/permission/platform');
+    const body = response.data?.data ?? response.data;
+    if (body && typeof body === 'object' && Array.isArray(body.platform)) {
+      return { platform: body.platform ?? [], clusters: body.clusters ?? {} };
+    }
+    return null;
   },
 };
 

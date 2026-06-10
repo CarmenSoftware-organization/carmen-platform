@@ -153,7 +153,6 @@ export interface User {
   business_unit?: BusinessUnit[];
   created_at?: string;
   updated_at?: string;
-  effective_permissions?: EffectivePermissions;
 }
 
 // Row returned by GET /api-system/user/clusters/:clusterId — a tb_cluster_user
@@ -215,7 +214,6 @@ export interface LoginResponse {
   expires_in?: number;
   token_type?: string;
   platform_role?: string;
-  effective_permissions?: EffectivePermissions;
 }
 
 export interface LoginResult {
