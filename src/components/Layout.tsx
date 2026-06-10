@@ -48,16 +48,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const allNavItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read' },
-    { path: '/business-units', label: 'Business Units', icon: Building2, permission: 'cluster.read' },
-    { path: '/users', label: 'Users', icon: Users, permission: 'user.read' },
-    { path: '/report-templates', label: 'Report Templates', icon: FileText, permission: 'report_template.read' },
-    { path: '/print-template-mapping', label: 'Print Mapping', icon: Printer, permission: 'print_template_mapping.read' },
-    { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read' },
-    { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read' },
-    { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read' },
-    { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true },
-    { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send' },
+    // Organization
+    { path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read', group: 'Organization' },
+    { path: '/business-units', label: 'Business Units', icon: Building2, permission: 'cluster.read', group: 'Organization' },
+    { path: '/users', label: 'Users', icon: Users, permission: 'user.read', group: 'Organization' },
+    // Content
+    { path: '/report-templates', label: 'Report Templates', icon: FileText, permission: 'report_template.read', group: 'Content' },
+    { path: '/print-template-mapping', label: 'Print Mapping', icon: Printer, permission: 'print_template_mapping.read', group: 'Content' },
+    { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read', group: 'Content' },
+    { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send', group: 'Content' },
+    // Platform
+    { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read', group: 'Platform' },
+    { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
+    { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
   ];
 
   const navItems = allNavItems.filter(
