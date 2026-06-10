@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateNewsData } from '../../fixtures';
 import { NewsManagementPage } from '../../pages/NewsManagementPage';
 import { NewsEditPage } from '../../pages/NewsEditPage';
@@ -7,9 +6,7 @@ import { NewsEditPage } from '../../pages/NewsEditPage';
 test.describe('News - Create', () => {
   let newsData: ReturnType<typeof generateNewsData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     newsData = generateNewsData();
   });
 

@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { BusinessUnitManagementPage } from '../../pages/BusinessUnitManagementPage';
 
 test.describe('Business Unit - List', () => {
   let managementPage: BusinessUnitManagementPage;
 
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     managementPage = new BusinessUnitManagementPage(page);
     await managementPage.goto();
   });

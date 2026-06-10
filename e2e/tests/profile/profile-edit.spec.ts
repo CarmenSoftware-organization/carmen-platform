@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateProfileData } from '../../fixtures';
 import { ProfilePage } from '../../pages/ProfilePage';
 
@@ -8,8 +7,6 @@ test.describe('Profile - Edit', () => {
   let profileData: ReturnType<typeof generateProfileData>;
 
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     profilePage = new ProfilePage(page);
     profileData = generateProfileData();
     await profilePage.goto();

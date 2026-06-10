@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateBusinessUnitData } from '../../fixtures';
 import { BusinessUnitManagementPage } from '../../pages/BusinessUnitManagementPage';
 import { BusinessUnitEditPage } from '../../pages/BusinessUnitEditPage';
@@ -7,9 +6,7 @@ import { BusinessUnitEditPage } from '../../pages/BusinessUnitEditPage';
 test.describe('Business Unit - Search', () => {
   let buData: ReturnType<typeof generateBusinessUnitData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     buData = generateBusinessUnitData();
   });
 

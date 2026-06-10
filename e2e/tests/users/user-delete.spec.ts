@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateUserData } from '../../fixtures';
 import { UserManagementPage } from '../../pages/UserManagementPage';
 import { UserEditPage } from '../../pages/UserEditPage';
@@ -7,9 +6,7 @@ import { UserEditPage } from '../../pages/UserEditPage';
 test.describe('User - Delete', () => {
   let userData: ReturnType<typeof generateUserData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     userData = generateUserData();
   });
 

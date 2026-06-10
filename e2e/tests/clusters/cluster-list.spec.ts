@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { ClusterManagementPage } from '../../pages/ClusterManagementPage';
 
 test.describe('Cluster - List', () => {
   let managementPage: ClusterManagementPage;
 
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     managementPage = new ClusterManagementPage(page);
     await managementPage.goto();
   });

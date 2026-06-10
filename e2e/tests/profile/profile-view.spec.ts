@@ -1,13 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper, TEST_CREDENTIALS } from '../../helpers/auth';
+import { TEST_CREDENTIALS } from '../../helpers/auth';
 import { ProfilePage } from '../../pages/ProfilePage';
 
 test.describe('Profile - View', () => {
   let profilePage: ProfilePage;
 
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     profilePage = new ProfilePage(page);
     await profilePage.goto();
   });

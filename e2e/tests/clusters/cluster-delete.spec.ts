@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateClusterData } from '../../fixtures';
 import { ClusterManagementPage } from '../../pages/ClusterManagementPage';
 import { ClusterEditPage } from '../../pages/ClusterEditPage';
@@ -7,9 +6,7 @@ import { ClusterEditPage } from '../../pages/ClusterEditPage';
 test.describe('Cluster - Delete', () => {
   let clusterData: ReturnType<typeof generateClusterData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     clusterData = generateClusterData();
   });
 

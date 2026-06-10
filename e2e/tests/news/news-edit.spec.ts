@@ -1,15 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateNewsData } from '../../fixtures';
 import { NewsManagementPage } from '../../pages/NewsManagementPage';
 import { NewsEditPage } from '../../pages/NewsEditPage';
 
 test.describe('News - Edit', () => {
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
-  });
-
   test('should edit an existing news article', async ({ page }) => {
     const managementPage = new NewsManagementPage(page);
     const editPage = new NewsEditPage(page);
