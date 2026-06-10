@@ -17,6 +17,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
+import Can from '../components/Can';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -327,14 +328,18 @@ const BusinessUnitManagement: React.FC = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate(`/business-units/${row.original.id}/edit`)} className="cursor-pointer">
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
+            <Can permission="cluster.update" clusterId={row.original.cluster_id}>
+              <DropdownMenuItem onClick={() => navigate(`/business-units/${row.original.id}/edit`)} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+            </Can>
+            <Can permission="cluster.delete" clusterId={row.original.cluster_id}>
+              <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </Can>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -354,11 +359,13 @@ const BusinessUnitManagement: React.FC = () => {
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button onClick={() => navigate('/business-units/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Add Business Unit</span>
-              <span className="sm:hidden">Add BU</span>
-            </Button>
+            <Can permission="cluster.create">
+              <Button onClick={() => navigate('/business-units/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Add Business Unit</span>
+                <span className="sm:hidden">Add BU</span>
+              </Button>
+            </Can>
           </div>
         </div>
 

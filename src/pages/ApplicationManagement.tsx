@@ -17,6 +17,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
+import Can from '../components/Can';
 import type { Application, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -232,14 +233,18 @@ const ApplicationManagement: React.FC = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate(`/applications/${row.original.id}/edit`)} className="cursor-pointer">
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
+            <Can permission="application.update">
+              <DropdownMenuItem onClick={() => navigate(`/applications/${row.original.id}/edit`)} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+            </Can>
+            <Can permission="application.delete">
+              <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </Can>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -259,10 +264,12 @@ const ApplicationManagement: React.FC = () => {
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Button onClick={() => navigate('/applications/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Application
-            </Button>
+            <Can permission="application.create">
+              <Button onClick={() => navigate('/applications/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Application
+              </Button>
+            </Can>
           </div>
         </div>
 

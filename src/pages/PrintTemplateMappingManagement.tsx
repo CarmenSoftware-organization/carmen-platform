@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Can from '../components/Can';
 import Layout from '../components/Layout';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -100,10 +101,12 @@ const PrintTemplateMappingManagement: React.FC = () => {
                 Map document types (PR/PO/SR/GRN/...) to the FastReport templates used for printing.
               </p>
             </div>
-            <Button onClick={() => navigate('/print-template-mapping/new')}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Mapping
-            </Button>
+            <Can permission="print_template_mapping.create">
+              <Button onClick={() => navigate('/print-template-mapping/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Mapping
+              </Button>
+            </Can>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filters */}
@@ -200,27 +203,31 @@ const PrintTemplateMappingManagement: React.FC = () => {
                               </Badge>
                             </td>
                             <td className="px-4 py-2 text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2"
-                                onClick={() => navigate(`/print-template-mapping/${r.id}/edit`)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2 text-destructive"
-                                onClick={() =>
-                                  setDeleteTarget({
-                                    id: r.id,
-                                    label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
-                                  })
-                                }
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <Can permission="print_template_mapping.update">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  onClick={() => navigate(`/print-template-mapping/${r.id}/edit`)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              </Can>
+                              <Can permission="print_template_mapping.delete">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-destructive"
+                                  onClick={() =>
+                                    setDeleteTarget({
+                                      id: r.id,
+                                      label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </Can>
                             </td>
                           </tr>
                         ))}
