@@ -26,6 +26,9 @@ const NewsEdit = lazy(() => import("./pages/NewsEdit"));
 const BroadcastCompose = lazy(() => import("./pages/BroadcastCompose"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Changelog = lazy(() => import("./pages/Changelog"));
+const RoleManagement = lazy(() => import("./pages/RoleManagement"));
+const RoleEdit = lazy(() => import("./pages/RoleEdit"));
+const PermissionCatalog = lazy(() => import("./pages/PermissionCatalog"));
 
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
@@ -224,6 +227,38 @@ function App() {
               element={
                 <PrivateRoute allowedRoles={["platform_admin", "support_manager"]}>
                   <BroadcastCompose />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/roles"
+              element={
+                <PrivateRoute requiredPermission="role.read">
+                  <RoleManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/roles/new"
+              element={
+                <PrivateRoute requiredPermission="role.create">
+                  <RoleEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/roles/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="role.update">
+                  <RoleEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/permissions"
+              element={
+                <PrivateRoute requiredPermission="role.read">
+                  <PermissionCatalog />
                 </PrivateRoute>
               }
             />
