@@ -21,10 +21,13 @@ test.describe('Changelog', () => {
     await expect(heading).toBeVisible({ timeout: 10_000 });
   });
 
-  test('displays the v0.1.0 version card', async ({ page }) => {
+  test('displays at least one versioned release card', async ({ page }) => {
     // The version is rendered as a <span class="font-mono">v{version}</span>
-    // inside a CardTitle.
-    const versionBadge = page.locator('span.font-mono', { hasText: 'v0.1.0' });
+    // inside a CardTitle. Pattern-based: build:bump rewrites the current
+    // version, so never hardcode it here.
+    const versionBadge = page
+      .locator('span.font-mono', { hasText: /^v\d+\.\d+/ })
+      .first();
     await expect(versionBadge).toBeVisible({ timeout: 10_000 });
   });
 });
