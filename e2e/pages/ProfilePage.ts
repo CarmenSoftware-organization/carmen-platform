@@ -48,6 +48,17 @@ export class ProfilePage extends BasePage {
   async goto() {
     await super.goto('/profile');
     await this.page.waitForSelector('text=Profile', { timeout: 10_000 });
+    // The title renders during the skeleton state too, so it's not a "data
+    // loaded" signal. The profile fetch can be slow when parallel workers
+    // hit the same user's profile endpoints concurrently (profile-edit's
+    // PATCH contends with these GETs on DEV), so wait generously for the
+    // skeleton to give way to real content before tests assert on it.
+    await this.page
+      .locator('.animate-pulse')
+      .first()
+      .waitFor({ state: 'detached', timeout: 30_000 })
+      .catch(() => {});
+    await this.editButton.first().waitFor({ state: 'visible', timeout: 30_000 });
   }
 
   async clickEdit() {
@@ -77,8 +88,27 @@ export class ProfilePage extends BasePage {
   }
 
   async submitProfile() {
+    // The profile PATCH can exceed the default 5s toast timeout when the
+    // parallel profile spec files contend on the same user row (DEV).
+    // Wait on the response itself, registered before the click.
+    const responsePromise = this.page
+      .waitForResponse(
+        (resp) => {
+          try {
+            return (
+              new URL(resp.url()).pathname === '/api/user/profile' &&
+              ['PATCH', 'PUT'].includes(resp.request().method())
+            );
+          } catch {
+            return false;
+          }
+        },
+        { timeout: 30_000 }
+      )
+      .catch(() => null);
     await this.clickSave();
-    await this.waitForToast('updated');
+    await responsePromise;
+    await this.waitForToast('updated', 15_000);
   }
 
   async openChangePassword() {
