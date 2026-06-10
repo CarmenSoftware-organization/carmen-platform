@@ -224,6 +224,7 @@ const ApplicationManagement: React.FC = () => {
       id: 'access',
       header: 'Access',
       enableSorting: false,
+      meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
       cell: ({ row }) => (
         row.original.allow_all
           ? <Badge variant="outline">All APIs</Badge>
