@@ -81,8 +81,13 @@ export class BroadcastComposePage extends BasePage {
    * form can load its data normally.
    */
   async installSendGuard() {
+    // URL-predicate form, not a glob: `…/broadcasts/**` would NOT match a
+    // POST to the bare collection path `/api/notifications/broadcasts`,
+    // and `…/broadcasts*` would NOT match `/system` or `/bu` (single `*`
+    // doesn't cross `/`). The predicate covers every current and future
+    // path under the broadcasts prefix.
     await this.page.route(
-      '**/api/notifications/broadcasts/**',
+      (url) => url.pathname.startsWith('/api/notifications/broadcasts'),
       (route) => {
         if (route.request().method() === 'POST') {
           // Abort the network request — no broadcast will be sent.
