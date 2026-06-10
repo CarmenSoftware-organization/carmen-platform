@@ -227,7 +227,7 @@ const ApplicationManagement: React.FC = () => {
       cell: ({ row }) => (
         row.original.allow_all
           ? <Badge variant="outline">All APIs</Badge>
-          : <span className="text-sm">{row.original.api_names?.length ?? 0} APIs</span>
+          : <Badge variant="outline">{row.original.api_names?.length ?? 0} APIs</Badge>
       ),
     },
     {
