@@ -17,7 +17,7 @@ import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import { actionOf } from '../utils/apiCatalog';
+import { groupApiNames, actionOf } from '../utils/apiCatalog';
 import type { ApiCatalogGroup } from '../types';
 
 interface ApplicationFormData {
@@ -528,9 +528,18 @@ const ApplicationEdit: React.FC = () => {
                     formData.api_names.length === 0 ? (
                       <div className={`${readOnlyBox} text-muted-foreground`}>-</div>
                     ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {formData.api_names.map((api) => (
-                          <Badge key={api} variant="outline" className="text-xs">{api}</Badge>
+                      <div className="space-y-3">
+                        {groupApiNames(formData.api_names).map((g) => (
+                          <div key={g.module} className="space-y-1.5">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {g.module} <span className="text-muted-foreground/60">({g.api_names.length})</span>
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {g.api_names.map((api) => (
+                                <Badge key={api} variant="outline" className="text-xs" title={api}>{actionOf(api)}</Badge>
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     )
