@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { generateBusinessUnitData } from '../../fixtures';
+import { createTestCluster } from '../../helpers/testData';
 import { BusinessUnitManagementPage } from '../../pages/BusinessUnitManagementPage';
 import { BusinessUnitEditPage } from '../../pages/BusinessUnitEditPage';
 
@@ -11,6 +12,9 @@ test.describe('Business Unit - Create', () => {
   });
 
   test('should create a new business unit with all sections', async ({ page }) => {
+    // Create a dedicated cluster so the BU license limit cannot block creation
+    const cluster = await createTestCluster(page);
+
     const managementPage = new BusinessUnitManagementPage(page);
     const editPage = new BusinessUnitEditPage(page);
 
@@ -18,17 +22,20 @@ test.describe('Business Unit - Create', () => {
     await managementPage.clickAdd();
 
     // Fill all sections
-    await editPage.fillAllSections(buData);
+    await editPage.fillAllSections(buData, cluster.name);
 
     // Submit and verify API response
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
-    // Verify redirect to list and new BU visible
+    // Navigate to the list and verify the new BU is searchable
+    await managementPage.goto();
+    await managementPage.search(buData.code);
     await managementPage.expectBusinessUnitVisible(buData.name);
   });
 
   test('should create a business unit with basic info only', async ({ page }) => {
+    const cluster = await createTestCluster(page);
     const editPage = new BusinessUnitEditPage(page);
 
     await editPage.gotoNew();
@@ -37,13 +44,14 @@ test.describe('Business Unit - Create', () => {
     await editPage.fillBasicInfo({
       code: buData.code,
       name: buData.name,
-    });
+    }, cluster.name);
 
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
   });
 
   test('should create an inactive business unit', async ({ page }) => {
+    const cluster = await createTestCluster(page);
     const editPage = new BusinessUnitEditPage(page);
 
     await editPage.gotoNew();
@@ -51,10 +59,10 @@ test.describe('Business Unit - Create', () => {
     await editPage.fillBasicInfo({
       ...buData,
       is_active: false,
-    });
+    }, cluster.name);
 
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
   });
 
   test('should show validation errors for empty required fields', async ({ page }) => {

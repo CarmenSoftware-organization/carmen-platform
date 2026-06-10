@@ -41,17 +41,13 @@ test.describe('Business Unit - List', () => {
   });
 
   test('should navigate to edit page when clicking a business unit code', async ({ page }) => {
-    await managementPage.waitForTableData();
-    const firstCodeLink = page.locator('table tbody tr').first().locator('td').nth(1).locator('span.cursor-pointer, a');
-    if (await firstCodeLink.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await firstCodeLink.click();
-      await expect(page).toHaveURL(/\/business-units\/.+\/edit/);
-    }
+    await managementPage.clickFirstBusinessUnitLink();
+    await expect(page).toHaveURL(/\/business-units\/.+\/edit/);
   });
 
   test('should show status badges in table', async ({ page }) => {
     await managementPage.waitForTableData();
-    const badges = page.locator('table tbody tr').first().locator('text=Active, text=Inactive');
+    const badges = page.locator('table tbody tr').first().getByText(/^(Active|Inactive)$/);
     await expect(badges.first()).toBeVisible({ timeout: 5_000 });
   });
 });

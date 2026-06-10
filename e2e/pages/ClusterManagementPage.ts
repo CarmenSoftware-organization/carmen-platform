@@ -36,7 +36,7 @@ export class ClusterManagementPage extends BasePage {
     // otherwise the table re-renders mid-interaction and closes menus.
     const responsePromise = this.page
       .waitForResponse(
-        (resp) => resp.url().includes('/api-system/cluster') && resp.url().includes('search='),
+        (resp) => resp.url().includes('/api-system/cluster') && /[?&]search=/.test(resp.url()),
         { timeout: 15_000 }
       )
       .catch(() => null);
