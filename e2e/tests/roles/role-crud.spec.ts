@@ -36,11 +36,11 @@ test.describe('Role - CRUD', () => {
     await managementPage.expectRoleVisible(roleData.name);
     await managementPage.clickRole(roleData.name);
     await editPage.waitForLoaded();
-    await editPage.expectPermissionChecked(permission); // read-only badge view
+    await editPage.expectPermissionChecked(permission, 'readonly');
 
     // --- Rename in edit mode ---
     await editPage.clickEdit();
-    await editPage.expectPermissionChecked(permission); // now a checked checkbox
+    await editPage.expectPermissionChecked(permission, 'edit');
     const updatedName = `${roleData.name}_upd`;
     await editPage.nameInput.fill(updatedName);
     const updateResponse = await editPage.submitAndWaitForSave();

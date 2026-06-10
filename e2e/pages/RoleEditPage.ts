@@ -109,12 +109,14 @@ export class RoleEditPage extends BasePage {
   }
 
   /**
-   * Assert a permission is granted — mode-aware:
-   * - edit mode renders checkboxes → assert the checkbox is checked;
-   * - read-only mode renders font-mono Badges of the full key → assert visible.
+   * Assert a permission is granted. The caller states which mode the page is
+   * in (it always knows): edit mode renders checkboxes → assert checked;
+   * read-only mode renders font-mono Badges of the full key → assert visible.
+   * Explicit mode avoids timing-based UI sniffing that could false-positive
+   * on slow hosts.
    */
-  async expectPermissionChecked(permission: string) {
-    if (await this.saveButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
+  async expectPermissionChecked(permission: string, mode: 'edit' | 'readonly') {
+    if (mode === 'edit') {
       const resource = permission.split('.')[0];
       await this.expandPermissionGroup(resource);
       await expect(this.permissionCheckbox(permission)).toBeChecked();

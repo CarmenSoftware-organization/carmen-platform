@@ -78,6 +78,10 @@ export class EntityManagementPage extends BasePage {
     // stale requests, so a late unfiltered response can clobber the
     // filtered results if we type too early.
     await this.waitForNetworkQuiet();
+    // Re-filling an identical value fires no input event (React dedupes), so
+    // no request would ever satisfy the waiter — skip it; the table already
+    // shows this query's results.
+    if ((await this.searchInput.inputValue().catch(() => '')) === query) return;
     // Wait for the debounced (400ms) search request for THIS query to
     // complete — a slow previous search response must not satisfy the waiter.
     const responsePromise = this.page
