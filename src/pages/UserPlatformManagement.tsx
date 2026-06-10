@@ -19,29 +19,12 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
-interface UserBU {
-  id: string;
-  is_active: boolean;
-}
-
 interface UserRecord {
   id: string;
-  user_id: string;
   is_active: boolean;
   username?: string;
   name?: string;
   email?: string;
-  avatar_url?: string;
-  firstname?: string;
-  middlename?: string;
-  lastname?: string;
-  created_at?: string;
-  created_by_name?: string;
-  updated_at?: string;
-  updated_by_name?: string;
-  deleted_at?: string;
-  deleted_by_name?: string;
-  business_unit?: UserBU[];
 }
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
@@ -99,24 +82,14 @@ const UserPlatformManagement: React.FC = () => {
       const data = (await userService.getAll(params)) as unknown as Record<string, unknown>;
       setRawResponse(data);
       const items = (data.data || data) as UserRecord[];
-      const mapped = (Array.isArray(items) ? items : []).map((item) => {
-        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string }; deleted?: { at?: string; name?: string } } }).audit;
-        return {
-          ...item,
-          created_at: item.created_at ?? audit?.created?.at,
-          created_by_name: item.created_by_name ?? audit?.created?.name,
-          updated_at: item.updated_at ?? audit?.updated?.at,
-          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
-          deleted_at: item.deleted_at ?? audit?.deleted?.at,
-          deleted_by_name: item.deleted_by_name ?? audit?.deleted?.name,
-        };
-      });
-      setUsers(mapped);
+      setUsers(Array.isArray(items) ? items : []);
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
     } catch (err: unknown) {
-      setError("Failed to load users: " + getErrorDetail(err));
+      const msg = "Failed to load users: " + getErrorDetail(err);
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -164,19 +137,14 @@ const UserPlatformManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next), filter: {} }));
   };
 
-  const handleClearStatusFilter = () => {
-    setStatusFilter([]);
-    localStorage.setItem('status_filters_user_platform', JSON.stringify([]));
-    localStorage.setItem('page_user_platform', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
-  };
-
   const handleClearAllFilters = () => {
     setStatusFilter([]);
     localStorage.setItem('status_filters_user_platform', JSON.stringify([]));
     localStorage.setItem('page_user_platform', '1');
     setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
   };
+
+  const handleClearStatusFilter = handleClearAllFilters;
 
   const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
