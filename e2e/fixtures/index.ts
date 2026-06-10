@@ -1,8 +1,16 @@
 import { faker } from '@faker-js/faker';
 
+/**
+ * Unique suffix for generated codes/names. Date.now() alone can collide
+ * across parallel workers, so append a random alphanumeric tail.
+ * 8 chars, [A-Za-z0-9] only — safe for the 2–20 char code validation.
+ */
+const uniqueSuffix = () =>
+  `${Date.now().toString().slice(-6)}${faker.string.alphanumeric(2).toUpperCase()}`;
+
 /** Generate unique cluster test data */
 export const generateClusterData = () => ({
-  code: `CLT${Date.now().toString().slice(-6)}`,
+  code: `CLT${uniqueSuffix()}`,
   name: `${faker.company.name()} Cluster`,
   description: faker.company.catchPhrase(),
   is_active: true,
@@ -10,7 +18,7 @@ export const generateClusterData = () => ({
 
 /** Generate unique business unit test data */
 export const generateBusinessUnitData = () => {
-  const suffix = Date.now().toString().slice(-6);
+  const suffix = uniqueSuffix();
   return {
     // Basic Information
     code: `BU${suffix}`,
@@ -74,7 +82,7 @@ export const generateBusinessUnitData = () => {
 
 /** Generate unique user test data */
 export const generateUserData = () => {
-  const suffix = Date.now().toString().slice(-6);
+  const suffix = uniqueSuffix().toLowerCase();
   return {
     username: `user${suffix}@example.com`,
     email: `test${suffix}@example.com`,
@@ -96,7 +104,7 @@ export const generateProfileData = () => ({
 
 /** Generate unique news test data */
 export const generateNewsData = () => ({
-  title: `Test News ${Date.now().toString().slice(-6)}`,
+  title: `Test News ${uniqueSuffix()}`,
   contents: `## ${faker.company.catchPhrase()}\n\n${faker.lorem.paragraph()}`,
   url: faker.internet.url(),
   image: faker.image.url(),

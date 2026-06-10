@@ -36,13 +36,10 @@ test.describe('User - Delete', () => {
     await managementPage.goto();
     await managementPage.waitForTableData();
 
-    // Open actions menu on first row
-    const firstRow = page.locator('table tbody tr').first();
-    const actionsButton = firstRow.locator('button').filter({ has: page.locator('svg') }).last();
-    await actionsButton.click();
-
-    // Click delete in dropdown (exact match: there is also a "Hard Delete" item)
-    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+    // Open actions menu on first row and click Delete
+    // (clickMenuItem is exact-matched: there is also a "Hard Delete" item)
+    await managementPage.openFirstRowActionsMenu();
+    await managementPage.clickMenuItem('Delete');
 
     // Confirm dialog should appear
     const dialog = page.locator('[role="dialog"]');
@@ -66,9 +63,9 @@ test.describe('User - Delete', () => {
     await managementPage.search(userData.username);
     await managementPage.waitForTableData();
 
-    // Open delete dialog (exact match: there is also a "Hard Delete" item)
+    // Open delete dialog (clickMenuItem is exact-matched: there is also a "Hard Delete" item)
     await managementPage.openActionsMenu(userData.username);
-    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+    await managementPage.clickMenuItem('Delete');
 
     // Cancel
     const dialog = page.locator('[role="dialog"]');

@@ -28,7 +28,8 @@ export class ClusterEditPage extends BasePage {
 
   async gotoEdit(id: string) {
     await super.goto(`/clusters/${id}/edit`);
-    await this.page.waitForTimeout(1_000); // Wait for data load
+    await this.page.waitForSelector('form', { timeout: 10_000 });
+    await this.waitForNetworkQuiet(); // record fetch settled (incl. StrictMode double-fetch)
   }
 
   async fillForm(data: {

@@ -39,13 +39,9 @@ test.describe('Business Unit - Delete', () => {
     await managementPage.goto();
     await managementPage.waitForTableData();
 
-    // Open actions menu on first row
-    const firstRow = page.locator('table tbody tr').first();
-    const actionsButton = firstRow.locator('button').filter({ has: page.locator('svg') }).last();
-    await actionsButton.click();
-
-    // Click delete in dropdown
-    await page.click('text=Delete');
+    // Open actions menu on first row and click Delete
+    await managementPage.openFirstRowActionsMenu();
+    await managementPage.clickMenuItem('Delete');
 
     // Confirm dialog should appear
     const dialog = page.locator('[role="dialog"]');
@@ -72,7 +68,7 @@ test.describe('Business Unit - Delete', () => {
 
     // Open delete dialog
     await managementPage.openActionsMenu(buData.code);
-    await page.click('text=Delete');
+    await managementPage.clickMenuItem('Delete');
 
     // Cancel
     const dialog = page.locator('[role="dialog"]');

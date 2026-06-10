@@ -78,7 +78,8 @@ export class BusinessUnitEditPage extends BasePage {
 
   async gotoEdit(id: string) {
     await super.goto(`/business-units/${id}/edit`);
-    await this.page.waitForTimeout(1_000);
+    await this.page.waitForSelector('form', { timeout: 10_000 });
+    await this.waitForNetworkQuiet(); // record fetch settled (incl. StrictMode double-fetch)
   }
 
   /** Select the first available cluster */
