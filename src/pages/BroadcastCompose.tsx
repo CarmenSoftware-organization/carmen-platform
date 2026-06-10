@@ -12,6 +12,7 @@ import { UserMultiSelect } from '../components/UserMultiSelect';
 import { Megaphone, Send, Loader2, Calendar, Globe, Users, Building2, Code, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import Can from '../components/Can';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import broadcastService from '../services/broadcastService';
@@ -466,14 +467,16 @@ const BroadcastCompose: React.FC = () => {
               <Button variant="outline" type="button" onClick={handleReset} disabled={sending}>
                 Reset
               </Button>
-              <Button type="button" onClick={handleSend} disabled={sending}>
-                {sending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="mr-2 h-4 w-4" />
-                )}
-                {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
-              </Button>
+              <Can permission="broadcast.send">
+                <Button type="button" onClick={handleSend} disabled={sending}>
+                  {sending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
+                </Button>
+              </Can>
             </div>
           </CardContent>
         </Card>

@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { ChipInput } from '../components/ui/chip-input';
+import Can from '../components/Can';
 import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
@@ -226,10 +227,12 @@ const ApplicationEdit: React.FC = () => {
             </p>
           </div>
           {!isNew && !editing && (
-            <Button variant="outline" size="sm" onClick={handleEditToggle}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            <Can permission="application.update">
+              <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </Can>
           )}
         </div>
 

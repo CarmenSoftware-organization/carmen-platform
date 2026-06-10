@@ -526,10 +526,12 @@ const UserEdit: React.FC = () => {
                 <KeyRound className="mr-2 h-4 w-4" />
                 Change Password
               </Button>
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
+              <Can permission="user.update">
+                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </Can>
             </div>
           )}
         </div>

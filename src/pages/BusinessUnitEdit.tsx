@@ -15,6 +15,7 @@ import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, 
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
+import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -698,10 +699,12 @@ const BusinessUnitEdit: React.FC = () => {
             </p>
           </div>
           {!isNew && !editing && (
-            <Button variant="outline" size="sm" onClick={handleEditToggle}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            <Can permission="cluster.update" clusterId={formData.cluster_id || undefined}>
+              <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </Can>
           )}
         </div>
 
