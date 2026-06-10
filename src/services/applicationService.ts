@@ -1,6 +1,7 @@
 import api from './api';
 import QueryParams from '../utils/QueryParams';
-import type { PaginateParams, Application, ApplicationWritePayload, ApiListResponse } from '../types';
+import type { PaginateParams, Application, ApplicationWritePayload, ApiListResponse, ApiCatalogGroup } from '../types';
+import { groupApiNames } from '../utils/apiCatalog';
 
 const defaultSearchFields = ['name', 'description'];
 
@@ -27,6 +28,15 @@ const toWritePayload = (data: {
   return payload;
 };
 
+// Runtime guard for a catalog group from an untrusted API response: both fields
+// present and correctly typed (including every api_name being a string).
+const isApiCatalogGroup = (g: unknown): g is ApiCatalogGroup =>
+  typeof g === 'object' &&
+  g !== null &&
+  typeof (g as ApiCatalogGroup).module === 'string' &&
+  Array.isArray((g as ApiCatalogGroup).api_names) &&
+  (g as ApiCatalogGroup).api_names.every((n: unknown) => typeof n === 'string');
+
 const applicationService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<Application>> => {
     const q = new QueryParams(
@@ -49,13 +59,27 @@ const applicationService = {
   },
 
   // Catalog of selectable api_name values. The endpoint returns
-  // { api_names: string[] } (optionally inside the standard { data } envelope).
-  // Tolerate a bare string[] too, just in case.
-  getApiCatalog: async (): Promise<string[]> => {
+  // { api_names: string[], groups?: { module, api_names }[] } (optionally inside the
+  // standard { data } envelope). Tolerate a bare string[] too. When the backend has
+  // not yet been redeployed with `groups`, derive the same grouping client-side from
+  // api_names (identical split rule), so the UI works regardless of deploy order.
+  getApiCatalog: async (): Promise<{ groups: ApiCatalogGroup[]; api_names: string[] }> => {
     const response = await api.get('/api-system/applications/api-catalog');
     const body = response.data?.data ?? response.data;
-    const names = Array.isArray(body) ? body : body?.api_names;
-    return Array.isArray(names) ? names : [];
+
+    const api_names: string[] = Array.isArray(body)
+      ? body
+      : Array.isArray(body?.api_names)
+        ? body.api_names
+        : [];
+
+    const rawGroups = body?.groups;
+    const validGroups: ApiCatalogGroup[] =
+      Array.isArray(rawGroups) && rawGroups.every(isApiCatalogGroup)
+        ? (rawGroups as ApiCatalogGroup[])
+        : groupApiNames(api_names);
+
+    return { groups: validGroups, api_names };
   },
 
   create: async (data: Parameters<typeof toWritePayload>[0]) => {
