@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
+import userRoleService from "../services/userRoleService";
 import { getErrorDetail } from '../utils/errorParser';
 
 import { Button } from "../components/ui/button";
@@ -11,7 +12,7 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Search, Code, Copy, Check, Filter, X, Users, Download } from "lucide-react";
+import { Search, Code, Copy, Check, Filter, X, Users, Download, Loader2 } from "lucide-react";
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
@@ -74,6 +75,9 @@ const UserPlatformManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  // Platform-role assignment count per visible user, fetched per-row (N+1) after
+  // the page loads. undefined => still loading for that user.
+  const [rolesCount, setRolesCount] = useState<Record<string, number>>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -118,6 +122,15 @@ const UserPlatformManagement: React.FC = () => {
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
+      // Fetch platform-role assignment counts per row in the background (N+1;
+      // page size is small). The table renders immediately; counts fill in.
+      setRolesCount({});
+      void Promise.all(
+        items.map(async (u) => {
+          try { return [u.id, (await userRoleService.list(u.id)).length] as const; }
+          catch { return [u.id, 0] as const; }
+        }),
+      ).then((pairs) => setRolesCount(Object.fromEntries(pairs)));
     } catch (err: unknown) {
       const msg = "Failed to load users: " + getErrorDetail(err);
       setError(msg);
@@ -231,6 +244,17 @@ const UserPlatformManagement: React.FC = () => {
         ),
       },
       {
+        id: "roles_count",
+        header: "Roles",
+        enableSorting: false,
+        meta: { cellClassName: 'text-center' },
+        cell: ({ row }) => {
+          const c = rolesCount[row.original.id];
+          if (c === undefined) return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground mx-auto" />;
+          return <Badge variant="secondary">{c}</Badge>;
+        },
+      },
+      {
         accessorKey: "created_at",
         id: "created_at",
         header: "Created",
@@ -260,7 +284,7 @@ const UserPlatformManagement: React.FC = () => {
         },
       },
     ],
-    [navigate],
+    [navigate, rolesCount],
   );
 
   return (
@@ -383,7 +407,7 @@ const UserPlatformManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && users.length === 0 ? (
-                  <TableSkeleton columns={6} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
