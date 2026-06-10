@@ -27,6 +27,16 @@ const fmt = (v?: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
+// Descend through nested `{ data: ... }` envelopes until the array is found.
+// The super-admins endpoint nests deeper than the usual one-level convention.
+const extractArray = <T,>(body: unknown): T[] => {
+  let cur: unknown = body;
+  while (cur && !Array.isArray(cur) && typeof cur === 'object' && 'data' in (cur as Record<string, unknown>)) {
+    cur = (cur as Record<string, unknown>).data;
+  }
+  return Array.isArray(cur) ? (cur as T[]) : [];
+};
+
 const SuperAdminManagement: React.FC = () => {
   const [rows, setRows] = useState<SuperAdminRow[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -51,8 +61,7 @@ const SuperAdminManagement: React.FC = () => {
         superAdminService.list(),
         userService.getAll({ perpage: 200, sort: 'created_at:desc' }),
       ]);
-      const saItems: SuperAdminRow[] = saData.data || saData;
-      setRows(Array.isArray(saItems) ? saItems : []);
+      setRows(extractArray<SuperAdminRow>(saData));
       setRawResponse(saData);
 
       const userItems: User[] = (usersData.data || usersData) as User[];
