@@ -28,7 +28,9 @@ interface RoleRow {
   is_active?: boolean;
   permission_count?: number;
   created_at?: string;
+  created_by_name?: string;
   updated_at?: string;
+  updated_by_name?: string;
 }
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
@@ -99,8 +101,20 @@ const RoleManagement: React.FC = () => {
       setLoading(true);
       const data = await roleService.getAll(params);
       setRawResponse(data);
-      const items = data.data || data;
-      setRoles(Array.isArray(items) ? items : []);
+      const raw = data.data || data;
+      // Timestamps may arrive nested under `audit`; flatten for the date columns
+      // (tolerate the older flat shape too).
+      const items: RoleRow[] = (Array.isArray(raw) ? raw : []).map((item: RoleRow & { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }) => {
+        const audit = item.audit;
+        return {
+          ...item,
+          created_at: item.created_at ?? audit?.created?.at,
+          created_by_name: item.created_by_name ?? audit?.created?.name,
+          updated_at: item.updated_at ?? audit?.updated?.at,
+          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
+        };
+      });
+      setRoles(items);
       setTotalRows(data.paginate?.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
@@ -239,9 +253,15 @@ const RoleManagement: React.FC = () => {
       accessorKey: 'created_at',
       id: 'created_at',
       header: 'Created',
-      cell: ({ row }) => (
-        <span className="text-[11px] leading-tight text-muted-foreground">{fmtDateTime(row.original.created_at)}</span>
-      ),
+      cell: ({ row }) => {
+        const d = row.original;
+        return (
+          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+            <div>{fmtDateTime(d.created_at)}</div>
+            {d.created_by_name && <div>{d.created_by_name}</div>}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'updated_at',
@@ -250,7 +270,12 @@ const RoleManagement: React.FC = () => {
       cell: ({ row }) => {
         const d = row.original;
         if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
-        return <span className="text-[11px] leading-tight text-muted-foreground">{fmtDateTime(d.updated_at)}</span>;
+        return (
+          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+            <div>{fmtDateTime(d.updated_at)}</div>
+            {d.updated_by_name && <div>{d.updated_by_name}</div>}
+          </div>
+        );
       },
     },
     {

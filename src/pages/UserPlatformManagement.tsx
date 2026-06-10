@@ -26,7 +26,9 @@ interface UserRecord {
   name?: string;
   email?: string;
   created_at?: string;
+  created_by_name?: string;
   updated_at?: string;
+  updated_by_name?: string;
 }
 
 const fmtDateTime = (v?: string) => {
@@ -93,11 +95,13 @@ const UserPlatformManagement: React.FC = () => {
       const raw = (data.data || data) as Record<string, unknown>[];
       // Timestamps may arrive flat (created_at) or nested under `audit`; tolerate both.
       const items: UserRecord[] = (Array.isArray(raw) ? raw : []).map((item) => {
-        const audit = (item as { audit?: { created?: { at?: string }; updated?: { at?: string } } }).audit;
+        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }).audit;
         return {
           ...(item as unknown as UserRecord),
           created_at: (item.created_at as string | undefined) ?? audit?.created?.at,
+          created_by_name: (item.created_by_name as string | undefined) ?? audit?.created?.name,
           updated_at: (item.updated_at as string | undefined) ?? audit?.updated?.at,
+          updated_by_name: (item.updated_by_name as string | undefined) ?? audit?.updated?.name,
         };
       });
       setUsers(items);
@@ -220,9 +224,15 @@ const UserPlatformManagement: React.FC = () => {
         accessorKey: "created_at",
         id: "created_at",
         header: "Created",
-        cell: ({ row }) => (
-          <span className="text-[11px] leading-tight text-muted-foreground">{fmtDateTime(row.original.created_at)}</span>
-        ),
+        cell: ({ row }) => {
+          const d = row.original;
+          return (
+            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+              <div>{fmtDateTime(d.created_at)}</div>
+              {d.created_by_name && <div>{d.created_by_name}</div>}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "updated_at",
@@ -231,7 +241,12 @@ const UserPlatformManagement: React.FC = () => {
         cell: ({ row }) => {
           const d = row.original;
           if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
-          return <span className="text-[11px] leading-tight text-muted-foreground">{fmtDateTime(d.updated_at)}</span>;
+          return (
+            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+              <div>{fmtDateTime(d.updated_at)}</div>
+              {d.updated_by_name && <div>{d.updated_by_name}</div>}
+            </div>
+          );
         },
       },
     ],
