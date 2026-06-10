@@ -41,10 +41,11 @@ interface PrivateRouteProps {
   children: React.ReactNode;
   allowedRoles?: string[];
   requiredPermission?: string;
+  requireSuperAdmin?: boolean;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles, requiredPermission }) => {
-  const { isAuthenticated, loading, hasRole, hasPermission } = useAuth();
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles, requiredPermission, requireSuperAdmin }) => {
+  const { isAuthenticated, loading, hasRole, hasPermission, isSuperAdmin } = useAuth();
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -59,6 +60,10 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles, req
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {
+    return <AccessDenied />;
+  }
+
+  if (requireSuperAdmin && !isSuperAdmin) {
     return <AccessDenied />;
   }
 

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 
 interface LayoutProps {
@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout, hasRole, hasPermission } = useAuth();
+  const { user, logout, hasRole, hasPermission, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -56,13 +56,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read' },
     { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read' },
     { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read' },
+    { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true },
     { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send' },
   ];
 
   const navItems = allNavItems.filter(
     (item) =>
       (!item.roles || hasRole(item.roles)) &&
-      (!item.permission || hasPermission(item.permission)),
+      (!item.permission || hasPermission(item.permission)) &&
+      (!item.superAdminOnly || isSuperAdmin),
   );
 
   const getFullName = (): string => {

@@ -13,6 +13,7 @@ export function checkPermission(
   opts?: { clusterId?: string },
 ): boolean {
   if (!eff) return false;
+  if (eff?.is_super_admin) return true;
   if (eff.platform?.includes(key)) return true;
   if (opts?.clusterId) {
     return !!eff.clusters?.[opts.clusterId]?.includes(key);
@@ -37,4 +38,7 @@ export const DEV_MOCK_EFFECTIVE_PERMISSIONS: EffectivePermissions = {
     'role.read', 'role.create', 'role.update', 'role.delete',
   ],
   clusters: {},
+  // Keep false so dev exercises the normal permission path (the explicit platform list
+  // above already grants everything needed; we don't want the bypass to mask bugs).
+  is_super_admin: false,
 };

@@ -61,7 +61,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const applyEffectivePermissions = (eff?: EffectivePermissions | null): EffectivePermissions | null => {
     let value: EffectivePermissions | null = eff ?? null;
-    if ((!value || (value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
+    // Dev-only fallback: grant the mock when the backend returns no permissions —
+    // but NOT for a real super-admin (preserve their is_super_admin flag).
+    if ((!value || (!value.is_super_admin && value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
       value = DEV_MOCK_EFFECTIVE_PERMISSIONS;
     }
     setEffectivePermissions(value);
@@ -128,7 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Permission-based access gate: resolve platform permissions + user count.
       const [eff, count] = await Promise.all([fetchEffectivePermissions(), fetchUserCount()]);
-      const hasAnyPermission = !!eff && (eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
+      const hasAnyPermission = !!eff && (eff.is_super_admin || eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
       const isBootstrap = count !== null && count <= 1; // first-admin escape hatch
       if (!hasAnyPermission && !isBootstrap) {
         // Not authorized for the platform admin — tear down the partial session.
@@ -204,6 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const platformRole = user?.platform_role || null;
+  const isSuperAdmin = !!effectivePermissions?.is_super_admin;
 
   const hasRole = (roles: string[]): boolean => {
     // Allow all access when there are 0 or 1 users (initial setup)
@@ -231,6 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userCount,
     effectivePermissions,
     hasPermission,
+    isSuperAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

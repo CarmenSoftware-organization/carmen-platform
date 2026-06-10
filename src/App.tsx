@@ -29,6 +29,7 @@ const Changelog = lazy(() => import("./pages/Changelog"));
 const RoleManagement = lazy(() => import("./pages/RoleManagement"));
 const RoleEdit = lazy(() => import("./pages/RoleEdit"));
 const PermissionCatalog = lazy(() => import("./pages/PermissionCatalog"));
+const SuperAdminManagement = lazy(() => import("./pages/SuperAdminManagement"));
 
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
@@ -259,6 +260,14 @@ function App() {
               element={
                 <PrivateRoute requiredPermission="role.read">
                   <PermissionCatalog />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/super-admins"
+              element={
+                <PrivateRoute requireSuperAdmin>
+                  <SuperAdminManagement />
                 </PrivateRoute>
               }
             />
