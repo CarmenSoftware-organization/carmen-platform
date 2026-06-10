@@ -32,6 +32,7 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   roles?: string[];
+  permission?: string;
 }
 
 interface UserInfo {

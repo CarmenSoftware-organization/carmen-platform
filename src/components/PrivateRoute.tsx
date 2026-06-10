@@ -40,10 +40,11 @@ const AccessDenied: React.FC = () => {
 interface PrivateRouteProps {
   children: React.ReactNode;
   allowedRoles?: string[];
+  requiredPermission?: string;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, loading, hasRole } = useAuth();
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles, requiredPermission }) => {
+  const { isAuthenticated, loading, hasRole, hasPermission } = useAuth();
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -54,6 +55,10 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles }) =
   }
 
   if (allowedRoles && !hasRole(allowedRoles)) {
+    return <AccessDenied />;
+  }
+
+  if (requiredPermission && !hasPermission(requiredPermission)) {
     return <AccessDenied />;
   }
 

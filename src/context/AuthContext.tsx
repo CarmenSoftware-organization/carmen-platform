@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import userService from '../services/userService';
-import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue } from '../types';
+import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions } from '../types';
+import { checkPermission, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -24,6 +25,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [effectivePermissions, setEffectivePermissions] = useState<EffectivePermissions | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,6 +53,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (storedLoginResponse) {
         setLoginResponse(JSON.parse(storedLoginResponse));
       }
+      const storedEffectivePermissions = localStorage.getItem('effectivePermissions');
+      if (storedEffectivePermissions) {
+        setEffectivePermissions(JSON.parse(storedEffectivePermissions));
+      }
       // Fetch fresh profile to get firstname/middlename/lastname
       fetchProfile();
       fetchUserCount();
@@ -58,6 +64,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const applyEffectivePermissions = (eff?: EffectivePermissions | null) => {
+    let value: EffectivePermissions | null = eff ?? null;
+    if ((!value || (value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
+      value = DEV_MOCK_EFFECTIVE_PERMISSIONS;
+    }
+    setEffectivePermissions(value);
+    if (value) localStorage.setItem('effectivePermissions', JSON.stringify(value));
+    else localStorage.removeItem('effectivePermissions');
+  };
 
   const fetchProfile = async () => {
     try {
@@ -73,6 +89,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       localStorage.setItem('user', JSON.stringify(merged));
       setUser(merged);
+      applyEffectivePermissions((data as { effective_permissions?: EffectivePermissions }).effective_permissions);
     } catch {
       // Profile fetch failed silently — user data from login is still available
     }
@@ -125,6 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
       setLoginResponse(loginData);
+      applyEffectivePermissions(loginData.effective_permissions);
 
       // Fetch full profile to get firstname/middlename/lastname
       fetchProfile();
@@ -170,9 +188,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('loginResponse');
+    localStorage.removeItem('effectivePermissions');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
     setLoginResponse(null);
+    setEffectivePermissions(null);
   };
 
   const platformRole = loginResponse?.platform_role || user?.platform_role || null;
@@ -182,6 +202,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (userCount !== null && userCount <= 1) return true;
     if (!platformRole) return false;
     return roles.includes(platformRole);
+  };
+
+  const hasPermission = (key: string, opts?: { clusterId?: string }): boolean => {
+    // Same bootstrap escape hatch as hasRole: 0–1 users => allow everything.
+    if (userCount !== null && userCount <= 1) return true;
+    return checkPermission(effectivePermissions, key, opts);
   };
 
   const value: AuthContextValue = {
@@ -194,7 +220,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loginResponse,
     platformRole,
     hasRole,
-    userCount
+    userCount,
+    effectivePermissions,
+    hasPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

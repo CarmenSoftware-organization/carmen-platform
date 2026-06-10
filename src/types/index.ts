@@ -153,6 +153,7 @@ export interface User {
   business_unit?: BusinessUnit[];
   created_at?: string;
   updated_at?: string;
+  effective_permissions?: EffectivePermissions;
 }
 
 // Row returned by GET /api-system/user/clusters/:clusterId — a tb_cluster_user
@@ -178,12 +179,43 @@ export interface ClusterUser {
   updated_at?: string;
 }
 
+export type Scope = { type: 'platform' } | { type: 'cluster'; cluster_id: string };
+
+export interface EffectivePermissions {
+  platform: string[];                    // permission keys "resource.action"
+  clusters: Record<string, string[]>;    // clusterId -> permission keys
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+  permissions: string[];                 // permission keys
+}
+
+export interface PermissionCatalogItem {
+  key: string;                           // "resource.action"
+  resource: string;
+  action: string;
+  description?: string;
+}
+
+export interface UserRoleAssignment {
+  id: string;
+  user_id: string;
+  role_id: string;
+  role_name?: string;
+  scope: Scope;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;
   expires_in?: number;
   token_type?: string;
   platform_role?: string;
+  effective_permissions?: EffectivePermissions;
 }
 
 export interface LoginResult {
@@ -202,6 +234,8 @@ export interface AuthContextValue {
   platformRole: string | null;
   hasRole: (roles: string[]) => boolean;
   userCount: number | null;
+  effectivePermissions: EffectivePermissions | null;
+  hasPermission: (key: string, opts?: { clusterId?: string }) => boolean;
 }
 
 export interface LoginCredentials {

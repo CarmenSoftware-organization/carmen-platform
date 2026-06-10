@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout, hasRole, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -58,7 +58,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, roles: ['platform_admin', 'support_manager'] },
   ];
 
-  const navItems = allNavItems.filter(item => !item.roles || hasRole(item.roles));
+  const navItems = allNavItems.filter(
+    (item) =>
+      (!item.roles || hasRole(item.roles)) &&
+      (!item.permission || hasPermission(item.permission)),
+  );
 
   const getFullName = (): string => {
     const info = user?.user_info;
