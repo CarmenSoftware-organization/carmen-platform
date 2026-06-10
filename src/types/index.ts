@@ -56,6 +56,13 @@ export interface Application {
   updated_by_name?: string;
 }
 
+// A module group of api_names, e.g. { module: 'cluster', api_names: ['cluster.create', ...] }.
+// Returned by the api-catalog endpoint (or derived client-side from a flat api_names list).
+export interface ApiCatalogGroup {
+  module: string;
+  api_names: string[];
+}
+
 // Write payload for create/update. The backend is asymmetric to the read model:
 // selected api_names are sent through details.add[]. Update uses replace semantics
 // (send the full desired set).
