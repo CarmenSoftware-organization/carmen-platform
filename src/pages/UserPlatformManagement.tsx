@@ -25,7 +25,18 @@ interface UserRecord {
   username?: string;
   name?: string;
   email?: string;
+  created_at?: string;
+  created_by_name?: string;
+  updated_at?: string;
+  updated_by_name?: string;
 }
+
+const fmtDateTime = (v?: string) => {
+  if (!v) return '-';
+  const d = new Date(v);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -81,8 +92,19 @@ const UserPlatformManagement: React.FC = () => {
       setLoading(true);
       const data = (await userService.getAll(params)) as unknown as Record<string, unknown>;
       setRawResponse(data);
-      const items = (data.data || data) as UserRecord[];
-      setUsers(Array.isArray(items) ? items : []);
+      const raw = (data.data || data) as Record<string, unknown>[];
+      // Timestamps may arrive flat (created_at) or nested under `audit`; tolerate both.
+      const items: UserRecord[] = (Array.isArray(raw) ? raw : []).map((item) => {
+        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }).audit;
+        return {
+          ...(item as unknown as UserRecord),
+          created_at: (item.created_at as string | undefined) ?? audit?.created?.at,
+          created_by_name: (item.created_by_name as string | undefined) ?? audit?.created?.name,
+          updated_at: (item.updated_at as string | undefined) ?? audit?.updated?.at,
+          updated_by_name: (item.updated_by_name as string | undefined) ?? audit?.updated?.name,
+        };
+      });
+      setUsers(items);
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
@@ -197,6 +219,35 @@ const UserPlatformManagement: React.FC = () => {
             {row.original.is_active ? "Active" : "Inactive"}
           </Badge>
         ),
+      },
+      {
+        accessorKey: "created_at",
+        id: "created_at",
+        header: "Created",
+        cell: ({ row }) => {
+          const d = row.original;
+          return (
+            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+              <div>{fmtDateTime(d.created_at)}</div>
+              {d.created_by_name && <div>{d.created_by_name}</div>}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "updated_at",
+        id: "updated_at",
+        header: "Updated",
+        cell: ({ row }) => {
+          const d = row.original;
+          if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
+          return (
+            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+              <div>{fmtDateTime(d.updated_at)}</div>
+              {d.updated_by_name && <div>{d.updated_by_name}</div>}
+            </div>
+          );
+        },
       },
     ],
     [navigate],
@@ -322,7 +373,7 @@ const UserPlatformManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && users.length === 0 ? (
-                  <TableSkeleton columns={4} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={6} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (

@@ -30,6 +30,13 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const fmtDateTime = (v?: string) => {
+  if (!v) return '-';
+  const d = new Date(v);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+
 const ApplicationManagement: React.FC = () => {
   const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -79,8 +86,20 @@ const ApplicationManagement: React.FC = () => {
       setLoading(true);
       const data = await applicationService.getAll(params);
       setRawResponse(data);
-      const items = data.data || data;
-      setApplications(Array.isArray(items) ? items : []);
+      const raw = data.data || data;
+      // Timestamps arrive nested under `audit`; flatten for the date columns
+      // (tolerate the older flat shape too).
+      const items: Application[] = (Array.isArray(raw) ? raw : []).map((item) => {
+        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }).audit;
+        return {
+          ...item,
+          created_at: item.created_at ?? audit?.created?.at,
+          created_by_name: item.created_by_name ?? audit?.created?.name,
+          updated_at: item.updated_at ?? audit?.updated?.at,
+          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
+        };
+      });
+      setApplications(items);
       setTotalRows(data.paginate?.total ?? (data as { total?: number }).total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
@@ -219,6 +238,35 @@ const ApplicationManagement: React.FC = () => {
           {row.original.is_active ? 'Active' : 'Inactive'}
         </Badge>
       ),
+    },
+    {
+      accessorKey: 'created_at',
+      id: 'created_at',
+      header: 'Created',
+      cell: ({ row }) => {
+        const d = row.original;
+        return (
+          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+            <div>{fmtDateTime(d.created_at)}</div>
+            {d.created_by_name && <div>{d.created_by_name}</div>}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: 'updated_at',
+      id: 'updated_at',
+      header: 'Updated',
+      cell: ({ row }) => {
+        const d = row.original;
+        if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
+        return (
+          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
+            <div>{fmtDateTime(d.updated_at)}</div>
+            {d.updated_by_name && <div>{d.updated_by_name}</div>}
+          </div>
+        );
+      },
     },
     {
       id: 'actions',
@@ -380,7 +428,7 @@ const ApplicationManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && applications.length === 0 ? (
-                  <TableSkeleton columns={5} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (

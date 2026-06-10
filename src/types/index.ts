@@ -50,6 +50,10 @@ export interface Application {
   is_active?: boolean;
   allow_all?: boolean;
   api_names?: string[]; // read model (flat list of api_name strings)
+  created_at?: string;
+  created_by_name?: string;
+  updated_at?: string;
+  updated_by_name?: string;
 }
 
 // Write payload for create/update. The backend is asymmetric to the read model:
