@@ -49,7 +49,6 @@ interface UserRecord {
   lastname?: string;
   created_at?: string;
   created_by_name?: string;
-  platform_role?: string;
   updated_at?: string;
   updated_by_name?: string;
   deleted_at?: string;
@@ -64,16 +63,6 @@ const getInitials = (record: UserRecord): string => {
   const base = (record.name || record.username || record.email || "").trim();
   return base ? base.slice(0, 2).toUpperCase() : "?";
 };
-
-const PLATFORM_ROLES = [
-  "super_admin",
-  "platform_admin",
-  "support_manager",
-  "support_staff",
-  "security_officer",
-  "integration_developer",
-  "user",
-];
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -92,13 +81,11 @@ const UserManagement: React.FC = () => {
   const [error, setError] = useState("");
 
   const storedSearch = localStorage.getItem('search_users') || '';
-  const storedRoleFilters = getStoredJSON<string[]>('role_filters_users', []);
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_users', []);
   const storedPage = Number(localStorage.getItem('page_users')) || 1;
   const storedSort = localStorage.getItem('sort_users') || '';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
-  const [roleFilter, setRoleFilter] = useState<string[]>(storedRoleFilters);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedStatusFilters);
   const [showDeleted, setShowDeleted] = useState<boolean>(getStoredJSON<boolean>('filter_users_deleted', false));
   const [showFilters, setShowFilters] = useState(false);
@@ -117,7 +104,6 @@ const UserManagement: React.FC = () => {
 
   const buildInitialAdvance = () => {
     const where: Record<string, unknown> = {};
-    if (storedRoleFilters.length > 0) where.platform_role = { in: storedRoleFilters };
     if (storedStatusFilters.length === 1) where.is_active = storedStatusFilters[0] === "true";
     if (!getStoredJSON<boolean>('filter_users_deleted', false)) where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
@@ -191,29 +177,11 @@ const UserManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev, page, perpage }));
   };
 
-  const buildAdvance = (roles: string[], statuses: string[], includeDeleted: boolean) => {
+  const buildAdvance = (statuses: string[], includeDeleted: boolean) => {
     const where: Record<string, unknown> = {};
-    if (roles.length > 0) where.platform_role = { in: roles };
     if (statuses.length === 1) where.is_active = statuses[0] === "true";
     if (!includeDeleted) where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
-  };
-
-  const handleRoleFilter = (role: string) => {
-    const next = roleFilter.includes(role)
-      ? roleFilter.filter((r) => r !== role)
-      : [...roleFilter, role];
-    setRoleFilter(next);
-    localStorage.setItem('role_filters_users', JSON.stringify(next));
-    localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, statusFilter, showDeleted), filter: {} }));
-  };
-
-  const handleClearRoleFilter = () => {
-    setRoleFilter([]);
-    localStorage.setItem('role_filters_users', JSON.stringify([]));
-    localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], statusFilter, showDeleted), filter: {} }));
   };
 
   const handleStatusFilter = (status: string) => {
@@ -223,14 +191,14 @@ const UserManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('status_filters_users', JSON.stringify(next));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, next, showDeleted), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, showDeleted), filter: {} }));
   };
 
   const handleClearStatusFilter = () => {
     setStatusFilter([]);
     localStorage.setItem('status_filters_users', JSON.stringify([]));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, [], showDeleted), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], showDeleted), filter: {} }));
   };
 
   const handleShowDeletedToggle = () => {
@@ -238,21 +206,19 @@ const UserManagement: React.FC = () => {
     setShowDeleted(next);
     localStorage.setItem('filter_users_deleted', JSON.stringify(next));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, statusFilter, next), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
-    setRoleFilter([]);
     setStatusFilter([]);
     setShowDeleted(false);
-    localStorage.setItem('role_filters_users', JSON.stringify([]));
     localStorage.setItem('status_filters_users', JSON.stringify([]));
     localStorage.setItem('filter_users_deleted', JSON.stringify(false));
     localStorage.setItem('page_users', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], [], false), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], false), filter: {} }));
   };
 
-  const activeFilterCount = (roleFilter.length > 0 ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_users', sort);
@@ -300,7 +266,6 @@ const UserManagement: React.FC = () => {
     const csv = generateCSV(users, [
       { key: 'username', label: 'Username' },
       { key: 'email', label: 'Email' },
-      { key: 'platform_role', label: 'Role' },
       { key: 'is_active', label: 'Status' },
       { key: 'created_at', label: 'Created' },
     ]);
@@ -383,15 +348,6 @@ const UserManagement: React.FC = () => {
         cell: ({ row }) => row.original.email || "-",
       },
 
-      {
-        accessorKey: "platform_role",
-        header: "Role",
-        cell: ({ row }) => (
-          <Badge variant="outline" className="capitalize">
-            {row.original.platform_role || "-"}
-          </Badge>
-        ),
-      },
       {
         id: "bu_count",
         header: "BU",
@@ -577,30 +533,9 @@ const UserManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter users by role and status</SheetDescription>
+                    <SheetDescription>Filter users by status</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Role</span>
-                        {roleFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearRoleFilter}>Clear</Button>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {PLATFORM_ROLES.map((role) => (
-                          <Button
-                            key={role}
-                            variant={roleFilter.includes(role) ? "default" : "outline"}
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => handleRoleFilter(role)}
-                          >
-                            {role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
@@ -654,14 +589,6 @@ const UserManagement: React.FC = () => {
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Filters:</span>
-                {roleFilter.map((role) => (
-                  <Badge key={role} variant="secondary" className="text-xs gap-1 pr-1">
-                    {role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                    <button onClick={() => handleRoleFilter(role)} className="ml-0.5 hover:text-foreground">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}

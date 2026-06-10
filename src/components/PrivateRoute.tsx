@@ -8,7 +8,6 @@ import { ShieldX, ArrowLeft } from 'lucide-react';
 
 const AccessDenied: React.FC = () => {
   const navigate = useNavigate();
-  const { platformRole } = useAuth();
 
   return (
     <Layout>
@@ -24,7 +23,7 @@ const AccessDenied: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
-              Your role <span className="font-semibold text-foreground">"{platformRole}"</span> does not have permission to access this page.
+              You don't have permission to access this page.
             </p>
             <Button onClick={() => navigate('/dashboard')} variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -39,13 +38,12 @@ const AccessDenied: React.FC = () => {
 
 interface PrivateRouteProps {
   children: React.ReactNode;
-  allowedRoles?: string[];
   requiredPermission?: string;
   requireSuperAdmin?: boolean;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles, requiredPermission, requireSuperAdmin }) => {
-  const { isAuthenticated, loading, hasRole, hasPermission, isSuperAdmin } = useAuth();
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermission, requireSuperAdmin }) => {
+  const { isAuthenticated, loading, hasPermission, isSuperAdmin } = useAuth();
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -53,10 +51,6 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, allowedRoles, req
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (allowedRoles && !hasRole(allowedRoles)) {
-    return <AccessDenied />;
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {

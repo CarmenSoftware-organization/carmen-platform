@@ -143,7 +143,6 @@ export interface User {
   email: string;
   role?: string;
   status?: string;
-  platform_role?: string;
   alias_name?: string;
   firstname?: string;
   middlename?: string;
@@ -164,7 +163,6 @@ export interface ClusterUser {
   cluster_id?: string;
   parent_bu_id?: string | null;
   role?: string;
-  platform_role?: string;
   is_active?: boolean;
   username?: string;
   email?: string;
@@ -229,8 +227,6 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   loading: boolean;
   loginResponse: LoginResponse | null;
-  platformRole: string | null;
-  hasRole: (roles: string[]) => boolean;
   userCount: number | null;
   effectivePermissions: EffectivePermissions | null;
   hasPermission: (key: string, opts?: { clusterId?: string }) => boolean;

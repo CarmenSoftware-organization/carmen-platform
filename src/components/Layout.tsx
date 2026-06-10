@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout, hasRole, hasPermission, isSuperAdmin } = useAuth();
+  const { user, logout, hasPermission, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -65,7 +65,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = allNavItems.filter(
     (item) =>
-      (!item.roles || hasRole(item.roles)) &&
       (!item.permission || hasPermission(item.permission)) &&
       (!item.superAdminOnly || isSuperAdmin),
   );

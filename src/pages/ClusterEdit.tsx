@@ -795,7 +795,6 @@ const ClusterEdit: React.FC = () => {
                         <th className="text-left font-medium px-4 py-2">Name</th>
                         <th className="text-left font-medium px-4 py-2">Email</th>
                         <th className="text-left font-medium px-4 py-2">Parent Business Unit</th>
-                        <th className="text-left font-medium px-4 py-2">Platform Role</th>
                         <th className="text-center font-medium px-4 py-2">Status</th>
                         <th className="w-10"></th>
                       </tr>
@@ -824,13 +823,6 @@ const ClusterEdit: React.FC = () => {
                                 <span className="text-muted-foreground text-xs">-</span>
                               );
                             })()}
-                          </td>
-                          <td className="px-4 py-2">
-                            {user.platform_role ? (
-                              <Badge variant="outline" className="text-xs">{user.platform_role}</Badge>
-                            ) : user.role ? (
-                              <Badge variant="outline" className="text-xs">{user.role}</Badge>
-                            ) : null}
                           </td>
                           <td className="px-4 py-2 text-center">
                             <Badge variant={user.is_active !== false ? 'success' : 'secondary'} className="text-xs">

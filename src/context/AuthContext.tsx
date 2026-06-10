@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       setLoginResponse(loginData);
 
-      // Load full profile (firstname/.../platform_role) in the background.
+      // Load full profile (firstname/lastname/etc.) in the background.
       fetchProfile();
 
       return { success: true };
@@ -205,18 +205,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setEffectivePermissions(null);
   };
 
-  const platformRole = user?.platform_role || null;
   const isSuperAdmin = !!effectivePermissions?.is_super_admin;
 
-  const hasRole = (roles: string[]): boolean => {
-    // Allow all access when there are 0 or 1 users (initial setup)
-    if (userCount !== null && userCount <= 1) return true;
-    if (!platformRole) return false;
-    return roles.includes(platformRole);
-  };
-
   const hasPermission = (key: string, opts?: { clusterId?: string }): boolean => {
-    // Same bootstrap escape hatch as hasRole: 0–1 users => allow everything.
+    // Bootstrap escape hatch: 0–1 users => allow everything.
     if (userCount !== null && userCount <= 1) return true;
     return checkPermission(effectivePermissions, key, opts);
   };
@@ -229,8 +221,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     loading,
     loginResponse,
-    platformRole,
-    hasRole,
     userCount,
     effectivePermissions,
     hasPermission,
