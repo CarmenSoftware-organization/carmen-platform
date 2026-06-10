@@ -56,10 +56,10 @@ test.describe('Profile - Edit', () => {
     await profilePage.clickEdit();
     await profilePage.expectEditMode();
 
-    // Email should be disabled or read-only
-    const emailDisabled = await profilePage.emailInput.isDisabled().catch(() => false);
-    const emailReadonly = await profilePage.emailInput.getAttribute('readonly').catch(() => null);
-    expect(emailDisabled || emailReadonly !== null).toBeTruthy();
+    // Email is now rendered as a read-only display div (no input) even in
+    // edit mode, so there must be no editable #email field at all
+    await expect(profilePage.emailInput).toHaveCount(0);
+    await expect(page.getByText('Email Address')).toBeVisible();
   });
 
   test('should preserve unsaved changes warning', async ({ page }) => {
@@ -71,11 +71,18 @@ test.describe('Profile - Edit', () => {
     });
 
     // Try to navigate away - browser should warn
+    let warned = false;
     page.on('dialog', async (dialog) => {
+      warned = true;
       expect(dialog.type()).toBe('beforeunload');
       await dialog.dismiss();
     });
 
-    await page.goto('/dashboard');
+    // Dismissing the beforeunload dialog aborts the navigation, which makes
+    // page.goto reject with net::ERR_ABORTED — that is the expected outcome
+    await page.goto('/dashboard').catch(() => {});
+
+    expect(warned).toBeTruthy();
+    await expect(page).toHaveURL(/\/profile/);
   });
 });
