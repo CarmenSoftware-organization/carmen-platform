@@ -31,7 +31,6 @@ export interface NavItem {
   path: string;
   label: string;
   icon: LucideIcon;
-  roles?: string[];
   permission?: string;
   superAdminOnly?: boolean;
   group?: string;

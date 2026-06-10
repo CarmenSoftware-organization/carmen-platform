@@ -60,20 +60,9 @@ interface ClusterBU {
 
 const BU_ROLES = ['admin', 'user'] as const;
 
-const PLATFORM_ROLES = [
-  'super_admin',
-  'platform_admin',
-  'support_manager',
-  'support_staff',
-  'security_officer',
-  'integration_developer',
-  'user',
-] as const;
-
 interface UserFormData extends Record<string, unknown> {
   username: string;
   email: string;
-  platform_role: string;
   alias_name: string;
   firstname: string;
   middlename: string;
@@ -89,7 +78,6 @@ const UserEdit: React.FC = () => {
   const [formData, setFormData] = useState<UserFormData>({
     username: "",
     email: "",
-    platform_role: "user",
     alias_name: "",
     firstname: "",
     middlename: "",
@@ -207,7 +195,6 @@ const UserEdit: React.FC = () => {
       const loaded: UserFormData = {
         username: user.username || "",
         email: user.email || "",
-        platform_role: user.platform_role || "user",
         alias_name: profile.alias_name || user.alias_name || "",
         firstname: profile.firstname || user.firstname || "",
         middlename: profile.middlename || user.middlename || "",
@@ -603,31 +590,6 @@ const UserEdit: React.FC = () => {
                   ) : (
                     <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
                       {formData.email || "-"}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="platform_role">Platform Role {editing && "*"}</Label>
-                  {editing ? (
-                    <select
-                      id="platform_role"
-                      name="platform_role"
-                      value={formData.platform_role}
-                      onChange={handleChange}
-                      className={selectClassName}
-                    >
-                      {PLATFORM_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {formData.platform_role?.replace(/_/g, ' ') || "-"}
-                      </Badge>
                     </div>
                   )}
                 </div>

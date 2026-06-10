@@ -95,8 +95,8 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
 }
 
 const BroadcastCompose: React.FC = () => {
-  const { hasRole } = useAuth();
-  const canSendSystem = hasRole(['platform_admin']);
+  const { hasPermission } = useAuth();
+  const canSendSystem = hasPermission('broadcast.send');
 
   const defaultMode: BroadcastTargetMode = canSendSystem ? 'system_all' : 'bu';
   const [targetMode, setTargetMode] = useState<BroadcastTargetMode>(defaultMode);

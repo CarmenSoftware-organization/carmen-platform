@@ -388,9 +388,9 @@ const Profile: React.FC = () => {
                 {profile?.email && (
                   <p className="text-sm text-muted-foreground">{profile.email}</p>
                 )}
-                {(profile?.platform_role || profile?.role) && (
+                {profile?.role && (
                   <Badge variant="secondary" className="capitalize">
-                    {profile?.platform_role || profile?.role}
+                    {profile.role}
                   </Badge>
                 )}
               </div>

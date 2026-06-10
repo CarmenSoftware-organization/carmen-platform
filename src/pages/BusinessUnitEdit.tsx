@@ -44,7 +44,6 @@ interface BUUser {
   is_active: boolean;
   username: string | null;
   email: string | null;
-  platform_role: string | null;
   user_is_active: boolean | null;
   firstname: string | null;
   middlename: string | null;
@@ -1543,7 +1542,6 @@ const BusinessUnitEdit: React.FC = () => {
                         <th className="text-left font-medium px-4 py-2">Email</th>
                         <th className="text-left font-medium px-4 py-2">Username</th>
                         <th className="text-left font-medium px-4 py-2">BU Role</th>
-                        <th className="text-left font-medium px-4 py-2">Platform Role</th>
                         <th className="text-center font-medium px-4 py-2">BU Status</th>
                         <th className="w-10"></th>
                       </tr>
@@ -1573,11 +1571,6 @@ const BusinessUnitEdit: React.FC = () => {
                           <td className="px-4 py-2">
                             <Badge variant="outline" className="capitalize text-xs">
                               {u.role || '-'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2">
-                            <Badge variant="outline" className="capitalize text-xs">
-                              {u.platform_role?.replace(/_/g, ' ') || '-'}
                             </Badge>
                           </td>
                           <td className="px-4 py-2 text-center">
