@@ -57,7 +57,7 @@ function App() {
             <Route
               path="/clusters"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="cluster.read">
                   <ClusterManagement />
                 </PrivateRoute>
               }
@@ -65,7 +65,7 @@ function App() {
             <Route
               path="/clusters/new"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="cluster.create">
                   <ClusterEdit />
                 </PrivateRoute>
               }
@@ -73,7 +73,7 @@ function App() {
             <Route
               path="/clusters/:id/edit"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="cluster.update">
                   <ClusterEdit />
                 </PrivateRoute>
               }
@@ -81,7 +81,7 @@ function App() {
             <Route
               path="/applications"
               element={
-                <PrivateRoute allowedRoles={["platform_admin"]}>
+                <PrivateRoute requiredPermission="application.read">
                   <ApplicationManagement />
                 </PrivateRoute>
               }
@@ -89,7 +89,7 @@ function App() {
             <Route
               path="/applications/new"
               element={
-                <PrivateRoute allowedRoles={["platform_admin"]}>
+                <PrivateRoute requiredPermission="application.create">
                   <ApplicationEdit />
                 </PrivateRoute>
               }
@@ -97,7 +97,7 @@ function App() {
             <Route
               path="/applications/:id/edit"
               element={
-                <PrivateRoute allowedRoles={["platform_admin"]}>
+                <PrivateRoute requiredPermission="application.update">
                   <ApplicationEdit />
                 </PrivateRoute>
               }
@@ -105,7 +105,7 @@ function App() {
             <Route
               path="/business-units"
               element={
-                <PrivateRoute>
+                <PrivateRoute requiredPermission="cluster.read">
                   <BusinessUnitManagement />
                 </PrivateRoute>
               }
@@ -113,7 +113,7 @@ function App() {
             <Route
               path="/business-units/new"
               element={
-                <PrivateRoute>
+                <PrivateRoute requiredPermission="cluster.create">
                   <BusinessUnitEdit />
                 </PrivateRoute>
               }
@@ -121,7 +121,7 @@ function App() {
             <Route
               path="/business-units/:id/edit"
               element={
-                <PrivateRoute>
+                <PrivateRoute requiredPermission="cluster.update">
                   <BusinessUnitEdit />
                 </PrivateRoute>
               }
@@ -129,7 +129,7 @@ function App() {
             <Route
               path="/users"
               element={
-                <PrivateRoute>
+                <PrivateRoute requiredPermission="user.read">
                   <UserManagement />
                 </PrivateRoute>
               }
@@ -137,7 +137,7 @@ function App() {
             <Route
               path="/users/new"
               element={
-                <PrivateRoute>
+                <PrivateRoute requiredPermission="user.create">
                   <UserEdit />
                 </PrivateRoute>
               }
@@ -145,7 +145,7 @@ function App() {
             <Route
               path="/users/:id/edit"
               element={
-                <PrivateRoute>
+                <PrivateRoute requiredPermission="user.update">
                   <UserEdit />
                 </PrivateRoute>
               }
@@ -153,7 +153,7 @@ function App() {
             <Route
               path="/report-templates"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="report_template.read">
                   <ReportTemplateManagement />
                 </PrivateRoute>
               }
@@ -161,7 +161,7 @@ function App() {
             <Route
               path="/report-templates/new"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="report_template.create">
                   <ReportTemplateEdit />
                 </PrivateRoute>
               }
@@ -169,7 +169,7 @@ function App() {
             <Route
               path="/report-templates/:id/edit"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="report_template.update">
                   <ReportTemplateEdit />
                 </PrivateRoute>
               }
@@ -177,7 +177,7 @@ function App() {
             <Route
               path="/print-template-mapping"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="print_template_mapping.read">
                   <PrintTemplateMappingManagement />
                 </PrivateRoute>
               }
@@ -185,7 +185,7 @@ function App() {
             <Route
               path="/print-template-mapping/new"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="print_template_mapping.create">
                   <PrintTemplateMappingEdit />
                 </PrivateRoute>
               }
@@ -193,7 +193,7 @@ function App() {
             <Route
               path="/print-template-mapping/:id/edit"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager", "support_staff"]}>
+                <PrivateRoute requiredPermission="print_template_mapping.update">
                   <PrintTemplateMappingEdit />
                 </PrivateRoute>
               }
@@ -201,7 +201,7 @@ function App() {
             <Route
               path="/news"
               element={
-                <PrivateRoute allowedRoles={["platform_admin"]}>
+                <PrivateRoute requiredPermission="news.read">
                   <NewsManagement />
                 </PrivateRoute>
               }
@@ -209,7 +209,7 @@ function App() {
             <Route
               path="/news/new"
               element={
-                <PrivateRoute allowedRoles={["platform_admin"]}>
+                <PrivateRoute requiredPermission="news.create">
                   <NewsEdit />
                 </PrivateRoute>
               }
@@ -217,7 +217,7 @@ function App() {
             <Route
               path="/news/:id/edit"
               element={
-                <PrivateRoute allowedRoles={["platform_admin"]}>
+                <PrivateRoute requiredPermission="news.update">
                   <NewsEdit />
                 </PrivateRoute>
               }
@@ -225,7 +225,7 @@ function App() {
             <Route
               path="/broadcasts/new"
               element={
-                <PrivateRoute allowedRoles={["platform_admin", "support_manager"]}>
+                <PrivateRoute requiredPermission="broadcast.send">
                   <BroadcastCompose />
                 </PrivateRoute>
               }
