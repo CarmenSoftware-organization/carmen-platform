@@ -24,12 +24,22 @@ interface UserRecord {
   is_active: boolean;
   username?: string;
   name?: string;
+  firstname?: string;
+  middlename?: string;
+  lastname?: string;
   email?: string;
   created_at?: string;
   created_by_name?: string;
   updated_at?: string;
   updated_by_name?: string;
 }
+
+const getNameDisplay = (record: UserRecord): string => {
+  if (record.firstname || record.middlename || record.lastname) {
+    return [record.firstname, record.middlename, record.lastname].filter(Boolean).join(" ");
+  }
+  return record.name || "-";
+};
 
 const fmtDateTime = (v?: string) => {
   if (!v) return '-';
@@ -204,7 +214,7 @@ const UserPlatformManagement: React.FC = () => {
       {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => <span>{row.original.name || "-"}</span>,
+        cell: ({ row }) => <span>{getNameDisplay(row.original)}</span>,
       },
       {
         accessorKey: "email",
