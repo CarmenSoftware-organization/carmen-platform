@@ -21,10 +21,12 @@ test.describe('User - Create', () => {
     await editPage.fillForm(userData);
 
     // Submit and verify API response
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
-    // Verify redirect to list and new user visible
+    // Navigate to the list and verify the new user is searchable
+    await managementPage.goto();
+    await managementPage.search(userData.username);
     await managementPage.expectUserVisible(userData.username);
   });
 
@@ -38,8 +40,8 @@ test.describe('User - Create', () => {
       email: userData.email,
     });
 
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
   });
 
   test('should create an inactive user', async ({ page }) => {
@@ -52,8 +54,8 @@ test.describe('User - Create', () => {
       is_active: false,
     });
 
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
   });
 
   test('should show validation errors for empty required fields', async ({ page }) => {

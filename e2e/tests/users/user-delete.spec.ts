@@ -15,11 +15,12 @@ test.describe('User - Delete', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
     // Now delete it from the list
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.username);
     await managementPage.waitForTableData();
 
@@ -40,11 +41,11 @@ test.describe('User - Delete', () => {
     const actionsButton = firstRow.locator('button').filter({ has: page.locator('svg') }).last();
     await actionsButton.click();
 
-    // Click delete in dropdown
-    await page.click('text=Delete');
+    // Click delete in dropdown (exact match: there is also a "Hard Delete" item)
+    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
 
     // Confirm dialog should appear
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     await expect(dialog.locator('text=cannot be undone')).toBeVisible();
 
@@ -58,18 +59,19 @@ test.describe('User - Delete', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.username);
     await managementPage.waitForTableData();
 
-    // Open delete dialog
+    // Open delete dialog (exact match: there is also a "Hard Delete" item)
     await managementPage.openActionsMenu(userData.username);
-    await page.click('text=Delete');
+    await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
 
     // Cancel
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await dialog.locator('button:has-text("Cancel")').click();
 
     // User should still be visible

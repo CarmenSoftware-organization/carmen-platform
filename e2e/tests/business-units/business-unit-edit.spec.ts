@@ -60,8 +60,9 @@ test.describe('Business Unit - Edit', () => {
     await managementPage.clickBusinessUnitByCode(buData.code);
 
     // Let the page's data fetches settle first (React StrictMode double-fetch
-    // can otherwise overwrite a just-typed value with the late response)
-    await page.waitForLoadState('networkidle');
+    // can otherwise overwrite a just-typed value with the late response;
+    // networkidle is a no-op after SPA navigation, so count responses instead)
+    await editPage.waitForNetworkQuiet();
 
     // Edit the name
     await editPage.clickEdit();

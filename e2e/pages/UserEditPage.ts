@@ -58,7 +58,13 @@ export class UserEditPage extends BasePage {
     await this.saveButton.click();
   }
 
-  async submitAndWaitForList() {
+  /**
+   * Submit the form and wait for the create/update API response.
+   * Note: the app no longer redirects to the list after save (create navigates
+   * to the new user's edit page, update stays on the page) — callers should
+   * navigate explicitly.
+   */
+  async submitAndWaitForSave() {
     const responsePromise = this.page.waitForResponse(
       (resp) =>
         resp.url().includes('/api-system/user') &&
@@ -66,9 +72,7 @@ export class UserEditPage extends BasePage {
       { timeout: 15_000 }
     );
     await this.submit();
-    const response = await responsePromise;
-    await this.expectUrl('**/users');
-    return response;
+    return responsePromise;
   }
 
   async clickEdit() {

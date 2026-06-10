@@ -29,6 +29,24 @@ export class BasePage {
     await this.page.waitForURL(pattern, { timeout: 15_000 });
   }
 
+  /**
+   * Wait until no network responses arrive for `quietMs`.
+   *
+   * Unlike waitForLoadState('networkidle'), this also works after CLIENT-SIDE
+   * (SPA) navigation, where no new document lifecycle is started. Needed
+   * because edit pages double-fetch in React StrictMode (dev) and a late
+   * response can overwrite freshly-typed form values.
+   */
+  async waitForNetworkQuiet(quietMs = 800, maxMs = 10_000) {
+    const deadline = Date.now() + maxMs;
+    for (;;) {
+      const resp = await this.page
+        .waitForResponse(() => true, { timeout: quietMs })
+        .catch(() => null);
+      if (!resp || Date.now() > deadline) return;
+    }
+  }
+
   /** Wait for loading overlays to disappear */
   async waitForLoadingToFinish() {
     // Wait for any skeleton loaders or loading overlays to disappear

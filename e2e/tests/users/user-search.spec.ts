@@ -15,10 +15,11 @@ test.describe('User - Search', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search for it
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.username);
 
     // Should find the user
@@ -77,10 +78,11 @@ test.describe('User - Search', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search by email
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.email);
 
     await managementPage.expectUserVisible(userData.email);

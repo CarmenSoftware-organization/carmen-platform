@@ -32,6 +32,10 @@ export class BusinessUnitManagementPage extends BasePage {
   }
 
   async search(query: string) {
+    // Let any in-flight list fetches finish first: the pages don't cancel
+    // stale requests, so a late unfiltered response can clobber the
+    // filtered results if we type too early.
+    await this.page.waitForLoadState('networkidle').catch(() => {});
     // Wait for the debounced (400ms) search request to actually complete,
     // otherwise the table re-renders mid-interaction and closes menus.
     const responsePromise = this.page

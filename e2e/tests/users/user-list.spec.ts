@@ -41,17 +41,13 @@ test.describe('User - List', () => {
   });
 
   test('should navigate to edit page when clicking a username', async ({ page }) => {
-    await managementPage.waitForTableData();
-    const firstLink = page.locator('table tbody tr').first().locator('td').nth(1).locator('span.cursor-pointer, a');
-    if (await firstLink.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await firstLink.click();
-      await expect(page).toHaveURL(/\/users\/.+\/edit/);
-    }
+    await managementPage.clickFirstUserLink();
+    await expect(page).toHaveURL(/\/users\/.+\/edit/);
   });
 
   test('should show status badges in table', async ({ page }) => {
     await managementPage.waitForTableData();
-    const badges = page.locator('table tbody tr').first().locator('text=Active, text=Inactive');
+    const badges = page.locator('table tbody tr').first().getByText(/^(Active|Inactive)$/);
     await expect(badges.first()).toBeVisible({ timeout: 5_000 });
   });
 });

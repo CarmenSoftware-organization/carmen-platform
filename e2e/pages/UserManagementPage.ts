@@ -32,9 +32,22 @@ export class UserManagementPage extends BasePage {
   }
 
   async search(query: string) {
+    // Let any in-flight list fetches finish first: the pages don't cancel
+    // stale requests, so a late unfiltered response can clobber the
+    // filtered results if we type too early.
+    await this.page.waitForLoadState('networkidle').catch(() => {});
+    // Wait for the debounced (400ms) search request to actually complete,
+    // otherwise the table re-renders mid-interaction and closes menus.
+    const responsePromise = this.page
+      .waitForResponse(
+        (resp) => resp.url().includes('/api-system/user') && /[?&]search=/.test(resp.url()),
+        { timeout: 15_000 }
+      )
+      .catch(() => null);
     await this.searchInput.fill(query);
-    await this.page.waitForTimeout(600);
+    await responsePromise;
     await this.waitForLoadingToFinish();
+    await this.page.waitForTimeout(200); // let React commit the new rows
   }
 
   async clearSearch() {
@@ -59,16 +72,31 @@ export class UserManagementPage extends BasePage {
   }
 
   async selectStatusFilter(status: 'Active' | 'Inactive') {
-    await this.page.click(`label:has-text("${status}"), button:has-text("${status}")`);
+    await this.page
+      .locator('[role="dialog"]')
+      .getByRole('button', { name: status, exact: true })
+      .click();
     await this.page.waitForTimeout(500);
   }
 
   async clearAllFilters() {
-    const clearAll = this.page.locator('text=Clear all, text=Clear All Filters');
-    if (await clearAll.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await clearAll.first().click();
+    const clearAll = this.page.getByRole('button', { name: 'Clear all', exact: true });
+    if (await clearAll.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await clearAll.click();
       await this.page.waitForTimeout(500);
     }
+  }
+
+  /** Click the first row's record link (Username cell renders a link to the edit page) */
+  async clickFirstUserLink() {
+    await this.waitForTableData();
+    await this.page
+      .locator('table tbody tr')
+      .first()
+      .locator('a[href*="/users/"]')
+      .first()
+      .click();
+    await this.expectUrl(new RegExp(`/users/.+/edit`));
   }
 
   async clickUserByUsername(username: string) {
@@ -77,20 +105,21 @@ export class UserManagementPage extends BasePage {
   }
 
   async openActionsMenu(identifier: string) {
-    const row = this.page.locator(`tr:has-text("${identifier}")`);
-    await row.locator('button').filter({ has: this.page.locator('svg') }).last().click();
+    const row = this.page.locator(`tr:has-text("${identifier}")`).first();
+    await row.getByRole('button', { name: /^Actions for/ }).click();
+    await this.page.getByRole('menu').waitFor({ state: 'visible', timeout: 5_000 });
   }
 
   async deleteUser(identifier: string) {
     await this.openActionsMenu(identifier);
-    await this.page.click('text=Delete');
+    await this.page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
     await this.confirmDialog('Delete');
     await this.waitForToast('deleted');
   }
 
   async editUser(identifier: string) {
     await this.openActionsMenu(identifier);
-    await this.page.click('text=Edit');
+    await this.page.getByRole('menuitem', { name: 'Edit' }).click();
     await this.expectUrl(new RegExp(`/users/.+/edit`));
   }
 
