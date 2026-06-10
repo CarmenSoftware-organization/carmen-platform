@@ -80,13 +80,15 @@ export const generateBusinessUnitData = () => {
   };
 };
 
-/** Generate unique user test data */
+/** Generate unique user test data (E2E_/e2e_ markers keep records traceable
+ *  and let cross-suite pickers skip these transient users). Underscores in
+ *  the email local part pass isValidEmail / the `username` validator. */
 export const generateUserData = () => {
   const suffix = uniqueSuffix().toLowerCase();
   return {
-    username: `user${suffix}@example.com`,
-    email: `test${suffix}@example.com`,
-    firstname: faker.person.firstName(),
+    username: `e2e_user_${suffix}@example.com`,
+    email: `e2e_test_${suffix}@example.com`,
+    firstname: `E2E_${faker.person.firstName()}`,
     middlename: '',
     lastname: faker.person.lastName(),
     is_active: true,

@@ -61,6 +61,9 @@ export class UserPlatformManagementPage extends EntityManagementPage {
       const row = rows.nth(i);
       const rowText = ((await row.textContent()) || '').toLowerCase();
       if (rowText.includes(loginEmail)) continue;
+      // Skip transient E2E_/e2e_user records that concurrent user-create
+      // specs create and delete — they can vanish mid-test.
+      if (rowText.includes('e2e_')) continue;
       const usernameButton = row.locator('button').first();
       const username = ((await usernameButton.textContent()) || '').trim();
       await usernameButton.click();

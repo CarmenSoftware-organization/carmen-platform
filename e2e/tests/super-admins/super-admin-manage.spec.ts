@@ -31,21 +31,21 @@ test.describe('Super Admin Management', () => {
   });
 
   test('add + remove a super admin round-trip (self-cleaning)', async () => {
-    const adminCountBefore = await saPage.adminRows.count();
-
     const label = await saPage.pickFirstAvailableUser();
     test.skip(label === null, 'No candidate user available to promote (every user is already a super admin)');
 
     // Promote: Add → success toast → the new admin appears in the list.
+    // No absolute row-count asserts (suite rule): with fullyParallel sibling
+    // suites can mutate other rows concurrently — key everything on the
+    // picked user's UUID instead.
     await saPage.addSelectedUser();
     await saPage.expectSuperAdminVisible(label!);
-    expect(await saPage.adminRows.count()).toBe(adminCountBefore + 1);
+    await expect(saPage.adminRowByUserId(saPage.pickedUserId!)).toHaveCount(1);
 
     // Self-clean: demote the SAME user (matched by its UUID, never anyone
     // else) → confirm dialog → success toast → row gone.
     await saPage.removeSuperAdmin(label!);
     await saPage.expectSuperAdminGone(label!);
-    expect(await saPage.adminRows.count()).toBe(adminCountBefore);
 
     // The demoted user is available to promote again (back in the select).
     await expect(

@@ -52,10 +52,19 @@ export class PrintTemplateMappingEditPage extends BasePage {
 
   /** Non-placeholder option values of a select ('' placeholder excluded). */
   private async realOptionValues(select: Locator): Promise<string[]> {
-    const values = await select
+    const options = await select
       .locator('option')
-      .evaluateAll((opts) => opts.map((o) => (o as HTMLOptionElement).value));
-    return values.filter((v) => v !== '');
+      .evaluateAll((opts) =>
+        opts.map((o) => ({
+          value: (o as HTMLOptionElement).value,
+          label: (o.textContent || '').trim(),
+        }))
+      );
+    return options
+      // Skip E2E_-labelled options — transient records that concurrent suites
+      // (e.g. report-template-crud's E2E_Report_*) may delete mid-test.
+      .filter((o) => o.value !== '' && !o.label.includes('E2E_'))
+      .map((o) => o.value);
   }
 
   /**

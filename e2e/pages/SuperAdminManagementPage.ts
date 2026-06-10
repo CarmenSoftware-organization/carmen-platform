@@ -96,6 +96,9 @@ export class SuperAdminManagementPage extends BasePage {
       // Safety: never promote/demote the e2e login user. (It should already be
       // a super admin and therefore absent from this select, but be explicit.)
       if (label.toLowerCase().includes(TEST_CREDENTIALS.email.toLowerCase())) continue;
+      // Skip transient E2E_/e2e_ users that concurrent user specs create and
+      // delete — they can vanish between picking and adding.
+      if (label.toLowerCase().includes('e2e_')) continue;
       await this.userSelect.selectOption(value);
       this.pickedUserId = value;
       return label;

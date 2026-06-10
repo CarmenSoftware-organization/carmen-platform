@@ -92,6 +92,9 @@ export class UserPlatformEditPage extends BasePage {
       if (!value) continue; // "Select role…" placeholder
       const name = ((await option.textContent()) || '').trim();
       if (!name || assigned.has(name)) continue;
+      // Skip transient E2E_ roles that the concurrent role-crud suite creates
+      // and deletes — assigning one could fail mid-test when it disappears.
+      if (name.startsWith('E2E_')) continue;
 
       await this.roleSelect.selectOption(value);
       // Scope select defaults to "platform" — leave it.
