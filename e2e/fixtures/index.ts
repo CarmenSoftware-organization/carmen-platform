@@ -29,14 +29,14 @@ export const generateBusinessUnitData = () => {
     is_active: true,
 
     // Hotel Information
-    hotel_name: `${faker.company.name()} Hotel & Resort`,
+    hotel_name: `E2E_${faker.company.name()} Hotel & Resort`,
     hotel_tel: `+66-${faker.string.numeric(2)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
     hotel_email: faker.internet.email(),
     hotel_address: faker.location.streetAddress({ useFullAddress: true }),
     hotel_zip_code: faker.location.zipCode('#####'),
 
     // Company Information
-    company_name: `${faker.company.name()} Co., Ltd.`,
+    company_name: `E2E_${faker.company.name()} Co., Ltd.`,
     company_tel: `+66-${faker.string.numeric(2)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
     company_email: faker.internet.email(),
     company_address: faker.location.streetAddress({ useFullAddress: true }),
