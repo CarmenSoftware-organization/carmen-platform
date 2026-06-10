@@ -9,14 +9,6 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const isDev = import.meta.env.DEV;
 
-const ALLOWED_ROLES = [
-  'platform_admin',
-  'super_admin',
-  'support_manager',
-  'support_staff',
-  'security_officer',
-];
-
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -67,7 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applyEffectivePermissions = (eff?: EffectivePermissions | null) => {
+  const applyEffectivePermissions = (eff?: EffectivePermissions | null): EffectivePermissions | null => {
     let value: EffectivePermissions | null = eff ?? null;
     if ((!value || (value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
       value = DEV_MOCK_EFFECTIVE_PERMISSIONS;
@@ -75,14 +67,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setEffectivePermissions(value);
     if (value) localStorage.setItem('effectivePermissions', JSON.stringify(value));
     else localStorage.removeItem('effectivePermissions');
+    return value;
   };
 
-  const fetchEffectivePermissions = async () => {
+  const fetchEffectivePermissions = async (): Promise<EffectivePermissions | null> => {
     try {
       const eff = await permissionService.getMyPlatformPermissions();
-      applyEffectivePermissions(eff);
+      return applyEffectivePermissions(eff);
     } catch {
-      applyEffectivePermissions(null); // dev-mock fallback applies in dev; null in prod
+      return applyEffectivePermissions(null); // dev-mock fallback applies in dev; null in prod
     }
   };
 
@@ -105,13 +98,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const fetchUserCount = async () => {
+  const fetchUserCount = async (): Promise<number | null> => {
     try {
       const response = await userService.getAll({ page: 1, perpage: 1 });
       const total = response.paginate?.total ?? response.total ?? response.data?.length ?? 0;
       setUserCount(total);
+      return total;
     } catch {
       // User count fetch failed silently — default to null (enforce role checks)
+      return null;
     }
   };
 
@@ -127,36 +122,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('No token received from server');
       }
 
-      // Check platform_role access
-      const role = loginData.platform_role;
-      if (role && !ALLOWED_ROLES.includes(role)) {
+      // Authenticate the session first so the permission/count requests are authorized.
+      localStorage.setItem('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      // Permission-based access gate: resolve platform permissions + user count.
+      const [eff, count] = await Promise.all([fetchEffectivePermissions(), fetchUserCount()]);
+      const hasAnyPermission = !!eff && (eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
+      const isBootstrap = count !== null && count <= 1; // first-admin escape hatch
+      if (!hasAnyPermission && !isBootstrap) {
+        // Not authorized for the platform admin — tear down the partial session.
+        localStorage.removeItem('token');
+        localStorage.removeItem('effectivePermissions');
+        delete api.defaults.headers.common['Authorization'];
+        setEffectivePermissions(null);
         return {
           success: false,
-          error: isDev
-            ? `Access Denied. Your role "${role}" is not authorized. Allowed: ${ALLOWED_ROLES.join(', ')}`
-            : 'Access Denied. You are not authorized to access this platform.'
+          error: 'Access Denied. You are not authorized to access this platform.',
         };
       }
 
-      // Build initial user object from login data
+      // Authorized — persist the session.
       const userData: User = {
         id: '',
         email: credentials.username,
         name: credentials.username,
-        platform_role: role,
       };
-
-      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('loginResponse', JSON.stringify(loginData));
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
       setLoginResponse(loginData);
 
-      // Fetch full profile and platform permissions after login
+      // Load full profile (firstname/.../platform_role) in the background.
       fetchProfile();
-      fetchEffectivePermissions();
-      fetchUserCount();
 
       return { success: true };
     } catch (error: unknown) {
@@ -205,7 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setEffectivePermissions(null);
   };
 
-  const platformRole = loginResponse?.platform_role || user?.platform_role || null;
+  const platformRole = user?.platform_role || null;
 
   const hasRole = (roles: string[]): boolean => {
     // Allow all access when there are 0 or 1 users (initial setup)
