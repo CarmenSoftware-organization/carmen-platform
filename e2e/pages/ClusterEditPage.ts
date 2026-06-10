@@ -4,7 +4,6 @@ import { BasePage } from './BasePage';
 export class ClusterEditPage extends BasePage {
   readonly codeInput: Locator;
   readonly nameInput: Locator;
-  readonly descriptionTextarea: Locator;
   readonly isActiveCheckbox: Locator;
   readonly saveButton: Locator;
   readonly editButton: Locator;
@@ -15,7 +14,6 @@ export class ClusterEditPage extends BasePage {
     super(page);
     this.codeInput = page.locator('input[name="code"]');
     this.nameInput = page.locator('input[name="name"]');
-    this.descriptionTextarea = page.locator('textarea[name="description"]');
     this.isActiveCheckbox = page.locator('input[name="is_active"]');
     this.saveButton = page.locator('button[type="submit"]');
     this.editButton = page.locator('button:has-text("Edit")');
@@ -30,20 +28,18 @@ export class ClusterEditPage extends BasePage {
 
   async gotoEdit(id: string) {
     await super.goto(`/clusters/${id}/edit`);
-    await this.page.waitForTimeout(1_000); // Wait for data load
+    await this.page.waitForSelector('form', { timeout: 10_000 });
+    await this.waitForNetworkQuiet(); // record fetch settled (incl. StrictMode double-fetch)
   }
 
   async fillForm(data: {
     code: string;
     name: string;
-    description?: string;
+    description?: string; // no longer a form field — ignored (kept for fixture compat)
     is_active?: boolean;
   }) {
     await this.codeInput.fill(data.code);
     await this.nameInput.fill(data.name);
-    if (data.description) {
-      await this.descriptionTextarea.fill(data.description);
-    }
     if (data.is_active === false) {
       await this.isActiveCheckbox.uncheck();
     }
@@ -54,7 +50,12 @@ export class ClusterEditPage extends BasePage {
     await this.saveButton.click();
   }
 
-  async submitAndWaitForList() {
+  /**
+   * Submit the form and wait for the create/update API response.
+   * Note: the app no longer redirects to the list after save (create navigates
+   * to the record, update stays on the page) — callers should navigate explicitly.
+   */
+  async submitAndWaitForSave() {
     const responsePromise = this.page.waitForResponse(
       (resp) =>
         resp.url().includes('/api-system/cluster') &&
@@ -62,9 +63,7 @@ export class ClusterEditPage extends BasePage {
       { timeout: 15_000 }
     );
     await this.submit();
-    const response = await responsePromise;
-    await this.expectUrl('**/clusters');
-    return response;
+    return responsePromise;
   }
 
   async clickEdit() {

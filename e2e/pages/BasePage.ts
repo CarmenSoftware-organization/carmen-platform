@@ -29,6 +29,54 @@ export class BasePage {
     await this.page.waitForURL(pattern, { timeout: 15_000 });
   }
 
+  /**
+   * Wait until the network is quiet: zero in-flight requests sustained for
+   * `quietMs`, bounded by `maxMs`.
+   *
+   * Unlike waitForLoadState('networkidle'), this also works after CLIENT-SIDE
+   * (SPA) navigation, where no new document lifecycle is started. Needed
+   * because edit pages double-fetch in React StrictMode (dev) and a late
+   * response can overwrite freshly-typed form values.
+   *
+   * Tracks outstanding requests via request/requestfinished/requestfailed
+   * counters, so a slow in-flight request keeps us waiting instead of being
+   * mistaken for quiet (the old response-arrival heuristic missed those).
+   * Requests issued before this call can't be counted, but their completion
+   * events still reset the quiet timer.
+   */
+  async waitForNetworkQuiet(quietMs = 800, maxMs = 10_000) {
+    let inFlight = 0;
+    let lastActivity = Date.now();
+    const onRequest = () => {
+      inFlight += 1;
+      lastActivity = Date.now();
+    };
+    const onSettled = () => {
+      // Clamp at 0: requests issued before our listeners attached still emit
+      // requestfinished/requestfailed, which would otherwise go negative.
+      inFlight = Math.max(0, inFlight - 1);
+      lastActivity = Date.now();
+    };
+    this.page.on('request', onRequest);
+    this.page.on('requestfinished', onSettled);
+    this.page.on('requestfailed', onSettled);
+    try {
+      const deadline = Date.now() + maxMs;
+      for (;;) {
+        const now = Date.now();
+        if (now >= deadline) return;
+        if (inFlight === 0 && now - lastActivity >= quietMs) return;
+        const remainingQuiet = inFlight === 0 ? quietMs - (now - lastActivity) : 50;
+        const waitMs = Math.min(Math.max(remainingQuiet, 25), deadline - now);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+    } finally {
+      this.page.off('request', onRequest);
+      this.page.off('requestfinished', onSettled);
+      this.page.off('requestfailed', onSettled);
+    }
+  }
+
   /** Wait for loading overlays to disappear */
   async waitForLoadingToFinish() {
     // Wait for any skeleton loaders or loading overlays to disappear

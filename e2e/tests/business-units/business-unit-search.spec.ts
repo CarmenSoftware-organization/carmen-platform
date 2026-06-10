@@ -1,27 +1,27 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateBusinessUnitData } from '../../fixtures';
+import { createTestCluster } from '../../helpers/testData';
 import { BusinessUnitManagementPage } from '../../pages/BusinessUnitManagementPage';
 import { BusinessUnitEditPage } from '../../pages/BusinessUnitEditPage';
 
 test.describe('Business Unit - Search', () => {
   let buData: ReturnType<typeof generateBusinessUnitData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     buData = generateBusinessUnitData();
   });
 
   test('should filter results by search term', async ({ page }) => {
     // Create a BU with a known code
+    const cluster = await createTestCluster(page);
     const editPage = new BusinessUnitEditPage(page);
     await editPage.gotoNew();
-    await editPage.fillBasicInfo(buData);
-    await editPage.submitAndWaitForList();
+    await editPage.fillBasicInfo(buData, cluster.name);
+    await editPage.submitAndWaitForSave();
 
     // Search for it
     const managementPage = new BusinessUnitManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(buData.code);
 
     // Should find the BU
@@ -80,13 +80,15 @@ test.describe('Business Unit - Search', () => {
 
   test('should search by business unit name', async ({ page }) => {
     // Create a BU
+    const cluster = await createTestCluster(page);
     const editPage = new BusinessUnitEditPage(page);
     await editPage.gotoNew();
-    await editPage.fillBasicInfo(buData);
-    await editPage.submitAndWaitForList();
+    await editPage.fillBasicInfo(buData, cluster.name);
+    await editPage.submitAndWaitForSave();
 
     // Search by name
     const managementPage = new BusinessUnitManagementPage(page);
+    await managementPage.goto();
     const namePart = buData.name.split(' ')[0];
     await managementPage.search(namePart);
 

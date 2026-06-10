@@ -1,34 +1,42 @@
 import { faker } from '@faker-js/faker';
 
+/**
+ * Unique suffix for generated codes/names. Date.now() alone can collide
+ * across parallel workers, so append a random alphanumeric tail.
+ * 8 chars, [A-Za-z0-9] only — safe for the 2–20 char code validation.
+ */
+const uniqueSuffix = () =>
+  `${Date.now().toString().slice(-6)}${faker.string.alphanumeric(2).toUpperCase()}`;
+
 /** Generate unique cluster test data */
 export const generateClusterData = () => ({
-  code: `CLT${Date.now().toString().slice(-6)}`,
-  name: `${faker.company.name()} Cluster`,
+  code: `CLT${uniqueSuffix()}`,
+  name: `E2E_${faker.company.name()} Cluster`,
   description: faker.company.catchPhrase(),
   is_active: true,
 });
 
 /** Generate unique business unit test data */
 export const generateBusinessUnitData = () => {
-  const suffix = Date.now().toString().slice(-6);
+  const suffix = uniqueSuffix();
   return {
     // Basic Information
     code: `BU${suffix}`,
-    name: `${faker.company.name()} Hotel`,
+    name: `E2E_${faker.company.name()} Hotel`,
     alias_name: faker.string.alpha({ length: 3, casing: 'upper' }),
     description: faker.commerce.productDescription(),
     is_hq: false,
     is_active: true,
 
     // Hotel Information
-    hotel_name: `${faker.company.name()} Hotel & Resort`,
+    hotel_name: `E2E_${faker.company.name()} Hotel & Resort`,
     hotel_tel: `+66-${faker.string.numeric(2)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
     hotel_email: faker.internet.email(),
     hotel_address: faker.location.streetAddress({ useFullAddress: true }),
     hotel_zip_code: faker.location.zipCode('#####'),
 
     // Company Information
-    company_name: `${faker.company.name()} Co., Ltd.`,
+    company_name: `E2E_${faker.company.name()} Co., Ltd.`,
     company_tel: `+66-${faker.string.numeric(2)}-${faker.string.numeric(3)}-${faker.string.numeric(4)}`,
     company_email: faker.internet.email(),
     company_address: faker.location.streetAddress({ useFullAddress: true }),
@@ -72,13 +80,15 @@ export const generateBusinessUnitData = () => {
   };
 };
 
-/** Generate unique user test data */
+/** Generate unique user test data (E2E_/e2e_ markers keep records traceable
+ *  and let cross-suite pickers skip these transient users). Underscores in
+ *  the email local part pass isValidEmail / the `username` validator. */
 export const generateUserData = () => {
-  const suffix = Date.now().toString().slice(-6);
+  const suffix = uniqueSuffix().toLowerCase();
   return {
-    username: `user${suffix}@example.com`,
-    email: `test${suffix}@example.com`,
-    firstname: faker.person.firstName(),
+    username: `e2e_user_${suffix}@example.com`,
+    email: `e2e_test_${suffix}@example.com`,
+    firstname: `E2E_${faker.person.firstName()}`,
     middlename: '',
     lastname: faker.person.lastName(),
     is_active: true,
@@ -96,8 +106,31 @@ export const generateProfileData = () => ({
 
 /** Generate unique news test data */
 export const generateNewsData = () => ({
-  title: `Test News ${Date.now().toString().slice(-6)}`,
+  title: `E2E_News_${uniqueSuffix()}`,
   contents: `## ${faker.company.catchPhrase()}\n\n${faker.lorem.paragraph()}`,
   url: faker.internet.url(),
   image: faker.image.url(),
+});
+
+/** Generate unique application test data */
+export const generateApplicationData = () => ({
+  name: `E2E_App_${uniqueSuffix()}`,
+  description: faker.company.catchPhrase(),
+});
+
+/** Generate unique platform role test data */
+export const generateRoleData = () => ({
+  name: `E2E_Role_${uniqueSuffix()}`,
+  description: faker.company.catchPhrase(),
+});
+
+/** Generate unique report template test data */
+export const generateReportTemplateData = () => ({
+  name: `E2E_Report_${uniqueSuffix()}`,
+  description: faker.commerce.productDescription(),
+});
+
+/** Generate unique print template mapping test data */
+export const generatePrintMappingData = () => ({
+  display_label: `E2E_Mapping_${uniqueSuffix()}`,
 });

@@ -78,7 +78,8 @@ export class BusinessUnitEditPage extends BasePage {
 
   async gotoEdit(id: string) {
     await super.goto(`/business-units/${id}/edit`);
-    await this.page.waitForTimeout(1_000);
+    await this.page.waitForSelector('form', { timeout: 10_000 });
+    await this.waitForNetworkQuiet(); // record fetch settled (incl. StrictMode double-fetch)
   }
 
   /** Select the first available cluster */
@@ -88,6 +89,14 @@ export class BusinessUnitEditPage extends BasePage {
     const firstOption = this.clusterSelect.locator('option:not([value=""])').first();
     const value = await firstOption.getAttribute('value');
     await this.clusterSelect.selectOption(value!);
+  }
+
+  /** Select a cluster by its display name (option label) */
+  async selectClusterByName(name: string) {
+    await this.clusterSelect.waitFor({ state: 'visible' });
+    const option = this.clusterSelect.locator('option', { hasText: name }).first();
+    await expect(option).toBeAttached({ timeout: 10_000 });
+    await this.clusterSelect.selectOption({ label: name });
   }
 
   /** Expand a collapsible section by clicking its header text */
@@ -106,8 +115,12 @@ export class BusinessUnitEditPage extends BasePage {
     description?: string;
     is_hq?: boolean;
     is_active?: boolean;
-  }) {
-    await this.selectFirstCluster();
+  }, clusterName?: string) {
+    if (clusterName) {
+      await this.selectClusterByName(clusterName);
+    } else {
+      await this.selectFirstCluster();
+    }
     await this.codeInput.fill(data.code);
     await this.nameInput.fill(data.name);
     if (data.alias_name) await this.aliasInput.fill(data.alias_name);
@@ -230,17 +243,11 @@ export class BusinessUnitEditPage extends BasePage {
     }
   }
 
-  /** Fill the Database Connection section */
-  async fillDbConnection(connectionJson: string) {
-    await this.expandSection('Database Connection');
-    const dbTextarea = this.page.locator('textarea[name="db_connection"]');
-    await dbTextarea.scrollIntoViewIfNeeded();
-    await dbTextarea.fill(connectionJson);
-  }
-
-  /** Fill all sections at once from a full data object */
-  async fillAllSections(data: ReturnType<typeof import('../fixtures').generateBusinessUnitData>) {
-    await this.fillBasicInfo(data);
+  /** Fill all sections at once from a full data object.
+   * Note: the Database Connection section is now a read-only JSON display
+   * (no editable textarea), so db_connection is no longer filled. */
+  async fillAllSections(data: ReturnType<typeof import('../fixtures').generateBusinessUnitData>, clusterName?: string) {
+    await this.fillBasicInfo(data, clusterName);
     await this.fillHotelInfo(data);
     await this.fillCompanyInfo(data);
     await this.fillTaxInfo(data);
@@ -250,9 +257,6 @@ export class BusinessUnitEditPage extends BasePage {
     if (data.config.length > 0) {
       await this.fillConfigSection(data.config);
     }
-    if (data.db_connection) {
-      await this.fillDbConnection(data.db_connection);
-    }
   }
 
   async submit() {
@@ -260,7 +264,12 @@ export class BusinessUnitEditPage extends BasePage {
     await this.saveButton.click();
   }
 
-  async submitAndWaitForList() {
+  /**
+   * Submit the form and wait for the create/update API response.
+   * Note: the app no longer redirects to the list after save (create navigates
+   * to the record, update stays on the page) — callers should navigate explicitly.
+   */
+  async submitAndWaitForSave() {
     const responsePromise = this.page.waitForResponse(
       (resp) =>
         resp.url().includes('/api-system/business-unit') &&
@@ -268,9 +277,7 @@ export class BusinessUnitEditPage extends BasePage {
       { timeout: 15_000 }
     );
     await this.submit();
-    const response = await responsePromise;
-    await this.expectUrl('**/business-units');
-    return response;
+    return responsePromise;
   }
 
   async clickEdit() {

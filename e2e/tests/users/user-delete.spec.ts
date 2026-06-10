@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateUserData } from '../../fixtures';
 import { UserManagementPage } from '../../pages/UserManagementPage';
 import { UserEditPage } from '../../pages/UserEditPage';
@@ -7,9 +6,7 @@ import { UserEditPage } from '../../pages/UserEditPage';
 test.describe('User - Delete', () => {
   let userData: ReturnType<typeof generateUserData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     userData = generateUserData();
   });
 
@@ -18,11 +15,12 @@ test.describe('User - Delete', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
     // Now delete it from the list
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.username);
     await managementPage.waitForTableData();
 
@@ -38,16 +36,13 @@ test.describe('User - Delete', () => {
     await managementPage.goto();
     await managementPage.waitForTableData();
 
-    // Open actions menu on first row
-    const firstRow = page.locator('table tbody tr').first();
-    const actionsButton = firstRow.locator('button').filter({ has: page.locator('svg') }).last();
-    await actionsButton.click();
-
-    // Click delete in dropdown
-    await page.click('text=Delete');
+    // Open actions menu on first row and click Delete
+    // (clickMenuItem is exact-matched: there is also a "Hard Delete" item)
+    await managementPage.openFirstRowActionsMenu();
+    await managementPage.clickMenuItem('Delete');
 
     // Confirm dialog should appear
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     await expect(dialog.locator('text=cannot be undone')).toBeVisible();
 
@@ -61,18 +56,19 @@ test.describe('User - Delete', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.username);
     await managementPage.waitForTableData();
 
-    // Open delete dialog
+    // Open delete dialog (clickMenuItem is exact-matched: there is also a "Hard Delete" item)
     await managementPage.openActionsMenu(userData.username);
-    await page.click('text=Delete');
+    await managementPage.clickMenuItem('Delete');
 
     // Cancel
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await dialog.locator('button:has-text("Cancel")').click();
 
     // User should still be visible

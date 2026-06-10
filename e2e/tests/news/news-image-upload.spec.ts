@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { NewsEditPage } from '../../pages/NewsEditPage';
 
 const NEWS_ID = '019638a6-2a00-7c4f-8e46-9b7a52c80c4d';
@@ -24,8 +23,6 @@ const newsRecord = {
 
 test.describe('News - Image Upload (multipart)', () => {
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     // Serve the presigned preview image so the <img> renders.
     await page.route('https://cdn.test/**', (route) =>
       route.fulfill({ status: 200, contentType: 'image/png', body: PNG_BUFFER }),

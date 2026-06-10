@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateUserData } from '../../fixtures';
 import { UserManagementPage } from '../../pages/UserManagementPage';
 import { UserEditPage } from '../../pages/UserEditPage';
@@ -7,9 +6,7 @@ import { UserEditPage } from '../../pages/UserEditPage';
 test.describe('User - Search', () => {
   let userData: ReturnType<typeof generateUserData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     userData = generateUserData();
   });
 
@@ -18,10 +15,11 @@ test.describe('User - Search', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search for it
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.username);
 
     // Should find the user
@@ -80,10 +78,11 @@ test.describe('User - Search', () => {
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(userData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search by email
     const managementPage = new UserManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(userData.email);
 
     await managementPage.expectUserVisible(userData.email);

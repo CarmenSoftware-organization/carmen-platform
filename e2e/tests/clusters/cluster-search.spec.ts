@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateClusterData } from '../../fixtures';
 import { ClusterManagementPage } from '../../pages/ClusterManagementPage';
 import { ClusterEditPage } from '../../pages/ClusterEditPage';
@@ -7,9 +6,7 @@ import { ClusterEditPage } from '../../pages/ClusterEditPage';
 test.describe('Cluster - Search', () => {
   let clusterData: ReturnType<typeof generateClusterData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     clusterData = generateClusterData();
   });
 
@@ -18,10 +15,11 @@ test.describe('Cluster - Search', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search for it
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(clusterData.code);
 
     // Should find the cluster
@@ -86,10 +84,11 @@ test.describe('Cluster - Search', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     // Search by name
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     const namePart = clusterData.name.split(' ')[0]; // First word of name
     await managementPage.search(namePart);
 

@@ -10,11 +10,11 @@ export class LoginPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.emailInput = page.locator('input[name="email"]');
+    this.emailInput = page.locator('input[name="username"]');
     this.passwordInput = page.locator('input[name="password"]');
     this.submitButton = page.locator('button[type="submit"]');
     this.backLink = page.locator('text=Back to home');
-    this.errorAlert = page.locator('.text-destructive, [role="alert"]');
+    this.errorAlert = page.locator('[class*="text-red-"]');
   }
 
   async goto() {

@@ -40,7 +40,8 @@ export class NewsEditPage extends BasePage {
 
   async gotoEdit(id: string) {
     await super.goto(`/news/${id}/edit`);
-    await this.page.waitForTimeout(1_000);
+    await this.page.waitForSelector('form', { timeout: 10_000 });
+    await this.waitForNetworkQuiet(); // record fetch settled (incl. StrictMode double-fetch)
   }
 
   async fillForm(data: {

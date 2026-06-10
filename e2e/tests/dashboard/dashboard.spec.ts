@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { DashboardPage } from '../../pages/DashboardPage';
 
 test.describe('Dashboard', () => {
   let dashboardPage: DashboardPage;
 
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     dashboardPage = new DashboardPage(page);
     await dashboardPage.goto();
   });

@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateClusterData } from '../../fixtures';
 import { ClusterManagementPage } from '../../pages/ClusterManagementPage';
 import { ClusterEditPage } from '../../pages/ClusterEditPage';
@@ -7,9 +6,7 @@ import { ClusterEditPage } from '../../pages/ClusterEditPage';
 test.describe('Cluster - Create', () => {
   let clusterData: ReturnType<typeof generateClusterData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     clusterData = generateClusterData();
   });
 
@@ -25,10 +22,12 @@ test.describe('Cluster - Create', () => {
     await editPage.fillForm(clusterData);
 
     // Submit and verify API response
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
-    // Verify redirect to list and new cluster visible
+    // Navigate to the list and verify the new cluster is searchable
+    await managementPage.goto();
+    await managementPage.search(clusterData.code);
     await managementPage.expectClusterVisible(clusterData.code);
   });
 
@@ -43,8 +42,8 @@ test.describe('Cluster - Create', () => {
       name: clusterData.name,
     });
 
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
   });
 
   test('should create an inactive cluster', async ({ page }) => {
@@ -57,8 +56,8 @@ test.describe('Cluster - Create', () => {
       is_active: false,
     });
 
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
   });
 
   test('should show validation errors for empty required fields', async ({ page }) => {

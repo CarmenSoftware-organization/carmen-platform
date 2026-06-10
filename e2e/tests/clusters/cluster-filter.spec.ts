@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { ClusterManagementPage } from '../../pages/ClusterManagementPage';
 
 test.describe('Cluster - Filter', () => {
   let managementPage: ClusterManagementPage;
 
   test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
     managementPage = new ClusterManagementPage(page);
     await managementPage.goto();
     await managementPage.waitForTableData();
@@ -31,7 +28,7 @@ test.describe('Cluster - Filter', () => {
     const rowCount = await rows.count();
     if (rowCount > 0) {
       for (let i = 0; i < Math.min(rowCount, 5); i++) {
-        const statusCell = rows.nth(i).locator('text=Active, text=Inactive');
+        const statusCell = rows.nth(i).getByText(/^(Active|Inactive)$/);
         const text = await statusCell.first().textContent();
         expect(text).toContain('Active');
       }

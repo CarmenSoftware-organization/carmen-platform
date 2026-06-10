@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { AuthHelper } from '../../helpers/auth';
 import { generateClusterData } from '../../fixtures';
 import { ClusterManagementPage } from '../../pages/ClusterManagementPage';
 import { ClusterEditPage } from '../../pages/ClusterEditPage';
@@ -7,9 +6,7 @@ import { ClusterEditPage } from '../../pages/ClusterEditPage';
 test.describe('Cluster - Delete', () => {
   let clusterData: ReturnType<typeof generateClusterData>;
 
-  test.beforeEach(async ({ page }) => {
-    const auth = new AuthHelper(page);
-    await auth.login();
+  test.beforeEach(async () => {
     clusterData = generateClusterData();
   });
 
@@ -18,11 +15,12 @@ test.describe('Cluster - Delete', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    const response = await editPage.submitAndWaitForList();
-    expect(response.status()).toBe(200);
+    const response = await editPage.submitAndWaitForSave();
+    expect([200, 201]).toContain(response.status());
 
     // Now delete it from the list
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(clusterData.code);
     await managementPage.waitForTableData();
 
@@ -40,16 +38,12 @@ test.describe('Cluster - Delete', () => {
     await managementPage.goto();
     await managementPage.waitForTableData();
 
-    // Open actions menu on first row
-    const firstRow = page.locator('table tbody tr').first();
-    const actionsButton = firstRow.locator('button').filter({ has: page.locator('svg') }).last();
-    await actionsButton.click();
-
-    // Click delete in dropdown
-    await page.click('text=Delete');
+    // Open actions menu on first row and click Delete
+    await managementPage.openFirstRowActionsMenu();
+    await managementPage.clickMenuItem('Delete');
 
     // Confirm dialog should appear
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     await expect(dialog.locator('text=Delete Cluster')).toBeVisible();
     await expect(dialog.locator('text=cannot be undone')).toBeVisible();
@@ -64,18 +58,19 @@ test.describe('Cluster - Delete', () => {
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
     await editPage.fillForm(clusterData);
-    await editPage.submitAndWaitForList();
+    await editPage.submitAndWaitForSave();
 
     const managementPage = new ClusterManagementPage(page);
+    await managementPage.goto();
     await managementPage.search(clusterData.code);
     await managementPage.waitForTableData();
 
     // Open delete dialog
     await managementPage.openActionsMenu(clusterData.code);
-    await page.click('text=Delete');
+    await managementPage.clickMenuItem('Delete');
 
     // Cancel
-    const dialog = page.locator('[role="alertdialog"]');
+    const dialog = page.locator('[role="dialog"]');
     await dialog.locator('button:has-text("Cancel")').click();
 
     // Cluster should still be visible

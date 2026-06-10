@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { LoginPage } from '../../pages/LoginPage';
 import { TEST_CREDENTIALS } from '../../helpers/auth';
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe('Authentication - Login', () => {
   let loginPage: LoginPage;
 
