@@ -33,6 +33,7 @@ export interface NavItem {
   icon: LucideIcon;
   roles?: string[];
   permission?: string;
+  superAdminOnly?: boolean;
 }
 
 interface UserInfo {
