@@ -1,29 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { generateApplicationData } from '../../fixtures';
 import { ApplicationManagementPage } from '../../pages/ApplicationManagementPage';
 import { ApplicationEditPage } from '../../pages/ApplicationEditPage';
+import { createTestApplication } from '../../helpers/testData';
 
 test.describe('Application - Create', () => {
-  let appData: ReturnType<typeof generateApplicationData>;
-
-  test.beforeEach(async () => {
-    appData = generateApplicationData();
-  });
-
   test('should create an application with a selected api name and clean it up', async ({ page }) => {
     const managementPage = new ApplicationManagementPage(page);
     const editPage = new ApplicationEditPage(page);
 
-    await editPage.gotoNew();
-    await editPage.fillBasics(appData);
-
-    // Pick a cluster api_name from the grouped accordion (the generated catalog
-    // uses controller method names — cluster.findAll, not cluster.read)
-    await editPage.expandModule('cluster');
-    await editPage.selectApiName('cluster.findAll');
-
-    const response = await editPage.submitAndWaitForSave();
-    expect([200, 201]).toContain(response.status());
+    const appData = await createTestApplication(page);
     await editPage.waitForToast('Application created successfully');
 
     // Create navigates to the new record's edit page

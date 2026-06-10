@@ -17,7 +17,7 @@ export class ApplicationEditPage extends BasePage {
   readonly descriptionInput: Locator;
   readonly isActiveCheckbox: Locator;
   readonly allowAllCheckbox: Locator;
-  readonly submitButton: Locator;
+  readonly saveButton: Locator;
   readonly editButton: Locator;
   readonly cancelButton: Locator;
   readonly backButton: Locator;
@@ -30,7 +30,7 @@ export class ApplicationEditPage extends BasePage {
     this.descriptionInput = page.locator('input[name="description"]');
     this.isActiveCheckbox = page.locator('input[name="is_active"]');
     this.allowAllCheckbox = page.locator('input[name="allow_all"]');
-    this.submitButton = page.locator('button[type="submit"]');
+    this.saveButton = page.locator('button[type="submit"]');
     this.editButton = page.locator('button:has-text("Edit")');
     this.cancelButton = page.locator('button:has-text("Cancel")');
     this.backButton = page.locator('[aria-label="Back to applications"]');
@@ -40,7 +40,7 @@ export class ApplicationEditPage extends BasePage {
 
   async gotoNew() {
     await super.goto('/applications/new');
-    await this.page.waitForSelector('form', { timeout: 10_000 });
+    await this.waitForLoaded();
   }
 
   async gotoEdit(id: string) {
@@ -105,8 +105,8 @@ export class ApplicationEditPage extends BasePage {
   }
 
   async submit() {
-    await this.submitButton.scrollIntoViewIfNeeded();
-    await this.submitButton.click();
+    await this.saveButton.scrollIntoViewIfNeeded();
+    await this.saveButton.click();
   }
 
   /**
@@ -137,7 +137,7 @@ export class ApplicationEditPage extends BasePage {
 
   async clickEdit() {
     await this.editButton.click();
-    await expect(this.submitButton).toBeVisible({ timeout: 5_000 });
+    await expect(this.saveButton).toBeVisible({ timeout: 5_000 });
   }
 
   async clickCancel() {
@@ -151,11 +151,11 @@ export class ApplicationEditPage extends BasePage {
 
   async expectReadOnlyMode() {
     await expect(this.editButton).toBeVisible({ timeout: 5_000 });
-    await expect(this.submitButton).not.toBeVisible();
+    await expect(this.saveButton).not.toBeVisible();
   }
 
   async expectEditMode() {
-    await expect(this.submitButton).toBeVisible({ timeout: 5_000 });
+    await expect(this.saveButton).toBeVisible({ timeout: 5_000 });
   }
 
   async expectValidationError() {

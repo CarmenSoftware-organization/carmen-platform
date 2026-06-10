@@ -1,20 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { generateApplicationData } from '../../fixtures';
 import { ApplicationManagementPage } from '../../pages/ApplicationManagementPage';
 import { ApplicationEditPage } from '../../pages/ApplicationEditPage';
+import { createTestApplication } from '../../helpers/testData';
 
 test.describe('Application - Delete', () => {
   test('should delete an application via row actions', async ({ page }) => {
-    const appData = generateApplicationData();
-    const managementPage = new ApplicationManagementPage(page);
     const editPage = new ApplicationEditPage(page);
+    const managementPage = new ApplicationManagementPage(page);
 
     // Create the record under test (allow_all — no api_names needed)
-    await editPage.gotoNew();
-    await editPage.fillBasics(appData);
-    await editPage.allowAllCheckbox.check();
-    const createResponse = await editPage.submitAndWaitForSave();
-    expect([200, 201]).toContain(createResponse.status());
+    const appData = await createTestApplication(page, { allowAll: true });
     await editPage.expectUrl(/\/applications\/[^/]+\/edit/);
     const appId = await editPage.getApplicationIdFromUrl();
     expect(appId).not.toBe('');

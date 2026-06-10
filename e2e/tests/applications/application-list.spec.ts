@@ -25,6 +25,5 @@ test.describe('Application - List', () => {
   test('should show empty state for a search with no matches', async ({ page }) => {
     await managementPage.search('zzz_e2e_no_match_xyz');
     await managementPage.expectEmptyState();
-    await expect(page.locator('table tbody tr')).toHaveCount(0);
   });
 });

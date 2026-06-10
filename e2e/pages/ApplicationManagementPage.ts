@@ -13,10 +13,6 @@ export class ApplicationManagementPage extends EntityManagementPage {
     });
   }
 
-  async clickApplicationByName(name: string) {
-    await this.clickEntityByText(name);
-  }
-
   async deleteApplication(identifier: string) {
     await this.deleteEntity(identifier);
   }
