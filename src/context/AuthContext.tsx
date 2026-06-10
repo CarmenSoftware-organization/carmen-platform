@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import userService from '../services/userService';
+import permissionService from '../services/permissionService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions } from '../types';
 import { checkPermission, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
 
@@ -59,6 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       // Fetch fresh profile to get firstname/middlename/lastname
       fetchProfile();
+      fetchEffectivePermissions();
       fetchUserCount();
     }
     setLoading(false);
@@ -75,6 +77,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     else localStorage.removeItem('effectivePermissions');
   };
 
+  const fetchEffectivePermissions = async () => {
+    try {
+      const eff = await permissionService.getMyPlatformPermissions();
+      applyEffectivePermissions(eff);
+    } catch {
+      applyEffectivePermissions(null); // dev-mock fallback applies in dev; null in prod
+    }
+  };
+
   const fetchProfile = async () => {
     try {
       const response = await api.get('/api/user/profile');
@@ -89,7 +100,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       localStorage.setItem('user', JSON.stringify(merged));
       setUser(merged);
-      applyEffectivePermissions((data as { effective_permissions?: EffectivePermissions }).effective_permissions);
     } catch {
       // Profile fetch failed silently — user data from login is still available
     }
@@ -142,10 +152,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(userData);
       setLoginResponse(loginData);
-      applyEffectivePermissions(loginData.effective_permissions);
 
-      // Fetch full profile to get firstname/middlename/lastname
+      // Fetch full profile and platform permissions after login
       fetchProfile();
+      fetchEffectivePermissions();
       fetchUserCount();
 
       return { success: true };

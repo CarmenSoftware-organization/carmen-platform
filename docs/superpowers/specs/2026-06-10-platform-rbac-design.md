@@ -41,7 +41,7 @@ While the data is separate, we deliberately **mirror the existing system's conve
 
 **Approach A — Server-resolved effective permissions** (chosen over frontend-resolved and CASL-style policy engine).
 
-The backend resolves each user's roles + scopes into a flat, scope-grouped set of permission strings and returns it at login and on profile fetch. The frontend simply checks membership. Backend is the source of truth and the real enforcement gate (returns 403); the frontend only shows/hides UI to match.
+The backend resolves each user's roles + scopes into a flat, scope-grouped set of permission strings, served by a dedicated endpoint `GET /api/user/permission/platform` (see §4.4 — revised; not embedded in login/profile). The frontend fetches it after login + on load and simply checks membership. Backend is the source of truth and the real enforcement gate (returns 403); the frontend only shows/hides UI to match.
 
 Rationale: fits the existing architecture (`AuthContext` already stores `loginResponse`), keeps authorization logic in one place (no client/server drift), is secure (frontend cannot be the gate), and is right-sized for a 2-level scope — no new dependency, no over-engineering.
 
@@ -166,18 +166,19 @@ Mirror the existing `application-roles` / `application-permissions` modules (con
 
 **Response envelope** follows the repo standard: `{ data, paginate? }`.
 
-### 4.4 Effective permissions at login / profile
+### 4.4 Effective permissions endpoint
 
-The backend resolves the requesting user's platform-role assignments into a scope-grouped permission set and includes it in:
-- `POST /api/auth/login` response (alongside the existing `platform_role`, `access_token`)
-- `GET /api/user/profile` response
+> **Revised 2026-06-10:** effective permissions are **NOT** embedded in login/profile. They are served by a dedicated endpoint (keeps login/profile lean; mirrors the existing `/api/user/permission` family). The frontend fetches it after login and on app load.
 
+`GET /api/user/permission/platform` resolves the requesting user's platform-role assignments into a scope-grouped permission set:
 ```ts
+// response: { data: EffectivePermissions }
 effective_permissions: {
   platform: string[];                      // ["user.read", "role.update", ...]
   clusters: Record<string, string[]>;      // { "<clusterId>": ["cluster.update", "user.create", ...] }
 }
 ```
+(Backed by the micro-business `platform-permissions.effective` TCP cmd / `EffectivePermissionsService.resolve`.)
 
 ### 4.5 Enforcement (gateway)
 Mirror `permission.guard.ts` + `@Permission()` decorator for the platform routes: each platform admin endpoint declares the permission(s) it requires; the guard checks the resolved platform permissions (with scope) and returns 403 on failure. Backend enforcement is authoritative.
@@ -200,7 +201,7 @@ export interface UserRoleAssignment { id: string; user_id: string; role_id: stri
 
 ### 5.2 Permission primitives
 
-**`AuthContext`** — replace `hasRole` with `hasPermission`, store `effectivePermissions` (from login/profile, persisted like `loginResponse`):
+**`AuthContext`** — add `hasPermission`, store `effectivePermissions` (fetched from `GET /api/user/permission/platform` after login + on load, persisted to localStorage). (Implemented additively alongside `hasRole`, which is retained transitionally per Phase 4.):
 ```ts
 hasPermission(key: string, opts?: { clusterId?: string }): boolean
 ```
