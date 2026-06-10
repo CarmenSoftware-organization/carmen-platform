@@ -61,7 +61,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const applyEffectivePermissions = (eff?: EffectivePermissions | null): EffectivePermissions | null => {
     let value: EffectivePermissions | null = eff ?? null;
-    if ((!value || (value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
+    // Dev-only fallback: grant the mock when the backend returns no permissions —
+    // but NOT for a real super-admin (preserve their is_super_admin flag).
+    if ((!value || (!value.is_super_admin && value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
       value = DEV_MOCK_EFFECTIVE_PERMISSIONS;
     }
     setEffectivePermissions(value);
