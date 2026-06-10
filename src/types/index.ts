@@ -213,7 +213,6 @@ export interface LoginResponse {
   refresh_token?: string;
   expires_in?: number;
   token_type?: string;
-  platform_role?: string;
 }
 
 export interface LoginResult {
