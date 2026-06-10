@@ -30,6 +30,8 @@ const RoleManagement = lazy(() => import("./pages/RoleManagement"));
 const RoleEdit = lazy(() => import("./pages/RoleEdit"));
 const PermissionCatalog = lazy(() => import("./pages/PermissionCatalog"));
 const SuperAdminManagement = lazy(() => import("./pages/SuperAdminManagement"));
+const UserPlatformManagement = lazy(() => import("./pages/UserPlatformManagement"));
+const UserPlatformEdit = lazy(() => import("./pages/UserPlatformEdit"));
 
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
@@ -268,6 +270,22 @@ function App() {
               element={
                 <PrivateRoute requireSuperAdmin>
                   <SuperAdminManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/user-platform"
+              element={
+                <PrivateRoute requiredPermission="user_platform.read">
+                  <UserPlatformManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/user-platform/:userId"
+              element={
+                <PrivateRoute requiredPermission="user_platform.read">
+                  <UserPlatformEdit />
                 </PrivateRoute>
               }
             />
