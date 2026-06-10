@@ -23,6 +23,7 @@ import { XmlEditor } from '../components/XmlEditor';
 import { DialogPreview } from '../components/DialogPreview';
 import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Can from '../components/Can';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
@@ -356,10 +357,12 @@ const ReportTemplateEdit: React.FC = () => {
                   Cancel
                 </Button>
               ) : (
-                <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
+                <Can permission="report_template.update">
+                  <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                </Can>
               )}
             </div>
           )}

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, parseApiError } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -264,10 +265,12 @@ const NewsEdit: React.FC = () => {
             </p>
           </div>
           {!isNew && !editing && (
-            <Button variant="outline" size="sm" onClick={handleEditToggle}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            <Can permission="news.update">
+              <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </Can>
           )}
         </div>
 

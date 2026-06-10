@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Can from '../components/Can';
 import printTemplateMappingService, {
   type DocumentType,
   type PrintTemplateMapping,
@@ -258,10 +259,12 @@ const PrintTemplateMappingEdit: React.FC = () => {
             </h1>
           </div>
           {!isNew && !editing && !loading && (
-            <Button size="sm" onClick={handleEdit}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            <Can permission="print_template_mapping.update">
+              <Button size="sm" onClick={handleEdit}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </Can>
           )}
         </div>
 

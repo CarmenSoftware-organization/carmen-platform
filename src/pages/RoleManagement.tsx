@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import applicationService from '../services/applicationService';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import roleService from '../services/roleService';
+import { getErrorDetail, devLog, parseApiError } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -11,15 +11,25 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, AppWindow, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, ShieldCheck, Download, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
-import Can from '../components/Can';
-import type { Application, PaginateParams } from '../types';
+import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+
+// List-row shape — extends Role with the server-provided permission_count
+interface RoleRow {
+  id: string;
+  name: string;
+  description?: string;
+  is_active?: boolean;
+  permission_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -30,29 +40,32 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   }
 };
 
-const ApplicationManagement: React.FC = () => {
+const RoleManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const storedSearch = localStorage.getItem('search_applications') || '';
-  const storedFilters = getStoredJSON<string[]>('filters_applications', []);
-  const storedPage = Number(localStorage.getItem('page_applications')) || 1;
-  const storedSort = localStorage.getItem('sort_applications') || 'name:asc';
+  const storedSearch = localStorage.getItem('search_roles') || '';
+  const storedFilters = getStoredJSON<string[]>('filters_roles', []);
+  const storedPage = Number(localStorage.getItem('page_roles')) || 1;
+  const storedSort = localStorage.getItem('sort_roles') || 'created_at:desc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const buildAdvance = (filters: string[]) =>
-    filters.length === 1 ? JSON.stringify({ where: { is_active: filters[0] === 'true' } }) : '';
+  const buildAdvance = (filters: string[]) => {
+    return filters.length === 1
+      ? JSON.stringify({ where: { is_active: filters[0] === 'true' } })
+      : '';
+  };
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem('perpage_applications')) || 10,
+    perpage: Number(localStorage.getItem('perpage_roles')) || 10,
     search: storedSearch,
     sort: storedSort,
     advance: buildAdvance(storedFilters),
@@ -74,40 +87,40 @@ const ApplicationManagement: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const fetchApplications = useCallback(async (params: PaginateParams) => {
+  const fetchRoles = useCallback(async (params: PaginateParams) => {
     try {
       setLoading(true);
-      const data = await applicationService.getAll(params);
+      const data = await roleService.getAll(params);
       setRawResponse(data);
       const items = data.data || data;
-      setApplications(Array.isArray(items) ? items : []);
-      setTotalRows(data.paginate?.total ?? (data as { total?: number }).total ?? (Array.isArray(items) ? items.length : 0));
+      setRoles(Array.isArray(items) ? items : []);
+      setTotalRows(data.paginate?.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load applications: ' + getErrorDetail(err));
-      devLog('Error fetching applications:', err);
+      setError('Failed to load roles: ' + getErrorDetail(err));
+      devLog('Error fetching roles:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchApplications(paginate);
-  }, [fetchApplications, paginate]);
+    fetchRoles(paginate);
+  }, [fetchRoles, paginate]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    localStorage.setItem('search_applications', value);
+    localStorage.setItem('search_roles', value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
-      localStorage.setItem('page_applications', '1');
+      localStorage.setItem('page_roles', '1');
       setPaginate(prev => ({ ...prev, page: 1, search: value }));
     }, 400);
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
-    localStorage.setItem('perpage_applications', String(perpage));
-    localStorage.setItem('page_applications', String(page));
+    localStorage.setItem('perpage_roles', String(perpage));
+    localStorage.setItem('page_roles', String(page));
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
@@ -116,23 +129,31 @@ const ApplicationManagement: React.FC = () => {
       ? statusFilter.filter((s) => s !== status)
       : [...statusFilter, status];
     setStatusFilter(next);
-    localStorage.setItem('filters_applications', JSON.stringify(next));
-    localStorage.setItem('page_applications', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next), filter: {} }));
+    localStorage.setItem('filters_roles', JSON.stringify(next));
+    localStorage.setItem('page_roles', '1');
+    const advance = buildAdvance(next);
+    setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
+  };
+
+  const handleClearStatusFilter = () => {
+    setStatusFilter([]);
+    localStorage.setItem('filters_roles', JSON.stringify([]));
+    localStorage.setItem('page_roles', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
-    localStorage.setItem('filters_applications', JSON.stringify([]));
-    localStorage.setItem('page_applications', '1');
+    localStorage.setItem('filters_roles', JSON.stringify([]));
+    localStorage.setItem('page_roles', '1');
     setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
   };
 
   const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
 
   const handleSortChange = (sort: string) => {
-    localStorage.setItem('sort_applications', sort);
-    localStorage.setItem('page_applications', '1');
+    localStorage.setItem('sort_roles', sort);
+    localStorage.setItem('page_roles', '1');
     setPaginate(prev => ({ ...prev, sort, page: 1 }));
   };
 
@@ -143,72 +164,59 @@ const ApplicationManagement: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     try {
-      await applicationService.delete(deleteId);
-      toast.success('Application deleted successfully');
+      await roleService.delete(deleteId);
+      toast.success('Role deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      toast.error('Failed to delete application', { description: getErrorDetail(err) });
+      const parsed = parseApiError(err);
+      toast.error('Failed to delete role', { description: parsed.message });
     }
   };
 
   const handleExport = () => {
-    const csv = generateCSV(
-      applications.map((a) => ({
-        name: a.name,
-        app_id: a.id,
-        description: a.description ?? '',
-        access: a.allow_all ? 'All APIs' : String(a.api_names?.length ?? 0) + ' APIs',
-        is_active: a.is_active ? 'Active' : 'Inactive',
-      })),
-      [
-        { key: 'name', label: 'Name' },
-        { key: 'app_id', label: 'App ID' },
-        { key: 'description', label: 'Description' },
-        { key: 'access', label: 'Access' },
-        { key: 'is_active', label: 'Status' },
-      ],
-    );
-    downloadCSV(csv, `applications-${new Date().toISOString().slice(0, 10)}.csv`);
+    const csv = generateCSV(roles, [
+      { key: 'name', label: 'Name' },
+      { key: 'description', label: 'Description' },
+      { key: 'permission_count', label: 'Permissions' },
+      { key: 'is_active', label: 'Active' },
+    ]);
+    downloadCSV(csv, `roles-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
   };
 
-  const columns = useMemo<ColumnDef<Application, unknown>[]>(() => [
+  const columns = useMemo<ColumnDef<RoleRow, unknown>[]>(() => [
     {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <Link to={`/applications/${row.original.id}/edit`} className="text-primary hover:underline">
+        <button
+          type="button"
+          onClick={() => navigate(`/platform/roles/${row.original.id}/edit`)}
+          className="text-primary hover:underline text-left font-medium"
+        >
           {row.original.name}
-        </Link>
-      ),
-    },
-    {
-      id: 'app_id',
-      header: 'App ID',
-      enableSorting: false,
-      cell: ({ row }) => (
-        <span className="font-mono text-[10px] sm:text-xs text-muted-foreground" title={row.original.id}>
-          {row.original.id}
-        </span>
+        </button>
       ),
     },
     {
       accessorKey: 'description',
       header: 'Description',
-      enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.description || '-'}</span>
+        <span className="text-sm text-muted-foreground">
+          {row.original.description || '-'}
+        </span>
       ),
     },
     {
-      id: 'access',
-      header: 'Access',
+      id: 'permission_count',
+      header: 'Permissions',
       enableSorting: false,
+      meta: { cellClassName: 'text-center' },
       cell: ({ row }) => (
-        row.original.allow_all
-          ? <Badge variant="outline">All APIs</Badge>
-          : <span className="text-sm">{row.original.api_names?.length ?? 0} APIs</span>
+        <Badge variant="secondary">
+          {row.original.permission_count ?? 0}
+        </Badge>
       ),
     },
     {
@@ -228,23 +236,30 @@ const ApplicationManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name}`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={`Actions for ${row.original.name}`}
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <Can permission="application.update">
-              <DropdownMenuItem onClick={() => navigate(`/applications/${row.original.id}/edit`)} className="cursor-pointer">
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
-            </Can>
-            <Can permission="application.delete">
-              <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </Can>
+            <DropdownMenuItem
+              onClick={() => navigate(`/platform/roles/${row.original.id}/edit`)}
+              className="cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleDelete(row.original.id)}
+              className="cursor-pointer text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -254,38 +269,53 @@ const ApplicationManagement: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
+        {/* Header row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Application Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage applications and their API access</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Roles</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
+              Manage platform roles and their permissions
+            </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || applications.length === 0}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/platform/permissions')}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Permission Catalog
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={loading || roles.length === 0}
+            >
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
-            <Can permission="application.create">
-              <Button onClick={() => navigate('/applications/new')}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Application
-              </Button>
-            </Can>
+            <Button onClick={() => navigate('/platform/roles/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Role
+            </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader className="space-y-3">
+            {/* Search + Filter row */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search applications..."
+                  placeholder="Search roles..."
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search applications"
+                  aria-label="Search roles"
                 />
                 {searchTerm && (
                   <button
@@ -312,14 +342,21 @@ const ApplicationManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter applications by status</SheetDescription>
+                    <SheetDescription>Filter roles by status</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearAllFilters}>Clear</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs"
+                            onClick={handleClearStatusFilter}
+                          >
+                            Clear
+                          </Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -341,63 +378,96 @@ const ApplicationManagement: React.FC = () => {
                         </Button>
                       </div>
                     </div>
+                    {activeFilterCount > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={handleClearAllFilters}
+                      >
+                        Clear All Filters
+                      </Button>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>
             </div>
+
+            {/* Active filter badges */}
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Filters:</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === 'true' ? 'Active' : 'Inactive'}
-                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleStatusFilter(s)}
+                      className="ml-0.5 hover:text-foreground"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
-                <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
+                <button
+                  onClick={handleClearAllFilters}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                >
                   Clear all
                 </button>
               </div>
             )}
           </CardHeader>
-          <CardContent>
-            {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
-            {!error && applications.length === 0 && !loading ? (
+          <CardContent>
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">
+                {error}
+              </div>
+            )}
+
+            {!error && roles.length === 0 && !loading ? (
               <EmptyState
-                icon={AppWindow}
-                title="No applications yet"
-                description={searchTerm ? `No applications matching "${searchTerm}"` : 'Get started by creating your first application.'}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/applications/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Application
-                  </Button>
-                ) : undefined}
+                icon={ShieldCheck}
+                title="No roles yet"
+                description={
+                  searchTerm
+                    ? `No roles matching "${searchTerm}"`
+                    : 'Get started by creating your first role to manage platform permissions.'
+                }
+                action={
+                  !searchTerm ? (
+                    <Button size="sm" onClick={() => navigate('/platform/roles/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Role
+                    </Button>
+                  ) : undefined
+                }
               />
             ) : !error ? (
               <div className="relative">
-                {loading && applications.length === 0 ? (
+                {loading && roles.length === 0 ? (
                   <TableSkeleton columns={5} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
-                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading applications">
-                        <div className="text-muted-foreground">Loading applications...</div>
+                      <div
+                        className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
+                        role="status"
+                        aria-label="Loading roles"
+                      >
+                        <div className="text-muted-foreground">Loading roles...</div>
                       </div>
                     )}
                     <DataTable
                       columns={columns}
-                      data={applications}
+                      data={roles}
                       serverSide
                       totalRows={totalRows}
                       page={paginate.page}
                       perpage={paginate.perpage}
                       onPaginateChange={handlePaginateChange}
                       onSortChange={handleSortChange}
-                      defaultSort={{ id: 'name', desc: false }}
+                      defaultSort={{ id: 'created_at', desc: true }}
                     />
                   </>
                 )}
@@ -409,9 +479,11 @@ const ApplicationManagement: React.FC = () => {
 
       <ConfirmDialog
         open={deleteId !== null}
-        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Application"
-        description="Are you sure you want to delete this application? This action cannot be undone."
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null);
+        }}
+        title="Delete Role"
+        description="Are you sure you want to delete this role? This action cannot be undone."
         confirmText="Delete"
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
@@ -428,19 +500,34 @@ const ApplicationManagement: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent
+            side="right"
+            className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6"
+          >
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />
                 API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                  DEV
+                </Badge>
               </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">GET /api-system/applications</SheetDescription>
+              <SheetDescription className="text-xs sm:text-sm">
+                GET /api-system/platform/roles
+              </SheetDescription>
             </SheetHeader>
             <div className="mt-3 sm:mt-4">
               <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyJson(rawResponse)}
+                >
+                  {copied ? (
+                    <Check className="mr-1.5 h-3 w-3" />
+                  ) : (
+                    <Copy className="mr-1.5 h-3 w-3" />
+                  )}
                   {copied ? 'Copied!' : 'Copy JSON'}
                 </Button>
               </div>
@@ -455,4 +542,4 @@ const ApplicationManagement: React.FC = () => {
   );
 };
 
-export default ApplicationManagement;
+export default RoleManagement;

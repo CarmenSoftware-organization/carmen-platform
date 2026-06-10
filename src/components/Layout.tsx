@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow } from 'lucide-react';
+import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow, ShieldCheck } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 
 interface LayoutProps {
@@ -11,7 +11,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout, hasRole, hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,17 +48,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const allNavItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/clusters', label: 'Clusters', icon: Network, roles: ['platform_admin', 'support_manager', 'support_staff'] },
-    { path: '/business-units', label: 'Business Units', icon: Building2 },
-    { path: '/users', label: 'Users', icon: Users },
-    { path: '/report-templates', label: 'Report Templates', icon: FileText, roles: ['platform_admin', 'support_manager', 'support_staff'] },
-    { path: '/print-template-mapping', label: 'Print Mapping', icon: Printer, roles: ['platform_admin', 'support_manager', 'support_staff'] },
-    { path: '/news', label: 'News', icon: Newspaper, roles: ['platform_admin'] },
-    { path: '/applications', label: 'Applications', icon: AppWindow, roles: ['platform_admin'] },
-    { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, roles: ['platform_admin', 'support_manager'] },
+    { path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read' },
+    { path: '/business-units', label: 'Business Units', icon: Building2, permission: 'cluster.read' },
+    { path: '/users', label: 'Users', icon: Users, permission: 'user.read' },
+    { path: '/report-templates', label: 'Report Templates', icon: FileText, permission: 'report_template.read' },
+    { path: '/print-template-mapping', label: 'Print Mapping', icon: Printer, permission: 'print_template_mapping.read' },
+    { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read' },
+    { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read' },
+    { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read' },
+    { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send' },
   ];
 
-  const navItems = allNavItems.filter(item => !item.roles || hasRole(item.roles));
+  const navItems = allNavItems.filter(
+    (item) =>
+      (!item.roles || hasRole(item.roles)) &&
+      (!item.permission || hasPermission(item.permission)),
+  );
 
   const getFullName = (): string => {
     const info = user?.user_info;
