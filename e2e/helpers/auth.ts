@@ -24,16 +24,15 @@ export class AuthHelper {
   }
 
   async logout() {
-    // Open user dropdown in sidebar and click Log out
-    const logoutButton = this.page.locator('text=Log out');
-    if (await logoutButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
-      await logoutButton.click();
-    } else {
-      // If sidebar is collapsed or we're on mobile, find and expand user menu
-      const avatar = this.page.locator('[class*="avatar"]').first();
-      await avatar.click();
-      await this.page.click('text=Log out');
-    }
+    // Open the user dropdown in the sidebar (DropdownMenuTrigger wraps the Avatar button)
+    // The Avatar is a rounded-full overflow-hidden div inside the trigger button
+    const userMenuTrigger = this.page.locator('button').filter({
+      has: this.page.locator('div.rounded-full.overflow-hidden'),
+    }).first();
+    await userMenuTrigger.waitFor({ state: 'visible', timeout: 10_000 });
+    await userMenuTrigger.click();
+    // Now the dropdown is open — click Log out
+    await this.page.locator('[role="menuitem"]').filter({ hasText: 'Log out' }).click();
     await this.page.waitForURL('**/login', { timeout: 10_000 });
   }
 
