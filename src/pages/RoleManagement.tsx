@@ -40,6 +40,13 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const fmtDateTime = (v?: string) => {
+  if (!v) return '-';
+  const d = new Date(v);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+
 const RoleManagement: React.FC = () => {
   const navigate = useNavigate();
   const [roles, setRoles] = useState<RoleRow[]>([]);
@@ -227,6 +234,24 @@ const RoleManagement: React.FC = () => {
           {row.original.is_active ? 'Active' : 'Inactive'}
         </Badge>
       ),
+    },
+    {
+      accessorKey: 'created_at',
+      id: 'created_at',
+      header: 'Created',
+      cell: ({ row }) => (
+        <span className="text-[11px] leading-tight text-muted-foreground">{fmtDateTime(row.original.created_at)}</span>
+      ),
+    },
+    {
+      accessorKey: 'updated_at',
+      id: 'updated_at',
+      header: 'Updated',
+      cell: ({ row }) => {
+        const d = row.original;
+        if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
+        return <span className="text-[11px] leading-tight text-muted-foreground">{fmtDateTime(d.updated_at)}</span>;
+      },
     },
     {
       id: 'actions',
@@ -446,7 +471,7 @@ const RoleManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && roles.length === 0 ? (
-                  <TableSkeleton columns={5} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
