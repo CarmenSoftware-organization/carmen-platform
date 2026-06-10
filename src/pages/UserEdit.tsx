@@ -4,9 +4,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
 import businessUnitService from "../services/businessUnitService";
-import userRoleService from "../services/userRoleService";
-import roleService from "../services/roleService";
-import clusterService from "../services/clusterService";
 import Can from "../components/Can";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -16,14 +13,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus, Trash2, Loader2, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
-import { getErrorDetail, parseApiError } from '../utils/errorParser';
+import { getErrorDetail } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import type { UserRoleAssignment, Scope } from '../types';
 
 interface UserBusinessUnit {
   id: string;
@@ -101,15 +97,6 @@ const UserEdit: React.FC = () => {
   const [addBURole, setAddBURole] = useState('user');
   const [addingBU, setAddingBU] = useState(false);
   const [deleteBU, setDeleteBU] = useState<UserBusinessUnit | null>(null);
-  const [roleAssignments, setRoleAssignments] = useState<UserRoleAssignment[]>([]);
-  const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
-  const [clusterOptions, setClusterOptions] = useState<{ id: string; name: string }[]>([]);
-  const [showAddRole, setShowAddRole] = useState(false);
-  const [selectedRoleId, setSelectedRoleId] = useState('');
-  const [scopeType, setScopeType] = useState<'platform' | 'cluster'>('platform');
-  const [scopeClusterId, setScopeClusterId] = useState('');
-  const [addingRole, setAddingRole] = useState(false);
-  const [deleteRoleAssignment, setDeleteRoleAssignment] = useState<UserRoleAssignment | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<UserFormData>(formData);
   const formRef = useRef<HTMLFormElement>(null);
@@ -206,17 +193,6 @@ const UserEdit: React.FC = () => {
       setAvatarUrl(user.avatar_url || profile.avatar_url || "");
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
-      try { setRoleAssignments(await userRoleService.list(id!)); } catch { /* non-fatal; leave empty */ }
-      try {
-        const r = await roleService.getAll({ perpage: 200, sort: 'name:asc' });
-        const items = r.data || r;
-        setRoleOptions((Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
-      } catch { /* ignore */ }
-      try {
-        const c = await clusterService.getAll({ perpage: 200, sort: 'name:asc' });
-        const items = c.data || c;
-        setClusterOptions((Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
-      } catch { /* ignore */ }
     } catch (err: unknown) {
       setError("Failed to load user: " + getErrorDetail(err));
     } finally {
@@ -292,42 +268,6 @@ const UserEdit: React.FC = () => {
     }
   };
 
-  const handleAddRole = async () => {
-    if (!selectedRoleId) { toast.error('Select a role'); return; }
-    if (scopeType === 'cluster' && !scopeClusterId) { toast.error('Select a cluster'); return; }
-    setAddingRole(true);
-    try {
-      const scope: Scope = scopeType === 'cluster'
-        ? { type: 'cluster', cluster_id: scopeClusterId }
-        : { type: 'platform' };
-      await userRoleService.add(id!, { role_id: selectedRoleId, scope });
-      toast.success('Role assigned');
-      setShowAddRole(false);
-      setSelectedRoleId('');
-      setScopeType('platform');
-      setScopeClusterId('');
-      setRoleAssignments(await userRoleService.list(id!));
-    } catch (err) {
-      const { message } = parseApiError(err);
-      toast.error(message);
-    } finally {
-      setAddingRole(false);
-    }
-  };
-
-  const handleRemoveRole = async () => {
-    if (!deleteRoleAssignment) return;
-    try {
-      await userRoleService.remove(id!, deleteRoleAssignment.id);
-      toast.success('Role removed');
-      setRoleAssignments(await userRoleService.list(id!));
-    } catch (err) {
-      const { message } = parseApiError(err);
-      toast.error(message);
-    } finally {
-      setDeleteRoleAssignment(null);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -927,137 +867,6 @@ const UserEdit: React.FC = () => {
           </Card>
         )}
 
-        {/* Roles & Scope */}
-        {!isNew && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" />
-                    Roles &amp; Scope
-                  </CardTitle>
-                  <CardDescription>Platform roles assigned to this user</CardDescription>
-                </div>
-                <Can permission="user.manage_roles">
-                  <Button variant="outline" size="sm" onClick={() => setShowAddRole(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Role
-                  </Button>
-                </Can>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {roleAssignments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No roles assigned.</p>
-              ) : (
-                <div className="space-y-2">
-                  {roleAssignments.map((assignment) => {
-                    const scopeBadge = assignment.scope.type === 'cluster'
-                      ? (clusterOptions.find(c => c.id === (assignment.scope as { type: 'cluster'; cluster_id: string }).cluster_id)?.name
-                          || (assignment.scope as { type: 'cluster'; cluster_id: string }).cluster_id)
-                      : 'Platform';
-                    return (
-                      <div key={assignment.id} className="flex items-center justify-between rounded-md border px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{assignment.role_name || assignment.role_id}</span>
-                          <Badge variant="outline" className="text-[10px]">{scopeBadge}</Badge>
-                        </div>
-                        <Can permission="user.manage_roles">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-destructive hover:text-destructive"
-                            onClick={() => setDeleteRoleAssignment(assignment)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </Can>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <Can permission="user.manage_roles">
-                {showAddRole && (
-                  <div className="rounded-md border p-3 space-y-3 mt-2">
-                    <div className="space-y-2">
-                      <Label>Role</Label>
-                      <select
-                        value={selectedRoleId}
-                        onChange={(e) => setSelectedRoleId(e.target.value)}
-                        className={selectClassName}
-                      >
-                        <option value="">Select role…</option>
-                        {roleOptions.map((r) => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Scope</Label>
-                      <select
-                        value={scopeType}
-                        onChange={(e) => {
-                          setScopeType(e.target.value as 'platform' | 'cluster');
-                          setScopeClusterId('');
-                        }}
-                        className={selectClassName}
-                      >
-                        <option value="platform">Platform</option>
-                        <option value="cluster">Specific cluster</option>
-                      </select>
-                    </div>
-                    {scopeType === 'cluster' && (
-                      <div className="space-y-2">
-                        <Label>Cluster</Label>
-                        <select
-                          value={scopeClusterId}
-                          onChange={(e) => setScopeClusterId(e.target.value)}
-                          className={selectClassName}
-                        >
-                          <option value="">Select cluster…</option>
-                          {clusterOptions.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleAddRole} disabled={addingRole}>
-                        {addingRole ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                        {addingRole ? 'Adding…' : 'Add'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setShowAddRole(false);
-                          setSelectedRoleId('');
-                          setScopeType('platform');
-                          setScopeClusterId('');
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Can>
-
-              <ConfirmDialog
-                open={!!deleteRoleAssignment}
-                onOpenChange={(open) => { if (!open) setDeleteRoleAssignment(null); }}
-                title="Remove role"
-                description={`Are you sure you want to remove the role "${deleteRoleAssignment?.role_name || deleteRoleAssignment?.role_id}" from this user?`}
-                confirmText="Remove"
-                confirmVariant="destructive"
-                onConfirm={handleRemoveRole}
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Change Password Dialog */}
