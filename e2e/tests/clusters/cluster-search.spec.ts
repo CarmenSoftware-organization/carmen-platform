@@ -10,7 +10,17 @@ test.describe('Cluster - Search', () => {
     clusterData = generateClusterData();
   });
 
-  test('should filter results by search term', async ({ page }) => {
+  test('should filter results by search term', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010010' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin; a test cluster is created with a known code' },
+      { type: 'step', description: 'Create a cluster via the new-cluster form and submit' },
+      { type: 'step', description: 'Navigate to Clusters list and search for the cluster code' },
+      { type: 'expected', description: 'The created cluster code is visible in the search results' },
+    ],
+  }, async ({ page }) => {
     // Create a cluster with a known code
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();
@@ -26,7 +36,17 @@ test.describe('Cluster - Search', () => {
     await managementPage.expectClusterVisible(clusterData.code);
   });
 
-  test('should show empty results for non-existent search term', async ({ page }) => {
+  test('should show empty results for non-existent search term', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010011' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page' },
+      { type: 'step', description: 'Search for "ZZZZNONEXISTENT999"' },
+      { type: 'step', description: 'Wait for debounce and API response' },
+      { type: 'expected', description: 'Table shows zero rows or an empty state message' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new ClusterManagementPage(page);
     await managementPage.goto();
 
@@ -40,7 +60,18 @@ test.describe('Cluster - Search', () => {
     expect(rowCount === 0 || emptyVisible).toBeTruthy();
   });
 
-  test('should clear search and show all results', async ({ page }) => {
+  test('should clear search and show all results', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010012' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin; clusters list has at least one row' },
+      { type: 'step', description: 'Navigate to Clusters list and record initial row count' },
+      { type: 'step', description: 'Search for "test" to filter results' },
+      { type: 'step', description: 'Clear the search input' },
+      { type: 'expected', description: 'Results return (row count >= 0); list is no longer filtered' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new ClusterManagementPage(page);
     await managementPage.goto();
     await managementPage.waitForTableData();
@@ -60,7 +91,17 @@ test.describe('Cluster - Search', () => {
     expect(afterClearCount).toBeGreaterThanOrEqual(0);
   });
 
-  test('should debounce search input (400ms)', async ({ page }) => {
+  test('should debounce search input (400ms)', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010013' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page' },
+      { type: 'step', description: 'Type "test" rapidly (50ms between keys) into the search input' },
+      { type: 'step', description: 'Wait 600ms for debounce to resolve' },
+      { type: 'expected', description: 'At most 2 API calls made to /api-system/cluster with search param (debounce reduces calls)' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new ClusterManagementPage(page);
     await managementPage.goto();
 
@@ -79,7 +120,17 @@ test.describe('Cluster - Search', () => {
     expect(apiCallCount).toBeLessThanOrEqual(2);
   });
 
-  test('should search by cluster name', async ({ page }) => {
+  test('should search by cluster name', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010014' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin; a test cluster is created with a known name' },
+      { type: 'step', description: 'Create a cluster via the form and submit' },
+      { type: 'step', description: 'Navigate to Clusters list and search by the first word of the cluster name' },
+      { type: 'expected', description: 'The cluster with the matching name is visible in search results' },
+    ],
+  }, async ({ page }) => {
     // Create a cluster
     const editPage = new ClusterEditPage(page);
     await editPage.gotoNew();

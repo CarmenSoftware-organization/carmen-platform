@@ -10,13 +10,32 @@ test.describe('Cluster - Filter', () => {
     await managementPage.waitForTableData();
   });
 
-  test('should open filter sheet', async ({ page }) => {
+  test('should open filter sheet', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010015' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page with table data loaded' },
+      { type: 'step', description: 'Click the filter button to open the filter sheet' },
+      { type: 'expected', description: 'Filter sheet dialog opens and the "Filters" heading is visible' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await expect(page.locator('[role="dialog"]')).toBeVisible();
     await expect(page.locator('text=Filters').nth(1)).toBeVisible();
   });
 
-  test('should filter by Active status', async ({ page }) => {
+  test('should filter by Active status', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010016' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page with table data loaded' },
+      { type: 'step', description: 'Open the filter sheet and select Active status' },
+      { type: 'step', description: 'Close the filter sheet and wait for results to update' },
+      { type: 'expected', description: 'All visible rows (up to first 5) display "Active" status badge' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     // Close filter sheet
@@ -35,7 +54,17 @@ test.describe('Cluster - Filter', () => {
     }
   });
 
-  test('should filter by Inactive status', async ({ page }) => {
+  test('should filter by Inactive status', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010017' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page with table data loaded' },
+      { type: 'step', description: 'Open the filter sheet and select Inactive status' },
+      { type: 'step', description: 'Close the filter sheet and wait for results to update' },
+      { type: 'expected', description: 'Inactive filter badge is visible on the page' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Inactive');
     await page.keyboard.press('Escape');
@@ -46,7 +75,16 @@ test.describe('Cluster - Filter', () => {
     await expect(filterBadge).toBeVisible({ timeout: 5_000 });
   });
 
-  test('should show active filter badges', async ({ page }) => {
+  test('should show active filter badges', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010018' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page with table data loaded' },
+      { type: 'step', description: 'Open the filter sheet, select Active status, close the sheet' },
+      { type: 'expected', description: 'A "Filters:" badge label appears on the page indicating an active filter' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');
@@ -59,7 +97,17 @@ test.describe('Cluster - Filter', () => {
     }
   });
 
-  test('should clear all filters', async ({ page }) => {
+  test('should clear all filters', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010019' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Active status filter is applied' },
+      { type: 'step', description: 'Open filter sheet, select Active status, close the sheet' },
+      { type: 'step', description: 'Click the clear-all-filters control' },
+      { type: 'expected', description: '"Filters:" badge disappears; no filter is active' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');
@@ -73,7 +121,16 @@ test.describe('Cluster - Filter', () => {
     await expect(filterBadges).not.toBeVisible({ timeout: 3_000 });
   });
 
-  test('should show filter count badge on filter button', async ({ page }) => {
+  test('should show filter count badge on filter button', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-010020' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; on Clusters management page with table data loaded' },
+      { type: 'step', description: 'Open filter sheet, select Active status, close the sheet' },
+      { type: 'expected', description: 'Filter button shows a count badge containing "1"' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');

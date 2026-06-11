@@ -10,7 +10,19 @@ test.describe('Cluster - Create', () => {
     clusterData = generateClusterData();
   });
 
-  test('should create a new cluster with all fields', async ({ page }) => {
+  test('should create a new cluster with all fields', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-030001' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin (shared storageState)' },
+      { type: 'step', description: 'Open Clusters management and click Add' },
+      { type: 'step', description: 'Fill all cluster fields' },
+      { type: 'step', description: 'Submit and wait for the save response' },
+      { type: 'step', description: 'Search the new code in the list' },
+      { type: 'expected', description: 'Save returns 200/201 and the cluster is visible in search' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new ClusterManagementPage(page);
     const editPage = new ClusterEditPage(page);
 
@@ -31,7 +43,18 @@ test.describe('Cluster - Create', () => {
     await managementPage.expectClusterVisible(clusterData.code);
   });
 
-  test('should create a cluster with minimum required fields', async ({ page }) => {
+  test('should create a cluster with minimum required fields', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-030002' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin' },
+      { type: 'step', description: 'Open the new-cluster form' },
+      { type: 'step', description: 'Fill only code and name' },
+      { type: 'step', description: 'Submit and wait for save' },
+      { type: 'expected', description: 'Save returns 200/201' },
+    ],
+  }, async ({ page }) => {
     const editPage = new ClusterEditPage(page);
 
     await editPage.gotoNew();
@@ -46,7 +69,18 @@ test.describe('Cluster - Create', () => {
     expect([200, 201]).toContain(response.status());
   });
 
-  test('should create an inactive cluster', async ({ page }) => {
+  test('should create an inactive cluster', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-030003' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin' },
+      { type: 'step', description: 'Open the new-cluster form' },
+      { type: 'step', description: 'Fill fields with is_active = false' },
+      { type: 'step', description: 'Submit and wait for save' },
+      { type: 'expected', description: 'Save returns 200/201 for an inactive cluster' },
+    ],
+  }, async ({ page }) => {
     const editPage = new ClusterEditPage(page);
 
     await editPage.gotoNew();
@@ -60,7 +94,16 @@ test.describe('Cluster - Create', () => {
     expect([200, 201]).toContain(response.status());
   });
 
-  test('should show validation errors for empty required fields', async ({ page }) => {
+  test('should show validation errors for empty required fields', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-200001' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Validation' },
+      { type: 'precondition', description: 'On the new-cluster form' },
+      { type: 'step', description: 'Submit the empty form' },
+      { type: 'expected', description: 'Stays on /clusters/new (submission blocked)' },
+    ],
+  }, async ({ page }) => {
     const editPage = new ClusterEditPage(page);
 
     await editPage.gotoNew();
@@ -72,7 +115,16 @@ test.describe('Cluster - Create', () => {
     await expect(page).toHaveURL(/\/clusters\/new/);
   });
 
-  test('should navigate back to list when clicking back button', async ({ page }) => {
+  test('should navigate back to list when clicking back button', {
+    annotation: [
+      { type: 'caseId', description: 'TC-CLU-400001' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Navigation' },
+      { type: 'precondition', description: 'On the new-cluster form' },
+      { type: 'step', description: 'Click the back button' },
+      { type: 'expected', description: 'Returns to /clusters' },
+    ],
+  }, async ({ page }) => {
     const editPage = new ClusterEditPage(page);
 
     await editPage.gotoNew();
