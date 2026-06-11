@@ -19,6 +19,34 @@ export function formatRunDate(startTime) {
   return m ? `${m[1]} ${m[2]}` : '';
 }
 
+const CASE_ID_RE = /^TC-([A-Z]{2,5})-\d{6}$/;
+
+export function validateCaseIds(testCases, prefixes = MODULE_PREFIXES) {
+  const errors = [];
+  const seen = new Map();
+  for (const tc of testCases) {
+    const id = tc.testId;
+    if (!/^TC-/.test(String(id))) {
+      errors.push(`Seq ${tc.seq} "${tc.title}": missing caseId (using fallback "${id}").`);
+      continue;
+    }
+    const m = CASE_ID_RE.exec(id);
+    if (!m) {
+      errors.push(`Invalid Test ID format: "${id}" (expected TC-<PREFIX>-XXYYYY).`);
+      continue;
+    }
+    if (!prefixes.has(m[1])) {
+      errors.push(`Unknown prefix "${m[1]}" in "${id}".`);
+    }
+    if (seen.has(id)) {
+      errors.push(`Duplicate Test ID "${id}" (seq ${seen.get(id)} and ${tc.seq}).`);
+    } else {
+      seen.set(id, tc.seq);
+    }
+  }
+  return errors;
+}
+
 export const CSV_COLUMNS = [
   'Seq', 'Test ID', 'Status', 'Title', 'Preconditions', 'Steps',
   'Expected Result', 'Priority', 'Test Type', 'Run Date',

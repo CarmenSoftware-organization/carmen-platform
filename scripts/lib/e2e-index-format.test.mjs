@@ -95,6 +95,7 @@ import { stripAnsi, formatRunDate } from './e2e-index-format.mjs';
 import { extractAnnotations } from './e2e-index-format.mjs';
 import { toTestCase } from './e2e-index-format.mjs';
 import { CSV_COLUMNS, toCsv } from './e2e-index-format.mjs';
+import { validateCaseIds } from './e2e-index-format.mjs';
 
 test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   assert.equal(MODULE_PREFIXES.size, 16);
@@ -267,4 +268,25 @@ test('toCsv writes header + CRLF rows and RFC-4180-escapes', () => {
   const lines = csv.split('\r\n');
   assert.equal(lines[0], 'Seq,Test ID,Status,Title,Preconditions,Steps,Expected Result,Priority,Test Type,Run Date,Duration (ms),Error,Note');
   assert.match(lines[1], /^1,TC-CLU-030001,passed,"a, b",,"1\. x\n2\. y",ok,P1,CRUD,2026-06-11 03:15:42,900,"he said ""hi""",/);
+});
+
+test('validateCaseIds flags format, unknown prefix, duplicate, missing', () => {
+  const errs = validateCaseIds([
+    { seq: 1, testId: 'TC-CLU-030001', title: 'a' },
+    { seq: 2, testId: 'TC-CLU-030001', title: 'dup' },     // duplicate
+    { seq: 3, testId: 'TC-ZZZ-030001', title: 'badpfx' },  // unknown prefix
+    { seq: 4, testId: 'TC-CLU-3X', title: 'badfmt' },      // bad format
+    { seq: 5, testId: 'rawhash', title: 'missing' },       // fallback / missing
+  ]);
+  assert.ok(errs.some((e) => /Duplicate Test ID "TC-CLU-030001"/.test(e)));
+  assert.ok(errs.some((e) => /Unknown prefix "ZZZ"/.test(e)));
+  assert.ok(errs.some((e) => /Invalid Test ID format: "TC-CLU-3X"/.test(e)));
+  assert.ok(errs.some((e) => /missing caseId/.test(e)));
+});
+
+test('validateCaseIds returns [] for a clean set', () => {
+  assert.deepEqual(
+    validateCaseIds([{ seq: 1, testId: 'TC-CLU-030001', title: 'a' }]),
+    []
+  );
 });
