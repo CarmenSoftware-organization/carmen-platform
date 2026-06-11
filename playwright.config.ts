@@ -12,14 +12,15 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { open: 'never' }],
+    ['json', { outputFile: 'e2e-results/results.json' }],
   ],
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3100',
     headless: !!process.env.CI,
     ignoreHTTPSErrors: true,
-    screenshot: 'only-on-failure',
-    trace: 'on-first-retry',
-    video: 'retain-on-failure',
+    screenshot: 'on',
+    trace: 'on',
+    video: 'on',
     storageState: 'e2e/.auth/user.json',
   },
   projects: [
