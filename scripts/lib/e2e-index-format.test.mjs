@@ -168,3 +168,39 @@ test('extractAnnotations tolerates undefined/empty', () => {
   assert.deepEqual(out.steps, []);
   assert.deepEqual(out.preconditions, []);
 });
+
+const annotatedFixture = {
+  suites: [{
+    title: 'clusters/cluster-create.spec.ts',
+    file: 'e2e/tests/clusters/cluster-create.spec.ts',
+    specs: [{
+      id: 'spec1',
+      title: 'creates a cluster',
+      file: 'e2e/tests/clusters/cluster-create.spec.ts',
+      line: 13,
+      tests: [{
+        annotations: [
+          { type: 'caseId', description: 'TC-CLU-030001' },
+          { type: 'step', description: 'open' },
+        ],
+        results: [{
+          status: 'passed',
+          duration: 900,
+          startTime: '2026-06-11T03:15:42.000Z',
+          errors: [],
+          attachments: [],
+        }],
+      }],
+    }],
+  }],
+};
+
+test('parseResults captures annotations, startTime, errors', () => {
+  const [t] = parseResults(annotatedFixture);
+  assert.deepEqual(t.annotations, [
+    { type: 'caseId', description: 'TC-CLU-030001' },
+    { type: 'step', description: 'open' },
+  ]);
+  assert.equal(t.startTime, '2026-06-11T03:15:42.000Z');
+  assert.deepEqual(t.errors, []);
+});

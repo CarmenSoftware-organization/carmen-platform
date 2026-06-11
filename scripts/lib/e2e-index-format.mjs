@@ -81,6 +81,9 @@ export function parseResults(report) {
           title: spec.title ?? '(untitled)',
           status: result.status ?? 'unknown',
           durationMs: result.duration ?? 0,
+          startTime: result.startTime ?? '',
+          annotations: test.annotations ?? [],
+          errors: result.errors ?? [],
           attachments,
         });
       }
