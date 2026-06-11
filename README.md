@@ -38,7 +38,6 @@ bun start                     # dev server at http://localhost:3100
 - CodeMirror 6 (XML syntax + folding + search)
 - Axios, Sonner, lucide-react
 - Bun (primary) / npm, Node 20.x
-- Playwright for e2e tests
 
 ## Docs
 

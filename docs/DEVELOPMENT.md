@@ -41,11 +41,6 @@ bun start                 # Vite dev server on :3100
 bun run build             # Production build via vite build; sets REACT_APP_BUILD_DATE
 bun run preview           # Serve the production build locally on :3100
 
-bun run test:e2e          # Playwright e2e, headless
-bun run test:e2e:ui       # with Playwright UI
-bun run test:e2e:headed   # with visible browser
-bun run test:e2e:debug    # debug mode
-bun run test:e2e:report   # show last HTML report
 ```
 
 No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
@@ -155,25 +150,8 @@ See [../SITEMAP.md](../SITEMAP.md) for the authoritative route list.
 
 ## E2E testing
 
-Playwright-based, located under `e2e/`:
-
-```
-e2e/
-  pages/        # Page objects (LoginPage, ClusterEditPage, etc.)
-  tests/        # Specs organized by feature (auth/, clusters/, business-units/, users/, profile/, dashboard/, landing/)
-  fixtures/     # Test data
-  helpers/      # Shared helpers (AuthHelper, TEST_CREDENTIALS)
-```
-
-**Config:** `playwright.config.ts` — Chromium, screenshots on failure, video retention.
-
-**Credentials:** read from env, with defaults for local:
-```ts
-TEST_USER_EMAIL=test@test.com
-TEST_USER_PASSWORD=123456
-```
-
-Running tests assumes the dev server (or a deployed build) is reachable at the `baseURL` configured in `playwright.config.ts`.
+E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
+See that repo's `CLAUDE.md` and `README.md`. This repo's Vite dev server (`:3100`) is the system under test.
 
 ## Docker and deployment
 

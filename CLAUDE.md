@@ -24,10 +24,6 @@ bun install                 # or: npm install
 bun start                   # Vite dev server on :3100
 bun run build               # production build (sets REACT_APP_BUILD_DATE, emits to build/)
 bun run preview             # serve the production build locally on :3100
-bun run test:e2e            # Playwright headless
-bun run test:e2e:ui         # Playwright UI
-bun run test:e2e:headed     # visible browser
-bun run test:e2e:debug      # debug mode
 ```
 
 No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pass `CI=true` to treat warnings as errors.
@@ -52,14 +48,8 @@ Multi-stage Docker (Node 20 builder → nginx:stable-alpine, port 3001). CI in `
 
 ## E2E Tests
 
-Page-object pattern under `e2e/`: `tests/` (specs by feature), `pages/`, `helpers/`, `fixtures/`. Config in `playwright.config.ts` (Chromium, screenshots on failure, `testDir: './e2e/tests'`). Tests run full CRUD against the live DEV backend as `test@test.com` (super admin; env-overridable via `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`).
-
-- **Shared auth:** `e2e/global-setup.ts` logs in once and saves `storageState` to `e2e/.auth/user.json` (gitignored); every test starts authenticated. Only `tests/auth/*` opt out (`test.use({ storageState: { cookies: [], origins: [] } })`) to exercise real login/logout. Never add `auth.login()` to other specs.
-- **Management page objects** subclass `e2e/pages/EntityManagementPage.ts` (config: route/apiPath/title/addLabel). It provides response-waited `search`/filters/row actions with path-boundary API matching — don't reimplement these. Config-style pages (Super Admins, Print Mapping) extend `BasePage` directly with the deviation documented in the class header.
-- **Test data:** all created records carry an `E2E_` prefix (`e2e/fixtures/index.ts` generators; users use `e2e_user_*@example.com`). Specs are self-cleaning (delete what they create, same test, `try/finally` for journeys) and never assert absolute row counts. "Pick first available" helpers must skip `E2E_`-prefixed options — they're transient records from concurrently running suites.
-- **DEV-mutation safety invariants:** the Broadcast spec installs a URL-predicate route guard aborting broadcast POSTs (it must never send); the Print Mapping spec unchecks `is_default` (backend `EnsureSingleDefault` would steal the flag from live config); Super Admin / User Platform specs never touch the login user's privileges; seeded roles/permissions are never modified.
-- **Profile specs** live in ONE file with `test.describe.configure({ mode: 'default' })` — parallel workers contend on the login user's profile row and flake otherwise.
-- **Service dependency:** the Print Template Mapping suite needs the `micro-report` Go service on `:5015` (`go run ./cmd/server` in `../micro-report`); without it the CRUD test skips.
+E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
+See that repo's `CLAUDE.md`. This repo's Vite dev server (`:3100`) is the system under test.
 
 ## Project Structure (orientation only — `ls` for current state)
 

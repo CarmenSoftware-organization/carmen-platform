@@ -46,14 +46,7 @@
     "build:bump:minor": "node scripts/bump-version.mjs minor && node scripts/generate-changelog.mjs && npm run build",
     "build:bump:major": "node scripts/bump-version.mjs major && node scripts/generate-changelog.mjs && npm run build",
     "test:scripts": "node --test scripts/lib/*.test.mjs",
-    "preview": "vite preview --port 3100",
-    "test:e2e": "npx playwright test",
-    "test:e2e:ui": "npx playwright test --ui",
-    "test:e2e:headed": "npx playwright test --headed",
-    "test:e2e:debug": "npx playwright test --debug",
-    "test:e2e:report": "npx playwright show-report",
-    "test:e2e:index": "node scripts/generate-e2e-index.mjs",
-    "test:e2e:full": "npx playwright test; node scripts/generate-e2e-index.mjs"
+    "preview": "vite preview --port 3100"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
@@ -103,8 +96,6 @@
     ]
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.3.0",
-    "@playwright/test": "^1.58.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
