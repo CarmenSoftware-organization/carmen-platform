@@ -2,6 +2,11 @@
 
 const FAIL_STATUSES = new Set(['failed', 'timedOut', 'interrupted']);
 
+export const MODULE_PREFIXES = new Set([
+  'APP', 'AUTH', 'BRD', 'BU', 'CHG', 'CLU', 'DSH', 'NWS',
+  'PC', 'PTM', 'PRF', 'RT', 'ROL', 'SA', 'UP', 'USR',
+]);
+
 export function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')

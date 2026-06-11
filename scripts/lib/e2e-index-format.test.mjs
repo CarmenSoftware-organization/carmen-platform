@@ -90,6 +90,15 @@ test('formatDuration humanizes ms', () => {
 });
 
 import { renderIndexHtml } from './e2e-index-format.mjs';
+import { MODULE_PREFIXES } from './e2e-index-format.mjs';
+
+test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
+  assert.equal(MODULE_PREFIXES.size, 16);
+  for (const p of ['APP', 'AUTH', 'BRD', 'BU', 'CHG', 'CLU', 'DSH', 'NWS',
+    'PC', 'PTM', 'PRF', 'RT', 'ROL', 'SA', 'UP', 'USR']) {
+    assert.ok(MODULE_PREFIXES.has(p), `missing prefix ${p}`);
+  }
+});
 
 test('renderIndexHtml includes summary, groups, escaped names, media, trace', () => {
   const parsed = parseResults(fixture);
