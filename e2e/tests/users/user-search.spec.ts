@@ -10,7 +10,17 @@ test.describe('User - Search', () => {
     userData = generateUserData();
   });
 
-  test('should filter results by search term', async ({ page }) => {
+  test('should filter results by search term', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-010017' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin' },
+      { type: 'step',         description: 'Create a user with a known username via the new-user form and submit' },
+      { type: 'step',         description: 'Navigate to Users list and search by the known username' },
+      { type: 'expected',     description: 'The created user is visible in the search results' },
+    ],
+  }, async ({ page }) => {
     // Create a user with a known username
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
@@ -26,7 +36,16 @@ test.describe('User - Search', () => {
     await managementPage.expectUserVisible(userData.username);
   });
 
-  test('should show empty results for non-existent search term', async ({ page }) => {
+  test('should show empty results for non-existent search term', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-010018' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Search' },
+      { type: 'precondition', description: 'Authenticated; navigated to /users' },
+      { type: 'step',         description: 'Search for "ZZZZNONEXISTENT999" (guaranteed not to match any user)' },
+      { type: 'expected',     description: 'Table has zero rows or the empty-state "No users" message is visible' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
 
@@ -38,7 +57,17 @@ test.describe('User - Search', () => {
     expect(rowCount === 0 || emptyVisible).toBeTruthy();
   });
 
-  test('should clear search and show all results', async ({ page }) => {
+  test('should clear search and show all results', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-010019' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Search' },
+      { type: 'precondition', description: 'Authenticated; navigated to /users with table data loaded' },
+      { type: 'step',         description: 'Enter "test" in the search box and wait 1 s' },
+      { type: 'step',         description: 'Clear the search input and wait 1 s' },
+      { type: 'expected',     description: 'Row count is 0 or more (list reloads without error after clearing)' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
     await managementPage.waitForTableData();
@@ -56,7 +85,16 @@ test.describe('User - Search', () => {
     expect(afterClearCount).toBeGreaterThanOrEqual(0);
   });
 
-  test('should debounce search input (400ms)', async ({ page }) => {
+  test('should debounce search input (400ms)', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-010020' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Search' },
+      { type: 'precondition', description: 'Authenticated; navigated to /users' },
+      { type: 'step',         description: 'Type "test" character-by-character with 50 ms delay, then wait 600 ms' },
+      { type: 'expected',     description: 'No more than 2 API calls are made to /api-system/user with a search param (debounce is active)' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
 
@@ -73,7 +111,17 @@ test.describe('User - Search', () => {
     expect(apiCallCount).toBeLessThanOrEqual(2);
   });
 
-  test('should search by email', async ({ page }) => {
+  test('should search by email', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-010021' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Search' },
+      { type: 'precondition', description: 'Authenticated as super admin' },
+      { type: 'step',         description: 'Create a user with a known email via the new-user form and submit' },
+      { type: 'step',         description: 'Navigate to Users list and search by the known email address' },
+      { type: 'expected',     description: 'The created user is visible in the search results matching by email' },
+    ],
+  }, async ({ page }) => {
     // Create a user
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();

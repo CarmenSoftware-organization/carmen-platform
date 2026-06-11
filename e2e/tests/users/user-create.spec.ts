@@ -10,7 +10,19 @@ test.describe('User - Create', () => {
     userData = generateUserData();
   });
 
-  test('should create a new user with all fields', async ({ page }) => {
+  test('should create a new user with all fields', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-030001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin (shared storageState)' },
+      { type: 'step',         description: 'Open Users management and click Add' },
+      { type: 'step',         description: 'Fill all user fields (username, email, firstname, lastname, etc.)' },
+      { type: 'step',         description: 'Submit and wait for the save response' },
+      { type: 'step',         description: 'Navigate to the list and search by username' },
+      { type: 'expected',     description: 'Save returns 200/201 and the user is visible in search results' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     const editPage = new UserEditPage(page);
 
@@ -30,7 +42,18 @@ test.describe('User - Create', () => {
     await managementPage.expectUserVisible(userData.username);
   });
 
-  test('should create a user with minimum required fields', async ({ page }) => {
+  test('should create a user with minimum required fields', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-030002' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin' },
+      { type: 'step',         description: 'Open the new-user form' },
+      { type: 'step',         description: 'Fill only username and email' },
+      { type: 'step',         description: 'Submit and wait for save' },
+      { type: 'expected',     description: 'Save returns 200/201' },
+    ],
+  }, async ({ page }) => {
     const editPage = new UserEditPage(page);
 
     await editPage.gotoNew();
@@ -44,7 +67,18 @@ test.describe('User - Create', () => {
     expect([200, 201]).toContain(response.status());
   });
 
-  test('should create an inactive user', async ({ page }) => {
+  test('should create an inactive user', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-030003' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin' },
+      { type: 'step',         description: 'Open the new-user form' },
+      { type: 'step',         description: 'Fill fields with is_active = false (uncheck the active checkbox)' },
+      { type: 'step',         description: 'Submit and wait for save' },
+      { type: 'expected',     description: 'Save returns 200/201 for an inactive user' },
+    ],
+  }, async ({ page }) => {
     const editPage = new UserEditPage(page);
 
     await editPage.gotoNew();
@@ -58,7 +92,16 @@ test.describe('User - Create', () => {
     expect([200, 201]).toContain(response.status());
   });
 
-  test('should show validation errors for empty required fields', async ({ page }) => {
+  test('should show validation errors for empty required fields', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-200001' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'On the new-user form' },
+      { type: 'step',         description: 'Submit the empty form without filling any fields' },
+      { type: 'expected',     description: 'Stays on /users/new (submission blocked by validation)' },
+    ],
+  }, async ({ page }) => {
     const editPage = new UserEditPage(page);
 
     await editPage.gotoNew();
@@ -70,7 +113,16 @@ test.describe('User - Create', () => {
     await expect(page).toHaveURL(/\/users\/new/);
   });
 
-  test('should navigate back to list when clicking back button', async ({ page }) => {
+  test('should navigate back to list when clicking back button', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-400001' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Navigation' },
+      { type: 'precondition', description: 'On the new-user form' },
+      { type: 'step',         description: 'Click the back button' },
+      { type: 'expected',     description: 'Returns to /users' },
+    ],
+  }, async ({ page }) => {
     const editPage = new UserEditPage(page);
 
     await editPage.gotoNew();
@@ -79,7 +131,17 @@ test.describe('User - Create', () => {
     await expect(page).toHaveURL(/\/users$/);
   });
 
-  test('should validate email format', async ({ page }) => {
+  test('should validate email format', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-200002' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'On the new-user form' },
+      { type: 'step',         description: 'Fill the email field with an invalid format (e.g. "invalid-email")' },
+      { type: 'step',         description: 'Blur the email field to trigger validation' },
+      { type: 'expected',     description: 'Validation error is visible or submission is blocked; page stays on /users/new' },
+    ],
+  }, async ({ page }) => {
     const editPage = new UserEditPage(page);
 
     await editPage.gotoNew();
@@ -102,7 +164,17 @@ test.describe('User - Create', () => {
     }
   });
 
-  test('should validate username as email format', async ({ page }) => {
+  test('should validate username as email format', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-200003' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'On the new-user form' },
+      { type: 'step',         description: 'Fill the username field with a non-email value (e.g. "not-an-email")' },
+      { type: 'step',         description: 'Blur the username field to trigger validation' },
+      { type: 'expected',     description: 'Validation error is visible or submission is blocked; page stays on /users/new' },
+    ],
+  }, async ({ page }) => {
     const editPage = new UserEditPage(page);
 
     await editPage.gotoNew();

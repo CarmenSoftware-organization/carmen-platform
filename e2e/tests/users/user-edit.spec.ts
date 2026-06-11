@@ -10,7 +10,16 @@ test.describe('User - Edit', () => {
     userData = generateUserData();
   });
 
-  test('should load an existing user in read-only mode', async ({ page }) => {
+  test('should load an existing user in read-only mode', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-040001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; users list has at least one record' },
+      { type: 'step',         description: 'Navigate to Users list and click the first user link' },
+      { type: 'expected',     description: 'Edit page opens in read-only mode (Edit button visible, Save button hidden)' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
     await managementPage.clickFirstUserLink();
@@ -19,7 +28,17 @@ test.describe('User - Edit', () => {
     await editPage.expectReadOnlyMode();
   });
 
-  test('should toggle to edit mode and show save/cancel buttons', async ({ page }) => {
+  test('should toggle to edit mode and show save/cancel buttons', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-040002' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; on the read-only user edit page' },
+      { type: 'step',         description: 'Navigate to Users list and click the first user link' },
+      { type: 'step',         description: 'Click the Edit button' },
+      { type: 'expected',     description: 'Page switches to edit mode with Save button visible' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
     await managementPage.clickFirstUserLink();
@@ -29,7 +48,18 @@ test.describe('User - Edit', () => {
     await editPage.expectEditMode();
   });
 
-  test('should cancel edit and revert to read-only mode', async ({ page }) => {
+  test('should cancel edit and revert to read-only mode', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-040003' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; on the user edit page' },
+      { type: 'step',         description: 'Navigate to Users list and click the first user link' },
+      { type: 'step',         description: 'Click Edit to enter edit mode' },
+      { type: 'step',         description: 'Click Cancel' },
+      { type: 'expected',     description: 'Page reverts to read-only mode (Edit button visible, Save button hidden)' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
     await managementPage.clickFirstUserLink();
@@ -43,7 +73,20 @@ test.describe('User - Edit', () => {
     await editPage.expectReadOnlyMode();
   });
 
-  test('should update user firstname and save', async ({ page }) => {
+  test('should update user firstname and save', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-040004' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; a test user is created first' },
+      { type: 'step',         description: 'Create a user via the new-user form and submit' },
+      { type: 'step',         description: 'Navigate to the list, search by username, and click through to the edit page' },
+      { type: 'step',         description: 'Wait for network to settle, click Edit, update the firstname field' },
+      { type: 'step',         description: 'Submit and wait for the update response' },
+      { type: 'step',         description: 'Navigate to the list and search for the updated firstname' },
+      { type: 'expected',     description: 'Update returns 200; page reverts to read-only; updated firstname is visible in the list' },
+    ],
+  }, async ({ page }) => {
     // First create a user to edit
     const editPage = new UserEditPage(page);
     await editPage.gotoNew();
@@ -79,7 +122,17 @@ test.describe('User - Edit', () => {
     await managementPage.expectUserVisible(updatedFirstname);
   });
 
-  test('should navigate back to list from edit page', async ({ page }) => {
+  test('should navigate back to list from edit page', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-USR-400002' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Navigation' },
+      { type: 'precondition', description: 'Authenticated as super admin; on the user edit page' },
+      { type: 'step',         description: 'Navigate to Users list and click the first user link' },
+      { type: 'step',         description: 'Click the back button' },
+      { type: 'expected',     description: 'Returns to /users' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserManagementPage(page);
     await managementPage.goto();
     await managementPage.clickFirstUserLink();
