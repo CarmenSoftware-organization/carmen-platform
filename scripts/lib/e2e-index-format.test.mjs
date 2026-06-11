@@ -91,6 +91,7 @@ test('formatDuration humanizes ms', () => {
 
 import { renderIndexHtml } from './e2e-index-format.mjs';
 import { MODULE_PREFIXES } from './e2e-index-format.mjs';
+import { stripAnsi, formatRunDate } from './e2e-index-format.mjs';
 
 test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   assert.equal(MODULE_PREFIXES.size, 16);
@@ -125,4 +126,16 @@ test('renderIndexHtml includes summary, groups, escaped names, media, trace', ()
   assert.match(html, /filters › filters by status/);
   assert.match(html, /show-trace assets\/abc123\/trace\.zip/);
   assert.match(html, /testId=abc123/);
+});
+
+test('stripAnsi removes color escape codes', () => {
+  assert.equal(stripAnsi('[31mError:[39m boom'), 'Error: boom');
+  assert.equal(stripAnsi(undefined), '');
+});
+
+test('formatRunDate yields YYYY-MM-DD HH:MM:SS from ISO, blank when missing', () => {
+  assert.equal(formatRunDate('2026-06-11T03:15:42.123Z'), '2026-06-11 03:15:42');
+  assert.equal(formatRunDate(''), '');
+  assert.equal(formatRunDate(undefined), '');
+  assert.equal(formatRunDate('not-a-date'), '');
 });

@@ -7,6 +7,18 @@ export const MODULE_PREFIXES = new Set([
   'PC', 'PTM', 'PRF', 'RT', 'ROL', 'SA', 'UP', 'USR',
 ]);
 
+export function stripAnsi(value) {
+  // eslint-disable-next-line no-control-regex
+  return String(value ?? '').replace(/\[[0-9;]*m/g, '');
+}
+
+// startTime is an ISO string (UTC). Slice instead of new Date() so output is
+// timezone-stable and deterministic in tests.
+export function formatRunDate(startTime) {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/.exec(String(startTime ?? ''));
+  return m ? `${m[1]} ${m[2]}` : '';
+}
+
 export function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
