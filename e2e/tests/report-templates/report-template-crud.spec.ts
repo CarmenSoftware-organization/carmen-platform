@@ -18,7 +18,27 @@ import { generateReportTemplateData } from '../../fixtures';
  * renders the real "Dialog Preview" pane instead of "Preview unavailable".
  */
 test.describe('Report Template - CRUD', () => {
-  test('should create, reopen with XML tabs, and delete a template', async ({ page }) => {
+  test('should create, reopen with XML tabs, and delete a template', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-RT-030001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin (shared storageState); report-templates list accessible' },
+      { type: 'step',         description: 'Navigate to /report-templates/new' },
+      { type: 'step',         description: 'Fill required fields (name, report_group) and enter minimal valid Dialog XML' },
+      { type: 'step',         description: 'Submit and wait for the create API response (POST /api-system/report-templates)' },
+      { type: 'step',         description: 'Verify toast "created successfully" and URL redirected to /report-templates/:id/edit' },
+      { type: 'step',         description: 'Search for the new template by name on the management list and open it via the name link' },
+      { type: 'step',         description: 'Switch to the Dialog XML tab and verify one CodeMirror editor is visible' },
+      { type: 'step',         description: 'Switch to the Content XML tab and verify one CodeMirror editor is visible' },
+      { type: 'step',         description: 'Switch to the Preview tab and verify no editor is visible and the Dialog Preview or "Preview unavailable" text renders' },
+      { type: 'step',         description: 'Confirm the Dialog XML preview renders "From Date" (the label from the filled XML)' },
+      { type: 'step',         description: 'In a finally block: search for the template and delete it via row actions + ConfirmDialog' },
+      { type: 'step',         description: 'Search again and confirm the template is no longer present in the list' },
+      { type: 'expected',     description: 'Create returns 200/201; all three tabs render correctly; deleted template is absent from the list' },
+      { type: 'note',         description: 'Self-cleaning journey: delete runs in try/finally to guarantee cleanup even if tab assertions fail' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new ReportTemplateManagementPage(page);
     const editPage = new ReportTemplateEditPage(page);
     const templateData = generateReportTemplateData();
