@@ -37,7 +37,7 @@ export function parseResults(report) {
           if (att.path && !attachments[att.name]) attachments[att.name] = att.path;
         }
         tests.push({
-          id: test.id ?? `${spec.file}:${spec.line}`,
+          id: spec.id ?? `${spec.file}:${spec.line}`,
           file: spec.file ?? suite.file ?? 'unknown',
           titlePath: titleChain,
           title: spec.title ?? '(untitled)',

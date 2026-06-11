@@ -15,12 +15,12 @@ const fixture = {
       file: 'e2e/tests/cluster/ClusterManagement.spec.ts',
       specs: [
         {
+          id: 'abc123',
           title: 'lists clusters',
           file: 'e2e/tests/cluster/ClusterManagement.spec.ts',
           line: 10,
           tests: [
             {
-              id: 'abc123',
               results: [
                 {
                   status: 'passed',
@@ -41,11 +41,12 @@ const fixture = {
           title: 'filters',
           specs: [
             {
+              id: 'def456',
               title: 'filters by status',
               file: 'e2e/tests/cluster/ClusterManagement.spec.ts',
               line: 20,
               tests: [
-                { id: 'def456', results: [{ status: 'skipped', duration: 0, attachments: [] }] },
+                { results: [{ status: 'skipped', duration: 0, attachments: [] }] },
               ],
             },
           ],
