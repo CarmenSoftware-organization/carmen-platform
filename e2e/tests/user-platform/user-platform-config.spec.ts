@@ -18,7 +18,25 @@ import { UserPlatformEditPage } from '../../pages/UserPlatformEditPage';
  *   removed.
  */
 test.describe('User Platform - Role assignment (self-cleaning)', () => {
-  test('assign a platform role to a non-login user, then remove it', async ({ page }) => {
+  test('assign a platform role to a non-login user, then remove it', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-UP-040001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin (shared storageState); at least one non-login, non-E2E_ user exists with at least one unassigned platform role' },
+      { type: 'step',         description: 'Navigate to /platform/user-platform and wait for the table to load' },
+      { type: 'step',         description: 'Open the first row that is not the e2e login user (skip E2E_-prefixed rows); skip the test if none found' },
+      { type: 'step',         description: 'Wait for the per-user config page ("Roles & Scope" visible, Add Role enabled)' },
+      { type: 'step',         description: 'Snapshot the user\'s current assigned role names' },
+      { type: 'step',         description: 'Click "Add Role", pick the first available role not already assigned (skip E2E_ roles), confirm; skip if every role is already assigned' },
+      { type: 'step',         description: 'Assert the new role row is visible (expectRoleAssigned)' },
+      { type: 'step',         description: 'Remove the newly added role via trash button → "Remove role" confirm dialog' },
+      { type: 'step',         description: 'Assert the role row is gone (expectRoleNotAssigned)' },
+      { type: 'step',         description: 'Compare final assigned role names to the pre-test snapshot' },
+      { type: 'expected',     description: '"Role assigned" toast appears after add; "Role removed" toast appears after removal; final assignments exactly match the pre-test snapshot (fully self-cleaning)' },
+      { type: 'note',         description: 'INVARIANT: deliberately targets a non-login user — the login user\'s (test@test.com) platform roles are never touched because they power the whole suite. openFirstNonLoginUser() enforces this; the test skips when no safe target exists' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new UserPlatformManagementPage(page);
     await managementPage.goto();
 
