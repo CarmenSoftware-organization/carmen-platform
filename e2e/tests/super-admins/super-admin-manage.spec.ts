@@ -19,7 +19,20 @@ test.describe('Super Admin Management', () => {
     await saPage.goto();
   });
 
-  test('renders title and a non-empty admin list', async () => {
+  test('renders title and a non-empty admin list', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-SA-010001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as super admin (shared storageState); navigated to /platform/super-admins' },
+      { type: 'step',         description: 'Assert the "Super Admins" h1 title is visible' },
+      { type: 'step',         description: 'Assert the "Select user to add as super admin" select is visible' },
+      { type: 'step',         description: 'Assert the "Add" button is visible' },
+      { type: 'step',         description: 'Assert at least one Remove button exists (login user is always in the list)' },
+      { type: 'expected',     description: 'Page header, user select, Add button, and at least one admin row are all visible' },
+      { type: 'note',         description: 'The e2e login user (test@test.com) is permanently a super admin, so the list is never empty; this test never touches any admin row' },
+    ],
+  }, async () => {
     await expect(saPage.pageTitle).toBeVisible();
     await expect(saPage.userSelect).toBeVisible();
     await expect(saPage.addButton).toBeVisible();
@@ -30,7 +43,23 @@ test.describe('Super Admin Management', () => {
     expect(await saPage.adminRows.count()).toBeGreaterThanOrEqual(1);
   });
 
-  test('add + remove a super admin round-trip (self-cleaning)', async () => {
+  test('add + remove a super admin round-trip (self-cleaning)', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-SA-030001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin (shared storageState); at least one non-admin, non-login, non-E2E_ user exists in the system' },
+      { type: 'step',         description: 'Call pickFirstAvailableUser() to select the first eligible candidate (skips login user and E2E_-prefixed users)' },
+      { type: 'step',         description: 'Click Add and wait for "Super admin added successfully" toast and network quiet' },
+      { type: 'step',         description: 'Assert the promoted user\'s admin row is visible (matched by UUID)' },
+      { type: 'step',         description: 'Assert exactly one admin row contains the picked user\'s UUID' },
+      { type: 'step',         description: 'Click the row\'s Remove button, confirm the "Remove Super Admin" dialog, and wait for "Super admin removed successfully" toast' },
+      { type: 'step',         description: 'Assert the admin row for the picked user is gone' },
+      { type: 'step',         description: 'Assert the demoted user\'s option reappears in the user select' },
+      { type: 'expected',     description: 'Add succeeds (row appears); Remove succeeds (row disappears and user returns to select); page ends in original state' },
+      { type: 'note',         description: 'INVARIANT: never touches the login user (test@test.com). pickFirstAvailableUser() skips the login user and E2E_-prefixed options as belt-and-braces guards. The test skips when no candidate is available rather than promoting an unsafe target.' },
+    ],
+  }, async () => {
     const label = await saPage.pickFirstAvailableUser();
     test.skip(label === null, 'No candidate user available to promote (every user is already a super admin)');
 
