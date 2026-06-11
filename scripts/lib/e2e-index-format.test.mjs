@@ -87,3 +87,32 @@ test('formatDuration humanizes ms', () => {
   assert.equal(formatDuration(500), '500ms');
   assert.equal(formatDuration(1500), '1.5s');
 });
+
+import { renderIndexHtml } from './e2e-index-format.mjs';
+
+test('renderIndexHtml includes summary, groups, escaped names, media, trace', () => {
+  const parsed = parseResults(fixture);
+  const tests = parsed.map((t) => ({
+    ...t,
+    assets:
+      t.status === 'passed'
+        ? {
+            thumb: 'assets/abc123/thumb.png',
+            video: 'assets/abc123/video.webm',
+            trace: 'assets/abc123/trace.zip',
+          }
+        : {},
+  }));
+  const html = renderIndexHtml({
+    tests,
+    summary: summarize(tests),
+    generatedAt: '2026-06-11 10:00:00',
+  });
+  assert.match(html, /Passed 1/);
+  assert.match(html, /Skipped 1/);
+  assert.match(html, /ClusterManagement\.spec\.ts/);
+  assert.match(html, /assets\/abc123\/video\.webm/);
+  assert.match(html, /filters › filters by status/);
+  assert.match(html, /show-trace assets\/abc123\/trace\.zip/);
+  assert.match(html, /testId=abc123/);
+});
