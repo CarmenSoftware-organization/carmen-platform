@@ -47,7 +47,22 @@ test.describe('Broadcast - Compose form', () => {
     await composePage.goto();
   });
 
-  test('renders the compose form', async ({ page }) => {
+  test('renders the compose form', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-BRD-400001' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as a user with broadcast.send permission; route guard installed (POST /api/notifications/broadcasts/* aborted)' },
+      { type: 'step',         description: 'Navigate to /broadcasts/new' },
+      { type: 'step',         description: 'Assert page heading reads "Send Broadcast"' },
+      { type: 'step',         description: 'Assert title input is visible with placeholder "Scheduled maintenance"' },
+      { type: 'step',         description: 'Assert message textarea is visible' },
+      { type: 'step',         description: 'Assert send/schedule button is visible' },
+      { type: 'step',         description: 'Assert URL remains /broadcasts/new' },
+      { type: 'expected',     description: 'Compose form renders with all required controls visible and URL unchanged' },
+      { type: 'note',         description: 'The URL-predicate route guard aborts all POST requests to /api/notifications/broadcasts/* — this test validates compose UI only; no broadcast is ever delivered' },
+    ],
+  }, async ({ page }) => {
     // Page title
     await expect(composePage.pageTitle).toHaveText('Send Broadcast');
 
@@ -69,7 +84,24 @@ test.describe('Broadcast - Compose form', () => {
     await expect(page).toHaveURL(/\/broadcasts\/new/);
   });
 
-  test('empty submit does not send — shows field errors and stays on page', async ({ page }) => {
+  test('empty submit does not send — shows field errors and stays on page', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-BRD-200001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated as a user with broadcast.send permission; on /broadcasts/new with route guard installed; title and message inputs are empty' },
+      { type: 'step',         description: 'Clear title input to ensure it is empty' },
+      { type: 'step',         description: 'Clear message textarea to ensure it is empty' },
+      { type: 'step',         description: 'Click the send button (type="button" — no native form submit)' },
+      { type: 'step',         description: 'Assert "Title is required" error is visible as p.text-destructive' },
+      { type: 'step',         description: 'Assert "Message is required" error is visible as p.text-destructive' },
+      { type: 'step',         description: 'Assert toast "Please fix the highlighted fields" appears' },
+      { type: 'step',         description: 'Assert URL remains /broadcasts/new (no navigation)' },
+      { type: 'step',         description: 'Assert no success toast ("broadcast sent" / "broadcast scheduled") is visible' },
+      { type: 'expected',     description: 'handleSend() calls validate() which sets fieldErrors and fires toast.error without calling broadcastService; page stays on /broadcasts/new' },
+      { type: 'note',         description: 'The URL-predicate route guard aborts all POST requests to /api/notifications/broadcasts/* — this test validates compose-form validation only; no broadcast POST is ever attempted or delivered' },
+    ],
+  }, async ({ page }) => {
     // Ensure form inputs are empty (they start empty, but be explicit)
     await composePage.titleInput.fill('');
     await composePage.messageInput.fill('');
