@@ -4,7 +4,20 @@ import { NewsManagementPage } from '../../pages/NewsManagementPage';
 import { NewsEditPage } from '../../pages/NewsEditPage';
 
 test.describe('News - Edit', () => {
-  test('should edit an existing news article', async ({ page }) => {
+  test('should edit an existing news article', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-040001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; a draft article is created first' },
+      { type: 'step',         description: 'Create a draft news article via /news/new and submit' },
+      { type: 'step',         description: 'Confirm page is in read-only mode, then click Edit' },
+      { type: 'step',         description: 'Update the title field with a suffix "(edited)"' },
+      { type: 'step',         description: 'Submit and wait for the PUT /api/news/:id response' },
+      { type: 'step',         description: 'Search for the updated title in the News management list' },
+      { type: 'expected',     description: 'Response is 200/201; page returns to read-only; updated title is visible in the list' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new NewsManagementPage(page);
     const editPage = new NewsEditPage(page);
     const newsData = generateNewsData();
@@ -29,7 +42,18 @@ test.describe('News - Edit', () => {
     await managementPage.expectNewsVisible(updatedTitle);
   });
 
-  test('should change status from draft to published', async ({ page }) => {
+  test('should change status from draft to published', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-040002' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; a draft article is created first' },
+      { type: 'step',         description: 'Create a draft news article via /news/new and submit' },
+      { type: 'step',         description: 'Click Edit to enter edit mode' },
+      { type: 'step',         description: 'Change the status select to "published" and submit' },
+      { type: 'expected',     description: 'Response is 200/201; "Published" status label is visible on the page' },
+    ],
+  }, async ({ page }) => {
     const editPage = new NewsEditPage(page);
     const newsData = generateNewsData();
 

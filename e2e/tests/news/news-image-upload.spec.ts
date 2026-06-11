@@ -29,7 +29,20 @@ test.describe('News - Image Upload (multipart)', () => {
     );
   });
 
-  test('sends the image inline as multipart and shows the preview', async ({ page }) => {
+  test('sends the image inline as multipart and shows the preview', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-400002' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; POST /api/news and GET /api/news/:id are mocked; CDN image URL is intercepted to serve a 1x1 PNG' },
+      { type: 'step',         description: 'Navigate to /news/new and fill the title field' },
+      { type: 'step',         description: 'Upload a valid 1x1 PNG via the hidden file input' },
+      { type: 'step',         description: 'Verify local object-URL preview appears immediately before save' },
+      { type: 'step',         description: 'Submit and wait for the POST /api/news response' },
+      { type: 'expected',     description: 'Response is 201; request Content-Type is multipart/form-data; image preview is visible in read-only mode' },
+      { type: 'note',         description: 'Uses route mocks — no actual backend write; multipart encoding is verified via request headers' },
+    ],
+  }, async ({ page }) => {
     let postWasMultipart = false;
 
     // Exact path = create/list endpoint; detail uses /api/news/:id (not matched here).
@@ -69,7 +82,18 @@ test.describe('News - Image Upload (multipart)', () => {
     await editPage.expectImagePreviewVisible();
   });
 
-  test('rejects an oversized file client-side with no write request', async ({ page }) => {
+  test('rejects an oversized file client-side with no write request', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-400003' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; POST/PUT /api/news are monitored but not blocked' },
+      { type: 'step',         description: 'Navigate to /news/new' },
+      { type: 'step',         description: 'Upload a 6 MB PNG buffer via the hidden file input (exceeds the client-side size limit)' },
+      { type: 'expected',     description: '"too large" error message is visible; no POST or PUT request is sent; image preview is absent' },
+      { type: 'note',         description: 'Client-side size guard must fire before any save action is triggered' },
+    ],
+  }, async ({ page }) => {
     let wrote = false;
     await page.route('**/api/news', (route) => {
       if (['POST', 'PUT'].includes(route.request().method())) wrote = true;
@@ -88,7 +112,17 @@ test.describe('News - Image Upload (multipart)', () => {
     await expect(editPage.imagePreview).toHaveCount(0);
   });
 
-  test('rejects an unsupported file type', async ({ page }) => {
+  test('rejects an unsupported file type', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-400004' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; on the new news form' },
+      { type: 'step',         description: 'Navigate to /news/new' },
+      { type: 'step',         description: 'Upload a PDF file (application/pdf) via the hidden file input' },
+      { type: 'expected',     description: '"unsupported file type" error message is visible; image preview is absent' },
+    ],
+  }, async ({ page }) => {
     const editPage = new NewsEditPage(page);
     await editPage.gotoNew();
 

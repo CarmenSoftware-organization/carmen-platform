@@ -10,7 +10,18 @@ test.describe('News - Create', () => {
     newsData = generateNewsData();
   });
 
-  test('should create a global news article', async ({ page }) => {
+  test('should create a global news article', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-030001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; News management page is accessible' },
+      { type: 'step',         description: 'Navigate to News management and click Add News' },
+      { type: 'step',         description: 'Fill title, contents, url, and set status to published' },
+      { type: 'step',         description: 'Submit and wait for the POST /api/news response' },
+      { type: 'expected',     description: 'Response is 200/201; redirected to /news/:id/edit in read-only mode' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new NewsManagementPage(page);
     const editPage = new NewsEditPage(page);
 
@@ -31,7 +42,18 @@ test.describe('News - Create', () => {
     await editPage.expectReadOnlyMode();
   });
 
-  test('should create a draft with minimum fields (title only)', async ({ page }) => {
+  test('should create a draft with minimum fields (title only)', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-030002' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; on the new news form' },
+      { type: 'step',         description: 'Navigate to /news/new' },
+      { type: 'step',         description: 'Fill only the title field' },
+      { type: 'step',         description: 'Submit and wait for the POST /api/news response' },
+      { type: 'expected',     description: 'Response is 200/201; article created with title-only data' },
+    ],
+  }, async ({ page }) => {
     const editPage = new NewsEditPage(page);
 
     await editPage.gotoNew();
@@ -41,7 +63,16 @@ test.describe('News - Create', () => {
     expect([200, 201]).toContain(response.status());
   });
 
-  test('should block submit when title is empty', async ({ page }) => {
+  test('should block submit when title is empty', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-200001' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; on the new news form with no data entered' },
+      { type: 'step',         description: 'Navigate to /news/new and click Save without filling any fields' },
+      { type: 'expected',     description: 'Browser native validation blocks submission; URL stays on /news/new' },
+    ],
+  }, async ({ page }) => {
     const editPage = new NewsEditPage(page);
 
     await editPage.gotoNew();
@@ -52,7 +83,17 @@ test.describe('News - Create', () => {
     await expect(page).toHaveURL(/\/news\/new/);
   });
 
-  test('should navigate back to list from the back button', async ({ page }) => {
+  test('should navigate back to list from the back button', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-400001' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Navigation' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; on the new news form' },
+      { type: 'step',         description: 'Navigate to /news/new' },
+      { type: 'step',         description: 'Click the back button (aria-label "Back to news")' },
+      { type: 'expected',     description: 'Redirected to /news list page' },
+    ],
+  }, async ({ page }) => {
     const editPage = new NewsEditPage(page);
 
     await editPage.gotoNew();

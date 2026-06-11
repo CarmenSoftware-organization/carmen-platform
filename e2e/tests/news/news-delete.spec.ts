@@ -4,7 +4,19 @@ import { NewsManagementPage } from '../../pages/NewsManagementPage';
 import { NewsEditPage } from '../../pages/NewsEditPage';
 
 test.describe('News - Delete', () => {
-  test('should delete a news article', async ({ page }) => {
+  test('should delete a news article', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-NWS-050001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated via shared storageState; no pre-existing article with the generated title' },
+      { type: 'step',         description: 'Create a draft news article via /news/new and submit' },
+      { type: 'step',         description: 'Navigate to News management and search for the article title' },
+      { type: 'step',         description: 'Confirm the article is visible, then invoke deleteNews and confirm deletion' },
+      { type: 'step',         description: 'Search for the title again' },
+      { type: 'expected',     description: 'Article no longer appears in search results after deletion' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new NewsManagementPage(page);
     const editPage = new NewsEditPage(page);
     const newsData = generateNewsData();
