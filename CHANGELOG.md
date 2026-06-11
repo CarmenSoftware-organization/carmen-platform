@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 <!-- Generated from src/data/changelog.json — do not edit by hand. -->
 
+## [0.1.1] - 2026-06-11
+
+### Added
+- End-to-end test result capture with a self-contained HTML index (screenshot, video, and trace on every test)
+
+### Fixed
+- Soft-deleted records no longer appear in application, business unit, and news list views
+
 ## [0.1.0] - 2026-06-01
 
 ### Added

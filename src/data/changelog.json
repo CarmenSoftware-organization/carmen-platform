@@ -2,6 +2,18 @@
   "unreleased": {},
   "versions": [
     {
+      "version": "0.1.1",
+      "date": "2026-06-11",
+      "changes": {
+        "Added": [
+          "End-to-end test result capture with a self-contained HTML index (screenshot, video, and trace on every test)"
+        ],
+        "Fixed": [
+          "Soft-deleted records no longer appear in application, business unit, and news list views"
+        ]
+      }
+    },
+    {
       "version": "0.1.0",
       "date": "2026-06-01",
       "changes": {
