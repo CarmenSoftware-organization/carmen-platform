@@ -92,6 +92,7 @@ test('formatDuration humanizes ms', () => {
 import { renderIndexHtml } from './e2e-index-format.mjs';
 import { MODULE_PREFIXES } from './e2e-index-format.mjs';
 import { stripAnsi, formatRunDate } from './e2e-index-format.mjs';
+import { extractAnnotations } from './e2e-index-format.mjs';
 
 test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   assert.equal(MODULE_PREFIXES.size, 16);
@@ -138,4 +139,32 @@ test('formatRunDate yields YYYY-MM-DD HH:MM:SS from ISO, blank when missing', ()
   assert.equal(formatRunDate(''), '');
   assert.equal(formatRunDate(undefined), '');
   assert.equal(formatRunDate('not-a-date'), '');
+});
+
+test('extractAnnotations groups known types, collects repeated steps in order', () => {
+  const out = extractAnnotations([
+    { type: 'caseId', description: 'TC-CLU-030001' },
+    { type: 'priority', description: 'P1' },
+    { type: 'testType', description: 'CRUD' },
+    { type: 'precondition', description: 'Logged in' },
+    { type: 'step', description: 'open' },
+    { type: 'step', description: 'save' },
+    { type: 'expected', description: 'created' },
+    { type: 'note', description: 'n/a' },
+    { type: 'unknown', description: 'ignored' },
+  ]);
+  assert.equal(out.caseId, 'TC-CLU-030001');
+  assert.equal(out.priority, 'P1');
+  assert.equal(out.testType, 'CRUD');
+  assert.deepEqual(out.preconditions, ['Logged in']);
+  assert.deepEqual(out.steps, ['open', 'save']);
+  assert.equal(out.expected, 'created');
+  assert.equal(out.note, 'n/a');
+});
+
+test('extractAnnotations tolerates undefined/empty', () => {
+  const out = extractAnnotations(undefined);
+  assert.equal(out.caseId, '');
+  assert.deepEqual(out.steps, []);
+  assert.deepEqual(out.preconditions, []);
 });

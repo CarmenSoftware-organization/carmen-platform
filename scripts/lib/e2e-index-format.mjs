@@ -19,6 +19,27 @@ export function formatRunDate(startTime) {
   return m ? `${m[1]} ${m[2]}` : '';
 }
 
+export function extractAnnotations(annotations) {
+  const out = {
+    caseId: '', priority: '', testType: '',
+    preconditions: [], steps: [], expected: '', note: '',
+  };
+  for (const a of annotations ?? []) {
+    const desc = a?.description ?? '';
+    switch (a?.type) {
+      case 'caseId': out.caseId = desc; break;
+      case 'priority': out.priority = desc; break;
+      case 'testType': out.testType = desc; break;
+      case 'precondition': out.preconditions.push(desc); break;
+      case 'step': out.steps.push(desc); break;
+      case 'expected': out.expected = desc; break;
+      case 'note': out.note = desc; break;
+      default: break;
+    }
+  }
+  return out;
+}
+
 export function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
