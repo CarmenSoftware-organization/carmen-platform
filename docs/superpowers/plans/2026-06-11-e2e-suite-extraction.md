@@ -24,7 +24,7 @@
 
 | Path | Responsibility | Source |
 |------|----------------|--------|
-| `tests/**` | All spec files (70 files, folder structure preserved) | copied from `e2e/tests/` |
+| `tests/**` | All spec files (43 files / 182 tests, folder structure preserved) | copied from `e2e/tests/` |
 | `pages/**` | Page objects | copied from `e2e/pages/` |
 | `helpers/**` | `auth.ts`, `testData.ts` | copied from `e2e/helpers/` |
 | `fixtures/index.ts` | faker data generators | copied from `e2e/fixtures/` |
@@ -99,12 +99,12 @@ cp "$SRC/docs/superpowers/specs/2026-06-11-e2e-test-case-register-design.md"   "
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e
 test ! -e .auth && echo "OK: no .auth copied"
-echo "specs: $(find tests -name '*.spec.ts' | wc -l) (expect 70)"
+echo "specs: $(find tests -name '*.spec.ts' | wc -l) (expect 43)"
 ls global-setup.ts pages/BasePage.ts helpers/auth.ts fixtures/index.ts \
    scripts/generate-e2e-index.mjs scripts/lib/e2e-index-format.test.mjs
 ```
 
-Expected: "OK: no .auth copied", specs count `70`, all listed files exist.
+Expected: "OK: no .auth copied", specs count `43` (182 tests), all listed files exist.
 
 (No commit yet — scaffolding lands first so the repo is coherent before its first commit.)
 
@@ -283,7 +283,7 @@ only tests, page objects, helpers, and fixtures that drive the frontend over HTT
 ```bash
 bun install                 # or: npm install
 bun run install-browsers    # one-time: installs Chromium
-bun test                    # all tests (starts the frontend via webServer)
+bun run test                # all tests (starts the frontend via webServer)  [NOT `bun test` — that runs Bun's native runner]
 bun run test:ui             # Playwright UI mode
 bun run test:headed         # visible browser
 bun run test:debug          # debug mode
@@ -372,13 +372,16 @@ drive the frontend over HTTP.
 ```bash
 bun install
 bun run install-browsers      # one-time
-bun test                      # runs the suite (launches ../carmen-platform on :3100)
+bun run test                  # runs the suite (launches ../carmen-platform on :3100)
 ```
+
+> Use `bun run test` (not `bun test` — that triggers Bun's built-in runner, which
+> can't run Playwright specs). `bunx playwright test` works too.
 
 To test an already-running instance instead of launching one:
 
 ```bash
-E2E_NO_WEBSERVER=1 E2E_BASE_URL=https://your-host bun test
+E2E_NO_WEBSERVER=1 E2E_BASE_URL=https://your-host bun run test
 ```
 
 Copy `.env.example` → `.env` and adjust `E2E_BASE_URL`, `E2E_FRONTEND_DIR`, and the
@@ -476,8 +479,8 @@ Expected: all `node:test` assertions pass.
 
 - [ ] **Step 1: Run the auth login spec end-to-end**
 
-Run: `cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e && bun test -- tests/auth/login.spec.ts`
-Expected: PASS (frontend launches/reuses on :3100, login succeeds, storageState written to `.auth/user.json`).
+Run: `cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e && bunx playwright test tests/auth/login.spec.ts` (NOT `bun test ...` — that invokes Bun's native runner and fails on `test.use()`)
+Expected: PASS (frontend launches/reuses on :3100, login succeeds, storageState written to `.auth/user.json`). Verified: 7/7 passed.
 
 - [ ] **Step 2: If it fails for environment reasons (backend down / port busy), record and continue**
 
