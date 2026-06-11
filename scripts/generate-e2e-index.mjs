@@ -13,6 +13,9 @@ import {
   summarize,
   renderIndexHtml,
   safeId,
+  toTestCase,
+  toCsv,
+  validateCaseIds,
 } from './lib/e2e-index-format.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -55,6 +58,18 @@ for (const test of tests) {
   }
 }
 
+// Build the 13-field test case per test (global sequence in report order).
+tests.forEach((test, i) => {
+  test.case = toTestCase(test, i + 1);
+});
+
+const caseIdWarnings = validateCaseIds(tests.map((t) => t.case));
+for (const w of caseIdWarnings) {
+  console.warn(`  ⚠ ${w}`);
+}
+
+writeFileSync(join(outDir, 'test-cases.csv'), toCsv(tests.map((t) => t.case)));
+
 const summary = summarize(tests);
 const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
 writeFileSync(
@@ -63,6 +78,8 @@ writeFileSync(
 );
 
 console.log(
-  `Generated e2e-results/index.html — ${summary.total} test(s): ` +
-    `${summary.passed} passed, ${summary.failed} failed, ${summary.skipped} skipped.`
+  `Generated e2e-results/index.html + test-cases.csv — ${summary.total} test(s): ` +
+    `${summary.passed} passed, ${summary.failed} failed, ${summary.skipped} skipped` +
+    (caseIdWarnings.length ? ` (${caseIdWarnings.length} test-id warning(s))` : '') +
+    '.'
 );
