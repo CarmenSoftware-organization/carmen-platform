@@ -18,27 +18,81 @@ test.describe('Profile - View', () => {
     await profilePage.goto();
   });
 
-  test('should display the profile page', async ({ page }) => {
+  test('should display the profile page', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-020001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user (shared storageState); profile page loaded' },
+      { type: 'step',         description: 'Navigate to /profile' },
+      { type: 'expected',     description: 'The text "Profile" is visible on the page' },
+    ],
+  }, async ({ page }) => {
     await expect(page.locator('text=Profile').first()).toBeVisible();
   });
 
-  test('should load profile in read-only mode', async () => {
+  test('should load profile in read-only mode', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-020002' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Navigate to /profile and wait for skeleton to disappear' },
+      { type: 'expected',     description: 'Edit button is visible and Save Changes button is not visible (read-only mode)' },
+    ],
+  }, async () => {
     await profilePage.expectReadOnlyMode();
   });
 
-  test('should display user email', async () => {
+  test('should display user email', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-020003' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Navigate to /profile' },
+      { type: 'expected',     description: 'The test user\'s email address is visible on the profile page' },
+    ],
+  }, async () => {
     await profilePage.expectProfileData({ email: TEST_CREDENTIALS.email });
   });
 
-  test('should show Edit button', async () => {
+  test('should show Edit button', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-020004' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Navigate to /profile' },
+      { type: 'expected',     description: 'An "Edit" button is visible' },
+    ],
+  }, async () => {
     await expect(profilePage.editButton).toBeVisible();
   });
 
-  test('should show Change Password button', async () => {
+  test('should show Change Password button', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-020005' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Navigate to /profile' },
+      { type: 'expected',     description: 'A "Change Password" button is visible' },
+    ],
+  }, async () => {
     await expect(profilePage.changePasswordButton).toBeVisible();
   });
 
-  test('should display profile fields', async ({ page }) => {
+  test('should display profile fields', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-020006' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Navigate to /profile' },
+      { type: 'expected',     description: 'The Email label is visible; First Name / Firstname label is visible when present' },
+    ],
+  }, async ({ page }) => {
     // Check that key profile sections are visible
     const nameLabel = page.locator('text=First Name, text=Firstname').first();
     const emailLabel = page.locator('text=Email').first();
@@ -59,12 +113,31 @@ test.describe('Profile - Edit', () => {
     await profilePage.goto();
   });
 
-  test('should toggle to edit mode', async () => {
+  test('should toggle to edit mode', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040001' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded in read-only mode' },
+      { type: 'step',         description: 'Click the Edit button' },
+      { type: 'expected',     description: 'Save Changes button becomes visible (edit mode is active)' },
+    ],
+  }, async () => {
     await profilePage.clickEdit();
     await profilePage.expectEditMode();
   });
 
-  test('should cancel edit and revert to read-only mode', async () => {
+  test('should cancel edit and revert to read-only mode', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040002' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page in edit mode' },
+      { type: 'step',         description: 'Click the Edit button to enter edit mode' },
+      { type: 'step',         description: 'Click the Cancel button' },
+      { type: 'expected',     description: 'Page reverts to read-only mode: Edit button visible, Save Changes button hidden' },
+    ],
+  }, async () => {
     await profilePage.clickEdit();
     await profilePage.expectEditMode();
 
@@ -72,7 +145,19 @@ test.describe('Profile - Edit', () => {
     await profilePage.expectReadOnlyMode();
   });
 
-  test('should update profile firstname and save', async () => {
+  test('should update profile firstname and save', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040003' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Click Edit to enter edit mode' },
+      { type: 'step',         description: 'Fill the firstname field with generated test data' },
+      { type: 'step',         description: 'Click Save Changes and wait for PATCH /api/user/profile response and success toast' },
+      { type: 'expected',     description: 'Profile saves successfully and page returns to read-only mode' },
+      { type: 'note',         description: 'Mutates the logged-in user\'s profile row; runs serially to avoid DEV backend contention' },
+    ],
+  }, async () => {
     await profilePage.clickEdit();
     await profilePage.expectEditMode();
 
@@ -86,7 +171,19 @@ test.describe('Profile - Edit', () => {
     await profilePage.expectReadOnlyMode();
   });
 
-  test('should update multiple profile fields and save', async () => {
+  test('should update multiple profile fields and save', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040004' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Click Edit to enter edit mode' },
+      { type: 'step',         description: 'Fill both firstname and lastname with generated test data' },
+      { type: 'step',         description: 'Click Save Changes and wait for PATCH /api/user/profile response and success toast' },
+      { type: 'expected',     description: 'Profile saves successfully and page returns to read-only mode' },
+      { type: 'note',         description: 'Mutates the logged-in user\'s profile row; runs serially to avoid DEV backend contention' },
+    ],
+  }, async () => {
     await profilePage.clickEdit();
     await profilePage.expectEditMode();
 
@@ -99,7 +196,16 @@ test.describe('Profile - Edit', () => {
     await profilePage.expectReadOnlyMode();
   });
 
-  test('should keep email non-editable in edit mode', async ({ page }) => {
+  test('should keep email non-editable in edit mode', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040005' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Click Edit to enter edit mode' },
+      { type: 'expected',     description: 'No editable #email input exists; "Email Address" label is still visible as a read-only display' },
+    ],
+  }, async ({ page }) => {
     await profilePage.clickEdit();
     await profilePage.expectEditMode();
 
@@ -109,7 +215,17 @@ test.describe('Profile - Edit', () => {
     await expect(page.getByText('Email Address')).toBeVisible();
   });
 
-  test('should preserve unsaved changes warning', async ({ page }) => {
+  test('should preserve unsaved changes warning', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040006' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page in edit mode with an unsaved change' },
+      { type: 'step',         description: 'Click Edit and fill firstname with generated data' },
+      { type: 'step',         description: 'Attempt to navigate away to /dashboard' },
+      { type: 'expected',     description: 'Browser fires a beforeunload dialog; after dismissing, the URL stays on /profile' },
+    ],
+  }, async ({ page }) => {
     await profilePage.clickEdit();
 
     // Make a change
@@ -142,12 +258,30 @@ test.describe('Profile - Password Change', () => {
     await profilePage.goto();
   });
 
-  test('should open change password dialog', async ({ page }) => {
+  test('should open change password dialog', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040007' },
+      { type: 'priority',     description: 'P1' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; profile page loaded' },
+      { type: 'step',         description: 'Click the Change Password button' },
+      { type: 'expected',     description: 'A modal dialog with role="dialog" is visible' },
+    ],
+  }, async ({ page }) => {
     await profilePage.openChangePassword();
     await expect(page.locator('[role="dialog"]')).toBeVisible();
   });
 
-  test('should display password form fields in dialog', async () => {
+  test('should display password form fields in dialog', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040008' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Smoke' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; Change Password dialog is open' },
+      { type: 'step',         description: 'Click Change Password to open the dialog' },
+      { type: 'expected',     description: 'Current Password, New Password, and Confirm Password inputs are all visible' },
+    ],
+  }, async () => {
     await profilePage.openChangePassword();
 
     await expect(profilePage.currentPasswordInput).toBeVisible();
@@ -155,7 +289,18 @@ test.describe('Profile - Password Change', () => {
     await expect(profilePage.confirmPasswordInput).toBeVisible();
   });
 
-  test('should show error for wrong current password', async ({ page }) => {
+  test('should show error for wrong current password', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-200001' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; Change Password dialog is open' },
+      { type: 'step',         description: 'Open the Change Password dialog' },
+      { type: 'step',         description: 'Enter an incorrect current password with a valid new password and matching confirm' },
+      { type: 'step',         description: 'Click Update Password' },
+      { type: 'expected',     description: 'An error toast or inline error is shown, OR the dialog remains open' },
+    ],
+  }, async ({ page }) => {
     await profilePage.openChangePassword();
 
     await profilePage.fillPasswordForm({
@@ -177,7 +322,18 @@ test.describe('Profile - Password Change', () => {
     expect(errorVisible || dialogStillOpen).toBeTruthy();
   });
 
-  test('should show error for mismatched passwords', async ({ page }) => {
+  test('should show error for mismatched passwords', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-200002' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'Validation' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; Change Password dialog is open' },
+      { type: 'step',         description: 'Open the Change Password dialog' },
+      { type: 'step',         description: 'Enter the correct current password; set newPassword and confirmPassword to different values' },
+      { type: 'step',         description: 'Click Update Password' },
+      { type: 'expected',     description: 'Dialog remains open or an error is displayed; password is not changed' },
+    ],
+  }, async ({ page }) => {
     await profilePage.openChangePassword();
 
     await profilePage.fillPasswordForm({
@@ -198,7 +354,17 @@ test.describe('Profile - Password Change', () => {
     expect(dialogStillOpen || errorVisible).toBeTruthy();
   });
 
-  test('should close password dialog on cancel', async ({ page }) => {
+  test('should close password dialog on cancel', {
+    annotation: [
+      { type: 'caseId',       description: 'TC-PRF-040009' },
+      { type: 'priority',     description: 'P2' },
+      { type: 'testType',     description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as the e2e test user; Change Password dialog is open' },
+      { type: 'step',         description: 'Open the Change Password dialog' },
+      { type: 'step',         description: 'Click the Cancel button inside the dialog, or press Escape if Cancel is not found' },
+      { type: 'expected',     description: 'The dialog is no longer visible' },
+    ],
+  }, async ({ page }) => {
     await profilePage.openChangePassword();
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();
