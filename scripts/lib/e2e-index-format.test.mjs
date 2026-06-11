@@ -105,31 +105,33 @@ test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   }
 });
 
-test('renderIndexHtml includes summary, groups, escaped names, media, trace', () => {
+test('renderIndexHtml renders summary + detail rows with case fields and media', () => {
   const parsed = parseResults(fixture);
-  const tests = parsed.map((t) => ({
+  const tests = parsed.map((t, i) => ({
     ...t,
-    assets:
-      t.status === 'passed'
-        ? {
-            thumb: 'assets/abc123/thumb.png',
-            video: 'assets/abc123/video.webm',
-            trace: 'assets/abc123/trace.zip',
-          }
-        : {},
+    case: toTestCase({ ...t, annotations: [
+      { type: 'caseId', description: i === 0 ? 'TC-CLU-010001' : 'TC-CLU-010002' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Smoke' },
+      { type: 'step', description: 'load list' },
+      { type: 'expected', description: 'rows visible' },
+    ] }, i + 1),
+    assets: t.status === 'passed'
+      ? { thumb: 'assets/abc123/thumb.png', video: 'assets/abc123/video.webm', trace: 'assets/abc123/trace.zip' }
+      : {},
   }));
   const html = renderIndexHtml({
-    tests,
-    summary: summarize(tests),
-    generatedAt: '2026-06-11 10:00:00',
+    tests, summary: summarize(tests), generatedAt: '2026-06-11 10:00:00',
   });
   assert.match(html, /Passed 1/);
-  assert.match(html, /Skipped 1/);
-  assert.match(html, /ClusterManagement\.spec\.ts/);
-  assert.match(html, /assets\/abc123\/video\.webm/);
-  assert.match(html, /filters › filters by status/);
+  assert.match(html, /TC-CLU-010001/);                       // Test ID column
+  assert.match(html, /Smoke/);                               // Test Type column
+  assert.match(html, /1\. load list/);                       // numbered steps in detail
+  assert.match(html, /rows visible/);                        // expected in detail
+  assert.match(html, /assets\/abc123\/video\.webm/);         // media in detail
   assert.match(html, /show-trace assets\/abc123\/trace\.zip/);
   assert.match(html, /testId=abc123/);
+  assert.match(html, /ClusterManagement\.spec\.ts/);         // group header retained
 });
 
 test('stripAnsi removes color escape codes', () => {
