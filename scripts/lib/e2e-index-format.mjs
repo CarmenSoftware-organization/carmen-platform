@@ -9,7 +9,7 @@ export const MODULE_PREFIXES = new Set([
 
 export function stripAnsi(value) {
   // eslint-disable-next-line no-control-regex
-  return String(value ?? '').replace(/\[[0-9;]*m/g, '');
+  return String(value ?? '').replace(/\x1b\[[0-9;]*m/g, '');
 }
 
 // startTime is an ISO string (UTC). Slice instead of new Date() so output is
@@ -24,7 +24,7 @@ const CASE_ID_RE = /^TC-([A-Z]{2,5})-\d{6}$/;
 export function validateCaseIds(testCases, prefixes = MODULE_PREFIXES) {
   const errors = [];
   const seen = new Map();
-  for (const tc of testCases) {
+  for (const tc of testCases ?? []) {
     const id = tc.testId;
     if (!/^TC-/.test(String(id))) {
       errors.push(`Seq ${tc.seq} "${tc.title}": missing caseId (using fallback "${id}").`);

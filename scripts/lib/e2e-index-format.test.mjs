@@ -6,6 +6,15 @@ import {
   escapeHtml,
   safeId,
   formatDuration,
+  renderIndexHtml,
+  MODULE_PREFIXES,
+  stripAnsi,
+  formatRunDate,
+  extractAnnotations,
+  toTestCase,
+  CSV_COLUMNS,
+  toCsv,
+  validateCaseIds,
 } from './e2e-index-format.mjs';
 
 const fixture = {
@@ -89,14 +98,6 @@ test('formatDuration humanizes ms', () => {
   assert.equal(formatDuration(1500), '1.5s');
 });
 
-import { renderIndexHtml } from './e2e-index-format.mjs';
-import { MODULE_PREFIXES } from './e2e-index-format.mjs';
-import { stripAnsi, formatRunDate } from './e2e-index-format.mjs';
-import { extractAnnotations } from './e2e-index-format.mjs';
-import { toTestCase } from './e2e-index-format.mjs';
-import { CSV_COLUMNS, toCsv } from './e2e-index-format.mjs';
-import { validateCaseIds } from './e2e-index-format.mjs';
-
 test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   assert.equal(MODULE_PREFIXES.size, 16);
   for (const p of ['APP', 'AUTH', 'BRD', 'BU', 'CHG', 'CLU', 'DSH', 'NWS',
@@ -135,7 +136,7 @@ test('renderIndexHtml renders summary + detail rows with case fields and media',
 });
 
 test('stripAnsi removes color escape codes', () => {
-  assert.equal(stripAnsi('[31mError:[39m boom'), 'Error: boom');
+  assert.equal(stripAnsi('\x1b[31mError:\x1b[39m boom'), 'Error: boom');
   assert.equal(stripAnsi(undefined), '');
 });
 
@@ -223,7 +224,7 @@ test('toTestCase maps fields, numbers steps, applies caseId fallback', () => {
       { type: 'step', description: 'save' },
       { type: 'expected', description: 'created' },
     ],
-    errors: [{ message: '[31mboom[39m' }],
+    errors: [{ message: '\x1b[31mboom\x1b[39m' }],
   };
   const tc = toTestCase(parsed, 7);
   assert.equal(tc.seq, 7);
