@@ -94,6 +94,7 @@ import { MODULE_PREFIXES } from './e2e-index-format.mjs';
 import { stripAnsi, formatRunDate } from './e2e-index-format.mjs';
 import { extractAnnotations } from './e2e-index-format.mjs';
 import { toTestCase } from './e2e-index-format.mjs';
+import { CSV_COLUMNS, toCsv } from './e2e-index-format.mjs';
 
 test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   assert.equal(MODULE_PREFIXES.size, 16);
@@ -245,4 +246,25 @@ test('toTestCase falls back to spec id when caseId absent', () => {
   assert.equal(tc.steps, '');
   assert.equal(tc.runDate, '');
   assert.equal(tc.error, '');
+});
+
+test('CSV_COLUMNS is the 13 columns in order', () => {
+  assert.deepEqual(CSV_COLUMNS, [
+    'Seq', 'Test ID', 'Status', 'Title', 'Preconditions', 'Steps',
+    'Expected Result', 'Priority', 'Test Type', 'Run Date',
+    'Duration (ms)', 'Error', 'Note',
+  ]);
+});
+
+test('toCsv writes header + CRLF rows and RFC-4180-escapes', () => {
+  const csv = toCsv([{
+    seq: 1, testId: 'TC-CLU-030001', status: 'passed',
+    title: 'a, b', steps: '1. x\n2. y', expected: 'ok',
+    preconditions: '', priority: 'P1', testType: 'CRUD',
+    runDate: '2026-06-11 03:15:42', durationMs: 900,
+    error: 'he said "hi"', note: '',
+  }]);
+  const lines = csv.split('\r\n');
+  assert.equal(lines[0], 'Seq,Test ID,Status,Title,Preconditions,Steps,Expected Result,Priority,Test Type,Run Date,Duration (ms),Error,Note');
+  assert.match(lines[1], /^1,TC-CLU-030001,passed,"a, b",,"1\. x\n2\. y",ok,P1,CRUD,2026-06-11 03:15:42,900,"he said ""hi""",/);
 });

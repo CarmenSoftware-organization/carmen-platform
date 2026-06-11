@@ -19,6 +19,27 @@ export function formatRunDate(startTime) {
   return m ? `${m[1]} ${m[2]}` : '';
 }
 
+export const CSV_COLUMNS = [
+  'Seq', 'Test ID', 'Status', 'Title', 'Preconditions', 'Steps',
+  'Expected Result', 'Priority', 'Test Type', 'Run Date',
+  'Duration (ms)', 'Error', 'Note',
+];
+
+function csvCell(value) {
+  const s = String(value ?? '');
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function toCsv(testCases) {
+  const header = CSV_COLUMNS.map(csvCell).join(',');
+  const rows = testCases.map((tc) => [
+    tc.seq, tc.testId, tc.status, tc.title, tc.preconditions, tc.steps,
+    tc.expected, tc.priority, tc.testType, tc.runDate, tc.durationMs,
+    tc.error, tc.note,
+  ].map(csvCell).join(','));
+  return [header, ...rows].join('\r\n') + '\r\n';
+}
+
 export function toTestCase(test, seq) {
   const ann = extractAnnotations(test.annotations);
   const steps = ann.steps.length
