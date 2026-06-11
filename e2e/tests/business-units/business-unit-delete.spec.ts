@@ -11,7 +11,19 @@ test.describe('Business Unit - Delete', () => {
     buData = generateBusinessUnitData();
   });
 
-  test('should delete a business unit via actions menu', async ({ page }) => {
+  test('should delete a business unit via actions menu', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-050001' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; a test business unit is created first' },
+      { type: 'step', description: 'Create a dedicated cluster and a business unit via the new form' },
+      { type: 'step', description: 'Navigate to the Business Unit Management list and search for the BU code' },
+      { type: 'step', description: 'Open the actions menu and click Delete, then confirm in the dialog' },
+      { type: 'step', description: 'Wait and search for the BU code again' },
+      { type: 'expected', description: 'Business unit is removed and no longer appears in search results' },
+    ],
+  }, async ({ page }) => {
     // First create a BU to delete
     const cluster = await createTestCluster(page);
     const editPage = new BusinessUnitEditPage(page);
@@ -34,7 +46,17 @@ test.describe('Business Unit - Delete', () => {
     await managementPage.search(buData.code);
   });
 
-  test('should show confirm dialog before delete', async ({ page }) => {
+  test('should show confirm dialog before delete', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-050002' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management list has at least one row' },
+      { type: 'step', description: 'Navigate to the Business Unit Management list and wait for table data' },
+      { type: 'step', description: 'Open the actions menu on the first row and click Delete' },
+      { type: 'expected', description: 'Confirm dialog appears with "cannot be undone" warning; cancelling dismisses the dialog' },
+    ],
+  }, async ({ page }) => {
     const managementPage = new BusinessUnitManagementPage(page);
     await managementPage.goto();
     await managementPage.waitForTableData();
@@ -53,7 +75,18 @@ test.describe('Business Unit - Delete', () => {
     await expect(dialog).not.toBeVisible();
   });
 
-  test('should cancel delete when clicking cancel in confirm dialog', async ({ page }) => {
+  test('should cancel delete when clicking cancel in confirm dialog', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-050003' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Authenticated as super admin; a test business unit is created first' },
+      { type: 'step', description: 'Create a dedicated cluster and a business unit via the new form' },
+      { type: 'step', description: 'Navigate to the list, search for the BU code, and open the delete dialog' },
+      { type: 'step', description: 'Click Cancel in the confirm dialog' },
+      { type: 'expected', description: 'Dialog closes and the business unit remains visible in the list' },
+    ],
+  }, async ({ page }) => {
     // Create a BU
     const cluster = await createTestCluster(page);
     const editPage = new BusinessUnitEditPage(page);

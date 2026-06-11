@@ -10,13 +10,32 @@ test.describe('Business Unit - Filter', () => {
     await managementPage.waitForTableData();
   });
 
-  test('should open filter sheet', async ({ page }) => {
+  test('should open filter sheet', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-010015' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management page loaded with table data' },
+      { type: 'step', description: 'Click the Filters button to open the filter sheet' },
+      { type: 'expected', description: 'Filter sheet dialog opens and displays the Filters heading' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await expect(page.locator('[role="dialog"]')).toBeVisible();
     await expect(page.locator('text=Filters').nth(1)).toBeVisible();
   });
 
-  test('should filter by Active status', async ({ page }) => {
+  test('should filter by Active status', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-010016' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management page loaded with table data' },
+      { type: 'step', description: 'Open the filter sheet and select the Active status option' },
+      { type: 'step', description: 'Close the sheet and wait for the table to refresh' },
+      { type: 'expected', description: 'All visible rows display an Active status badge' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');
@@ -34,7 +53,17 @@ test.describe('Business Unit - Filter', () => {
     }
   });
 
-  test('should filter by Inactive status', async ({ page }) => {
+  test('should filter by Inactive status', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-010017' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management page loaded with table data' },
+      { type: 'step', description: 'Open the filter sheet and select the Inactive status option' },
+      { type: 'step', description: 'Close the sheet and wait for the table to refresh' },
+      { type: 'expected', description: 'An Inactive filter badge is visible on the page' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Inactive');
     await page.keyboard.press('Escape');
@@ -44,7 +73,17 @@ test.describe('Business Unit - Filter', () => {
     await expect(filterBadge).toBeVisible({ timeout: 5_000 });
   });
 
-  test('should show active filter badges', async ({ page }) => {
+  test('should show active filter badges', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-010018' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management page loaded with table data' },
+      { type: 'step', description: 'Open the filter sheet and select the Active status option' },
+      { type: 'step', description: 'Close the sheet and wait for the UI to update' },
+      { type: 'expected', description: 'Active filter badges appear below the search bar when a filter is applied' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');
@@ -56,7 +95,17 @@ test.describe('Business Unit - Filter', () => {
     }
   });
 
-  test('should clear all filters', async ({ page }) => {
+  test('should clear all filters', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-010019' },
+      { type: 'priority', description: 'P2' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management page with an Active status filter applied' },
+      { type: 'step', description: 'Open the filter sheet and select the Active status option, then close the sheet' },
+      { type: 'step', description: 'Click the Clear All Filters control' },
+      { type: 'expected', description: 'Filter badges are removed and the unfiltered list is restored' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');
@@ -69,7 +118,16 @@ test.describe('Business Unit - Filter', () => {
     await expect(filterBadges).not.toBeVisible({ timeout: 3_000 });
   });
 
-  test('should show filter count badge on filter button', async ({ page }) => {
+  test('should show filter count badge on filter button', {
+    annotation: [
+      { type: 'caseId', description: 'TC-BU-010020' },
+      { type: 'priority', description: 'P3' },
+      { type: 'testType', description: 'Filter' },
+      { type: 'precondition', description: 'Authenticated as super admin; Business Unit Management page loaded with table data' },
+      { type: 'step', description: 'Open the filter sheet and select the Active status option, then close the sheet' },
+      { type: 'expected', description: 'The Filters button shows a badge indicating 1 active filter' },
+    ],
+  }, async ({ page }) => {
     await managementPage.openFilters();
     await managementPage.selectStatusFilter('Active');
     await page.keyboard.press('Escape');
