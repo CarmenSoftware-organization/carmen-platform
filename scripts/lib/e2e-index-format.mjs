@@ -19,6 +19,35 @@ export function formatRunDate(startTime) {
   return m ? `${m[1]} ${m[2]}` : '';
 }
 
+export function toTestCase(test, seq) {
+  const ann = extractAnnotations(test.annotations);
+  const steps = ann.steps.length
+    ? ann.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
+    : '';
+  const error = stripAnsi(
+    (test.errors ?? [])
+      .map((e) => e?.message ?? e?.stack ?? '')
+      .filter(Boolean)
+      .join('\n\n')
+  );
+  const title = [...(test.titlePath ?? []), test.title].filter(Boolean).join(' › ');
+  return {
+    seq,
+    testId: ann.caseId || test.id,
+    status: test.status,
+    title,
+    preconditions: ann.preconditions.join('\n'),
+    steps,
+    expected: ann.expected,
+    priority: ann.priority,
+    testType: ann.testType,
+    runDate: formatRunDate(test.startTime),
+    durationMs: test.durationMs ?? 0,
+    error,
+    note: ann.note,
+  };
+}
+
 export function extractAnnotations(annotations) {
   const out = {
     caseId: '', priority: '', testType: '',

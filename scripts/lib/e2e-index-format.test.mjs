@@ -93,6 +93,7 @@ import { renderIndexHtml } from './e2e-index-format.mjs';
 import { MODULE_PREFIXES } from './e2e-index-format.mjs';
 import { stripAnsi, formatRunDate } from './e2e-index-format.mjs';
 import { extractAnnotations } from './e2e-index-format.mjs';
+import { toTestCase } from './e2e-index-format.mjs';
 
 test('MODULE_PREFIXES holds the 16 catalogued, unique prefixes', () => {
   assert.equal(MODULE_PREFIXES.size, 16);
@@ -203,4 +204,45 @@ test('parseResults captures annotations, startTime, errors', () => {
   ]);
   assert.equal(t.startTime, '2026-06-11T03:15:42.000Z');
   assert.deepEqual(t.errors, []);
+});
+
+test('toTestCase maps fields, numbers steps, applies caseId fallback', () => {
+  const parsed = {
+    id: 'spec1', titlePath: ['Cluster - Create'], title: 'creates a cluster',
+    status: 'passed', durationMs: 900, startTime: '2026-06-11T03:15:42.000Z',
+    annotations: [
+      { type: 'caseId', description: 'TC-CLU-030001' },
+      { type: 'priority', description: 'P1' },
+      { type: 'testType', description: 'CRUD' },
+      { type: 'precondition', description: 'Logged in' },
+      { type: 'step', description: 'open' },
+      { type: 'step', description: 'save' },
+      { type: 'expected', description: 'created' },
+    ],
+    errors: [{ message: '[31mboom[39m' }],
+  };
+  const tc = toTestCase(parsed, 7);
+  assert.equal(tc.seq, 7);
+  assert.equal(tc.testId, 'TC-CLU-030001');
+  assert.equal(tc.title, 'Cluster - Create › creates a cluster');
+  assert.equal(tc.preconditions, 'Logged in');
+  assert.equal(tc.steps, '1. open\n2. save');
+  assert.equal(tc.expected, 'created');
+  assert.equal(tc.priority, 'P1');
+  assert.equal(tc.testType, 'CRUD');
+  assert.equal(tc.runDate, '2026-06-11 03:15:42');
+  assert.equal(tc.durationMs, 900);
+  assert.equal(tc.error, 'boom');
+  assert.equal(tc.note, '');
+});
+
+test('toTestCase falls back to spec id when caseId absent', () => {
+  const tc = toTestCase({
+    id: 'rawhash', titlePath: [], title: 't', status: 'skipped',
+    durationMs: 0, startTime: '', annotations: [], errors: [],
+  }, 1);
+  assert.equal(tc.testId, 'rawhash');
+  assert.equal(tc.steps, '');
+  assert.equal(tc.runDate, '');
+  assert.equal(tc.error, '');
 });
