@@ -22,11 +22,17 @@ which works through the existing `advance` where-clause mechanism (the same path
 - **Cardinality:** one `device` per application (single value, not a list).
 - **Values:** `mobile | web | desktop | pos` (enum).
 - **Optionality:** optional with a default of `'web'`.
-- **Storage (Approach A):** `VarChar` column with DB default `'web'` + DTO-level
-  `@IsIn([...])` validation + a shared TS union type. Chosen over a Postgres/Prisma
-  enum (Approach B) to avoid an enum-alter migration each time a device type is added,
-  and over free-text (Approach C) which loses validation. Frontend `<Select>` + backend
-  `@IsIn` keep values constrained without DB-enum rigidity.
+- **Storage (Approach A):** `VarChar` column with DB default `'web'` + service-level
+  whitelist validation + a shared TS union type. Chosen over a Postgres/Prisma enum
+  (Approach B) to avoid an enum-alter migration each time a device type is added, and
+  over free-text (Approach C) which loses validation. Frontend `<Select>` + backend
+  service whitelist keep values constrained without DB-enum rigidity.
+- **Validation placement:** the gateway binds plain-class DTOs and the only global pipe
+  is `ZodValidationPipe` (nestjs-zod) — which validates *only* `createZodDto`-based DTOs.
+  The application body is a plain class, so it is **not** validated at runtime today
+  (`@IsIn` would be inert). Therefore `device` is validated in the **micro-cluster
+  service** (`create`/`update`): an unknown or missing value falls back to `'web'`. The
+  swagger DTO carries `enum` purely for documentation.
 - **Scope:** store + expose this round; cross-cutting device-driven filter/response
   behavior deferred.
 
@@ -49,22 +55,26 @@ Migration: `ALTER TABLE tb_application ADD COLUMN device varchar NOT NULL DEFAUL
 
 - **Read** (`ApplicationResponseDto`): add `device: string` (always present — DB default
   guarantees a value).
-- **Write** (create/update): add `device?: string`, validated with
-  `@IsIn(['mobile','web','desktop','pos'])`. Omitted on create → DB default `'web'`;
-  omitted on update → existing value untouched (replace only when provided).
+- **Write** (create/update): add `device?: string`. The micro-cluster service whitelists
+  the value against `['mobile','web','desktop','pos']`, falling back to `'web'` when
+  missing or unknown. On create an omitted/invalid value persists `'web'`; on update the
+  value is replaced only when a valid `device` is provided (omitted → existing untouched).
 
 ## Backend Changes (`carmen-turborepo-backend-v2`)
 
 1. **Prisma schema** (`prisma-shared-schema-platform`): add the `device` column; generate
    migration.
 2. **micro-cluster `application.service.ts`** (the real persistence logic):
-   - `create`: write `device: data.device ?? 'web'`.
-   - `update`: `...(data.device !== undefined && { device: data.device })` — replace only
-     when sent.
+   - Add a module-level whitelist + normalizer:
+     `const DEVICE_VALUES = ['mobile','web','desktop','pos'] as const;`
+     `const normalizeDevice = (v: unknown) => DEVICE_VALUES.includes(v as never) ? v as string : 'web';`
+   - `create`: write `device: normalizeDevice(data.device)`.
+   - `update`: replace only when a valid device is sent:
+     `...(data.device !== undefined && { device: normalizeDevice(data.device) })`.
    - `findAll` / `findOne`: add `device: true` to `select`; include `device: app.device`
      in the response map.
-   - `buildAllowlistSnapshot`: add `device: true` to `select`; include `device` in each
-     snapshot item.
+   - `allowlistSnapshot`: add `device: true` to `select`; include `device: app.device ?? 'web'`
+     in each snapshot item.
 3. **`common/guard/app-allowlist.store.ts`**:
    - `AppAllowlistSnapshotItem`: add `device: string`.
    - In-memory snapshot map: store `device` per entry.
@@ -72,10 +82,12 @@ Migration: `ALTER TABLE tb_application ADD COLUMN device varchar NOT NULL DEFAUL
      endpoint can read the device off the resolved `x-app-id`.
 4. **gateway swagger DTOs** (`platform/applications/swagger/`):
    - `request.ts`: add `device?` to `ApplicationCreateRequestDto` and
-     `ApplicationUpdateRequestDto` (`@ApiPropertyOptional` + `@IsIn`).
-   - `response.ts`: add `device` to `ApplicationResponseDto`.
-5. **Validation:** `@IsIn([...])` at the DTO layer rejects out-of-enum values with 400
-   before they reach the DB.
+     `ApplicationUpdateRequestDto` (`@ApiPropertyOptional({ enum: [...], default: 'web' })`
+     — documentation only).
+   - `response.ts`: add `device` to `ApplicationResponseDto` (`@ApiProperty({ enum: [...] })`).
+5. **Validation:** enforced in the micro-cluster service via `normalizeDevice` (whitelist
+   → fallback `'web'`), since the gateway does not run class-validator on this body. The
+   frontend `<Select>` already constrains input to the four values.
 
 > Note: after this round `device` flows into the snapshot/store but **no endpoint consumes
 > it yet** for filter/response — it is plumbing for a later round.
@@ -110,8 +122,8 @@ Migration: `ALTER TABLE tb_application ADD COLUMN device varchar NOT NULL DEFAUL
 ## Testing
 
 - **Backend:** unit-cover `create`/`update`/`findAll`/`findOne` device mapping and
-  `buildAllowlistSnapshot` including `device`; DTO validation rejects an invalid device
-  value (400). Confirm migration backfills `'web'`.
+  `allowlistSnapshot` including `device`; `normalizeDevice` falls back to `'web'` for an
+  unknown/missing value. Confirm migration backfills `'web'`.
 - **Frontend:** ApplicationEdit round-trips `device` (new defaults to `'web'`, existing
   loads from response, save sends it); Management renders the column and the filter
   dropdown produces the correct merged `advance` where.
