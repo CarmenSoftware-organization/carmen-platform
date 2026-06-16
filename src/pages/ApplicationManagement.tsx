@@ -19,6 +19,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import Can from '../components/Can';
 import type { Application, PaginateParams } from '../types';
+import { DEVICE_OPTIONS } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
@@ -46,23 +47,31 @@ const ApplicationManagement: React.FC = () => {
 
   const storedSearch = localStorage.getItem('search_applications') || '';
   const storedFilters = getStoredJSON<string[]>('filters_applications', []);
+  const storedDevice = localStorage.getItem('devicefilter_applications') || '';
   const storedPage = Number(localStorage.getItem('page_applications')) || 1;
   const storedSort = localStorage.getItem('sort_applications') || 'name:asc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
+  const [deviceFilter, setDeviceFilter] = useState<string>(storedDevice);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const buildAdvance = (filters: string[]) =>
-    filters.length === 1 ? JSON.stringify({ where: { is_active: filters[0] === 'true' } }) : '';
+  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+  const buildAdvance = (filters: string[], device: string) => {
+    const where: Record<string, unknown> = {};
+    if (filters.length === 1) where.is_active = filters[0] === 'true';
+    if (device) where.device = device;
+    return Object.keys(where).length ? JSON.stringify({ where }) : '';
+  };
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
     perpage: Number(localStorage.getItem('perpage_applications')) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters),
+    advance: buildAdvance(storedFilters, storedDevice),
     filter: {},
   });
 
@@ -137,17 +146,27 @@ const ApplicationManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_applications', JSON.stringify(next));
     localStorage.setItem('page_applications', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, deviceFilter), filter: {} }));
+  };
+
+  const handleDeviceFilterChange = (next: string) => {
+    setDeviceFilter(next);
+    if (next) localStorage.setItem('devicefilter_applications', next);
+    else localStorage.removeItem('devicefilter_applications');
+    localStorage.setItem('page_applications', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
     localStorage.setItem('filters_applications', JSON.stringify([]));
+    setDeviceFilter('');
+    localStorage.removeItem('devicefilter_applications');
     localStorage.setItem('page_applications', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], ''), filter: {} }));
   };
 
-  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (deviceFilter ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_applications', sort);
@@ -230,6 +249,11 @@ const ApplicationManagement: React.FC = () => {
           ? <Badge variant="outline">All APIs</Badge>
           : <Badge variant="outline">{row.original.api_names?.length ?? 0} APIs</Badge>
       ),
+    },
+    {
+      accessorKey: 'device',
+      header: 'Device',
+      cell: ({ row }) => <Badge variant="secondary">{row.original.device || 'web'}</Badge>,
     },
     {
       accessorKey: 'is_active',
@@ -361,7 +385,7 @@ const ApplicationManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter applications by status</SheetDescription>
+                    <SheetDescription>Filter applications by status and device</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
@@ -389,6 +413,19 @@ const ApplicationManagement: React.FC = () => {
                           Inactive
                         </Button>
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-sm font-medium">Device</span>
+                      <select
+                        value={deviceFilter}
+                        onChange={(e) => handleDeviceFilterChange(e.target.value)}
+                        className={selectClassName}
+                      >
+                        <option value="">All devices</option>
+                        {DEVICE_OPTIONS.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </SheetContent>
@@ -429,7 +466,7 @@ const ApplicationManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && applications.length === 0 ? (
-                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (

@@ -18,13 +18,15 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { groupApiNames, actionOf } from '../utils/apiCatalog';
-import type { ApiCatalogGroup } from '../types';
+import type { ApiCatalogGroup, DeviceType } from '../types';
+import { DEVICE_OPTIONS } from '../types';
 
 interface ApplicationFormData {
   name: string;
   description: string;
   is_active: boolean;
   allow_all: boolean;
+  device: DeviceType;
   api_names: string[];
 }
 
@@ -33,6 +35,7 @@ const emptyForm: ApplicationFormData = {
   description: '',
   is_active: true,
   allow_all: false,
+  device: 'web',
   api_names: [],
 };
 
@@ -55,6 +58,8 @@ const ApplicationEdit: React.FC = () => {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
+
+  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -103,6 +108,7 @@ const ApplicationEdit: React.FC = () => {
         description: app.description || '',
         is_active: app.is_active ?? true,
         allow_all: app.allow_all ?? false,
+        device: (DEVICE_OPTIONS.includes(app.device) ? app.device : 'web') as DeviceType,
         api_names: Array.isArray(app.api_names) ? app.api_names : [],
       };
       setFormData(loaded);
@@ -189,6 +195,7 @@ const ApplicationEdit: React.FC = () => {
         description: formData.description,
         is_active: formData.is_active,
         allow_all: formData.allow_all,
+        device: formData.device,
         api_names: formData.api_names,
       };
       if (isNew) {
@@ -351,6 +358,30 @@ const ApplicationEdit: React.FC = () => {
                     <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
                       {formData.is_active ? 'Active' : 'Inactive'}
                     </Badge>
+                  </>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {editing ? (
+                  <>
+                    <Label htmlFor="device">Device</Label>
+                    <select
+                      id="device"
+                      name="device"
+                      value={formData.device}
+                      onChange={(e) => setFormData(prev => ({ ...prev, device: e.target.value as DeviceType }))}
+                      className={selectClassName}
+                    >
+                      {DEVICE_OPTIONS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <Label>Device</Label>
+                    <Badge variant="secondary" className="ml-2 w-fit">{formData.device}</Badge>
                   </>
                 )}
               </div>

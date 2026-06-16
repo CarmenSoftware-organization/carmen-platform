@@ -1,6 +1,6 @@
 import api from './api';
 import QueryParams from '../utils/QueryParams';
-import type { PaginateParams, Application, ApplicationWritePayload, ApiListResponse, ApiCatalogGroup } from '../types';
+import type { PaginateParams, Application, ApplicationWritePayload, ApiListResponse, ApiCatalogGroup, DeviceType } from '../types';
 import { groupApiNames } from '../utils/apiCatalog';
 
 const defaultSearchFields = ['name', 'description'];
@@ -12,6 +12,7 @@ const toWritePayload = (data: {
   description?: string;
   is_active?: boolean;
   allow_all?: boolean;
+  device?: DeviceType;
   api_names?: string[];
 }): ApplicationWritePayload => {
   const payload: ApplicationWritePayload = {
@@ -19,6 +20,7 @@ const toWritePayload = (data: {
     description: data.description,
     is_active: data.is_active,
     allow_all: data.allow_all,
+    device: data.device,
   };
   // When allow_all is set the backend grants every API, so api_names are irrelevant.
   if (!data.allow_all) {

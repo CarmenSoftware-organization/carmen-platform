@@ -43,12 +43,16 @@ export interface Cluster {
   deleted_by_name?: string;
 }
 
+export type DeviceType = 'mobile' | 'web' | 'desktop' | 'pos';
+export const DEVICE_OPTIONS: DeviceType[] = ['mobile', 'web', 'desktop', 'pos'];
+
 export interface Application {
   id: string;
   name: string;
   description?: string;
   is_active?: boolean;
   allow_all?: boolean;
+  device?: DeviceType;
   api_names?: string[]; // read model (flat list of api_name strings)
   created_at?: string;
   created_by_name?: string;
@@ -71,6 +75,7 @@ export interface ApplicationWritePayload {
   description?: string;
   is_active?: boolean;
   allow_all?: boolean;
+  device?: DeviceType;
   details?: { add: { api_name: string }[] };
 }
 
