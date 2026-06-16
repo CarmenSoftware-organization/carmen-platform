@@ -385,7 +385,7 @@ const ApplicationManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter applications by status</SheetDescription>
+                    <SheetDescription>Filter applications by status and device</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
