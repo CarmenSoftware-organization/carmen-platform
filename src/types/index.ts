@@ -41,6 +41,7 @@ export interface Cluster {
   updated_by_name?: string;
   deleted_at?: string;
   deleted_by_name?: string;
+  doc_version?: number; // optimistic-lock token (read model)
 }
 
 export type DeviceType = 'mobile' | 'web' | 'desktop' | 'pos';
@@ -58,6 +59,7 @@ export interface Application {
   created_by_name?: string;
   updated_at?: string;
   updated_by_name?: string;
+  doc_version?: number; // optimistic-lock token (read model)
 }
 
 // A module group of api_names, e.g. { module: 'cluster', api_names: ['cluster.create', ...] }.
@@ -77,6 +79,7 @@ export interface ApplicationWritePayload {
   allow_all?: boolean;
   device?: DeviceType;
   details?: { add: { api_name: string }[] };
+  doc_version?: number;
 }
 
 export interface BusinessUnitConfig {
@@ -144,6 +147,7 @@ export interface BusinessUnit {
   updated_by_name?: string;
   deleted_at?: string;
   deleted_by_name?: string;
+  doc_version?: number; // optimistic-lock token (read model)
 }
 
 export interface UserInfo {
@@ -168,6 +172,7 @@ export interface User {
   business_unit?: BusinessUnit[];
   created_at?: string;
   updated_at?: string;
+  doc_version?: number; // optimistic-lock token (read model)
 }
 
 // Row returned by GET /api-system/user/clusters/:clusterId — a tb_cluster_user
@@ -206,6 +211,7 @@ export interface Role {
   description?: string;
   is_active?: boolean;
   permissions: string[];                 // permission keys
+  doc_version?: number; // optimistic-lock token (read model)
 }
 
 export interface PermissionCatalogItem {
@@ -281,6 +287,7 @@ export interface News {
   published_at?: string;
   audit?: Audit;                // enriched audit object (from getById)
   deleted_at?: string;          // set on soft-deleted records (present in the list payload)
+  doc_version?: number; // optimistic-lock token (read model)
 }
 
 // ===== Broadcasts =====
