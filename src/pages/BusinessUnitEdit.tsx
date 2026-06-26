@@ -18,6 +18,7 @@ import { BrandingImageUpload } from '../components/BrandingImageUpload';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
@@ -215,6 +216,7 @@ const BusinessUnitEdit: React.FC = () => {
     ...initialFormData,
     cluster_id: searchParams.get('cluster_id') || '',
   });
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const formRef = useRef<HTMLFormElement>(null);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
@@ -327,6 +329,7 @@ const BusinessUnitEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(bu));
       setLogoUrl(bu.logo?.url || '');
       setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
@@ -550,13 +553,18 @@ const BusinessUnitEdit: React.FC = () => {
           navigate('/business-units');
         }
       } else {
-        await businessUnitService.update(id!, payload);
+        await businessUnitService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
         toast.success('Changes saved successfully');
         await fetchBusinessUnit();
         setEditing(false);
       }
     } catch (err: unknown) {
-      setError('Failed to save business unit: ' + getErrorDetail(err));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchBusinessUnit();
+      } else {
+        setError('Failed to save business unit: ' + getErrorDetail(err));
+      }
     } finally {
       setSaving(false);
     }

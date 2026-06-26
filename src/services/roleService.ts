@@ -9,6 +9,7 @@ export interface RoleWriteData {
   description?: string;
   is_active?: boolean;
   permissions: { add: string[]; remove?: string[] }; // "resource.action" keys
+  doc_version?: number;
 }
 
 const roleService = {
@@ -46,6 +47,7 @@ const roleService = {
       description: data.description,
       is_active: data.is_active,
       permissions: { add: data.permissions.add, remove: data.permissions.remove ?? [] },
+      ...(data.doc_version != null ? { doc_version: data.doc_version } : {}),
     };
     const response = await api.put(`/api-system/platform/roles/${id}`, body);
     return response.data;

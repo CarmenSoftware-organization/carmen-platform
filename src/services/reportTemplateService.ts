@@ -34,6 +34,7 @@ export interface ReportTemplate {
   created_by_id?: string;
   updated_at?: string;
   updated_by_id?: string;
+  doc_version?: number; // optimistic-lock token
 }
 
 const defaultSearchFields = ['name', 'description', 'report_group'];

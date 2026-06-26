@@ -23,6 +23,7 @@ export interface PrintTemplateMapping {
   updated_by_id?: string;
   created_by_name?: string;
   updated_by_name?: string;
+  doc_version?: number; // optimistic-lock token
 }
 
 export interface PrintTemplateMappingCreateInput {
@@ -34,6 +35,7 @@ export interface PrintTemplateMappingCreateInput {
   allow_business_unit?: unknown;
   deny_business_unit?: unknown;
   is_active?: boolean;
+  doc_version?: number;
 }
 
 export type PrintTemplateMappingUpdateInput = Partial<PrintTemplateMappingCreateInput>;

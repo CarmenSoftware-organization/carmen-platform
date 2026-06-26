@@ -14,6 +14,7 @@ const toWritePayload = (data: {
   allow_all?: boolean;
   device?: DeviceType;
   api_names?: string[];
+  doc_version?: number;
 }): ApplicationWritePayload => {
   const payload: ApplicationWritePayload = {
     name: data.name,
@@ -27,6 +28,7 @@ const toWritePayload = (data: {
     const cleaned = (data.api_names ?? []).map((s) => s.trim()).filter(Boolean);
     payload.details = { add: cleaned.map((api_name) => ({ api_name })) };
   }
+  if (data.doc_version != null) payload.doc_version = data.doc_version;
   return payload;
 };
 

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, parseApiError } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { MarkdownEditor } from '../components/MarkdownEditor';
@@ -79,6 +80,7 @@ const NewsEdit: React.FC = () => {
   const [audit, setAudit] = useState<Audit | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -124,6 +126,7 @@ const NewsEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(item));
       setAudit(item.audit || null);
       setPublishedAt(item.published_at || undefined);
     } catch (err: unknown) {
@@ -191,6 +194,7 @@ const NewsEdit: React.FC = () => {
         url: formData.url || undefined,
         status: formData.status,
         business_unit_ids: formData.isGlobal ? [] : formData.business_unit_ids,
+        ...(docVersion != null ? { doc_version: docVersion } : {}),
       };
       if (isNew) {
         const result = await newsService.create(payload, selectedImageFile ?? undefined);
@@ -211,9 +215,14 @@ const NewsEdit: React.FC = () => {
         setEditing(false);
       }
     } catch (err: unknown) {
-      const { message, fields } = parseApiError(err);
-      setError('Failed to save news: ' + message);
-      if (fields) setFieldErrors(prev => ({ ...prev, ...fields }));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchNews();
+      } else {
+        const { message, fields } = parseApiError(err);
+        setError('Failed to save news: ' + message);
+        if (fields) setFieldErrors(prev => ({ ...prev, ...fields }));
+      }
     } finally {
       setSaving(false);
     }

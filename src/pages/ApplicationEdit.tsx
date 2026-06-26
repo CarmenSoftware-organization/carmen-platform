@@ -15,6 +15,7 @@ import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, Search, Chevron
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { groupApiNames, actionOf } from '../utils/apiCatalog';
@@ -55,6 +56,7 @@ const ApplicationEdit: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [catalogGroups, setCatalogGroups] = useState<ApiCatalogGroup[]>([]);
   const [catalogFailed, setCatalogFailed] = useState(false);
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -113,6 +115,7 @@ const ApplicationEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(app));
     } catch (err: unknown) {
       setError('Failed to load application: ' + getErrorDetail(err));
     } finally {
@@ -197,6 +200,7 @@ const ApplicationEdit: React.FC = () => {
         allow_all: formData.allow_all,
         device: formData.device,
         api_names: formData.api_names,
+        doc_version: docVersion,
       };
       if (isNew) {
         const result = await applicationService.create(payload);
@@ -214,7 +218,12 @@ const ApplicationEdit: React.FC = () => {
         setEditing(false);
       }
     } catch (err: unknown) {
-      setError('Failed to save application: ' + getErrorDetail(err));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchApplication();
+      } else {
+        setError('Failed to save application: ' + getErrorDetail(err));
+      }
     } finally {
       setSaving(false);
     }

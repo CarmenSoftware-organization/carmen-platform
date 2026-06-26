@@ -15,6 +15,7 @@ const buildNewsFormData = (data: Partial<News>, image: File): FormData => {
   if (data.business_unit_ids !== undefined) {
     fd.append('business_unit_ids', JSON.stringify(data.business_unit_ids));
   }
+  if (data.doc_version !== undefined) fd.append('doc_version', String(data.doc_version));
   fd.append('image', image);
   return fd;
 };

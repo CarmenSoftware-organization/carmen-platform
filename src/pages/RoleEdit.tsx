@@ -15,6 +15,7 @@ import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, ShieldCheck } f
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import PermissionPicker from '../components/PermissionPicker';
@@ -53,6 +54,7 @@ const RoleEdit: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   const [debugTab, setDebugTab] = useState<'role' | 'catalog'>('role');
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   // Catalog + original permissions for delta computation
   const [catalog, setCatalog] = useState<PermissionCatalogItem[]>([]);
@@ -101,6 +103,7 @@ const RoleEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(r));
       setOriginalPermissions(r.permissions ?? []);
     } catch (err: unknown) {
       const { message } = parseApiError(err);
@@ -180,16 +183,22 @@ const RoleEdit: React.FC = () => {
           description: formData.description,
           is_active: formData.is_active,
           permissions: { add, remove },
+          ...(docVersion != null ? { doc_version: docVersion } : {}),
         });
         toast.success('Changes saved successfully');
         await fetchRole(); // reloads formData/savedFormData/originalPermissions
         setEditing(false);
       }
     } catch (err: unknown) {
-      const { message, fields } = parseApiError(err);
-      setError(message);
-      if (fields) setFieldErrors(fields);
-      toast.error(message);
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchRole();
+      } else {
+        const { message, fields } = parseApiError(err);
+        setError(message);
+        if (fields) setFieldErrors(fields);
+        toast.error(message);
+      }
     } finally {
       setSaving(false);
     }

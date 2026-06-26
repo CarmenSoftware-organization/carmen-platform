@@ -17,6 +17,7 @@ import printTemplateMappingService, {
 } from '../services/printTemplateMappingService';
 import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
 import { getErrorDetail } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 
@@ -63,6 +64,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   const hasChanges = editing && JSON.stringify(form) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -90,6 +92,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
       const next = rowToForm(res.data);
       setForm(next);
       setSavedFormData(next);
+      setDocVersion(getDocVersion(res.data));
       setError('');
     } catch (err) {
       setError('Failed to load mapping: ' + getErrorDetail(err));
@@ -183,13 +186,18 @@ const PrintTemplateMappingEdit: React.FC = () => {
           navigate('/print-template-mapping');
         }
       } else {
-        await printTemplateMappingService.update(id!, payload);
+        await printTemplateMappingService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
         toast.success('Changes saved');
         await fetchOne(id!);
         setEditing(false);
       }
     } catch (err) {
-      setError('Failed to save: ' + getErrorDetail(err));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchOne(id!);
+      } else {
+        setError('Failed to save: ' + getErrorDetail(err));
+      }
     } finally {
       setSaving(false);
     }

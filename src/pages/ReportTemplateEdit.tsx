@@ -25,6 +25,7 @@ import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2 } from 'lucide-r
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
 
@@ -99,6 +100,7 @@ const ReportTemplateEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -206,6 +208,7 @@ const ReportTemplateEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(template));
       setMetadata({
         created_at: template.created_at,
         created_by_name: template.created_by_name,
@@ -297,13 +300,18 @@ const ReportTemplateEdit: React.FC = () => {
           navigate('/report-templates');
         }
       } else {
-        await reportTemplateService.update(id!, payload);
+        await reportTemplateService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
         toast.success('Changes saved successfully');
         await fetchTemplate();
         setEditing(false);
       }
     } catch (err: unknown) {
-      setError('Failed to save report template: ' + getErrorDetail(err));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchTemplate();
+      } else {
+        setError('Failed to save report template: ' + getErrorDetail(err));
+      }
     } finally {
       setSaving(false);
     }
