@@ -17,6 +17,11 @@ export const getDocVersion = (record: unknown): number | undefined => {
  * True when an update failed because the record was changed by someone else.
  * Requires HTTP 409 AND a lock signal, so a name-collision 409 (e.g. ROLE_NAME_ALREADY_EXISTS)
  * is not misread as a version conflict.
+ *
+ * NOTE: the backend's TryCatch maps OptimisticLockError to ErrorCode.ALREADY_EXISTS, so the
+ * response `code` may surface as ALREADY_EXISTS rather than DOC_VERSION_CONFLICT. The message
+ * match is therefore load-bearing — the backend preserves the original "Record was modified by
+ * another request …" text. Keep the message check; do not "simplify" it to the code check alone.
  */
 export const isVersionConflict = (err: unknown): boolean => {
   const e = err as {
