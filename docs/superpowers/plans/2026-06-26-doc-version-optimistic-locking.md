@@ -29,10 +29,13 @@
 - Produces:
   - `getDocVersion(record: unknown): number | undefined` — returns the numeric `doc_version` off a loaded record, else `undefined`.
   - `isVersionConflict(err: unknown): boolean` — `true` only when the error is HTTP 409 **and** carries the optimistic-lock signal.
+  - `notifyVersionConflict(): void` — emits the single canonical "changed by someone else" conflict toast (so the user-facing message lives in exactly one place, not duplicated across 8 pages).
 
-- [ ] **Step 1: Create the file with both functions**
+- [ ] **Step 1: Create the file with all three functions**
 
 ```ts
+import { toast } from 'sonner';
+
 // Optimistic-locking helpers for doc_version. The backend (carmen-turborepo-backend-v2)
 // guards updates with a numeric doc_version and returns HTTP 409 (code DOC_VERSION_CONFLICT,
 // message "Record was modified by another request …") when a stale version is sent.
@@ -60,6 +63,13 @@ export const isVersionConflict = (err: unknown): boolean => {
   const msg = e.response?.data?.message ?? '';
   return code === 'DOC_VERSION_CONFLICT' || /modified by another request|doc_version/i.test(msg);
 };
+
+/** Canonical conflict toast. The caller refetches the record after calling this. */
+export const notifyVersionConflict = (): void => {
+  toast.error('This record was changed by someone else', {
+    description: 'Reloading the latest version — please re-apply your changes.',
+  });
+};
 ```
 
 - [ ] **Step 2: Typecheck**
@@ -71,7 +81,7 @@ Expected: no errors (file is unused so far, but must compile).
 
 ```bash
 git add src/utils/docVersion.ts
-git commit -m "feat(docVersion): add getDocVersion + isVersionConflict helpers"
+git commit -m "feat(docVersion): add getDocVersion + isVersionConflict + notifyVersionConflict helpers"
 ```
 
 ---
@@ -230,7 +240,7 @@ git commit -m "feat(docVersion): carry doc_version through entity types and serv
 - [ ] **Step 1: Import the helpers** (add near the other util imports, e.g. after the `errorParser` import on line 21):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: Add the state** (after the `copied`/`debugTab` state declarations, ~line 69):
@@ -258,9 +268,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchCluster();
       } else {
         setError('Failed to save cluster: ' + getErrorDetail(err));
@@ -293,7 +301,7 @@ git commit -m "feat(docVersion): wire optimistic locking into ClusterEdit"
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State** (near the other `useState` declarations):
@@ -320,9 +328,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchBusinessUnit();
       } else {
         setError('Failed to save business unit: ' + getErrorDetail(err));
@@ -352,7 +358,7 @@ git commit -m "feat(docVersion): wire optimistic locking into BusinessUnitEdit"
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State:**
@@ -379,9 +385,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchUser();
       } else {
         setError("Failed to save user: " + getErrorDetail(err));
@@ -411,7 +415,7 @@ git commit -m "feat(docVersion): wire optimistic locking into UserEdit"
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State:**
@@ -438,9 +442,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchTemplate();
       } else {
         setError('Failed to save report template: ' + getErrorDetail(err));
@@ -470,7 +472,7 @@ git commit -m "feat(docVersion): wire optimistic locking into ReportTemplateEdit
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State:**
@@ -507,9 +509,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchApplication();
       } else {
         setError('Failed to save application: ' + getErrorDetail(err));
@@ -539,7 +539,7 @@ git commit -m "feat(docVersion): wire optimistic locking into ApplicationEdit"
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State:**
@@ -572,9 +572,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchRole();
       } else {
         const { message, fields } = parseApiError(err);
@@ -607,7 +605,7 @@ git commit -m "feat(docVersion): wire optimistic locking into RoleEdit"
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State:**
@@ -641,9 +639,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchNews();
       } else {
         const { message, fields } = parseApiError(err);
@@ -675,7 +671,7 @@ git commit -m "feat(docVersion): wire optimistic locking into NewsEdit"
 - [ ] **Step 1: Import** (with the other util imports):
 
 ```ts
-import { getDocVersion, isVersionConflict } from '../utils/docVersion';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 ```
 
 - [ ] **Step 2: State:**
@@ -703,9 +699,7 @@ const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 ```ts
     } catch (err) {
       if (isVersionConflict(err)) {
-        toast.error('This record was changed by someone else', {
-          description: 'Reloading the latest version — please re-apply your changes.',
-        });
+        notifyVersionConflict();
         await fetchOne(id!);
       } else {
         setError('Failed to save: ' + getErrorDetail(err));
@@ -779,4 +773,4 @@ All steps pass. The branch `feat/doc-version-optimistic-locking` is ready for th
 
 **Placeholder scan:** No TBD/TODO; every code step shows full code. ✓
 
-**Type consistency:** `getDocVersion`/`isVersionConflict` names identical across all tasks; `docVersion`/`setDocVersion` state name uniform; `doc_version` key spelling uniform; per-page record variables (`cluster`, `bu`, `user`, `template`, `app`, `r`, `item`, `res.data`) match the actual source. ✓
+**Type consistency:** `getDocVersion`/`isVersionConflict`/`notifyVersionConflict` names identical across all tasks; `docVersion`/`setDocVersion` state name uniform; `doc_version` key spelling uniform; per-page record variables (`cluster`, `bu`, `user`, `template`, `app`, `r`, `item`, `res.data`) match the actual source. ✓
