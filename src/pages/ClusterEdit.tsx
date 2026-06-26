@@ -19,6 +19,7 @@ import { BrandingImageUpload } from '../components/BrandingImageUpload';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
@@ -67,6 +68,7 @@ const ClusterEdit: React.FC = () => {
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [debugTab, setDebugTab] = useState<'cluster' | 'bu' | 'users'>('cluster');
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
   const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
@@ -141,6 +143,7 @@ const ClusterEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(cluster));
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
     } catch (err: unknown) {
@@ -376,13 +379,18 @@ const ClusterEdit: React.FC = () => {
           navigate('/clusters');
         }
       } else {
-        await clusterService.update(id!, payload);
+        await clusterService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
         toast.success('Changes saved successfully');
         await fetchCluster();
         setEditing(false);
       }
     } catch (err: unknown) {
-      setError('Failed to save cluster: ' + getErrorDetail(err));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchCluster();
+      } else {
+        setError('Failed to save cluster: ' + getErrorDetail(err));
+      }
     } finally {
       setSaving(false);
     }
