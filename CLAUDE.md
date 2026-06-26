@@ -259,6 +259,26 @@ backend read/write models are **asymmetric** — `src/services/applicationServic
 - **Edit-page selector UI:** a **collapsible accordion grouped by module** — filter box (matches module name OR api_name; matches auto-expand), per-module `selected/total` badge + **All/None** toggle, expand/collapse-all (scoped to currently-visible groups), buttons labelled action-only (`actionOf`) with the full api_name as `title`. Read-only view groups selected api_names under module subheaders. Falls back to `<ChipInput>` if the catalog fetch fails (`catalogFailed`).
 - `allow_all` hides the api_name selector entirely. Page is `platform_admin`-only (route + nav `roles`).
 
+## doc_version Optimistic Locking
+
+Versioned entities carry a numeric `doc_version`. The backend **requires** it on update and rejects a stale write with **HTTP 409** (message `Record was modified by another request …`). Every `<Entity>Edit` page that updates such a record must echo the last-seen token back. Full contract: `docs/doc-version-optimistic-locking-spec.md`.
+
+**Helper — `src/utils/docVersion.ts`:**
+- `getDocVersion(record)` → the numeric token off a loaded record, else `undefined`.
+- `isVersionConflict(err)` → `true` only on 409 **and** a lock signal. Detection relies on the message match (`/modified by another request|doc_version/i`) because the gateway remaps the error `code` to `ALREADY_EXISTS` (same as a name-collision 409) — the message check is **load-bearing**, do not simplify it away (see the comment in the file).
+- `notifyVersionConflict()` → the single canonical conflict toast.
+
+**Per Edit page** (reference: `ClusterEdit.tsx`):
+- Hold `const [docVersion, setDocVersion] = useState<number>()` — **never** put `doc_version` in `formData` (it would pollute the unsaved-changes dirty-check and create payload).
+- Capture on load: `setDocVersion(getDocVersion(record))` inside `fetchX`.
+- Send on update **only when present**: `service.update(id, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) })`. Create paths never send it.
+- After save, the existing post-save `fetchX()` refreshes `docVersion` (the update response also returns the new one).
+- On conflict, branch the catch: `if (isVersionConflict(err)) { notifyVersionConflict(); await fetchX(); } else { <existing error handling, unchanged> }`. The page stays in edit mode; in-flight edits are discarded and reloaded to latest (standard optimistic-lock UX).
+
+**Defensive principle:** send the token only when the GET returned one — so an entity whose backend read doesn't yet expose `doc_version` is a runtime no-op (no 400 risk). Services with **custom write payloads** forward it explicitly: `applicationService.toWritePayload`, `roleService.update`, and `newsService.buildNewsFormData` (multipart appends `doc_version` as a **string** — the backend coerces it). Pass-through services (`Partial<T>`/`Record`) forward it automatically once the type carries `doc_version?: number`.
+
+Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, PrintTemplateMapping. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
+
 ## Styling Reference
 
 **Color tokens (HSL):** `--primary` 220 90% 56% (blue) · `--accent` 260 60% 58% (purple) · `--destructive` 0 84% 60% · `--muted-foreground` 220 10% 46% · `--border` / `--input` 220 15% 90%.
@@ -302,3 +322,4 @@ const fmt = (v?: string) => {
 14. **All Edit pages** need: edit/read-only toggle, back button, Save/Cancel, dev debug Sheet with tabs, `useUnsavedChanges(hasChanges)`, `Ctrl/⌘+S` save, `Escape` cancel, real-time `validateField` on blur.
 15. **Mobile-first responsive.** Test both layouts (`md` is the desktop/sidebar pivot).
 16. **Skeleton vs overlay vs empty:** see Loading States Decision Table — do not mix.
+17. **Versioned-entity Edit pages** must thread `doc_version` via `src/utils/docVersion.ts`: dedicated `docVersion` state (never in `formData`), send only when present, `409` → `notifyVersionConflict()` + refetch. See **doc_version Optimistic Locking**.
