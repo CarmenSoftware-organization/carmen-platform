@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
 import { getErrorDetail } from '../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -105,6 +106,7 @@ const UserEdit: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -190,6 +192,7 @@ const UserEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
+      setDocVersion(getDocVersion(user));
       setAvatarUrl(user.avatar_url || profile.avatar_url || "");
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
@@ -304,13 +307,18 @@ const UserEdit: React.FC = () => {
           navigate("/users");
         }
       } else {
-        await userService.update(id!, formData);
+        await userService.update(id!, { ...formData, ...(docVersion != null ? { doc_version: docVersion } : {}) });
         toast.success('Changes saved successfully');
         await fetchUser();
         setEditing(false);
       }
     } catch (err: unknown) {
-      setError("Failed to save user: " + getErrorDetail(err));
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await fetchUser();
+      } else {
+        setError("Failed to save user: " + getErrorDetail(err));
+      }
     } finally {
       setSaving(false);
     }
