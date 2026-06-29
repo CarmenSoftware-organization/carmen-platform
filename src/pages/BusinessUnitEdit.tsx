@@ -11,7 +11,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { ArrowLeft, Save, Code, Copy, Check, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Trash2, Pencil, X, UserPlus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -28,15 +28,7 @@ import { BU_ROLES, initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { selectClassName } from './businessUnitEdit/shared';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
-import BasicInfoSection from './businessUnitEdit/sections/BasicInfoSection';
-import HotelInfoSection from './businessUnitEdit/sections/HotelInfoSection';
-import CompanyInfoSection from './businessUnitEdit/sections/CompanyInfoSection';
-import TaxInfoSection from './businessUnitEdit/sections/TaxInfoSection';
-import DateTimeFormatsSection from './businessUnitEdit/sections/DateTimeFormatsSection';
-import NumberFormatsSection from './businessUnitEdit/sections/NumberFormatsSection';
-import CalculationSettingsSection from './businessUnitEdit/sections/CalculationSettingsSection';
-import ConfigurationSection from './businessUnitEdit/sections/ConfigurationSection';
-import DatabaseConnectionSection from './businessUnitEdit/sections/DatabaseConnectionSection';
+import BusinessUnitFormFields from './businessUnitEdit/BusinessUnitFormFields';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -477,118 +469,26 @@ const BusinessUnitEdit: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-          {/* Section 1: Basic Information */}
-          <BasicInfoSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-            clusters={clusters}
-            getClusterName={getClusterName}
-          />
-
-          {/* Section 2: Hotel Information */}
-          <HotelInfoSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-          />
-
-          {/* Section 3: Company Information */}
-          <CompanyInfoSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-          />
-
-          {/* Section 4: Tax Information */}
-          <TaxInfoSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-          />
-
-          {/* Section 5: Date/Time Formats */}
-          <DateTimeFormatsSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-          />
-
-          {/* Section 6: Number Formats */}
-          <NumberFormatsSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-          />
-
-          {/* Section 7: Calculation Settings */}
-          <CalculationSettingsSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-            defaultCurrency={defaultCurrency}
-            getCalculationMethodLabel={getCalculationMethodLabel}
-          />
-
-          {/* Section 8: Configuration */}
-          <ConfigurationSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-            onConfigChange={handleConfigChange}
-            onAddConfigRow={addConfigRow}
-            onRemoveConfigRow={removeConfigRow}
-          />
-
-          {/* Section 9: Database Connection */}
-          <DatabaseConnectionSection
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-          />
-
-          {/* Submit Buttons */}
-          {editing && (
-            <div className="flex gap-3 pt-2 lg:col-span-2">
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : isNew ? 'Create Business Unit' : 'Save Changes'}
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/business-units') : handleCancelEdit}>
-                <X className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
-            </div>
-          )}
-        </form>
+        <BusinessUnitFormFields
+          formData={formData}
+          editing={editing}
+          fieldErrors={fieldErrors}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          clusters={clusters}
+          getClusterName={getClusterName}
+          defaultCurrency={defaultCurrency}
+          getCalculationMethodLabel={getCalculationMethodLabel}
+          onConfigChange={handleConfigChange}
+          onAddConfigRow={addConfigRow}
+          onRemoveConfigRow={removeConfigRow}
+          formRef={formRef}
+          onSubmit={handleSubmit}
+          saving={saving}
+          isNew={isNew}
+          onCancel={isNew ? () => navigate('/business-units') : handleCancelEdit}
+        />
 
         {/* Tenant database migrations (existing BU only; super-admin action) */}
         {!isNew && (
