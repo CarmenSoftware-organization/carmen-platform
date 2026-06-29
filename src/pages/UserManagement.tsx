@@ -99,6 +99,13 @@ const UserManagement: React.FC = () => {
   const [copiedUsername, setCopiedUsername] = useState(false);
   const [hardDeleting, setHardDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<UserRecord[]>([]);
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const [bulkSoftOpen, setBulkSoftOpen] = useState(false);
+  const [bulkHardOpen, setBulkHardOpen] = useState(false);
+  const [bulkConfirmCode, setBulkConfirmCode] = useState('');
+  const [bulkConfirmInput, setBulkConfirmInput] = useState('');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -275,6 +282,66 @@ const UserManagement: React.FC = () => {
       toast.success('Copied username');
     } catch {
       toast.error('Could not copy username');
+    }
+  };
+
+  const handleSelectionChange = useCallback((rows: UserRecord[]) => {
+    setSelectedUsers(rows);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedUsers([]);
+    setSelectionResetKey((k) => k + 1);
+  }, []);
+
+  // Selection is current-page only: discard it whenever the result set changes
+  // (page, page size, search, sort, or filters). Without this, TanStack keeps
+  // the selection map keyed by row id across data loads, leaving off-page users
+  // selected and deletable while no visible checkbox is checked.
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
+
+  const rowSelectionLabel = useCallback(
+    (u: UserRecord) => `Select ${u.username || u.email || u.user_id || 'user'}`,
+    [],
+  );
+
+  const summarizeBulk = (results: PromiseSettledResult<unknown>[]) => {
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const fail = results.length - ok;
+    if (fail === 0) toast.success(`Deleted ${ok} user(s)`);
+    else if (ok === 0) toast.error(`Failed to delete ${fail} user(s)`);
+    else toast.warning(`Deleted ${ok}, ${fail} failed`);
+  };
+
+  const handleConfirmBulkSoftDelete = async () => {
+    const results = await Promise.allSettled(selectedUsers.map((u) => userService.delete(u.id)));
+    summarizeBulk(results);
+    setBulkSoftOpen(false);
+    clearSelection();
+    setPaginate((prev) => ({ ...prev }));
+  };
+
+  const genBulkCode = () => String(Math.floor(10000000 + Math.random() * 90000000));
+
+  const openBulkHardDelete = () => {
+    setBulkConfirmCode(genBulkCode());
+    setBulkConfirmInput('');
+    setBulkHardOpen(true);
+  };
+
+  const handleConfirmBulkHardDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(selectedUsers.map((u) => userService.hardDelete(u.id)));
+      summarizeBulk(results);
+      setBulkHardOpen(false);
+      setBulkConfirmInput('');
+      clearSelection();
+      setPaginate((prev) => ({ ...prev }));
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -642,29 +709,54 @@ const UserManagement: React.FC = () => {
                 ) : undefined}
               />
             ) : !error ? (
-              <div className="relative">
-                {loading && users.length === 0 ? (
-                  <TableSkeleton columns={9} rows={paginate.perpage || 5} />
-                ) : (
-                <>
-                {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
-                    <div className="text-muted-foreground">Loading...</div>
+              <>
+                {isSuperAdmin && selectedUsers.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <span className="text-sm font-medium">{selectedUsers.length} selected</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setBulkSoftOpen(true)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={openBulkHardDelete}>
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Hard Delete
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
                   </div>
                 )}
-                <DataTable
-                  columns={columns}
-                  data={users}
-                  serverSide
-                  totalRows={totalRows}
-                  page={paginate.page}
-                  perpage={paginate.perpage}
-                  onPaginateChange={handlePaginateChange}
-                  onSortChange={handleSortChange}
-                />
-                </>
-                )}
-              </div>
+                <div className="relative">
+                  {loading && users.length === 0 ? (
+                    <TableSkeleton columns={isSuperAdmin ? 10 : 9} rows={paginate.perpage || 5} />
+                  ) : (
+                  <>
+                  {loading && (
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
+                      <div className="text-muted-foreground">Loading...</div>
+                    </div>
+                  )}
+                  <DataTable
+                    columns={columns}
+                    data={users}
+                    serverSide
+                    totalRows={totalRows}
+                    page={paginate.page}
+                    perpage={paginate.perpage}
+                    onPaginateChange={handlePaginateChange}
+                    onSortChange={handleSortChange}
+                    enableRowSelection={isSuperAdmin}
+                    getRowId={(row) => row.id}
+                    onSelectionChange={handleSelectionChange}
+                    selectionResetKey={selectionResetKey}
+                    getRowSelectionLabel={rowSelectionLabel}
+                  />
+                  </>
+                  )}
+                </div>
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -678,6 +770,16 @@ const UserManagement: React.FC = () => {
         confirmText="Delete"
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmDialog
+        open={bulkSoftOpen}
+        onOpenChange={(open) => { if (!open) setBulkSoftOpen(false); }}
+        title={`Delete ${selectedUsers.length} user(s)`}
+        description="Soft-delete the selected user(s)? They can be restored later."
+        confirmText="Delete"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmBulkSoftDelete}
       />
 
       {/* Hard Delete Dialog with username confirmation */}
@@ -739,6 +841,57 @@ const UserManagement: React.FC = () => {
             >
               {hardDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               {hardDeleting ? 'Deleting...' : 'Permanently Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Hard Delete Dialog with random-code confirmation */}
+      <Dialog open={bulkHardOpen} onOpenChange={(open) => { if (!open && !bulkDeleting) { setBulkHardOpen(false); setBulkConfirmInput(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently Delete {selectedUsers.length} User(s)
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently remove the selected users and all associated data. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="max-h-40 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1">
+              {selectedUsers.map((u) => (
+                <div key={u.id} className="text-sm font-medium">
+                  {u.username || u.email || u.user_id || u.id}
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkHardConfirm">
+                Type <span className="font-mono font-semibold text-destructive">{bulkConfirmCode}</span> to confirm
+              </Label>
+              <Input
+                id="bulkHardConfirm"
+                value={bulkConfirmInput}
+                onChange={(e) => setBulkConfirmInput(e.target.value)}
+                placeholder="Enter the 8-digit code"
+                autoComplete="off"
+                inputMode="numeric"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setBulkHardOpen(false); setBulkConfirmInput(''); }} disabled={bulkDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmBulkHardDelete}
+              disabled={bulkDeleting || bulkConfirmInput !== bulkConfirmCode}
+            >
+              {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {bulkDeleting ? 'Deleting...' : 'Permanently Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
