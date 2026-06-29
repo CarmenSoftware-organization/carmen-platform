@@ -102,6 +102,10 @@ const UserManagement: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<UserRecord[]>([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
   const [bulkSoftOpen, setBulkSoftOpen] = useState(false);
+  const [bulkHardOpen, setBulkHardOpen] = useState(false);
+  const [bulkConfirmCode, setBulkConfirmCode] = useState('');
+  const [bulkConfirmInput, setBulkConfirmInput] = useState('');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -304,6 +308,28 @@ const UserManagement: React.FC = () => {
     setBulkSoftOpen(false);
     clearSelection();
     setPaginate((prev) => ({ ...prev }));
+  };
+
+  const genBulkCode = () => String(Math.floor(10000000 + Math.random() * 90000000));
+
+  const openBulkHardDelete = () => {
+    setBulkConfirmCode(genBulkCode());
+    setBulkConfirmInput('');
+    setBulkHardOpen(true);
+  };
+
+  const handleConfirmBulkHardDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(selectedUsers.map((u) => userService.hardDelete(u.id)));
+      summarizeBulk(results);
+      setBulkHardOpen(false);
+      setBulkConfirmInput('');
+      clearSelection();
+      setPaginate((prev) => ({ ...prev }));
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const handleExport = () => {
@@ -679,7 +705,10 @@ const UserManagement: React.FC = () => {
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
                       </Button>
-                      {/* Hard Delete button is added in Task 3 */}
+                      <Button variant="destructive" size="sm" onClick={openBulkHardDelete}>
+                        <AlertTriangle className="mr-2 h-4 w-4" />
+                        Hard Delete
+                      </Button>
                       <Button variant="ghost" size="sm" onClick={clearSelection}>
                         Clear
                       </Button>
@@ -798,6 +827,57 @@ const UserManagement: React.FC = () => {
             >
               {hardDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
               {hardDeleting ? 'Deleting...' : 'Permanently Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Hard Delete Dialog with random-code confirmation */}
+      <Dialog open={bulkHardOpen} onOpenChange={(open) => { if (!open && !bulkDeleting) { setBulkHardOpen(false); setBulkConfirmInput(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently Delete {selectedUsers.length} User(s)
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently remove the selected users and all associated data. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="max-h-40 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1">
+              {selectedUsers.map((u) => (
+                <div key={u.id} className="text-sm font-medium">
+                  {u.username || u.email || u.user_id || u.id}
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkHardConfirm">
+                Type <span className="font-mono font-semibold text-destructive">{bulkConfirmCode}</span> to confirm
+              </Label>
+              <Input
+                id="bulkHardConfirm"
+                value={bulkConfirmInput}
+                onChange={(e) => setBulkConfirmInput(e.target.value)}
+                placeholder="Enter the 8-digit code"
+                autoComplete="off"
+                inputMode="numeric"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setBulkHardOpen(false); setBulkConfirmInput(''); }} disabled={bulkDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmBulkHardDelete}
+              disabled={bulkDeleting || bulkConfirmInput !== bulkConfirmCode}
+            >
+              {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {bulkDeleting ? 'Deleting...' : 'Permanently Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
