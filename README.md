@@ -27,7 +27,7 @@ git clone <repo-url> carmen-platform
 cd carmen-platform
 cp .env.example .env          # edit REACT_APP_API_BASE_URL and REACT_APP_API_APP_ID
 bun install                   # or: npm install
-bun start                     # dev server at http://localhost:3100
+bun start                     # dev server at http://localhost:3304
 ```
 
 ## Tech stack

@@ -21,13 +21,13 @@ Frontend-only React + TypeScript admin dashboard for clusters, business units, u
 
 ```bash
 bun install                 # or: npm install
-bun start                   # Vite dev server on :3100 (mode development → .env.development)
+bun start                   # Vite dev server on :3304 (mode development → .env.development)
 bun run dev:local           # dev server against local backend (.env.development)
 bun run dev:prod            # dev server against deployed dev backend (.env.production, --mode production)
 bun run build               # production build (mode production → .env.production; sets REACT_APP_BUILD_DATE, emits to build/)
 bun run build:local         # build with development env (.env.development)
 bun run build:prod          # build with production env (.env.production)
-bun run preview             # serve the production build locally on :3100
+bun run preview             # serve the production build locally on :3304
 ```
 
 No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pass `CI=true` to treat warnings as errors.
@@ -41,8 +41,9 @@ Copy `.env.example` → `.env.development` (local backend) and `.env.production`
 | `REACT_APP_API_BASE_URL` | Backend base URL (proxied in dev) |
 | `REACT_APP_API_APP_ID`   | Sent as `x-app-id` on every request |
 | `REACT_APP_ENV`          | `development` \| `uat` \| `production` |
+| `REACT_APP_PORT`         | Dev server / preview port (default `3304` if unset) |
 
-`vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK).
+`vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK). `server.port`/`preview.port` read `REACT_APP_PORT` (fallback `3304`).
 
 Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagger`) — there is **no `/swagger-json`**. The full OpenAPI 3.0 spec is HTML-entity-embedded in that page; extract it by unescaping the HTML and brace-matching from `"openapi":"3.0.0"`. Always confirm endpoint paths/DTO shapes against swagger (this repo has two backends — `/api` and `/api-system`).
 
@@ -53,7 +54,7 @@ Multi-stage Docker (Node 20 builder → nginx:stable-alpine, port 3001). CI in `
 ## E2E Tests
 
 E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
-See that repo's `CLAUDE.md`. This repo's Vite dev server (`:3100`) is the system under test.
+See that repo's `CLAUDE.md`. This repo's Vite dev server (`:3304`) is the system under test.
 
 ## Project Structure (orientation only — `ls` for current state)
 
