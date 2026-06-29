@@ -4,6 +4,7 @@ import userService from '../services/userService';
 import permissionService from '../services/permissionService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions } from '../types';
 import { checkPermission, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
+import { clearListViewState } from '../utils/clearListViewState';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -154,6 +155,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('loginResponse', JSON.stringify(loginData));
       setUser(userData);
       setLoginResponse(loginData);
+
+      // Fresh login starts clean — drop saved per-page filters/search/sort/pagination.
+      clearListViewState();
 
       // Load full profile (firstname/lastname/etc.) in the background.
       fetchProfile();
