@@ -40,7 +40,11 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:local": "vite",
+    "dev:prod": "vite --mode production",
     "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build",
+    "build:local": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode development",
+    "build:prod": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode production",
     "changelog": "node scripts/generate-changelog.mjs",
     "build:bump": "node scripts/bump-version.mjs && node scripts/generate-changelog.mjs && npm run build",
     "build:bump:minor": "node scripts/bump-version.mjs minor && node scripts/generate-changelog.mjs && npm run build",

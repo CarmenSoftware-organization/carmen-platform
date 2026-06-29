@@ -21,8 +21,12 @@ Frontend-only React + TypeScript admin dashboard for clusters, business units, u
 
 ```bash
 bun install                 # or: npm install
-bun start                   # Vite dev server on :3100
-bun run build               # production build (sets REACT_APP_BUILD_DATE, emits to build/)
+bun start                   # Vite dev server on :3100 (mode development → .env.development)
+bun run dev:local           # dev server against local backend (.env.development)
+bun run dev:prod            # dev server against deployed dev backend (.env.production, --mode production)
+bun run build               # production build (mode production → .env.production; sets REACT_APP_BUILD_DATE, emits to build/)
+bun run build:local         # build with development env (.env.development)
+bun run build:prod          # build with production env (.env.production)
 bun run preview             # serve the production build locally on :3100
 ```
 
@@ -30,7 +34,7 @@ No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pas
 
 ## Environment
 
-Copy `.env.example` → `.env`. Variables:
+Copy `.env.example` → `.env.development` (local backend) and `.env.production` (deployed dev backend). Both are gitignored. The Vite **mode** selects the file: `vite` / `vite --mode development` → `.env.development`; `vite --mode production` → `.env.production`. Vite forbids a mode literally named `local` (it conflicts with the `.local` suffix), so we use `development`/`production` — never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`). Variables:
 
 | Variable | Purpose |
 |----------|---------|
