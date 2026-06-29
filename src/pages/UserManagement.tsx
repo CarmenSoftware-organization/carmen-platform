@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import userService from "../services/userService";
 import { getErrorDetail } from '../utils/errorParser';
+import { useAuth } from '../context/AuthContext';
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -74,6 +75,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 };
 
 const UserManagement: React.FC = () => {
+  const { isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -94,6 +96,7 @@ const UserManagement: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [hardDeleteUser, setHardDeleteUser] = useState<UserRecord | null>(null);
   const [hardDeleteConfirm, setHardDeleteConfirm] = useState('');
+  const [copiedUsername, setCopiedUsername] = useState(false);
   const [hardDeleting, setHardDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -245,6 +248,7 @@ const UserManagement: React.FC = () => {
   const handleHardDelete = useCallback((user: UserRecord) => {
     setHardDeleteUser(user);
     setHardDeleteConfirm('');
+    setCopiedUsername(false);
   }, []);
 
   const handleConfirmHardDelete = async () => {
@@ -259,6 +263,18 @@ const UserManagement: React.FC = () => {
       toast.error('Failed to permanently delete user', { description: getErrorDetail(err) });
     } finally {
       setHardDeleting(false);
+    }
+  };
+
+  const handleCopyUsername = async () => {
+    const token = hardDeleteUser?.username || hardDeleteUser?.email || '';
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopiedUsername(true);
+      setTimeout(() => setCopiedUsername(false), 2000);
+      toast.success('Copied username');
+    } catch {
+      toast.error('Could not copy username');
     }
   };
 
@@ -665,7 +681,7 @@ const UserManagement: React.FC = () => {
       />
 
       {/* Hard Delete Dialog with username confirmation */}
-      <Dialog open={hardDeleteUser !== null} onOpenChange={(open) => { if (!open && !hardDeleting) { setHardDeleteUser(null); setHardDeleteConfirm(''); } }}>
+      <Dialog open={hardDeleteUser !== null} onOpenChange={(open) => { if (!open && !hardDeleting) { setHardDeleteUser(null); setHardDeleteConfirm(''); setCopiedUsername(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -678,7 +694,22 @@ const UserManagement: React.FC = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
-              <div className="text-sm font-medium">{hardDeleteUser?.username || hardDeleteUser?.email || '-'}</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">{hardDeleteUser?.username || hardDeleteUser?.email || '-'}</div>
+                {isSuperAdmin && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    aria-label="Copy username"
+                    onClick={handleCopyUsername}
+                    disabled={hardDeleting}
+                  >
+                    {copiedUsername ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">
                 {[hardDeleteUser?.firstname, hardDeleteUser?.middlename, hardDeleteUser?.lastname].filter(Boolean).join(' ') || hardDeleteUser?.email || '-'}
               </div>
@@ -697,7 +728,7 @@ const UserManagement: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setHardDeleteUser(null); setHardDeleteConfirm(''); }} disabled={hardDeleting}>
+            <Button variant="outline" size="sm" onClick={() => { setHardDeleteUser(null); setHardDeleteConfirm(''); setCopiedUsername(false); }} disabled={hardDeleting}>
               Cancel
             </Button>
             <Button
