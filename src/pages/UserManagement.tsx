@@ -99,6 +99,9 @@ const UserManagement: React.FC = () => {
   const [copiedUsername, setCopiedUsername] = useState(false);
   const [hardDeleting, setHardDeleting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<UserRecord[]>([]);
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const [bulkSoftOpen, setBulkSoftOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -276,6 +279,31 @@ const UserManagement: React.FC = () => {
     } catch {
       toast.error('Could not copy username');
     }
+  };
+
+  const handleSelectionChange = useCallback((rows: UserRecord[]) => {
+    setSelectedUsers(rows);
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedUsers([]);
+    setSelectionResetKey((k) => k + 1);
+  }, []);
+
+  const summarizeBulk = (results: PromiseSettledResult<unknown>[]) => {
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const fail = results.length - ok;
+    if (fail === 0) toast.success(`Deleted ${ok} user(s)`);
+    else if (ok === 0) toast.error(`Failed to delete ${fail} user(s)`);
+    else toast.warning(`Deleted ${ok}, ${fail} failed`);
+  };
+
+  const handleConfirmBulkSoftDelete = async () => {
+    const results = await Promise.allSettled(selectedUsers.map((u) => userService.delete(u.id)));
+    summarizeBulk(results);
+    setBulkSoftOpen(false);
+    clearSelection();
+    setPaginate((prev) => ({ ...prev }));
   };
 
   const handleExport = () => {
@@ -642,29 +670,50 @@ const UserManagement: React.FC = () => {
                 ) : undefined}
               />
             ) : !error ? (
-              <div className="relative">
-                {loading && users.length === 0 ? (
-                  <TableSkeleton columns={9} rows={paginate.perpage || 5} />
-                ) : (
-                <>
-                {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
-                    <div className="text-muted-foreground">Loading...</div>
+              <>
+                {isSuperAdmin && selectedUsers.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <span className="text-sm font-medium">{selectedUsers.length} selected</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setBulkSoftOpen(true)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </Button>
+                      {/* Hard Delete button is added in Task 3 */}
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
                   </div>
                 )}
-                <DataTable
-                  columns={columns}
-                  data={users}
-                  serverSide
-                  totalRows={totalRows}
-                  page={paginate.page}
-                  perpage={paginate.perpage}
-                  onPaginateChange={handlePaginateChange}
-                  onSortChange={handleSortChange}
-                />
-                </>
-                )}
-              </div>
+                <div className="relative">
+                  {loading && users.length === 0 ? (
+                    <TableSkeleton columns={isSuperAdmin ? 10 : 9} rows={paginate.perpage || 5} />
+                  ) : (
+                  <>
+                  {loading && (
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
+                      <div className="text-muted-foreground">Loading...</div>
+                    </div>
+                  )}
+                  <DataTable
+                    columns={columns}
+                    data={users}
+                    serverSide
+                    totalRows={totalRows}
+                    page={paginate.page}
+                    perpage={paginate.perpage}
+                    onPaginateChange={handlePaginateChange}
+                    onSortChange={handleSortChange}
+                    enableRowSelection={isSuperAdmin}
+                    getRowId={(row) => row.id}
+                    onSelectionChange={handleSelectionChange}
+                    selectionResetKey={selectionResetKey}
+                  />
+                  </>
+                  )}
+                </div>
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -678,6 +727,16 @@ const UserManagement: React.FC = () => {
         confirmText="Delete"
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
+      />
+
+      <ConfirmDialog
+        open={bulkSoftOpen}
+        onOpenChange={(open) => { if (!open) setBulkSoftOpen(false); }}
+        title={`Delete ${selectedUsers.length} user(s)`}
+        description="Soft-delete the selected user(s)? They can be restored later."
+        confirmText="Delete"
+        confirmVariant="destructive"
+        onConfirm={handleConfirmBulkSoftDelete}
       />
 
       {/* Hard Delete Dialog with username confirmation */}
