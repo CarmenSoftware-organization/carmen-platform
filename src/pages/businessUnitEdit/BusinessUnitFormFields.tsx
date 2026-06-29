@@ -21,7 +21,7 @@ interface BusinessUnitFormFieldsProps extends SectionFieldProps {
   onConfigChange: (index: number, field: keyof BusinessUnitConfig, value: string) => void;
   onAddConfigRow: () => void;
   onRemoveConfigRow: (index: number) => void;
-  formRef: React.RefObject<HTMLFormElement>;
+  formRef: React.RefObject<HTMLFormElement | null>;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   saving: boolean;
   isNew: boolean;
