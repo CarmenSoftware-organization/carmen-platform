@@ -26,8 +26,9 @@ import type { Cluster, BusinessUnitConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import { BU_ROLES, initialFormData } from './businessUnitEdit/types';
-import type { BUUser, ClusterUser, DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
+import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { CollapsibleSection, ReadOnlyText, ReadOnlyTextarea, selectClassName } from './businessUnitEdit/shared';
+import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,24 +47,11 @@ const BusinessUnitEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
-  const [buUsers, setBuUsers] = useState<BUUser[]>([]);
-  const [editingUser, setEditingUser] = useState<BUUser | null>(null);
-  const [editUserForm, setEditUserForm] = useState<{ role: string; is_active: boolean }>({ role: '', is_active: true });
-  const [savingUser, setSavingUser] = useState(false);
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
-  const [loadingClusterUsers, setLoadingClusterUsers] = useState(false);
-  const [addUserRole, setAddUserRole] = useState('user');
-  const [selectedClusterUser, setSelectedClusterUser] = useState<ClusterUser | null>(null);
-  const [addingUser, setAddingUser] = useState(false);
-  const [addUserSearchTerm, setAddUserSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [rawClusterUsersResponse, setRawClusterUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [debugTab, setDebugTab] = useState<'bu' | 'users'>('bu');
-  const [deleteUser, setDeleteUser] = useState<BUUser | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<BusinessUnitFormData>({
     ...initialFormData,
@@ -71,6 +59,17 @@ const BusinessUnitEdit: React.FC = () => {
   });
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
+  const {
+    buUsers, clusterUsers, loadingClusterUsers, rawClusterUsersResponse,
+    editingUser, setEditingUser, editUserForm, setEditUserForm, savingUser,
+    showAddUser, setShowAddUser, addUserRole, setAddUserRole,
+    selectedClusterUser, setSelectedClusterUser, addingUser,
+    addUserSearchTerm, setAddUserSearchTerm, deleteUser, setDeleteUser,
+    availableClusterUsers, handleDeleteUser, handleConfirmDeleteUser,
+    handleOpenEditUser, handleSaveEditUser, handleOpenAddUser, handleAddUser,
+  } = users;
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -104,22 +103,6 @@ const BusinessUnitEdit: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  // Fetch cluster users for add-user dialog and debug tab
-  useEffect(() => {
-    if (!isNew && formData.cluster_id && !rawClusterUsersResponse) {
-      setLoadingClusterUsers(true);
-      clusterService.getClusterUsers(formData.cluster_id)
-        .then(data => {
-          setRawClusterUsersResponse(data);
-          const items: ClusterUser[] = data.data || data;
-          setClusterUsers(Array.isArray(items) ? items : []);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingClusterUsers(false));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.cluster_id]);
 
   const fetchClusters = async () => {
     try {
@@ -186,7 +169,7 @@ const BusinessUnitEdit: React.FC = () => {
       setLogoUrl(bu.logo?.url || '');
       setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
-      setBuUsers(Array.isArray(bu.users) ? bu.users : []);
+      users.setBuUsers(Array.isArray(bu.users) ? bu.users : []);
     } catch (err: unknown) {
       setError('Failed to load business unit: ' + getErrorDetail(err));
     } finally {
@@ -204,90 +187,6 @@ const BusinessUnitEdit: React.FC = () => {
   const handleUploadAvatar = async (file: File) => {
     const res = await businessUnitService.uploadAvatar(id!, file);
     setAvatarUrl((res?.data?.url ?? res?.url ?? '') as string);
-  };
-
-  const fetchBuUsers = async () => {
-    try {
-      const data = await businessUnitService.getById(id!);
-      const bu = data.data || data;
-      setBuUsers(Array.isArray(bu.users) ? bu.users : []);
-    } catch {
-      // silent — user list refresh failed
-    }
-  };
-
-  const handleDeleteUser = (user: BUUser) => {
-    setDeleteUser(user);
-  };
-
-  const handleConfirmDeleteUser = async () => {
-    if (!deleteUser) return;
-    try {
-      await businessUnitService.deleteUserBusinessUnit(deleteUser.id);
-      toast.success('User removed from business unit');
-      setBuUsers(prev => prev.filter(u => u.id !== deleteUser.id));
-      setDeleteUser(null);
-    } catch (err: unknown) {
-      toast.error('Failed to remove user', { description: getErrorDetail(err) });
-    }
-  };
-
-  const handleOpenEditUser = (user: BUUser) => {
-    setEditingUser(user);
-    setEditUserForm({ role: user.role || 'user', is_active: user.is_active });
-  };
-
-  const handleSaveEditUser = async () => {
-    if (!editingUser) return;
-    setSavingUser(true);
-    try {
-      await businessUnitService.updateUserBusinessUnit(editingUser.id, editUserForm);
-      toast.success('User role updated successfully');
-      setBuUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editUserForm } : u));
-      setEditingUser(null);
-    } catch (err: unknown) {
-      toast.error('Failed to update user', { description: getErrorDetail(err) });
-    } finally {
-      setSavingUser(false);
-    }
-  };
-
-  const handleOpenAddUser = () => {
-    setShowAddUser(true);
-    setSelectedClusterUser(null);
-    setAddUserRole('user');
-    setAddUserSearchTerm('');
-  };
-
-  const availableClusterUsers = clusterUsers.filter(cu => {
-    // Exclude users already in this BU
-    if (buUsers.some(bu => bu.user_id === cu.user_id)) return false;
-    // Apply local search filter
-    if (addUserSearchTerm) {
-      const term = addUserSearchTerm.toLowerCase();
-      const name = [cu.userInfo?.firstname, cu.userInfo?.middlename, cu.userInfo?.lastname].filter(Boolean).join(' ').toLowerCase();
-      return (cu.username?.toLowerCase().includes(term) || cu.email?.toLowerCase().includes(term) || name.includes(term));
-    }
-    return true;
-  });
-
-  const handleAddUser = async () => {
-    if (!selectedClusterUser || !id) return;
-    setAddingUser(true);
-    try {
-      await businessUnitService.createUserBusinessUnit({
-        user_id: selectedClusterUser.user_id,
-        business_unit_id: id,
-        role: addUserRole,
-      });
-      setShowAddUser(false);
-      toast.success('User added to business unit');
-      await fetchBuUsers();
-    } catch (err: unknown) {
-      toast.error('Failed to add user', { description: getErrorDetail(err) });
-    } finally {
-      setAddingUser(false);
-    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
