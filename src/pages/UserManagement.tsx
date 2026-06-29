@@ -323,7 +323,12 @@ const UserManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev }));
   };
 
-  const genBulkCode = () => String(Math.floor(10000000 + Math.random() * 90000000));
+  const genBulkCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
 
   const openBulkHardDelete = () => {
     setBulkConfirmCode(genBulkCode());
@@ -873,10 +878,11 @@ const UserManagement: React.FC = () => {
               <Input
                 id="bulkHardConfirm"
                 value={bulkConfirmInput}
-                onChange={(e) => setBulkConfirmInput(e.target.value)}
-                placeholder="Enter the 8-digit code"
+                onChange={(e) => setBulkConfirmInput(e.target.value.toUpperCase())}
+                placeholder="Enter the 6-character code"
                 autoComplete="off"
-                inputMode="numeric"
+                autoCapitalize="characters"
+                spellCheck={false}
               />
             </div>
           </div>
