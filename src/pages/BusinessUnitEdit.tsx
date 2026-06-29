@@ -23,6 +23,8 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import DbConnectionView from '../components/DbConnectionView';
 import type { Cluster, BusinessUnitConfig } from '../types';
+import { useAuth } from '../context/AuthContext';
+import TenantMigrationCard from '../components/TenantMigrationCard';
 
 const BU_ROLES = ['admin', 'user'] as const;
 
@@ -183,6 +185,7 @@ const BusinessUnitEdit: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isNew = !id;
+  const { isSuperAdmin } = useAuth();
 
   const [formData, setFormData] = useState<BusinessUnitFormData>({
     ...initialFormData,
@@ -1489,6 +1492,18 @@ const BusinessUnitEdit: React.FC = () => {
             </div>
           )}
         </form>
+
+        {/* Tenant database migrations (existing BU only; super-admin action) */}
+        {!isNew && (
+          <TenantMigrationCard
+            key={id}
+            buId={id!}
+            buCode={formData.code}
+            buName={formData.name}
+            hasDbConnection={!!formData.db_connection?.trim()}
+            isSuperAdmin={isSuperAdmin}
+          />
+        )}
 
         {/* Branding: logo / avatar (existing BU only — uploaded via dedicated endpoints) */}
         {!isNew && (
