@@ -49,7 +49,7 @@ export const parseDbConnection = (raw: string): ParsedDbConnection => {
   }
 
   const entries: DbConnectionEntry[] = Object.entries(parsed as Record<string, unknown>).map(
-    ([key, value]) => ({ key, value: toDisplayString(value), sensitive: !isSafeKey(key) }),
+    ([key, value]) => ({ key, value: toDisplayString(value), sensitive: !isSafeKey(key) || (value !== null && typeof value === 'object') }),
   );
   return { ok: true, entries };
 };
