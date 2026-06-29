@@ -21,6 +21,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
+import DbConnectionView from '../components/DbConnectionView';
 import type { Cluster, BusinessUnitConfig } from '../types';
 
 const BU_ROLES = ['admin', 'user'] as const;
@@ -1470,9 +1471,7 @@ const BusinessUnitEdit: React.FC = () => {
           <CollapsibleSection title="Database Connection" description="Database connection configuration (JSON)" forceOpen>
             <div className="space-y-2">
               <Label htmlFor="db_connection">Connection Config</Label>
-              <pre className={`w-full rounded-md border border-input px-3 py-2 text-sm font-mono min-h-[4.5rem] whitespace-pre-wrap break-all overflow-auto max-h-60 ${editing ? 'bg-transparent' : 'bg-muted/50'}`}>
-                {formData.db_connection ? (() => { try { return JSON.stringify(JSON.parse(formData.db_connection), null, 2); } catch { return formData.db_connection; } })() : '-'}
-              </pre>
+              <DbConnectionView value={formData.db_connection} />
             </div>
           </CollapsibleSection>
 
