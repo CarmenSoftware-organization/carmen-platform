@@ -1497,6 +1497,7 @@ const BusinessUnitEdit: React.FC = () => {
         {/* Tenant database migrations (existing BU only; super-admin action) */}
         {!isNew && (
           <TenantMigrationCard
+            key={id}
             buId={id!}
             buCode={formData.code}
             buName={formData.name}
