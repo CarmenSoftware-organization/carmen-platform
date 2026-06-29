@@ -5,6 +5,8 @@ import checker from 'vite-plugin-checker';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'REACT_APP_');
   const ci = process.env.CI === 'true';
+  const port = Number(env.REACT_APP_PORT) || 3304;
+  const apiTarget = env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
 
   return {
     plugins: [
@@ -23,19 +25,22 @@ export default defineConfig(({ mode }) => {
     ],
     envPrefix: 'REACT_APP_',
     server: {
-      port: 3100,
+      port,
       proxy: {
         '/api': {
-          target: env.REACT_APP_API_BASE_URL || 'https://43.209.126.252',
+          target: apiTarget,
           changeOrigin: true,
           secure: false,
         },
         '/api-system': {
-          target: env.REACT_APP_API_BASE_URL || 'https://43.209.126.252',
+          target: apiTarget,
           changeOrigin: true,
           secure: false,
         },
       },
+    },
+    preview: {
+      port,
     },
     build: {
       outDir: 'build',

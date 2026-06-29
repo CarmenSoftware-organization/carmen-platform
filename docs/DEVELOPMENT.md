@@ -19,7 +19,7 @@ bun install        # or: npm install
 bun start          # or: npm start
 ```
 
-Dev server runs on `http://localhost:3100` (port set in `vite.config.ts`).
+Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`).
 
 ## Environment variables
 
@@ -37,9 +37,9 @@ Changing `.env` requires restarting the dev server.
 ## Commands
 
 ```bash
-bun start                 # Vite dev server on :3100
+bun start                 # Vite dev server on :3304
 bun run build             # Production build via vite build; sets REACT_APP_BUILD_DATE
-bun run preview           # Serve the production build locally on :3100
+bun run preview           # Serve the production build locally on :3304
 
 ```
 
@@ -151,7 +151,7 @@ See [../SITEMAP.md](../SITEMAP.md) for the authoritative route list.
 ## E2E testing
 
 E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
-See that repo's `CLAUDE.md` and `README.md`. This repo's Vite dev server (`:3100`) is the system under test.
+See that repo's `CLAUDE.md` and `README.md`. This repo's Vite dev server (`:3304`) is the system under test.
 
 ## Docker and deployment
 
@@ -201,9 +201,9 @@ Check that `REACT_APP_API_BASE_URL` in `.env` is reachable from your machine. If
 **CORS errors in production.**
 Frontend runs on port 3001 behind nginx. CORS must be configured on the backend to accept the frontend's public origin.
 
-**Port 3100 already in use.**
+**Port 3304 already in use.**
 ```bash
-lsof -ti:3100 | xargs kill
+lsof -ti:3304 | xargs kill
 ```
 
 **`401` redirects on every request.**

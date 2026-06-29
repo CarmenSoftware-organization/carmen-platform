@@ -166,12 +166,12 @@ export default defineConfig(({ mode }) => {
       port: 3001,
       proxy: {
         '/api': {
-          target: env.REACT_APP_API_BASE_URL || 'https://43.209.126.252',
+          target: env.REACT_APP_API_BASE_URL || 'http://localhost:4000',
           changeOrigin: true,
           secure: false,
         },
         '/api-system': {
-          target: env.REACT_APP_API_BASE_URL || 'https://43.209.126.252',
+          target: env.REACT_APP_API_BASE_URL || 'http://localhost:4000',
           changeOrigin: true,
           secure: false,
         },
