@@ -207,6 +207,7 @@ function DataTable<TData>({
   });
 
   React.useEffect(() => {
+    if (selectionResetKey === undefined) return;
     setRowSelection({});
   }, [selectionResetKey]);
 
