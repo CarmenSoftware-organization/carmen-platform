@@ -294,6 +294,19 @@ const UserManagement: React.FC = () => {
     setSelectionResetKey((k) => k + 1);
   }, []);
 
+  // Selection is current-page only: discard it whenever the result set changes
+  // (page, page size, search, sort, or filters). Without this, TanStack keeps
+  // the selection map keyed by row id across data loads, leaving off-page users
+  // selected and deletable while no visible checkbox is checked.
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
+
+  const rowSelectionLabel = useCallback(
+    (u: UserRecord) => `Select ${u.username || u.email || u.user_id || 'user'}`,
+    [],
+  );
+
   const summarizeBulk = (results: PromiseSettledResult<unknown>[]) => {
     const ok = results.filter((r) => r.status === 'fulfilled').length;
     const fail = results.length - ok;
@@ -738,6 +751,7 @@ const UserManagement: React.FC = () => {
                     getRowId={(row) => row.id}
                     onSelectionChange={handleSelectionChange}
                     selectionResetKey={selectionResetKey}
+                    getRowSelectionLabel={rowSelectionLabel}
                   />
                   </>
                   )}

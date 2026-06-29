@@ -83,6 +83,7 @@ interface DataTableProps<TData> {
   getRowId?: (row: TData, index: number) => string;
   onSelectionChange?: (rows: TData[]) => void;
   selectionResetKey?: unknown;
+  getRowSelectionLabel?: (row: TData) => string;
 }
 
 function DataTable<TData>({
@@ -102,6 +103,7 @@ function DataTable<TData>({
   getRowId,
   onSelectionChange,
   selectionResetKey,
+  getRowSelectionLabel,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>(
     defaultSort ? [defaultSort] : []
@@ -172,12 +174,12 @@ function DataTable<TData>({
         <SelectCheckbox
           checked={row.getIsSelected()}
           onChange={row.getToggleSelectedHandler()}
-          ariaLabel="Select row"
+          ariaLabel={getRowSelectionLabel ? getRowSelectionLabel(row.original) : 'Select row'}
         />
       ),
     };
     return [selectionCol, ...base];
-  }, [columns, pagination.pageIndex, pagination.pageSize, enableRowSelection]);
+  }, [columns, pagination.pageIndex, pagination.pageSize, enableRowSelection, getRowSelectionLabel]);
 
   const table = useReactTable({
     data,
