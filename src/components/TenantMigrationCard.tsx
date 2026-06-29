@@ -97,6 +97,9 @@ export const TenantMigrationCard = ({
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
+            {/* Focusable wrapper so the disabled button's tooltip is reachable by keyboard,
+                not just hover (a disabled <button> is removed from the tab order). */}
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
             <span tabIndex={0}>{el}</span>
           </TooltipTrigger>
           <TooltipContent>{disabledReason}</TooltipContent>
