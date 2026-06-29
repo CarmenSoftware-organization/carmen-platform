@@ -10,6 +10,7 @@ import {
   type SortingState,
   type PaginationState,
   type Updater,
+  type RowSelectionState,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -37,6 +38,34 @@ function getPageItems(current: number, total: number): PageItem[] {
   return items;
 }
 
+function SelectCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  ariaLabel: string;
+}) {
+  const ref = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.indeterminate = !!indeterminate && !checked;
+  }, [indeterminate, checked]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={ariaLabel}
+      className="h-4 w-4 rounded border-input cursor-pointer"
+    />
+  );
+}
+
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
   data: TData[];
@@ -50,6 +79,10 @@ interface DataTableProps<TData> {
   onPaginateChange?: (params: { page: number; perpage: number }) => void;
   onSortChange?: (sort: string) => void;
   defaultSort?: { id: string; desc: boolean };
+  enableRowSelection?: boolean;
+  getRowId?: (row: TData, index: number) => string;
+  onSelectionChange?: (rows: TData[]) => void;
+  selectionResetKey?: unknown;
 }
 
 function DataTable<TData>({
@@ -65,6 +98,10 @@ function DataTable<TData>({
   onPaginateChange,
   onSortChange,
   defaultSort,
+  enableRowSelection = false,
+  getRowId,
+  onSelectionChange,
+  selectionResetKey,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>(
     defaultSort ? [defaultSort] : []
@@ -73,6 +110,7 @@ function DataTable<TData>({
     pageIndex: serverSide ? page - 1 : 0,
     pageSize: serverSide ? perpage : defaultPageSize,
   });
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
   React.useEffect(() => {
     if (serverSide) {
@@ -106,16 +144,40 @@ function DataTable<TData>({
     }
   };
 
-  const columnsWithIndex = React.useMemo<ColumnDef<TData, unknown>[]>(() => [
-    {
-      id: 'rowIndex',
-      header: '#',
-      cell: ({ row }) => pagination.pageIndex * pagination.pageSize + row.index + 1,
+  const columnsWithIndex = React.useMemo<ColumnDef<TData, unknown>[]>(() => {
+    const base: ColumnDef<TData, unknown>[] = [
+      {
+        id: 'rowIndex',
+        header: '#',
+        cell: ({ row }) => pagination.pageIndex * pagination.pageSize + row.index + 1,
+        enableSorting: false,
+        meta: { cellClassName: 'text-muted-foreground w-10' },
+      },
+      ...columns,
+    ];
+    if (!enableRowSelection) return base;
+    const selectionCol: ColumnDef<TData, unknown> = {
+      id: 'select',
       enableSorting: false,
-      meta: { cellClassName: 'text-muted-foreground w-10' },
-    },
-    ...columns,
-  ], [columns, pagination.pageIndex, pagination.pageSize]);
+      meta: { headerClassName: 'w-10', cellClassName: 'w-10' },
+      header: ({ table }) => (
+        <SelectCheckbox
+          checked={table.getIsAllPageRowsSelected()}
+          indeterminate={table.getIsSomePageRowsSelected()}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+          ariaLabel="Select all on this page"
+        />
+      ),
+      cell: ({ row }) => (
+        <SelectCheckbox
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+          ariaLabel="Select row"
+        />
+      ),
+    };
+    return [selectionCol, ...base];
+  }, [columns, pagination.pageIndex, pagination.pageSize, enableRowSelection]);
 
   const table = useReactTable({
     data,
@@ -124,11 +186,15 @@ function DataTable<TData>({
       sorting,
       globalFilter: serverSide ? undefined : globalFilter,
       pagination,
+      rowSelection,
     },
     pageCount: serverSide ? pageCount : undefined,
     manualPagination: serverSide,
     manualSorting: serverSide,
     manualFiltering: serverSide,
+    enableRowSelection,
+    onRowSelectionChange: setRowSelection,
+    getRowId,
     onSortingChange: handleSortingChange,
     onGlobalFilterChange: serverSide ? undefined : onGlobalFilterChange,
     onPaginationChange: handlePaginationChange,
@@ -139,6 +205,19 @@ function DataTable<TData>({
       getPaginationRowModel: getPaginationRowModel(),
     }),
   });
+
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [selectionResetKey]);
+
+  React.useEffect(() => {
+    if (!enableRowSelection || !onSelectionChange) return;
+    const selected = table.getSelectedRowModel().rows.map((r) => r.original);
+    onSelectionChange(selected);
+    // table/onSelectionChange intentionally excluded: fire only when the
+    // selection map changes; parent passes a stable (useCallback) handler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowSelection, enableRowSelection]);
 
   const totalDisplay = serverSide ? totalRows : table.getFilteredRowModel().rows.length;
   const totalPages = serverSide ? (pageCount || 1) : (table.getPageCount() || 1);
