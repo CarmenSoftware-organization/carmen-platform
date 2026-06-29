@@ -11,7 +11,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { ArrowLeft, Save, Code, Copy, Check, ChevronDown, Plus, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Plus, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -25,160 +25,9 @@ import DbConnectionView from '../components/DbConnectionView';
 import type { Cluster, BusinessUnitConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
-
-const BU_ROLES = ['admin', 'user'] as const;
-
-interface ClusterUser {
-  user_id: string;
-  username: string | null;
-  email: string | null;
-  role: string | null;
-  userInfo?: {
-    firstname?: string | null;
-    lastname?: string | null;
-    middlename?: string | null;
-  } | null;
-}
-
-interface BUUser {
-  id: string;
-  user_id: string;
-  role: string;
-  is_default: boolean;
-  is_active: boolean;
-  username: string | null;
-  email: string | null;
-  user_is_active: boolean | null;
-  firstname: string | null;
-  middlename: string | null;
-  lastname: string | null;
-}
-
-interface DefaultCurrency {
-  id: string;
-  code: string;
-  name: string;
-  symbol: string;
-  description?: string;
-  decimal_places?: number;
-  is_active?: boolean;
-}
-
-interface BusinessUnitFormData {
-  cluster_id: string;
-  code: string;
-  name: string;
-  alias_name: string;
-  description: string;
-  is_hq: boolean;
-  is_active: boolean;
-  max_license_users: string;
-  // Hotel Information
-  hotel_name: string;
-  hotel_tel: string;
-  hotel_email: string;
-  hotel_address: string;
-  hotel_zip_code: string;
-  // Company Information
-  company_name: string;
-  company_tel: string;
-  company_email: string;
-  company_address: string;
-  company_zip_code: string;
-  // Tax Information
-  tax_no: string;
-  branch_no: string;
-  // Date/Time Formats
-  date_format: string;
-  date_time_format: string;
-  time_format: string;
-  long_time_format: string;
-  short_time_format: string;
-  timezone: string;
-  // Number Formats
-  perpage_format: string;
-  amount_format: string;
-  quantity_format: string;
-  recipe_format: string;
-  // Calculation Settings
-  calculation_method: string;
-  default_currency_id: string;
-  // Config & Connection
-  db_connection: string;
-  config: BusinessUnitConfig[];
-}
-
-const initialFormData: BusinessUnitFormData = {
-  cluster_id: '',
-  code: '',
-  name: '',
-  alias_name: '',
-  description: '',
-  is_hq: false,
-  is_active: true,
-  max_license_users: '',
-  hotel_name: '',
-  hotel_tel: '',
-  hotel_email: '',
-  hotel_address: '',
-  hotel_zip_code: '',
-  company_name: '',
-  company_tel: '',
-  company_email: '',
-  company_address: '',
-  company_zip_code: '',
-  tax_no: '',
-  branch_no: '',
-  date_format: '',
-  date_time_format: '',
-  time_format: '',
-  long_time_format: '',
-  short_time_format: '',
-  timezone: '',
-  perpage_format: '{"default":10}',
-  amount_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
-  quantity_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
-  recipe_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
-  calculation_method: '',
-  default_currency_id: '',
-  db_connection: '',
-  config: [],
-};
-
-interface CollapsibleSectionProps {
-  title: string;
-  description?: string;
-  defaultOpen?: boolean;
-  forceOpen?: boolean;
-  children: React.ReactNode;
-}
-
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, description, defaultOpen = false, forceOpen = false, children }) => {
-  const [open, setOpen] = useState(defaultOpen);
-  const isOpen = forceOpen || open;
-  return (
-    <Card className="flex flex-col h-full">
-      <CardHeader className="cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
-          </div>
-          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </div>
-      </CardHeader>
-      {isOpen && <CardContent className="flex-1">{children}</CardContent>}
-    </Card>
-  );
-};
-
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{value || '-'}</div>
-);
-
-const ReadOnlyTextarea: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm min-h-[4.5rem] whitespace-pre-wrap">{value || '-'}</div>
-);
+import { BU_ROLES, initialFormData } from './businessUnitEdit/types';
+import type { BUUser, ClusterUser, DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
+import { CollapsibleSection, ReadOnlyText, ReadOnlyTextarea, selectClassName } from './businessUnitEdit/shared';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -691,8 +540,6 @@ const BusinessUnitEdit: React.FC = () => {
       </Layout>
     );
   }
-
-  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
   return (
     <Layout>
