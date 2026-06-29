@@ -150,6 +150,25 @@ export interface BusinessUnit {
   doc_version?: number; // optimistic-lock token (read model)
 }
 
+// Tenant database migration (super-admin) — /api-system/tenant/migrations/:bu_id/*
+export interface TenantMigrationStatus {
+  bu_id: string;
+  bu_code: string;
+  has_pending: boolean;
+  pending: string[];
+  up_to_date: boolean;
+  raw: string;
+}
+
+export interface TenantMigrationDeployResult {
+  bu_id: string;
+  bu_code: string;
+  success: boolean;
+  already_up_to_date: boolean;
+  applied_migrations: string[];
+  raw: string;
+}
+
 export interface UserInfo {
   firstname?: string;
   middlename?: string;
