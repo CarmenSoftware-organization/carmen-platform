@@ -11,7 +11,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { ArrowLeft, Save, Code, Copy, Check, Plus, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Save, Code, Copy, Check, Trash2, Pencil, X, UserPlus, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -21,14 +21,22 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import DbConnectionView from '../components/DbConnectionView';
 import type { Cluster, BusinessUnitConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import { BU_ROLES, initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
-import { CollapsibleSection, ReadOnlyText, ReadOnlyTextarea, selectClassName } from './businessUnitEdit/shared';
+import { selectClassName } from './businessUnitEdit/shared';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
+import BasicInfoSection from './businessUnitEdit/sections/BasicInfoSection';
+import HotelInfoSection from './businessUnitEdit/sections/HotelInfoSection';
+import CompanyInfoSection from './businessUnitEdit/sections/CompanyInfoSection';
+import TaxInfoSection from './businessUnitEdit/sections/TaxInfoSection';
+import DateTimeFormatsSection from './businessUnitEdit/sections/DateTimeFormatsSection';
+import NumberFormatsSection from './businessUnitEdit/sections/NumberFormatsSection';
+import CalculationSettingsSection from './businessUnitEdit/sections/CalculationSettingsSection';
+import ConfigurationSection from './businessUnitEdit/sections/ConfigurationSection';
+import DatabaseConnectionSection from './businessUnitEdit/sections/DatabaseConnectionSection';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -471,758 +479,101 @@ const BusinessUnitEdit: React.FC = () => {
 
         <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
           {/* Section 1: Basic Information */}
-          <CollapsibleSection title="Basic Information" description="Core business unit details" defaultOpen={true} forceOpen>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cluster_id">Cluster {editing && '*'}</Label>
-                {editing ? (
-                  <select
-                    id="cluster_id"
-                    name="cluster_id"
-                    value={formData.cluster_id}
-                    onChange={handleChange}
-                    required
-                    className={selectClassName}
-                  >
-                    <option value="">Select a cluster</option>
-                    {clusters.map((cluster) => (
-                      <option key={cluster.id} value={cluster.id}>
-                        {cluster.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <ReadOnlyText value={getClusterName(formData.cluster_id)} />
-                )}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Code {editing && '*'}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="code"
-                        name="code"
-                        value={formData.code}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Business unit code"
-                        className={fieldErrors.code ? 'border-destructive' : ''}
-                        required
-                      />
-                      {fieldErrors.code && (
-                        <p className="text-xs text-destructive">{fieldErrors.code}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyText value={formData.code} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name {editing && '*'}</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="Business unit name"
-                      required
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.name} />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="alias_name">Alias Name</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="alias_name"
-                    name="alias_name"
-                    value={formData.alias_name}
-                    onChange={handleChange}
-                    placeholder="Alias name (optional)"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.alias_name} />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                {editing ? (
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Business unit description (optional)"
-                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                ) : (
-                  <ReadOnlyTextarea value={formData.description} />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="max_license_users">Max Licensed Users</Label>
-                {editing ? (
-                  <>
-                    <Input
-                      type="number"
-                      id="max_license_users"
-                      name="max_license_users"
-                      value={formData.max_license_users}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="Unlimited"
-                      min={0}
-                      className={fieldErrors.max_license_users ? 'border-destructive' : ''}
-                    />
-                    {fieldErrors.max_license_users && (
-                      <p className="text-xs text-destructive">{fieldErrors.max_license_users}</p>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                    {formData.max_license_users || 'Unlimited'}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-4">
-                {editing ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="is_hq"
-                        name="is_hq"
-                        checked={formData.is_hq}
-                        onChange={handleChange}
-                        className="h-4 w-4 rounded border-input"
-                      />
-                      <Label htmlFor="is_hq">Headquarters (HQ)</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="is_active"
-                        name="is_active"
-                        checked={formData.is_active}
-                        onChange={handleChange}
-                        className="h-4 w-4 rounded border-input"
-                      />
-                      <Label htmlFor="is_active">Active</Label>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Label>Headquarters (HQ)</Label>
-                      <Badge variant={formData.is_hq ? 'success' : 'secondary'} className="ml-1">
-                        {formData.is_hq ? 'Yes' : 'No'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label>Status</Label>
-                      <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-1">
-                        {formData.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </CollapsibleSection>
+          <BasicInfoSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            clusters={clusters}
+            getClusterName={getClusterName}
+          />
 
           {/* Section 2: Hotel Information */}
-          <CollapsibleSection title="Hotel Information" description="Hotel contact and address details" forceOpen>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="hotel_name">Hotel Name</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="hotel_name"
-                    name="hotel_name"
-                    value={formData.hotel_name}
-                    onChange={handleChange}
-                    placeholder="Hotel name"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.hotel_name} />
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="hotel_tel">Telephone</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="hotel_tel"
-                        name="hotel_tel"
-                        value={formData.hotel_tel}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Hotel telephone"
-                        className={fieldErrors.hotel_tel ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.hotel_tel && (
-                        <p className="text-xs text-destructive">{fieldErrors.hotel_tel}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyText value={formData.hotel_tel} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hotel_email">Email</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="hotel_email"
-                        name="hotel_email"
-                        value={formData.hotel_email}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Hotel email"
-                        className={fieldErrors.hotel_email ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.hotel_email && (
-                        <p className="text-xs text-destructive">{fieldErrors.hotel_email}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyText value={formData.hotel_email} />
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hotel_address">Address</Label>
-                {editing ? (
-                  <textarea
-                    id="hotel_address"
-                    name="hotel_address"
-                    value={formData.hotel_address}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Hotel address"
-                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                ) : (
-                  <ReadOnlyTextarea value={formData.hotel_address} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hotel_zip_code">Zip Code</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="hotel_zip_code"
-                    name="hotel_zip_code"
-                    value={formData.hotel_zip_code}
-                    onChange={handleChange}
-                    placeholder="Hotel zip code"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.hotel_zip_code} />
-                )}
-              </div>
-            </div>
-          </CollapsibleSection>
+          <HotelInfoSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+          />
 
           {/* Section 3: Company Information */}
-          <CollapsibleSection title="Company Information" description="Company contact and address details" forceOpen>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="company_name">Company Name</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="company_name"
-                    name="company_name"
-                    value={formData.company_name}
-                    onChange={handleChange}
-                    placeholder="Company name"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.company_name} />
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="company_tel">Telephone</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="company_tel"
-                        name="company_tel"
-                        value={formData.company_tel}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Company telephone"
-                        className={fieldErrors.company_tel ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.company_tel && (
-                        <p className="text-xs text-destructive">{fieldErrors.company_tel}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyText value={formData.company_tel} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company_email">Email</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="company_email"
-                        name="company_email"
-                        value={formData.company_email}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder="Company email"
-                        className={fieldErrors.company_email ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.company_email && (
-                        <p className="text-xs text-destructive">{fieldErrors.company_email}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyText value={formData.company_email} />
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company_address">Address</Label>
-                {editing ? (
-                  <textarea
-                    id="company_address"
-                    name="company_address"
-                    value={formData.company_address}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Company address"
-                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                ) : (
-                  <ReadOnlyTextarea value={formData.company_address} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company_zip_code">Zip Code</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="company_zip_code"
-                    name="company_zip_code"
-                    value={formData.company_zip_code}
-                    onChange={handleChange}
-                    placeholder="Company zip code"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.company_zip_code} />
-                )}
-              </div>
-            </div>
-          </CollapsibleSection>
+          <CompanyInfoSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+          />
 
           {/* Section 4: Tax Information */}
-          <CollapsibleSection title="Tax Information" description="Tax and branch registration details" forceOpen>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="tax_no">Tax No.</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="tax_no"
-                    name="tax_no"
-                    value={formData.tax_no}
-                    onChange={handleChange}
-                    placeholder="Tax number"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.tax_no} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="branch_no">Branch No.</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="branch_no"
-                    name="branch_no"
-                    value={formData.branch_no}
-                    onChange={handleChange}
-                    placeholder="Branch number"
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.branch_no} />
-                )}
-              </div>
-            </div>
-          </CollapsibleSection>
+          <TaxInfoSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+          />
 
           {/* Section 5: Date/Time Formats */}
-          <CollapsibleSection title="Date/Time Formats" description="Date, time, and timezone configuration" forceOpen>
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="date_format">Date Format</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="date_format"
-                      name="date_format"
-                      value={formData.date_format}
-                      onChange={handleChange}
-                      placeholder="e.g. YYYY-MM-DD"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.date_format} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date_time_format">Date/Time Format</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="date_time_format"
-                      name="date_time_format"
-                      value={formData.date_time_format}
-                      onChange={handleChange}
-                      placeholder="e.g. YYYY-MM-DD HH:mm:ss"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.date_time_format} />
-                  )}
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="time_format">Time Format</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="time_format"
-                      name="time_format"
-                      value={formData.time_format}
-                      onChange={handleChange}
-                      placeholder="e.g. HH:mm:ss"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.time_format} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="long_time_format">Long Time Format</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="long_time_format"
-                      name="long_time_format"
-                      value={formData.long_time_format}
-                      onChange={handleChange}
-                      placeholder="e.g. HH:mm:ss.SSS"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.long_time_format} />
-                  )}
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="short_time_format">Short Time Format</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="short_time_format"
-                      name="short_time_format"
-                      value={formData.short_time_format}
-                      onChange={handleChange}
-                      placeholder="e.g. HH:mm"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.short_time_format} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="timezone"
-                      name="timezone"
-                      value={formData.timezone}
-                      onChange={handleChange}
-                      placeholder="e.g. Asia/Bangkok"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.timezone} />
-                  )}
-                </div>
-              </div>
-            </div>
-          </CollapsibleSection>
+          <DateTimeFormatsSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+          />
 
           {/* Section 6: Number Formats */}
-          <CollapsibleSection title="Number Formats" description="Numeric display format configuration" forceOpen>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="perpage_format">Per Page Format</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="perpage_format"
-                    name="perpage_format"
-                    value={formData.perpage_format}
-                    onChange={handleChange}
-                    placeholder='{"default":10}'
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.perpage_format} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount_format">Amount Format</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="amount_format"
-                    name="amount_format"
-                    value={formData.amount_format}
-                    onChange={handleChange}
-                    placeholder='{"locales":"th-TH","minimumIntegerDigits":2}'
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.amount_format} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quantity_format">Quantity Format</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="quantity_format"
-                    name="quantity_format"
-                    value={formData.quantity_format}
-                    onChange={handleChange}
-                    placeholder='{"locales":"th-TH","minimumIntegerDigits":2}'
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.quantity_format} />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="recipe_format">Recipe Format</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="recipe_format"
-                    name="recipe_format"
-                    value={formData.recipe_format}
-                    onChange={handleChange}
-                    placeholder='{"locales":"th-TH","minimumIntegerDigits":2}'
-                  />
-                ) : (
-                  <ReadOnlyText value={formData.recipe_format} />
-                )}
-              </div>
-            </div>
-          </CollapsibleSection>
+          <NumberFormatsSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+          />
 
           {/* Section 7: Calculation Settings */}
-          <CollapsibleSection title="Calculation Settings" description="Calculation method and currency configuration" forceOpen>
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="calculation_method">Calculation Method</Label>
-                  {editing ? (
-                    <select
-                      id="calculation_method"
-                      name="calculation_method"
-                      value={formData.calculation_method}
-                      onChange={handleChange}
-                      className={selectClassName}
-                    >
-                      <option value="">Select method</option>
-                      <option value="average">Average</option>
-                      <option value="fifo">FIFO</option>
-                    </select>
-                  ) : (
-                    <ReadOnlyText value={getCalculationMethodLabel(formData.calculation_method)} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="default_currency_id">Default Currency ID</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="default_currency_id"
-                      name="default_currency_id"
-                      value={formData.default_currency_id}
-                      onChange={handleChange}
-                      placeholder="Default currency ID"
-                    />
-                  ) : (
-                    <ReadOnlyText value={formData.default_currency_id} />
-                  )}
-                </div>
-              </div>
-              {!editing && defaultCurrency && (
-                <div className="rounded-md border p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Default Currency</span>
-                    <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-[10px]">
-                      {defaultCurrency.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Code</span>
-                      <div className="text-sm font-medium">{defaultCurrency.code || '-'}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Name</span>
-                      <div className="text-sm">{defaultCurrency.name || '-'}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Symbol</span>
-                      <div className="text-sm">{defaultCurrency.symbol || '-'}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Decimal Places</span>
-                      <div className="text-sm">{defaultCurrency.decimal_places ?? '-'}</div>
-                    </div>
-                  </div>
-                  {defaultCurrency.description && (
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Description</span>
-                      <div className="text-sm">{defaultCurrency.description}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>
+          <CalculationSettingsSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            defaultCurrency={defaultCurrency}
+            getCalculationMethodLabel={getCalculationMethodLabel}
+          />
 
           {/* Section 8: Configuration */}
-          <CollapsibleSection title="Configuration" description="Key-value configuration entries" forceOpen>
-            <div className="space-y-4">
-              {editing ? (
-                <>
-                  {formData.config.map((item, index) => (
-                    <div key={index} className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] items-end border-b pb-4 sm:border-0 sm:pb-0">
-                      <div className="space-y-2">
-                        <Label>Key *</Label>
-                        <Input
-                          type="text"
-                          value={item.key}
-                          onChange={(e) => handleConfigChange(index, 'key', e.target.value)}
-                          placeholder="Config key"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Label *</Label>
-                        <Input
-                          type="text"
-                          value={item.label}
-                          onChange={(e) => handleConfigChange(index, 'label', e.target.value)}
-                          placeholder="Config label"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Data Type</Label>
-                        <select
-                          value={item.datatype || ''}
-                          onChange={(e) => handleConfigChange(index, 'datatype', e.target.value)}
-                          className={selectClassName}
-                        >
-                          <option value="">Select type</option>
-                          <option value="string">String</option>
-                          <option value="number">Number</option>
-                          <option value="boolean">Boolean</option>
-                          <option value="date">Date</option>
-                          <option value="json">JSON</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Value</Label>
-                        <Input
-                          type="text"
-                          value={typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value ?? '')}
-                          onChange={(e) => handleConfigChange(index, 'value', e.target.value)}
-                          placeholder="Config value"
-                        />
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeConfigRow(index)} className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={addConfigRow}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Config Entry
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {formData.config.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No configuration entries.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b-2 border-border bg-muted">
-                            <th className="text-left font-medium px-4 py-2">Key</th>
-                            <th className="text-left font-medium px-4 py-2">Label</th>
-                            <th className="text-left font-medium px-4 py-2">Type</th>
-                            <th className="text-left font-medium px-4 py-2">Value</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formData.config.map((item, index) => (
-                            <tr key={index} className="zebra-row border-b last:border-0">
-                              <td className="px-4 py-2">{item.key || '-'}</td>
-                              <td className="px-4 py-2">{item.label || '-'}</td>
-                              <td className="px-4 py-2">{item.datatype || '-'}</td>
-                              <td className="px-4 py-2">{typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value ?? '-')}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </CollapsibleSection>
+          <ConfigurationSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            onConfigChange={handleConfigChange}
+            onAddConfigRow={addConfigRow}
+            onRemoveConfigRow={removeConfigRow}
+          />
 
           {/* Section 9: Database Connection */}
-          <CollapsibleSection title="Database Connection" description="Database connection configuration (JSON)" forceOpen>
-            <div className="space-y-2">
-              <Label htmlFor="db_connection">Connection Config</Label>
-              <DbConnectionView value={formData.db_connection} />
-            </div>
-          </CollapsibleSection>
+          <DatabaseConnectionSection
+            formData={formData}
+            editing={editing}
+            fieldErrors={fieldErrors}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+          />
 
           {/* Submit Buttons */}
           {editing && (
