@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { ArrowLeft, Save, Code, Copy, Check, Trash2, Pencil, X, UserPlus, Search } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '../components/ui/card';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { BrandingImageUpload } from '../components/BrandingImageUpload';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -24,10 +17,12 @@ import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
-import { BU_ROLES, initialFormData } from './businessUnitEdit/types';
+import { initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
-import { selectClassName } from './businessUnitEdit/shared';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
+import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCard';
+import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
+import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitFormFields from './businessUnitEdit/BusinessUnitFormFields';
 
 const BusinessUnitEdit: React.FC = () => {
@@ -61,15 +56,6 @@ const BusinessUnitEdit: React.FC = () => {
   const formRef = useRef<HTMLFormElement>(null);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
-  const {
-    buUsers, clusterUsers, loadingClusterUsers, rawClusterUsersResponse,
-    editingUser, setEditingUser, editUserForm, setEditUserForm, savingUser,
-    showAddUser, setShowAddUser, addUserRole, setAddUserRole,
-    selectedClusterUser, setSelectedClusterUser, addingUser,
-    addUserSearchTerm, setAddUserSearchTerm, deleteUser, setDeleteUser,
-    availableClusterUsers, handleDeleteUser, handleConfirmDeleteUser,
-    handleOpenEditUser, handleSaveEditUser, handleOpenAddUser, handleAddUser,
-  } = users;
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -504,338 +490,31 @@ const BusinessUnitEdit: React.FC = () => {
 
         {/* Branding: logo / avatar (existing BU only — uploaded via dedicated endpoints) */}
         {!isNew && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Branding</CardTitle>
-              <CardDescription>Logo and avatar shown across the platform</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-6 sm:flex-row sm:gap-10">
-              <BrandingImageUpload
-                label="Logo"
-                value={logoUrl}
-                disabled={!editing}
-                shape="rect"
-                onUpload={handleUploadLogo}
-              />
-              <BrandingImageUpload
-                label="Avatar"
-                value={avatarUrl}
-                disabled={!editing}
-                shape="square"
-                onUpload={handleUploadAvatar}
-              />
-            </CardContent>
-          </Card>
+          <BusinessUnitBrandingCard
+            logoUrl={logoUrl}
+            avatarUrl={avatarUrl}
+            editing={editing}
+            onUploadLogo={handleUploadLogo}
+            onUploadAvatar={handleUploadAvatar}
+          />
         )}
 
         {/* Users in this Business Unit */}
-        {!isNew && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Users</CardTitle>
-                  <CardDescription>
-                    <span className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="success" className="text-[10px] px-1.5 py-0">{buUsers.filter(u => u.is_active).length} Active</Badge>
-                      <span className="text-muted-foreground text-xs">of {buUsers.length} total</span>
-                    </span>
-                  </CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleOpenAddUser}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {buUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No users assigned yet.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b-2 border-border bg-muted">
-                        <th className="text-center font-medium px-4 py-2 w-10">#</th>
-                        <th className="text-left font-medium px-4 py-2">Name</th>
-                        <th className="text-left font-medium px-4 py-2">Email</th>
-                        <th className="text-left font-medium px-4 py-2">Username</th>
-                        <th className="text-left font-medium px-4 py-2">BU Role</th>
-                        <th className="text-center font-medium px-4 py-2">BU Status</th>
-                        <th className="w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...buUsers].sort((a, b) => {
-                        const nameA = [a.firstname, a.middlename, a.lastname].filter(Boolean).join(' ').toLowerCase();
-                        const nameB = [b.firstname, b.middlename, b.lastname].filter(Boolean).join(' ').toLowerCase();
-                        if (nameA !== nameB) return nameA.localeCompare(nameB);
-                        const emailA = (a.email || '').toLowerCase();
-                        const emailB = (b.email || '').toLowerCase();
-                        if (emailA !== emailB) return emailA.localeCompare(emailB);
-                        return (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase());
-                      }).map((u, idx) => (
-                        <tr key={u.id} className="zebra-row border-b last:border-0">
-                          <td className="px-4 py-2 text-center text-muted-foreground">{idx + 1}</td>
-                          <td className="px-4 py-2">
-                            <Link
-                              to={`/users/${u.user_id}/edit`}
-                              className="text-primary hover:underline"
-                            >
-                              {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
-                            </Link>
-                          </td>
-                          <td className="px-4 py-2">{u.email || '-'}</td>
-                          <td className="px-4 py-2">{u.username || '-'}</td>
-                          <td className="px-4 py-2">
-                            <Badge variant="outline" className="capitalize text-xs">
-                              {u.role || '-'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
-                              {u.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEditUser(u)}>
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteUser(u)}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Edit User BU Dialog */}
-              <Dialog open={!!editingUser} onOpenChange={(open) => { if (!open) setEditingUser(null); }}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Edit User in Business Unit</DialogTitle>
-                    <DialogDescription>
-                      {editingUser && (
-                        <span>{editingUser.username} — {[editingUser.firstname, editingUser.middlename, editingUser.lastname].filter(Boolean).join(' ') || editingUser.email}</span>
-                      )}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-2">
-                    <div className="space-y-2">
-                      <Label>BU Role</Label>
-                      <select
-                        value={editUserForm.role}
-                        onChange={(e) => setEditUserForm(prev => ({ ...prev, role: e.target.value }))}
-                        className={selectClassName}
-                      >
-                        {BU_ROLES.map((r) => (
-                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>BU Status</Label>
-                      <select
-                        value={editUserForm.is_active ? 'true' : 'false'}
-                        onChange={(e) => setEditUserForm(prev => ({ ...prev, is_active: e.target.value === 'true' }))}
-                        className={selectClassName}
-                      >
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                      </select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" size="sm" onClick={() => setEditingUser(null)}>Cancel</Button>
-                    <Button size="sm" onClick={handleSaveEditUser} disabled={savingUser}>
-                      <Save className="mr-2 h-4 w-4" />
-                      {savingUser ? 'Saving...' : 'Save'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <ConfirmDialog
-                open={deleteUser !== null}
-                onOpenChange={(open) => { if (!open) setDeleteUser(null); }}
-                title="Remove User"
-                description={`Are you sure you want to remove "${deleteUser ? ([deleteUser.firstname, deleteUser.middlename, deleteUser.lastname].filter(Boolean).join(' ') || deleteUser.username || deleteUser.email || 'this user') : ''}" from this business unit?`}
-                confirmText="Remove"
-                confirmVariant="destructive"
-                onConfirm={handleConfirmDeleteUser}
-              />
-
-              {/* Add User Dialog - picks from cluster users */}
-              <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
-                <DialogContent className="sm:max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Add User to Business Unit</DialogTitle>
-                    <DialogDescription>Select a user from this cluster to add</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-2">
-                    {/* Selected user display */}
-                    {selectedClusterUser && (
-                      <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
-                        <div>
-                          <div className="text-sm font-medium">{selectedClusterUser.username || selectedClusterUser.email || '-'}</div>
-                          <div className="text-xs text-muted-foreground">{selectedClusterUser.email || '-'}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {[selectedClusterUser.userInfo?.firstname, selectedClusterUser.userInfo?.middlename, selectedClusterUser.userInfo?.lastname].filter(Boolean).join(' ') || '-'}
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedClusterUser(null)}>
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Search + cluster user list */}
-                    {!selectedClusterUser && (
-                      <>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            placeholder="Search cluster users..."
-                            value={addUserSearchTerm}
-                            onChange={(e) => setAddUserSearchTerm(e.target.value)}
-                            className="pl-9"
-                            // eslint-disable-next-line jsx-a11y/no-autofocus
-                            autoFocus
-                          />
-                        </div>
-
-                        <div className="border rounded-md max-h-60 overflow-y-auto">
-                          {loadingClusterUsers ? (
-                            <div className="text-sm text-muted-foreground text-center py-4">Loading cluster users...</div>
-                          ) : availableClusterUsers.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                              {clusterUsers.length > 0 ? 'All cluster users are already in this business unit.' : 'No users in this cluster.'}
-                            </p>
-                          ) : (
-                            <div className="divide-y">
-                              {availableClusterUsers.map((cu) => (
-                                <button
-                                  key={cu.user_id}
-                                  type="button"
-                                  className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
-                                  onClick={() => setSelectedClusterUser(cu)}
-                                >
-                                  <div className="text-sm font-medium">{cu.username || cu.email || '-'}</div>
-                                  <div className="text-xs text-muted-foreground">{cu.email || '-'}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {[cu.userInfo?.firstname, cu.userInfo?.middlename, cu.userInfo?.lastname].filter(Boolean).join(' ') || '-'}
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {availableClusterUsers.length} available of {clusterUsers.length} cluster users
-                        </div>
-                      </>
-                    )}
-
-                    {/* Role select */}
-                    <div className="space-y-2">
-                      <Label>BU Role</Label>
-                      <select
-                        value={addUserRole}
-                        onChange={(e) => setAddUserRole(e.target.value)}
-                        className={selectClassName}
-                      >
-                        {BU_ROLES.map((r) => (
-                          <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
-                    <Button size="sm" onClick={handleAddUser} disabled={addingUser || !selectedClusterUser}>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      {addingUser ? 'Adding...' : 'Add User'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
-        )}
+        {!isNew && <BusinessUnitUsersCard users={users} />}
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !isNew && !!(rawResponse || rawClusterUsersResponse) && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Responses
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">Raw JSON responses from all endpoints</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex border-b mb-3 sm:mb-4 overflow-x-auto">
-                <button
-                  onClick={() => setDebugTab('bu')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'bu' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Business Unit
-                </button>
-                <button
-                  onClick={() => setDebugTab('users')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'users' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Cluster Users
-                </button>
-              </div>
-
-              {debugTab === 'bu' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/business-units/${id}`}</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[70vh]">
-                    {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-              {debugTab === 'users' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/clusters/${formData.cluster_id}`}</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawClusterUsersResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[70vh]">
-                    {rawClusterUsersResponse ? JSON.stringify(rawClusterUsersResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+      {import.meta.env.DEV && !isNew && !!(rawResponse || users.rawClusterUsersResponse) && (
+        <BusinessUnitDebugSheet
+          rawResponse={rawResponse}
+          rawClusterUsersResponse={users.rawClusterUsersResponse}
+          id={id}
+          clusterId={formData.cluster_id}
+          debugTab={debugTab}
+          setDebugTab={setDebugTab}
+          copied={copied}
+          onCopy={handleCopyJson}
+        />
       )}
     </Layout>
   );
