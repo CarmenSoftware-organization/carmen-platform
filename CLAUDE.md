@@ -6,7 +6,7 @@ Guidance for Claude Code working in this repo. Read fully before changing code.
 
 Frontend-only React + TypeScript admin dashboard for clusters, business units, users, report templates, and print-template mappings. Glassmorphism design with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
 
-- **Framework:** React 18 + TypeScript (Vite 8) — strict mode on
+- **Framework:** React 19 + TypeScript (Vite 8) — strict mode on
 - **Styling:** Tailwind 3.4 with HSL CSS custom properties
 - **Components:** shadcn/ui (Radix + CVA) — primitives live in `src/components/ui/`
 - **Tables:** TanStack Table v8 via `DataTable` wrapper (`src/components/ui/data-table.tsx`)
@@ -28,6 +28,10 @@ bun run build               # production build (mode production → .env.product
 bun run build:local         # build with development env (.env.development)
 bun run build:prod          # build with production env (.env.production)
 bun run preview             # serve the production build locally on :3304
+bun run test                # unit + component tests (Vitest, jsdom) — one-shot
+bun run test:watch          # Vitest watch mode
+bun run test:cov            # Vitest with v8 coverage
+bun run test:scripts        # node --test for build scripts (scripts/lib/*.test.mjs)
 ```
 
 No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pass `CI=true` to treat warnings as errors.
@@ -51,6 +55,17 @@ Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagg
 
 Multi-stage Docker (Node 20 builder → nginx:stable-alpine, port 3001). CI in `.github/workflows/build.yml` pushes ARM64 image to ECR and deploys via SSM. `docker-compose` binds `127.0.0.1:3001` behind a reverse proxy with 30s healthcheck.
 
+## Unit & Component Tests
+
+[Vitest](https://vitest.dev) (jsdom) is the in-repo test runner — separate from the Playwright E2E suite. Config lives in `vitest.config.ts` (standalone — does **not** touch `vite.config.ts`); `vitest.setup.ts` registers jest-dom matchers + `afterEach(cleanup)` (we run **no** `globals`, so RTL cleanup is wired manually — otherwise renders accumulate in the shared jsdom doc); `src/vitest.d.ts` makes the jest-dom matchers visible to tsc without touching `tsconfig.json`.
+
+- **Run:** `bun run test` (one-shot) · `test:watch` · `test:cov` (v8 coverage). Tests are excluded from the app bundle (never imported by app code).
+- **Location:** co-locate `*.test.ts` / `*.test.tsx` beside the source (e.g. `src/utils/validation.test.ts`).
+- **Imports:** explicit — `import { describe, it, expect, vi } from 'vitest'` (no globals).
+- **Pure functions:** unit-test directly. Reference: `src/utils/*.test.ts`.
+- **Components:** React Testing Library + `@testing-library/user-event`; assert behavior/roles/text (no snapshots). Presentational examples: `src/pages/businessUnitEdit/*.test.tsx`.
+- **Page integration:** `vi.mock` the shell (`Layout`, `Can`) + services (and `api`), keep routing **real** via `MemoryRouter`. Reference: `src/pages/ClusterEdit.test.tsx`.
+
 ## E2E Tests
 
 E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
@@ -67,13 +82,18 @@ src/
   pages/           Landing, Login, Dashboard, Profile,
                    <Entity>Management.tsx (list) + <Entity>Edit.tsx (CRUD)
                    for Cluster, BusinessUnit, User, ReportTemplate, PrintTemplateMapping
+    businessUnitEdit/  BusinessUnitEdit.tsx decomposed — sections/, useBusinessUnitUsers
+                       hook, Form/Branding/Users/Debug cards, shared.tsx, types.ts
   services/        api.ts (axios + interceptors) + one <entity>Service.ts per entity
   types/index.ts   All shared TS types
   utils/           QueryParams, csvExport, validation, errorParser, xml
   hooks/           useUnsavedChanges
   context/         AuthContext
   lib/utils.ts     cn() = clsx + tailwind-merge
+  **/*.test.{ts,tsx}  Vitest unit/component tests, co-located beside source
 ```
+
+Test config at repo root: `vitest.config.ts`, `vitest.setup.ts`, plus `src/vitest.d.ts` (jest-dom matcher types). See **Unit & Component Tests** above.
 
 ## The Two Page Patterns
 
@@ -88,6 +108,8 @@ Required state shape: `items`, `totalRows`, `loading`, `error`, `searchTerm`, `s
 
 ### Edit page (`<Entity>Edit.tsx`)
 Canonical examples: **`src/pages/ClusterEdit.tsx`** (simple), **`src/pages/ReportTemplateEdit.tsx`** (tabbed XML + sticky bottom bar).
+
+**`src/pages/BusinessUnitEdit.tsx`** is the largest Edit page and is **decomposed** into `src/pages/businessUnitEdit/` — the page file is the orchestrator (form state + load/save + composition); the form is per-section components under `sections/` (sharing a `SectionFieldProps` bundle), the BU-users sub-flow is a `useBusinessUnitUsers` hook + `BusinessUnitUsersCard`, and Branding/Debug are their own cards. Follow this split if an Edit page grows unwieldy — don't let one page file balloon past ~600 lines.
 
 Required structure: header (back + title + Edit toggle) → error display → Card sections (form, `lg:grid-cols-2` on existing) → related-data cards → dev-only debug Sheet with tabs.
 
@@ -324,3 +346,4 @@ const fmt = (v?: string) => {
 15. **Mobile-first responsive.** Test both layouts (`md` is the desktop/sidebar pivot).
 16. **Skeleton vs overlay vs empty:** see Loading States Decision Table — do not mix.
 17. **Versioned-entity Edit pages** must thread `doc_version` via `src/utils/docVersion.ts`: dedicated `docVersion` state (never in `formData`), send only when present, `409` → `notifyVersionConflict()` + refetch. See **doc_version Optimistic Locking**.
+18. **Tests** (Vitest): co-locate `*.test.ts(x)` beside source, use explicit `vitest` imports (no globals), assert behavior not snapshots. Pure utils → unit test; components → RTL; pages → mock shell+services, real `MemoryRouter`. See **Unit & Component Tests**. Don't churn `tsconfig.json` / `vite.config.ts` for test setup.
