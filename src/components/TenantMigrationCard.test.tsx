@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('../services/tenantMigrationService', () => ({
@@ -65,24 +65,36 @@ describe('TenantMigrationCard', () => {
 
   it('renders a progress bar and live log from streamed events, then finalizes', async () => {
     const user = userEvent.setup();
-    // drive deployStream by invoking onEvent synchronously, then resolving with a summary
-    vi.mocked(tenantMigrationService.deployStream).mockImplementation(async (_buId, onEvent) => {
-      onEvent({ type: 'start', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', total: 3 });
-      onEvent({ type: 'applying', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', name: PENDING[0], index: 1, total: 3 });
-      onEvent({ type: 'applying', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', name: PENDING[1], index: 2, total: 3 });
-      return { bu_id: 'bu-1', bu_code: 'CARMEN-AVG', success: true, already_up_to_date: false, applied_migrations: PENDING.slice(0, 2) };
-    });
+    // hold the stream unresolved so we can assert the bar while deploying === true
+    let resolveStream: (s: import('../types').DeploySummary) => void;
+    vi.mocked(tenantMigrationService.deployStream).mockImplementation((_buId, onEvent) =>
+      new Promise((resolve) => {
+        onEvent({ type: 'start', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', total: 3 });
+        onEvent({ type: 'applying', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', name: PENDING[0], index: 1, total: 3 });
+        onEvent({ type: 'applying', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', name: PENDING[1], index: 2, total: 3 });
+        resolveStream = resolve;
+      }),
+    );
 
     renderCard();
     await user.click(screen.getByRole('button', { name: /check status/i }));
     await user.click(await screen.findByRole('button', { name: /apply 3 migration/i }));
     await user.click(await screen.findByRole('button', { name: /apply migrations/i })); // confirm dialog
 
-    // progress bar reflects applied/total and the live log shows applied names
-    const bar = await screen.findByRole('progressbar');
+    // bar is visible mid-stream (deploying === true, promise still pending)
+    // Note: the ConfirmDialog is still open at this point (runDeploy hasn't resolved),
+    // so Radix marks the card content aria-hidden — use { hidden: true } to reach it.
+    const bar = await screen.findByRole('progressbar', { hidden: true });
     expect(bar).toHaveAttribute('aria-valuenow', '2');
     expect(bar).toHaveAttribute('aria-valuemax', '3');
-    expect(screen.getByText(PENDING[0])).toBeInTheDocument();
+    // PENDING[0] appears in both the pending list and the live log — assert both are present
+    expect(screen.getAllByText(PENDING[0])).toHaveLength(2);
     expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('bu-1', expect.any(Function));
+
+    // resolve the stream and verify the progress bar disappears (deploying flips false)
+    await act(async () => {
+      resolveStream({ bu_id: 'bu-1', bu_code: 'CARMEN-AVG', success: true, already_up_to_date: false, applied_migrations: PENDING.slice(0, 2) });
+    });
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 });

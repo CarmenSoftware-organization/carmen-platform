@@ -89,12 +89,11 @@ export const TenantMigrationCard = ({
       else toast.success(`Applied ${applied.length} migration(s) to ${buCode}.`);
       setConfirmOpen(false);
       await fetchStatus();
-      setLogLines([]);
     } catch (err) {
       handleMigrationError(err);
       setConfirmOpen(false);
-      setProgress(null);
     } finally {
+      setProgress(null);
       setDeploying(false);
     }
   };
@@ -183,7 +182,7 @@ export const TenantMigrationCard = ({
           </div>
         )}
 
-        {progress !== null && (
+        {deploying && progress && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{deploying ? 'Applying migrations…' : 'Migrations applied'}</span>
