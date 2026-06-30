@@ -1,7 +1,8 @@
 // src/pages/TenantMigrationManagement.test.tsx
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../components/Layout', () => ({ default: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
@@ -44,5 +45,34 @@ describe('TenantMigrationManagement', () => {
     renderPage();
     await screen.findByText('BU01');
     expect(screen.getByRole('button', { name: /export/i })).toBeEnabled();
+  });
+
+  it('Check all fetches status for every BU and updates badges + summary', async () => {
+    const user = userEvent.setup();
+    vi.mocked(tenantMigrationService.getStatus).mockImplementation(async (id: string) =>
+      id === 'b1'
+        ? ({ bu_id: 'b1', bu_code: 'BU01', up_to_date: true, has_pending: false, pending: [], raw: '' } as never)
+        : ({ bu_id: 'b2', bu_code: 'BU02', up_to_date: false, has_pending: true, pending: ['m1', 'm2'], raw: '' } as never),
+    );
+    renderPage();
+    await screen.findByText('BU01');
+    await user.click(screen.getByRole('button', { name: /check all/i }));
+
+    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    expect(await screen.findByText('2 pending')).toBeInTheDocument();
+    expect(tenantMigrationService.getStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('per-row Check fetches just that BU', async () => {
+    const user = userEvent.setup();
+    vi.mocked(tenantMigrationService.getStatus).mockResolvedValue(
+      { bu_id: 'b1', bu_code: 'BU01', up_to_date: true, has_pending: false, pending: [], raw: '' } as never,
+    );
+    renderPage();
+    await screen.findByText('BU01');
+    const checkButtons = screen.getAllByRole('button', { name: /^check$/i });
+    await user.click(checkButtons[0]);
+    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    expect(tenantMigrationService.getStatus).toHaveBeenCalledTimes(1);
   });
 });

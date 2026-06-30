@@ -1,5 +1,5 @@
 // src/pages/TenantMigrationManagement.tsx
-import React, { useState, useEffect, useMemo, useRef, type ReactElement } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
@@ -16,10 +16,13 @@ import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../components/ui/tooltip';
-import { Search, X, Download, Code, Copy, Check, Database } from 'lucide-react';
+import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BusinessUnit, TenantMigrationStatus } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import tenantMigrationService from '../services/tenantMigrationService';
+import { handleMigrationError } from '../utils/migrationError';
+import { mapWithConcurrency } from '../utils/concurrent';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -88,11 +91,52 @@ const TenantMigrationManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [checkingAll, setCheckingAll] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
   const disabledReason = !isSuperAdmin ? 'Super-admin required.' : null;
+
+  const checkOne = useCallback(async (bu: BusinessUnit) => {
+    setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], checking: true } }));
+    try {
+      const status = await tenantMigrationService.getStatus(bu.id);
+      setRowState((prev) => ({
+        ...prev,
+        [bu.id]: { ...prev[bu.id], status, checking: false, lastChecked: nowTime(), errorMsg: undefined },
+      }));
+    } catch (err) {
+      handleMigrationError(err);
+      setRowState((prev) => ({
+        ...prev,
+        [bu.id]: { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() },
+      }));
+    }
+  }, []);
+
+  const checkAll = useCallback(async () => {
+    setCheckingAll(true);
+    setRowState((prev) => {
+      const next = { ...prev };
+      for (const bu of bus) next[bu.id] = { ...next[bu.id], checking: true };
+      return next;
+    });
+    await mapWithConcurrency(
+      bus,
+      4,
+      (bu) => tenantMigrationService.getStatus(bu.id),
+      (bu, _i, result, err) => {
+        setRowState((prev) => ({
+          ...prev,
+          [bu.id]: err
+            ? { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() }
+            : { ...prev[bu.id], status: result, checking: false, lastChecked: nowTime(), errorMsg: undefined },
+        }));
+      },
+    );
+    setCheckingAll(false);
+  }, [bus]);
 
   useEffect(() => {
     (async () => {
@@ -199,7 +243,29 @@ const TenantMigrationManagement: React.FC = () => {
         return <span className="text-xs text-muted-foreground">{rs?.lastChecked ?? '–'}</span>;
       },
     },
-  ], [rowState]);
+    {
+      id: 'actions',
+      header: '',
+      enableSorting: false,
+      meta: { headerClassName: 'w-40', cellClassName: 'text-right' },
+      cell: ({ row }) => {
+        const bu = row.original;
+        const rs = rowState[bu.id];
+        const busy = !!rs?.checking || !!rs?.deploying;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {withTooltip(
+              <Button variant="outline" size="sm" onClick={() => checkOne(bu)} disabled={!!disabledReason || busy}>
+                {rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                Check
+              </Button>,
+              disabledReason,
+            )}
+          </div>
+        );
+      },
+    },
+  ], [rowState, disabledReason, checkOne]);
 
   return (
     <Layout>
@@ -212,6 +278,18 @@ const TenantMigrationManagement: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
+            {withTooltip(
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={checkAll}
+                disabled={!!disabledReason || checkingAll || bus.length === 0}
+              >
+                {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                {checkingAll ? 'Checking...' : 'Check all'}
+              </Button>,
+              disabledReason,
+            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0}>
               <Download className="mr-2 h-4 w-4" />
               Export
