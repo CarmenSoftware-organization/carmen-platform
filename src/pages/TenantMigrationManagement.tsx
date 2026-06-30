@@ -16,11 +16,12 @@ import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../components/ui/tooltip';
-import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import type { BusinessUnit, TenantMigrationStatus } from '../types';
+import type { BusinessUnit, TenantMigrationStatus, ProgressEvent } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import tenantMigrationService from '../services/tenantMigrationService';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { handleMigrationError } from '../utils/migrationError';
 import { mapWithConcurrency } from '../utils/concurrent';
 
@@ -92,6 +93,7 @@ const TenantMigrationManagement: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
   const [checkingAll, setCheckingAll] = useState(false);
+  const [applyTarget, setApplyTarget] = useState<BusinessUnit | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
@@ -145,6 +147,40 @@ const TenantMigrationManagement: React.FC = () => {
       });
     }
   }, [bus]);
+
+  const applyOne = useCallback(async (bu: BusinessUnit) => {
+    setApplyTarget(null);
+    setRowState((prev) => ({
+      ...prev,
+      [bu.id]: {
+        ...prev[bu.id],
+        deploying: true,
+        progress: { applied: 0, total: prev[bu.id]?.status?.pending.length ?? 0, current: null },
+        errorMsg: undefined,
+      },
+    }));
+    try {
+      const onEvent = (e: ProgressEvent) => {
+        if (e.type === 'start') {
+          setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], progress: { applied: 0, total: e.total, current: null } } }));
+        } else if (e.type === 'applying') {
+          setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], progress: { applied: e.index, total: e.total, current: e.name } } }));
+        }
+      };
+      const result = await tenantMigrationService.deployStream(bu.id, onEvent);
+      const applied = 'applied_migrations' in result ? result.applied_migrations : [];
+      if (applied.length === 0) toast.info('Already up to date.');
+      else toast.success(`Applied ${applied.length} migration(s) to ${bu.code}.`);
+      setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined } }));
+      await checkOne(bu);
+    } catch (err) {
+      handleMigrationError(err);
+      setRowState((prev) => ({
+        ...prev,
+        [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
+      }));
+    }
+  }, [checkOne]);
 
   useEffect(() => {
     (async () => {
@@ -269,6 +305,14 @@ const TenantMigrationManagement: React.FC = () => {
               </Button>,
               disabledReason,
             )}
+            {rs?.status?.has_pending &&
+              withTooltip(
+                <Button variant="destructive" size="sm" onClick={() => setApplyTarget(bu)} disabled={!!disabledReason || busy}>
+                  <Play className="mr-1.5 h-3.5 w-3.5" />
+                  Apply
+                </Button>,
+                disabledReason,
+              )}
           </div>
         );
       },
@@ -369,6 +413,20 @@ const TenantMigrationManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={applyTarget !== null}
+        onOpenChange={(open) => { if (!open) setApplyTarget(null); }}
+        title="Apply tenant migrations"
+        description={
+          applyTarget
+            ? `Apply ${rowState[applyTarget.id]?.status?.pending.length ?? 0} pending migration(s) to ${applyTarget.name} (${applyTarget.code})? This applies schema changes to the tenant database and cannot be undone.`
+            : ''
+        }
+        confirmText="Apply migrations"
+        confirmVariant="destructive"
+        onConfirm={() => (applyTarget ? applyOne(applyTarget) : undefined)}
+      />
 
       {import.meta.env.DEV && !!rawResponse && (
         <Sheet>

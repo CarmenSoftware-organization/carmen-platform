@@ -75,4 +75,28 @@ describe('TenantMigrationManagement', () => {
     expect(await screen.findByText('Up to date')).toBeInTheDocument();
     expect(tenantMigrationService.getStatus).toHaveBeenCalledTimes(1);
   });
+
+  it('per-row Apply streams progress then re-checks the row', async () => {
+    const user = userEvent.setup();
+    // first check → pending; after deploy re-check → up to date
+    vi.mocked(tenantMigrationService.getStatus)
+      .mockResolvedValueOnce({ bu_id: 'b1', bu_code: 'BU01', up_to_date: false, has_pending: true, pending: ['m1', 'm2'], raw: '' } as never)
+      .mockResolvedValue({ bu_id: 'b1', bu_code: 'BU01', up_to_date: true, has_pending: false, pending: [], raw: '' } as never);
+    vi.mocked(tenantMigrationService.deployStream).mockImplementation(async (_id, onEvent) => {
+      onEvent({ type: 'start', bu_id: 'b1', bu_code: 'BU01', total: 2 });
+      onEvent({ type: 'applying', bu_id: 'b1', bu_code: 'BU01', name: 'm1', index: 1, total: 2 });
+      onEvent({ type: 'applying', bu_id: 'b1', bu_code: 'BU01', name: 'm2', index: 2, total: 2 });
+      return { bu_id: 'b1', bu_code: 'BU01', success: true, already_up_to_date: false, applied_migrations: ['m1', 'm2'] } as never;
+    });
+
+    renderPage();
+    await screen.findByText('BU01');
+    const checkButtons = screen.getAllByRole('button', { name: /^check$/i });
+    await user.click(checkButtons[0]);                                  // → pending, Apply appears
+    await user.click(await screen.findByRole('button', { name: /^apply$/i }));
+    await user.click(await screen.findByRole('button', { name: /apply migrations/i })); // confirm
+
+    expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function));
+    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+  });
 });
