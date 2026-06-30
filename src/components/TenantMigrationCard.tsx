@@ -147,8 +147,10 @@ export const TenantMigrationCard = ({
 
         {status?.has_pending && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">Pending migrations</p>
-            <ul className="space-y-1">
+            <p className="text-sm font-medium">
+              Pending migrations <span className="text-muted-foreground">({pending.length})</span>
+            </p>
+            <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
               {pending.map((name) => (
                 <li key={name} className="break-all font-mono text-xs text-muted-foreground">
                   {name}
@@ -192,7 +194,7 @@ export const TenantMigrationCard = ({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Apply tenant migrations"
-        description={`Apply ${pending.length} pending migration(s) to ${buName} (${buCode})? This applies schema changes to the tenant database.  ${pending.join('  •  ')}`}
+        description={`Apply ${pending.length} pending migration(s) to ${buName} (${buCode})? This applies schema changes to the tenant database and cannot be undone.`}
         confirmText="Apply migrations"
         confirmVariant="destructive"
         onConfirm={runDeploy}
