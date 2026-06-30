@@ -12,6 +12,7 @@ import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { objectToDbFields, dbFieldsToObject } from '../utils/dbConnection';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
@@ -146,7 +147,7 @@ const BusinessUnitEdit: React.FC = () => {
         recipe_format: toJsonString(bu.recipe_format, defaultFormat),
         calculation_method: bu.calculation_method || '',
         default_currency_id: bu.default_currency_id || '',
-        db_connection: toJsonString(bu.db_connection, ''),
+        db_connection: objectToDbFields(bu.db_connection),
         config: Array.isArray(bu.config) ? bu.config : [],
       };
       setFormData(loaded);
@@ -216,6 +217,32 @@ const BusinessUnitEdit: React.FC = () => {
     }));
   };
 
+  const handleDbFieldChange = (key: string, value: string) => {
+    setFormData(prev => {
+      const fields = [...prev.db_connection];
+      const idx = fields.findIndex(f => f.key === key);
+      if (idx >= 0) fields[idx] = { ...fields[idx], value };
+      else fields.push({ key, value });
+      return { ...prev, db_connection: fields };
+    });
+  };
+
+  const handleDbExtraChange = (index: number, field: 'key' | 'value', value: string) => {
+    setFormData(prev => {
+      const fields = [...prev.db_connection];
+      fields[index] = { ...fields[index], [field]: value };
+      return { ...prev, db_connection: fields };
+    });
+  };
+
+  const addDbExtraRow = () => {
+    setFormData(prev => ({ ...prev, db_connection: [...prev.db_connection, { key: '', value: '' }] }));
+  };
+
+  const removeDbExtraRow = (index: number) => {
+    setFormData(prev => ({ ...prev, db_connection: prev.db_connection.filter((_, i) => i !== index) }));
+  };
+
   const buildPayload = (data: BusinessUnitFormData) => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
@@ -246,9 +273,13 @@ const BusinessUnitEdit: React.FC = () => {
       }
     }
 
-    // Parse db_connection from JSON string to object
-    if (data.db_connection) {
-      payload.db_connection = tryParseJson(data.db_connection);
+    // db_connection is held as editable fields; serialize back to an object.
+    // Omit it entirely when empty (matches the other optional fields).
+    const dbConnObj = dbFieldsToObject(data.db_connection);
+    if (Object.keys(dbConnObj).length > 0) {
+      payload.db_connection = dbConnObj;
+    } else {
+      delete payload.db_connection;
     }
 
     // Include config array (filter out empty rows)
@@ -469,6 +500,10 @@ const BusinessUnitEdit: React.FC = () => {
           onConfigChange={handleConfigChange}
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
+          onDbFieldChange={handleDbFieldChange}
+          onDbExtraChange={handleDbExtraChange}
+          onAddDbExtraRow={addDbExtraRow}
+          onRemoveDbExtraRow={removeDbExtraRow}
           formRef={formRef}
           onSubmit={handleSubmit}
           saving={saving}
@@ -483,7 +518,7 @@ const BusinessUnitEdit: React.FC = () => {
             buId={id!}
             buCode={formData.code}
             buName={formData.name}
-            hasDbConnection={!!formData.db_connection?.trim()}
+            hasDbConnection={formData.db_connection.length > 0}
             isSuperAdmin={isSuperAdmin}
           />
         )}

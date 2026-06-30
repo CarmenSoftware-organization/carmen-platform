@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { BusinessUnitConfig } from '../../types';
+import type { DbConnectionField } from '../../utils/dbConnection';
 
 export const BU_ROLES = ['admin', 'user'] as const;
 
@@ -79,7 +80,7 @@ export interface BusinessUnitFormData {
   calculation_method: string;
   default_currency_id: string;
   // Config & Connection
-  db_connection: string;
+  db_connection: DbConnectionField[];
   config: BusinessUnitConfig[];
 }
 
@@ -116,7 +117,7 @@ export const initialFormData: BusinessUnitFormData = {
   recipe_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
   calculation_method: '',
   default_currency_id: '',
-  db_connection: '',
+  db_connection: [],
   config: [],
 };
 
