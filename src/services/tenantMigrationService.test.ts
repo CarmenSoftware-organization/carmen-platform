@@ -90,3 +90,44 @@ describe('tenantMigrationService.deployStream', () => {
     await expect(tenantMigrationService.deployStream('b', () => {})).rejects.toThrow(/migrate failed/);
   });
 });
+
+describe('tenantMigrationService.deployAllStream', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', makeLocalStorage());
+    localStorage.setItem('token', 'tok');
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it("POSTs the all-BU stream endpoint and parses per-BU + batch events", async () => {
+    const events: ProgressEvent[] = [
+      { type: 'start', bu_id: 'all', bu_code: 'ALL', total: 2 },
+      { type: 'bu-complete', bu_id: 'b1', bu_code: 'B1', success: true, applied: ['m1'], already_up_to_date: false },
+      { type: 'bu-complete', bu_id: 'b2', bu_code: 'B2', success: true, applied: [], already_up_to_date: true },
+      { type: 'done', success: true, summary: { total: 2, succeeded: 2, failed: 0, results: [] } },
+    ];
+    const ndjson = events.map((e) => JSON.stringify(e) + '\n').join('');
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okStream([ndjson]) as never);
+
+    const seen: ProgressEvent[] = [];
+    const summary = await tenantMigrationService.deployAllStream((e) => seen.push(e));
+
+    const [url, init] = spy.mock.calls[0];
+    expect(String(url)).toContain('/api-system/tenant/migrations/all/deploy/stream');
+    expect((init as RequestInit).method).toBe('POST');
+    expect(seen).toEqual(events);
+    expect(summary).toMatchObject({ total: 2, succeeded: 2, failed: 0 });
+  });
+
+  it('rejects on a terminal error event', async () => {
+    const chunks = [
+      JSON.stringify({ type: 'start', bu_id: 'all', bu_code: 'ALL', total: 1 }) + '\n',
+      JSON.stringify({ type: 'error', message: 'batch failed' }) + '\n',
+    ];
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okStream(chunks) as never);
+    await expect(tenantMigrationService.deployAllStream(() => {})).rejects.toThrow(/batch failed/);
+  });
+});

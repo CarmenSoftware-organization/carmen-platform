@@ -16,11 +16,12 @@ const tenantMigrationService = {
   },
 
   /**
-   * Stream a tenant deploy as NDJSON ProgressEvents. Calls onEvent for each event and
-   * resolves with the final `done` summary. Uses fetch (not EventSource) so it can send
-   * the bearer token + x-app-id. Rejects on a pre-stream HTTP error or a terminal error event.
+   * Shared NDJSON streamer. `buId` is a real BU id for a single deploy, or 'all'
+   * for the batch deploy of every BU. Uses fetch (not EventSource) so it can send
+   * the bearer token + x-app-id. Rejects on a pre-stream HTTP error or a terminal
+   * error event; resolves with the terminal `done` summary.
    */
-  deployStream: async (
+  _streamDeploy: async (
     buId: string,
     onEvent: (e: ProgressEvent) => void,
   ): Promise<DeploySummary> => {
@@ -52,22 +53,37 @@ const tenantMigrationService = {
       if (event.type === 'done') summary = event.summary;
     };
 
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let nl: number;
-      while ((nl = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, nl);
-        buffer = buffer.slice(nl + 1);
-        handleLine(line);
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 1);
+          handleLine(line);
+        }
       }
+      if (buffer.trim()) handleLine(buffer); // flush any trailing line
+    } finally {
+      reader.cancel().catch(() => {});
     }
-    if (buffer.trim()) handleLine(buffer); // flush any trailing line
 
     if (!summary) throw new Error('Deploy stream ended without a result');
     return summary;
   },
+
+  /** Stream a single-BU deploy as NDJSON ProgressEvents. */
+  deployStream: async (
+    buId: string,
+    onEvent: (e: ProgressEvent) => void,
+  ): Promise<DeploySummary> => tenantMigrationService._streamDeploy(buId, onEvent),
+
+  /** Stream a deploy of ALL BUs (bu_id='all') as NDJSON ProgressEvents. */
+  deployAllStream: async (
+    onEvent: (e: ProgressEvent) => void,
+  ): Promise<DeploySummary> => tenantMigrationService._streamDeploy('all', onEvent),
 };
 
 export default tenantMigrationService;
