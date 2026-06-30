@@ -53,3 +53,48 @@ export const parseDbConnection = (raw: string): ParsedDbConnection => {
   );
   return { ok: true, entries };
 };
+
+export interface DbConnectionField {
+  key: string;
+  value: string; // always a string in form state; coerced at save time
+}
+
+/** Keys coerced away from string on save (case-insensitive). */
+const NUMBER_KEYS = new Set(['port']);
+const BOOLEAN_KEYS = new Set(['ssl']);
+
+/**
+ * Backend db_connection object -> editable {key,value} fields (display strings),
+ * preserving the object's key order. null/undefined/non-object -> [] (defensive;
+ * in practice the value is always an object).
+ */
+export const objectToDbFields = (obj: unknown): DbConnectionField[] => {
+  if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) return [];
+  return Object.entries(obj as Record<string, unknown>).map(([key, value]) => ({
+    key,
+    value:
+      value === null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value),
+  }));
+};
+
+/**
+ * Editable fields -> db_connection object. Skips entries with an empty key OR an
+ * empty value. Coerces `port` to a number (when finite) and `ssl` to a boolean.
+ */
+export const dbFieldsToObject = (fields: DbConnectionField[]): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const { key, value } of fields) {
+    const k = key.trim();
+    if (!k || value === '') continue;
+    const lower = k.toLowerCase();
+    if (NUMBER_KEYS.has(lower)) {
+      const n = Number(value);
+      out[k] = Number.isFinite(n) ? n : value;
+    } else if (BOOLEAN_KEYS.has(lower)) {
+      out[k] = value === 'true';
+    } else {
+      out[k] = value;
+    }
+  }
+  return out;
+};
