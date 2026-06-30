@@ -21,6 +21,10 @@ interface BusinessUnitFormFieldsProps extends SectionFieldProps {
   onConfigChange: (index: number, field: keyof BusinessUnitConfig, value: string) => void;
   onAddConfigRow: () => void;
   onRemoveConfigRow: (index: number) => void;
+  onDbFieldChange: (key: string, value: string) => void;
+  onDbExtraChange: (index: number, field: 'key' | 'value', value: string) => void;
+  onAddDbExtraRow: () => void;
+  onRemoveDbExtraRow: (index: number) => void;
   formRef: React.RefObject<HTMLFormElement | null>;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   saving: boolean;
@@ -42,6 +46,10 @@ const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
   onConfigChange,
   onAddConfigRow,
   onRemoveConfigRow,
+  onDbFieldChange,
+  onDbExtraChange,
+  onAddDbExtraRow,
+  onRemoveDbExtraRow,
   formRef,
   onSubmit,
   saving,
@@ -144,6 +152,10 @@ const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
       onChange={onChange}
       onBlur={onBlur}
       onFocus={onFocus}
+      onDbFieldChange={onDbFieldChange}
+      onDbExtraChange={onDbExtraChange}
+      onAddDbExtraRow={onAddDbExtraRow}
+      onRemoveDbExtraRow={onRemoveDbExtraRow}
     />
 
     {/* Submit Buttons */}

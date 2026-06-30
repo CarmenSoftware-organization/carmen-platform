@@ -217,6 +217,32 @@ const BusinessUnitEdit: React.FC = () => {
     }));
   };
 
+  const handleDbFieldChange = (key: string, value: string) => {
+    setFormData(prev => {
+      const fields = [...prev.db_connection];
+      const idx = fields.findIndex(f => f.key === key);
+      if (idx >= 0) fields[idx] = { ...fields[idx], value };
+      else fields.push({ key, value });
+      return { ...prev, db_connection: fields };
+    });
+  };
+
+  const handleDbExtraChange = (index: number, field: 'key' | 'value', value: string) => {
+    setFormData(prev => {
+      const fields = [...prev.db_connection];
+      fields[index] = { ...fields[index], [field]: value };
+      return { ...prev, db_connection: fields };
+    });
+  };
+
+  const addDbExtraRow = () => {
+    setFormData(prev => ({ ...prev, db_connection: [...prev.db_connection, { key: '', value: '' }] }));
+  };
+
+  const removeDbExtraRow = (index: number) => {
+    setFormData(prev => ({ ...prev, db_connection: prev.db_connection.filter((_, i) => i !== index) }));
+  };
+
   const buildPayload = (data: BusinessUnitFormData) => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
@@ -474,6 +500,10 @@ const BusinessUnitEdit: React.FC = () => {
           onConfigChange={handleConfigChange}
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
+          onDbFieldChange={handleDbFieldChange}
+          onDbExtraChange={handleDbExtraChange}
+          onAddDbExtraRow={addDbExtraRow}
+          onRemoveDbExtraRow={removeDbExtraRow}
           formRef={formRef}
           onSubmit={handleSubmit}
           saving={saving}
