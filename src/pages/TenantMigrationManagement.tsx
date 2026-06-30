@@ -99,7 +99,7 @@ const TenantMigrationManagement: React.FC = () => {
   const disabledReason = !isSuperAdmin ? 'Super-admin required.' : null;
 
   const checkOne = useCallback(async (bu: BusinessUnit) => {
-    setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], checking: true } }));
+    setRowState((prev) => ({ ...prev, [bu.id]: { deploying: false, ...prev[bu.id], checking: true } }));
     try {
       const status = await tenantMigrationService.getStatus(bu.id);
       setRowState((prev) => ({
@@ -119,23 +119,31 @@ const TenantMigrationManagement: React.FC = () => {
     setCheckingAll(true);
     setRowState((prev) => {
       const next = { ...prev };
-      for (const bu of bus) next[bu.id] = { ...next[bu.id], checking: true };
+      for (const bu of bus) next[bu.id] = { deploying: false, ...next[bu.id], checking: true };
       return next;
     });
-    await mapWithConcurrency(
-      bus,
-      4,
-      (bu) => tenantMigrationService.getStatus(bu.id),
-      (bu, _i, result, err) => {
-        setRowState((prev) => ({
-          ...prev,
-          [bu.id]: err
-            ? { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() }
-            : { ...prev[bu.id], status: result, checking: false, lastChecked: nowTime(), errorMsg: undefined },
-        }));
-      },
-    );
-    setCheckingAll(false);
+    try {
+      await mapWithConcurrency(
+        bus,
+        4,
+        (bu) => tenantMigrationService.getStatus(bu.id),
+        (bu, _i, result, err) => {
+          setRowState((prev) => ({
+            ...prev,
+            [bu.id]: err
+              ? { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() }
+              : { ...prev[bu.id], status: result, checking: false, lastChecked: nowTime(), errorMsg: undefined },
+          }));
+        },
+      );
+    } finally {
+      setCheckingAll(false);
+      setRowState((prev) => {
+        const next = { ...prev };
+        for (const bu of bus) if (next[bu.id]?.checking) next[bu.id] = { ...next[bu.id], checking: false };
+        return next;
+      });
+    }
   }, [bus]);
 
   useEffect(() => {
