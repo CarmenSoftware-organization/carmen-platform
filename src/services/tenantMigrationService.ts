@@ -29,7 +29,7 @@ const tenantMigrationService = {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
-        'x-app-id': (import.meta.env.REACT_APP_API_APP_ID as string) ?? '',
+        'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
       },
     });
     if (!res.ok) {
@@ -37,7 +37,8 @@ const tenantMigrationService = {
       throw new Error((body as { message?: string }).message || `Deploy stream failed (${res.status})`);
     }
 
-    const reader = res.body!.getReader();
+    if (!res.body) throw new Error('Deploy stream: response body is null');
+    const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let summary: DeploySummary | undefined;
