@@ -72,4 +72,28 @@ describe('DatabaseConnectionSection (edit mode)', () => {
     expect(screen.getByText('localhost')).toBeInTheDocument();
     expect(screen.queryByLabelText('Host')).not.toBeInTheDocument();
   });
+
+  it('calls onRemoveDbExtraRow with the full-array index', async () => {
+    const user = userEvent.setup();
+    const onRemoveDbExtraRow = vi.fn();
+    render(<DatabaseConnectionSection {...baseProps({ onRemoveDbExtraRow })} />);
+    await user.click(screen.getByRole('button', { name: /remove field/i }));
+    expect(onRemoveDbExtraRow).toHaveBeenCalledWith(2);
+  });
+
+  it('calls onDbExtraChange with the full-array index when editing an extra key', async () => {
+    const user = userEvent.setup();
+    const onDbExtraChange = vi.fn();
+    render(<DatabaseConnectionSection {...baseProps({ onDbExtraChange })} />);
+    await user.type(screen.getByDisplayValue('poolSize'), 'X');
+    expect(onDbExtraChange).toHaveBeenCalledWith(2, 'key', expect.any(String));
+  });
+
+  it('toggles ssl via the checkbox', async () => {
+    const user = userEvent.setup();
+    const onDbFieldChange = vi.fn();
+    render(<DatabaseConnectionSection {...baseProps({ onDbFieldChange })} />);
+    await user.click(screen.getByRole('checkbox'));
+    expect(onDbFieldChange).toHaveBeenCalledWith('ssl', 'true');
+  });
 });

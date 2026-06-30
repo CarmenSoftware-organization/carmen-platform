@@ -133,6 +133,7 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={() => onRemoveDbExtraRow(i)}
+                aria-label="Remove field"
                 className="text-destructive hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
