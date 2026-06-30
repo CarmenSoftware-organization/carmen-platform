@@ -102,9 +102,11 @@ const TenantMigrationManagement: React.FC = () => {
 
   const disabledReason = !isSuperAdmin ? 'Super-admin required.' : null;
 
+  const batchRunning = batch !== null;
+
   const anyBusy =
     checkingAll ||
-    batch !== null ||
+    batchRunning ||
     Object.values(rowState).some((r) => r.checking || r.deploying);
 
   const checkOne = useCallback(async (bu: BusinessUnit) => {
@@ -352,7 +354,7 @@ const TenantMigrationManagement: React.FC = () => {
         return (
           <div className="flex items-center justify-end gap-2">
             {withTooltip(
-              <Button variant="outline" size="sm" onClick={() => checkOne(bu)} disabled={!!disabledReason || busy}>
+              <Button variant="outline" size="sm" onClick={() => checkOne(bu)} disabled={!!disabledReason || busy || batchRunning}>
                 {rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
                 Check
               </Button>,
@@ -360,7 +362,7 @@ const TenantMigrationManagement: React.FC = () => {
             )}
             {rs?.status?.has_pending &&
               withTooltip(
-                <Button variant="destructive" size="sm" onClick={() => setApplyTarget(bu)} disabled={!!disabledReason || busy}>
+                <Button variant="destructive" size="sm" onClick={() => setApplyTarget(bu)} disabled={!!disabledReason || busy || batchRunning}>
                   <Play className="mr-1.5 h-3.5 w-3.5" />
                   Apply
                 </Button>,
@@ -370,7 +372,7 @@ const TenantMigrationManagement: React.FC = () => {
         );
       },
     },
-  ], [rowState, disabledReason, checkOne]);
+  ], [rowState, disabledReason, checkOne, batchRunning]);
 
   return (
     <Layout>
@@ -388,7 +390,7 @@ const TenantMigrationManagement: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={checkAll}
-                disabled={!!disabledReason || checkingAll || bus.length === 0}
+                disabled={!!disabledReason || anyBusy || bus.length === 0}
               >
                 {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                 {checkingAll ? 'Checking...' : 'Check all'}
