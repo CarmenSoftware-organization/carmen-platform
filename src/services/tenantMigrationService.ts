@@ -53,18 +53,22 @@ const tenantMigrationService = {
       if (event.type === 'done') summary = event.summary;
     };
 
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let nl: number;
-      while ((nl = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.slice(0, nl);
-        buffer = buffer.slice(nl + 1);
-        handleLine(line);
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 1);
+          handleLine(line);
+        }
       }
+      if (buffer.trim()) handleLine(buffer); // flush any trailing line
+    } finally {
+      reader.cancel().catch(() => {});
     }
-    if (buffer.trim()) handleLine(buffer); // flush any trailing line
 
     if (!summary) throw new Error('Deploy stream ended without a result');
     return summary;

@@ -1,6 +1,6 @@
 // src/pages/TenantMigrationManagement.tsx
 import React, { useState, useEffect, useMemo, useRef, useCallback, type ReactElement } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import businessUnitService from '../services/businessUnitService';
@@ -85,7 +85,9 @@ export const withTooltip = (el: ReactElement, reason: string | null): ReactEleme
 
 const TenantMigrationManagement: React.FC = () => {
   const { isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [rowState, setRowState] = useState<Record<string, RowState>>({});
@@ -244,7 +246,12 @@ const TenantMigrationManagement: React.FC = () => {
         const data = await businessUnitService.getAll({ perpage: 1000, sort: 'code:asc' });
         setRawResponse(data);
         const items = (data.data || data) as BusinessUnit[];
-        setBus(Array.isArray(items) ? items : []);
+        const arr = Array.isArray(items) ? items : [];
+        setBus(arr);
+        setTotalRows(data.paginate?.total ?? arr.length);
+        if (typeof data.paginate?.total === 'number' && data.paginate.total > arr.length) {
+          toast.warning(`Showing ${arr.length} of ${data.paginate.total} business units — increase the page size to see all.`);
+        }
         setError('');
       } catch (err) {
         setError('Failed to load business units: ' + getErrorDetail(err));
@@ -409,7 +416,7 @@ const TenantMigrationManagement: React.FC = () => {
               </Button>,
               disabledReason,
             )}
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0}>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
               <Download className="mr-2 h-4 w-4" />
               Export
             </Button>
@@ -422,6 +429,9 @@ const TenantMigrationManagement: React.FC = () => {
           <Badge variant="secondary">Pending {summary.pending}</Badge>
           <Badge variant="outline">Unknown {summary.unknown}</Badge>
           {summary.error > 0 && <Badge variant="destructive">Error {summary.error}</Badge>}
+          {totalRows > bus.length && (
+            <Badge variant="destructive">Showing {bus.length} of {totalRows}</Badge>
+          )}
         </div>
 
         {batch && (
@@ -491,6 +501,7 @@ const TenantMigrationManagement: React.FC = () => {
                 icon={Database}
                 title="No business units"
                 description="Create a business unit first to manage its tenant migrations."
+                action={<Button variant="outline" size="sm" onClick={() => navigate('/business-units')}>Go to Business Units</Button>}
               />
             ) : !error ? (
               loading && bus.length === 0 ? (
