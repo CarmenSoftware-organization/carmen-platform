@@ -42,6 +42,9 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
     .map((f, i) => ({ f, i }))
     .filter(({ f }) => !KNOWN_KEYS.includes(f.key));
 
+  const portValue = valueOf('port');
+  const portInvalid = portValue !== '' && !Number.isFinite(Number(portValue));
+
   if (!editing) {
     return (
       <CollapsibleSection title="Database Connection" description="Database connection configuration (JSON)" forceOpen>
@@ -111,6 +114,9 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
                   onChange={(e) => onDbFieldChange(field.key, e.target.value)}
                   placeholder={field.label}
                 />
+                {field.key === 'port' && portInvalid && (
+                  <p className="text-xs text-destructive">Port must be a number.</p>
+                )}
               </div>
             );
           })}
@@ -127,6 +133,9 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
               <div className="space-y-2">
                 <Label>Value</Label>
                 <Input value={f.value} onChange={(e) => onDbExtraChange(i, 'value', e.target.value)} placeholder="Value" />
+                {f.value.trim() !== '' && f.key.trim() === '' && (
+                  <p className="text-xs text-destructive">Key is required.</p>
+                )}
               </div>
               <Button
                 type="button"

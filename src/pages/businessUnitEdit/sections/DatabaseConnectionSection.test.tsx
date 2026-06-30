@@ -96,4 +96,25 @@ describe('DatabaseConnectionSection (edit mode)', () => {
     await user.click(screen.getByRole('checkbox'));
     expect(onDbFieldChange).toHaveBeenCalledWith('ssl', 'true');
   });
+
+  it('warns when port is non-numeric', () => {
+    render(<DatabaseConnectionSection {...baseProps({
+      formData: { ...initialFormData, db_connection: [{ key: 'port', value: 'abc' }] },
+    })} />);
+    expect(screen.getByText(/port must be a number/i)).toBeInTheDocument();
+  });
+
+  it('does not warn for a numeric port', () => {
+    render(<DatabaseConnectionSection {...baseProps({
+      formData: { ...initialFormData, db_connection: [{ key: 'port', value: '5432' }] },
+    })} />);
+    expect(screen.queryByText(/port must be a number/i)).not.toBeInTheDocument();
+  });
+
+  it('warns when an extra row has a value but no key', () => {
+    render(<DatabaseConnectionSection {...baseProps({
+      formData: { ...initialFormData, db_connection: [{ key: '', value: 'orphan' }] },
+    })} />);
+    expect(screen.getByText(/key is required/i)).toBeInTheDocument();
+  });
 });
