@@ -78,20 +78,45 @@ export const objectToDbFields = (obj: unknown): DbConnectionField[] => {
 };
 
 /**
+ * Restore a value that objectToDbFields stringified back into an object/array.
+ * Only attempts when the trimmed string looks like a JSON object/array, so plain
+ * string values (passwords, hosts, "require", etc.) are never accidentally parsed.
+ */
+const maybeJsonValue = (v: string): unknown => {
+  const t = v.trim();
+  if (t[0] !== '{' && t[0] !== '[') return undefined;
+  try {
+    const parsed = JSON.parse(t);
+    return parsed !== null && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * Editable fields -> db_connection object. Skips entries with an empty key OR an
- * empty value. Coerces `port` to a number (when finite) and `ssl` to a boolean.
+ * empty value. Coerces `port` to a number (when finite). For boolean keys (e.g.
+ * `ssl`): coerces only on exact `"true"`/`"false"` — other values (e.g. `"require"`,
+ * nested objects) pass through unchanged, preventing silent data corruption on resave.
+ * JSON-object/array values stringified by objectToDbFields are restored to their
+ * original shape.
  */
 export const dbFieldsToObject = (fields: DbConnectionField[]): Record<string, unknown> => {
   const out: Record<string, unknown> = {};
   for (const { key, value } of fields) {
     const k = key.trim();
     if (!k || value === '') continue;
+    const restored = maybeJsonValue(value);
+    if (restored !== undefined) {
+      out[k] = restored;
+      continue;
+    }
     const lower = k.toLowerCase();
     if (NUMBER_KEYS.has(lower)) {
       const n = Number(value);
       out[k] = Number.isFinite(n) ? n : value;
     } else if (BOOLEAN_KEYS.has(lower)) {
-      out[k] = value === 'true';
+      out[k] = value === 'true' ? true : value === 'false' ? false : value;
     } else {
       out[k] = value;
     }

@@ -53,4 +53,22 @@ describe('dbFieldsToObject', () => {
     const obj = { host: 'db', port: 5432, user: 'u', password: 'p', ssl: true };
     expect(dbFieldsToObject(objectToDbFields(obj))).toEqual(obj);
   });
+
+  it('passes a non-boolean ssl value through unchanged (no corruption)', () => {
+    expect(dbFieldsToObject([{ key: 'ssl', value: 'require' }])).toEqual({ ssl: 'require' });
+  });
+
+  it('restores a nested-object value instead of stringifying it', () => {
+    const obj = { ssl: { rejectUnauthorized: false } };
+    expect(dbFieldsToObject(objectToDbFields(obj))).toEqual(obj);
+  });
+
+  it('does not parse a plain string that is not JSON-object-like', () => {
+    expect(dbFieldsToObject([{ key: 'password', value: '{notjson' }])).toEqual({ password: '{notjson' });
+  });
+
+  it('still coerces exact "true"/"false" ssl to boolean', () => {
+    expect(dbFieldsToObject([{ key: 'ssl', value: 'true' }])).toEqual({ ssl: true });
+    expect(dbFieldsToObject([{ key: 'ssl', value: 'false' }])).toEqual({ ssl: false });
+  });
 });
