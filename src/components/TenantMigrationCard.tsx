@@ -8,7 +8,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/t
 import { toast } from 'sonner';
 import { parseApiError } from '../utils/errorParser';
 import tenantMigrationService from '../services/tenantMigrationService';
-import type { TenantMigrationStatus } from '../types';
+import type { TenantMigrationStatus, ProgressEvent } from '../types';
 
 interface TenantMigrationCardProps {
   buId: string;
@@ -45,6 +45,8 @@ export const TenantMigrationCard = ({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [progress, setProgress] = useState<{ applied: number; total: number; current: string | null } | null>(null);
+  const [logLines, setLogLines] = useState<string[]>([]);
 
   const disabledReason = !isSuperAdmin
     ? 'Super-admin required.'
@@ -71,18 +73,27 @@ export const TenantMigrationCard = ({
 
   const runDeploy = async () => {
     setDeploying(true);
+    setProgress({ applied: 0, total: pending.length, current: null });
+    setLogLines([]);
     try {
-      const result = await tenantMigrationService.deploy(buId);
-      if (result.already_up_to_date || result.applied_migrations.length === 0) {
-        toast.info('Already up to date.');
-      } else {
-        toast.success(`Applied ${result.applied_migrations.length} migration(s) to ${buCode}.`);
-      }
+      const onEvent = (e: ProgressEvent) => {
+        if (e.type === 'start') setProgress({ applied: 0, total: e.total, current: null });
+        else if (e.type === 'applying') {
+          setProgress({ applied: e.index, total: e.total, current: e.name });
+          setLogLines((prev) => [...prev, e.name]);
+        }
+      };
+      const summary = await tenantMigrationService.deployStream(buId, onEvent);
+      const applied = 'applied_migrations' in summary ? summary.applied_migrations : [];
+      if (applied.length === 0) toast.info('Already up to date.');
+      else toast.success(`Applied ${applied.length} migration(s) to ${buCode}.`);
       setConfirmOpen(false);
       await fetchStatus();
+      setLogLines([]);
     } catch (err) {
       handleMigrationError(err);
       setConfirmOpen(false);
+      setProgress(null);
     } finally {
       setDeploying(false);
     }
@@ -168,6 +179,39 @@ export const TenantMigrationCard = ({
                 <Play className="mr-2 h-4 w-4" />
                 Apply {pending.length} migration(s)
               </Button>,
+            )}
+          </div>
+        )}
+
+        {progress !== null && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{deploying ? 'Applying migrations…' : 'Migrations applied'}</span>
+              <span className="text-muted-foreground">
+                {progress.applied} / {progress.total}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                role="progressbar"
+                aria-valuenow={progress.applied}
+                aria-valuemin={0}
+                aria-valuemax={progress.total}
+                className="h-full bg-primary transition-all"
+                style={{ width: `${progress.total ? (progress.applied / progress.total) * 100 : 0}%` }}
+              />
+            </div>
+            {progress.current && (
+              <p className="break-all font-mono text-xs text-muted-foreground">{progress.current}</p>
+            )}
+            {logLines.length > 0 && (
+              <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
+                {logLines.map((name) => (
+                  <li key={name} className="break-all font-mono text-xs text-muted-foreground">
+                    {name}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         )}

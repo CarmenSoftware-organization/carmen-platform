@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('../services/tenantMigrationService', () => ({
-  default: { getStatus: vi.fn(), deploy: vi.fn() },
+  default: { getStatus: vi.fn(), deploy: vi.fn(), deployStream: vi.fn() },
 }));
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -61,5 +61,28 @@ describe('TenantMigrationCard', () => {
     for (const name of PENDING) {
       expect(within(dialog).queryByText(new RegExp(name))).not.toBeInTheDocument();
     }
+  });
+
+  it('renders a progress bar and live log from streamed events, then finalizes', async () => {
+    const user = userEvent.setup();
+    // drive deployStream by invoking onEvent synchronously, then resolving with a summary
+    vi.mocked(tenantMigrationService.deployStream).mockImplementation(async (_buId, onEvent) => {
+      onEvent({ type: 'start', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', total: 3 });
+      onEvent({ type: 'applying', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', name: PENDING[0], index: 1, total: 3 });
+      onEvent({ type: 'applying', bu_id: 'bu-1', bu_code: 'CARMEN-AVG', name: PENDING[1], index: 2, total: 3 });
+      return { bu_id: 'bu-1', bu_code: 'CARMEN-AVG', success: true, already_up_to_date: false, applied_migrations: PENDING.slice(0, 2) };
+    });
+
+    renderCard();
+    await user.click(screen.getByRole('button', { name: /check status/i }));
+    await user.click(await screen.findByRole('button', { name: /apply 3 migration/i }));
+    await user.click(await screen.findByRole('button', { name: /apply migrations/i })); // confirm dialog
+
+    // progress bar reflects applied/total and the live log shows applied names
+    const bar = await screen.findByRole('progressbar');
+    expect(bar).toHaveAttribute('aria-valuenow', '2');
+    expect(bar).toHaveAttribute('aria-valuemax', '3');
+    expect(screen.getByText(PENDING[0])).toBeInTheDocument();
+    expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('bu-1', expect.any(Function));
   });
 });
