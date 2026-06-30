@@ -110,7 +110,7 @@ const TenantMigrationManagement: React.FC = () => {
     Object.values(rowState).some((r) => r.checking || r.deploying);
 
   const checkOne = useCallback(async (bu: BusinessUnit) => {
-    setRowState((prev) => ({ ...prev, [bu.id]: { deploying: false, ...prev[bu.id], checking: true } }));
+    setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], checking: true, deploying: prev[bu.id]?.deploying ?? false } }));
     try {
       const status = await tenantMigrationService.getStatus(bu.id);
       setRowState((prev) => ({
@@ -130,7 +130,7 @@ const TenantMigrationManagement: React.FC = () => {
     setCheckingAll(true);
     setRowState((prev) => {
       const next = { ...prev };
-      for (const bu of bus) next[bu.id] = { deploying: false, ...next[bu.id], checking: true };
+      for (const bu of bus) next[bu.id] = { ...next[bu.id], checking: true, deploying: next[bu.id]?.deploying ?? false };
       return next;
     });
     try {
