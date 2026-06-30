@@ -169,6 +169,39 @@ export interface TenantMigrationDeployResult {
   raw: string;
 }
 
+export interface SingleDeploySummary {
+  bu_id: string;
+  bu_code: string;
+  success: boolean;
+  already_up_to_date: boolean;
+  applied_migrations: string[];
+}
+
+export interface BatchDeploySummary {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: Array<Record<string, unknown>>;
+}
+
+export type DeploySummary = SingleDeploySummary | BatchDeploySummary;
+
+export type ProgressEvent =
+  | { type: 'start'; bu_id: string; bu_code: string; total: number }
+  | { type: 'applying'; bu_id: string; bu_code: string; name: string; index: number; total: number }
+  | {
+      type: 'bu-complete';
+      bu_id: string;
+      bu_code: string;
+      success: boolean;
+      applied: string[];
+      already_up_to_date: boolean;
+      error?: string;
+    }
+  | { type: 'log'; message: string }
+  | { type: 'done'; success: boolean; summary: DeploySummary }
+  | { type: 'error'; message: string };
+
 export interface UserInfo {
   firstname?: string;
   middlename?: string;
