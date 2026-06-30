@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../components/ui/tooltip';
 import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import type { BusinessUnit, TenantMigrationStatus, ProgressEvent } from '../types';
+import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import tenantMigrationService from '../services/tenantMigrationService';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -94,11 +94,18 @@ const TenantMigrationManagement: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [checkingAll, setCheckingAll] = useState(false);
   const [applyTarget, setApplyTarget] = useState<BusinessUnit | null>(null);
+  const [batch, setBatch] = useState<BatchProgress | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
   const disabledReason = !isSuperAdmin ? 'Super-admin required.' : null;
+
+  const anyBusy =
+    checkingAll ||
+    batch !== null ||
+    Object.values(rowState).some((r) => r.checking || r.deploying);
 
   const checkOne = useCallback(async (bu: BusinessUnit) => {
     setRowState((prev) => ({ ...prev, [bu.id]: { deploying: false, ...prev[bu.id], checking: true } }));
@@ -181,6 +188,52 @@ const TenantMigrationManagement: React.FC = () => {
       }));
     }
   }, [checkOne]);
+
+  const deployAll = useCallback(async () => {
+    setConfirmAll(false);
+    setBatch({ applied: 0, total: 0, current: null, buCode: null, log: [] });
+    try {
+      const onEvent = (e: ProgressEvent) => {
+        if (e.type === 'start') {
+          setBatch((b) => (b ? { ...b, total: e.total, buCode: e.bu_code, applied: 0, current: null } : b));
+        } else if (e.type === 'applying') {
+          setBatch((b) => (b ? { ...b, applied: e.index, total: e.total, current: e.name, buCode: e.bu_code } : b));
+        } else if (e.type === 'bu-complete') {
+          const line = `${e.bu_code}: ${e.error ? 'failed' : e.already_up_to_date ? 'up to date' : `applied ${e.applied.length}`}`;
+          setBatch((b) => (b ? { ...b, log: [...b.log, line] } : b));
+          setRowState((prev) => ({
+            ...prev,
+            [e.bu_id]: e.error
+              ? { ...prev[e.bu_id], checking: false, deploying: false, progress: undefined, errorMsg: e.error, lastChecked: nowTime() }
+              : {
+                  ...prev[e.bu_id],
+                  checking: false,
+                  deploying: false,
+                  progress: undefined,
+                  errorMsg: undefined,
+                  lastChecked: nowTime(),
+                  status: { bu_id: e.bu_id, bu_code: e.bu_code, has_pending: false, pending: [], up_to_date: true, raw: '' },
+                },
+          }));
+        } else if (e.type === 'log') {
+          setBatch((b) => (b ? { ...b, log: [...b.log, e.message] } : b));
+        }
+      };
+      const result = await tenantMigrationService.deployAllStream(onEvent);
+      if (result && 'succeeded' in result) {
+        const s = result as BatchDeploySummary;
+        const msg = `Deployed: ${s.succeeded} ok, ${s.failed} failed.`;
+        if (s.failed > 0) toast.warning(msg);
+        else toast.success(msg);
+      } else {
+        toast.success('Deploy completed.');
+      }
+    } catch (err) {
+      handleMigrationError(err);
+    } finally {
+      setBatch(null);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -342,6 +395,18 @@ const TenantMigrationManagement: React.FC = () => {
               </Button>,
               disabledReason,
             )}
+            {withTooltip(
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setConfirmAll(true)}
+                disabled={!!disabledReason || anyBusy || bus.length === 0}
+              >
+                <Play className="mr-2 h-4 w-4" />
+                Deploy all
+              </Button>,
+              disabledReason,
+            )}
             <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0}>
               <Download className="mr-2 h-4 w-4" />
               Export
@@ -356,6 +421,35 @@ const TenantMigrationManagement: React.FC = () => {
           <Badge variant="outline">Unknown {summary.unknown}</Badge>
           {summary.error > 0 && <Badge variant="destructive">Error {summary.error}</Badge>}
         </div>
+
+        {batch && (
+          <Card>
+            <CardContent className="space-y-2 pt-6">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">Deploying all BUs… {batch.buCode ? `(${batch.buCode})` : ''}</span>
+                <span className="text-muted-foreground">{batch.applied} / {batch.total}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  role="progressbar"
+                  aria-valuenow={batch.applied}
+                  aria-valuemin={0}
+                  aria-valuemax={batch.total}
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${batch.total ? (batch.applied / batch.total) * 100 : 0}%` }}
+                />
+              </div>
+              {batch.current && <p className="break-all font-mono text-xs text-muted-foreground">{batch.current}</p>}
+              {batch.log.length > 0 && (
+                <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
+                  {batch.log.map((l, i) => (
+                    <li key={`${l}-${i}`} className="break-all font-mono text-xs text-muted-foreground">{l}</li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="space-y-3">
@@ -426,6 +520,16 @@ const TenantMigrationManagement: React.FC = () => {
         confirmText="Apply migrations"
         confirmVariant="destructive"
         onConfirm={() => (applyTarget ? applyOne(applyTarget) : undefined)}
+      />
+
+      <ConfirmDialog
+        open={confirmAll}
+        onOpenChange={setConfirmAll}
+        title="Deploy migrations to all BUs"
+        description={`Apply all pending migrations to every business unit (${bus.length} total)? This applies schema changes to every tenant database and cannot be undone.`}
+        confirmText="Deploy all"
+        confirmVariant="destructive"
+        onConfirm={deployAll}
       />
 
       {import.meta.env.DEV && !!rawResponse && (

@@ -1,7 +1,7 @@
 // src/pages/TenantMigrationManagement.test.tsx
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -98,5 +98,36 @@ describe('TenantMigrationManagement', () => {
 
     expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function));
     expect(await screen.findByText('Up to date')).toBeInTheDocument();
+  });
+
+  it('Deploy all streams batch events, flips rows live, and toasts the summary', async () => {
+    const user = userEvent.setup();
+    vi.mocked(tenantMigrationService.deployAllStream).mockImplementation(async (onEvent) => {
+      onEvent({ type: 'start', bu_id: 'all', bu_code: 'ALL', total: 2 });
+      onEvent({ type: 'bu-complete', bu_id: 'b1', bu_code: 'BU01', success: true, applied: ['m1'], already_up_to_date: false });
+      onEvent({ type: 'bu-complete', bu_id: 'b2', bu_code: 'BU02', success: true, applied: [], already_up_to_date: true });
+      return { total: 2, succeeded: 2, failed: 0, results: [] } as never;
+    });
+
+    renderPage();
+    await screen.findByText('BU01');
+    await user.click(screen.getByRole('button', { name: /deploy all/i }));            // header button
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /^deploy all$/i })); // confirm (dialog)
+
+    // both rows flip to up to date from the bu-complete events
+    expect(await screen.findAllByText('Up to date')).toHaveLength(2);
+    const { toast } = await import('sonner');
+    expect(toast.success).toHaveBeenCalledWith('Deployed: 2 ok, 0 failed.');
+  });
+
+  it('disables all action buttons for a non-super-admin', async () => {
+    vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: false } as never);
+    renderPage();
+    await screen.findByText('BU01');
+    expect(screen.getByRole('button', { name: /check all/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /deploy all/i })).toBeDisabled();
+    for (const btn of screen.getAllByRole('button', { name: /^check$/i })) {
+      expect(btn).toBeDisabled();
+    }
   });
 });
