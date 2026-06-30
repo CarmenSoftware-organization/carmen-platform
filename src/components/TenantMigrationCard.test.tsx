@@ -82,9 +82,8 @@ describe('TenantMigrationCard', () => {
     await user.click(await screen.findByRole('button', { name: /apply migrations/i })); // confirm dialog
 
     // bar is visible mid-stream (deploying === true, promise still pending)
-    // Note: the ConfirmDialog is still open at this point (runDeploy hasn't resolved),
-    // so Radix marks the card content aria-hidden — use { hidden: true } to reach it.
-    const bar = await screen.findByRole('progressbar', { hidden: true });
+    // The ConfirmDialog is closed before streaming starts, so the progressbar is visible.
+    const bar = await screen.findByRole('progressbar');
     expect(bar).toHaveAttribute('aria-valuenow', '2');
     expect(bar).toHaveAttribute('aria-valuemax', '3');
     // PENDING[0] appears in both the pending list and the live log — assert both are present

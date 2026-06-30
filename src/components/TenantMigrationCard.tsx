@@ -72,6 +72,7 @@ export const TenantMigrationCard = ({
   };
 
   const runDeploy = async () => {
+    setConfirmOpen(false);
     setDeploying(true);
     setProgress({ applied: 0, total: pending.length, current: null });
     setLogLines([]);
@@ -87,11 +88,9 @@ export const TenantMigrationCard = ({
       const applied = 'applied_migrations' in summary ? summary.applied_migrations : [];
       if (applied.length === 0) toast.info('Already up to date.');
       else toast.success(`Applied ${applied.length} migration(s) to ${buCode}.`);
-      setConfirmOpen(false);
       await fetchStatus();
     } catch (err) {
       handleMigrationError(err);
-      setConfirmOpen(false);
     } finally {
       setProgress(null);
       setDeploying(false);
@@ -185,7 +184,7 @@ export const TenantMigrationCard = ({
         {deploying && progress && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">{deploying ? 'Applying migrations…' : 'Migrations applied'}</span>
+              <span className="font-medium">Applying migrations…</span>
               <span className="text-muted-foreground">
                 {progress.applied} / {progress.total}
               </span>
@@ -205,8 +204,8 @@ export const TenantMigrationCard = ({
             )}
             {logLines.length > 0 && (
               <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
-                {logLines.map((name) => (
-                  <li key={name} className="break-all font-mono text-xs text-muted-foreground">
+                {logLines.map((name, i) => (
+                  <li key={`${name}-${i}`} className="break-all font-mono text-xs text-muted-foreground">
                     {name}
                   </li>
                 ))}
