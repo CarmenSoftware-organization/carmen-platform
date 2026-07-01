@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import applicationService from '../services/applicationService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ChipInput } from '../components/ui/chip-input';
 import Can from '../components/Can';
-import { ArrowLeft, Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -258,19 +259,11 @@ const ApplicationEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/applications')} aria-label="Back to applications">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'Add Application' : editing ? 'Edit Application' : 'Application Details'}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new application' : editing ? 'Update application information' : 'View application information'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/applications"
+          title={isNew ? 'Add Application' : editing ? 'Edit Application' : 'Application Details'}
+          subtitle={isNew ? 'Create a new application' : editing ? 'Update application information' : 'View application information'}
+          actions={!isNew && !editing && (
             <Can permission="application.update">
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -278,7 +271,7 @@ const ApplicationEdit: React.FC = () => {
               </Button>
             </Can>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>

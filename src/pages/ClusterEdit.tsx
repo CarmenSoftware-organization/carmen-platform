@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
@@ -12,7 +13,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { ArrowLeft, Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
+import { Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -450,19 +451,11 @@ const ClusterEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/clusters')} aria-label="Back to clusters">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'Add Cluster' : editing ? 'Edit Cluster' : 'Cluster Details'}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new cluster' : editing ? 'Update cluster information' : 'View cluster information'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/clusters"
+          title={isNew ? 'Add Cluster' : editing ? 'Edit Cluster' : 'Cluster Details'}
+          subtitle={isNew ? 'Create a new cluster' : editing ? 'Update cluster information' : 'View cluster information'}
+          actions={!isNew && !editing && (
             <Can permission="cluster.update" clusterId={id}>
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -470,7 +463,7 @@ const ClusterEdit: React.FC = () => {
               </Button>
             </Can>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>

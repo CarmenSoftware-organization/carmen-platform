@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
@@ -452,19 +453,11 @@ const BusinessUnitEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/business-units')} aria-label="Back to business units">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'Add Business Unit' : editing ? 'Edit Business Unit' : 'Business Unit Details'}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new business unit' : editing ? 'Update business unit information' : 'View business unit information'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/business-units"
+          title={isNew ? 'Add Business Unit' : editing ? 'Edit Business Unit' : 'Business Unit Details'}
+          subtitle={isNew ? 'Create a new business unit' : editing ? 'Update business unit information' : 'View business unit information'}
+          actions={!isNew && !editing && (
             <Can permission="cluster.update" clusterId={formData.cluster_id || undefined}>
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -472,7 +465,7 @@ const BusinessUnitEdit: React.FC = () => {
               </Button>
             </Can>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>

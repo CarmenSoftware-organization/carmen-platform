@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import businessUnitService from '../services/businessUnitService';
 import { getErrorDetail } from '../utils/errorParser';
@@ -373,44 +374,42 @@ const TenantMigrationManagement: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tenant Migrations</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              Check and apply database schema migrations across all business units
-            </p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {withTooltip(
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={checkAll}
-                disabled={!!disabledReason || anyBusy || bus.length === 0}
-              >
-                {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                {checkingAll ? 'Checking...' : 'Check all'}
-              </Button>,
-              disabledReason,
-            )}
-            {withTooltip(
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setConfirmAll(true)}
-                disabled={!!disabledReason || anyBusy || bus.length === 0}
-              >
-                <Play className="mr-2 h-4 w-4" />
-                Deploy all
-              </Button>,
-              disabledReason,
-            )}
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Tenant Migrations"
+          subtitle="Check and apply database schema migrations across all business units"
+          actions={
+            <>
+              {withTooltip(
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={checkAll}
+                  disabled={!!disabledReason || anyBusy || bus.length === 0}
+                >
+                  {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {checkingAll ? 'Checking...' : 'Check all'}
+                </Button>,
+                disabledReason,
+              )}
+              {withTooltip(
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setConfirmAll(true)}
+                  disabled={!!disabledReason || anyBusy || bus.length === 0}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Deploy all
+                </Button>,
+                disabledReason,
+              )}
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </>
+          }
+        />
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-muted-foreground">Summary:</span>

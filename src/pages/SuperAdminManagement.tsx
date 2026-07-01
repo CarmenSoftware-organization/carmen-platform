@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import superAdminService from '../services/superAdminService';
 import userService from '../services/userService';
 import { parseApiError } from '../utils/errorParser';
@@ -130,14 +131,10 @@ const SuperAdminManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Super Admins</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              Platform users who bypass all permission checks
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Super Admins"
+          subtitle="Platform users who bypass all permission checks"
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">

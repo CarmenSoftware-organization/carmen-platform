@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
+import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
 import businessUnitService from "../services/businessUnitService";
 import Can from "../components/Can";
@@ -13,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
-import { ArrowLeft, Save, Pencil, X, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
+import { Save, Pencil, X, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -421,35 +422,31 @@ const UserEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/users")} aria-label="Back to users">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          {!isNew && (
-            <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
-                  || (formData.username || formData.email || "?").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-              {avatarUrl && (
-                <AvatarImage
-                  src={avatarUrl}
-                  alt=""
-                  className="absolute inset-0 object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
+        <PageHeader
+          backTo="/users"
+          title={
+            <span className="flex items-center gap-3">
+              {!isNew && (
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                    {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
+                      || (formData.username || formData.email || "?").slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                  {avatarUrl && (
+                    <AvatarImage
+                      src={avatarUrl}
+                      alt=""
+                      className="absolute inset-0 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                </Avatar>
               )}
-            </Avatar>
-          )}
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? "Add User" : editing ? "Edit User" : "User Details"}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? "Create a new user" : editing ? "Update user information" : "View user information"}
-            </p>
-          </div>
-          {!isNew && !editing && (
+              <span>{isNew ? "Add User" : editing ? "Edit User" : "User Details"}</span>
+            </span>
+          }
+          subtitle={isNew ? "Create a new user" : editing ? "Update user information" : "View user information"}
+          actions={!isNew && !editing && (
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
                 <KeyRound className="mr-2 h-4 w-4" />
@@ -463,7 +460,7 @@ const UserEdit: React.FC = () => {
               </Can>
             </div>
           )}
-        </div>
+        />
 
         {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 

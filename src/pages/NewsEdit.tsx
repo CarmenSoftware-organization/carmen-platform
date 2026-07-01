@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import newsService from '../services/newsService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -9,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { ArrowLeft, Save, Pencil, X, Loader2 } from 'lucide-react';
+import { Save, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
@@ -255,19 +256,11 @@ const NewsEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/news')} aria-label="Back to news">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'Add News' : editing ? 'Edit News' : 'News Details'}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new news article' : editing ? 'Update news information' : 'View news information'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/news"
+          title={isNew ? 'Add News' : editing ? 'Edit News' : 'News Details'}
+          subtitle={isNew ? 'Create a new news article' : editing ? 'Update news information' : 'View news information'}
+          actions={!isNew && !editing && (
             <Can permission="news.update">
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -275,7 +268,7 @@ const NewsEdit: React.FC = () => {
               </Button>
             </Can>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>

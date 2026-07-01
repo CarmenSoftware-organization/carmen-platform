@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import roleService from '../services/roleService';
 import permissionService from '../services/permissionService';
 import { Button } from '../components/ui/button';
@@ -11,7 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { ArrowLeft, Save, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
+import { Save, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError } from '../utils/errorParser';
@@ -258,26 +259,17 @@ const RoleEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/platform/roles')} aria-label="Back to roles">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'New Role' : editing ? `Edit ${formData.name || 'Role'}` : (formData.name || 'Role')}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new platform role' : editing ? 'Update role information and permissions' : 'View role information and permissions'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/platform/roles"
+          title={isNew ? 'New Role' : editing ? `Edit ${formData.name || 'Role'}` : (formData.name || 'Role')}
+          subtitle={isNew ? 'Create a new platform role' : editing ? 'Update role information and permissions' : 'View role information and permissions'}
+          actions={!isNew && !editing && (
             <Button variant="outline" size="sm" onClick={handleEditToggle}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>

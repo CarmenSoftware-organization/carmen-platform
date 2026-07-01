@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import reportTemplateService from '../services/reportTemplateService';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
@@ -311,57 +312,47 @@ const ReportTemplateEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/report-templates')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                {loading ? (
-                  <Skeleton className="h-8 w-48" />
-                ) : isNew ? (
-                  'New Report Template'
-                ) : (
-                  formData.name || 'Report Template'
-                )}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {isNew ? 'Create a new report template' : 'View and edit report template details'}
-              </p>
-              {!isNew && !loading && (
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                    {formData.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                  <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                    {formData.is_standard ? 'Standard' : 'Custom'}
-                  </Badge>
-                  {formData.report_group && (
-                    <Badge variant="outline">{formData.report_group}</Badge>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          {!isNew && !loading && (
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              {editing ? (
-                <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
+        <PageHeader
+          backTo="/report-templates"
+          title={
+            loading ? (
+              <Skeleton className="h-8 w-48" />
+            ) : isNew ? (
+              'New Report Template'
+            ) : (
+              formData.name || 'Report Template'
+            )
+          }
+          subtitle={isNew ? 'Create a new report template' : 'View and edit report template details'}
+          actions={!isNew && !loading && (
+            editing ? (
+              <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+            ) : (
+              <Can permission="report_template.update">
+                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
                 </Button>
-              ) : (
-                <Can permission="report_template.update">
-                  <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
-                </Can>
-              )}
-            </div>
+              </Can>
+            )
           )}
-        </div>
+        />
+        {!isNew && !loading && (
+          <div className="flex flex-wrap items-center gap-2 -mt-2 sm:-mt-4">
+            <Badge variant={formData.is_active ? 'success' : 'secondary'}>
+              {formData.is_active ? 'Active' : 'Inactive'}
+            </Badge>
+            <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+              {formData.is_standard ? 'Standard' : 'Custom'}
+            </Badge>
+            {formData.report_group && (
+              <Badge variant="outline">{formData.report_group}</Badge>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">
