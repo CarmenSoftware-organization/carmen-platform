@@ -285,8 +285,8 @@ function DataTable<TData>({
               </TableCell>
             </TableRow>
           ) : (
-            table.getRowModel().rows.map((row, index) => (
-              <TableRow key={row.id} className="row-animate-in" style={{ animationDelay: `${index * 25}ms` }}>
+            table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}

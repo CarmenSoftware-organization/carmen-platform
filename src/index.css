@@ -205,28 +205,6 @@ body {
   pointer-events: none;
 }
 
-/* Row entrance animation */
-@keyframes row-enter {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.row-animate-in {
-  animation: row-enter 250ms ease-out both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .row-animate-in {
-    animation: none;
-  }
-}
-
 /* Background mesh gradient */
 @keyframes gradient-shift {
   0% { background-position: 0% 50%; }
@@ -263,47 +241,3 @@ body {
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Micro Animations */
-.hover-lift {
-  transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 300ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 300ms ease;
-  will-change: transform, box-shadow;
-}
-
-.hover-lift:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.15);
-}
-
-.dark .hover-lift:hover {
-  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.4);
-}
-
-/* Staggered entrance */
-.animate-in-stagger {
-  opacity: 0;
-  animation: row-enter 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* View Transitions */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.4s;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-::view-transition-old(root) {
-  animation-name: fade-out;
-}
-
-::view-transition-new(root) {
-  animation-name: fade-in;
-}
-
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.99); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes fade-out {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(-10px) scale(0.99); }
-}

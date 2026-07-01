@@ -239,8 +239,7 @@ const Dashboard: React.FC = () => {
             const totalCount = isNews ? counts['news-total']?.total : counts[card.key]?.total;
             const countLabel = isNews ? 'published' : 'active';
             return (
-              <Card key={card.path} className={`hover-lift group overflow-hidden relative ${index === 0 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
-                <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+              <Card key={card.path} className={`group overflow-hidden relative ${index === 0 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
                 <CardHeader className="relative p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
@@ -366,7 +365,7 @@ const Dashboard: React.FC = () => {
                     const total = row.active + row.inactive + row.deleted;
                     const activePercent = total > 0 ? Math.round((row.active / total) * 100) : 0;
                     return (
-                      <tr key={index} className="border-b border-border/50 zebra-row row-animate-in" style={{ animationDelay: `${index * 50}ms` }}>
+                      <tr key={index} className="border-b border-border/50 zebra-row">
                         <td className="py-3 px-3 font-medium">{row.name}</td>
                         <td className="py-3 px-3 text-right"><Badge variant="success">{row.active}</Badge></td>
                         <td className="py-3 px-3 text-right"><Badge variant="secondary">{row.inactive}</Badge></td>

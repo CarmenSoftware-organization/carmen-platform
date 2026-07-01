@@ -75,7 +75,7 @@ const Landing: React.FC = () => {
 
       {/* Header */}
       <header className="relative z-10 container mx-auto px-4 py-4 sm:py-6">
-        <div className="flex items-center justify-between animate-in-stagger">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 group">
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/20 group-hover:shadow-primary/40 group-hover:scale-105 transition-all duration-300">
               <span className="text-white font-bold text-lg sm:text-xl">C</span>
@@ -94,7 +94,7 @@ const Landing: React.FC = () => {
       </header>
 
       {/* Hero */}
-      <section className="relative z-10 container mx-auto px-4 pt-12 sm:pt-20 pb-20 sm:pb-28 text-center animate-in-stagger" style={{ animationDelay: '100ms' }}>
+      <section className="relative z-10 container mx-auto px-4 pt-12 sm:pt-20 pb-20 sm:pb-28 text-center">
         <div className="max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-card border border-border text-xs sm:text-sm mb-6 sm:mb-8 text-primary font-medium shadow-sm">
             Platform Management System
@@ -109,7 +109,7 @@ const Landing: React.FC = () => {
             Carmen Platform provides a unified management system for clusters,
             business units, and users — all in one place.
           </p>
-          <Link to="/login" className="inline-block hover-lift">
+          <Link to="/login" className="inline-block">
             <RippleButton
               rippleColor="hsl(var(--primary))"
               className="inline-flex items-center bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30 text-lg px-8 py-4 rounded-xl border-0"
@@ -126,13 +126,12 @@ const Landing: React.FC = () => {
       {/* Features */}
       <section className="relative z-10 container mx-auto px-4 pb-20 sm:pb-28">
         <div className="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 max-w-5xl mx-auto">
-          {features.map((feature, idx) => {
+          {features.map((feature) => {
             const Icon = feature.icon;
             return (
               <div
                 key={feature.title}
-                className="rounded-2xl p-6 sm:p-7 bg-card border border-border hover-lift animate-in-stagger"
-                style={{ animationDelay: `${200 + idx * 100}ms` }}
+                className="rounded-2xl p-6 sm:p-7 bg-card border border-border"
               >
                 <div className={`w-12 h-12 rounded-xl ${feature.iconBg} flex items-center justify-center mb-5`}>
                   <Icon className={`h-6 w-6 ${feature.iconColor}`} />

@@ -157,7 +157,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 animate-in-stagger">
+        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
           {children}
         </main>
       </div>
