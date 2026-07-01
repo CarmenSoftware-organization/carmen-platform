@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Loader2 } from 'lucide-react';
 import type { LoginCredentials } from '../types';
 
 const Login: React.FC = () => {
@@ -50,41 +51,29 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 50%, #ede9fe 100%)',
-      }}
-    >
-      {/* Floating pastel orbs */}
+    <div className="min-h-dvh flex items-center justify-center p-4 relative overflow-hidden bg-background bg-mesh">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-blue-200/40 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-indigo-200/40 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-sky-200/30 blur-3xl" />
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       </div>
 
-      <Card className="w-full max-w-md relative border-white/60"
-        style={{
-          background: 'rgba(255, 255, 255, 0.6)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          boxShadow: '0 8px 32px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-        }}
-      >
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <div className="h-14 w-14 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+      <Card className="w-full max-w-md relative glass-strong">
+        <CardHeader className="space-y-2 pb-2">
+          <div className="flex justify-center mb-5">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
               <span className="text-white font-bold text-2xl">C</span>
             </div>
           </div>
-          <CardTitle className="text-2xl sm:text-3xl text-center text-blue-900">Carmen Platform</CardTitle>
-          <CardDescription className="text-center text-sm sm:text-base text-blue-500">
+          <CardTitle className="text-2xl sm:text-3xl text-center">Carmen Platform</CardTitle>
+          <CardDescription className="text-center text-sm sm:text-base text-muted-foreground">
             Enter your credentials to access the system
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="pt-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-blue-800">Email or Username</Label>
+              <Label htmlFor="username">Email or Username</Label>
               <Input
                 type="text"
                 id="username"
@@ -93,12 +82,11 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 required
                 placeholder="Enter your email or username"
-                className="bg-white/60 border-blue-200 text-blue-900 placeholder:text-blue-300 focus-visible:ring-blue-400/50"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-blue-800">Password</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 type="password"
                 id="password"
@@ -107,7 +95,6 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 required
                 placeholder="Enter your password"
-                className="bg-white/60 border-blue-200 text-blue-900 placeholder:text-blue-300 focus-visible:ring-blue-400/50"
               />
             </div>
 
@@ -126,16 +113,17 @@ const Login: React.FC = () => {
 
             <Button
               type="submit"
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white shadow-md shadow-blue-500/20"
+              className="w-full"
               disabled={loading}
             >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {loading ? 'Logging in...' : 'Login'}
             </Button>
 
             <div className="text-center">
               <Link
                 to="/"
-                className="text-sm text-blue-400 hover:text-blue-600 transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Back to home
               </Link>

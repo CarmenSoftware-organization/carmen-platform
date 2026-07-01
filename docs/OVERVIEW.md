@@ -32,6 +32,8 @@ Users outside this list are rejected at login with an "access denied" message. S
 
 **Print Template Mapping.** Resolves which report template prints for a given document type (e.g. invoice, receipt). Holds a `document_type`, a `report_template_id`, an `is_default` flag, a `display_order`, optional `display_label`, and optional per-BU `allow_business_unit` / `deny_business_unit` rules. The backend exposes a `resolve` endpoint that returns the effective mapping for a `(document_type, bu_code)` pair. Managed under `/print-template-mapping`; the list view groups rows by document type rather than using the standard DataTable.
 
+**Tenant Migration.** A deploy-operation orchestration feature. Holds batch deploy queues and streams migration progress from the backend via NDJSON. It enables applying configurations across tenant clusters with real-time UI updates. Managed under `/tenant-migrations`.
+
 ## Architecture
 
 ```

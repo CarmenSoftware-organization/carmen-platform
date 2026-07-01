@@ -67,6 +67,7 @@ const ClusterEdit: React.FC = () => {
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [debugTab, setDebugTab] = useState<'cluster' | 'bu' | 'users'>('cluster');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
@@ -1071,7 +1072,7 @@ const ClusterEdit: React.FC = () => {
 
       {/* Debug Sheet - Development Only */}
       {import.meta.env.DEV && !isNew && !!(rawResponse || rawBuResponse || rawUsersResponse) && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -1080,7 +1081,7 @@ const ClusterEdit: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />

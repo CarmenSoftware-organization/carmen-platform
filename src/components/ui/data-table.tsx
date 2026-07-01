@@ -153,7 +153,7 @@ function DataTable<TData>({
         header: '#',
         cell: ({ row }) => pagination.pageIndex * pagination.pageSize + row.index + 1,
         enableSorting: false,
-        meta: { cellClassName: 'text-muted-foreground w-10' },
+        meta: { headerClassName: 'w-8', cellClassName: 'text-muted-foreground w-8' },
       },
       ...columns,
     ];
@@ -239,16 +239,16 @@ function DataTable<TData>({
 
   const goToPage = (p: number) => handlePaginationChange({ ...pagination, pageIndex: p - 1 });
 
-  const navBtn = "h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground transition-colors";
-  const numBtnBase = "h-8 min-w-[2rem] px-2 inline-flex items-center justify-center rounded-md text-sm tabular-nums transition-colors";
-  const numBtnInactive = "text-muted-foreground hover:bg-muted/50 hover:text-foreground";
-  const numBtnActive = "bg-primary text-primary-foreground font-medium shadow-sm";
+  const navBtn = "h-8 w-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground transition-all duration-150";
+  const numBtnBase = "h-8 min-w-[2rem] px-2 inline-flex items-center justify-center rounded-lg text-sm tabular-nums transition-all duration-150";
+  const numBtnInactive = "text-muted-foreground hover:bg-muted hover:text-foreground";
+  const numBtnActive = "bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25";
 
   return (
     <div>
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Table className="min-w-[640px]">
-          <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
+        <Table className="min-w-[640px] table-fixed table-sticky-left table-sticky-right">
+          <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2 border-border">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -258,14 +258,14 @@ function DataTable<TData>({
                 >
                   {header.isPlaceholder ? null : header.column.getCanSort() ? (
                     <button
-                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium"
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       {{
-                        asc: <ArrowUp className="h-3.5 w-3.5" />,
-                        desc: <ArrowDown className="h-3.5 w-3.5" />,
-                      }[header.column.getIsSorted() as string] ?? <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />}
+                        asc: <ArrowUp className="h-3.5 w-3.5 text-primary" />,
+                        desc: <ArrowDown className="h-3.5 w-3.5 text-primary" />,
+                      }[header.column.getIsSorted() as string] ?? <ArrowUpDown className="h-3.5 w-3.5 opacity-30 group-hover/row:opacity-60 transition-opacity" />}
                     </button>
                   ) : (
                     flexRender(header.column.columnDef.header, header.getContext())
@@ -278,13 +278,15 @@ function DataTable<TData>({
         <TableBody>
           {table.getRowModel().rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={columnsWithIndex.length} className="text-center text-muted-foreground">
-                No results found
+              <TableCell colSpan={columnsWithIndex.length} className="text-center text-muted-foreground py-12">
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-sm">No results found</span>
+                </div>
               </TableCell>
             </TableRow>
           ) : (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
+            table.getRowModel().rows.map((row, index) => (
+              <TableRow key={row.id} className="row-animate-in" style={{ animationDelay: `${index * 25}ms` }}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
@@ -301,14 +303,14 @@ function DataTable<TData>({
       </div>
 
       {/* Pagination — sticky at bottom of viewport */}
-      <div className="sticky bottom-0 z-20 border-t border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
           <div className="text-sm text-muted-foreground tabular-nums">
             {totalDisplay === 0
               ? 'No results'
               : `Showing ${firstRow}\u2013${lastRow} of ${totalDisplay}`}
           </div>
-          <div role="group" aria-label="Rows per page" className="flex sm:hidden items-center gap-0.5 rounded-md border border-input bg-background p-0.5">
+          <div role="group" aria-label="Rows per page" className="flex sm:hidden items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5">
             {sizeOptions.map((size) => {
               const active = size === pagination.pageSize;
               return (
@@ -317,10 +319,10 @@ function DataTable<TData>({
                   type="button"
                   aria-pressed={active}
                   onClick={() => handlePaginationChange({ pageIndex: 0, pageSize: size })}
-                  className={`h-7 min-w-[2rem] px-2 rounded text-xs tabular-nums transition-colors ${
+                  className={`h-7 min-w-[2rem] px-2 rounded-md text-xs tabular-nums transition-all duration-150 ${
                     active
-                      ? 'bg-primary text-primary-foreground font-medium shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   {size}
@@ -405,7 +407,7 @@ function DataTable<TData>({
 
         <div className="hidden sm:flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Show</span>
-          <div role="group" aria-label="Rows per page" className="flex items-center gap-0.5 rounded-md border border-input bg-background p-0.5">
+          <div role="group" aria-label="Rows per page" className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5">
             {sizeOptions.map((size) => {
               const active = size === pagination.pageSize;
               return (
@@ -414,10 +416,10 @@ function DataTable<TData>({
                   type="button"
                   aria-pressed={active}
                   onClick={() => handlePaginationChange({ pageIndex: 0, pageSize: size })}
-                  className={`h-7 min-w-[2rem] px-2 rounded text-xs tabular-nums transition-colors ${
+                  className={`h-7 min-w-[2rem] px-2 rounded-md text-xs tabular-nums transition-all duration-150 ${
                     active
-                      ? 'bg-primary text-primary-foreground font-medium shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
                   {size}

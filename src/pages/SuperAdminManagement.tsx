@@ -47,6 +47,7 @@ const SuperAdminManagement: React.FC = () => {
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
 
   const handleCopyJson = (data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -276,7 +277,7 @@ const SuperAdminManagement: React.FC = () => {
 
       {/* Debug Sheet - Development Only */}
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -287,7 +288,8 @@ const SuperAdminManagement: React.FC = () => {
           </SheetTrigger>
           <SheetContent
             side="right"
-            className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6"
+            size="medium"
+            className="w-full overflow-y-auto p-4 sm:p-6"
           >
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">

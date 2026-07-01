@@ -47,6 +47,7 @@ const BusinessUnitEdit: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [debugTab, setDebugTab] = useState<'bu' | 'users'>('bu');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<BusinessUnitFormData>({
@@ -549,6 +550,8 @@ const BusinessUnitEdit: React.FC = () => {
           setDebugTab={setDebugTab}
           copied={copied}
           onCopy={handleCopyJson}
+          debugOpen={debugOpen}
+          onDebugOpenChange={setDebugOpen}
         />
       )}
     </Layout>

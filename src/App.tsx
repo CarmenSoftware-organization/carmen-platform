@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { FluentProvider, webLightTheme, webDarkTheme } from "@fluentui/react-components";
 import { AuthProvider } from "./context/AuthContext";
-import { useDarkMode } from "./hooks/useDarkMode";
+import { ThemeProvider, useDarkMode } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
 import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
@@ -43,6 +43,14 @@ const RouteLoader = () => (
 );
 
 function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
   const { isDark } = useDarkMode();
 
   return (

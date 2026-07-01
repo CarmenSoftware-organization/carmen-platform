@@ -82,6 +82,7 @@ const RoleManagement: React.FC = () => {
   });
 
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +244,7 @@ const RoleManagement: React.FC = () => {
     {
       accessorKey: 'is_active',
       header: 'Status',
+      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
           {row.original.is_active ? 'Active' : 'Inactive'}
@@ -281,7 +283,7 @@ const RoleManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
-      meta: { headerClassName: 'w-10', cellClassName: 'text-center' },
+      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0' },
       enableSorting: false,
       cell: ({ row }) => (
         <DropdownMenu>
@@ -542,7 +544,7 @@ const RoleManagement: React.FC = () => {
 
       {/* Debug Sheet - Development Only */}
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -553,7 +555,8 @@ const RoleManagement: React.FC = () => {
           </SheetTrigger>
           <SheetContent
             side="right"
-            className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6"
+            size="medium"
+            className="w-full overflow-y-auto p-4 sm:p-6"
           >
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">

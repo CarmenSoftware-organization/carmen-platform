@@ -53,6 +53,7 @@ const RoleEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [debugTab, setDebugTab] = useState<'role' | 'catalog'>('role');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
@@ -440,7 +441,7 @@ const RoleEdit: React.FC = () => {
 
       {/* Debug Sheet — Development Only */}
       {import.meta.env.DEV && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -449,7 +450,7 @@ const RoleEdit: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />

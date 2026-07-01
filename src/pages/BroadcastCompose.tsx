@@ -107,6 +107,7 @@ const BroadcastCompose: React.FC = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
 
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -493,7 +494,7 @@ const BroadcastCompose: React.FC = () => {
       />
 
       {process.env.NODE_ENV === 'development' && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <button
               type="button"
@@ -503,7 +504,7 @@ const BroadcastCompose: React.FC = () => {
               <Code className="h-5 w-5" />
             </button>
           </SheetTrigger>
-          <SheetContent className="glass-strong w-full sm:max-w-lg overflow-y-auto">
+          <SheetContent size="medium" className="glass-strong w-full overflow-y-auto">
             <SheetHeader>
               <SheetTitle>Dev Debug</SheetTitle>
               <SheetDescription>Last API response from this session.</SheetDescription>

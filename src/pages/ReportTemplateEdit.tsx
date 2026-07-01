@@ -103,6 +103,7 @@ const ReportTemplateEdit: React.FC = () => {
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<'dialog' | 'content' | 'preview'>('dialog');
   const [dialogValidation, setDialogValidation] = useState<XmlValidation>({ valid: true });
@@ -961,7 +962,7 @@ const ReportTemplateEdit: React.FC = () => {
 
       {/* Debug Sheet */}
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -972,7 +973,8 @@ const ReportTemplateEdit: React.FC = () => {
           </SheetTrigger>
           <SheetContent
             side="right"
-            className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6"
+            size="medium"
+            className="w-full overflow-y-auto p-4 sm:p-6"
           >
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">

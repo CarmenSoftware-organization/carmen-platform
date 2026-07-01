@@ -64,6 +64,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   const hasChanges = editing && JSON.stringify(form) !== JSON.stringify(savedFormData);
@@ -498,7 +499,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
 
       {/* Debug Sheet - Development Only */}
       {import.meta.env.DEV && !isNew && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -508,7 +509,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
               <Code className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle>Debug — Raw API Response</SheetTitle>
               <SheetDescription>Last response from GET /print-template-mapping/:id</SheetDescription>

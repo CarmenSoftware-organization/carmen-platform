@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, Download, Newspaper, Globe, Building2, Image as ImageIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, Download, Newspaper, Globe, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
@@ -74,6 +74,7 @@ const NewsManagement: React.FC = () => {
   });
 
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -180,28 +181,6 @@ const NewsManagement: React.FC = () => {
 
   const columns = useMemo<ColumnDef<News, unknown>[]>(() => [
     {
-      id: 'image',
-      header: '',
-      enableSorting: false,
-      meta: { headerClassName: 'w-28', cellClassName: '' },
-      cell: ({ row }) => {
-        // List payload exposes the presigned URL as `image_url`; tolerate `image` too.
-        const src = row.original.image_url || row.original.image;
-        return src ? (
-          <img
-            src={src}
-            alt=""
-            className="h-10 w-auto max-w-[96px] rounded object-contain border"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded border bg-muted/40 text-muted-foreground">
-            <ImageIcon className="h-4 w-4" />
-          </div>
-        );
-      },
-    },
-    {
       accessorKey: 'title',
       header: 'Title',
       cell: ({ row }) => (
@@ -213,6 +192,7 @@ const NewsManagement: React.FC = () => {
     {
       accessorKey: 'status',
       header: 'Status',
+      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={statusVariant(row.original.status)}>
           {cap(row.original.status || 'draft')}
@@ -267,7 +247,7 @@ const NewsManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
-      meta: { headerClassName: 'w-10', cellClassName: 'text-center' },
+      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0' },
       enableSorting: false,
       cell: ({ row }) => (
         <DropdownMenu>
@@ -458,7 +438,7 @@ const NewsManagement: React.FC = () => {
       />
 
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -467,7 +447,7 @@ const NewsManagement: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />

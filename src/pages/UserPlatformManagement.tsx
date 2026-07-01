@@ -75,6 +75,7 @@ const UserPlatformManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   // Platform-role assignment count per visible user, fetched per-row (N+1) after
   // the page loads. undefined => still loading for that user.
   const [rolesCount, setRolesCount] = useState<Record<string, number>>({});
@@ -435,7 +436,7 @@ const UserPlatformManagement: React.FC = () => {
 
       {/* Debug Sheet - Development Only */}
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -444,7 +445,7 @@ const UserPlatformManagement: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />

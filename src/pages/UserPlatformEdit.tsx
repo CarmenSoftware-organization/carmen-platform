@@ -30,6 +30,7 @@ const UserPlatformEdit: React.FC = () => {
   const [userEmail, setUserEmail] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
 
   const [roleAssignments, setRoleAssignments] = useState<UserRoleAssignment[]>([]);
   const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
@@ -247,7 +248,7 @@ const UserPlatformEdit: React.FC = () => {
         </Card>
 
         {import.meta.env.DEV && (
-          <Sheet>
+          <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
             <SheetTrigger asChild>
               <Button
                 size="icon"
@@ -256,7 +257,7 @@ const UserPlatformEdit: React.FC = () => {
                 <Code className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+            <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
               <SheetHeader>
                 <SheetTitle>Debug</SheetTitle>
                 <SheetDescription>Raw API responses</SheetDescription>

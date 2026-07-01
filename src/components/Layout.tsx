@@ -115,7 +115,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background bg-mesh">
+    <div className="min-h-dvh bg-background bg-mesh">
       {/* Sidebar */}
       <Sidebar
         isCollapsed={isCollapsed}
@@ -129,7 +129,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main Content Area */}
       <div className={cn(
-        'min-h-screen sidebar-transition',
+        'min-h-dvh sidebar-transition',
         isCollapsed ? 'md:ml-16' : 'md:ml-60'
       )}>
         {/* Mobile Header */}
@@ -157,7 +157,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 animate-in-stagger">
           {children}
         </main>
       </div>

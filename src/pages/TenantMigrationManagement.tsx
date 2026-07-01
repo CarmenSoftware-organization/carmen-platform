@@ -89,6 +89,7 @@ const TenantMigrationManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [checkingAll, setCheckingAll] = useState(false);
   const [applyTarget, setApplyTarget] = useState<BusinessUnit | null>(null);
   const [batch, setBatch] = useState<BatchProgress | null>(null);
@@ -305,6 +306,7 @@ const TenantMigrationManagement: React.FC = () => {
       id: 'status',
       header: 'Status',
       enableSorting: false,
+      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
         const st = rowStatusOf(rs);
@@ -348,7 +350,7 @@ const TenantMigrationManagement: React.FC = () => {
       id: 'actions',
       header: '',
       enableSorting: false,
-      meta: { headerClassName: 'w-40', cellClassName: 'text-right' },
+      meta: { headerClassName: 'w-40', cellClassName: 'text-right p-0' },
       cell: ({ row }) => {
         const bu = row.original;
         const rs = rowState[bu.id];
@@ -541,7 +543,7 @@ const TenantMigrationManagement: React.FC = () => {
       />
 
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -550,7 +552,7 @@ const TenantMigrationManagement: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />

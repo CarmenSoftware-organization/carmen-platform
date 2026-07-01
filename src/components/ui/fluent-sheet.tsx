@@ -18,6 +18,7 @@ interface SheetProps {
 interface SheetContentProps {
   side?: 'left' | 'right' | 'top' | 'bottom';
   className?: string;
+  size?: 'small' | 'medium' | 'large' | 'full';
   children: React.ReactNode;
 }
 
@@ -106,7 +107,7 @@ const sideToPosition: Record<string, 'start' | 'end' | 'bottom'> = {
 };
 
 const SheetContent = React.forwardRef<HTMLDivElement, SheetContentProps>(
-  ({ side = 'right', className, children }, ref) => {
+  ({ side = 'right', className, size, children }, ref) => {
     const { open, onOpenChange } = React.useContext(SheetContext);
 
     return (
@@ -114,6 +115,7 @@ const SheetContent = React.forwardRef<HTMLDivElement, SheetContentProps>(
         open={open}
         onOpenChange={(_, { open: isOpen }) => onOpenChange(isOpen)}
         position={sideToPosition[side] ?? 'start'}
+        size={size}
         ref={ref}
       >
         <DrawerBody className={cn('overflow-y-auto', className)}>

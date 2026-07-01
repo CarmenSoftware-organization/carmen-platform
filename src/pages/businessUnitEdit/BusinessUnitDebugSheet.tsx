@@ -13,10 +13,12 @@ interface BusinessUnitDebugSheetProps {
   setDebugTab: React.Dispatch<React.SetStateAction<'bu' | 'users'>>;
   copied: boolean;
   onCopy: (data: unknown) => void;
+  debugOpen: boolean;
+  onDebugOpenChange: (open: boolean) => void;
 }
 
-const BusinessUnitDebugSheet: React.FC<BusinessUnitDebugSheetProps> = ({ rawResponse, rawClusterUsersResponse, id, clusterId, debugTab, setDebugTab, copied, onCopy }) => (
-  <Sheet>
+const BusinessUnitDebugSheet: React.FC<BusinessUnitDebugSheetProps> = ({ rawResponse, rawClusterUsersResponse, id, clusterId, debugTab, setDebugTab, copied, onCopy, debugOpen, onDebugOpenChange }) => (
+  <Sheet open={debugOpen} onOpenChange={onDebugOpenChange}>
     <SheetTrigger asChild>
       <Button
         size="icon"
@@ -25,7 +27,7 @@ const BusinessUnitDebugSheet: React.FC<BusinessUnitDebugSheetProps> = ({ rawResp
         <Code className="h-5 w-5" />
       </Button>
     </SheetTrigger>
-    <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+    <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
       <SheetHeader>
         <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
           <Code className="h-4 w-4 sm:h-5 sm:w-5" />

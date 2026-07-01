@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { PanelLeft, PanelLeftClose, LogOut, User, Sun, Moon, type LucideIcon } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, LogOut, User, Sun, Moon, Monitor, type LucideIcon } from 'lucide-react';
 import { useDarkMode } from '../hooks/useDarkMode';
 import {
   Button,
@@ -58,7 +58,10 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isDark, toggle } = useDarkMode();
+  const { theme, setTheme } = useDarkMode();
+
+  const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
+  const themeLabel = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System';
 
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -83,14 +86,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       <Link
         to={item.path}
         className={cn(
-          'sidebar-item-transition flex items-center gap-3 rounded-lg text-sm font-medium',
-          showLabel ? 'px-3 py-2' : 'justify-center px-2 py-2',
+          'sidebar-item-transition flex items-center gap-3 rounded-lg text-sm font-medium relative group overflow-hidden',
+          showLabel ? 'px-3 py-2.5' : 'justify-center px-2 py-2.5',
           active
-            ? 'bg-primary/15 text-primary shadow-sm'
-            : 'text-muted-foreground hover:bg-white/50 hover:text-foreground hover:shadow-sm'
+            ? 'bg-gradient-to-r from-primary/15 to-transparent text-primary'
+            : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" />
+        {active && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
+        )}
+        <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
         {showLabel && <span className="truncate">{item.label}</span>}
       </Link>
     );
@@ -152,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           isCollapsed ? 'justify-center px-2' : 'px-4'
         )}>
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 group-hover:scale-105 transition-all duration-300">
               <span className="text-white font-bold text-lg">C</span>
             </div>
             {!isCollapsed && (
@@ -214,23 +220,41 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
           <Divider className="!my-1.5" />
           <div className={cn('flex gap-1', isCollapsed ? 'flex-col' : 'flex-row')}>
-            <Button
-              appearance="transparent"
-              size="small"
-              onClick={toggle}
-              className={cn(
-                'flex-1 sidebar-item-transition',
-                isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
-              )}
-              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {isDark ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-              {!isCollapsed && <span className="ml-2 text-sm">{isDark ? 'Light' : 'Dark'}</span>}
-            </Button>
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button
+                  appearance="transparent"
+                  size="small"
+                  className={cn(
+                    'flex-1 sidebar-item-transition',
+                    isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
+                  )}
+                  aria-label="Switch theme"
+                >
+                  {React.createElement(themeIcon, { className: 'h-4 w-4' })}
+                  {!isCollapsed && <span className="ml-2 text-sm">{themeLabel}</span>}
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  <MenuItem onClick={() => setTheme('light')}>
+                    <Sun className="mr-2 h-4 w-4" />
+                    <span>Light</span>
+                    {theme === 'light' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
+                  </MenuItem>
+                  <MenuItem onClick={() => setTheme('dark')}>
+                    <Moon className="mr-2 h-4 w-4" />
+                    <span>Dark</span>
+                    {theme === 'dark' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
+                  </MenuItem>
+                  <MenuItem onClick={() => setTheme('system')}>
+                    <Monitor className="mr-2 h-4 w-4" />
+                    <span>System</span>
+                    {theme === 'system' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
+                  </MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
             <Button
               appearance="transparent"
               size="small"
@@ -258,8 +282,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       <Drawer open={isMobileOpen} onOpenChange={(_ev: unknown, data: DialogOpenChangeData) => onMobileOpenChange(data.open)}>
         <DrawerHeader>
           <DrawerHeaderTitle>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="flex items-center gap-3 group">
+              <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-all duration-300">
                 <span className="text-white font-bold text-lg">C</span>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
@@ -287,13 +311,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                         to={item.path}
                         onClick={() => onMobileOpenChange(false)}
                         className={cn(
-                          'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium',
+                          'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
                           active
-                            ? 'bg-primary/15 text-primary shadow-sm'
-                            : 'text-muted-foreground hover:bg-white/50 hover:text-foreground hover:shadow-sm'
+                            ? 'bg-gradient-to-r from-primary/15 to-transparent text-primary'
+                            : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
                         )}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
+                        {active && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
+                        )}
+                        <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
                         <span>{item.label}</span>
                       </Link>
                     );

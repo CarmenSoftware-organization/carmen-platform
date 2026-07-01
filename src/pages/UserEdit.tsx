@@ -88,6 +88,7 @@ const UserEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
   const [userClusters, setUserClusters] = useState<UserCluster[]>([]);
   const [showAddBU, setShowAddBU] = useState(false);
@@ -929,7 +930,7 @@ const UserEdit: React.FC = () => {
 
       {/* Debug Sheet - Development Only */}
       {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
+        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
           <SheetTrigger asChild>
             <Button
               size="icon"
@@ -938,7 +939,7 @@ const UserEdit: React.FC = () => {
               <Code className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
+          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Code className="h-4 w-4 sm:h-5 sm:w-5" />
