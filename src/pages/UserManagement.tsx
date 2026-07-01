@@ -22,8 +22,9 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Label } from "../components/ui/label";
-import { Plus, Pencil, Trash2, Search, MoreHorizontal, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from 'sonner';
+import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
@@ -581,26 +582,13 @@ const UserManagement: React.FC = () => {
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search users"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => handleSearchChange('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                ref={searchInputRef}
+                value={searchTerm}
+                onValueChange={handleSearchChange}
+                placeholder="Search users..."
+                className="flex-1 sm:max-w-sm"
+              />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">

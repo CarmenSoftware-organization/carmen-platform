@@ -8,15 +8,15 @@ import { getErrorDetail } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Tooltip } from '../components/ui/tooltip';
-import { Search, X, Download, Database, RefreshCw, Loader2, Play } from 'lucide-react';
+import { Download, Database, RefreshCw, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
+import { SearchInput } from '../components/SearchInput';
 import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import tenantMigrationService from '../services/tenantMigrationService';
@@ -455,27 +455,13 @@ const TenantMigrationManagement: React.FC = () => {
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search business units..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search business units"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                ref={searchInputRef}
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+                placeholder="Search business units..."
+                className="flex-1 sm:max-w-sm"
+              />
             </div>
           </CardHeader>
           <CardContent>
