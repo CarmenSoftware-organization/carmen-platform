@@ -299,6 +299,7 @@ const ApplicationEdit: React.FC = () => {
           </CardHeader>
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Name {editing && '*'}</Label>
                 {editing ? (
@@ -589,6 +590,7 @@ const ApplicationEdit: React.FC = () => {
                   )}
                 </div>
               )}
+              </div>
 
               {editing && (
                 <div className="flex gap-3 pt-4">
