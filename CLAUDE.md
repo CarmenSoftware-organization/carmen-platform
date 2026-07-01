@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. Read fully before changing code.
 
 ## Project Overview
 
-Frontend-only React + TypeScript admin dashboard for clusters, business units, users, report templates, and print-template mappings. Glassmorphism design with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
+Frontend-only React + TypeScript admin dashboard for clusters, business units, users, report templates, and print-template mappings. Flat enterprise design (glassmorphism removed) with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
 
 - **Framework:** React 19 + TypeScript (Vite 8) — strict mode on
 - **Styling:** Tailwind 3.4 with HSL CSS custom properties
@@ -304,9 +304,9 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 ## Styling Reference
 
-**Color tokens (HSL):** `--primary` 220 90% 56% (blue) · `--accent` 260 60% 58% (purple) · `--destructive` 0 84% 60% · `--muted-foreground` 220 10% 46% · `--border` / `--input` 220 15% 90%.
+**Color tokens (HSL):** `--primary` 221 61% 48% (blue) · `--accent` 220 14% 96% (neutral subtle surface, not a brand hue) · `--destructive` 0 84% 60% · `--muted-foreground` 220 10% 46% · `--border` / `--input` 220 15% 90% · `--radius` 0.375rem. Status accents (success/warning/info) use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`.
 
-**Glass:** `.glass` (16px blur — sidebar, mobile header) · `.glass-strong` (24px — Sheet, dropdowns). `.bg-mesh` for page backgrounds.
+**Surfaces:** glassmorphism (`.glass` / `.glass-strong`) was removed in the enterprise redesign — surfaces are now flat `bg-card` / `bg-background` with a 1px `border`.
 
 **Spacing:** page wrapper `space-y-4 sm:space-y-6` · card content `space-y-4` · field `space-y-2` · button gaps `gap-3`.
 

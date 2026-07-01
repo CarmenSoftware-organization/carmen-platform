@@ -242,7 +242,7 @@ function DataTable<TData>({
   const navBtn = "h-8 w-8 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground transition-all duration-150";
   const numBtnBase = "h-8 min-w-[2rem] px-2 inline-flex items-center justify-center rounded-lg text-sm tabular-nums transition-all duration-150";
   const numBtnInactive = "text-muted-foreground hover:bg-muted hover:text-foreground";
-  const numBtnActive = "bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25";
+  const numBtnActive = "bg-primary text-primary-foreground font-medium shadow-sm";
 
   return (
     <div>
@@ -321,7 +321,7 @@ function DataTable<TData>({
                   onClick={() => handlePaginationChange({ pageIndex: 0, pageSize: size })}
                   className={`h-7 min-w-[2rem] px-2 rounded-md text-xs tabular-nums transition-all duration-150 ${
                     active
-                      ? 'bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25'
+                      ? 'bg-primary text-primary-foreground font-medium shadow-sm'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -418,7 +418,7 @@ function DataTable<TData>({
                   onClick={() => handlePaginationChange({ pageIndex: 0, pageSize: size })}
                   className={`h-7 min-w-[2rem] px-2 rounded-md text-xs tabular-nums transition-all duration-150 ${
                     active
-                      ? 'bg-primary text-primary-foreground font-medium shadow-sm shadow-primary/25'
+                      ? 'bg-primary text-primary-foreground font-medium shadow-sm'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >

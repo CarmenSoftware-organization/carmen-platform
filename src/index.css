@@ -136,8 +136,6 @@ body {
 .table-sticky-left thead th:nth-child(2) {
   z-index: 15;
   background-color: hsl(var(--background) / 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .table-sticky-left tbody td:first-child,
@@ -178,8 +176,6 @@ body {
 .table-sticky-right thead th:last-child {
   z-index: 15;
   background-color: hsl(var(--background) / 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .table-sticky-right tbody td:last-child {

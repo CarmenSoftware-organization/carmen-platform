@@ -58,7 +58,7 @@ Users outside this list are rejected at login with an "access denied" message. S
 
 - **Language & framework:** React 18, TypeScript 5 (strict mode), Vite 8
 - **Routing:** react-router-dom v6
-- **Styling:** Tailwind CSS 3.4 + CSS custom properties (HSL); glassmorphism via `.glass*` classes
+- **Styling:** Tailwind CSS 3.4 + CSS custom properties (HSL); flat surfaces (`bg-card`/`bg-background` + 1px border) — glassmorphism was removed in the enterprise redesign
 - **Components:** shadcn/ui primitives (Radix UI + CVA)
 - **Tables:** TanStack Table v8 + React Virtual (`@tanstack/react-virtual`)
 - **Code editor:** CodeMirror 6 (XML syntax highlighting, folding, search) — used in `ReportTemplateEdit`
