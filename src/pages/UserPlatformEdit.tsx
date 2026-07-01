@@ -256,7 +256,7 @@ const UserPlatformEdit: React.FC = () => {
                 <Code className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent className="glass-strong w-full sm:max-w-lg overflow-y-auto">
+            <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
               <SheetHeader>
                 <SheetTitle>Debug</SheetTitle>
                 <SheetDescription>Raw API responses</SheetDescription>
@@ -266,7 +266,7 @@ const UserPlatformEdit: React.FC = () => {
                   {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                   Copy JSON
                 </Button>
-                <pre className="text-[10px] sm:text-xs font-mono overflow-auto rounded-md border bg-muted/50 p-3">
+                <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 rounded-lg p-3 sm:p-4 overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                   {JSON.stringify({ user: rawResponse, roleAssignments }, null, 2)}
                 </pre>
               </div>

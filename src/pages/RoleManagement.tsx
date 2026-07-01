@@ -582,7 +582,7 @@ const RoleManagement: React.FC = () => {
                   {copied ? 'Copied!' : 'Copy JSON'}
                 </Button>
               </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
+              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
             </div>

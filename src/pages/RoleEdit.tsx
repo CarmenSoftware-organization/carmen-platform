@@ -485,7 +485,7 @@ const RoleEdit: React.FC = () => {
                       {copied ? 'Copied!' : 'Copy'}
                     </Button>
                   </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[70vh]">
+                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                     {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
                   </pre>
                 </div>
@@ -500,7 +500,7 @@ const RoleEdit: React.FC = () => {
                       {copied ? 'Copied!' : 'Copy'}
                     </Button>
                   </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[70vh]">
+                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                     {catalog.length > 0 ? JSON.stringify(catalog, null, 2) : 'No catalog loaded'}
                   </pre>
                 </div>

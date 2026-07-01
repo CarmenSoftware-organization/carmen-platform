@@ -508,7 +508,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
               <Code className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
             <SheetHeader>
               <SheetTitle>Debug — Raw API Response</SheetTitle>
               <SheetDescription>Last response from GET /print-template-mapping/:id</SheetDescription>
@@ -520,7 +520,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                   {copied ? 'Copied' : 'Copy JSON'}
                 </Button>
               </div>
-              <pre className="text-[10px] sm:text-xs font-mono bg-muted/50 p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-all">
+              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 rounded-lg p-3 sm:p-4 overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
             </div>
