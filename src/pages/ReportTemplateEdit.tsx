@@ -386,7 +386,7 @@ const ReportTemplateEdit: React.FC = () => {
         <form ref={formRef} onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,380px)_1fr] gap-4 sm:gap-6">
             {/* Left column */}
-            <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+            <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Template Info</CardTitle>
