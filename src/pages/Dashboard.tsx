@@ -353,6 +353,74 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* Summary Table */}
+        <Card className="glass">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Summary</CardTitle>
+            <CardDescription className="text-xs">Overview of all entities</CardDescription>
+          </CardHeader>
+          <div className="px-6 pb-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Entity</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Active</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Inactive</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Deleted</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Total</th>
+                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Active %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {barChartData.map((row, index) => {
+                    const total = row.active + row.inactive + row.deleted;
+                    const activePercent = total > 0 ? Math.round((row.active / total) * 100) : 0;
+                    return (
+                      <tr key={index} className="border-b border-border/50 hover:bg-muted/30">
+                        <td className="py-2.5 px-3 font-medium">{row.name}</td>
+                        <td className="py-2.5 px-3 text-right text-green-500">{row.active}</td>
+                        <td className="py-2.5 px-3 text-right text-yellow-500">{row.inactive}</td>
+                        <td className="py-2.5 px-3 text-right text-red-500">{row.deleted}</td>
+                        <td className="py-2.5 px-3 text-right">{total}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            activePercent >= 80 ? 'bg-green-500/10 text-green-500' :
+                            activePercent >= 50 ? 'bg-yellow-500/10 text-yellow-500' :
+                            'bg-red-500/10 text-red-500'
+                          }`}>
+                            {activePercent}%
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-border font-medium">
+                    <td className="py-2.5 px-3">Total</td>
+                    <td className="py-2.5 px-3 text-right text-green-500">{totalActive}</td>
+                    <td className="py-2.5 px-3 text-right text-yellow-500">{totalInactive}</td>
+                    <td className="py-2.5 px-3 text-right text-red-500">{totalDeleted}</td>
+                    <td className="py-2.5 px-3 text-right">{totalActive + totalInactive + totalDeleted}</td>
+                    <td className="py-2.5 px-3 text-right">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        (totalActive + totalInactive + totalDeleted) > 0 && (totalActive / (totalActive + totalInactive + totalDeleted)) >= 0.8
+                          ? 'bg-green-500/10 text-green-500'
+                          : 'bg-yellow-500/10 text-yellow-500'
+                      }`}>
+                        {(totalActive + totalInactive + totalDeleted) > 0
+                          ? Math.round((totalActive / (totalActive + totalInactive + totalDeleted)) * 100)
+                          : 0}%
+                      </span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </Card>
+
         {/* Debug Sheet - Development Only */}
         {import.meta.env.DEV && loginResponse && (
           <Sheet>
