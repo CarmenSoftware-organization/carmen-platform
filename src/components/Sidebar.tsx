@@ -89,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           'sidebar-item-transition flex items-center gap-3 rounded-lg text-sm font-medium relative group overflow-hidden',
           showLabel ? 'px-3 py-2.5' : 'justify-center px-2 py-2.5',
           active
-            ? 'bg-gradient-to-r from-primary/15 to-transparent text-primary'
+            ? 'bg-secondary text-foreground'
             : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
         )}
       >
@@ -158,11 +158,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           isCollapsed ? 'justify-center px-2' : 'px-4'
         )}>
           <Link to="/dashboard" className="flex items-center gap-3 group">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 group-hover:scale-105 transition-all duration-300">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
               <span className="text-white font-bold text-lg">C</span>
             </div>
             {!isCollapsed && (
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
+              <h1 className="text-xl font-bold text-foreground truncate">
                 Carmen Platform
               </h1>
             )}
@@ -283,10 +283,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         <DrawerHeader>
           <DrawerHeaderTitle>
             <div className="flex items-center gap-3 group">
-              <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-all duration-300">
+              <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
                 <span className="text-white font-bold text-lg">C</span>
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <span className="text-xl font-bold text-foreground">
                 Carmen Platform
               </span>
             </div>
@@ -313,7 +313,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         className={cn(
                           'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
                           active
-                            ? 'bg-gradient-to-r from-primary/15 to-transparent text-primary'
+                            ? 'bg-secondary text-foreground'
                             : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
                         )}
                       >

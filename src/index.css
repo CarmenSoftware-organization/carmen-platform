@@ -205,13 +205,6 @@ body {
   pointer-events: none;
 }
 
-/* Background mesh gradient */
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
 /* Sidebar transitions */
 .sidebar-transition {
   transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1),

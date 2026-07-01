@@ -145,10 +145,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Menu className="h-5 w-5" />
               </Button>
               <Link to="/dashboard" className="flex items-center gap-3 group">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+                <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-shadow">
                   <span className="text-white font-bold text-base">C</span>
                 </div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden sm:block">
+                <h1 className="text-lg font-bold text-foreground hidden sm:block">
                   Carmen Platform
                 </h1>
               </Link>

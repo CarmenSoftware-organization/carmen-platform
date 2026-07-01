@@ -2,8 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Network, Building2, Users, ArrowRight, Loader2, type LucideIcon } from 'lucide-react';
-import { Ripple } from '../components/magicui/ripple';
-import { RippleButton } from '../components/magicui/ripple-button';
+import { Button } from '../components/ui/button';
 import VersionBadge from '../components/VersionBadge';
 
 interface Feature {
@@ -28,7 +27,7 @@ const Landing: React.FC = () => {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/20 mx-auto">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shadow-sm mx-auto">
             <span className="text-white font-bold text-xl">C</span>
           </div>
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
@@ -64,31 +63,22 @@ const Landing: React.FC = () => {
 
   return (
     <div className="min-h-dvh relative overflow-hidden bg-background">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
-      </div>
-
-      {/* Ripple effect */}
-      <Ripple mainCircleSize={210} mainCircleOpacity={0.12} numCircles={8} />
-
       {/* Header */}
       <header className="relative z-10 container mx-auto px-4 py-4 sm:py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 group">
-            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/20 group-hover:shadow-primary/40 group-hover:scale-105 transition-all duration-300">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-all duration-300">
               <span className="text-white font-bold text-lg sm:text-xl">C</span>
             </div>
-            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent transition-colors duration-300">Carmen Platform</span>
+            <span className="text-lg sm:text-xl font-bold text-foreground transition-colors duration-300">Carmen Platform</span>
           </div>
           <Link to="/login">
-            <RippleButton
-              rippleColor="hsl(var(--primary))"
+            <Button
+              variant="outline"
               className="border-border bg-transparent hover:bg-muted/50 text-foreground"
             >
               Login
-            </RippleButton>
+            </Button>
           </Link>
         </div>
       </header>
@@ -101,7 +91,7 @@ const Landing: React.FC = () => {
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight tracking-tight">
             Manage Your Platform{' '}
-            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[gradient-shift_4s_linear_infinite] bg-clip-text text-transparent">
+            <span className="text-primary">
               with Confidence
             </span>
           </h1>
@@ -110,15 +100,14 @@ const Landing: React.FC = () => {
             business units, and users — all in one place.
           </p>
           <Link to="/login" className="inline-block">
-            <RippleButton
-              rippleColor="hsl(var(--primary))"
-              className="inline-flex items-center bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30 text-lg px-8 py-4 rounded-xl border-0"
+            <Button
+              className="inline-flex items-center bg-primary text-primary-foreground shadow-sm text-lg px-8 py-4 rounded-xl border-0"
             >
               <span className="flex items-center gap-2">
                 Get Started
                 <ArrowRight className="h-5 w-5" />
               </span>
-            </RippleButton>
+            </Button>
           </Link>
         </div>
       </section>
