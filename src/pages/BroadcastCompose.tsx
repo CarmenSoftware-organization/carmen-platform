@@ -7,9 +7,9 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { UserMultiSelect } from '../components/UserMultiSelect';
-import { Megaphone, Send, Loader2, Calendar, Globe, Users, Building2, Code, Copy, Check } from 'lucide-react';
+import { Megaphone, Send, Loader2, Calendar, Globe, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import Can from '../components/Can';
@@ -106,8 +106,6 @@ const BroadcastCompose: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
 
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -269,12 +267,6 @@ const BroadcastCompose: React.FC = () => {
       if (!sending && !confirmOpen) handleReset();
     },
   });
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <Layout>
@@ -493,41 +485,7 @@ const BroadcastCompose: React.FC = () => {
         onConfirm={handleConfirmedSend}
       />
 
-      {process.env.NODE_ENV === 'development' && (
-        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full bg-amber-500 text-white shadow-lg hover:bg-amber-600 flex items-center justify-center"
-              aria-label="Open dev debug"
-            >
-              <Code className="h-5 w-5" />
-            </button>
-          </SheetTrigger>
-          <SheetContent size="medium" className="w-full overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Dev Debug</SheetTitle>
-              <SheetDescription>Last API response from this session.</SheetDescription>
-            </SheetHeader>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!rawResponse}
-                  onClick={() => handleCopyJson(rawResponse)}
-                >
-                  {copied ? <Check className="mr-2 h-3.5 w-3.5" /> : <Copy className="mr-2 h-3.5 w-3.5" />}
-                  {copied ? 'Copied' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs font-mono whitespace-pre-wrap break-words bg-muted/50 p-3 rounded-md max-h-[60vh] overflow-y-auto">
-                {rawResponse ? JSON.stringify(rawResponse, null, 2) : '// no response yet'}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="Dev Debug" endpoint="Last API response from this session." data={rawResponse} />
     </Layout>
   );
 };

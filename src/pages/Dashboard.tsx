@@ -7,9 +7,8 @@ import userService from '../services/userService';
 import applicationService from '../services/applicationService';
 import newsService from '../services/newsService';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import {
   BarChart,
   Bar,
@@ -32,9 +31,6 @@ import {
   FileText,
   Eye,
   Plus,
-  Code,
-  Copy,
-  Check,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -60,8 +56,6 @@ interface Counts {
 const COLORS = ['hsl(142, 76%, 45%)', 'hsl(45, 93%, 58%)', 'hsl(348, 83%, 58%)'];
 
 const Dashboard: React.FC = () => {
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
   const [counts, setCounts] = useState<Record<string, Counts>>({
     clusters: { active: null, total: null, deleted: null },
     'business-units': { active: null, total: null, deleted: null },
@@ -114,12 +108,6 @@ const Dashboard: React.FC = () => {
     fetchCounts('news', newsService, false, { status: 'published', deleted_at: null });
     fetchCounts('news-total', newsService, false);
   }, []);
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const cards: DashboardCard[] = [
     {
@@ -394,42 +382,7 @@ const Dashboard: React.FC = () => {
           </div>
         </Card>
 
-        {/* Debug Sheet - Development Only */}
-        {import.meta.env.DEV && (
-          <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-            <SheetTrigger asChild>
-              <Button
-                size="icon"
-                className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-              >
-                <Code className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Dashboard Data
-                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-                </SheetTitle>
-                <SheetDescription className="text-xs sm:text-sm">
-                  GET /api-system/*/count
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-3 sm:mt-4 space-y-3">
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => handleCopyJson(counts)}>
-                    {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                    {copied ? 'Copied!' : 'Copy JSON'}
-                  </Button>
-                </div>
-                <pre className="text-[10px] sm:text-xs bg-muted p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)] font-mono">
-                  {JSON.stringify(counts, null, 2)}
-                </pre>
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
+        <DevDebugSheet title="Dashboard Data" endpoint="GET /api-system/*/count" data={counts} />
       </div>
     </Layout>
   );

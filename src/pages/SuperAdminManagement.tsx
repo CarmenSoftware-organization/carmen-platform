@@ -6,11 +6,11 @@ import { parseApiError } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ShieldAlert, Trash2, Plus, Code, Copy, Check, Loader2 } from 'lucide-react';
+import { ShieldAlert, Trash2, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import type { User } from '../types';
 
 interface SuperAdminRow {
@@ -46,14 +46,6 @@ const SuperAdminManagement: React.FC = () => {
   const [adding, setAdding] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -275,56 +267,7 @@ const SuperAdminManagement: React.FC = () => {
         onConfirm={handleConfirmRemove}
       />
 
-      {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            size="medium"
-            className="w-full overflow-y-auto p-4 sm:p-6"
-          >
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                  DEV
-                </Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/platform/super-admins
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopyJson(rawResponse)}
-                >
-                  {copied ? (
-                    <Check className="mr-1.5 h-3 w-3" />
-                  ) : (
-                    <Copy className="mr-1.5 h-3 w-3" />
-                  )}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/super-admins" data={rawResponse} />
     </Layout>
   );
 };

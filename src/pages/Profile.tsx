@@ -10,12 +10,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Code, Phone, Copy, Check, Pencil, X, Building2, Loader2 } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Phone, Pencil, X, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -57,8 +57,6 @@ const Profile: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
@@ -85,12 +83,6 @@ const Profile: React.FC = () => {
     onSave: () => { if (editingProfile && !loading) formRef.current?.requestSubmit(); },
     onCancel: () => { if (editingProfile) handleCancelEdit(); },
   });
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleEditToggle = () => {
     setSavedProfileData({
@@ -686,42 +678,7 @@ const Profile: React.FC = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Debug Sheet - Development Only (floating button) */}
-        {import.meta.env.DEV && !!rawResponse && (
-          <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-            <SheetTrigger asChild>
-              <Button
-                size="icon"
-                className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-              >
-                <Code className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                  API Response
-                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-                </SheetTitle>
-                <SheetDescription className="text-xs sm:text-sm">
-                  GET /api/user/profile
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-3 sm:mt-4">
-                <div className="flex justify-end mb-2">
-                  <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                    {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                    {copied ? 'Copied!' : 'Copy JSON'}
-                  </Button>
-                </div>
-                <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                  {JSON.stringify(rawResponse, null, 2)}
-                </pre>
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
+        <DevDebugSheet title="API Response" endpoint="GET /api/user/profile" data={rawResponse} />
       </div>
     </Layout>
   );

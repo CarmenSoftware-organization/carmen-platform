@@ -10,10 +10,10 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
+import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import Can from "../components/Can";
-import { ArrowLeft, ShieldCheck, Plus, Trash2, Loader2, Code, Copy, Check } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { UserRoleAssignment, Scope } from "../types";
 
@@ -29,8 +29,6 @@ const UserPlatformEdit: React.FC = () => {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
 
   const [roleAssignments, setRoleAssignments] = useState<UserRoleAssignment[]>([]);
   const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
@@ -113,11 +111,6 @@ const UserPlatformEdit: React.FC = () => {
     }
   };
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <Layout>
@@ -247,33 +240,7 @@ const UserPlatformEdit: React.FC = () => {
           </CardContent>
         </Card>
 
-        {import.meta.env.DEV && (
-          <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-            <SheetTrigger asChild>
-              <Button
-                size="icon"
-                className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-amber-500 hover:bg-amber-600 shadow-lg"
-              >
-                <Code className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
-              <SheetHeader>
-                <SheetTitle>Debug</SheetTitle>
-                <SheetDescription>Raw API responses</SheetDescription>
-              </SheetHeader>
-              <div className="mt-4 space-y-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson({ user: rawResponse, roleAssignments })}>
-                  {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                  Copy JSON
-                </Button>
-                <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 rounded-lg p-3 sm:p-4 overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                  {JSON.stringify({ user: rawResponse, roleAssignments }, null, 2)}
-                </pre>
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
+        <DevDebugSheet title="Debug" endpoint="Raw API responses" data={{ user: rawResponse, roleAssignments }} />
       </div>
     </Layout>
   );

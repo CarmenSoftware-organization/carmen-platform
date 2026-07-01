@@ -14,9 +14,8 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Tooltip } from '../components/ui/tooltip';
-import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2, Play } from 'lucide-react';
+import { Search, X, Download, Database, RefreshCw, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -24,6 +23,7 @@ import tenantMigrationService from '../services/tenantMigrationService';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { handleMigrationError } from '../utils/migrationError';
 import { mapWithConcurrency } from '../utils/concurrent';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -88,8 +88,6 @@ const TenantMigrationManagement: React.FC = () => {
   const [rowState, setRowState] = useState<Record<string, RowState>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
   const [checkingAll, setCheckingAll] = useState(false);
   const [applyTarget, setApplyTarget] = useState<BusinessUnit | null>(null);
   const [batch, setBatch] = useState<BatchProgress | null>(null);
@@ -256,12 +254,6 @@ const TenantMigrationManagement: React.FC = () => {
       }
     })();
   }, []);
-
-  const handleCopyJson = (d: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(d, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const summary = useMemo(() => {
     const acc = { up_to_date: 0, pending: 0, unknown: 0, error: 0 };
@@ -542,39 +534,7 @@ const TenantMigrationManagement: React.FC = () => {
         onConfirm={deployAll}
       />
 
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">GET /api-system/business-units</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint="GET /api-system/business-units" data={rawResponse} />
     </Layout>
   );
 };
