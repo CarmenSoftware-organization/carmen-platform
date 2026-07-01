@@ -13,13 +13,25 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
+import {
   Network,
   Building2,
   Users,
   AppWindow,
   Shield,
   Newspaper,
-  ArrowRight,
   Eye,
   Plus,
   Code,
@@ -47,6 +59,8 @@ interface Counts {
   total: number | null;
   deleted: number | null;
 }
+
+const COLORS = ['#22c55e', '#eab308', '#ef4444'];
 
 const Dashboard: React.FC = () => {
   const { loginResponse } = useAuth();
@@ -185,6 +199,23 @@ const Dashboard: React.FC = () => {
     },
   ];
 
+  const barChartData = cards.map(card => ({
+    name: card.title,
+    active: counts[card.key]?.active ?? 0,
+    inactive: (counts[card.key]?.total ?? 0) - (counts[card.key]?.active ?? 0),
+    deleted: counts[card.key]?.deleted ?? 0,
+  }));
+
+  const totalActive = Object.values(counts).reduce((sum, c) => sum + (c.active ?? 0), 0);
+  const totalInactive = Object.values(counts).reduce((sum, c) => sum + ((c.total ?? 0) - (c.active ?? 0)), 0);
+  const totalDeleted = Object.values(counts).reduce((sum, c) => sum + (c.deleted ?? 0), 0);
+
+  const donutChartData = [
+    { name: 'Active', value: totalActive },
+    { name: 'Inactive', value: totalInactive },
+    { name: 'Deleted', value: totalDeleted },
+  ].filter(d => d.value > 0);
+
   return (
     <Layout>
       <div className="space-y-6 sm:space-y-8">
@@ -195,6 +226,7 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
+        {/* Entity Cards */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((card) => {
             const Icon = card.icon;
@@ -251,6 +283,74 @@ const Dashboard: React.FC = () => {
               </Card>
             );
           })}
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+          {/* Bar Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Entity Counts</CardTitle>
+              <CardDescription className="text-xs">Active vs Inactive across all entities</CardDescription>
+            </CardHeader>
+            <div className="px-6 pb-6">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={barChartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="active" name="Active" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="inactive" name="Inactive" fill="#eab308" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="deleted" name="Deleted" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          {/* Donut Chart */}
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Status Distribution</CardTitle>
+              <CardDescription className="text-xs">Overall status breakdown</CardDescription>
+            </CardHeader>
+            <div className="px-6 pb-6">
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={donutChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {donutChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
         </div>
 
         {/* Debug Sheet - Development Only */}
