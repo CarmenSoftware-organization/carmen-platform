@@ -234,27 +234,32 @@ const Dashboard: React.FC = () => {
               <Card key={card.path} className="glass group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden relative">
                 <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                 <CardHeader className="relative p-3 sm:p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center backdrop-blur-sm shrink-0`}>
-                      <Icon className={`h-4 w-4 ${card.iconColor}`} />
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center backdrop-blur-sm shrink-0`}>
+                        <Icon className={`h-4 w-4 ${card.iconColor}`} />
+                      </div>
+                      <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                     </div>
-                    <CardTitle className="text-xs sm:text-sm font-medium truncate">{card.title}</CardTitle>
+                    {counts[card.key]?.total !== null && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-bold text-green-500">{counts[card.key].active}</span>
+                        <span className="text-[10px] text-muted-foreground">/ {counts[card.key].total}</span>
+                      </div>
+                    )}
                   </div>
-                  {counts[card.key]?.total !== null && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl sm:text-2xl font-bold text-green-500">{counts[card.key].active}</span>
-                      <span className="text-[10px] text-muted-foreground">/ {counts[card.key].total}</span>
-                    </div>
-                  )}
+                  <CardDescription className="text-xs line-clamp-1">{card.description}</CardDescription>
                   <div className="flex items-center gap-1 mt-2">
                     <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs">
                       <Link to={card.path}>
-                        <Eye className="h-3 w-3" />
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
                       </Link>
                     </Button>
                     <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs">
                       <Link to={card.newPath}>
-                        <Plus className="h-3 w-3" />
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
                       </Link>
                     </Button>
                   </div>
