@@ -1,31 +1,25 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { PanelLeft, PanelLeftClose, LogOut, User, type LucideIcon } from 'lucide-react';
-import { Button } from './ui/button';
-import { Separator } from './ui/separator';
-import { Avatar, AvatarFallback } from './ui/avatar';
-import VersionBadge from './VersionBadge';
+import { PanelLeft, PanelLeftClose, LogOut, User, Sun, Moon, type LucideIcon } from 'lucide-react';
+import { useDarkMode } from '../hooks/useDarkMode';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import {
+  Button,
+  Menu,
+  MenuTrigger,
+  MenuPopover,
+  MenuList,
+  MenuItem,
+  MenuDivider,
   Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from './ui/tooltip';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from './ui/sheet';
+  Avatar,
+  Divider,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerHeaderTitle,
+  type DialogOpenChangeData,
+} from '@fluentui/react-components';
 
 export interface NavItem {
   path: string;
@@ -64,13 +58,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isDark, toggle } = useDarkMode();
 
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  // Group nav items by their `group` label, preserving order. Consecutive items
-  // sharing a label form one section; items with no group form a leading section.
   const navGroups = React.useMemo(() => {
     const groups: { label: string | null; items: NavItem[] }[] = [];
     for (const item of navItems) {
@@ -104,22 +97,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Menu>
+      <MenuTrigger disableButtonEnhancement>
         <Button
-          variant="ghost"
+          appearance="transparent"
           className={cn(
-            'w-full rounded-lg hover:bg-white/50 sidebar-item-transition',
-            collapsed ? 'justify-center px-2 h-9' : 'justify-start gap-3 px-3 h-auto py-2'
+            'w-full justify-start h-auto p-0',
+            collapsed && 'justify-center'
           )}
         >
-          <Avatar className={cn('shrink-0 ring-2 ring-primary/20', collapsed ? 'h-7 w-7' : 'h-8 w-8')}>
-            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-semibold">
-              {userInfo.initials}
-            </AvatarFallback>
-          </Avatar>
+          <Avatar
+            name={userInfo.displayName}
+            badge={userInfo.role ? { status: 'available' } : undefined}
+            className={cn('shrink-0', collapsed ? 'h-7 w-7' : 'h-8 w-8')}
+          />
           {!collapsed && (
-            <div className="flex-1 min-w-0 text-left">
+            <div className="flex-1 min-w-0 text-left ml-3">
               <div className="text-sm font-medium truncate">{userInfo.displayName}</div>
               {userInfo.email && (
                 <div className="text-xs text-muted-foreground truncate">{userInfo.email}</div>
@@ -127,42 +120,21 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-56 glass-strong"
-        side={collapsed ? 'right' : 'top'}
-        align={collapsed ? 'end' : 'start'}
-        sideOffset={8}
-        forceMount
-      >
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{userInfo.displayName}</p>
-            {userInfo.email && (
-              <p className="text-xs leading-none text-muted-foreground">{userInfo.email}</p>
-            )}
-            {userInfo.role && (
-              <p className="text-xs leading-none text-muted-foreground capitalize mt-1">
-                Role: {userInfo.role}
-              </p>
-            )}
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer rounded-lg">
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={onLogout}
-          className="cursor-pointer rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </MenuTrigger>
+      <MenuPopover>
+        <MenuList className="w-56">
+          <MenuItem onClick={() => navigate('/profile')}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+          </MenuItem>
+          <MenuDivider />
+          <MenuItem onClick={onLogout} className="text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+          </MenuItem>
+        </MenuList>
+      </MenuPopover>
+    </Menu>
   );
 
   return (
@@ -193,112 +165,111 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-4">
-          <TooltipProvider delayDuration={200}>
-            {navGroups.map((g, gi) => (
-              <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
-                {!isCollapsed && g.label && (
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                    {g.label}
-                  </p>
+          {navGroups.map((g, gi) => (
+            <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
+              {!isCollapsed && g.label && (
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {g.label}
+                </p>
+              )}
+              {isCollapsed && gi > 0 && <Divider className="!my-2" />}
+              <div className="space-y-1">
+                {g.items.map((item) =>
+                  isCollapsed ? (
+                    <Tooltip key={item.path} content={item.label} relationship="label">
+                      <div>
+                        <NavLink item={item} showLabel={false} />
+                      </div>
+                    </Tooltip>
+                  ) : (
+                    <NavLink key={item.path} item={item} showLabel={true} />
+                  )
                 )}
-                {isCollapsed && gi > 0 && <Separator className="!my-2" />}
-                <div className="space-y-1">
-                  {g.items.map((item) =>
-                    isCollapsed ? (
-                      <Tooltip key={item.path}>
-                        <TooltipTrigger asChild>
-                          <div>
-                            <NavLink item={item} showLabel={false} />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="font-medium">
-                          {item.label}
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <NavLink key={item.path} item={item} showLabel={true} />
-                    )
-                  )}
-                </div>
               </div>
-            ))}
-          </TooltipProvider>
+            </div>
+          ))}
         </nav>
 
         {/* Bottom: User Profile + Toggle */}
         <div className="shrink-0 border-t border-white/10 p-2 space-y-1">
           {isCollapsed ? (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex justify-center pb-1">
-                    <VersionBadge collapsed />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
-                  View changelog
-                </TooltipContent>
+            <div className="flex justify-center pb-1">
+              <Tooltip content="View changelog" relationship="label">
+                <div>v0.1.1</div>
               </Tooltip>
-            </TooltipProvider>
+            </div>
           ) : (
             <div className="flex justify-start px-1 pb-1">
-              <VersionBadge />
+              <span className="text-xs text-muted-foreground">v0.1.1</span>
             </div>
           )}
           {isCollapsed ? (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <UserMenu collapsed />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
-                  {userInfo.displayName}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip content={userInfo.displayName} relationship="label">
+              <div>
+                <UserMenu collapsed />
+              </div>
+            </Tooltip>
           ) : (
             <UserMenu />
           )}
-          <Separator className="!my-1.5" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className={cn(
-              'w-full sidebar-item-transition',
-              isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
-            )}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <PanelLeft className="h-4 w-4" />
-            ) : (
-              <>
-                <PanelLeftClose className="mr-2 h-4 w-4" />
-                <span className="text-sm">Collapse</span>
-              </>
-            )}
-          </Button>
+          <Divider className="!my-1.5" />
+          <div className={cn('flex gap-1', isCollapsed ? 'flex-col' : 'flex-row')}>
+            <Button
+              appearance="transparent"
+              size="small"
+              onClick={toggle}
+              className={cn(
+                'flex-1 sidebar-item-transition',
+                isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
+              )}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+              {!isCollapsed && <span className="ml-2 text-sm">{isDark ? 'Light' : 'Dark'}</span>}
+            </Button>
+            <Button
+              appearance="transparent"
+              size="small"
+              onClick={onToggle}
+              className={cn(
+                'flex-1 sidebar-item-transition',
+                isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
+              )}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isCollapsed ? (
+                <PanelLeft className="h-4 w-4" />
+              ) : (
+                <>
+                  <PanelLeftClose className="mr-2 h-4 w-4" />
+                  <span className="text-sm">Collapse</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </aside>
 
-      {/* Mobile Sheet */}
-      <Sheet open={isMobileOpen} onOpenChange={onMobileOpenChange}>
-        <SheetContent side="left" className="w-72 p-0 glass-strong flex flex-col">
-          <SheetHeader className="px-4 pt-4 pb-2">
-            <SheetTitle className="flex items-center gap-3">
+      {/* Mobile Drawer */}
+      <Drawer open={isMobileOpen} onOpenChange={(_ev: unknown, data: DialogOpenChangeData) => onMobileOpenChange(data.open)}>
+        <DrawerHeader>
+          <DrawerHeaderTitle>
+            <div className="flex items-center gap-3">
               <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
                 <span className="text-white font-bold text-lg">C</span>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Carmen
               </span>
-            </SheetTitle>
-          </SheetHeader>
-          <Separator className="my-2" />
-          <nav className="flex-1 overflow-y-auto px-2 py-2">
+            </div>
+          </DrawerHeaderTitle>
+        </DrawerHeader>
+        <DrawerBody>
+          <nav className="py-2">
             {navGroups.map((g, gi) => (
               <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
                 {g.label && (
@@ -331,12 +302,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
             ))}
           </nav>
-          {/* Mobile User Profile */}
-          <div className="shrink-0 border-t border-white/10 p-2">
-            <UserMenu />
-          </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerBody>
+      </Drawer>
     </>
   );
 };

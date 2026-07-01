@@ -1,6 +1,8 @@
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { FluentProvider, webLightTheme, webDarkTheme } from "@fluentui/react-components";
 import { AuthProvider } from "./context/AuthContext";
+import { useDarkMode } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
 import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
@@ -41,12 +43,15 @@ const RouteLoader = () => (
 );
 
 function App() {
+  const { isDark } = useDarkMode();
+
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App">
-          <Suspense fallback={<RouteLoader />}>
-          <Routes>
+    <FluentProvider theme={isDark ? webDarkTheme : webLightTheme}>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <Suspense fallback={<RouteLoader />}>
+            <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/changelog" element={<Changelog />} />
@@ -308,12 +313,13 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          </Suspense>
-          <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
-          <KeyboardShortcutsHelp />
-        </div>
-      </Router>
-    </AuthProvider>
+            </Suspense>
+            <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
+            <KeyboardShortcutsHelp />
+          </div>
+        </Router>
+      </AuthProvider>
+    </FluentProvider>
   );
 }
 
