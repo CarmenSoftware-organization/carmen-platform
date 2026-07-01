@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ConfirmDialog } from './ui/confirm-dialog';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip';
+import { Tooltip } from './ui/tooltip';
 import { toast } from 'sonner';
 import { handleMigrationError } from '../utils/migrationError';
 import tenantMigrationService from '../services/tenantMigrationService';
@@ -85,21 +85,16 @@ export const TenantMigrationCard = ({
 
   const pending = status?.pending ?? [];
 
-  // Wrap a (possibly disabled) button so its tooltip still fires — Radix tooltips
+  // Wrap a (possibly disabled) button so its tooltip still fires — Fluent UI tooltips
   // don't fire over a disabled button, so the trigger wraps a focusable span.
   const withTooltip = (el: ReactElement): ReactElement =>
     disabledReason ? (
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {/* Focusable wrapper so the disabled button's tooltip is reachable by keyboard,
-                not just hover (a disabled <button> is removed from the tab order). */}
-            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-            <span tabIndex={0}>{el}</span>
-          </TooltipTrigger>
-          <TooltipContent>{disabledReason}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip content={disabledReason}>
+        {/* Focusable wrapper so the disabled button's tooltip is reachable by keyboard,
+            not just hover (a disabled <button> is removed from the tab order). */}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+        <span tabIndex={0}>{el}</span>
+      </Tooltip>
     ) : (
       el
     );

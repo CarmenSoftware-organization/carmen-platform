@@ -15,7 +15,7 @@ import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../components/ui/tooltip';
+import { Tooltip } from '../components/ui/tooltip';
 import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
@@ -66,19 +66,14 @@ const STATUS_BADGE: Record<RowStatus, { variant: 'success' | 'secondary' | 'outl
   error: { variant: 'destructive', label: 'Error' },
 };
 
-// Wrap a (possibly disabled) button so its tooltip still fires — Radix tooltips
+// Wrap a (possibly disabled) button so its tooltip still fires — Fluent UI tooltips
 // don't fire over a disabled button, so the trigger wraps a focusable span.
 export const withTooltip = (el: ReactElement, reason: string | null): ReactElement =>
   reason ? (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-          <span tabIndex={0}>{el}</span>
-        </TooltipTrigger>
-        <TooltipContent>{reason}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip content={reason}>
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+      <span tabIndex={0}>{el}</span>
+    </Tooltip>
   ) : (
     el
   );
