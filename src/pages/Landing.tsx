@@ -26,7 +26,7 @@ const Landing: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-background bg-mesh">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/20 mx-auto">
             <span className="text-white font-bold text-xl">C</span>
@@ -63,7 +63,7 @@ const Landing: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-dvh relative overflow-hidden bg-background bg-mesh">
+    <div className="min-h-dvh relative overflow-hidden bg-background">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />

@@ -37,7 +37,7 @@ const UserPlatformManagement = lazy(() => import("./pages/UserPlatformManagement
 const UserPlatformEdit = lazy(() => import("./pages/UserPlatformEdit"));
 
 const RouteLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
+  <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
   </div>
 );

@@ -115,7 +115,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-dvh bg-background bg-mesh">
+    <div className="min-h-dvh bg-background">
       {/* Sidebar */}
       <Sidebar
         isCollapsed={isCollapsed}

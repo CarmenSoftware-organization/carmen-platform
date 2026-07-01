@@ -35,7 +35,7 @@ const ChangeSections = ({ changes }: { changes: ChangelogChanges }) => (
 );
 
 const Changelog = () => (
-  <div className="min-h-screen bg-mesh">
+  <div className="min-h-screen bg-background">
     <header className="bg-background sticky top-0 z-10 border-b border-border">
       <div className="container mx-auto flex items-center gap-3 px-4 py-3">
         <Link

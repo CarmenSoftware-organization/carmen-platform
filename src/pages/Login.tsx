@@ -51,7 +51,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-dvh flex items-center justify-center p-4 relative overflow-hidden bg-background bg-mesh">
+    <div className="min-h-dvh flex items-center justify-center p-4 relative overflow-hidden bg-background">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-accent/10 blur-3xl" />
