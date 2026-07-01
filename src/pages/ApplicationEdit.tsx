@@ -421,7 +421,7 @@ const ApplicationEdit: React.FC = () => {
 
               {/* api_names — hidden entirely when allow_all is on */}
               {!formData.allow_all && (
-                <div className="space-y-2">
+                <div className="space-y-2 lg:col-span-2">
                   <Label htmlFor="api_names">API Names</Label>
                   {editing ? (
                     catalogFailed ? (
