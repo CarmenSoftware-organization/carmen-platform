@@ -286,7 +286,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
               <CardTitle className="text-base">Mapping</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="document_type">Document Type *</Label>
                   {editing ? (

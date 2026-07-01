@@ -91,7 +91,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Printer className="h-5 w-5" />
@@ -162,77 +162,79 @@ const PrintTemplateMappingManagement: React.FC = () => {
                         ({items.length} mapping{items.length === 1 ? '' : 's'})
                       </span>
                     </div>
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/20 text-xs text-muted-foreground">
-                        <tr>
-                          <th className="text-left px-4 py-2 font-medium">Template</th>
-                          <th className="text-left px-4 py-2 font-medium">Display Label</th>
-                          <th className="text-center px-4 py-2 font-medium w-16">Default</th>
-                          <th className="text-center px-4 py-2 font-medium w-16">Order</th>
-                          <th className="text-center px-4 py-2 font-medium w-16">Active</th>
-                          <th className="px-4 py-2 w-24"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((r) => (
-                          <tr key={r.id} className="border-t hover:bg-muted/30">
-                            <td className="px-4 py-2">
-                              <div className="font-medium">{r.template_name || '-'}</div>
-                              {r.template_group && (
-                                <div className="text-xs text-muted-foreground">
-                                  {r.template_group}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 text-muted-foreground">
-                              {r.display_label || '-'}
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              {r.is_default ? (
-                                <Badge variant="default" className="text-[10px]">Default</Badge>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 text-center font-mono text-xs">
-                              {r.display_order}
-                            </td>
-                            <td className="px-4 py-2 text-center">
-                              <Badge variant={r.is_active ? 'success' : 'secondary'} className="text-[10px]">
-                                {r.is_active ? 'Active' : 'Inactive'}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-2 text-right">
-                              <Can permission="print_template_mapping.update">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2"
-                                  onClick={() => navigate(`/print-template-mapping/${r.id}/edit`)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                              </Can>
-                              <Can permission="print_template_mapping.delete">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2 text-destructive"
-                                  onClick={() =>
-                                    setDeleteTarget({
-                                      id: r.id,
-                                      label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
-                                    })
-                                  }
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </Can>
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/20 text-xs text-muted-foreground">
+                          <tr>
+                            <th className="text-left px-4 py-2 font-medium whitespace-nowrap">Template</th>
+                            <th className="text-left px-4 py-2 font-medium whitespace-nowrap">Display Label</th>
+                            <th className="text-center px-4 py-2 font-medium w-16 whitespace-nowrap">Default</th>
+                            <th className="text-center px-4 py-2 font-medium w-16 whitespace-nowrap">Order</th>
+                            <th className="text-center px-4 py-2 font-medium w-16 whitespace-nowrap">Active</th>
+                            <th className="px-4 py-2 w-24"></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {items.map((r) => (
+                            <tr key={r.id} className="border-t hover:bg-muted/30">
+                              <td className="px-4 py-2 whitespace-nowrap">
+                                <div className="font-medium">{r.template_name || '-'}</div>
+                                {r.template_group && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {r.template_group}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                                {r.display_label || '-'}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                {r.is_default ? (
+                                  <Badge variant="default" className="text-[10px]">Default</Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">-</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-center font-mono text-xs">
+                                {r.display_order}
+                              </td>
+                              <td className="px-4 py-2 text-center">
+                                <Badge variant={r.is_active ? 'success' : 'secondary'} className="text-[10px]">
+                                  {r.is_active ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                <Can permission="print_template_mapping.update">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2"
+                                    onClick={() => navigate(`/print-template-mapping/${r.id}/edit`)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                </Can>
+                                <Can permission="print_template_mapping.delete">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 px-2 text-destructive"
+                                    onClick={() =>
+                                      setDeleteTarget({
+                                        id: r.id,
+                                        label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
+                                      })
+                                    }
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </Can>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ))}
               </div>
