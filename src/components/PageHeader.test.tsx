@@ -20,4 +20,12 @@ describe('PageHeader', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /back/i })).toHaveAttribute('href', '/clusters');
   });
+
+  it('renders beforeTitle next to the title but not inside the h1', () => {
+    wrap(<PageHeader title="User Details" beforeTitle={<span data-testid="avatar-slot">AV</span>} />);
+    const beforeEl = screen.getByTestId('avatar-slot');
+    expect(beforeEl).toBeInTheDocument();
+    const h1 = screen.getByRole('heading', { level: 1, name: 'User Details' });
+    expect(h1).not.toContainElement(beforeEl);
+  });
 });

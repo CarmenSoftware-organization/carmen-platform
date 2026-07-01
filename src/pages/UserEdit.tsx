@@ -425,27 +425,23 @@ const UserEdit: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           backTo="/users"
-          title={
-            <span className="flex items-center gap-3">
-              {!isNew && (
-                <Avatar className="h-12 w-12">
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                    {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
-                      || (formData.username || formData.email || "?").slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                  {avatarUrl && (
-                    <AvatarImage
-                      src={avatarUrl}
-                      alt=""
-                      className="absolute inset-0 object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
-                  )}
-                </Avatar>
+          beforeTitle={!isNew && (
+            <Avatar className="h-12 w-12">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
+                  || (formData.username || formData.email || "?").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+              {avatarUrl && (
+                <AvatarImage
+                  src={avatarUrl}
+                  alt=""
+                  className="absolute inset-0 object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
               )}
-              <span>{isNew ? "Add User" : editing ? "Edit User" : "User Details"}</span>
-            </span>
-          }
+            </Avatar>
+          )}
+          title={isNew ? "Add User" : editing ? "Edit User" : "User Details"}
           subtitle={isNew ? "Create a new user" : editing ? "Update user information" : "View user information"}
           actions={!isNew && !editing && (
             <div className="flex items-center gap-3">

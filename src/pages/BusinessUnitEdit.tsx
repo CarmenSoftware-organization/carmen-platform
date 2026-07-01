@@ -528,6 +528,8 @@ const BusinessUnitEdit: React.FC = () => {
         <BusinessUnitDebugSheet
           rawResponse={rawResponse}
           rawClusterUsersResponse={users.rawClusterUsersResponse}
+          id={id}
+          clusterId={formData.cluster_id}
         />
       )}
     </Layout>

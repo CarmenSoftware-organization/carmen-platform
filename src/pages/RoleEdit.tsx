@@ -421,8 +421,8 @@ const RoleEdit: React.FC = () => {
       <DevDebugSheet
         title="Role Debug"
         tabs={[
-          { key: 'role', label: 'Role', data: isNew ? null : rawResponse },
-          { key: 'catalog', label: 'Catalog', data: catalog.length > 0 ? catalog : null },
+          { key: 'role', label: 'Role', data: isNew ? null : rawResponse, endpoint: isNew ? 'New role (not yet saved)' : `GET /api-system/platform/roles/${id}` },
+          { key: 'catalog', label: 'Catalog', data: catalog.length > 0 ? catalog : null, endpoint: 'GET /api-system/platform/permissions' },
         ]}
       />
     </Layout>

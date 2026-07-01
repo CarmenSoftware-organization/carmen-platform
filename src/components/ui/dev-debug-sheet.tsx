@@ -6,11 +6,11 @@ import { JsonViewer } from './json-viewer';
 import { Code, Copy, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export interface DevDebugTab { key: string; label: string; data: unknown }
+export interface DevDebugTab { key: string; label: string; data: unknown; endpoint?: string }
 
 export function DevDebugSheet({
-  title, endpoint, data, tabs,
-}: { title: string; endpoint?: string; data?: unknown; tabs?: DevDebugTab[] }) {
+  title, endpoint, data, tabs, fabClassName,
+}: { title: string; endpoint?: string; data?: unknown; tabs?: DevDebugTab[]; fabClassName?: string }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeKey, setActiveKey] = useState(tabs?.[0]?.key);
@@ -35,7 +35,10 @@ export function DevDebugSheet({
         <Button
           size="icon"
           aria-label="Open debug panel"
-          className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
+          className={cn(
+            'fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30',
+            fabClassName,
+          )}
         >
           <Code className="h-5 w-5" />
         </Button>
@@ -67,6 +70,9 @@ export function DevDebugSheet({
                 </button>
               ))}
             </div>
+          )}
+          {hasTabs && activeTab?.endpoint && (
+            <p className="text-xs text-muted-foreground">{activeTab.endpoint}</p>
           )}
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={handleCopy}>

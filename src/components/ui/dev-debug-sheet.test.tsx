@@ -57,4 +57,23 @@ describe('DevDebugSheet (import.meta.env.DEV is true under vitest)', () => {
     await user.click(screen.getByRole('button', { name: 'Users' }));
     expect(screen.getByText(/"which": "b"/)).toBeInTheDocument();
   });
+
+  it('applies a custom fabClassName to the FAB button', () => {
+    render(<DevDebugSheet title="X" data={{ id: 1 }} fabClassName="bottom-20" />);
+    const fab = screen.getByRole('button', { name: /debug/i });
+    expect(fab.className).toContain('bottom-20');
+    expect(fab.className).not.toContain('bottom-4');
+  });
+
+  it('shows the active tab’s endpoint when provided', async () => {
+    const user = userEvent.setup();
+    render(<DevDebugSheet title="Edit" tabs={[
+      { key: 'a', label: 'Cluster', data: { which: 'a' }, endpoint: 'GET /api-system/clusters/1' },
+      { key: 'b', label: 'Users', data: { which: 'b' } },
+    ]} />);
+    await user.click(screen.getByRole('button', { name: /debug/i }));
+    expect(await screen.findByText('GET /api-system/clusters/1')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Users' }));
+    expect(screen.queryByText('GET /api-system/clusters/1')).not.toBeInTheDocument();
+  });
 });

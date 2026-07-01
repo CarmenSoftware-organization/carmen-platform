@@ -930,7 +930,7 @@ const ReportTemplateEdit: React.FC = () => {
         </div>
       )}
 
-      <DevDebugSheet title="API Response" endpoint={`GET /api-system/report-templates/${id}`} data={rawResponse} />
+      <DevDebugSheet title="API Response" endpoint={`GET /api-system/report-templates/${id}`} data={rawResponse} fabClassName="bottom-20" />
     </Layout>
   );
 };

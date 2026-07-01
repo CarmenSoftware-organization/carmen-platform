@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 export function PageHeader({
-  title, subtitle, actions, backTo,
-}: { title: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode; backTo?: string }) {
+  title, subtitle, actions, backTo, beforeTitle,
+}: { title: React.ReactNode; subtitle?: React.ReactNode; actions?: React.ReactNode; backTo?: string; beforeTitle?: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3 min-w-0">
@@ -16,6 +16,7 @@ export function PageHeader({
             <ArrowLeft className="h-5 w-5" />
           </Link>
         )}
+        {beforeTitle}
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}

@@ -1058,9 +1058,9 @@ const ClusterEdit: React.FC = () => {
         <DevDebugSheet
           title="Cluster Debug"
           tabs={[
-            { key: 'cluster', label: 'Cluster', data: rawResponse },
-            { key: 'bu', label: 'Business Units', data: rawBuResponse },
-            { key: 'users', label: 'Users', data: rawUsersResponse },
+            { key: 'cluster', label: 'Cluster', data: rawResponse, endpoint: `GET /api-system/clusters/${id}` },
+            { key: 'bu', label: 'Business Units', data: rawBuResponse, endpoint: 'GET /api-system/business-units' },
+            { key: 'users', label: 'Users', data: rawUsersResponse, endpoint: `GET /api-system/user/clusters/${id}` },
           ]}
         />
       )}
