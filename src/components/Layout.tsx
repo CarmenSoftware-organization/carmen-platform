@@ -133,7 +133,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         isCollapsed ? 'md:ml-16' : 'md:ml-60'
       )}>
         {/* Mobile Header */}
-        <header className="sticky top-0 z-40 glass border-b border-white/10 md:hidden">
+        <header className="sticky top-0 z-40 bg-background border-b border-border md:hidden">
           <div className="px-4">
             <div className="flex h-14 items-center gap-3">
               <Button

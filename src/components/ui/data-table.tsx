@@ -248,7 +248,7 @@ function DataTable<TData>({
     <div>
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         <Table className="min-w-[640px] table-fixed table-sticky-left table-sticky-right">
-          <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b-2 border-border">
+          <TableHeader className="sticky top-0 z-10 bg-background border-b-2 border-border">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -303,7 +303,7 @@ function DataTable<TData>({
       </div>
 
       {/* Pagination — sticky at bottom of viewport */}
-      <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
           <div className="text-sm text-muted-foreground tabular-nums">
             {totalDisplay === 0

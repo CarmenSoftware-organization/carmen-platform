@@ -96,7 +96,7 @@ const Landing: React.FC = () => {
       {/* Hero */}
       <section className="relative z-10 container mx-auto px-4 pt-12 sm:pt-20 pb-20 sm:pb-28 text-center animate-in-stagger" style={{ animationDelay: '100ms' }}>
         <div className="max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass border text-xs sm:text-sm mb-6 sm:mb-8 text-primary font-medium shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-card border border-border text-xs sm:text-sm mb-6 sm:mb-8 text-primary font-medium shadow-sm">
             Platform Management System
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight tracking-tight">
@@ -131,7 +131,7 @@ const Landing: React.FC = () => {
             return (
               <div
                 key={feature.title}
-                className="rounded-2xl p-6 sm:p-7 glass hover-lift animate-in-stagger"
+                className="rounded-2xl p-6 sm:p-7 bg-card border border-border hover-lift animate-in-stagger"
                 style={{ animationDelay: `${200 + idx * 100}ms` }}
               >
                 <div className={`w-12 h-12 rounded-xl ${feature.iconBg} flex items-center justify-center mb-5`}>

@@ -504,7 +504,7 @@ const BroadcastCompose: React.FC = () => {
               <Code className="h-5 w-5" />
             </button>
           </SheetTrigger>
-          <SheetContent size="medium" className="glass-strong w-full overflow-y-auto">
+          <SheetContent size="medium" className="w-full overflow-y-auto">
             <SheetHeader>
               <SheetTitle>Dev Debug</SheetTitle>
               <SheetDescription>Last API response from this session.</SheetDescription>

@@ -239,12 +239,12 @@ const Dashboard: React.FC = () => {
             const totalCount = isNews ? counts['news-total']?.total : counts[card.key]?.total;
             const countLabel = isNews ? 'published' : 'active';
             return (
-              <Card key={card.path} className={`glass hover-lift group overflow-hidden relative ${index === 0 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
+              <Card key={card.path} className={`hover-lift group overflow-hidden relative ${index === 0 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
                 <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
                 <CardHeader className="relative p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-9 h-9 rounded-xl ${card.iconBg} flex items-center justify-center backdrop-blur-sm shrink-0`}>
+                      <div className={`w-9 h-9 rounded-xl ${card.iconBg} flex items-center justify-center shrink-0`}>
                         <Icon className={`h-[18px] w-[18px] ${card.iconColor}`} />
                       </div>
                       <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
@@ -277,7 +277,7 @@ const Dashboard: React.FC = () => {
         {/* Charts Section */}
         <div className="grid gap-5 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           {/* Bar Chart */}
-          <Card className="glass">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Entity Counts</CardTitle>
               <CardDescription className="text-xs">Active vs Inactive across all entities</CardDescription>
@@ -306,7 +306,7 @@ const Dashboard: React.FC = () => {
           </Card>
 
           {/* Donut Chart */}
-          <Card className="glass">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Status Distribution</CardTitle>
               <CardDescription className="text-xs">Overall status breakdown</CardDescription>
@@ -343,7 +343,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Summary Table */}
-        <Card className="glass">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Summary</CardTitle>
             <CardDescription className="text-xs">Overview of all entities</CardDescription>

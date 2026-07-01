@@ -58,7 +58,7 @@ const Login: React.FC = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       </div>
 
-      <Card className="w-full max-w-md relative glass-strong">
+      <Card className="w-full max-w-md relative">
         <CardHeader className="space-y-2 pb-2">
           <div className="flex justify-center mb-5">
             <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">

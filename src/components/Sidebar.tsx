@@ -148,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'sidebar-transition fixed inset-y-0 left-0 z-30 hidden md:flex flex-col glass border-r border-white/10',
+          'sidebar-transition fixed inset-y-0 left-0 z-30 hidden md:flex flex-col bg-background border-r border-border',
           isCollapsed ? 'w-16' : 'w-60'
         )}
       >

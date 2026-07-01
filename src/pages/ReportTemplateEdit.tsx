@@ -917,7 +917,7 @@ const ReportTemplateEdit: React.FC = () => {
 
       {/* Sticky action bar */}
       {editing && (
-        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-white/10 bg-background/85 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-border bg-background">
           <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               {hasChanges ? (
