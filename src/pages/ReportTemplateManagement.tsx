@@ -224,7 +224,7 @@ const ReportTemplateManagement: React.FC = () => {
           t === 'function' ? 'default' : t === 'procedure' ? 'secondary' : 'outline';
         return (
           <div className="flex flex-col gap-0.5">
-            <Badge variant={variant} className="w-fit text-[10px] capitalize">
+            <Badge variant={variant} className="w-fit text-xs capitalize">
               {t}
             </Badge>
             {name && (
@@ -354,7 +354,7 @@ const ReportTemplateManagement: React.FC = () => {
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
                     {activeFilterCount > 0 && (
-                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
                       </Badge>
                     )}

@@ -237,8 +237,8 @@ const Dashboard: React.FC = () => {
                     {totalCount !== null && (
                       <div className="flex items-center gap-1">
                         <Badge variant="success" className="text-sm font-bold px-2 py-0">{primaryCount}</Badge>
-                        <span className="text-[10px] text-muted-foreground">/ {totalCount}</span>
-                        {countLabel && <span className="text-[10px] text-muted-foreground hidden sm:inline">({countLabel})</span>}
+                        <span className="text-xs text-muted-foreground">/ {totalCount}</span>
+                        {countLabel && <span className="text-xs text-muted-foreground hidden sm:inline">({countLabel})</span>}
                       </div>
                     )}
                   </div>

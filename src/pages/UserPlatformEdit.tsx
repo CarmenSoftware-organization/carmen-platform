@@ -159,7 +159,7 @@ const UserPlatformEdit: React.FC = () => {
                     <div key={assignment.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{assignment.role_name || assignment.role_id}</span>
-                        <Badge variant="outline" className="text-[10px]">{scopeBadge}</Badge>
+                        <Badge variant="outline" className="text-xs">{scopeBadge}</Badge>
                       </div>
                       <Can permission="user_platform.manage">
                         <Button

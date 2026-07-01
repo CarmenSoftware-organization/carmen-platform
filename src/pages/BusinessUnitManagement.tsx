@@ -218,7 +218,7 @@ const BusinessUnitManagement: React.FC = () => {
             {row.original.name}
           </Link>
           {row.original.deleted_at && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
+            <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
               Deleted
             </Badge>
           )}
@@ -360,7 +360,7 @@ const BusinessUnitManagement: React.FC = () => {
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
                     {activeFilterCount > 0 && (
-                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
                       </Badge>
                     )}

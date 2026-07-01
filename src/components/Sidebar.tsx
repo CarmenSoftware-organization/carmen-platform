@@ -174,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {navGroups.map((g, gi) => (
             <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
               {!isCollapsed && g.label && (
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {g.label}
                 </p>
               )}
@@ -297,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             {navGroups.map((g, gi) => (
               <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
                 {g.label && (
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {g.label}
                   </p>
                 )}

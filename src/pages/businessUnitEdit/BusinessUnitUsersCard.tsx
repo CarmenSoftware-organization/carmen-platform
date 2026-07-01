@@ -24,7 +24,7 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users }) 
           <CardTitle className="text-base">Users</CardTitle>
           <CardDescription>
             <span className="flex items-center gap-2 mt-0.5">
-              <Badge variant="success" className="text-[10px] px-1.5 py-0">{users.buUsers.filter(u => u.is_active).length} Active</Badge>
+              <Badge variant="success" className="text-xs px-1.5 py-0">{users.buUsers.filter(u => u.is_active).length} Active</Badge>
               <span className="text-muted-foreground text-xs">of {users.buUsers.length} total</span>
             </span>
           </CardDescription>

@@ -506,7 +506,7 @@ const ApplicationEdit: React.FC = () => {
                                         >
                                           {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                                           <span className="truncate">{g.module}</span>
-                                          <Badge variant={selectedCount > 0 ? 'default' : 'secondary'} className="text-[10px]">
+                                          <Badge variant={selectedCount > 0 ? 'default' : 'secondary'} className="text-xs">
                                             {selectedCount}/{g.api_names.length}
                                           </Badge>
                                         </button>
@@ -560,7 +560,7 @@ const ApplicationEdit: React.FC = () => {
                         {groupApiNames(formData.api_names).map((g) => (
                           <div key={g.module} className="space-y-1.5">
                             <p className="text-xs font-medium text-muted-foreground">
-                              {g.module} <span className="text-muted-foreground/60">({g.api_names.length})</span>
+                              {g.module} <span className="text-muted-foreground">({g.api_names.length})</span>
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {g.api_names.map((api) => (

@@ -144,7 +144,7 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
   const countBadges = Object.entries(parsed.counts)
     .sort((a, b) => b[1] - a[1])
     .map(([tag, n]) => (
-      <Badge key={tag} variant="outline" className="text-[10px]">
+      <Badge key={tag} variant="outline" className="text-xs">
         {n} {tag}
       </Badge>
     ));
@@ -155,7 +155,7 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
         <div className="flex items-center gap-2 text-sm">
           <Eye className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">Dialog Preview</span>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-xs">
             {fieldCount} {fieldCount === 1 ? 'field' : 'fields'}
           </Badge>
         </div>

@@ -112,7 +112,7 @@ const PermissionCatalog: React.FC = () => {
                   <ul className="space-y-2">
                     {perms.map((p) => (
                       <li key={p.key} className="flex flex-col gap-0.5">
-                        <Badge variant="outline" className="w-fit text-[10px] sm:text-xs font-mono">
+                        <Badge variant="outline" className="w-fit text-xs font-mono">
                           <code>{p.key}</code>
                         </Badge>
                         {p.description && (

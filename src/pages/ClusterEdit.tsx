@@ -651,7 +651,7 @@ const ClusterEdit: React.FC = () => {
                         ? 'Loading...'
                         : (
                           <span className="flex items-center gap-2 mt-0.5">
-                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
+                            <Badge variant="success" className="text-xs px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
                             <span className="text-muted-foreground text-xs">
                               of {businessUnits.length} total
                               {formData.max_license_bu && ` (${businessUnits.length} of ${formData.max_license_bu} licensed)`}
@@ -749,7 +749,7 @@ const ClusterEdit: React.FC = () => {
                         ? 'Loading...'
                         : (
                           <span className="flex items-center gap-2 flex-wrap mt-0.5">
-                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{clusterUsers.filter((u) => u.is_active !== false).length} Active</Badge>
+                            <Badge variant="success" className="text-xs px-1.5 py-0">{clusterUsers.filter((u) => u.is_active !== false).length} Active</Badge>
                             <span className="text-muted-foreground text-xs">of {clusterUsers.length} total</span>
                             {(() => {
                               const totalMaxLicense = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);

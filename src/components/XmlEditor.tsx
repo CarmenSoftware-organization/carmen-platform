@@ -297,10 +297,10 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
           </div>
         )}
         <div className="flex items-center gap-1.5 text-muted-foreground">
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-xs">
             {lines} lines
           </Badge>
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-xs">
             {formatBytes(size)}
           </Badge>
         </div>

@@ -589,7 +589,7 @@ const Profile: React.FC = () => {
                             <div className="font-medium text-sm">{bu.name || '-'}</div>
                             <Badge variant="outline" className="text-xs mt-1">{bu.code}</Badge>
                           </div>
-                          <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-[10px]">
+                          <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
                             {bu.is_active ? 'Active' : 'Inactive'}
                           </Badge>
                         </div>

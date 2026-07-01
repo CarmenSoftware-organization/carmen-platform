@@ -648,7 +648,7 @@ const UserEdit: React.FC = () => {
               </CardTitle>
               <CardDescription>
                 <span className="flex items-center gap-2 mt-0.5">
-                  <Badge variant="success" className="text-[10px] px-1.5 py-0">{userClusters.filter(uc => uc.cluster?.is_active).length} Active</Badge>
+                  <Badge variant="success" className="text-xs px-1.5 py-0">{userClusters.filter(uc => uc.cluster?.is_active).length} Active</Badge>
                   <span className="text-muted-foreground text-xs">of {userClusters.length} total</span>
                 </span>
               </CardDescription>
@@ -675,12 +675,12 @@ const UserEdit: React.FC = () => {
                           ) : (
                             <span className="font-medium text-sm">-</span>
                           )}
-                          <Badge variant={uc.cluster?.is_active ? "success" : "secondary"} className="text-[10px]">
+                          <Badge variant={uc.cluster?.is_active ? "success" : "secondary"} className="text-xs">
                             {uc.cluster?.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] capitalize">{uc.role}</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{uc.role}</Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -703,7 +703,7 @@ const UserEdit: React.FC = () => {
                   </CardTitle>
                   <CardDescription>
                     <span className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(ub => ub.is_active).length} Active</Badge>
+                      <Badge variant="success" className="text-xs px-1.5 py-0">{businessUnits.filter(ub => ub.is_active).length} Active</Badge>
                       <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
                     </span>
                   </CardDescription>
@@ -739,7 +739,7 @@ const UserEdit: React.FC = () => {
                             <span className="font-medium text-sm">-</span>
                           )}
                           <div className="flex items-center gap-1.5">
-                            <Badge variant={ub.is_active ? "success" : "secondary"} className="text-[10px]">
+                            <Badge variant={ub.is_active ? "success" : "secondary"} className="text-xs">
                               {ub.is_active ? "Active" : "Inactive"}
                             </Badge>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => handleDeleteBU(ub)}>
@@ -762,8 +762,8 @@ const UserEdit: React.FC = () => {
                           ) : null;
                         })()}
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] capitalize">{ub.role}</Badge>
-                          {ub.is_default && <Badge variant="outline" className="text-[10px] text-info border-info/40">Default</Badge>}
+                          <Badge variant="outline" className="text-xs capitalize">{ub.role}</Badge>
+                          {ub.is_default && <Badge variant="outline" className="text-xs text-info border-info/40">Default</Badge>}
                         </div>
                       </CardContent>
                     </Card>

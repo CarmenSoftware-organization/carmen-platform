@@ -816,7 +816,7 @@ const ReportTemplateEdit: React.FC = () => {
                     <TabsList>
                       <TabsTrigger value="dialog">
                         Dialog XML
-                        <Badge variant="outline" className="ml-2 text-[10px]">
+                        <Badge variant="outline" className="ml-2 text-xs">
                           {dialogLines}
                         </Badge>
                         {!dialogValidation.valid && (
@@ -828,7 +828,7 @@ const ReportTemplateEdit: React.FC = () => {
                       </TabsTrigger>
                       <TabsTrigger value="content">
                         Content XML
-                        <Badge variant="outline" className="ml-2 text-[10px]">
+                        <Badge variant="outline" className="ml-2 text-xs">
                           {contentLines}
                         </Badge>
                         {!contentValidation.valid && (

@@ -190,7 +190,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
                               </td>
                               <td className="px-4 py-2 text-center">
                                 {r.is_default ? (
-                                  <Badge variant="default" className="text-[10px]">Default</Badge>
+                                  <Badge variant="default" className="text-xs">Default</Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">-</span>
                                 )}
@@ -199,7 +199,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
                                 {r.display_order}
                               </td>
                               <td className="px-4 py-2 text-center">
-                                <Badge variant={r.is_active ? 'success' : 'secondary'} className="text-[10px]">
+                                <Badge variant={r.is_active ? 'success' : 'secondary'} className="text-xs">
                                   {r.is_active ? 'Active' : 'Inactive'}
                                 </Badge>
                               </td>
