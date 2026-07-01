@@ -15,7 +15,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { ChipInput } from '../components/ui/chip-input';
 import { XmlEditor } from '../components/XmlEditor';
 import { DialogPreview } from '../components/DialogPreview';
-import { ArrowLeft, Save, Pencil, X, Loader2 } from 'lucide-react';
+import { Save, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { getErrorDetail, devLog } from '../utils/errorParser';
