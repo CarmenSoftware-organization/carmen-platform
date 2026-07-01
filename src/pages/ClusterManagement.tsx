@@ -398,7 +398,8 @@ const ClusterManagement: React.FC = () => {
             <Can permission="cluster.create">
               <Button onClick={() => navigate('/clusters/new')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Cluster
+                <span className="hidden sm:inline">Add Cluster</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </Can>
           </div>

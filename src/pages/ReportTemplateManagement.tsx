@@ -335,7 +335,8 @@ const ReportTemplateManagement: React.FC = () => {
             <Can permission="report_template.create">
               <Button onClick={() => navigate('/report-templates/new')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Template
+                <span className="hidden sm:inline">Add Template</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </Can>
           </div>

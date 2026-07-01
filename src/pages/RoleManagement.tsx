@@ -347,7 +347,8 @@ const RoleManagement: React.FC = () => {
             </Button>
             <Button onClick={() => navigate('/platform/roles/new')}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Role
+              <span className="hidden sm:inline">Add Role</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>

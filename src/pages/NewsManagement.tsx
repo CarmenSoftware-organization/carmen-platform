@@ -311,7 +311,8 @@ const NewsManagement: React.FC = () => {
             <Can permission="news.create">
               <Button onClick={() => navigate('/news/new')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add News
+                <span className="hidden sm:inline">Add News</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </Can>
           </div>

@@ -340,7 +340,8 @@ const ApplicationManagement: React.FC = () => {
             <Can permission="application.create">
               <Button onClick={() => navigate('/applications/new')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Application
+                <span className="hidden sm:inline">Add Application</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </Can>
           </div>

@@ -191,7 +191,12 @@ const SuperAdminManagement: React.FC = () => {
                 ) : (
                   <Plus className="mr-2 h-4 w-4" />
                 )}
-                {adding ? 'Adding...' : 'Add'}
+                {adding ? 'Adding...' : (
+                  <>
+                    <span className="hidden sm:inline">Add Super Admin</span>
+                    <span className="sm:hidden">Add</span>
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>

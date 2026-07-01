@@ -577,7 +577,8 @@ const UserManagement: React.FC = () => {
             <Can permission="user.create">
               <Button onClick={() => navigate("/users/new")}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add User
+                <span className="hidden sm:inline">Add User</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </Can>
           </div>
