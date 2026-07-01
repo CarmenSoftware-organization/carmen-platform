@@ -49,8 +49,8 @@ const Landing: React.FC = () => {
       icon: Building2,
       title: 'Business Units',
       description: 'Structure your organization with flexible business unit management.',
-      iconColor: 'text-accent',
-      iconBg: 'bg-accent/10 border border-accent/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
     },
     {
       icon: Users,

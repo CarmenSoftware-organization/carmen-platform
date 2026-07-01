@@ -154,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Logo */}
         <div className={cn(
-          'flex h-16 items-center border-b border-white/10 shrink-0',
+          'flex h-16 items-center border-b border-border shrink-0',
           isCollapsed ? 'justify-center px-2' : 'px-4'
         )}>
           <Link to="/dashboard" className="flex items-center gap-3 group">
@@ -197,7 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* Bottom: User Profile + Toggle */}
-        <div className="shrink-0 border-t border-white/10 p-2 space-y-1">
+        <div className="shrink-0 border-t border-border p-2 space-y-1">
           {isCollapsed ? (
             <div className="flex justify-center pb-1">
               <Tooltip content="View changelog" relationship="label">

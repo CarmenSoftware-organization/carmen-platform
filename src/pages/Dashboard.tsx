@@ -44,7 +44,6 @@ interface DashboardCard {
   icon: LucideIcon;
   path: string;
   newPath: string;
-  gradient: string;
   iconColor: string;
   iconBg: string;
   key: string;
@@ -129,7 +128,6 @@ const Dashboard: React.FC = () => {
       icon: Network,
       path: '/clusters',
       newPath: '/clusters/new',
-      gradient: 'from-primary/15 to-primary/5',
       iconColor: 'text-primary',
       iconBg: 'bg-primary/10 border border-primary/20',
       key: 'clusters',
@@ -142,9 +140,8 @@ const Dashboard: React.FC = () => {
       icon: Building2,
       path: '/business-units',
       newPath: '/business-units/new',
-      gradient: 'from-accent/15 to-accent/5',
-      iconColor: 'text-accent',
-      iconBg: 'bg-accent/10 border border-accent/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'business-units',
       viewLabel: 'View Units',
       addLabel: 'Add Unit',
@@ -155,7 +152,6 @@ const Dashboard: React.FC = () => {
       icon: Users,
       path: '/users',
       newPath: '/users/new',
-      gradient: 'from-primary/15 to-accent/5',
       iconColor: 'text-primary',
       iconBg: 'bg-primary/10 border border-primary/20',
       key: 'users',
@@ -168,9 +164,8 @@ const Dashboard: React.FC = () => {
       icon: AppWindow,
       path: '/applications',
       newPath: '/applications/new',
-      gradient: 'from-accent/15 to-primary/5',
-      iconColor: 'text-accent',
-      iconBg: 'bg-accent/10 border border-accent/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'applications',
       viewLabel: 'View Apps',
       addLabel: 'Add App',
@@ -181,7 +176,6 @@ const Dashboard: React.FC = () => {
       icon: Newspaper,
       path: '/news',
       newPath: '/news/new',
-      gradient: 'from-primary/15 to-accent/10',
       iconColor: 'text-primary',
       iconBg: 'bg-primary/10 border border-primary/20',
       key: 'news',
@@ -194,9 +188,8 @@ const Dashboard: React.FC = () => {
       icon: FileText,
       path: '/report-templates',
       newPath: '/report-templates/new',
-      gradient: 'from-accent/15 to-primary/10',
-      iconColor: 'text-accent',
-      iconBg: 'bg-accent/10 border border-accent/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'report-templates',
       viewLabel: 'View Templates',
       addLabel: 'Add Template',
