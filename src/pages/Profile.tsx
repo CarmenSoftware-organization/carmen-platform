@@ -16,6 +16,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -486,7 +487,7 @@ const Profile: React.FC = () => {
                         placeholder="Middle name (optional)"
                       />
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.middlename || '-'}</div>
+                      <ReadOnlyField value={formData.middlename} />
                     )}
                   </div>
                 </div>

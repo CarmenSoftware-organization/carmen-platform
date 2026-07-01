@@ -25,6 +25,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { TableSkeleton } from '../components/TableSkeleton';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { BusinessUnit, ClusterUser } from '../types';
 
 interface ClusterFormData {
@@ -501,7 +502,7 @@ const ClusterEdit: React.FC = () => {
                         )}
                       </>
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
+                      <ReadOnlyField value={formData.code} />
                     )}
                   </div>
 
@@ -526,7 +527,7 @@ const ClusterEdit: React.FC = () => {
                         )}
                       </>
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.alias_name || '-'}</div>
+                      <ReadOnlyField value={formData.alias_name} />
                     )}
                   </div>
 
@@ -543,7 +544,7 @@ const ClusterEdit: React.FC = () => {
                         required
                       />
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.name || '-'}</div>
+                      <ReadOnlyField value={formData.name} />
                     )}
                   </div>
 
@@ -568,9 +569,7 @@ const ClusterEdit: React.FC = () => {
                         )}
                       </>
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                        {formData.max_license_bu || 'Unlimited'}
-                      </div>
+                      <ReadOnlyField value={formData.max_license_bu || 'Unlimited'} />
                     )}
                   </div>
 

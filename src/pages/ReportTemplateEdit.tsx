@@ -22,6 +22,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 
 interface SourceParamRow {
   filter: string;
@@ -67,12 +68,6 @@ const initialFormData: ReportTemplateFormData = {
   source_name: '',
   source_params: [],
 };
-
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
 
 const fmtDateTime = (v?: string) => {
   if (!v) return '-';
@@ -399,9 +394,7 @@ const ReportTemplateEdit: React.FC = () => {
                             )}
                           </>
                         ) : (
-                          <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                            {formData.name || '-'}
-                          </div>
+                          <ReadOnlyField value={formData.name} />
                         )}
                       </div>
 
@@ -680,7 +673,7 @@ const ReportTemplateEdit: React.FC = () => {
                         </p>
                       </>
                     ) : (
-                      <ReadOnlyText value={formData.source_name} />
+                      <ReadOnlyField value={formData.source_name} />
                     )}
                   </div>
 
@@ -804,7 +797,7 @@ const ReportTemplateEdit: React.FC = () => {
                         placeholder="e.g. pr-summary"
                       />
                     ) : (
-                      <ReadOnlyText value={formData.builder_key} />
+                      <ReadOnlyField value={formData.builder_key} />
                     )}
                   </div>
                 </CardContent>

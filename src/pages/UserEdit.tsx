@@ -22,6 +22,7 @@ import { getErrorDetail } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 
 interface UserBusinessUnit {
   id: string;
@@ -500,9 +501,7 @@ const UserEdit: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.username || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.username} />
                   )}
                 </div>
 
@@ -527,9 +526,7 @@ const UserEdit: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.email || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.email} />
                   )}
                 </div>
 
@@ -545,9 +542,7 @@ const UserEdit: React.FC = () => {
                       placeholder="Alias name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.alias_name || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.alias_name} />
                   )}
                 </div>
 
@@ -563,9 +558,7 @@ const UserEdit: React.FC = () => {
                       placeholder="First name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.firstname || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.firstname} />
                   )}
                 </div>
 
@@ -581,9 +574,7 @@ const UserEdit: React.FC = () => {
                       placeholder="Last name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.lastname || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.lastname} />
                   )}
                 </div>
 
@@ -599,9 +590,7 @@ const UserEdit: React.FC = () => {
                       placeholder="Middle name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.middlename || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.middlename} />
                   )}
                 </div>
 

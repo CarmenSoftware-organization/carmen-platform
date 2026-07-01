@@ -21,6 +21,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { BusinessUnitMultiSelect } from '../components/BusinessUnitMultiSelect';
 import { ImageUpload } from '../components/ImageUpload';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { Audit, NewsStatus } from '../types';
 
 interface NewsFormData {
@@ -59,12 +60,6 @@ const fmt = (v?: string) => {
 
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
-
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
 
 const NewsEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -303,7 +298,7 @@ const NewsEdit: React.FC = () => {
                     {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
                   </>
                 ) : (
-                  <ReadOnlyText value={formData.title} />
+                  <ReadOnlyField value={formData.title} />
                 )}
               </div>
 
@@ -335,7 +330,7 @@ const NewsEdit: React.FC = () => {
                     {fieldErrors.url && <p className="text-xs text-destructive">{fieldErrors.url}</p>}
                   </>
                 ) : (
-                  <ReadOnlyText value={formData.url} />
+                  <ReadOnlyField value={formData.url} />
                 )}
               </div>
 
@@ -379,7 +374,7 @@ const NewsEdit: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label>Published At</Label>
-                <ReadOnlyText value={fmt(publishedAt)} />
+                <ReadOnlyField value={fmt(publishedAt)} />
                 <p className="text-xs text-muted-foreground">
                   Set automatically by the server when status becomes "Published".
                 </p>

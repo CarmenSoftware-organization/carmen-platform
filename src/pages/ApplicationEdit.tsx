@@ -19,6 +19,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import { groupApiNames, actionOf } from '../utils/apiCatalog';
 import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
@@ -254,8 +255,6 @@ const ApplicationEdit: React.FC = () => {
     );
   }
 
-  const readOnlyBox = 'flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center';
-
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -306,7 +305,7 @@ const ApplicationEdit: React.FC = () => {
                     {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
                   </>
                 ) : (
-                  <div className={readOnlyBox}>{formData.name || '-'}</div>
+                  <ReadOnlyField value={formData.name} />
                 )}
               </div>
 
@@ -314,9 +313,10 @@ const ApplicationEdit: React.FC = () => {
               {!isNew && (
                 <div className="space-y-2">
                   <Label htmlFor="app_id">App ID</Label>
-                  <div className={`${readOnlyBox} font-mono text-xs text-muted-foreground`}>
-                    <span className="truncate">{id}</span>
-                  </div>
+                  <ReadOnlyField
+                    className="font-mono text-xs text-muted-foreground"
+                    value={<span className="truncate">{id}</span>}
+                  />
                 </div>
               )}
 
@@ -332,7 +332,7 @@ const ApplicationEdit: React.FC = () => {
                     placeholder="Description"
                   />
                 ) : (
-                  <div className={readOnlyBox}>{formData.description || '-'}</div>
+                  <ReadOnlyField value={formData.description} />
                 )}
               </div>
 
@@ -554,7 +554,7 @@ const ApplicationEdit: React.FC = () => {
                     )
                   ) : (
                     formData.api_names.length === 0 ? (
-                      <div className={`${readOnlyBox} text-muted-foreground`}>-</div>
+                      <ReadOnlyField className="text-muted-foreground" />
                     ) : (
                       <div className="space-y-3">
                         {groupApiNames(formData.api_names).map((g) => (

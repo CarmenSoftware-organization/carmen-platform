@@ -3,6 +3,7 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
 import { CollapsibleSection, ReadOnlyText, ReadOnlyTextarea, selectClassName } from '../shared';
+import { ReadOnlyField } from '../../../components/ReadOnlyField';
 import type { Cluster } from '../../../types';
 import type { SectionFieldProps } from '../types';
 
@@ -134,9 +135,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ formData, editing, 
             )}
           </>
         ) : (
-          <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-            {formData.max_license_users || 'Unlimited'}
-          </div>
+          <ReadOnlyField value={formData.max_license_users || 'Unlimited'} />
         )}
       </div>
 

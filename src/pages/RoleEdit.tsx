@@ -20,6 +20,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import PermissionPicker from '../components/PermissionPicker';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { PermissionCatalogItem } from '../types';
 
 interface RoleFormData {
@@ -28,12 +29,6 @@ interface RoleFormData {
   is_active: boolean;
   permissions: string[];
 }
-
-const ReadOnlyText = ({ value }: { value: string }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
 
 const RoleEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -310,7 +305,7 @@ const RoleEdit: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <ReadOnlyText value={formData.name} />
+                    <ReadOnlyField value={formData.name} />
                   )}
                 </div>
 
@@ -329,7 +324,7 @@ const RoleEdit: React.FC = () => {
                       className={fieldErrors.description ? 'border-destructive' : ''}
                     />
                   ) : (
-                    <ReadOnlyText value={formData.description} />
+                    <ReadOnlyField value={formData.description} />
                   )}
                 </div>
 

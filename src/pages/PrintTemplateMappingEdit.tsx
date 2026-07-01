@@ -20,6 +20,7 @@ import { getErrorDetail } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 
 interface FormData {
   document_type: string;
@@ -42,12 +43,6 @@ const empty: FormData = {
   deny_business_unit: '',
   is_active: true,
 };
-
-const ReadOnlyText = ({ value }: { value: string }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
 
 const PrintTemplateMappingEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -237,7 +232,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
 
   const buListReadOnly = (csv: string) => {
     const items = csv.split(',').map((s) => s.trim()).filter(Boolean);
-    if (items.length === 0) return <ReadOnlyText value="" />;
+    if (items.length === 0) return <ReadOnlyField />;
     return (
       <div className="flex flex-wrap gap-1.5 rounded-md border border-input bg-muted/50 px-3 py-2">
         {items.map((it) => (
@@ -300,7 +295,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       ))}
                     </select>
                   ) : (
-                    <ReadOnlyText
+                    <ReadOnlyField
                       value={form.document_type ? `${form.document_type} — ${docTypeLabel(form.document_type)}` : ''}
                     />
                   )}
@@ -338,7 +333,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       </p>
                     </>
                   ) : (
-                    <ReadOnlyText value={templateName(form.report_template_id)} />
+                    <ReadOnlyField value={templateName(form.report_template_id)} />
                   )}
                 </div>
 
@@ -354,7 +349,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       placeholder="e.g. Standard PR (A4 Portrait)"
                     />
                   ) : (
-                    <ReadOnlyText value={form.display_label} />
+                    <ReadOnlyField value={form.display_label} />
                   )}
                   {editing && (
                     <p className="text-xs text-muted-foreground">
@@ -379,7 +374,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       }
                     />
                   ) : (
-                    <ReadOnlyText value={String(form.display_order)} />
+                    <ReadOnlyField value={String(form.display_order)} />
                   )}
                 </div>
 
