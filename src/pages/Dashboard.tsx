@@ -6,7 +6,6 @@ import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
 import applicationService from '../services/applicationService';
-import roleService from '../services/roleService';
 import newsService from '../services/newsService';
 import reportTemplateService from '../services/reportTemplateService';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -31,7 +30,6 @@ import {
   Building2,
   Users,
   AppWindow,
-  Shield,
   Newspaper,
   FileText,
   Eye,
@@ -73,7 +71,6 @@ const Dashboard: React.FC = () => {
     users: { active: null, total: null, deleted: null },
     'report-templates': { active: null, total: null, deleted: null },
     applications: { active: null, total: null, deleted: null },
-    roles: { active: null, total: null, deleted: null },
     news: { active: null, total: null, deleted: null },
   });
 
@@ -111,8 +108,6 @@ const Dashboard: React.FC = () => {
     fetchCounts('business-units', businessUnitService, true);
     fetchCounts('users', userService, true);
     fetchCounts('applications', applicationService, false);
-    fetchCounts('roles', roleService, false);
-    fetchCounts('report-templates', reportTemplateService, false);
     fetchCounts('news', newsService, false);
   }, []);
 
@@ -174,19 +169,6 @@ const Dashboard: React.FC = () => {
       key: 'applications',
       viewLabel: 'View Apps',
       addLabel: 'Add App',
-    },
-    {
-      title: 'Roles',
-      description: 'Manage platform roles and permissions',
-      icon: Shield,
-      path: '/platform/roles',
-      newPath: '/platform/roles/new',
-      gradient: 'from-rose-500/20 to-pink-500/20',
-      iconColor: 'text-rose-500',
-      iconBg: 'bg-rose-500/10 border border-rose-500/20',
-      key: 'roles',
-      viewLabel: 'View Roles',
-      addLabel: 'Add Role',
     },
     {
       title: 'News',
