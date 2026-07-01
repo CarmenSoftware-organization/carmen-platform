@@ -5,7 +5,6 @@ import {
   DrawerHeader,
   DrawerHeaderTitle,
   DrawerFooter,
-  type DrawerProps,
 } from '@fluentui/react-components';
 import { DismissRegular } from '@fluentui/react-icons';
 import { cn } from '../../lib/utils';
@@ -100,8 +99,8 @@ const SheetTrigger = React.forwardRef<HTMLButtonElement, SheetTriggerProps>(
 SheetTrigger.displayName = 'SheetTrigger';
 
 const sideToPosition: Record<string, 'start' | 'end' | 'bottom'> = {
-  left: 'end',
-  right: 'start',
+  left: 'start',
+  right: 'end',
   top: 'start',
   bottom: 'bottom',
 };
