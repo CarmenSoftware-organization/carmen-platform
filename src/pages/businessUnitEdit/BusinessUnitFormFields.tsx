@@ -56,7 +56,7 @@ const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
   isNew,
   onCancel,
 }) => (
-  <form ref={formRef} onSubmit={onSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+  <form ref={formRef} onSubmit={onSubmit} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
     {/* Section 1: Basic Information */}
     <BasicInfoSection
       formData={formData}

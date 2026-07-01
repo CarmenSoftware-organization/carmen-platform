@@ -13,7 +13,7 @@ interface CalculationSettingsSectionProps extends SectionFieldProps {
 const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({ formData, editing, onChange, defaultCurrency, getCalculationMethodLabel }) => (
   <CollapsibleSection title="Calculation Settings" description="Calculation method and currency configuration" forceOpen>
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Label htmlFor="calculation_method">Calculation Method</Label>
           {editing ? (
