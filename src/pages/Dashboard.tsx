@@ -83,12 +83,18 @@ const Dashboard: React.FC = () => {
       key: string,
       service: { getAll: (p: any) => Promise<any> },
       includeDeleted?: boolean,
+      customFilter?: Record<string, unknown>,
     ) => {
       try {
+        const whereClause = customFilter || { deleted_at: null };
         const promises: Promise<any>[] = [
-          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
-          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { is_active: true, deleted_at: null } }) }),
+          service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: whereClause }) }),
         ];
+        if (!customFilter) {
+          promises.push(
+            service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { is_active: true, deleted_at: null } }) }),
+          );
+        }
         if (includeDeleted) {
           promises.push(
             service.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
@@ -96,7 +102,7 @@ const Dashboard: React.FC = () => {
         }
         const results = await Promise.all(promises);
         const total = extractTotal(results[0]);
-        const active = extractTotal(results[1]);
+        const active = customFilter ? total : extractTotal(results[1]);
         const deleted = includeDeleted ? extractTotal(results[2]) : 0;
         setCounts(prev => ({ ...prev, [key]: { active, total, deleted } }));
       } catch {
@@ -108,7 +114,8 @@ const Dashboard: React.FC = () => {
     fetchCounts('business-units', businessUnitService, true);
     fetchCounts('users', userService, true);
     fetchCounts('applications', applicationService, false);
-    fetchCounts('news', newsService, false);
+    fetchCounts('news', newsService, false, { status: 'published', deleted_at: null });
+    fetchCounts('news-total', newsService, false);
   }, []);
 
   const handleCopyJson = (data: unknown) => {
@@ -229,6 +236,10 @@ const Dashboard: React.FC = () => {
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((card) => {
             const Icon = card.icon;
+            const isNews = card.key === 'news';
+            const primaryCount = isNews ? counts['news']?.active : counts[card.key]?.active;
+            const totalCount = isNews ? counts['news-total']?.total : counts[card.key]?.total;
+            const countLabel = isNews ? 'published' : 'active';
             return (
               <Card key={card.path} className="glass group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden relative">
                 <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
@@ -240,10 +251,10 @@ const Dashboard: React.FC = () => {
                       </div>
                       <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                     </div>
-                    {counts[card.key]?.total !== null && (
+                    {totalCount !== null && (
                       <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-bold text-green-500">{counts[card.key].active}</span>
-                        <span className="text-[10px] text-muted-foreground">/ {counts[card.key].total}</span>
+                        <span className="text-lg font-bold text-green-500">{primaryCount}</span>
+                        <span className="text-[10px] text-muted-foreground">/ {totalCount}</span>
                       </div>
                     )}
                   </div>
