@@ -8,6 +8,7 @@ import userService from '../services/userService';
 import applicationService from '../services/applicationService';
 import roleService from '../services/roleService';
 import newsService from '../services/newsService';
+import reportTemplateService from '../services/reportTemplateService';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -32,6 +33,7 @@ import {
   AppWindow,
   Shield,
   Newspaper,
+  FileText,
   Eye,
   Plus,
   Code,
@@ -69,6 +71,7 @@ const Dashboard: React.FC = () => {
     clusters: { active: null, total: null, deleted: null },
     'business-units': { active: null, total: null, deleted: null },
     users: { active: null, total: null, deleted: null },
+    'report-templates': { active: null, total: null, deleted: null },
     applications: { active: null, total: null, deleted: null },
     roles: { active: null, total: null, deleted: null },
     news: { active: null, total: null, deleted: null },
@@ -109,6 +112,7 @@ const Dashboard: React.FC = () => {
     fetchCounts('users', userService, true);
     fetchCounts('applications', applicationService, false);
     fetchCounts('roles', roleService, false);
+    fetchCounts('report-templates', reportTemplateService, false);
     fetchCounts('news', newsService, false);
   }, []);
 
@@ -196,6 +200,19 @@ const Dashboard: React.FC = () => {
       key: 'news',
       viewLabel: 'View News',
       addLabel: 'Add News',
+    },
+    {
+      title: 'Report Templates',
+      description: 'Manage report and print templates',
+      icon: FileText,
+      path: '/report-templates',
+      newPath: '/report-templates/new',
+      gradient: 'from-violet-500/20 to-indigo-500/20',
+      iconColor: 'text-violet-500',
+      iconBg: 'bg-violet-500/10 border border-violet-500/20',
+      key: 'report-templates',
+      viewLabel: 'View Templates',
+      addLabel: 'Add Template',
     },
   ];
 
