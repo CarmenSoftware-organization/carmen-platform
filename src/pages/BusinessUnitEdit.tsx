@@ -46,9 +46,6 @@ const BusinessUnitEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [debugTab, setDebugTab] = useState<'bu' | 'users'>('bu');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [savedFormData, setSavedFormData] = useState<BusinessUnitFormData>({
     ...initialFormData,
@@ -76,12 +73,6 @@ const BusinessUnitEdit: React.FC = () => {
     setFormData(savedFormData);
     setEditing(false);
     setError('');
-  };
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -540,18 +531,10 @@ const BusinessUnitEdit: React.FC = () => {
       </div>
 
       {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !isNew && !!(rawResponse || users.rawClusterUsersResponse) && (
+      {!isNew && (
         <BusinessUnitDebugSheet
           rawResponse={rawResponse}
           rawClusterUsersResponse={users.rawClusterUsersResponse}
-          id={id}
-          clusterId={formData.cluster_id}
-          debugTab={debugTab}
-          setDebugTab={setDebugTab}
-          copied={copied}
-          onCopy={handleCopyJson}
-          debugOpen={debugOpen}
-          onDebugOpenChange={setDebugOpen}
         />
       )}
     </Layout>

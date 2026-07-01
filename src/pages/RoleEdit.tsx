@@ -10,8 +10,8 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { ArrowLeft, Save, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError } from '../utils/errorParser';
@@ -52,9 +52,6 @@ const RoleEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [debugTab, setDebugTab] = useState<'role' | 'catalog'>('role');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   // Catalog + original permissions for delta computation
@@ -81,12 +78,6 @@ const RoleEdit: React.FC = () => {
     setEditing(false);
     setError('');
     setFieldErrors({});
-  };
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const fetchRole = useCallback(async () => {
@@ -440,76 +431,13 @@ const RoleEdit: React.FC = () => {
       </div>
 
       {/* Debug Sheet — Development Only */}
-      {import.meta.env.DEV && (
-        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Responses
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">Raw JSON from role and permission catalog endpoints</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex border-b mb-3 sm:mb-4 overflow-x-auto">
-                <button
-                  onClick={() => setDebugTab('role')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'role' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Role
-                </button>
-                <button
-                  onClick={() => setDebugTab('catalog')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'catalog' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Catalog
-                </button>
-              </div>
-
-              {debugTab === 'role' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">
-                      {isNew ? 'New role (not yet saved)' : `GET /api-system/platform/roles/${id}`}
-                    </span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-
-              {debugTab === 'catalog' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">GET /api-system/platform/permissions</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(catalog)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {catalog.length > 0 ? JSON.stringify(catalog, null, 2) : 'No catalog loaded'}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet
+        title="Role Debug"
+        tabs={[
+          { key: 'role', label: 'Role', data: isNew ? null : rawResponse },
+          { key: 'catalog', label: 'Catalog', data: catalog.length > 0 ? catalog : null },
+        ]}
+      />
     </Layout>
   );
 };

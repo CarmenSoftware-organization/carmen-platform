@@ -11,8 +11,8 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { ArrowLeft, Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -66,9 +66,6 @@ const ClusterEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugOpen, setDebugOpen] = useState(false);
-  const [debugTab, setDebugTab] = useState<'cluster' | 'bu' | 'users'>('cluster');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -112,12 +109,6 @@ const ClusterEdit: React.FC = () => {
     setFormData(savedFormData);
     setEditing(false);
     setError('');
-  };
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -1071,92 +1062,15 @@ const ClusterEdit: React.FC = () => {
       />
 
       {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !isNew && !!(rawResponse || rawBuResponse || rawUsersResponse) && (
-        <Sheet open={debugOpen} onOpenChange={setDebugOpen}>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" size="medium" className="w-full overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Responses
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">Raw JSON responses from all endpoints</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex border-b mb-3 sm:mb-4 overflow-x-auto">
-                <button
-                  onClick={() => setDebugTab('cluster')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'cluster' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Cluster
-                </button>
-                <button
-                  onClick={() => setDebugTab('bu')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'bu' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Business Units
-                </button>
-                <button
-                  onClick={() => setDebugTab('users')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'users' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Users
-                </button>
-              </div>
-
-              {debugTab === 'cluster' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/clusters/${id}`}</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-              {debugTab === 'bu' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">GET /api-system/business-units</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawBuResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawBuResponse ? JSON.stringify(rawBuResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-              {debugTab === 'users' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/clusters/${id}`}</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawUsersResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawUsersResponse ? JSON.stringify(rawUsersResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+      {!isNew && (
+        <DevDebugSheet
+          title="Cluster Debug"
+          tabs={[
+            { key: 'cluster', label: 'Cluster', data: rawResponse },
+            { key: 'bu', label: 'Business Units', data: rawBuResponse },
+            { key: 'users', label: 'Users', data: rawUsersResponse },
+          ]}
+        />
       )}
     </Layout>
   );
