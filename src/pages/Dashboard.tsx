@@ -249,17 +249,15 @@ const Dashboard: React.FC = () => {
                     )}
                   </div>
                   <CardDescription className="text-xs line-clamp-1">{card.description}</CardDescription>
-                  <div className="flex items-center gap-1 mt-2">
-                    <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs">
+                  <div className="flex items-center gap-2 mt-3">
+                    <Button asChild variant="outline" size="sm" className="h-7 px-3 text-xs border-border/50 hover:bg-muted/50">
                       <Link to={card.path}>
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
+                        <Eye className="h-3.5 w-3.5" />
                       </Link>
                     </Button>
-                    <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs">
+                    <Button asChild size="sm" className="h-7 px-3 text-xs">
                       <Link to={card.newPath}>
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add
+                        <Plus className="h-3.5 w-3.5" />
                       </Link>
                     </Button>
                   </div>
