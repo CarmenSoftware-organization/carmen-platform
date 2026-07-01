@@ -35,7 +35,7 @@ interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
-  ({ children, className, align, sideOffset: _sideOffset, ...props }, ref) => (
+  ({ children, className, align: _align, sideOffset: _sideOffset, ...props }, ref) => (
     <MenuPopover ref={ref} className={cn('min-w-[8rem]', className)} {...props}>
       <MenuList>{children}</MenuList>
     </MenuPopover>

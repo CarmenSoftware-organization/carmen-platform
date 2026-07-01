@@ -376,7 +376,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                     <Input
                       id="display_order"
                       type="number"
-                      value={form.display_order}
+                      value={String(form.display_order)}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Label as FluentLabel, type LabelProps as FluentLabelProps } from '@fluentui/react-components';
 
-interface LabelProps extends FluentLabelProps {}
+type LabelProps = FluentLabelProps
 
 const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
   ({ className, children, ...props }, ref) => (

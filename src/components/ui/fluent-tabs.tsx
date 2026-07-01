@@ -2,8 +2,6 @@ import React from 'react';
 import {
   TabList,
   Tab,
-  type TabListProps,
-  type TabProps,
 } from '@fluentui/react-components';
 
 interface TabsProps {
