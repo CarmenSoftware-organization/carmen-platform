@@ -251,7 +251,7 @@ const ClusterManagement: React.FC = () => {
         return (
           <div className="flex items-center justify-center gap-1">
             <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-green-600 font-medium">
+            <span className="text-success font-medium">
               {max ? `${count} / ${max}` : count}
             </span>
           </div>
@@ -270,7 +270,7 @@ const ClusterManagement: React.FC = () => {
         return (
           <div className="flex items-center justify-center gap-1">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className={`font-medium ${max && count >= max ? 'text-destructive' : 'text-green-600'}`}>
+            <span className={`font-medium ${max && count >= max ? 'text-destructive' : 'text-success'}`}>
               {max ? `${count} / ${max}` : count}
             </span>
           </div>

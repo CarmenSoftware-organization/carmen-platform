@@ -763,7 +763,7 @@ const UserEdit: React.FC = () => {
                         })()}
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[10px] capitalize">{ub.role}</Badge>
-                          {ub.is_default && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">Default</Badge>}
+                          {ub.is_default && <Badge variant="outline" className="text-[10px] text-info border-info/40">Default</Badge>}
                         </div>
                       </CardContent>
                     </Card>

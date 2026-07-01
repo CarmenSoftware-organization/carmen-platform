@@ -53,7 +53,12 @@ interface Counts {
   deleted: number | null;
 }
 
-const COLORS = ['hsl(142, 76%, 45%)', 'hsl(45, 93%, 58%)', 'hsl(348, 83%, 58%)'];
+const CHART = {
+  active: 'hsl(var(--success))',
+  inactive: 'hsl(var(--warning))',
+  deleted: 'hsl(var(--destructive))',
+};
+const COLORS = [CHART.active, CHART.inactive, CHART.deleted];
 
 const Dashboard: React.FC = () => {
   const [counts, setCounts] = useState<Record<string, Counts>>({
@@ -277,9 +282,9 @@ const Dashboard: React.FC = () => {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="active" name="Active" fill="hsl(142, 76%, 45%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="inactive" name="Inactive" fill="hsl(45, 93%, 58%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="deleted" name="Deleted" fill="hsl(348, 83%, 58%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="active" name="Active" fill={CHART.active} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="inactive" name="Inactive" fill={CHART.inactive} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="deleted" name="Deleted" fill={CHART.deleted} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

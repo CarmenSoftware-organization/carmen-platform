@@ -93,13 +93,11 @@ const Login: React.FC = () => {
             </div>
 
             {error && (
-              <div className={`text-sm p-3 rounded-lg ${
-                error.includes('Access Denied')
-                  ? 'text-red-700 bg-red-100 border border-red-300 font-medium'
-                  : 'text-red-600 bg-red-50 border border-red-200'
+              <div className={`text-sm p-3 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive ${
+                error.includes('Access Denied') ? 'font-medium' : ''
               }`}>
                 {error.includes('Access Denied') && (
-                  <div className="font-bold text-red-800 mb-1">Access Denied</div>
+                  <div className="font-bold mb-1">Access Denied</div>
                 )}
                 {error}
               </div>

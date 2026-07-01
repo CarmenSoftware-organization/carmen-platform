@@ -353,7 +353,7 @@ const Profile: React.FC = () => {
         </div>
 
         {success && (
-          <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 p-3 rounded-md" role="status" aria-live="polite">
+          <div className="flex items-center gap-2 text-sm text-success bg-success/10 p-3 rounded-md" role="status" aria-live="polite">
             <CheckCircle2 className="h-4 w-4" />
             {success}
           </div>

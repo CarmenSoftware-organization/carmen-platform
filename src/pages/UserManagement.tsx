@@ -444,7 +444,7 @@ const UserManagement: React.FC = () => {
           return (
             <div className="flex items-center gap-1">
               <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-green-600 font-medium">{active}</span>
+              <span className="text-success font-medium">{active}</span>
               <span className="text-muted-foreground">/</span>
               <span className="text-muted-foreground">{total}</span>
             </div>
