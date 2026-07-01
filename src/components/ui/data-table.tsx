@@ -246,8 +246,9 @@ function DataTable<TData>({
 
   return (
     <div>
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <Table className="min-w-[640px]">
+          <TableHeader className="sticky top-0 z-10 bg-muted shadow-[0_1px_0_0_hsl(var(--border))]">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -296,7 +297,8 @@ function DataTable<TData>({
             ))
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
 
       {/* Pagination — sticky at bottom of viewport */}
       <div className="sticky bottom-0 z-20 border-t border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
