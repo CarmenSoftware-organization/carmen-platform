@@ -157,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             {!isCollapsed && (
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent truncate">
-                Carmen
+                Carmen Platform
               </h1>
             )}
           </Link>
@@ -263,7 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-white font-bold text-lg">C</span>
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Carmen
+                Carmen Platform
               </span>
             </div>
           </DrawerHeaderTitle>
