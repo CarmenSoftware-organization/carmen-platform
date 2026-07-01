@@ -227,59 +227,38 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Entity Cards */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {cards.map((card) => {
             const Icon = card.icon;
-            const inactive = (counts[card.key]?.total ?? 0) - (counts[card.key]?.active ?? 0);
             return (
-              <Card key={card.path} className="glass group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden relative">
+              <Card key={card.path} className="glass group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden relative">
                 <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                <CardHeader className="relative pb-3">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`w-11 h-11 rounded-xl ${card.iconBg} flex items-center justify-center backdrop-blur-sm`}>
-                      <Icon className={`h-5 w-5 ${card.iconColor}`} />
+                <CardHeader className="relative p-3 sm:p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center backdrop-blur-sm shrink-0`}>
+                      <Icon className={`h-4 w-4 ${card.iconColor}`} />
                     </div>
-                    {counts[card.key]?.total !== null && (
-                      <div className="text-right leading-tight">
-                        <div className="text-2xl font-bold text-green-500">
-                          {counts[card.key].active}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">active</div>
-                      </div>
-                    )}
+                    <CardTitle className="text-xs sm:text-sm font-medium truncate">{card.title}</CardTitle>
                   </div>
-                  <CardTitle className="text-base">{card.title}</CardTitle>
-                  <CardDescription className="text-xs">{card.description}</CardDescription>
-                </CardHeader>
-                <div className="relative px-6 pb-4">
                   {counts[card.key]?.total !== null && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                      <span>{counts[card.key].total} total</span>
-                      <span className="text-border">&middot;</span>
-                      <span>{inactive} inactive</span>
-                      {(counts[card.key].deleted ?? 0) > 0 && (
-                        <>
-                          <span className="text-border">&middot;</span>
-                          <span className="text-destructive">{counts[card.key].deleted} deleted</span>
-                        </>
-                      )}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-2xl font-bold text-green-500">{counts[card.key].active}</span>
+                      <span className="text-[10px] text-muted-foreground">/ {counts[card.key].total}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <Button asChild variant="ghost" size="sm" className="h-8 px-3 text-xs">
+                  <div className="flex items-center gap-1 mt-2">
+                    <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs">
                       <Link to={card.path}>
-                        <Eye className="mr-1.5 h-3.5 w-3.5" />
-                        {card.viewLabel}
+                        <Eye className="h-3 w-3" />
                       </Link>
                     </Button>
-                    <Button asChild variant="ghost" size="sm" className="h-8 px-3 text-xs">
+                    <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-[10px] sm:text-xs">
                       <Link to={card.newPath}>
-                        <Plus className="mr-1.5 h-3.5 w-3.5" />
-                        {card.addLabel}
+                        <Plus className="h-3 w-3" />
                       </Link>
                     </Button>
                   </div>
-                </div>
+                </CardHeader>
               </Card>
             );
           })}
