@@ -5,21 +5,41 @@ import { useAuth } from '../context/AuthContext';
 import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
+import applicationService from '../services/applicationService';
+import roleService from '../services/roleService';
+import newsService from '../services/newsService';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Network, Building2, Users, ArrowRight, Code, Copy, Check, type LucideIcon } from 'lucide-react';
+import {
+  Network,
+  Building2,
+  Users,
+  AppWindow,
+  Shield,
+  Newspaper,
+  ArrowRight,
+  Eye,
+  Plus,
+  Code,
+  Copy,
+  Check,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface DashboardCard {
   title: string;
   description: string;
   icon: LucideIcon;
   path: string;
+  newPath: string;
   gradient: string;
   iconColor: string;
   iconBg: string;
   key: string;
+  viewLabel: string;
+  addLabel: string;
 }
 
 interface Counts {
@@ -35,6 +55,9 @@ const Dashboard: React.FC = () => {
     clusters: { active: null, total: null, deleted: null },
     'business-units': { active: null, total: null, deleted: null },
     users: { active: null, total: null, deleted: null },
+    applications: { active: null, total: null, deleted: null },
+    roles: { active: null, total: null, deleted: null },
+    news: { active: null, total: null, deleted: null },
   });
 
   useEffect(() => {
@@ -70,6 +93,9 @@ const Dashboard: React.FC = () => {
     fetchCounts('clusters', clusterService, true);
     fetchCounts('business-units', businessUnitService, true);
     fetchCounts('users', userService, true);
+    fetchCounts('applications', applicationService, false);
+    fetchCounts('roles', roleService, false);
+    fetchCounts('news', newsService, false);
   }, []);
 
   const handleCopyJson = (data: unknown) => {
@@ -77,36 +103,85 @@ const Dashboard: React.FC = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
   const cards: DashboardCard[] = [
     {
-      title: 'Cluster Management',
+      title: 'Clusters',
       description: 'Manage and configure clusters',
       icon: Network,
       path: '/clusters',
+      newPath: '/clusters/new',
       gradient: 'from-blue-500/20 to-cyan-500/20',
-      iconColor: 'text-blue-600',
+      iconColor: 'text-blue-500',
       iconBg: 'bg-blue-500/10 border border-blue-500/20',
       key: 'clusters',
+      viewLabel: 'View Clusters',
+      addLabel: 'Add Cluster',
     },
     {
       title: 'Business Units',
       description: 'Manage business units and departments',
       icon: Building2,
       path: '/business-units',
+      newPath: '/business-units/new',
       gradient: 'from-purple-500/20 to-pink-500/20',
-      iconColor: 'text-purple-600',
+      iconColor: 'text-purple-500',
       iconBg: 'bg-purple-500/10 border border-purple-500/20',
       key: 'business-units',
+      viewLabel: 'View Units',
+      addLabel: 'Add Unit',
     },
     {
-      title: 'User Management',
+      title: 'Users',
       description: 'Manage users and permissions',
       icon: Users,
       path: '/users',
+      newPath: '/users/new',
       gradient: 'from-emerald-500/20 to-teal-500/20',
-      iconColor: 'text-emerald-600',
+      iconColor: 'text-emerald-500',
       iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
       key: 'users',
+      viewLabel: 'View Users',
+      addLabel: 'Add User',
+    },
+    {
+      title: 'Applications',
+      description: 'Manage application integrations',
+      icon: AppWindow,
+      path: '/applications',
+      newPath: '/applications/new',
+      gradient: 'from-orange-500/20 to-amber-500/20',
+      iconColor: 'text-orange-500',
+      iconBg: 'bg-orange-500/10 border border-orange-500/20',
+      key: 'applications',
+      viewLabel: 'View Apps',
+      addLabel: 'Add App',
+    },
+    {
+      title: 'Roles',
+      description: 'Manage platform roles and permissions',
+      icon: Shield,
+      path: '/platform/roles',
+      newPath: '/platform/roles/new',
+      gradient: 'from-rose-500/20 to-pink-500/20',
+      iconColor: 'text-rose-500',
+      iconBg: 'bg-rose-500/10 border border-rose-500/20',
+      key: 'roles',
+      viewLabel: 'View Roles',
+      addLabel: 'Add Role',
+    },
+    {
+      title: 'News',
+      description: 'Manage news and announcements',
+      icon: Newspaper,
+      path: '/news',
+      newPath: '/news/new',
+      gradient: 'from-cyan-500/20 to-sky-500/20',
+      iconColor: 'text-cyan-500',
+      iconBg: 'bg-cyan-500/10 border border-cyan-500/20',
+      key: 'news',
+      viewLabel: 'View News',
+      addLabel: 'Add News',
     },
   ];
 
@@ -123,42 +198,57 @@ const Dashboard: React.FC = () => {
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {cards.map((card) => {
             const Icon = card.icon;
+            const inactive = (counts[card.key]?.total ?? 0) - (counts[card.key]?.active ?? 0);
             return (
-              <Link key={card.path} to={card.path}>
-                <Card className="group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer overflow-hidden relative">
-                  <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                  <CardHeader className="relative">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-12 h-12 rounded-xl ${card.iconBg} flex items-center justify-center backdrop-blur-sm`}>
-                        <Icon className={`h-6 w-6 ${card.iconColor}`} />
-                      </div>
-                      {counts[card.key]?.total !== null && (
-                        <div className="text-right leading-tight">
-                          <div className={`text-3xl font-bold text-green-600`}>
-                            {counts[card.key].active}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">active</div>
+              <Card key={card.path} className="glass group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden relative">
+                <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+                <CardHeader className="relative pb-3">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`w-11 h-11 rounded-xl ${card.iconBg} flex items-center justify-center backdrop-blur-sm`}>
+                      <Icon className={`h-5 w-5 ${card.iconColor}`} />
+                    </div>
+                    {counts[card.key]?.total !== null && (
+                      <div className="text-right leading-tight">
+                        <div className="text-2xl font-bold text-green-500">
+                          {counts[card.key].active}
                         </div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">active</div>
+                      </div>
+                    )}
+                  </div>
+                  <CardTitle className="text-base">{card.title}</CardTitle>
+                  <CardDescription className="text-xs">{card.description}</CardDescription>
+                </CardHeader>
+                <div className="relative px-6 pb-4">
+                  {counts[card.key]?.total !== null && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      <span>{counts[card.key].total} total</span>
+                      <span className="text-border">&middot;</span>
+                      <span>{inactive} inactive</span>
+                      {(counts[card.key].deleted ?? 0) > 0 && (
+                        <>
+                          <span className="text-border">&middot;</span>
+                          <span className="text-destructive">{counts[card.key].deleted} deleted</span>
+                        </>
                       )}
                     </div>
-                    <CardTitle className="flex items-center justify-between">
-                      {card.title}
-                      <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </CardTitle>
-                    <CardDescription>
-                      {card.description}
-                      {counts[card.key]?.total !== null && (
-                        <span className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
-                          {counts[card.key].total} total &middot; {(counts[card.key].total ?? 0) - (counts[card.key].active ?? 0)} inactive
-                          {(counts[card.key].deleted ?? 0) > 0 && (
-                            <>&middot; <span className="text-destructive">{counts[card.key].deleted} deleted</span></>
-                          )}
-                        </span>
-                      )}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Button asChild variant="ghost" size="sm" className="h-8 px-3 text-xs">
+                      <Link to={card.path}>
+                        <Eye className="mr-1.5 h-3.5 w-3.5" />
+                        {card.viewLabel}
+                      </Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm" className="h-8 px-3 text-xs">
+                      <Link to={card.newPath}>
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                        {card.addLabel}
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             );
           })}
         </div>
