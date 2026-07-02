@@ -12,6 +12,15 @@ describe('Card', () => {
     expect(card.className).toContain('rounded-lg');
   });
 
+  it('reproduces the Fluent medium-Card interior layout (padding/gap/stack)', () => {
+    render(<Card>Card body</Card>);
+    const card = screen.getByText('Card body');
+    expect(card.className).toContain('p-3');
+    expect(card.className).toContain('flex');
+    expect(card.className).toContain('flex-col');
+    expect(card.className).toContain('gap-3');
+  });
+
   it('merges a custom className onto Card', () => {
     render(<Card className="my-custom-class">Custom</Card>);
     const card = screen.getByText('Custom');
