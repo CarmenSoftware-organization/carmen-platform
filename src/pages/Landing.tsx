@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Network, Building2, Users, ArrowRight, Loader2, type LucideIcon } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Card, CardTitle, CardDescription } from '../components/ui/card';
 import VersionBadge from '../components/VersionBadge';
 
 interface Feature {
@@ -89,11 +90,9 @@ const Landing: React.FC = () => {
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-card border border-border text-xs sm:text-sm mb-6 sm:mb-8 text-primary font-medium shadow-sm">
             Platform Management System
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-4 sm:mb-6 leading-tight tracking-tight text-foreground">
             Manage Your Platform{' '}
-            <span className="text-primary">
-              with Confidence
-            </span>
+            <span className="text-primary">with Confidence</span>
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed">
             Carmen Platform provides a unified management system for clusters,
@@ -118,16 +117,17 @@ const Landing: React.FC = () => {
           {features.map((feature) => {
             const Icon = feature.icon;
             return (
-              <div
-                key={feature.title}
-                className="rounded-2xl p-6 sm:p-7 bg-card border border-border"
-              >
-                <div className={`w-12 h-12 rounded-xl ${feature.iconBg} flex items-center justify-center mb-5`}>
+              <Card key={feature.title} className="p-6 sm:p-7 gap-4">
+                <div className={`w-12 h-12 rounded-xl ${feature.iconBg} flex items-center justify-center`}>
                   <Icon className={`h-6 w-6 ${feature.iconColor}`} />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
-              </div>
+                <div className="space-y-2">
+                  <CardTitle className="text-lg font-semibold">{feature.title}</CardTitle>
+                  <CardDescription className="text-sm text-muted-foreground leading-relaxed">
+                    {feature.description}
+                  </CardDescription>
+                </div>
+              </Card>
             );
           })}
         </div>
