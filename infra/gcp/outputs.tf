@@ -16,3 +16,13 @@ output "url_map_name" {
   value       = google_compute_url_map.default.name
   description = "Used by the deploy workflow for CDN cache invalidation."
 }
+
+output "workload_identity_provider" {
+  value       = google_iam_workload_identity_pool_provider.github.name
+  description = "Set as GitHub Variable GCP_WORKLOAD_IDENTITY_PROVIDER."
+}
+
+output "deployer_sa_email" {
+  value       = google_service_account.deployer.email
+  description = "Set as GitHub Variable GCP_DEPLOY_SA."
+}
