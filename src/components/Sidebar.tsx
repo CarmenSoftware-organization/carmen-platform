@@ -14,7 +14,7 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 
 export interface NavItem {
   path: string;
@@ -288,6 +288,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
             </SheetTitle>
+            <SheetDescription className="sr-only">Main navigation</SheetDescription>
           </SheetHeader>
           <nav className="py-2 px-2">
             {navGroups.map((g, gi) => (
