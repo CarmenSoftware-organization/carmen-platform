@@ -79,9 +79,9 @@ does not need to route `/api` to the backend.
 - Documentation updates: the deployment sections of `README.md`,
   `docs/OVERVIEW.md`, `docs/DEVELOPMENT.md`, and `CLAUDE.md` (AWS → GCP).
 
-**Keep:** `.github/workflows/verify.yml`; all application code; `vercel.json`
-is unaffected by this migration (it can be removed separately if Vercel is also
-being dropped — not decided here).
+**Keep:** `.github/workflows/verify.yml`; all application code; **Vercel is
+retained** — `vercel.json` and the Vercel project are untouched. The GCP
+migration is additive and runs in parallel with Vercel.
 
 ## CI/CD pipeline (`deploy.yml`, on push to `main`)
 
@@ -180,7 +180,8 @@ login`). Resources:
 - Backend migration/hosting (separate service/repo).
 - Backend CORS changes (a prerequisite the user performs on the backend).
 - Real custom domain + DNS (deferred; the design supports adding it later).
-- Whether Vercel (`vercel.json`) is also dropped (separate decision).
+- Vercel is **retained** (decided) — this migration does not touch `vercel.json`
+  or the Vercel project; GCP runs in parallel.
 
 ## Success criteria
 
