@@ -92,12 +92,6 @@ body {
   min-height: 100dvh;
 }
 
-/* Override Fluent UI theme text colors */
-.fui-provider,
-.fui-provider * {
-  color: inherit;
-}
-
 /* Zebra striping */
 .zebra-row:nth-child(even) {
   background-color: var(--zebra-even);
