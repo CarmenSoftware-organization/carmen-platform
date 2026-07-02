@@ -61,7 +61,7 @@ HTTPS load balancer with Cloud CDN. GitHub Actions builds and uploads on push
 to `main` (`.github/workflows/deploy-gcp.yml`), authenticating keyless via
 Workload Identity Federation. Infrastructure is Terraform in `infra/gcp/`.
 Vercel is also available in parallel (`vercel.json`). See
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#deployment).
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#deployment-gcp).
 
 ---
 

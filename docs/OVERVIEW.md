@@ -45,7 +45,7 @@ Users outside this list are rejected at login with an "access denied" message. S
 ```
 ┌────────────────┐   HTTPS    ┌───────────────────────────────┐
 │ Browser (SPA)  │──────────▶│ Cloud CDN + global HTTPS LB    │
-│ React + Router │            │ (GCS bucket: static build/)    │
+│ React + Router │            │ (GCS bucket: static build/)   │
 └────────────────┘            └───────────────────────────────┘
         │
         │ /api, /api-system (dev only: proxied); production: absolute URL, cross-origin
