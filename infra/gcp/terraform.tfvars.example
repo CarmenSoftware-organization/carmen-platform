@@ -1,0 +1,5 @@
+project_id  = "your-gcp-project-id"
+region      = "asia-southeast1"
+bucket_name = "carmen-platform-web"
+domain      = "" # leave empty to use <lb-ip-dashed>.sslip.io; set a real domain later
+github_repo = "CarmenSoftware-organization/carmen-platform"
