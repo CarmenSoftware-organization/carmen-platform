@@ -128,7 +128,6 @@ github_repo = "CarmenSoftware-organization/carmen-platform"
 
 ```gitignore
 .terraform/
-.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 terraform.tfvars
@@ -409,7 +408,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.repository" = "assertion.repository"
   }
   # Restrict token exchange to this repo only.
-  attribute_condition = "assertion.repository == '${var.github_repo}'"
+  attribute_condition = "assertion.repository == '${var.github_repo}' && assertion.ref == 'refs/heads/main'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -422,16 +421,27 @@ resource "google_service_account" "deployer" {
 }
 
 # Write objects to the bucket (rsync create/update/delete + set cache metadata).
-resource "google_storage_bucket_iam_member" "deployer_object_admin" {
+# storage.objectUser = create/get/list/delete/update objects — least-privilege, bucket-scoped.
+resource "google_storage_bucket_iam_member" "deployer_object_user" {
   bucket = google_storage_bucket.web.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${google_service_account.deployer.email}"
 }
 
-# Invalidate Cloud CDN cache after a deploy.
-resource "google_project_iam_member" "deployer_lb_admin" {
+# Least-privilege custom role: only CDN cache invalidation on url maps.
+resource "google_project_iam_custom_role" "cdn_invalidator" {
+  role_id     = "carmenWebCdnInvalidator"
+  title       = "Carmen Web CDN Invalidator"
+  description = "Invalidate Cloud CDN cache on the web url map."
+  permissions = [
+    "compute.urlMaps.get",
+    "compute.urlMaps.invalidateCache",
+  ]
+}
+
+resource "google_project_iam_member" "deployer_cdn_invalidate" {
   project = var.project_id
-  role    = "roles/compute.loadBalancerAdmin"
+  role    = google_project_iam_custom_role.cdn_invalidator.id
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 

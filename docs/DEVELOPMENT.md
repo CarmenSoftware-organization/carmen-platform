@@ -1,6 +1,6 @@
 # Development Guide
 
-Setup, commands, API, auth, testing, Docker, and CI. For product overview see [OVERVIEW.md](./OVERVIEW.md). For code patterns see [../CLAUDE.md](../CLAUDE.md).
+Setup, commands, API, auth, testing, GCP deployment, and CI. For product overview see [OVERVIEW.md](./OVERVIEW.md). For code patterns see [../CLAUDE.md](../CLAUDE.md).
 
 ## Prerequisites
 
@@ -182,30 +182,47 @@ See [../CLAUDE.md](../CLAUDE.md#unit--component-tests) for full guidance.
 E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
 See that repo's `CLAUDE.md` and `README.md`. This repo's Vite dev server (`:3304`) is the system under test.
 
-## Docker and deployment
+## Deployment (GCP)
 
-**Dockerfile** (multi-stage):
-1. **builder:** Node 20 Alpine → `npm ci` (or `bun install --frozen-lockfile`) → `npm run build` → `/app/build`
-2. **runner:** `nginx:stable-alpine` → copies `build/` into `/usr/share/nginx/html/`
-3. nginx config: SPA fallback (all routes → `index.html`), `/static/*` cached 1 year
-4. **Exposed port:** `3001`
+Docker, nginx, AWS ECR, and EC2 are removed from this repo. The frontend is
+now a static SPA hosted on GCP: a GCS bucket (`carmen-platform-web`) behind a
+global external HTTPS load balancer with Cloud CDN. Vercel (`vercel.json`)
+remains as a parallel deploy target.
 
-**docker-compose.yml:**
-- Image: `${ECR_REGISTRY}/carmen-platform:${IMAGE_TAG}`
-- Bind: `127.0.0.1:3001:3001` (localhost only — typically behind a reverse proxy)
-- Healthcheck: `wget http://localhost:3001` every 30s
-- Reads `.env`; sets `NODE_ENV=production`
-- Network: `carmen-frontend-network`
+**Infrastructure** (`infra/gcp/`, Terraform, applied once locally by a
+project owner — see `infra/gcp/README.md`):
+- `google_storage_bucket` — web bucket, SPA-style website config
+- `google_compute_backend_bucket` — `enable_cdn = true` + cache policy
+- `google_compute_global_address` — reserved static IP
+- `google_compute_managed_ssl_certificate`, `google_compute_url_map`,
+  HTTPS/HTTP forwarding rules (HTTP redirects to HTTPS)
+- Workload Identity Federation (WIF): a GitHub OIDC pool/provider scoped to
+  this repo + a deployer service account, so CI authenticates keyless (no
+  stored GCP credentials)
 
-**CI/CD** (`.github/workflows/build.yml`):
-- Triggers on push to `main` (and manual `workflow_dispatch`)
-- Buildx builds `linux/arm64` image
-- Pushes to AWS ECR (`ap-southeast-7`) tagged with the 7-char commit SHA
-- Deploys to EC2 via AWS Systems Manager (SSM Run Command):
-  - `docker-compose pull && docker-compose up -d`
+**Pipeline** (`.github/workflows/deploy-gcp.yml`, push to `main` or manual
+`workflow_dispatch`):
+1. `bun install --frozen-lockfile` → `bun run build` (`CI=true`, `REACT_APP_*` env from GitHub Variables)
+2. Authenticate to GCP via WIF (`google-github-actions/auth`)
+3. `gcloud storage rsync -r -d build gs://<GCS_BUCKET>`
+4. Set cache headers: `index.html` → `no-cache, max-age=0`; `assets/**` → `public, max-age=31536000, immutable`
+5. Invalidate the Cloud CDN cache for `/index.html` and `/`
 
-**Required GitHub Secrets:**
-`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `ECR_REGISTRY`, `FRONTEND_INSTANCE_ID`, `GH_TOKEN`.
+**GitHub Variables read by the workflow:**
+`REACT_APP_API_BASE_URL`, `REACT_APP_API_APP_ID`, `REACT_APP_ENV`,
+`GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`,
+`GCS_BUCKET`, `GCP_URL_MAP` — populate from `terraform output` after the
+`infra/gcp` apply.
+
+**Temporary host:** the managed SSL cert targets `<lb-ip-dashed>.sslip.io`
+(derived from the reserved static IP), so HTTPS works immediately without a
+real domain. Bind a real domain later via the Terraform `domain` variable —
+no infrastructure rebuild.
+
+**Backend CORS prerequisite (separate service, done by the user):** the
+backend must add the frontend origin to its CORS allowlist — first the
+`sslip.io` host, later the real domain — or the app loads but every API call
+fails CORS.
 
 ## TypeScript
 
@@ -228,7 +245,7 @@ See that repo's `CLAUDE.md` and `README.md`. This repo's Vite dev server (`:3304
 Check that `REACT_APP_API_BASE_URL` in `.env` is reachable from your machine. If it uses a self-signed cert, the dev proxy (`secure: false`) handles it — but only for requests going through the proxy (`/api`, `/api-system`).
 
 **CORS errors in production.**
-Frontend runs on port 3001 behind nginx. CORS must be configured on the backend to accept the frontend's public origin.
+The frontend is a static SPA served via Cloud CDN + the GCP load balancer (no app server of its own). CORS must be configured on the backend to accept the frontend's origin — see [Deployment (GCP)](#deployment-gcp) above.
 
 **Port 3304 already in use.**
 ```bash
@@ -240,9 +257,6 @@ lsof -ti:3304 | xargs kill
 
 **Bun install fails with peer dep errors.**
 `.npmrc` sets `legacy-peer-deps=true` for npm; for Bun, try `bun install --force` or fall back to `npm install`.
-
-**Docker build fails on ARM vs x86.**
-CI builds `linux/arm64` for EC2 Graviton. Local `docker build` without `--platform` picks your host arch. Use `docker buildx build --platform linux/arm64 ...` to match production.
 
 ---
 
