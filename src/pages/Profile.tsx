@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Button } from '../components/ui/button';
@@ -270,10 +271,7 @@ const Profile: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage your account settings and preferences</p>
-          </div>
+          <PageHeader title="Profile" subtitle="Manage your account settings and preferences" />
           <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
             {/* Profile Overview Skeleton */}
             <Card className="md:col-span-1">
@@ -347,10 +345,7 @@ const Profile: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Profile</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage your account settings and preferences</p>
-        </div>
+        <PageHeader title="Profile" subtitle="Manage your account settings and preferences" />
 
         {success && (
           <div className="flex items-center gap-2 text-sm text-success bg-success/10 p-3 rounded-md" role="status" aria-live="polite">
