@@ -37,13 +37,22 @@ Changing `.env` requires restarting the dev server.
 ## Commands
 
 ```bash
-bun start                 # Vite dev server on :3304
-bun run build             # Production build via vite build; sets REACT_APP_BUILD_DATE
+bun start                 # Vite dev server on :3304 (mode development → .env.development)
+bun run dev:local         # dev server against local backend (.env.development)
+bun run dev:prod          # dev server against deployed dev backend (.env.production)
+bun run build             # Production build; sets REACT_APP_BUILD_DATE, emits to build/
+bun run build:local       # build with .env.development
+bun run build:prod        # build with .env.production
 bun run preview           # Serve the production build locally on :3304
-
+bun run test              # Vitest unit/component tests (jsdom) — one-shot
+bun run test:watch        # Vitest watch mode
+bun run test:cov          # Vitest with v8 coverage
+bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mjs)
 ```
 
 No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
+
+The Vite **mode** selects the env file: `vite` / `--mode development` → `.env.development`; `--mode production` → `.env.production`. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`).
 
 ## Dev proxy
 
@@ -86,7 +95,9 @@ const entityService = {
 };
 ```
 
-Current services: `clusterService`, `businessUnitService`, `userService`, `reportTemplateService`, `printTemplateMappingService`, `tenantMigrationService`.
+Current services: `clusterService`, `businessUnitService`, `userService`, `reportTemplateService`, `printTemplateMappingService`, `applicationService`, `newsService`, `broadcastService`, `roleService`, `permissionService`, `superAdminService`, `userRoleService`, `tenantMigrationService`.
+
+A few carry custom write payloads (they don't map 1:1 to the CRUD shape): `applicationService` (asymmetric read/write, `details.add[]`), `roleService`, `newsService` (multipart). See CLAUDE.md for those contracts.
 
 `printTemplateMappingService` is filter-based rather than paginated, and adds two non-CRUD endpoints: `listDocumentTypes()` (catalog of document codes) and `resolve(documentType, buCode?)` (effective mapping for a given document + BU).
 
@@ -111,10 +122,10 @@ Users with any other role are rejected with "access denied".
 4. Token stored; `Authorization` header activated for subsequent requests
 5. Fresh profile fetched from `/api/user/profile` to populate name fields
 
-**Role guards:**
+**Route guards (permission-based — Platform RBAC):**
 
-- `PrivateRoute` wraps any authenticated route. If no token → redirect to `/login`. If `allowedRoles` is set and `hasRole()` returns false → renders `<AccessDenied>` screen.
-- `hasRole(roles)` (from `AuthContext`): returns `true` if the user's `platform_role` is in `roles` — with a bootstrap exception that grants access when the total user count is ≤ 1 (first-user setup).
+- `PrivateRoute` wraps any authenticated route. If not authenticated → redirect to `/login`. If `requiredPermission` is set and `hasPermission()` returns false → renders `<AccessDenied>`. If `requireSuperAdmin` is set and `isSuperAdmin` is false → renders `<AccessDenied>`.
+- `hasPermission(key)` (from `AuthContext`): resolves the user's effective platform permissions and returns `true` if `key` (`<module>.<action>`) is present — with a bootstrap exception that grants access when the total user count is ≤ 1 (first-admin escape hatch). `isSuperAdmin` reflects `is_super_admin` on the resolved permissions.
 
 See `src/components/PrivateRoute.tsx` for the route-guard usage and `src/App.tsx` for per-route role configuration.
 
@@ -135,18 +146,36 @@ See `src/components/PrivateRoute.tsx` for the route-guard usage and `src/App.tsx
 - Sidebar hidden; hamburger button in a sticky top header opens a Sheet drawer
 - Drawer auto-closes on route change
 
-**Nav items** (filtered by `hasRole()` from AuthContext):
+**Nav items** — `allNavItems` in `Layout.tsx`. Each item carries a `group` and gates on a single `permission` or `superAdminOnly`, filtered via `(!item.permission || hasPermission(item.permission)) && (!item.superAdminOnly || isSuperAdmin)` from AuthContext. Ungrouped items render first, then group headers:
 
-| Path | Label | Roles required |
-|---|---|---|
-| `/dashboard` | Dashboard | (all) |
-| `/clusters` | Clusters | `platform_admin`, `support_manager`, `support_staff` |
-| `/business-units` | Business Units | (all) |
-| `/users` | Users | (all) |
-| `/report-templates` | Report Templates | `platform_admin`, `support_manager`, `support_staff` |
-| `/print-template-mapping` | Print Mapping | `platform_admin`, `support_manager`, `support_staff` |
+| Path | Label | Group | Gate |
+|---|---|---|---|
+| `/dashboard` | Dashboard | — | (all authenticated) |
+| `/clusters` | Clusters | Organization | `cluster.read` |
+| `/business-units` | Business Units | Organization | `cluster.read` |
+| `/tenant-migrations` | Tenant Migrations | Organization | `cluster.read` |
+| `/users` | Users | Organization | `user.read` |
+| `/report-templates` | Report Templates | Content | `report_template.read` |
+| `/print-template-mapping` | Print Mapping | Content | `print_template_mapping.read` |
+| `/news` | News | Content | `news.read` |
+| `/broadcasts/new` | Send Broadcast | Content | `broadcast.send` |
+| `/applications` | Applications | Platform | `application.read` |
+| `/platform/roles` | Roles | Platform | `role.read` |
+| `/platform/super-admins` | Super Admins | Platform | super admin only |
+| `/platform/user-platform` | User Platform | Platform | `user_platform.read` |
 
 See [../SITEMAP.md](../SITEMAP.md) for the authoritative route list.
+
+## Unit & component tests
+
+[Vitest](https://vitest.dev) (jsdom) is the in-repo test runner. Config: `vitest.config.ts` (standalone — does not touch `vite.config.ts`); `vitest.setup.ts` registers jest-dom matchers + `afterEach(cleanup)`; `src/vitest.d.ts` exposes matcher types to tsc.
+
+- **Run:** `bun run test` (one-shot) · `test:watch` · `test:cov` (v8 coverage).
+- **Location:** co-locate `*.test.ts` / `*.test.tsx` beside the source.
+- **Imports:** explicit — `import { describe, it, expect, vi } from 'vitest'` (no globals).
+- Pure utils → unit test directly; components → React Testing Library; pages → `vi.mock` the shell (`Layout`, `Can`) + services, keep routing real via `MemoryRouter`.
+
+See [../CLAUDE.md](../CLAUDE.md#unit--component-tests) for full guidance.
 
 ## E2E testing
 

@@ -8,7 +8,7 @@ Carmen Platform is a frontend-only React + TypeScript admin dashboard for managi
 
 ## Users and roles
 
-All authenticated users have a `platform_role`. Role enforcement happens client-side in `PrivateRoute` and on the backend. The allowed login roles are:
+All authenticated users have a `platform_role` that maps to a set of permissions (Platform RBAC). Route access is enforced client-side in `PrivateRoute` via `hasPermission()` / `requireSuperAdmin`, and on the backend. The allowed login roles are:
 
 | Role | Description |
 |------|-------------|
@@ -34,6 +34,12 @@ Users outside this list are rejected at login with an "access denied" message. S
 
 **Tenant Migration.** A deploy-operation orchestration feature. Holds batch deploy queues and streams migration progress from the backend via NDJSON. It enables applying configurations across tenant clusters with real-time UI updates. Managed under `/tenant-migrations`.
 
+**Application.** An API-client record whose `id` (UUID) *is* the `x-app-id` value. Holds a name, description, `is_active`, `allow_all`, and a set of allowed API names (selected via a grouped, per-module accordion). Read/write models are asymmetric (see CLAUDE.md). Managed under `/applications`; `platform_admin`-only.
+
+**News & Broadcast.** News is an editorial CRUD entity with image upload, surfaced publicly on the changelog page. Broadcast composes a notification with system-wide or per-BU targeting and optional scheduling. Managed under `/news` and `/broadcasts/new`.
+
+**Platform RBAC.** Platform roles bundle permissions (`<module>.<action>`). The permission catalog (`/platform/permissions`) is read-only; roles are managed under `/platform/roles`, super admins under `/platform/super-admins`, and user ↔ platform-role scope under `/platform/user-platform`. Guards throughout the app check permissions rather than hard-coded role names.
+
 ## Architecture
 
 ```
@@ -56,17 +62,17 @@ Users outside this list are rejected at login with an "access denied" message. S
 
 ## Tech stack
 
-- **Language & framework:** React 18, TypeScript 5 (strict mode), Vite 8
+- **Language & framework:** React 19, TypeScript 5 (strict mode), Vite 8
 - **Routing:** react-router-dom v6
-- **Styling:** Tailwind CSS 3.4 + CSS custom properties (HSL); flat surfaces (`bg-card`/`bg-background` + 1px border) — glassmorphism was removed in the enterprise redesign
-- **Components:** shadcn/ui primitives (Radix UI + CVA)
+- **Styling:** Tailwind CSS 3.4 + CSS custom properties (HSL), Inter font, class-based light/dark theme; flat surfaces (`bg-card`/`bg-background` + 1px border) — glassmorphism was removed in the enterprise redesign
+- **Components:** shadcn/ui primitives (Radix UI + CVA) — Fluent UI was fully removed in the enterprise redesign
 - **Tables:** TanStack Table v8 + React Virtual (`@tanstack/react-virtual`)
 - **Code editor:** CodeMirror 6 (XML syntax highlighting, folding, search) — used in `ReportTemplateEdit`
-- **HTTP:** Axios 1.6 with interceptors (`src/services/api.ts`)
+- **HTTP:** Axios 1.16 with interceptors (`src/services/api.ts`)
 - **Toasts:** Sonner
 - **Icons:** lucide-react
 - **Package manager:** Bun (primary) or npm; Node 20.x
-- **Tests:** Playwright for e2e (`e2e/`); no unit tests for pages currently
+- **Tests:** Vitest + React Testing Library (unit/component, co-located `*.test.tsx`); E2E is a standalone Playwright suite in the sibling repo `../carmen-platform-e2e`
 
 ## Project structure
 
@@ -86,15 +92,16 @@ src/
   pages/                  # One file per route (Management = list, Edit = CRUD form)
   services/               # One axios-backed service per entity
     api.ts                # Axios instance + auth interceptors
-    clusterService.ts
-    businessUnitService.ts
-    userService.ts
-    reportTemplateService.ts
-    printTemplateMappingService.ts
+    clusterService.ts  businessUnitService.ts  userService.ts
+    reportTemplateService.ts  printTemplateMappingService.ts
+    applicationService.ts  newsService.ts  broadcastService.ts
+    roleService.ts  permissionService.ts  superAdminService.ts
+    userRoleService.ts  tenantMigrationService.ts
   context/
-    AuthContext.tsx       # Auth state, login/logout, hasRole()
+    AuthContext.tsx       # Auth state, login/logout, hasPermission(), isSuperAdmin
   hooks/
     useUnsavedChanges.ts  # Browser warning on unsaved form changes
+    useDarkMode.tsx       # ThemeProvider — class-based light/dark theme
   types/
     index.ts              # Shared interfaces (Cluster, BusinessUnit, User, etc.)
   utils/
@@ -103,15 +110,20 @@ src/
     errorParser.ts        # parseApiError, getErrorDetail, devLog
     validation.ts         # Field validators (email, code, phone, username)
     xml.ts                # formatXml, validateXml, countLines, downloadText
+    docVersion.ts         # Optimistic-locking token helpers
   lib/
     utils.ts              # cn() helper (clsx + tailwind-merge)
+  **/*.test.{ts,tsx}      # Co-located Vitest unit/component tests
 ```
 
 Top-level:
 
 ```
 vite.config.ts            # Vite config: React plugin, proxy, envPrefix, outDir
+vitest.config.ts          # Vitest (jsdom) config — standalone from vite.config.ts
+vitest.setup.ts           # jest-dom matchers + RTL afterEach(cleanup)
 src/vite-env.d.ts         # import.meta.env type declarations
+src/vitest.d.ts           # jest-dom matcher types for tsc
 CLAUDE.md                 # AI coding guide (auto-loaded into Claude Code)
 README.md                 # GitHub landing
 SITEMAP.md                # Route/nav map
@@ -134,7 +146,8 @@ docs/
 | A helper / validator | `src/utils/` |
 | The auth state | `src/context/AuthContext.tsx` |
 | A route definition | `src/App.tsx` |
-| An e2e test | `e2e/tests/<feature>/` |
+| A unit/component test | co-located `*.test.tsx` beside the source |
+| An e2e test | sibling repo `../carmen-platform-e2e` (Playwright) |
 
 ## Related docs
 
