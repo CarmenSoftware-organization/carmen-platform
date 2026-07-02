@@ -78,7 +78,6 @@ src/
   components/      Layout, Sidebar, PrivateRoute, TableSkeleton, EmptyState,
                    KeyboardShortcuts, XmlEditor, DialogPreview
     ui/            shadcn primitives — DO NOT modify without a clear reason
-    magicui/       Ripple effects
   pages/           Landing, Login, Dashboard, Profile,
                    <Entity>Management.tsx (list) + <Entity>Edit.tsx (CRUD)
                    for Cluster, BusinessUnit, User, ReportTemplate, PrintTemplateMapping
