@@ -45,7 +45,7 @@ const Changelog = () => (
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-lg font-bold tracking-tight sm:text-xl">Changelog</h1>
+        <h1 className="text-lg font-semibold tracking-tight sm:text-xl">Changelog</h1>
       </div>
     </header>
 
