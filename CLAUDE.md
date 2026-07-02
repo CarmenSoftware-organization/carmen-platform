@@ -53,7 +53,7 @@ Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagg
 
 ## Deployment
 
-Multi-stage Docker (Node 20 builder → nginx:stable-alpine, port 3001). CI in `.github/workflows/build.yml` pushes ARM64 image to ECR and deploys via SSM. `docker-compose` binds `127.0.0.1:3001` behind a reverse proxy with 30s healthcheck.
+Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`). `.github/workflows/deploy-gcp.yml` builds on push to `main` and deploys keyless via Workload Identity Federation (`gcloud storage rsync` + CDN cache invalidation). Vercel (`vercel.json`) is retained in parallel.
 
 ## Unit & Component Tests
 

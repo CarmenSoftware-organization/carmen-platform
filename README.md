@@ -50,13 +50,18 @@ bun start                     # dev server at http://localhost:3304
 | Document | What it covers |
 |---|---|
 | [docs/OVERVIEW.md](docs/OVERVIEW.md) | Product, architecture, entities, project structure |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, env, API, auth, Docker, CI, troubleshooting |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Setup, env, API, auth, GCP deployment, CI, troubleshooting |
 | [CLAUDE.md](CLAUDE.md) | Code conventions and patterns (primary source of truth) |
 | [SITEMAP.md](SITEMAP.md) | Routes and navigation |
 
 ## Deployment
 
-Docker (multi-stage build, nginx on port 3001) → AWS ECR (`linux/arm64`) → EC2 via GitHub Actions + SSM. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#docker-and-deployment).
+Static SPA hosted on GCP: a Cloud Storage bucket behind a global external
+HTTPS load balancer with Cloud CDN. GitHub Actions builds and uploads on push
+to `main` (`.github/workflows/deploy-gcp.yml`), authenticating keyless via
+Workload Identity Federation. Infrastructure is Terraform in `infra/gcp/`.
+Vercel is also available in parallel (`vercel.json`). See
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#deployment).
 
 ---
 

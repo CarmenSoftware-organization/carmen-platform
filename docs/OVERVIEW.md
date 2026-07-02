@@ -4,7 +4,7 @@ Product and architecture overview. For setup and operations, see [DEVELOPMENT.md
 
 ## What it is
 
-Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, users, report templates, and print-template mappings. It talks to a separate NestJS/Prisma backend over HTTPS. The frontend is packaged as a Docker image (nginx serving the static build) and deployed to AWS EC2 via GitHub Actions + ECR + SSM.
+Carmen Platform is a frontend-only React + TypeScript admin dashboard for managing clusters, business units, users, report templates, and print-template mappings. It talks to a separate NestJS/Prisma backend over HTTPS. The frontend is deployed as a static build to a GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`), published by GitHub Actions via Workload Identity Federation.
 
 ## Users and roles
 
@@ -43,12 +43,12 @@ Users outside this list are rejected at login with an "access denied" message. S
 ## Architecture
 
 ```
-┌────────────────┐   HTTPS    ┌─────────────────┐
-│ Browser (SPA)  │──────────▶│ nginx:3001      │
-│ React + Router │   /*       │ (Docker)        │
-└────────────────┘            └─────────────────┘
-        │                              │
-        │ /api, /api-system (dev only: proxied)
+┌────────────────┐   HTTPS    ┌───────────────────────────────┐
+│ Browser (SPA)  │──────────▶│ Cloud CDN + global HTTPS LB    │
+│ React + Router │            │ (GCS bucket: static build/)    │
+└────────────────┘            └───────────────────────────────┘
+        │
+        │ /api, /api-system (dev only: proxied); production: absolute URL, cross-origin
         ▼
 ┌────────────────────────────────────────────┐
 │ Backend (NestJS/Prisma) — separate service │
@@ -57,7 +57,7 @@ Users outside this list are rejected at login with an "access denied" message. S
 ```
 
 - **In development:** `vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` to the backend (`secure: false` allows self-signed certs).
-- **In production:** nginx serves the SPA; the browser calls the backend directly over HTTPS. CORS is handled by the backend.
+- **In production:** Cloud CDN + the global HTTPS load balancer serve the static SPA from the GCS bucket; the browser calls the backend directly over HTTPS. CORS is handled by the backend, which must allow the frontend origin.
 - **Auth:** JWT stored in `localStorage`, sent as `Authorization: Bearer <token>` by an axios request interceptor. A response interceptor clears storage and redirects to `/login` on 401/403.
 
 ## Tech stack
@@ -129,7 +129,7 @@ README.md                 # GitHub landing
 SITEMAP.md                # Route/nav map
 docs/
   OVERVIEW.md             # This file
-  DEVELOPMENT.md          # Setup + ops + auth + e2e + Docker + CI
+  DEVELOPMENT.md          # Setup + ops + auth + e2e + GCP deploy + CI
   superpowers/
     specs/                # Design specs for in-flight work
     plans/                # Implementation plans for in-flight work
@@ -151,7 +151,7 @@ docs/
 
 ## Related docs
 
-- [DEVELOPMENT.md](./DEVELOPMENT.md) — setup, env, API, auth, Docker, CI
+- [DEVELOPMENT.md](./DEVELOPMENT.md) — setup, env, API, auth, GCP deployment, CI
 - [../CLAUDE.md](../CLAUDE.md) — patterns and conventions (primary source of truth)
 - [../SITEMAP.md](../SITEMAP.md) — routes and navigation
 - [../README.md](../README.md) — GitHub landing
