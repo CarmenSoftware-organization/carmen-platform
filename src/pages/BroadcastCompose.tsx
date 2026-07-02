@@ -273,7 +273,6 @@ const BroadcastCompose: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          backTo="/"
           beforeTitle={<Megaphone className="h-6 w-6 text-primary" />}
           title="Send Broadcast"
           subtitle="Push a notification to all users, specific users, or a business unit."
