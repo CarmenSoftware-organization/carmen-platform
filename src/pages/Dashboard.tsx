@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
@@ -208,13 +209,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-8 sm:space-y-10">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-            Welcome to Carmen Platform Management System
-          </p>
-        </div>
+      <div className="space-y-6">
+        <PageHeader title="Dashboard" subtitle="Welcome to Carmen Platform Management System" />
 
         {/* Entity Cards — asymmetric: first card wider */}
         <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
