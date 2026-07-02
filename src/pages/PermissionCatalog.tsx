@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import permissionService from '../services/permissionService';
 import { parseApiError } from '../utils/errorParser';
-import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import type { PermissionCatalogItem } from '../types';
 
 const PermissionCatalog: React.FC = () => {
-  const navigate = useNavigate();
   const [items, setItems] = useState<PermissionCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -57,25 +55,11 @@ const PermissionCatalog: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-start gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="mt-0.5 shrink-0"
-              onClick={() => navigate('/platform/roles')}
-              aria-label="Back to Roles"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Permission Catalog</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Read-only reference of all platform permissions
-              </p>
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title="Permission Catalog"
+          subtitle="Read-only reference of all platform permissions"
+          backTo="/platform/roles"
+        />
 
         {/* Error */}
         {error && (
