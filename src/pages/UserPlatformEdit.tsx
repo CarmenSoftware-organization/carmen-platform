@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Layout from "../components/Layout";
+import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
 import userRoleService from "../services/userRoleService";
 import roleService from "../services/roleService";
@@ -10,10 +11,10 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
+import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import Can from "../components/Can";
-import { ArrowLeft, ShieldCheck, Plus, Trash2, Loader2, Code, Copy, Check } from "lucide-react";
+import { ShieldCheck, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { UserRoleAssignment, Scope } from "../types";
 
@@ -22,14 +23,12 @@ const selectClassName =
 
 const UserPlatformEdit: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
 
   const [roleAssignments, setRoleAssignments] = useState<UserRoleAssignment[]>([]);
   const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
@@ -112,24 +111,15 @@ const UserPlatformEdit: React.FC = () => {
     }
   };
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/platform/user-platform")}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{userName || "User"}</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">{userEmail || "Manage roles and scope"}</p>
-          </div>
-        </div>
+        <PageHeader
+          backTo="/platform/user-platform"
+          title={userName || "User"}
+          subtitle={userEmail || "Manage roles and scope"}
+        />
 
         {error && (
           <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -169,7 +159,7 @@ const UserPlatformEdit: React.FC = () => {
                     <div key={assignment.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{assignment.role_name || assignment.role_id}</span>
-                        <Badge variant="outline" className="text-[10px]">{scopeBadge}</Badge>
+                        <Badge variant="outline" className="text-xs">{scopeBadge}</Badge>
                       </div>
                       <Can permission="user_platform.manage">
                         <Button
@@ -246,33 +236,7 @@ const UserPlatformEdit: React.FC = () => {
           </CardContent>
         </Card>
 
-        {import.meta.env.DEV && (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                size="icon"
-                className="fixed bottom-6 right-6 h-12 w-12 rounded-full bg-amber-500 hover:bg-amber-600 shadow-lg"
-              >
-                <Code className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-              <SheetHeader>
-                <SheetTitle>Debug</SheetTitle>
-                <SheetDescription>Raw API responses</SheetDescription>
-              </SheetHeader>
-              <div className="mt-4 space-y-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson({ user: rawResponse, roleAssignments })}>
-                  {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                  Copy JSON
-                </Button>
-                <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 rounded-lg p-3 sm:p-4 overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                  {JSON.stringify({ user: rawResponse, roleAssignments }, null, 2)}
-                </pre>
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
+        <DevDebugSheet title="Debug" endpoint="Raw API responses" data={{ user: rawResponse, roleAssignments }} />
       </div>
     </Layout>
   );

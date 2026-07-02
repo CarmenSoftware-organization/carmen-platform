@@ -2,21 +2,23 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import applicationService from '../services/applicationService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, Search, Code, MoreHorizontal, Copy, Check, Filter, X, AppWindow, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import type { Application, PaginateParams } from '../types';
 import { DEVICE_OPTIONS } from '../types';
@@ -75,7 +77,6 @@ const ApplicationManagement: React.FC = () => {
     filter: {},
   });
 
-  const [copied, setCopied] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -83,12 +84,6 @@ const ApplicationManagement: React.FC = () => {
   useGlobalShortcuts({
     onSearch: () => searchInputRef.current?.focus(),
   });
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const fetchApplications = useCallback(async (params: PaginateParams) => {
     try {
@@ -226,7 +221,7 @@ const ApplicationManagement: React.FC = () => {
       header: 'App ID',
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="font-mono text-[10px] sm:text-xs text-muted-foreground" title={row.original.id}>
+        <span className="font-mono text-xs text-muted-foreground" title={row.original.id}>
           {row.original.id}
         </span>
       ),
@@ -258,6 +253,7 @@ const ApplicationManagement: React.FC = () => {
     {
       accessorKey: 'is_active',
       header: 'Status',
+      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
           {row.original.is_active ? 'Active' : 'Inactive'}
@@ -296,7 +292,7 @@ const ApplicationManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
-      meta: { headerClassName: 'w-10', cellClassName: 'text-center' },
+      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0' },
       enableSorting: false,
       cell: ({ row }) => (
         <DropdownMenu>
@@ -327,57 +323,43 @@ const ApplicationManagement: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Application Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage applications and their API access</p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || applications.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Can permission="application.create">
-              <Button onClick={() => navigate('/applications/new')}>
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Add Application</span>
-                <span className="sm:hidden">Add</span>
+        <PageHeader
+          title="Application Management"
+          subtitle="Manage applications and their API access"
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || applications.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
               </Button>
-            </Can>
-          </div>
-        </div>
+              <Can permission="application.create">
+                <Button onClick={() => navigate('/applications/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Add Application</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </Can>
+            </>
+          }
+        />
 
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search applications..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search applications"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => handleSearchChange('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                ref={searchInputRef}
+                value={searchTerm}
+                onValueChange={handleSearchChange}
+                placeholder="Search applications..."
+                className="flex-1 sm:max-w-sm"
+              />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
                     {activeFilterCount > 0 && (
-                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
                       </Badge>
                     )}
@@ -504,40 +486,7 @@ const ApplicationManagement: React.FC = () => {
         onConfirm={handleConfirmDelete}
       />
 
-      {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">GET /api-system/applications</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint="GET /api-system/applications" data={rawResponse} />
     </Layout>
   );
 };

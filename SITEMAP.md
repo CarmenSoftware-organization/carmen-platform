@@ -12,6 +12,7 @@ All routes in the Carmen Platform SPA. Source: `src/App.tsx`.
 | `/clusters` | `ClusterManagement` | `platform_admin`, `support_manager`, `support_staff` | Cluster list (DataTable + filters + CSV export) |
 | `/clusters/new` | `ClusterEdit` | `platform_admin`, `support_manager`, `support_staff` | Create cluster |
 | `/clusters/:id/edit` | `ClusterEdit` | `platform_admin`, `support_manager`, `support_staff` | View/edit cluster + BUs + users |
+| `/tenant-migrations` | `TenantMigrationManagement` | `cluster.read` | Tenant migration deploy operations |
 | `/business-units` | `BusinessUnitManagement` | Authenticated | Business unit list |
 | `/business-units/new` | `BusinessUnitEdit` | Authenticated | Create BU (collapsible sections) |
 | `/business-units/:id/edit` | `BusinessUnitEdit` | Authenticated | View/edit BU |
@@ -37,8 +38,9 @@ Defined in `src/components/Layout.tsx`; items are filtered through `hasRole()` f
 2. Clusters — `/clusters` — `platform_admin`, `support_manager`, `support_staff`
 3. Business Units — `/business-units` — all authenticated users
 4. Users — `/users` — all authenticated users
-5. Report Templates — `/report-templates` — `platform_admin`, `support_manager`, `support_staff`
-6. Print Mapping — `/print-template-mapping` — `platform_admin`, `support_manager`, `support_staff`
+5. Tenant Migrations — `/tenant-migrations` — `cluster.read` permission
+6. Report Templates — `/report-templates` — `platform_admin`, `support_manager`, `support_staff`
+7. Print Mapping — `/print-template-mapping` — `platform_admin`, `support_manager`, `support_staff`
 
 The user profile + logout menu lives at the bottom of the sidebar (no route — `/profile` is reached from the avatar menu).
 

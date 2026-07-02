@@ -2,22 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import applicationService from '../services/applicationService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ChipInput } from '../components/ui/chip-input';
 import Can from '../components/Can';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import { groupApiNames, actionOf } from '../utils/apiCatalog';
 import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
@@ -52,7 +54,6 @@ const ApplicationEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [catalogGroups, setCatalogGroups] = useState<ApiCatalogGroup[]>([]);
   const [catalogFailed, setCatalogFailed] = useState(false);
@@ -82,11 +83,6 @@ const ApplicationEdit: React.FC = () => {
     setError('');
   };
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   useEffect(() => {
     applicationService.getApiCatalog()
@@ -259,24 +255,14 @@ const ApplicationEdit: React.FC = () => {
     );
   }
 
-  const readOnlyBox = 'flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center';
-
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/applications')} aria-label="Back to applications">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'Add Application' : editing ? 'Edit Application' : 'Application Details'}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new application' : editing ? 'Update application information' : 'View application information'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/applications"
+          title={isNew ? 'Add Application' : editing ? 'Edit Application' : 'Application Details'}
+          subtitle={isNew ? 'Create a new application' : editing ? 'Update application information' : 'View application information'}
+          actions={!isNew && !editing && (
             <Can permission="application.update">
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -284,7 +270,7 @@ const ApplicationEdit: React.FC = () => {
               </Button>
             </Can>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -319,7 +305,7 @@ const ApplicationEdit: React.FC = () => {
                     {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
                   </>
                 ) : (
-                  <div className={readOnlyBox}>{formData.name || '-'}</div>
+                  <ReadOnlyField value={formData.name} />
                 )}
               </div>
 
@@ -327,9 +313,10 @@ const ApplicationEdit: React.FC = () => {
               {!isNew && (
                 <div className="space-y-2">
                   <Label htmlFor="app_id">App ID</Label>
-                  <div className={`${readOnlyBox} font-mono text-xs text-muted-foreground`}>
-                    <span className="truncate">{id}</span>
-                  </div>
+                  <ReadOnlyField
+                    className="font-mono text-xs text-muted-foreground"
+                    value={<span className="truncate">{id}</span>}
+                  />
                 </div>
               )}
 
@@ -345,7 +332,7 @@ const ApplicationEdit: React.FC = () => {
                     placeholder="Description"
                   />
                 ) : (
-                  <div className={readOnlyBox}>{formData.description || '-'}</div>
+                  <ReadOnlyField value={formData.description} />
                 )}
               </div>
 
@@ -519,7 +506,7 @@ const ApplicationEdit: React.FC = () => {
                                         >
                                           {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
                                           <span className="truncate">{g.module}</span>
-                                          <Badge variant={selectedCount > 0 ? 'default' : 'secondary'} className="text-[10px]">
+                                          <Badge variant={selectedCount > 0 ? 'default' : 'secondary'} className="text-xs">
                                             {selectedCount}/{g.api_names.length}
                                           </Badge>
                                         </button>
@@ -567,13 +554,13 @@ const ApplicationEdit: React.FC = () => {
                     )
                   ) : (
                     formData.api_names.length === 0 ? (
-                      <div className={`${readOnlyBox} text-muted-foreground`}>-</div>
+                      <ReadOnlyField className="text-muted-foreground" />
                     ) : (
                       <div className="space-y-3">
                         {groupApiNames(formData.api_names).map((g) => (
                           <div key={g.module} className="space-y-1.5">
                             <p className="text-xs font-medium text-muted-foreground">
-                              {g.module} <span className="text-muted-foreground/60">({g.api_names.length})</span>
+                              {g.module} <span className="text-muted-foreground">({g.api_names.length})</span>
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                               {g.api_names.map((api) => (
@@ -609,40 +596,7 @@ const ApplicationEdit: React.FC = () => {
         </Card>
       </div>
 
-      {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !isNew && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">{`GET /api-system/applications/${id}`}</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint={`GET /api-system/applications/${id}`} data={isNew ? null : rawResponse} />
     </Layout>
   );
 };

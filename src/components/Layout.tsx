@@ -115,7 +115,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background bg-mesh">
+    <div className="min-h-dvh bg-background">
       {/* Sidebar */}
       <Sidebar
         isCollapsed={isCollapsed}
@@ -129,11 +129,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main Content Area */}
       <div className={cn(
-        'min-h-screen sidebar-transition',
+        'min-h-dvh sidebar-transition',
         isCollapsed ? 'md:ml-16' : 'md:ml-60'
       )}>
         {/* Mobile Header */}
-        <header className="sticky top-0 z-40 glass border-b border-white/10 md:hidden">
+        <header className="sticky top-0 z-40 bg-background border-b border-border md:hidden">
           <div className="px-4">
             <div className="flex h-14 items-center gap-3">
               <Button
@@ -145,10 +145,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Menu className="h-5 w-5" />
               </Button>
               <Link to="/dashboard" className="flex items-center gap-3 group">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
+                <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-shadow">
                   <span className="text-white font-bold text-base">C</span>
                 </div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent hidden sm:block">
+                <h1 className="text-lg font-bold text-foreground hidden sm:block">
                   Carmen Platform
                 </h1>
               </Link>
@@ -157,7 +157,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Main Content */}
-        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
           {children}
         </main>
       </div>

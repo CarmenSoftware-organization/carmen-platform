@@ -86,7 +86,7 @@ const entityService = {
 };
 ```
 
-Current services: `clusterService`, `businessUnitService`, `userService`, `reportTemplateService`, `printTemplateMappingService`.
+Current services: `clusterService`, `businessUnitService`, `userService`, `reportTemplateService`, `printTemplateMappingService`, `tenantMigrationService`.
 
 `printTemplateMappingService` is filter-based rather than paginated, and adds two non-CRUD endpoints: `listDocumentTypes()` (catalog of document codes) and `resolve(documentType, buCode?)` (effective mapping for a given document + BU).
 

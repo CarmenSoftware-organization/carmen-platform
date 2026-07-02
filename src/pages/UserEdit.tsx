@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
+import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
 import businessUnitService from "../services/businessUnitService";
 import Can from "../components/Can";
@@ -12,8 +13,8 @@ import { Badge } from "../components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
+import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
+import { Save, Pencil, X, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -21,6 +22,7 @@ import { getErrorDetail } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 
 interface UserBusinessUnit {
   id: string;
@@ -87,7 +89,6 @@ const UserEdit: React.FC = () => {
   const [error, setError] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [copied, setCopied] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
   const [userClusters, setUserClusters] = useState<UserCluster[]>([]);
   const [showAddBU, setShowAddBU] = useState(false);
@@ -116,11 +117,6 @@ const UserEdit: React.FC = () => {
     onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
   });
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleEditToggle = () => {
     setSavedFormData(formData);
@@ -427,11 +423,9 @@ const UserEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/users")} aria-label="Back to users">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          {!isNew && (
+        <PageHeader
+          backTo="/users"
+          beforeTitle={!isNew && (
             <Avatar className="h-12 w-12">
               <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                 {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
@@ -447,15 +441,9 @@ const UserEdit: React.FC = () => {
               )}
             </Avatar>
           )}
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? "Add User" : editing ? "Edit User" : "User Details"}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? "Create a new user" : editing ? "Update user information" : "View user information"}
-            </p>
-          </div>
-          {!isNew && !editing && (
+          title={isNew ? "Add User" : editing ? "Edit User" : "User Details"}
+          subtitle={isNew ? "Create a new user" : editing ? "Update user information" : "View user information"}
+          actions={!isNew && !editing && (
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
                 <KeyRound className="mr-2 h-4 w-4" />
@@ -469,7 +457,7 @@ const UserEdit: React.FC = () => {
               </Can>
             </div>
           )}
-        </div>
+        />
 
         {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
@@ -509,9 +497,7 @@ const UserEdit: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.username || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.username} />
                   )}
                 </div>
 
@@ -536,9 +522,7 @@ const UserEdit: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.email || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.email} />
                   )}
                 </div>
 
@@ -554,9 +538,7 @@ const UserEdit: React.FC = () => {
                       placeholder="Alias name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.alias_name || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.alias_name} />
                   )}
                 </div>
 
@@ -572,9 +554,7 @@ const UserEdit: React.FC = () => {
                       placeholder="First name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.firstname || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.firstname} />
                   )}
                 </div>
 
@@ -590,9 +570,7 @@ const UserEdit: React.FC = () => {
                       placeholder="Last name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.lastname || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.lastname} />
                   )}
                 </div>
 
@@ -608,9 +586,7 @@ const UserEdit: React.FC = () => {
                       placeholder="Middle name"
                     />
                   ) : (
-                    <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                      {formData.middlename || "-"}
-                    </div>
+                    <ReadOnlyField value={formData.middlename} />
                   )}
                 </div>
 
@@ -668,7 +644,7 @@ const UserEdit: React.FC = () => {
               </CardTitle>
               <CardDescription>
                 <span className="flex items-center gap-2 mt-0.5">
-                  <Badge variant="success" className="text-[10px] px-1.5 py-0">{userClusters.filter(uc => uc.cluster?.is_active).length} Active</Badge>
+                  <Badge variant="success" className="text-xs px-1.5 py-0">{userClusters.filter(uc => uc.cluster?.is_active).length} Active</Badge>
                   <span className="text-muted-foreground text-xs">of {userClusters.length} total</span>
                 </span>
               </CardDescription>
@@ -695,12 +671,12 @@ const UserEdit: React.FC = () => {
                           ) : (
                             <span className="font-medium text-sm">-</span>
                           )}
-                          <Badge variant={uc.cluster?.is_active ? "success" : "secondary"} className="text-[10px]">
+                          <Badge variant={uc.cluster?.is_active ? "success" : "secondary"} className="text-xs">
                             {uc.cluster?.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] capitalize">{uc.role}</Badge>
+                          <Badge variant="outline" className="text-xs capitalize">{uc.role}</Badge>
                         </div>
                       </CardContent>
                     </Card>
@@ -723,7 +699,7 @@ const UserEdit: React.FC = () => {
                   </CardTitle>
                   <CardDescription>
                     <span className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(ub => ub.is_active).length} Active</Badge>
+                      <Badge variant="success" className="text-xs px-1.5 py-0">{businessUnits.filter(ub => ub.is_active).length} Active</Badge>
                       <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
                     </span>
                   </CardDescription>
@@ -759,7 +735,7 @@ const UserEdit: React.FC = () => {
                             <span className="font-medium text-sm">-</span>
                           )}
                           <div className="flex items-center gap-1.5">
-                            <Badge variant={ub.is_active ? "success" : "secondary"} className="text-[10px]">
+                            <Badge variant={ub.is_active ? "success" : "secondary"} className="text-xs">
                               {ub.is_active ? "Active" : "Inactive"}
                             </Badge>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => handleDeleteBU(ub)}>
@@ -782,8 +758,8 @@ const UserEdit: React.FC = () => {
                           ) : null;
                         })()}
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] capitalize">{ub.role}</Badge>
-                          {ub.is_default && <Badge variant="outline" className="text-[10px] text-blue-600 border-blue-300">Default</Badge>}
+                          <Badge variant="outline" className="text-xs capitalize">{ub.role}</Badge>
+                          {ub.is_default && <Badge variant="outline" className="text-xs text-info border-info/40">Default</Badge>}
                         </div>
                       </CardContent>
                     </Card>
@@ -927,42 +903,7 @@ const UserEdit: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/user/{id}
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint={`GET /api-system/user/${id}`} data={rawResponse} />
     </Layout>
   );
 };

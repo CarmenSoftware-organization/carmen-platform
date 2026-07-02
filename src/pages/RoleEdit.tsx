@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import roleService from '../services/roleService';
 import permissionService from '../services/permissionService';
 import { Button } from '../components/ui/button';
@@ -10,8 +11,8 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { Save, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError } from '../utils/errorParser';
@@ -19,6 +20,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import PermissionPicker from '../components/PermissionPicker';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { PermissionCatalogItem } from '../types';
 
 interface RoleFormData {
@@ -27,12 +29,6 @@ interface RoleFormData {
   is_active: boolean;
   permissions: string[];
 }
-
-const ReadOnlyText = ({ value }: { value: string }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
 
 const RoleEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -52,8 +48,6 @@ const RoleEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [copied, setCopied] = useState(false);
-  const [debugTab, setDebugTab] = useState<'role' | 'catalog'>('role');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   // Catalog + original permissions for delta computation
@@ -80,12 +74,6 @@ const RoleEdit: React.FC = () => {
     setEditing(false);
     setError('');
     setFieldErrors({});
-  };
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const fetchRole = useCallback(async () => {
@@ -266,26 +254,17 @@ const RoleEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/platform/roles')} aria-label="Back to roles">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'New Role' : editing ? `Edit ${formData.name || 'Role'}` : (formData.name || 'Role')}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new platform role' : editing ? 'Update role information and permissions' : 'View role information and permissions'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/platform/roles"
+          title={isNew ? 'New Role' : editing ? `Edit ${formData.name || 'Role'}` : (formData.name || 'Role')}
+          subtitle={isNew ? 'Create a new platform role' : editing ? 'Update role information and permissions' : 'View role information and permissions'}
+          actions={!isNew && !editing && (
             <Button variant="outline" size="sm" onClick={handleEditToggle}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </Button>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -326,7 +305,7 @@ const RoleEdit: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <ReadOnlyText value={formData.name} />
+                    <ReadOnlyField value={formData.name} />
                   )}
                 </div>
 
@@ -345,7 +324,7 @@ const RoleEdit: React.FC = () => {
                       className={fieldErrors.description ? 'border-destructive' : ''}
                     />
                   ) : (
-                    <ReadOnlyText value={formData.description} />
+                    <ReadOnlyField value={formData.description} />
                   )}
                 </div>
 
@@ -439,76 +418,13 @@ const RoleEdit: React.FC = () => {
       </div>
 
       {/* Debug Sheet — Development Only */}
-      {import.meta.env.DEV && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Responses
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">Raw JSON from role and permission catalog endpoints</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex border-b mb-3 sm:mb-4 overflow-x-auto">
-                <button
-                  onClick={() => setDebugTab('role')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'role' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Role
-                </button>
-                <button
-                  onClick={() => setDebugTab('catalog')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'catalog' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Catalog
-                </button>
-              </div>
-
-              {debugTab === 'role' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">
-                      {isNew ? 'New role (not yet saved)' : `GET /api-system/platform/roles/${id}`}
-                    </span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-
-              {debugTab === 'catalog' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">GET /api-system/platform/permissions</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(catalog)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {catalog.length > 0 ? JSON.stringify(catalog, null, 2) : 'No catalog loaded'}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet
+        title="Role Debug"
+        tabs={[
+          { key: 'role', label: 'Role', data: isNew ? null : rawResponse, endpoint: isNew ? 'New role (not yet saved)' : `GET /api-system/platform/roles/${id}` },
+          { key: 'catalog', label: 'Catalog', data: catalog.length > 0 ? catalog : null, endpoint: 'GET /api-system/platform/permissions' },
+        ]}
+      />
     </Layout>
   );
 };

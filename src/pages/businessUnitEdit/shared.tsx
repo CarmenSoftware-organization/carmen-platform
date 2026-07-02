@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { ChevronDown } from 'lucide-react';
+import { ReadOnlyField } from '../../components/ReadOnlyField';
 
 export const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
@@ -32,7 +33,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, d
 };
 
 export const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{value || '-'}</div>
+  <ReadOnlyField value={value} />
 );
 
 export const ReadOnlyTextarea: React.FC<{ value: string }> = ({ value }) => (

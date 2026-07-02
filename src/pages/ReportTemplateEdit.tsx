@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import reportTemplateService from '../services/reportTemplateService';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
@@ -8,26 +9,20 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetTrigger,
-} from '../components/ui/sheet';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Skeleton } from '../components/ui/skeleton';
 import { ChipInput } from '../components/ui/chip-input';
 import { XmlEditor } from '../components/XmlEditor';
 import { DialogPreview } from '../components/DialogPreview';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, X, Loader2 } from 'lucide-react';
+import { Save, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 
 interface SourceParamRow {
   filter: string;
@@ -74,12 +69,6 @@ const initialFormData: ReportTemplateFormData = {
   source_params: [],
 };
 
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
-
 const fmtDateTime = (v?: string) => {
   if (!v) return '-';
   const dt = new Date(v);
@@ -102,7 +91,6 @@ const ReportTemplateEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<'dialog' | 'content' | 'preview'>('dialog');
   const [dialogValidation, setDialogValidation] = useState<XmlValidation>({ valid: true });
@@ -167,11 +155,6 @@ const ReportTemplateEdit: React.FC = () => {
     setEditing(true);
   };
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const fetchTemplate = useCallback(async () => {
     if (!id) return;
@@ -324,57 +307,47 @@ const ReportTemplateEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/report-templates')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                {loading ? (
-                  <Skeleton className="h-8 w-48" />
-                ) : isNew ? (
-                  'New Report Template'
-                ) : (
-                  formData.name || 'Report Template'
-                )}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {isNew ? 'Create a new report template' : 'View and edit report template details'}
-              </p>
-              {!isNew && !loading && (
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                    {formData.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                  <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                    {formData.is_standard ? 'Standard' : 'Custom'}
-                  </Badge>
-                  {formData.report_group && (
-                    <Badge variant="outline">{formData.report_group}</Badge>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          {!isNew && !loading && (
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              {editing ? (
-                <Button variant="outline" size="sm" onClick={handleCancelEdit}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
+        <PageHeader
+          backTo="/report-templates"
+          title={
+            loading ? (
+              <Skeleton className="h-8 w-48" />
+            ) : isNew ? (
+              'New Report Template'
+            ) : (
+              formData.name || 'Report Template'
+            )
+          }
+          subtitle={isNew ? 'Create a new report template' : 'View and edit report template details'}
+          actions={!isNew && !loading && (
+            editing ? (
+              <Button variant="outline" size="sm" onClick={handleCancelEdit}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+            ) : (
+              <Can permission="report_template.update">
+                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
                 </Button>
-              ) : (
-                <Can permission="report_template.update">
-                  <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
-                </Can>
-              )}
-            </div>
+              </Can>
+            )
           )}
-        </div>
+        />
+        {!isNew && !loading && (
+          <div className="flex flex-wrap items-center gap-2 -mt-2 sm:-mt-4">
+            <Badge variant={formData.is_active ? 'success' : 'secondary'}>
+              {formData.is_active ? 'Active' : 'Inactive'}
+            </Badge>
+            <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+              {formData.is_standard ? 'Standard' : 'Custom'}
+            </Badge>
+            {formData.report_group && (
+              <Badge variant="outline">{formData.report_group}</Badge>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">
@@ -421,9 +394,7 @@ const ReportTemplateEdit: React.FC = () => {
                             )}
                           </>
                         ) : (
-                          <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                            {formData.name || '-'}
-                          </div>
+                          <ReadOnlyField value={formData.name} />
                         )}
                       </div>
 
@@ -702,7 +673,7 @@ const ReportTemplateEdit: React.FC = () => {
                         </p>
                       </>
                     ) : (
-                      <ReadOnlyText value={formData.source_name} />
+                      <ReadOnlyField value={formData.source_name} />
                     )}
                   </div>
 
@@ -826,7 +797,7 @@ const ReportTemplateEdit: React.FC = () => {
                         placeholder="e.g. pr-summary"
                       />
                     ) : (
-                      <ReadOnlyText value={formData.builder_key} />
+                      <ReadOnlyField value={formData.builder_key} />
                     )}
                   </div>
                 </CardContent>
@@ -845,7 +816,7 @@ const ReportTemplateEdit: React.FC = () => {
                     <TabsList>
                       <TabsTrigger value="dialog">
                         Dialog XML
-                        <Badge variant="outline" className="ml-2 text-[10px]">
+                        <Badge variant="outline" className="ml-2 text-xs">
                           {dialogLines}
                         </Badge>
                         {!dialogValidation.valid && (
@@ -857,7 +828,7 @@ const ReportTemplateEdit: React.FC = () => {
                       </TabsTrigger>
                       <TabsTrigger value="content">
                         Content XML
-                        <Badge variant="outline" className="ml-2 text-[10px]">
+                        <Badge variant="outline" className="ml-2 text-xs">
                           {contentLines}
                         </Badge>
                         {!contentValidation.valid && (
@@ -916,12 +887,12 @@ const ReportTemplateEdit: React.FC = () => {
 
       {/* Sticky action bar */}
       {editing && (
-        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-white/10 bg-background/85 backdrop-blur-xl">
+        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-border bg-background">
           <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               {hasChanges ? (
                 <>
-                  <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
                   <span>Unsaved changes</span>
                 </>
               ) : (
@@ -959,51 +930,7 @@ const ReportTemplateEdit: React.FC = () => {
         </div>
       )}
 
-      {/* Debug Sheet */}
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-20 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6"
-          >
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                  DEV
-                </Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/report-templates/{id}
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? (
-                    <Check className="mr-1.5 h-3 w-3" />
-                  ) : (
-                    <Copy className="mr-1.5 h-3 w-3" />
-                  )}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint={`GET /api-system/report-templates/${id}`} data={rawResponse} fabClassName="bottom-20" />
     </Layout>
   );
 };

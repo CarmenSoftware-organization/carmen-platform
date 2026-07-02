@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
@@ -11,8 +12,8 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Code, Copy, Check, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -24,6 +25,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { TableSkeleton } from '../components/TableSkeleton';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { BusinessUnit, ClusterUser } from '../types';
 
 interface ClusterFormData {
@@ -66,8 +68,6 @@ const ClusterEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
-  const [debugTab, setDebugTab] = useState<'cluster' | 'bu' | 'users'>('cluster');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -111,12 +111,6 @@ const ClusterEdit: React.FC = () => {
     setFormData(savedFormData);
     setEditing(false);
     setError('');
-  };
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -458,19 +452,11 @@ const ClusterEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/clusters')} aria-label="Back to clusters">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {isNew ? 'Add Cluster' : editing ? 'Edit Cluster' : 'Cluster Details'}
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              {isNew ? 'Create a new cluster' : editing ? 'Update cluster information' : 'View cluster information'}
-            </p>
-          </div>
-          {!isNew && !editing && (
+        <PageHeader
+          backTo="/clusters"
+          title={isNew ? 'Add Cluster' : editing ? 'Edit Cluster' : 'Cluster Details'}
+          subtitle={isNew ? 'Create a new cluster' : editing ? 'Update cluster information' : 'View cluster information'}
+          actions={!isNew && !editing && (
             <Can permission="cluster.update" clusterId={id}>
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -478,7 +464,7 @@ const ClusterEdit: React.FC = () => {
               </Button>
             </Can>
           )}
-        </div>
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -516,7 +502,7 @@ const ClusterEdit: React.FC = () => {
                         )}
                       </>
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.code || '-'}</div>
+                      <ReadOnlyField value={formData.code} />
                     )}
                   </div>
 
@@ -541,7 +527,7 @@ const ClusterEdit: React.FC = () => {
                         )}
                       </>
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.alias_name || '-'}</div>
+                      <ReadOnlyField value={formData.alias_name} />
                     )}
                   </div>
 
@@ -558,7 +544,7 @@ const ClusterEdit: React.FC = () => {
                         required
                       />
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">{formData.name || '-'}</div>
+                      <ReadOnlyField value={formData.name} />
                     )}
                   </div>
 
@@ -583,9 +569,7 @@ const ClusterEdit: React.FC = () => {
                         )}
                       </>
                     ) : (
-                      <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-                        {formData.max_license_bu || 'Unlimited'}
-                      </div>
+                      <ReadOnlyField value={formData.max_license_bu || 'Unlimited'} />
                     )}
                   </div>
 
@@ -667,7 +651,7 @@ const ClusterEdit: React.FC = () => {
                         ? 'Loading...'
                         : (
                           <span className="flex items-center gap-2 mt-0.5">
-                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
+                            <Badge variant="success" className="text-xs px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
                             <span className="text-muted-foreground text-xs">
                               of {businessUnits.length} total
                               {formData.max_license_bu && ` (${businessUnits.length} of ${formData.max_license_bu} licensed)`}
@@ -765,7 +749,7 @@ const ClusterEdit: React.FC = () => {
                         ? 'Loading...'
                         : (
                           <span className="flex items-center gap-2 flex-wrap mt-0.5">
-                            <Badge variant="success" className="text-[10px] px-1.5 py-0">{clusterUsers.filter((u) => u.is_active !== false).length} Active</Badge>
+                            <Badge variant="success" className="text-xs px-1.5 py-0">{clusterUsers.filter((u) => u.is_active !== false).length} Active</Badge>
                             <span className="text-muted-foreground text-xs">of {clusterUsers.length} total</span>
                             {(() => {
                               const totalMaxLicense = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);
@@ -1070,92 +1054,15 @@ const ClusterEdit: React.FC = () => {
       />
 
       {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !isNew && !!(rawResponse || rawBuResponse || rawUsersResponse) && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Responses
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">Raw JSON responses from all endpoints</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex border-b mb-3 sm:mb-4 overflow-x-auto">
-                <button
-                  onClick={() => setDebugTab('cluster')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'cluster' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Cluster
-                </button>
-                <button
-                  onClick={() => setDebugTab('bu')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'bu' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Business Units
-                </button>
-                <button
-                  onClick={() => setDebugTab('users')}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${debugTab === 'users' ? 'border-amber-500 text-amber-600' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                >
-                  Users
-                </button>
-              </div>
-
-              {debugTab === 'cluster' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/clusters/${id}`}</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawResponse ? JSON.stringify(rawResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-              {debugTab === 'bu' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">GET /api-system/business-units</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawBuResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawBuResponse ? JSON.stringify(rawBuResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-              {debugTab === 'users' && (
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                    <span className="text-xs font-medium text-muted-foreground truncate">{`GET /api-system/user/clusters/${id}`}</span>
-                    <Button variant="outline" size="sm" className="self-end sm:self-auto" onClick={() => handleCopyJson(rawUsersResponse)}>
-                      {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                    {rawUsersResponse ? JSON.stringify(rawUsersResponse, null, 2) : 'No data'}
-                  </pre>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
+      {!isNew && (
+        <DevDebugSheet
+          title="Cluster Debug"
+          tabs={[
+            { key: 'cluster', label: 'Cluster', data: rawResponse, endpoint: `GET /api-system/clusters/${id}` },
+            { key: 'bu', label: 'Business Units', data: rawBuResponse, endpoint: 'GET /api-system/business-units' },
+            { key: 'users', label: 'Users', data: rawUsersResponse, endpoint: `GET /api-system/user/clusters/${id}` },
+          ]}
+        />
       )}
     </Layout>
   );

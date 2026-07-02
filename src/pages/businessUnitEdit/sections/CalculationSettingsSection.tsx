@@ -52,7 +52,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
         <div className="rounded-md border p-4 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Default Currency</span>
-            <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-[10px]">
+            <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-xs">
               {defaultCurrency.is_active ? 'Active' : 'Inactive'}
             </Badge>
           </div>

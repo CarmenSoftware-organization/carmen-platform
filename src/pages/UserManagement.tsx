@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
+import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
 import { getErrorDetail } from '../utils/errorParser';
 import { useAuth } from '../context/AuthContext';
@@ -22,12 +23,14 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Label } from "../components/ui/label";
-import { Plus, Pencil, Trash2, Search, MoreHorizontal, Code, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Filter, X, Building2, Users, Download, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from 'sonner';
+import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -92,7 +95,6 @@ const UserManagement: React.FC = () => {
   const [showDeleted, setShowDeleted] = useState<boolean>(getStoredJSON<boolean>('filter_users_deleted', false));
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [hardDeleteUser, setHardDeleteUser] = useState<UserRecord | null>(null);
   const [hardDeleteConfirm, setHardDeleteConfirm] = useState('');
@@ -164,12 +166,6 @@ const UserManagement: React.FC = () => {
   useEffect(() => {
     fetchUsers(paginate);
   }, [fetchUsers, paginate]);
-
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -423,7 +419,7 @@ const UserManagement: React.FC = () => {
           <div className="flex items-center gap-2">
             <span>{getNameDisplay(row.original)}</span>
             {row.original.deleted_at && (
-              <Badge variant="destructive" className="text-[10px] px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
+              <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
                 Deleted
               </Badge>
             )}
@@ -448,7 +444,7 @@ const UserManagement: React.FC = () => {
           return (
             <div className="flex items-center gap-1">
               <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-green-600 font-medium">{active}</span>
+              <span className="text-success font-medium">{active}</span>
               <span className="text-muted-foreground">/</span>
               <span className="text-muted-foreground">{total}</span>
             </div>
@@ -560,60 +556,47 @@ const UserManagement: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage users and permissions</p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
-              {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              {syncing ? 'Fetching...' : 'Fetch Keycloak'}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Can permission="user.create">
-              <Button onClick={() => navigate("/users/new")}>
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Add User</span>
-                <span className="sm:hidden">Add</span>
+        <PageHeader
+          title="User Management"
+          subtitle="Manage users and permissions"
+          actions={
+            <>
+              <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
+                {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                {syncing ? 'Fetching...' : 'Fetch Keycloak'}
               </Button>
-            </Can>
-          </div>
-        </div>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              <Can permission="user.create">
+                <Button onClick={() => navigate("/users/new")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Add User</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </Can>
+            </>
+          }
+        />
 
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search users"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => handleSearchChange('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                ref={searchInputRef}
+                value={searchTerm}
+                onValueChange={handleSearchChange}
+                placeholder="Search users..."
+                className="flex-1 sm:max-w-sm"
+              />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
                     {activeFilterCount > 0 && (
-                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]">
+                      <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
                       </Badge>
                     )}
@@ -904,42 +887,7 @@ const UserManagement: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">
-                GET /api-system/user
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint="GET /api-system/user" data={rawResponse} />
     </Layout>
   );
 };

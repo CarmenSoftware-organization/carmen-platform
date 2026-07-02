@@ -1,8 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { FluentProvider, webLightTheme, webDarkTheme } from "@fluentui/react-components";
 import { AuthProvider } from "./context/AuthContext";
-import { useDarkMode } from "./hooks/useDarkMode";
+import { ThemeProvider } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
 import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
@@ -37,20 +36,25 @@ const UserPlatformManagement = lazy(() => import("./pages/UserPlatformManagement
 const UserPlatformEdit = lazy(() => import("./pages/UserPlatformEdit"));
 
 const RouteLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background bg-mesh">
+  <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
   </div>
 );
 
 function App() {
-  const { isDark } = useDarkMode();
-
   return (
-    <FluentProvider theme={isDark ? webDarkTheme : webLightTheme}>
-      <AuthProvider>
-        <Router>
-          <div className="App">
-            <Suspense fallback={<RouteLoader />}>
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="App">
+          <Suspense fallback={<RouteLoader />}>
             <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -313,13 +317,12 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-            </Suspense>
-            <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
-            <KeyboardShortcutsHelp />
-          </div>
-        </Router>
-      </AuthProvider>
-    </FluentProvider>
+          </Suspense>
+          <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
+          <KeyboardShortcutsHelp />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 

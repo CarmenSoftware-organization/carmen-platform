@@ -2,28 +2,29 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback, type ReactElement } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import businessUnitService from '../services/businessUnitService';
 import { getErrorDetail } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
 import { Tooltip } from '../components/ui/tooltip';
-import { Search, X, Download, Code, Copy, Check, Database, RefreshCw, Loader2, Play } from 'lucide-react';
+import { Download, Database, RefreshCw, Loader2, Play } from 'lucide-react';
 import { toast } from 'sonner';
+import { SearchInput } from '../components/SearchInput';
 import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import tenantMigrationService from '../services/tenantMigrationService';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { handleMigrationError } from '../utils/migrationError';
 import { mapWithConcurrency } from '../utils/concurrent';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -88,7 +89,6 @@ const TenantMigrationManagement: React.FC = () => {
   const [rowState, setRowState] = useState<Record<string, RowState>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
   const [checkingAll, setCheckingAll] = useState(false);
   const [applyTarget, setApplyTarget] = useState<BusinessUnit | null>(null);
   const [batch, setBatch] = useState<BatchProgress | null>(null);
@@ -256,12 +256,6 @@ const TenantMigrationManagement: React.FC = () => {
     })();
   }, []);
 
-  const handleCopyJson = (d: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(d, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const summary = useMemo(() => {
     const acc = { up_to_date: 0, pending: 0, unknown: 0, error: 0 };
     for (const bu of bus) acc[rowStatusOf(rowState[bu.id])]++;
@@ -305,6 +299,7 @@ const TenantMigrationManagement: React.FC = () => {
       id: 'status',
       header: 'Status',
       enableSorting: false,
+      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
         const st = rowStatusOf(rs);
@@ -348,7 +343,7 @@ const TenantMigrationManagement: React.FC = () => {
       id: 'actions',
       header: '',
       enableSorting: false,
-      meta: { headerClassName: 'w-40', cellClassName: 'text-right' },
+      meta: { headerClassName: 'w-40', cellClassName: 'text-right p-0' },
       cell: ({ row }) => {
         const bu = row.original;
         const rs = rowState[bu.id];
@@ -379,44 +374,42 @@ const TenantMigrationManagement: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tenant Migrations</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-              Check and apply database schema migrations across all business units
-            </p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {withTooltip(
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={checkAll}
-                disabled={!!disabledReason || anyBusy || bus.length === 0}
-              >
-                {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                {checkingAll ? 'Checking...' : 'Check all'}
-              </Button>,
-              disabledReason,
-            )}
-            {withTooltip(
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setConfirmAll(true)}
-                disabled={!!disabledReason || anyBusy || bus.length === 0}
-              >
-                <Play className="mr-2 h-4 w-4" />
-                Deploy all
-              </Button>,
-              disabledReason,
-            )}
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title="Tenant Migrations"
+          subtitle="Check and apply database schema migrations across all business units"
+          actions={
+            <>
+              {withTooltip(
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={checkAll}
+                  disabled={!!disabledReason || anyBusy || bus.length === 0}
+                >
+                  {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {checkingAll ? 'Checking...' : 'Check all'}
+                </Button>,
+                disabledReason,
+              )}
+              {withTooltip(
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setConfirmAll(true)}
+                  disabled={!!disabledReason || anyBusy || bus.length === 0}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Deploy all
+                </Button>,
+                disabledReason,
+              )}
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </>
+          }
+        />
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <span className="text-muted-foreground">Summary:</span>
@@ -461,27 +454,13 @@ const TenantMigrationManagement: React.FC = () => {
         <Card>
           <CardHeader className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="relative flex-1 sm:max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search business units..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`pl-9 pr-9 ${searchTerm ? 'bg-yellow-400/20 border-yellow-400/50' : ''}`}
-                  aria-label="Search business units"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                ref={searchInputRef}
+                value={searchTerm}
+                onValueChange={setSearchTerm}
+                placeholder="Search business units..."
+                className="flex-1 sm:max-w-sm"
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -540,39 +519,7 @@ const TenantMigrationManagement: React.FC = () => {
         onConfirm={deployAll}
       />
 
-      {import.meta.env.DEV && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-            >
-              <Code className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                API Response
-                <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-              </SheetTitle>
-              <SheetDescription className="text-xs sm:text-sm">GET /api-system/business-units</SheetDescription>
-            </SheetHeader>
-            <div className="mt-3 sm:mt-4">
-              <div className="flex justify-end mb-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="API Response" endpoint="GET /api-system/business-units" data={rawResponse} />
     </Layout>
   );
 };

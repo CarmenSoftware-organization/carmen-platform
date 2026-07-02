@@ -6,8 +6,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { ArrowLeft, Save, Pencil, X, Code, Copy, Check, Loader2 } from 'lucide-react';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { ArrowLeft, Save, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import printTemplateMappingService, {
@@ -20,6 +20,7 @@ import { getErrorDetail } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { ReadOnlyField } from '../components/ReadOnlyField';
 
 interface FormData {
   document_type: string;
@@ -43,12 +44,6 @@ const empty: FormData = {
   is_active: true,
 };
 
-const ReadOnlyText = ({ value }: { value: string }) => (
-  <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 px-3 py-1 text-sm items-center">
-    {value || '-'}
-  </div>
-);
-
 const PrintTemplateMappingEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -63,7 +58,6 @@ const PrintTemplateMappingEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [copied, setCopied] = useState(false);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
   const hasChanges = editing && JSON.stringify(form) !== JSON.stringify(savedFormData);
@@ -213,11 +207,6 @@ const PrintTemplateMappingEdit: React.FC = () => {
     if (editing) void handleSave();
   };
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const matches = (t: ReportTemplate) => {
     if (!form.document_type) return false;
@@ -243,7 +232,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
 
   const buListReadOnly = (csv: string) => {
     const items = csv.split(',').map((s) => s.trim()).filter(Boolean);
-    if (items.length === 0) return <ReadOnlyText value="" />;
+    if (items.length === 0) return <ReadOnlyField />;
     return (
       <div className="flex flex-wrap gap-1.5 rounded-md border border-input bg-muted/50 px-3 py-2">
         {items.map((it) => (
@@ -306,7 +295,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       ))}
                     </select>
                   ) : (
-                    <ReadOnlyText
+                    <ReadOnlyField
                       value={form.document_type ? `${form.document_type} — ${docTypeLabel(form.document_type)}` : ''}
                     />
                   )}
@@ -344,7 +333,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       </p>
                     </>
                   ) : (
-                    <ReadOnlyText value={templateName(form.report_template_id)} />
+                    <ReadOnlyField value={templateName(form.report_template_id)} />
                   )}
                 </div>
 
@@ -360,7 +349,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       placeholder="e.g. Standard PR (A4 Portrait)"
                     />
                   ) : (
-                    <ReadOnlyText value={form.display_label} />
+                    <ReadOnlyField value={form.display_label} />
                   )}
                   {editing && (
                     <p className="text-xs text-muted-foreground">
@@ -385,7 +374,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       }
                     />
                   ) : (
-                    <ReadOnlyText value={String(form.display_order)} />
+                    <ReadOnlyField value={String(form.display_order)} />
                   )}
                 </div>
 
@@ -496,37 +485,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
         </form>
       </div>
 
-      {/* Debug Sheet - Development Only */}
-      {import.meta.env.DEV && !isNew && !!rawResponse && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-              aria-label="Open debug panel"
-            >
-              <Code className="h-4 w-4" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-            <SheetHeader>
-              <SheetTitle>Debug — Raw API Response</SheetTitle>
-              <SheetDescription>Last response from GET /print-template-mapping/:id</SheetDescription>
-            </SheetHeader>
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => handleCopyJson(rawResponse)}>
-                  {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                  {copied ? 'Copied' : 'Copy JSON'}
-                </Button>
-              </div>
-              <pre className="text-[10px] sm:text-xs bg-gray-900 text-gray-100 rounded-lg p-3 sm:p-4 overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            </div>
-          </SheetContent>
-        </Sheet>
-      )}
+      <DevDebugSheet title="Debug — Raw API Response" endpoint="Last response from GET /print-template-mapping/:id" data={isNew ? null : rawResponse} />
     </Layout>
   );
 };

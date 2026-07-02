@@ -46,7 +46,7 @@ const PermissionPicker: React.FC<PermissionPickerProps> = ({ catalog, value, onC
             <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-medium select-none">
               <span className="flex items-center gap-2">
                 {resource}
-                {onCount > 0 && <Badge variant="secondary" className="text-[10px]">{onCount}/{keys.length}</Badge>}
+                {onCount > 0 && <Badge variant="secondary" className="text-xs">{onCount}/{keys.length}</Badge>}
               </span>
               {!disabled && (
                 <button

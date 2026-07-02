@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { useAuth } from '../context/AuthContext';
+import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
 import applicationService from '../services/applicationService';
 import newsService from '../services/newsService';
-import reportTemplateService from '../services/reportTemplateService';
 import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import {
   BarChart,
   Bar,
@@ -34,9 +32,6 @@ import {
   FileText,
   Eye,
   Plus,
-  Code,
-  Copy,
-  Check,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -46,7 +41,6 @@ interface DashboardCard {
   icon: LucideIcon;
   path: string;
   newPath: string;
-  gradient: string;
   iconColor: string;
   iconBg: string;
   key: string;
@@ -60,11 +54,14 @@ interface Counts {
   deleted: number | null;
 }
 
-const COLORS = ['#22c55e', '#eab308', '#ef4444'];
+const CHART = {
+  active: 'hsl(var(--success))',
+  inactive: 'hsl(var(--warning))',
+  deleted: 'hsl(var(--destructive))',
+};
+const COLORS = [CHART.active, CHART.inactive, CHART.deleted];
 
 const Dashboard: React.FC = () => {
-  const { loginResponse } = useAuth();
-  const [copied, setCopied] = useState(false);
   const [counts, setCounts] = useState<Record<string, Counts>>({
     clusters: { active: null, total: null, deleted: null },
     'business-units': { active: null, total: null, deleted: null },
@@ -118,12 +115,6 @@ const Dashboard: React.FC = () => {
     fetchCounts('news-total', newsService, false);
   }, []);
 
-  const handleCopyJson = (data: unknown) => {
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const cards: DashboardCard[] = [
     {
       title: 'Clusters',
@@ -131,9 +122,8 @@ const Dashboard: React.FC = () => {
       icon: Network,
       path: '/clusters',
       newPath: '/clusters/new',
-      gradient: 'from-blue-500/20 to-cyan-500/20',
-      iconColor: 'text-blue-500',
-      iconBg: 'bg-blue-500/10 border border-blue-500/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'clusters',
       viewLabel: 'View Clusters',
       addLabel: 'Add Cluster',
@@ -144,9 +134,8 @@ const Dashboard: React.FC = () => {
       icon: Building2,
       path: '/business-units',
       newPath: '/business-units/new',
-      gradient: 'from-purple-500/20 to-pink-500/20',
-      iconColor: 'text-purple-500',
-      iconBg: 'bg-purple-500/10 border border-purple-500/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'business-units',
       viewLabel: 'View Units',
       addLabel: 'Add Unit',
@@ -157,9 +146,8 @@ const Dashboard: React.FC = () => {
       icon: Users,
       path: '/users',
       newPath: '/users/new',
-      gradient: 'from-emerald-500/20 to-teal-500/20',
-      iconColor: 'text-emerald-500',
-      iconBg: 'bg-emerald-500/10 border border-emerald-500/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'users',
       viewLabel: 'View Users',
       addLabel: 'Add User',
@@ -170,9 +158,8 @@ const Dashboard: React.FC = () => {
       icon: AppWindow,
       path: '/applications',
       newPath: '/applications/new',
-      gradient: 'from-orange-500/20 to-amber-500/20',
-      iconColor: 'text-orange-500',
-      iconBg: 'bg-orange-500/10 border border-orange-500/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'applications',
       viewLabel: 'View Apps',
       addLabel: 'Add App',
@@ -183,9 +170,8 @@ const Dashboard: React.FC = () => {
       icon: Newspaper,
       path: '/news',
       newPath: '/news/new',
-      gradient: 'from-cyan-500/20 to-sky-500/20',
-      iconColor: 'text-cyan-500',
-      iconBg: 'bg-cyan-500/10 border border-cyan-500/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'news',
       viewLabel: 'View News',
       addLabel: 'Add News',
@@ -196,9 +182,8 @@ const Dashboard: React.FC = () => {
       icon: FileText,
       path: '/report-templates',
       newPath: '/report-templates/new',
-      gradient: 'from-violet-500/20 to-indigo-500/20',
-      iconColor: 'text-violet-500',
-      iconBg: 'bg-violet-500/10 border border-violet-500/20',
+      iconColor: 'text-primary',
+      iconBg: 'bg-primary/10 border border-primary/20',
       key: 'report-templates',
       viewLabel: 'View Templates',
       addLabel: 'Add Template',
@@ -224,37 +209,32 @@ const Dashboard: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 sm:space-y-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">
-            Welcome to Carmen Platform Management System
-          </p>
-        </div>
+      <div className="space-y-6">
+        <PageHeader title="Dashboard" subtitle="Welcome to Carmen Platform Management System" />
 
-        {/* Entity Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card) => {
+        {/* Entity Cards — asymmetric: first card wider */}
+        <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {cards.map((card, index) => {
             const Icon = card.icon;
             const isNews = card.key === 'news';
             const primaryCount = isNews ? counts['news']?.active : counts[card.key]?.active;
             const totalCount = isNews ? counts['news-total']?.total : counts[card.key]?.total;
             const countLabel = isNews ? 'published' : 'active';
             return (
-              <Card key={card.path} className="glass group transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden relative">
-                <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                <CardHeader className="relative p-3 sm:p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center backdrop-blur-sm shrink-0`}>
-                        <Icon className={`h-4 w-4 ${card.iconColor}`} />
+              <Card key={card.path} className={`group overflow-hidden relative ${index === 0 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
+                <CardHeader className="relative p-4 sm:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-xl ${card.iconBg} flex items-center justify-center shrink-0`}>
+                        <Icon className={`h-[18px] w-[18px] ${card.iconColor}`} />
                       </div>
                       <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                     </div>
                     {totalCount !== null && (
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-bold text-green-500">{primaryCount}</span>
-                        <span className="text-[10px] text-muted-foreground">/ {totalCount}</span>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="success" className="text-sm font-bold px-2 py-0">{primaryCount}</Badge>
+                        <span className="text-xs text-muted-foreground">/ {totalCount}</span>
+                        {countLabel && <span className="text-xs text-muted-foreground hidden sm:inline">({countLabel})</span>}
                       </div>
                     )}
                   </div>
@@ -276,9 +256,9 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Charts Section */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-5 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           {/* Bar Chart */}
-          <Card className="glass">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Entity Counts</CardTitle>
               <CardDescription className="text-xs">Active vs Inactive across all entities</CardDescription>
@@ -298,16 +278,16 @@ const Dashboard: React.FC = () => {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="active" name="Active" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="inactive" name="Inactive" fill="#eab308" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="deleted" name="Deleted" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="active" name="Active" fill={CHART.active} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="inactive" name="Inactive" fill={CHART.inactive} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="deleted" name="Deleted" fill={CHART.deleted} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
 
           {/* Donut Chart */}
-          <Card className="glass">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Status Distribution</CardTitle>
               <CardDescription className="text-xs">Overall status breakdown</CardDescription>
@@ -344,7 +324,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Summary Table */}
-        <Card className="glass">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Summary</CardTitle>
             <CardDescription className="text-xs">Overview of all entities</CardDescription>
@@ -354,12 +334,12 @@ const Dashboard: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground">Entity</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Active</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Inactive</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Deleted</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Total</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground">Active %</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Entity</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Active</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Inactive</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Deleted</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Total</th>
+                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Active %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -367,20 +347,16 @@ const Dashboard: React.FC = () => {
                     const total = row.active + row.inactive + row.deleted;
                     const activePercent = total > 0 ? Math.round((row.active / total) * 100) : 0;
                     return (
-                      <tr key={index} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-2.5 px-3 font-medium">{row.name}</td>
-                        <td className="py-2.5 px-3 text-right text-green-500">{row.active}</td>
-                        <td className="py-2.5 px-3 text-right text-yellow-500">{row.inactive}</td>
-                        <td className="py-2.5 px-3 text-right text-red-500">{row.deleted}</td>
-                        <td className="py-2.5 px-3 text-right">{total}</td>
-                        <td className="py-2.5 px-3 text-right">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                            activePercent >= 80 ? 'bg-green-500/10 text-green-500' :
-                            activePercent >= 50 ? 'bg-yellow-500/10 text-yellow-500' :
-                            'bg-red-500/10 text-red-500'
-                          }`}>
+                      <tr key={index} className="border-b border-border/50 zebra-row">
+                        <td className="py-3 px-3 font-medium">{row.name}</td>
+                        <td className="py-3 px-3 text-right"><Badge variant="success">{row.active}</Badge></td>
+                        <td className="py-3 px-3 text-right"><Badge variant="secondary">{row.inactive}</Badge></td>
+                        <td className="py-3 px-3 text-right"><Badge variant="destructive">{row.deleted}</Badge></td>
+                        <td className="py-3 px-3 text-right">{total}</td>
+                        <td className="py-3 px-3 text-right">
+                          <Badge variant={activePercent >= 80 ? 'success' : activePercent >= 50 ? 'secondary' : 'destructive'}>
                             {activePercent}%
-                          </span>
+                          </Badge>
                         </td>
                       </tr>
                     );
@@ -388,21 +364,17 @@ const Dashboard: React.FC = () => {
                 </tbody>
                 <tfoot>
                   <tr className="border-t border-border font-medium">
-                    <td className="py-2.5 px-3">Total</td>
-                    <td className="py-2.5 px-3 text-right text-green-500">{totalActive}</td>
-                    <td className="py-2.5 px-3 text-right text-yellow-500">{totalInactive}</td>
-                    <td className="py-2.5 px-3 text-right text-red-500">{totalDeleted}</td>
-                    <td className="py-2.5 px-3 text-right">{totalActive + totalInactive + totalDeleted}</td>
-                    <td className="py-2.5 px-3 text-right">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        (totalActive + totalInactive + totalDeleted) > 0 && (totalActive / (totalActive + totalInactive + totalDeleted)) >= 0.8
-                          ? 'bg-green-500/10 text-green-500'
-                          : 'bg-yellow-500/10 text-yellow-500'
-                      }`}>
+                    <td className="py-3 px-3">Total</td>
+                    <td className="py-3 px-3 text-right"><Badge variant="success">{totalActive}</Badge></td>
+                    <td className="py-3 px-3 text-right"><Badge variant="secondary">{totalInactive}</Badge></td>
+                    <td className="py-3 px-3 text-right"><Badge variant="destructive">{totalDeleted}</Badge></td>
+                    <td className="py-3 px-3 text-right">{totalActive + totalInactive + totalDeleted}</td>
+                    <td className="py-3 px-3 text-right">
+                      <Badge variant={(totalActive + totalInactive + totalDeleted) > 0 && (totalActive / (totalActive + totalInactive + totalDeleted)) >= 0.8 ? 'success' : 'secondary'}>
                         {(totalActive + totalInactive + totalDeleted) > 0
                           ? Math.round((totalActive / (totalActive + totalInactive + totalDeleted)) * 100)
                           : 0}%
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 </tfoot>
@@ -411,42 +383,7 @@ const Dashboard: React.FC = () => {
           </div>
         </Card>
 
-        {/* Debug Sheet - Development Only */}
-        {import.meta.env.DEV && loginResponse && (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                size="icon"
-                className="fixed right-4 bottom-4 z-50 h-10 w-10 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/30"
-              >
-                <Code className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl overflow-y-auto p-4 sm:p-6">
-              <SheetHeader>
-                <SheetTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Code className="h-4 w-4 sm:h-5 sm:w-5" />
-                  Login Response
-                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">DEV</Badge>
-                </SheetTitle>
-                <SheetDescription className="text-xs sm:text-sm">
-                  POST /api/auth/login
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-3 sm:mt-4">
-                <div className="flex justify-end mb-2">
-                  <Button variant="outline" size="sm" onClick={() => handleCopyJson(loginResponse)}>
-                    {copied ? <Check className="mr-1.5 h-3 w-3" /> : <Copy className="mr-1.5 h-3 w-3" />}
-                    {copied ? 'Copied!' : 'Copy JSON'}
-                  </Button>
-                </div>
-                <pre className="text-[10px] sm:text-xs bg-gray-900 text-green-400 p-3 sm:p-4 rounded-lg overflow-auto max-h-[60vh] sm:max-h-[calc(100vh-10rem)]">
-                  {JSON.stringify(loginResponse, null, 2)}
-                </pre>
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
+        <DevDebugSheet title="Dashboard Data" endpoint="GET /api-system/*/count" data={counts} />
       </div>
     </Layout>
   );

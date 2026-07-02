@@ -15,11 +15,11 @@ const AccessDenied: React.FC = () => {
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="flex justify-center mb-4">
-              <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
-                <ShieldX className="h-8 w-8 text-red-600" />
+              <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                <ShieldX className="h-8 w-8 text-destructive" />
               </div>
             </div>
-            <CardTitle className="text-2xl text-red-600">Access Denied</CardTitle>
+            <CardTitle className="text-2xl text-destructive">Access Denied</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-muted-foreground">
