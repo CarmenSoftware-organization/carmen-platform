@@ -1,6 +1,6 @@
 # Carmen Platform
 
-**Version 0.1.0** · React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. Backed by a separate NestJS/Prisma API.
+**Version 0.1.1** · React + TypeScript admin dashboard for managing clusters, business units, users, and report templates. Backed by a separate NestJS/Prisma API.
 
 ## What's in this version
 
@@ -14,10 +14,15 @@
   - Chip inputs for business unit allow/deny lists
   - Sticky bottom action bar with unsaved-changes indicator
 - **Print Template Mapping** — maps document types (invoices, receipts, etc.) to report templates with default + per-BU allow/deny rules, grouped by document type
+- **Applications** — manage `x-app-id` records + a grouped, per-module API-name selector
+- **News** — CRUD with image upload; public changelog page with version badge
+- **Broadcasts** — compose notifications with system-wide or per-BU targeting
+- **Tenant Migrations** — batch deploy operations streaming NDJSON progress
+- **Platform RBAC** — platform roles, permission catalog, super-admin management, user ↔ platform-role scope
 - **Profile** — view/edit, change password
-- **Auth** — JWT + role gates (`platform_admin`, `super_admin`, `support_manager`, `support_staff`, `security_officer`)
+- **Auth** — JWT + permission-based route guards (Platform RBAC via `hasPermission()` / `requireSuperAdmin`)
 - **List pages** — server-side DataTable (TanStack Table v8 + virtual rows), debounced search, Sheet filters, CSV export
-- **Layout** — collapsible sidebar (240px / 64px), mobile drawer, global keyboard shortcuts (`?` for help)
+- **Layout** — collapsible sidebar (240px / 64px), mobile drawer, global keyboard shortcuts (`?` for help), class-based light/dark theme
 - **Dev tooling** — per-page debug sheets showing raw API responses
 
 ## Quick start
@@ -32,11 +37,12 @@ bun start                     # dev server at http://localhost:3304
 
 ## Tech stack
 
-- React 18 + TypeScript 5 (strict), Vite 8, react-router-dom 6
-- Tailwind CSS 3.4 + shadcn/ui (Radix UI primitives)
+- React 19 + TypeScript 5 (strict), Vite 8, react-router-dom 6
+- Tailwind CSS 3.4 + shadcn/ui (Radix UI primitives + CVA), Inter font, class-based dark mode
 - TanStack Table v8 + `@tanstack/react-virtual`
 - CodeMirror 6 (XML syntax + folding + search)
 - Axios, Sonner, lucide-react
+- Vitest + React Testing Library (co-located unit/component tests)
 - Bun (primary) / npm, Node 20.x
 
 ## Docs
