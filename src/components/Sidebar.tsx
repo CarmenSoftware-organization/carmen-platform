@@ -3,23 +3,18 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { PanelLeft, PanelLeftClose, LogOut, User, Sun, Moon, Monitor, type LucideIcon } from 'lucide-react';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { Button } from './ui/button';
 import {
-  Button,
-  Menu,
-  MenuTrigger,
-  MenuPopover,
-  MenuList,
-  MenuItem,
-  MenuDivider,
-  Tooltip,
-  Avatar,
-  Divider,
-  Drawer,
-  DrawerBody,
-  DrawerHeader,
-  DrawerHeaderTitle,
-  type DialogOpenChangeData,
-} from '@fluentui/react-components';
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Tooltip } from './ui/tooltip';
+import { Separator } from './ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
 
 export interface NavItem {
   path: string;
@@ -103,20 +98,25 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => (
-    <Menu>
-      <MenuTrigger disableButtonEnhancement>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
-          appearance="transparent"
+          variant="ghost"
           className={cn(
             'w-full justify-start h-auto p-0',
             collapsed && 'justify-center'
           )}
         >
-          <Avatar
-            name={userInfo.displayName}
-            badge={userInfo.role ? { status: 'available' } : undefined}
-            className={cn('shrink-0', collapsed ? 'h-7 w-7' : 'h-8 w-8')}
-          />
+          <span className="relative shrink-0">
+            <Avatar className={cn('shrink-0', collapsed ? 'h-7 w-7' : 'h-8 w-8')}>
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                {userInfo.initials}
+              </AvatarFallback>
+            </Avatar>
+            {userInfo.role && (
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-background" />
+            )}
+          </span>
           {!collapsed && (
             <div className="flex-1 min-w-0 text-left ml-3">
               <div className="text-sm font-medium truncate">{userInfo.displayName}</div>
@@ -126,21 +126,19 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </Button>
-      </MenuTrigger>
-      <MenuPopover>
-        <MenuList className="w-56">
-          <MenuItem onClick={() => navigate('/profile')}>
-            <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </MenuItem>
-          <MenuDivider />
-          <MenuItem onClick={onLogout} className="text-destructive">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </MenuItem>
-        </MenuList>
-      </MenuPopover>
-    </Menu>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56">
+        <DropdownMenuItem onClick={() => navigate('/profile')}>
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onLogout} className="text-destructive">
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   return (
@@ -178,11 +176,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {g.label}
                 </p>
               )}
-              {isCollapsed && gi > 0 && <Divider className="!my-2" />}
+              {isCollapsed && gi > 0 && <Separator className="!my-2" />}
               <div className="space-y-1">
                 {g.items.map((item) =>
                   isCollapsed ? (
-                    <Tooltip key={item.path} content={item.label} relationship="label">
+                    <Tooltip key={item.path} content={item.label} side="right">
                       <div>
                         <NavLink item={item} showLabel={false} />
                       </div>
@@ -200,7 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="shrink-0 border-t border-border p-2 space-y-1">
           {isCollapsed ? (
             <div className="flex justify-center pb-1">
-              <Tooltip content="View changelog" relationship="label">
+              <Tooltip content="View changelog" side="right">
                 <div>v0.1.1</div>
               </Tooltip>
             </div>
@@ -210,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
           {isCollapsed ? (
-            <Tooltip content={userInfo.displayName} relationship="label">
+            <Tooltip content={userInfo.displayName} side="right">
               <div>
                 <UserMenu collapsed />
               </div>
@@ -218,13 +216,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             <UserMenu />
           )}
-          <Divider className="!my-1.5" />
+          <Separator className="!my-1.5" />
           <div className={cn('flex gap-1', isCollapsed ? 'flex-col' : 'flex-row')}>
-            <Menu>
-              <MenuTrigger disableButtonEnhancement>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
-                  appearance="transparent"
-                  size="small"
+                  variant="ghost"
+                  size="sm"
                   className={cn(
                     'flex-1 sidebar-item-transition',
                     isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
@@ -234,30 +232,28 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {React.createElement(themeIcon, { className: 'h-4 w-4' })}
                   {!isCollapsed && <span className="ml-2 text-sm">{themeLabel}</span>}
                 </Button>
-              </MenuTrigger>
-              <MenuPopover>
-                <MenuList>
-                  <MenuItem onClick={() => setTheme('light')}>
-                    <Sun className="mr-2 h-4 w-4" />
-                    <span>Light</span>
-                    {theme === 'light' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
-                  </MenuItem>
-                  <MenuItem onClick={() => setTheme('dark')}>
-                    <Moon className="mr-2 h-4 w-4" />
-                    <span>Dark</span>
-                    {theme === 'dark' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
-                  </MenuItem>
-                  <MenuItem onClick={() => setTheme('system')}>
-                    <Monitor className="mr-2 h-4 w-4" />
-                    <span>System</span>
-                    {theme === 'system' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
-                  </MenuItem>
-                </MenuList>
-              </MenuPopover>
-            </Menu>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setTheme('light')}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  <span>Light</span>
+                  {theme === 'light' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('dark')}>
+                  <Moon className="mr-2 h-4 w-4" />
+                  <span>Dark</span>
+                  {theme === 'dark' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('system')}>
+                  <Monitor className="mr-2 h-4 w-4" />
+                  <span>System</span>
+                  {theme === 'system' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
-              appearance="transparent"
-              size="small"
+              variant="ghost"
+              size="sm"
               onClick={onToggle}
               className={cn(
                 'flex-1 sidebar-item-transition',
@@ -278,22 +274,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </aside>
 
-      {/* Mobile Drawer */}
-      <Drawer open={isMobileOpen} onOpenChange={(_ev: unknown, data: DialogOpenChangeData) => onMobileOpenChange(data.open)}>
-        <DrawerHeader>
-          <DrawerHeaderTitle>
-            <div className="flex items-center gap-3 group">
-              <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
-                <span className="text-white font-bold text-lg">C</span>
+      {/* Mobile Sheet */}
+      <Sheet open={isMobileOpen} onOpenChange={onMobileOpenChange}>
+        <SheetContent side="left" className="w-72 p-0">
+          <SheetHeader className="h-16 flex-row items-center border-b border-border px-4 space-y-0">
+            <SheetTitle asChild>
+              <div className="flex items-center gap-3 group">
+                <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
+                  <span className="text-white font-bold text-lg">C</span>
+                </div>
+                <span className="text-xl font-bold text-foreground">
+                  Carmen Platform
+                </span>
               </div>
-              <span className="text-xl font-bold text-foreground">
-                Carmen Platform
-              </span>
-            </div>
-          </DrawerHeaderTitle>
-        </DrawerHeader>
-        <DrawerBody>
-          <nav className="py-2">
+            </SheetTitle>
+          </SheetHeader>
+          <nav className="py-2 px-2">
             {navGroups.map((g, gi) => (
               <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
                 {g.label && (
@@ -329,8 +325,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
             ))}
           </nav>
-        </DrawerBody>
-      </Drawer>
+        </SheetContent>
+      </Sheet>
     </>
   );
 };
