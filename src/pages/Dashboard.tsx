@@ -7,22 +7,9 @@ import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
 import applicationService from '../services/applicationService';
 import newsService from '../services/newsService';
-import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import reportTemplateService from '../services/reportTemplateService';
+import { Card } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts';
 import {
   Network,
   Building2,
@@ -30,22 +17,17 @@ import {
   AppWindow,
   Newspaper,
   FileText,
-  Eye,
   Plus,
   type LucideIcon,
 } from 'lucide-react';
 
-interface DashboardCard {
-  title: string;
-  description: string;
+interface Domain {
+  key: string;
+  name: string;
+  role: string;
   icon: LucideIcon;
   path: string;
   newPath: string;
-  iconColor: string;
-  iconBg: string;
-  key: string;
-  viewLabel: string;
-  addLabel: string;
 }
 
 interface Counts {
@@ -54,12 +36,41 @@ interface Counts {
   deleted: number | null;
 }
 
-const CHART = {
-  active: 'hsl(var(--success))',
-  inactive: 'hsl(var(--warning))',
-  deleted: 'hsl(var(--destructive))',
+// The domains this console governs — order and copy match the Landing index.
+const domains: Domain[] = [
+  { key: 'clusters', name: 'Clusters', role: 'Tenant groups & license limits', icon: Network, path: '/clusters', newPath: '/clusters/new' },
+  { key: 'business-units', name: 'Business Units', role: 'Properties, formats, connections', icon: Building2, path: '/business-units', newPath: '/business-units/new' },
+  { key: 'users', name: 'Users', role: 'Accounts, roles, BU assignments', icon: Users, path: '/users', newPath: '/users/new' },
+  { key: 'applications', name: 'Applications', role: 'API clients (x-app-id)', icon: AppWindow, path: '/applications', newPath: '/applications/new' },
+  { key: 'news', name: 'News', role: 'Announcements & posts', icon: Newspaper, path: '/news', newPath: '/news/new' },
+  { key: 'report-templates', name: 'Report Templates', role: 'XML report definitions', icon: FileText, path: '/report-templates', newPath: '/report-templates/new' },
+];
+
+// A horizontal stacked status meter — active / inactive / deleted, token-colored.
+const Meter: React.FC<{
+  active: number | null;
+  inactive: number | null;
+  deleted: number;
+  whole: number | null;
+  className?: string;
+}> = ({ active, inactive, deleted, whole, className = '' }) => {
+  const pct = (n: number | null) => (whole && whole > 0 && n != null ? (n / whole) * 100 : 0);
+  const label =
+    whole && whole > 0
+      ? `Active ${active}, inactive ${inactive}, archived ${deleted}`
+      : 'No data yet';
+  return (
+    <div
+      className={`flex overflow-hidden rounded-full bg-muted ${className}`}
+      role="img"
+      aria-label={label}
+    >
+      <div className="bg-success" style={{ width: `${pct(active)}%` }} />
+      <div className="bg-warning" style={{ width: `${pct(inactive)}%` }} />
+      <div className="bg-destructive" style={{ width: `${pct(deleted)}%` }} />
+    </div>
+  );
 };
-const COLORS = [CHART.active, CHART.inactive, CHART.deleted];
 
 const Dashboard: React.FC = () => {
   const [counts, setCounts] = useState<Record<string, Counts>>({
@@ -111,275 +122,96 @@ const Dashboard: React.FC = () => {
     fetchCounts('business-units', businessUnitService, true);
     fetchCounts('users', userService, true);
     fetchCounts('applications', applicationService, false);
+    fetchCounts('report-templates', reportTemplateService, false);
     fetchCounts('news', newsService, false, { status: 'published', deleted_at: null });
     fetchCounts('news-total', newsService, false);
   }, []);
 
-  const cards: DashboardCard[] = [
-    {
-      title: 'Clusters',
-      description: 'Manage and configure clusters',
-      icon: Network,
-      path: '/clusters',
-      newPath: '/clusters/new',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10 border border-primary/20',
-      key: 'clusters',
-      viewLabel: 'View Clusters',
-      addLabel: 'Add Cluster',
-    },
-    {
-      title: 'Business Units',
-      description: 'Manage business units and departments',
-      icon: Building2,
-      path: '/business-units',
-      newPath: '/business-units/new',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10 border border-primary/20',
-      key: 'business-units',
-      viewLabel: 'View Units',
-      addLabel: 'Add Unit',
-    },
-    {
-      title: 'Users',
-      description: 'Manage users and permissions',
-      icon: Users,
-      path: '/users',
-      newPath: '/users/new',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10 border border-primary/20',
-      key: 'users',
-      viewLabel: 'View Users',
-      addLabel: 'Add User',
-    },
-    {
-      title: 'Applications',
-      description: 'Manage application integrations',
-      icon: AppWindow,
-      path: '/applications',
-      newPath: '/applications/new',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10 border border-primary/20',
-      key: 'applications',
-      viewLabel: 'View Apps',
-      addLabel: 'Add App',
-    },
-    {
-      title: 'News',
-      description: 'Manage news and announcements',
-      icon: Newspaper,
-      path: '/news',
-      newPath: '/news/new',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10 border border-primary/20',
-      key: 'news',
-      viewLabel: 'View News',
-      addLabel: 'Add News',
-    },
-    {
-      title: 'Report Templates',
-      description: 'Manage report and print templates',
-      icon: FileText,
-      path: '/report-templates',
-      newPath: '/report-templates/new',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10 border border-primary/20',
-      key: 'report-templates',
-      viewLabel: 'View Templates',
-      addLabel: 'Add Template',
-    },
-  ];
+  // Resolve each domain to { active, inactive, deleted, whole }. News reads its
+  // published count as "active" and its full non-deleted count as the total.
+  const stat = (key: string) => {
+    const active = key === 'news' ? counts['news']?.active ?? null : counts[key]?.active ?? null;
+    const total = key === 'news' ? counts['news-total']?.total ?? null : counts[key]?.total ?? null;
+    const deleted = key === 'news' ? 0 : counts[key]?.deleted ?? 0;
+    const inactive = active != null && total != null ? Math.max(total - active, 0) : null;
+    const whole = active != null && inactive != null ? active + inactive + deleted : null;
+    return { active, total, inactive, deleted, whole };
+  };
 
-  const barChartData = cards.map(card => ({
-    name: card.title,
-    active: counts[card.key]?.active ?? 0,
-    inactive: (counts[card.key]?.total ?? 0) - (counts[card.key]?.active ?? 0),
-    deleted: counts[card.key]?.deleted ?? 0,
-  }));
-
-  const totalActive = Object.values(counts).reduce((sum, c) => sum + (c.active ?? 0), 0);
-  const totalInactive = Object.values(counts).reduce((sum, c) => sum + ((c.total ?? 0) - (c.active ?? 0)), 0);
-  const totalDeleted = Object.values(counts).reduce((sum, c) => sum + (c.deleted ?? 0), 0);
-
-  const donutChartData = [
-    { name: 'Active', value: totalActive },
-    { name: 'Inactive', value: totalInactive },
-    { name: 'Deleted', value: totalDeleted },
-  ].filter(d => d.value > 0);
+  const rows = domains.map(d => ({ ...d, ...stat(d.key) }));
 
   return (
     <Layout>
       <div className="space-y-6">
-        <PageHeader title="Dashboard" subtitle="Welcome to Carmen Platform Management System" />
+        <PageHeader title="Dashboard" subtitle="Live status across everything you run." />
 
-        {/* Entity Cards — asymmetric: first card wider */}
-        <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card, index) => {
-            const Icon = card.icon;
-            const isNews = card.key === 'news';
-            const primaryCount = isNews ? counts['news']?.active : counts[card.key]?.active;
-            const totalCount = isNews ? counts['news-total']?.total : counts[card.key]?.total;
-            const countLabel = isNews ? 'published' : 'active';
-            return (
-              <Card key={card.path} className={`group overflow-hidden relative ${index === 0 ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
-                <CardHeader className="relative p-4 sm:p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-9 h-9 rounded-xl ${card.iconBg} flex items-center justify-center shrink-0`}>
-                        <Icon className={`h-[18px] w-[18px] ${card.iconColor}`} />
-                      </div>
-                      <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+        {/* Domain ledger — one row per domain: live status + quick entry */}
+        <Card className="p-2 sm:p-3">
+          <div className="flex items-center justify-between px-3 pb-1 pt-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              By domain
+            </p>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {domains.length} domains
+            </span>
+          </div>
+          <div className="divide-y divide-border/60">
+            {rows.map(row => {
+              const Icon = row.icon;
+              return (
+                <div
+                  key={row.key}
+                  className="grid grid-cols-1 gap-3 px-3 py-3.5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] sm:items-center sm:gap-5"
+                >
+                  {/* Identity */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <Link
+                        to={row.path}
+                        className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+                      >
+                        {row.name}
+                      </Link>
+                      <p className="truncate text-xs text-muted-foreground">{row.role}</p>
                     </div>
-                    {totalCount !== null && (
-                      <div className="flex items-center gap-1">
-                        <Badge variant="success" className="text-sm font-bold px-2 py-0">{primaryCount}</Badge>
-                        <span className="text-xs text-muted-foreground">/ {totalCount}</span>
-                        {countLabel && <span className="text-xs text-muted-foreground hidden sm:inline">({countLabel})</span>}
-                      </div>
-                    )}
                   </div>
-                  <CardDescription className="text-xs line-clamp-1">{card.description}</CardDescription>
-                  <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/30">
-                    <Link to={card.path} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      <Eye className="h-3.5 w-3.5" />
+
+                  {/* Status */}
+                  <div className="flex items-center gap-3">
+                    <Meter
+                      className="h-2 flex-1"
+                      active={row.active}
+                      inactive={row.inactive}
+                      deleted={row.deleted}
+                      whole={row.whole}
+                    />
+                    <span className="whitespace-nowrap font-mono text-xs tabular-nums text-muted-foreground">
+                      <span className="font-medium text-foreground">{row.active ?? '—'}</span>
+                      {' / '}
+                      {row.total ?? '—'}
+                    </span>
+                  </div>
+
+                  {/* Entry */}
+                  <div className="flex items-center gap-4 sm:justify-end">
+                    <Link
+                      to={row.path}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
                       View
                     </Link>
-                    <Link to={card.newPath} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+                    <Link
+                      to={row.newPath}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                    >
                       <Plus className="h-3.5 w-3.5" />
-                      Add
+                      New
                     </Link>
                   </div>
-                </CardHeader>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid gap-5 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-          {/* Bar Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Entity Counts</CardTitle>
-              <CardDescription className="text-xs">Active vs Inactive across all entities</CardDescription>
-            </CardHeader>
-            <div className="px-6 pb-6">
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={barChartData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="active" name="Active" fill={CHART.active} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="inactive" name="Inactive" fill={CHART.inactive} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="deleted" name="Deleted" fill={CHART.deleted} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          {/* Donut Chart */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Status Distribution</CardTitle>
-              <CardDescription className="text-xs">Overall status breakdown</CardDescription>
-            </CardHeader>
-            <div className="px-6 pb-6">
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={donutChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {donutChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
-
-        {/* Summary Table */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Summary</CardTitle>
-            <CardDescription className="text-xs">Overview of all entities</CardDescription>
-          </CardHeader>
-          <div className="px-6 pb-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2.5 px-3 text-xs font-medium text-muted-foreground">Entity</th>
-                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Active</th>
-                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Inactive</th>
-                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Deleted</th>
-                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Total</th>
-                    <th className="text-right py-2.5 px-3 text-xs font-medium text-muted-foreground">Active %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {barChartData.map((row, index) => {
-                    const total = row.active + row.inactive + row.deleted;
-                    const activePercent = total > 0 ? Math.round((row.active / total) * 100) : 0;
-                    return (
-                      <tr key={index} className="border-b border-border/50 zebra-row">
-                        <td className="py-3 px-3 font-medium">{row.name}</td>
-                        <td className="py-3 px-3 text-right"><Badge variant="success">{row.active}</Badge></td>
-                        <td className="py-3 px-3 text-right"><Badge variant="secondary">{row.inactive}</Badge></td>
-                        <td className="py-3 px-3 text-right"><Badge variant="destructive">{row.deleted}</Badge></td>
-                        <td className="py-3 px-3 text-right">{total}</td>
-                        <td className="py-3 px-3 text-right">
-                          <Badge variant={activePercent >= 80 ? 'success' : activePercent >= 50 ? 'secondary' : 'destructive'}>
-                            {activePercent}%
-                          </Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-border font-medium">
-                    <td className="py-3 px-3">Total</td>
-                    <td className="py-3 px-3 text-right"><Badge variant="success">{totalActive}</Badge></td>
-                    <td className="py-3 px-3 text-right"><Badge variant="secondary">{totalInactive}</Badge></td>
-                    <td className="py-3 px-3 text-right"><Badge variant="destructive">{totalDeleted}</Badge></td>
-                    <td className="py-3 px-3 text-right">{totalActive + totalInactive + totalDeleted}</td>
-                    <td className="py-3 px-3 text-right">
-                      <Badge variant={(totalActive + totalInactive + totalDeleted) > 0 && (totalActive / (totalActive + totalInactive + totalDeleted)) >= 0.8 ? 'success' : 'secondary'}>
-                        {(totalActive + totalInactive + totalDeleted) > 0
-                          ? Math.round((totalActive / (totalActive + totalInactive + totalDeleted)) * 100)
-                          : 0}%
-                      </Badge>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
 
