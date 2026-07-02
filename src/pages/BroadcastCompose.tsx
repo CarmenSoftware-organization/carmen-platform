@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -271,15 +272,12 @@ const BroadcastCompose: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex items-center gap-3">
-          <Megaphone className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Send Broadcast</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Push a notification to all users, specific users, or a business unit.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          backTo="/"
+          beforeTitle={<Megaphone className="h-6 w-6 text-primary" />}
+          title="Send Broadcast"
+          subtitle="Push a notification to all users, specific users, or a business unit."
+        />
 
         <Card>
           <CardHeader>
