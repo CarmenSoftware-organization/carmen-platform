@@ -111,14 +111,30 @@ export interface BusinessUnit {
   hotel_name?: string;
   hotel_tel?: string;
   hotel_email?: string;
-  hotel_address?: string;
-  hotel_zip_code?: string;
+  hotel_address_line1?: string;
+  hotel_address_line2?: string;
+  hotel_sub_district?: string;
+  hotel_district?: string;
+  hotel_city?: string;
+  hotel_province?: string;
+  hotel_postal_code?: string;
+  hotel_country?: string;
+  hotel_latitude?: string;
+  hotel_longitude?: string;
   // Company Information
   company_name?: string;
   company_tel?: string;
   company_email?: string;
-  company_address?: string;
-  company_zip_code?: string;
+  company_address_line1?: string;
+  company_address_line2?: string;
+  company_sub_district?: string;
+  company_district?: string;
+  company_city?: string;
+  company_province?: string;
+  company_postal_code?: string;
+  company_country?: string;
+  company_latitude?: string;
+  company_longitude?: string;
   // Tax Information
   tax_no?: string;
   branch_no?: string;

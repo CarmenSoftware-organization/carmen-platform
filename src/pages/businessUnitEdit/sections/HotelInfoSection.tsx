@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { CollapsibleSection, ReadOnlyText, ReadOnlyTextarea } from '../shared';
+import { CollapsibleSection, ReadOnlyText, AddrField } from '../shared';
 import type { SectionFieldProps } from '../types';
 
 const HotelInfoSection: React.FC<SectionFieldProps> = ({ formData, editing, fieldErrors, onChange, onBlur, onFocus }) => (
@@ -10,14 +10,7 @@ const HotelInfoSection: React.FC<SectionFieldProps> = ({ formData, editing, fiel
       <div className="space-y-2">
         <Label htmlFor="hotel_name">Hotel Name</Label>
         {editing ? (
-          <Input
-            type="text"
-            id="hotel_name"
-            name="hotel_name"
-            value={formData.hotel_name}
-            onChange={onChange}
-            placeholder="Hotel name"
-          />
+          <Input type="text" id="hotel_name" name="hotel_name" value={formData.hotel_name} onChange={onChange} placeholder="Hotel name" />
         ) : (
           <ReadOnlyText value={formData.hotel_name} />
         )}
@@ -38,9 +31,7 @@ const HotelInfoSection: React.FC<SectionFieldProps> = ({ formData, editing, fiel
                 placeholder="Hotel telephone"
                 className={fieldErrors.hotel_tel ? 'border-destructive' : ''}
               />
-              {fieldErrors.hotel_tel && (
-                <p className="text-xs text-destructive">{fieldErrors.hotel_tel}</p>
-              )}
+              {fieldErrors.hotel_tel && <p className="text-xs text-destructive">{fieldErrors.hotel_tel}</p>}
             </>
           ) : (
             <ReadOnlyText value={formData.hotel_tel} />
@@ -61,45 +52,24 @@ const HotelInfoSection: React.FC<SectionFieldProps> = ({ formData, editing, fiel
                 placeholder="Hotel email"
                 className={fieldErrors.hotel_email ? 'border-destructive' : ''}
               />
-              {fieldErrors.hotel_email && (
-                <p className="text-xs text-destructive">{fieldErrors.hotel_email}</p>
-              )}
+              {fieldErrors.hotel_email && <p className="text-xs text-destructive">{fieldErrors.hotel_email}</p>}
             </>
           ) : (
             <ReadOnlyText value={formData.hotel_email} />
           )}
         </div>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="hotel_address">Address</Label>
-        {editing ? (
-          <textarea
-            id="hotel_address"
-            name="hotel_address"
-            value={formData.hotel_address}
-            onChange={onChange}
-            rows={3}
-            placeholder="Hotel address"
-            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        ) : (
-          <ReadOnlyTextarea value={formData.hotel_address} />
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="hotel_zip_code">Zip Code</Label>
-        {editing ? (
-          <Input
-            type="text"
-            id="hotel_zip_code"
-            name="hotel_zip_code"
-            value={formData.hotel_zip_code}
-            onChange={onChange}
-            placeholder="Hotel zip code"
-          />
-        ) : (
-          <ReadOnlyText value={formData.hotel_zip_code} />
-        )}
+      <AddrField id="hotel_address_line1" label="Address Line 1" placeholder="Address line 1" value={formData.hotel_address_line1} editing={editing} onChange={onChange} />
+      <AddrField id="hotel_address_line2" label="Address Line 2" placeholder="Address line 2" value={formData.hotel_address_line2} editing={editing} onChange={onChange} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <AddrField id="hotel_sub_district" label="Sub-district" placeholder="Sub-district" value={formData.hotel_sub_district} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_district" label="District" placeholder="District" value={formData.hotel_district} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_city" label="City" placeholder="City" value={formData.hotel_city} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_province" label="Province" placeholder="Province" value={formData.hotel_province} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_postal_code" label="Postal Code" placeholder="Postal code" value={formData.hotel_postal_code} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_country" label="Country" placeholder="Country" value={formData.hotel_country} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_latitude" label="Latitude" placeholder="Latitude" value={formData.hotel_latitude} editing={editing} onChange={onChange} />
+        <AddrField id="hotel_longitude" label="Longitude" placeholder="Longitude" value={formData.hotel_longitude} editing={editing} onChange={onChange} />
       </div>
     </div>
   </CollapsibleSection>
