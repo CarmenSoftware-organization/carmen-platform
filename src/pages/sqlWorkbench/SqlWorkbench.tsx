@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Database, Loader2, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../../components/Layout';
@@ -61,7 +61,7 @@ export default function SqlWorkbench() {
   useEffect(() => {
     let cancelled = false;
     businessUnitService
-      .getAll({ perpage: 500 })
+      .getAll({ perpage: -1 })
       .then((res) => {
         if (!cancelled) setBusinessUnits(res.data ?? []);
       })
@@ -74,21 +74,31 @@ export default function SqlWorkbench() {
   }, []);
 
   // Load db objects whenever the selected BU changes.
+  const dbReqSeq = useRef(0);
   const loadDbObjects = useCallback(async (code: string) => {
     if (!code) return;
+    const token = ++dbReqSeq.current;
     setDbLoading(true);
     setDbError(false);
     try {
       const data = await sqlQueryService.getDbObjects(code);
-      setDbObjects(data);
+      if (token === dbReqSeq.current) setDbObjects(data);
     } catch {
-      setDbError(true);
+      if (token === dbReqSeq.current) setDbError(true);
     } finally {
-      setDbLoading(false);
+      if (token === dbReqSeq.current) setDbLoading(false);
     }
   }, []);
 
+  // When the target BU changes, clear any loaded object / editor / result state so
+  // nothing from the previous BU can drive Save/Drop against the new one, then load.
   useEffect(() => {
+    setLoadedObject(null);
+    setFormName('');
+    setFormSqlText('');
+    setFormQueryType('view');
+    setExecuteResult(null);
+    setExecuteError(null);
     if (buCode) loadDbObjects(buCode);
     else setDbObjects(null);
   }, [buCode, loadDbObjects]);
