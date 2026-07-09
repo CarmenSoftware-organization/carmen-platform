@@ -42,11 +42,6 @@ function buildSchemaMap(schema?: DbObjectsResponse): Record<string, string[]> {
   return map;
 }
 
-function schemaKey(schema?: DbObjectsResponse): string {
-  if (!schema) return '';
-  return `${schema.tables?.length ?? 0}:${schema.views?.length ?? 0}:${schema.columns?.length ?? 0}`;
-}
-
 export function SqlEditor({
   value,
   onChange,
@@ -59,11 +54,16 @@ export function SqlEditor({
   const viewRef = useRef<EditorView | null>(null);
   const latestValueRef = useRef(value);
   const onRunRef = useRef(onRun);
+  const onChangeRef = useRef(onChange);
   const langCompartment = useRef(new Compartment());
 
   useEffect(() => {
     onRunRef.current = onRun;
   }, [onRun]);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Run the current selection, else the statement under the cursor.
   const runFromEditor = (view: EditorView): boolean => {
@@ -89,7 +89,7 @@ export function SqlEditor({
       if (update.docChanged) {
         const next = update.state.doc.toString();
         latestValueRef.current = next;
-        onChange(next);
+        onChangeRef.current(next);
       }
     });
     const state = EditorState.create({
@@ -164,7 +164,7 @@ export function SqlEditor({
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schemaKey(schema)]);
+  }, [schema]);
 
   const replaceAll = (text: string) => {
     const view = viewRef.current;
@@ -185,7 +185,6 @@ export function SqlEditor({
         tabWidth: 2,
       });
       replaceAll(formatted);
-      onChange(formatted);
     } catch {
       // ignore format errors silently
     }
@@ -198,7 +197,6 @@ export function SqlEditor({
 
   const handleClear = () => {
     replaceAll('');
-    onChange('');
   };
 
   const totalLines = value.split('\n').length;
