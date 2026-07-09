@@ -63,7 +63,7 @@ const sqlQueryService = {
     ref: DbObjectRef,
   ): Promise<{ dropped: boolean; type: string; schema: string; name: string }> => {
     const response = await api.delete(`${base(buCode)}/db-objects?${refQuery(ref)}`);
-    return unwrap(response);
+    return unwrap<{ dropped: boolean; type: string; schema: string; name: string }>(response);
   },
 };
 

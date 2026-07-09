@@ -35,14 +35,23 @@ describe('sqlQueryService', () => {
     expect(result).toEqual(payload);
   });
 
+  it('saveDdl posts the DDL input to the save endpoint', async () => {
+    const input = { name: 'v_x', sql_text: 'SELECT 1', query_type: 'view' as const };
+    const payload = { type: 'view', name: 'v_x', schema: 'public', executed_sql: 'CREATE VIEW ...' };
+    mockApi.post.mockResolvedValue({ data: { data: payload } });
+    const result = await sqlQueryService.saveDdl('T02', input);
+    expect(mockApi.post).toHaveBeenCalledWith('/api/config/T02/sql-query/save', input);
+    expect(result).toEqual(payload);
+  });
+
   it('getDefinition passes type/schema/name as query params', async () => {
-    mockApi.get.mockResolvedValue({
-      data: { data: { type: 'view', schema: 'public', name: 'v', definition: 'x' } },
-    });
-    await sqlQueryService.getDefinition('T02', { type: 'view', schema: 'public', name: 'v' });
+    const payload = { type: 'view', schema: 'public', name: 'v', definition: 'x' };
+    mockApi.get.mockResolvedValue({ data: { data: payload } });
+    const result = await sqlQueryService.getDefinition('T02', { type: 'view', schema: 'public', name: 'v' });
     expect(mockApi.get).toHaveBeenCalledWith(
       '/api/config/T02/sql-query/db-objects/definition?type=view&schema=public&name=v',
     );
+    expect(result).toEqual(payload);
   });
 
   it('dropObject calls DELETE with query params', async () => {
@@ -57,6 +66,6 @@ describe('sqlQueryService', () => {
     expect(mockApi.delete).toHaveBeenCalledWith(
       '/api/config/T02/sql-query/db-objects?type=view&schema=public&name=v',
     );
-    expect(result.dropped).toBe(true);
+    expect(result).toEqual({ dropped: true, type: 'view', schema: 'public', name: 'v' });
   });
 });
