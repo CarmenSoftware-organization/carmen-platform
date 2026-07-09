@@ -389,3 +389,50 @@ export interface Changelog {
   unreleased: ChangelogChanges;
   versions: ChangelogVersion[];
 }
+
+// --- SQL Workbench ---
+export interface DbObject {
+  schema: string;
+  name: string;
+  kind?: string;
+}
+
+export interface DbColumn {
+  table: string;
+  column: string;
+  data_type: string;
+}
+
+export interface DbObjectsResponse {
+  tables: DbObject[];
+  views: DbObject[];
+  procedures: DbObject[];
+  columns: DbColumn[];
+}
+
+export interface DbObjectDefinition {
+  type: string;
+  schema: string;
+  name: string;
+  definition: string;
+}
+
+export interface SqlExecuteResult {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  durationMs: number;
+}
+
+export interface SaveDdlInput {
+  name?: string;
+  sql_text: string;
+  query_type: 'view' | 'stored_procedure' | 'function';
+}
+
+export interface SaveDdlResult {
+  type: string;
+  name: string;
+  schema: string;
+  executed_sql: string;
+}
