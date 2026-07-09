@@ -34,6 +34,7 @@ const PermissionCatalog = lazy(() => import("./pages/PermissionCatalog"));
 const SuperAdminManagement = lazy(() => import("./pages/SuperAdminManagement"));
 const UserPlatformManagement = lazy(() => import("./pages/UserPlatformManagement"));
 const UserPlatformEdit = lazy(() => import("./pages/UserPlatformEdit"));
+const SqlWorkbench = lazy(() => import("./pages/sqlWorkbench/SqlWorkbench"));
 
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -304,6 +305,14 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="user_platform.read">
                   <UserPlatformEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/sql-workbench"
+              element={
+                <PrivateRoute requiredPermission="sql_workbench.read">
+                  <SqlWorkbench />
                 </PrivateRoute>
               }
             />
