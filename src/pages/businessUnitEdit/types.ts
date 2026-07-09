@@ -53,14 +53,30 @@ export interface BusinessUnitFormData {
   hotel_name: string;
   hotel_tel: string;
   hotel_email: string;
-  hotel_address: string;
-  hotel_zip_code: string;
+  hotel_address_line1: string;
+  hotel_address_line2: string;
+  hotel_sub_district: string;
+  hotel_district: string;
+  hotel_city: string;
+  hotel_province: string;
+  hotel_postal_code: string;
+  hotel_country: string;
+  hotel_latitude: string;
+  hotel_longitude: string;
   // Company Information
   company_name: string;
   company_tel: string;
   company_email: string;
-  company_address: string;
-  company_zip_code: string;
+  company_address_line1: string;
+  company_address_line2: string;
+  company_sub_district: string;
+  company_district: string;
+  company_city: string;
+  company_province: string;
+  company_postal_code: string;
+  company_country: string;
+  company_latitude: string;
+  company_longitude: string;
   // Tax Information
   tax_no: string;
   branch_no: string;
@@ -96,13 +112,29 @@ export const initialFormData: BusinessUnitFormData = {
   hotel_name: '',
   hotel_tel: '',
   hotel_email: '',
-  hotel_address: '',
-  hotel_zip_code: '',
+  hotel_address_line1: '',
+  hotel_address_line2: '',
+  hotel_sub_district: '',
+  hotel_district: '',
+  hotel_city: '',
+  hotel_province: '',
+  hotel_postal_code: '',
+  hotel_country: '',
+  hotel_latitude: '',
+  hotel_longitude: '',
   company_name: '',
   company_tel: '',
   company_email: '',
-  company_address: '',
-  company_zip_code: '',
+  company_address_line1: '',
+  company_address_line2: '',
+  company_sub_district: '',
+  company_district: '',
+  company_city: '',
+  company_province: '',
+  company_postal_code: '',
+  company_country: '',
+  company_latitude: '',
+  company_longitude: '',
   tax_no: '',
   branch_no: '',
   date_format: '',
