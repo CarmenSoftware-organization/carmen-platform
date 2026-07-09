@@ -37,6 +37,7 @@ export const DEV_MOCK_EFFECTIVE_PERMISSIONS: EffectivePermissions = {
     'news.read', 'news.create', 'news.update', 'news.delete',
     'broadcast.read', 'broadcast.send',
     'role.read', 'role.create', 'role.update', 'role.delete',
+    'sql_workbench.read', 'sql_workbench.manage',
   ],
   clusters: {},
   // Keep false so dev exercises the normal permission path (the explicit platform list

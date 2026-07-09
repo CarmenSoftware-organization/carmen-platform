@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap } from 'lucide-react';
+import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 
 interface LayoutProps {
@@ -63,6 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
     { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
     { path: '/platform/user-platform', label: 'User Platform', icon: UserCog, permission: 'user_platform.read', group: 'Platform' },
+    { path: '/sql-workbench', label: 'SQL Workbench', icon: Database, permission: 'sql_workbench.read', group: 'Platform' },
   ];
 
   const navItems = allNavItems.filter(
