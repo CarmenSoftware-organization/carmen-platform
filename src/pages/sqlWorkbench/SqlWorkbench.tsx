@@ -73,6 +73,13 @@ export default function SqlWorkbench() {
     };
   }, []);
 
+  // Always holds the latest selected BU so async handlers can detect a BU switch
+  // that happened mid-flight and discard their stale response.
+  const buCodeRef = useRef(buCode);
+  useEffect(() => {
+    buCodeRef.current = buCode;
+  }, [buCode]);
+
   // Load db objects whenever the selected BU changes.
   const dbReqSeq = useRef(0);
   const loadDbObjects = useCallback(async (code: string) => {
@@ -113,6 +120,7 @@ export default function SqlWorkbench() {
       toast.error('Select a business unit first');
       return;
     }
+    const code = buCode;
     try {
       validateSqlSafety(sqlToRun, {
         allowedLeading: ['SELECT', 'WITH', 'SHOW', 'EXPLAIN', 'DESCRIBE', 'DESC'],
@@ -125,9 +133,11 @@ export default function SqlWorkbench() {
     setIsRunning(true);
     resetResult();
     try {
-      const result = await sqlQueryService.executeSql(buCode, sqlToRun);
+      const result = await sqlQueryService.executeSql(code, sqlToRun);
+      if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale result
       setExecuteResult(result);
     } catch (e) {
+      if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale error
       setExecuteError(e instanceof Error ? e.message : 'Failed to execute SQL');
     } finally {
       setIsRunning(false);
@@ -148,10 +158,12 @@ export default function SqlWorkbench() {
     name: string;
   }) => {
     if (!buCode) return;
+    const code = buCode;
     const key = `${obj.type}:${obj.schema}.${obj.name}`;
     setLoadingObjectKey(key);
     try {
-      const def = await sqlQueryService.getDefinition(buCode, obj);
+      const def = await sqlQueryService.getDefinition(code, obj);
+      if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale definition
       setLoadedObject(obj);
       setFormName(def.name);
       setFormSqlText(def.definition);
@@ -161,6 +173,7 @@ export default function SqlWorkbench() {
       resetResult();
       toast.success(`Loaded ${def.type}: ${def.schema}.${def.name}`);
     } catch (e) {
+      if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale error
       toast.error(e instanceof Error ? e.message : 'Failed to load definition');
     } finally {
       setLoadingObjectKey(null);
