@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
+import { ChipInput } from '../components/ui/chip-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { Save, Pencil, X, Loader2 } from 'lucide-react';
@@ -32,6 +33,7 @@ interface NewsFormData {
   status: NewsStatus;
   isGlobal: boolean;
   business_unit_ids: string[];
+  tags: string[];
 }
 
 const initialForm: NewsFormData = {
@@ -42,6 +44,7 @@ const initialForm: NewsFormData = {
   status: 'draft',
   isGlobal: true,
   business_unit_ids: [],
+  tags: [],
 };
 
 const NEWS_STATUSES: NewsStatus[] = ['draft', 'published', 'archived'];
@@ -78,6 +81,7 @@ const NewsEdit: React.FC = () => {
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
   const hasChanges = editing && (
@@ -103,6 +107,10 @@ const NewsEdit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  useEffect(() => {
+    newsService.getTags().then(setTagSuggestions).catch(() => setTagSuggestions([]));
+  }, []);
+
   const fetchNews = async () => {
     try {
       setLoading(true);
@@ -118,6 +126,7 @@ const NewsEdit: React.FC = () => {
         status: (item.status as NewsStatus) || 'draft',
         isGlobal: ids.length === 0,
         business_unit_ids: ids,
+        tags: Array.isArray(item.tags) ? item.tags : [],
       };
       setFormData(loaded);
       setSavedFormData(loaded);
@@ -184,6 +193,7 @@ const NewsEdit: React.FC = () => {
         url: formData.url || undefined,
         status: formData.status,
         business_unit_ids: formData.isGlobal ? [] : formData.business_unit_ids,
+        tags: formData.tags,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       };
       if (isNew) {
@@ -332,6 +342,23 @@ const NewsEdit: React.FC = () => {
                 ) : (
                   <ReadOnlyField value={formData.url} />
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tags">Tags</Label>
+                <ChipInput
+                  id="tags"
+                  value={formData.tags.join(',')}
+                  onChange={(v) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      tags: v ? v.split(',').map((t) => t.trim()).filter(Boolean) : [],
+                    }))
+                  }
+                  suggestions={tagSuggestions}
+                  placeholder="Add a tag..."
+                  disabled={!editing}
+                />
               </div>
 
               <div className="space-y-2">
