@@ -182,8 +182,10 @@ type-a-code confirmation as delete.
 
 ### Constraints & Facts
 - Archive is an **update**: `newsService.update(id, { status: 'archived' })`
-  (multipart; the service appends `status`). Gated on **`news.update`**
-  (`canArchive`), independent from `news.delete` (`canDelete`).
+  — a plain JSON `PUT /api/news/:id` (no image), so the backend applies a
+  partial update (Prisma skips the untouched title/contents/url fields).
+  Gated on **`news.update`** (`canArchive`), independent from `news.delete`
+  (`canDelete`).
 - News is `doc_version` optimistic-locked (rule 17). Send each row's token
   **only when the list row carries one**: `dv = getDocVersion(n)`, include
   `doc_version: dv` only when `dv != null` — a runtime no-op if the list read
