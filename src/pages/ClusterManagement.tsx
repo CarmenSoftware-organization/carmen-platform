@@ -247,12 +247,11 @@ const ClusterManagement: React.FC = () => {
       cell: ({ row }) => {
         const count = row.original.bu_count ?? 0;
         const max = row.original.max_license_bu;
-        if (count === 0 && !max) return <span className="text-muted-foreground">-</span>;
         return (
           <div className="flex items-center justify-center gap-1">
             <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-success font-medium">
-              {max ? `${count} / ${max}` : count}
+              {count} / {max ? max : 'unlimited'}
             </span>
           </div>
         );
@@ -265,13 +264,14 @@ const ClusterManagement: React.FC = () => {
       header: 'Users',
       cell: ({ row }) => {
         const count = row.original.users_count ?? 0;
+        // `total_max_license_users` = backend aggregate (sum of per-BU `max_license_users`).
+        // 0 / null / absent all mean "no cap" → show "unlimited"; a positive value is the cap.
         const max = row.original.total_max_license_users;
-        if (count === 0 && !max) return <span className="text-muted-foreground">-</span>;
         return (
           <div className="flex items-center justify-center gap-1">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             <span className={`font-medium ${max && count >= max ? 'text-destructive' : 'text-success'}`}>
-              {max ? `${count} / ${max}` : count}
+              {count} / {max ? max : 'unlimited'}
             </span>
           </div>
         );
@@ -312,7 +312,7 @@ const ClusterManagement: React.FC = () => {
     },
     ...(showDeleted ? [{
       id: 'deleted_at',
-      header: 'Deleted By',
+      header: 'Deleted',
       cell: ({ row }: { row: { original: Cluster } }) => {
         const d = row.original;
         if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
