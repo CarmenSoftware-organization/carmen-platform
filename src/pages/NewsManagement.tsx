@@ -11,10 +11,16 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2, Archive, Send } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { useAuth } from '../context/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../components/ui/dialog';
+import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
+import { getDocVersion } from '../utils/docVersion';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
@@ -53,8 +59,41 @@ export const buildAdvance = (statuses: string[], tags: string[]): string => {
   return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
 };
 
+type BulkMode = 'delete' | 'archive' | 'publish';
+
+const BULK_ACTIONS: Record<BulkMode, {
+  title: string;        // verb used in "{title} N News Article(s)" and the confirm button
+  past: string;         // toast success verb, e.g. 'Deleted'
+  base: string;         // toast failure verb, e.g. 'delete'
+  busy: string;         // in-flight button label, e.g. 'Deleting...'
+  icon: LucideIcon;
+  destructive: boolean; // destructive styling (delete only)
+  status?: NewsStatus;  // status to set for update-based actions; absent ⇒ delete
+  description: (n: number) => string;
+}> = {
+  delete: {
+    title: 'Delete', past: 'Deleted', base: 'delete', busy: 'Deleting...',
+    icon: Trash2, destructive: true,
+    description: (n) => `This will delete ${n} selected news article(s). This action cannot be undone.`,
+  },
+  archive: {
+    title: 'Archive', past: 'Archived', base: 'archive', busy: 'Archiving...',
+    icon: Archive, destructive: false, status: 'archived',
+    description: (n) => `This will archive ${n} selected news article(s). They can be un-archived later by editing each article.`,
+  },
+  publish: {
+    title: 'Publish', past: 'Published', base: 'publish', busy: 'Publishing...',
+    icon: Send, destructive: false, status: 'published',
+    description: (n) => `This will publish ${n} selected news article(s), making them visible to readers.`,
+  },
+};
+
 const NewsManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission('news.delete');
+  const canUpdate = hasPermission('news.update');
+  const canSelect = canDelete || canUpdate;
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -83,6 +122,13 @@ const NewsManagement: React.FC = () => {
   });
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedNews, setSelectedNews] = useState<News[]>([]);
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState<BulkMode>('delete');
+  const [bulkCode, setBulkCode] = useState('');
+  const [bulkInput, setBulkInput] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,6 +228,64 @@ const NewsManagement: React.FC = () => {
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
       toast.error('Failed to delete news', { description: getErrorDetail(err) });
+    }
+  };
+
+  const clearSelection = useCallback(() => {
+    setSelectedNews([]);
+    setSelectionResetKey((k) => k + 1);
+  }, []);
+
+  // Selection is current-page only: discard it whenever the result set changes
+  // (page, page size, search, sort, or filters). Without this, TanStack keeps
+  // the selection map keyed by row id across data loads, leaving off-page rows
+  // selected and deletable while no visible checkbox is checked.
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
+
+  const genBulkCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
+
+  const openBulk = (mode: BulkMode) => {
+    setBulkMode(mode);
+    setBulkCode(genBulkCode());
+    setBulkInput('');
+    setBulkOpen(true);
+  };
+
+  const summarizeBulk = (results: PromiseSettledResult<unknown>[], pastVerb: string, baseVerb: string) => {
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const fail = results.length - ok;
+    if (fail === 0) toast.success(`${pastVerb} ${ok} news article(s)`);
+    else if (ok === 0) toast.error(`Failed to ${baseVerb} ${fail} news article(s)`);
+    else toast.warning(`${pastVerb} ${ok}, ${fail} failed`);
+  };
+
+  const handleConfirmBulk = async () => {
+    setBulkBusy(true);
+    try {
+      const action = BULK_ACTIONS[bulkMode];
+      const results = await Promise.allSettled(
+        selectedNews.map((n) => {
+          if (action.status) {
+            const dv = getDocVersion(n);
+            return newsService.update(n.id, { status: action.status, ...(dv != null ? { doc_version: dv } : {}) });
+          }
+          return newsService.delete(n.id);
+        }),
+      );
+      summarizeBulk(results, action.past, action.base);
+      setBulkOpen(false);
+      setBulkInput('');
+      clearSelection();
+      setPaginate((prev) => ({ ...prev })); // refetch
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -309,6 +413,9 @@ const NewsManagement: React.FC = () => {
       ),
     },
   ], [navigate, handleDelete]);
+
+  const bulkAction = BULK_ACTIONS[bulkMode];
+  const BulkActionIcon = bulkAction.icon;
 
   return (
     <Layout>
@@ -450,9 +557,38 @@ const NewsManagement: React.FC = () => {
                 ) : undefined}
               />
             ) : !error ? (
-              <div className="relative">
+              <>
+                {canSelect && selectedNews.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <span className="text-sm font-medium">{selectedNews.length} selected</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {canUpdate && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('publish')}>
+                          <Send className="mr-2 h-4 w-4" />
+                          Publish Selected
+                        </Button>
+                      )}
+                      {canUpdate && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('archive')}>
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive Selected
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="destructive" size="sm" onClick={() => openBulk('delete')}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="relative">
                 {loading && newsItems.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={canSelect ? 9 : 8} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
@@ -470,10 +606,16 @@ const NewsManagement: React.FC = () => {
                       onPaginateChange={handlePaginateChange}
                       onSortChange={handleSortChange}
                       defaultSort={{ id: 'published_at', desc: true }}
+                      enableRowSelection={canSelect}
+                      getRowId={(row) => row.id}
+                      onSelectionChange={setSelectedNews}
+                      selectionResetKey={selectionResetKey}
+                      getRowSelectionLabel={(n) => `Select ${n.title || 'news'}`}
                     />
                   </>
                 )}
-              </div>
+                </div>
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -488,6 +630,55 @@ const NewsManagement: React.FC = () => {
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
+
+      <Dialog open={bulkOpen} onOpenChange={(open) => { if (!open && !bulkBusy) { setBulkOpen(false); setBulkInput(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 ${bulkAction.destructive ? 'text-destructive' : ''}`}>
+              <BulkActionIcon className="h-5 w-5" />
+              {bulkAction.title} {selectedNews.length} News Article(s)
+            </DialogTitle>
+            <DialogDescription>
+              {bulkAction.description(selectedNews.length)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className={`max-h-40 overflow-y-auto rounded-md border px-3 py-2 space-y-1 ${bulkAction.destructive ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-muted/50'}`}>
+              {selectedNews.map((n) => (
+                <div key={n.id} className="text-sm font-medium">{n.title || '(untitled)'}</div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkNewsConfirm">
+                Type <span className={`font-mono font-semibold ${bulkAction.destructive ? 'text-destructive' : ''}`}>{bulkCode}</span> to confirm
+              </Label>
+              <Input
+                id="bulkNewsConfirm"
+                value={bulkInput}
+                onChange={(e) => setBulkInput(e.target.value.toUpperCase())}
+                placeholder="Enter the 6-character code"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setBulkOpen(false); setBulkInput(''); }} disabled={bulkBusy}>
+              Cancel
+            </Button>
+            <Button
+              variant={bulkAction.destructive ? 'destructive' : 'default'}
+              size="sm"
+              onClick={handleConfirmBulk}
+              disabled={bulkBusy || bulkInput !== bulkCode}
+            >
+              {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BulkActionIcon className="mr-2 h-4 w-4" />}
+              {bulkBusy ? bulkAction.busy : bulkAction.title}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DevDebugSheet title="API Response" endpoint="GET /api/news" data={rawResponse} />
     </Layout>
