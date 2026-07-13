@@ -276,7 +276,7 @@ const BusinessUnitManagement: React.FC = () => {
     },
     ...(showDeleted ? [{
       id: 'deleted_at',
-      header: 'Deleted By',
+      header: 'Deleted',
       cell: ({ row }: { row: { original: BusinessUnit } }) => {
         const d = row.original;
         if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
