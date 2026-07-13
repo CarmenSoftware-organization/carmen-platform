@@ -171,4 +171,53 @@ Add to the `NewsManagement` test suite (Vitest + RTL; mock `newsService`, real
 
 - Hard/permanent delete or restore for news (no backend endpoint).
 - Cross-page "select all matching filter" selection.
-- Bulk status change / other bulk actions.
+
+---
+
+## Addendum (2026-07-13): Bulk Archive
+
+Extends the same selection infrastructure with a second bulk action — **archive**
+(set `status: 'archived'` on each selected row). Approved with the same
+type-a-code confirmation as delete.
+
+### Constraints & Facts
+- Archive is an **update**: `newsService.update(id, { status: 'archived' })`
+  (multipart; the service appends `status`). Gated on **`news.update`**
+  (`canArchive`), independent from `news.delete` (`canDelete`).
+- News is `doc_version` optimistic-locked (rule 17). Send each row's token
+  **only when the list row carries one**: `dv = getDocVersion(n)`, include
+  `doc_version: dv` only when `dv != null` — a runtime no-op if the list read
+  doesn't expose it (defensive per the doc_version spec). Delete needs no token.
+- No service, type, or `ui/` changes (`update` already exists).
+
+### Design
+- **Selection visibility:** checkboxes show if the user can do *either* action —
+  `canSelect = canDelete || canArchive`; `enableRowSelection={canSelect}`,
+  skeleton count `9` when `canSelect`.
+- **Toolbar:** **Archive Selected** (outline, `Archive` icon) when `canArchive`;
+  **Delete Selected** (destructive) when `canDelete`; **Clear** always. A user
+  with only one permission sees only that action.
+- **Mode-aware dialog:** one dialog parameterized by `bulkMode: 'delete' |
+  'archive'`. Title / description / list styling / confirm label + variant /
+  spinner label switch on mode. Same 6-char code, same disabled-until-match.
+  `bulkDeleting` renamed `bulkBusy` (covers both actions).
+- **Handler:** `handleConfirmBulk` branches on `bulkMode` — archive →
+  `newsService.update(n.id, { status: 'archived', ...token })`, delete →
+  `newsService.delete(n.id)`. `summarizeBulk(results, pastVerb, baseVerb)`
+  parameterized: `Deleted`/`delete`, `Archived`/`archive` →
+  `{pastVerb} N news article(s)` / `Failed to {baseVerb} N news article(s)` /
+  `{pastVerb} X, Y failed`. Both refetch + `clearSelection()`.
+
+### Edge Cases (additional)
+| Case | Behavior |
+|------|----------|
+| `news.update` but not `news.delete` | Checkboxes + Archive Selected only; no Delete |
+| Row has no `doc_version` in list read | Archive omits the token (no 400/409 risk) |
+| Archive partial failure | `allSettled` → `Archived X, Y failed` warning |
+| Active status filter excludes `archived` | Archived rows drop out on refetch (expected) |
+
+### Testing (additional)
+- `news.update`-only user → Archive Selected visible, Delete Selected absent.
+- Archive flow → `newsService.update` called `{ status: 'archived' }` per id,
+  `doc_version` forwarded only for the row that carries it, success toast, selection clears.
+- Archive partial failure → `Archived X, Y failed` warning.
