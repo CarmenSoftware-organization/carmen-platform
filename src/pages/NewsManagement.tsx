@@ -46,8 +46,12 @@ const fmt = (v?: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
-const buildAdvance = (statuses: string[]) =>
-  statuses.length > 0 ? JSON.stringify({ where: { status: { in: statuses } } }) : '';
+export const buildAdvance = (statuses: string[], tags: string[]): string => {
+  const where: Record<string, unknown> = {};
+  if (statuses.length > 0) where.status = { in: statuses };
+  if (tags.length > 0) where.OR = tags.map((t) => ({ tags: { array_contains: [t] } }));
+  return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
+};
 
 const NewsManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -60,9 +64,12 @@ const NewsManagement: React.FC = () => {
   const storedFilters = getStoredJSON<string[]>('filters_news', []);
   const storedPage = Number(localStorage.getItem('page_news')) || 1;
   const storedSort = localStorage.getItem('sort_news') || 'published_at:desc';
+  const storedTags = getStoredJSON<string[]>('tagfilters_news', []);
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
+  const [tagFilter, setTagFilter] = useState<string[]>(storedTags);
+  const [tagOptions, setTagOptions] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
@@ -71,7 +78,7 @@ const NewsManagement: React.FC = () => {
     perpage: Number(localStorage.getItem('perpage_news')) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters),
+    advance: buildAdvance(storedFilters, storedTags),
     filter: {},
   });
 
@@ -105,6 +112,10 @@ const NewsManagement: React.FC = () => {
     fetchNews(paginate);
   }, [fetchNews, paginate]);
 
+  useEffect(() => {
+    newsService.getTags().then(setTagOptions).catch(() => setTagOptions([]));
+  }, []);
+
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     localStorage.setItem('search_news', value);
@@ -128,17 +139,29 @@ const NewsManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_news', JSON.stringify(next));
     localStorage.setItem('page_news', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, tagFilter), filter: {} }));
+  };
+
+  const handleTagFilter = (tag: string) => {
+    const next = tagFilter.includes(tag)
+      ? tagFilter.filter((t) => t !== tag)
+      : [...tagFilter, tag];
+    setTagFilter(next);
+    localStorage.setItem('tagfilters_news', JSON.stringify(next));
+    localStorage.setItem('page_news', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
+    setTagFilter([]);
     localStorage.setItem('filters_news', JSON.stringify([]));
+    localStorage.setItem('tagfilters_news', JSON.stringify([]));
     localStorage.setItem('page_news', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], []), filter: {} }));
   };
 
-  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (tagFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_news', sort);
@@ -212,6 +235,24 @@ const NewsManagement: React.FC = () => {
             <Globe className="h-3 w-3" />
             Global
           </Badge>
+        );
+      },
+    },
+    {
+      id: 'tags',
+      header: 'Tags',
+      enableSorting: false,
+      cell: ({ row }) => {
+        const tags = row.original.tags ?? [];
+        if (tags.length === 0) return <span className="text-muted-foreground">-</span>;
+        const shown = tags.slice(0, 3);
+        return (
+          <div className="flex flex-wrap gap-1">
+            {shown.map((t) => (
+              <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+            ))}
+            {tags.length > 3 && <span className="text-xs text-muted-foreground">+{tags.length - 3}</span>}
+          </div>
         );
       },
     },
@@ -341,6 +382,29 @@ const NewsManagement: React.FC = () => {
                         ))}
                       </div>
                     </div>
+                    {tagOptions.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Tags</span>
+                          {tagFilter.length > 0 && (
+                            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setTagFilter([]); localStorage.setItem('tagfilters_news', JSON.stringify([])); setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, []), filter: {} })); }}>Clear</Button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {tagOptions.map((t) => (
+                            <Button
+                              key={t}
+                              variant={tagFilter.includes(t) ? 'default' : 'outline'}
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleTagFilter(t)}
+                            >
+                              {t}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>
@@ -352,6 +416,14 @@ const NewsManagement: React.FC = () => {
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {cap(s)}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {tagFilter.map((t) => (
+                  <Badge key={t} variant="secondary" className="text-xs gap-1 pr-1">
+                    {t}
+                    <button onClick={() => handleTagFilter(t)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -380,7 +452,7 @@ const NewsManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && newsItems.length === 0 ? (
-                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
