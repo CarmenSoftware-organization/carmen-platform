@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2, Archive } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2, Archive, Send } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -58,12 +59,41 @@ export const buildAdvance = (statuses: string[], tags: string[]): string => {
   return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
 };
 
+type BulkMode = 'delete' | 'archive' | 'publish';
+
+const BULK_ACTIONS: Record<BulkMode, {
+  title: string;        // verb used in "{title} N News Article(s)" and the confirm button
+  past: string;         // toast success verb, e.g. 'Deleted'
+  base: string;         // toast failure verb, e.g. 'delete'
+  busy: string;         // in-flight button label, e.g. 'Deleting...'
+  icon: LucideIcon;
+  destructive: boolean; // destructive styling (delete only)
+  status?: NewsStatus;  // status to set for update-based actions; absent ⇒ delete
+  description: (n: number) => string;
+}> = {
+  delete: {
+    title: 'Delete', past: 'Deleted', base: 'delete', busy: 'Deleting...',
+    icon: Trash2, destructive: true,
+    description: (n) => `This will delete ${n} selected news article(s). This action cannot be undone.`,
+  },
+  archive: {
+    title: 'Archive', past: 'Archived', base: 'archive', busy: 'Archiving...',
+    icon: Archive, destructive: false, status: 'archived',
+    description: (n) => `This will archive ${n} selected news article(s). They can be un-archived later by editing each article.`,
+  },
+  publish: {
+    title: 'Publish', past: 'Published', base: 'publish', busy: 'Publishing...',
+    icon: Send, destructive: false, status: 'published',
+    description: (n) => `This will publish ${n} selected news article(s), making them visible to readers.`,
+  },
+};
+
 const NewsManagement: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('news.delete');
-  const canArchive = hasPermission('news.update');
-  const canSelect = canDelete || canArchive;
+  const canUpdate = hasPermission('news.update');
+  const canSelect = canDelete || canUpdate;
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -95,7 +125,7 @@ const NewsManagement: React.FC = () => {
   const [selectedNews, setSelectedNews] = useState<News[]>([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkMode, setBulkMode] = useState<'delete' | 'archive'>('delete');
+  const [bulkMode, setBulkMode] = useState<BulkMode>('delete');
   const [bulkCode, setBulkCode] = useState('');
   const [bulkInput, setBulkInput] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -221,7 +251,7 @@ const NewsManagement: React.FC = () => {
     return code;
   };
 
-  const openBulk = (mode: 'delete' | 'archive') => {
+  const openBulk = (mode: BulkMode) => {
     setBulkMode(mode);
     setBulkCode(genBulkCode());
     setBulkInput('');
@@ -239,17 +269,17 @@ const NewsManagement: React.FC = () => {
   const handleConfirmBulk = async () => {
     setBulkBusy(true);
     try {
+      const action = BULK_ACTIONS[bulkMode];
       const results = await Promise.allSettled(
         selectedNews.map((n) => {
-          if (bulkMode === 'archive') {
+          if (action.status) {
             const dv = getDocVersion(n);
-            return newsService.update(n.id, { status: 'archived', ...(dv != null ? { doc_version: dv } : {}) });
+            return newsService.update(n.id, { status: action.status, ...(dv != null ? { doc_version: dv } : {}) });
           }
           return newsService.delete(n.id);
         }),
       );
-      if (bulkMode === 'archive') summarizeBulk(results, 'Archived', 'archive');
-      else summarizeBulk(results, 'Deleted', 'delete');
+      summarizeBulk(results, action.past, action.base);
       setBulkOpen(false);
       setBulkInput('');
       clearSelection();
@@ -384,7 +414,8 @@ const NewsManagement: React.FC = () => {
     },
   ], [navigate, handleDelete]);
 
-  const isArchive = bulkMode === 'archive';
+  const bulkAction = BULK_ACTIONS[bulkMode];
+  const BulkActionIcon = bulkAction.icon;
 
   return (
     <Layout>
@@ -531,7 +562,13 @@ const NewsManagement: React.FC = () => {
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                     <span className="text-sm font-medium">{selectedNews.length} selected</span>
                     <div className="ml-auto flex items-center gap-2">
-                      {canArchive && (
+                      {canUpdate && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('publish')}>
+                          <Send className="mr-2 h-4 w-4" />
+                          Publish Selected
+                        </Button>
+                      )}
+                      {canUpdate && (
                         <Button variant="outline" size="sm" onClick={() => openBulk('archive')}>
                           <Archive className="mr-2 h-4 w-4" />
                           Archive Selected
@@ -597,25 +634,23 @@ const NewsManagement: React.FC = () => {
       <Dialog open={bulkOpen} onOpenChange={(open) => { if (!open && !bulkBusy) { setBulkOpen(false); setBulkInput(''); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className={`flex items-center gap-2 ${isArchive ? '' : 'text-destructive'}`}>
-              {isArchive ? <Archive className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
-              {isArchive ? 'Archive' : 'Delete'} {selectedNews.length} News Article(s)
+            <DialogTitle className={`flex items-center gap-2 ${bulkAction.destructive ? 'text-destructive' : ''}`}>
+              <BulkActionIcon className="h-5 w-5" />
+              {bulkAction.title} {selectedNews.length} News Article(s)
             </DialogTitle>
             <DialogDescription>
-              {isArchive
-                ? `This will archive ${selectedNews.length} selected news article(s). They can be un-archived later by editing each article.`
-                : `This will delete ${selectedNews.length} selected news article(s). This action cannot be undone.`}
+              {bulkAction.description(selectedNews.length)}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className={`max-h-40 overflow-y-auto rounded-md border px-3 py-2 space-y-1 ${isArchive ? 'border-border bg-muted/50' : 'border-destructive/30 bg-destructive/5'}`}>
+            <div className={`max-h-40 overflow-y-auto rounded-md border px-3 py-2 space-y-1 ${bulkAction.destructive ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-muted/50'}`}>
               {selectedNews.map((n) => (
                 <div key={n.id} className="text-sm font-medium">{n.title || '(untitled)'}</div>
               ))}
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulkNewsConfirm">
-                Type <span className={`font-mono font-semibold ${isArchive ? '' : 'text-destructive'}`}>{bulkCode}</span> to confirm
+                Type <span className={`font-mono font-semibold ${bulkAction.destructive ? 'text-destructive' : ''}`}>{bulkCode}</span> to confirm
               </Label>
               <Input
                 id="bulkNewsConfirm"
@@ -633,13 +668,13 @@ const NewsManagement: React.FC = () => {
               Cancel
             </Button>
             <Button
-              variant={isArchive ? 'default' : 'destructive'}
+              variant={bulkAction.destructive ? 'destructive' : 'default'}
               size="sm"
               onClick={handleConfirmBulk}
               disabled={bulkBusy || bulkInput !== bulkCode}
             >
-              {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isArchive ? <Archive className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />)}
-              {bulkBusy ? (isArchive ? 'Archiving...' : 'Deleting...') : (isArchive ? 'Archive' : 'Delete')}
+              {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BulkActionIcon className="mr-2 h-4 w-4" />}
+              {bulkBusy ? bulkAction.busy : bulkAction.title}
             </Button>
           </DialogFooter>
         </DialogContent>

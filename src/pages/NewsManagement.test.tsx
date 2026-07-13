@@ -240,4 +240,50 @@ describe('NewsManagement bulk archive', () => {
     await user.click(within(dialog).getByRole('button', { name: /^archive$/i }));
     await waitFor(() => expect(newsService.update).toHaveBeenCalledWith('n3', { status: 'archived', doc_version: 0 }));
   });
+
+  it('shows Publish and Archive but not Delete for a news.update-only user', async () => {
+    vi.mocked(useAuth).mockReturnValue({ hasPermission: (k: string) => k === 'news.update' } as never);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    expect(await screen.findByRole('button', { name: /publish selected/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /archive selected/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete selected/i })).not.toBeInTheDocument();
+  });
+
+  it('publishes every selected row with status published, forwarding doc_version when present', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /publish selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^publish$/i }));
+    await waitFor(() => expect(newsService.update).toHaveBeenCalledTimes(2));
+    expect(newsService.update).toHaveBeenCalledWith('n1', { status: 'published', doc_version: 3 });
+    expect(newsService.update).toHaveBeenCalledWith('n2', { status: 'published' });
+    expect(toast.success).toHaveBeenCalledWith('Published 2 news article(s)');
+    await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  });
+
+  it('warns on partial publish failure', async () => {
+    const user = userEvent.setup();
+    vi.mocked(newsService.update)
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockResolvedValueOnce({} as never);
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /publish selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^publish$/i }));
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledWith('Published 1, 1 failed'));
+  });
 });
