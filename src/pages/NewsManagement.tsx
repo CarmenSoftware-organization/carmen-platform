@@ -11,10 +11,14 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { useAuth } from '../context/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../components/ui/dialog';
+import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
@@ -55,6 +59,8 @@ export const buildAdvance = (statuses: string[], tags: string[]): string => {
 
 const NewsManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canDelete = hasPermission('news.delete');
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -83,6 +89,12 @@ const NewsManagement: React.FC = () => {
   });
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [selectedNews, setSelectedNews] = useState<News[]>([]);
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkCode, setBulkCode] = useState('');
+  const [bulkInput, setBulkInput] = useState('');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -182,6 +194,46 @@ const NewsManagement: React.FC = () => {
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
       toast.error('Failed to delete news', { description: getErrorDetail(err) });
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedNews([]);
+    setSelectionResetKey((k) => k + 1);
+  };
+
+  const genBulkCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
+
+  const openBulkDelete = () => {
+    setBulkCode(genBulkCode());
+    setBulkInput('');
+    setBulkOpen(true);
+  };
+
+  const summarizeBulk = (results: PromiseSettledResult<unknown>[]) => {
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    const fail = results.length - ok;
+    if (fail === 0) toast.success(`Deleted ${ok} news article(s)`);
+    else if (ok === 0) toast.error(`Failed to delete ${fail} news article(s)`);
+    else toast.warning(`Deleted ${ok}, ${fail} failed`);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(selectedNews.map((n) => newsService.delete(n.id)));
+      summarizeBulk(results);
+      setBulkOpen(false);
+      setBulkInput('');
+      clearSelection();
+      setPaginate((prev) => ({ ...prev })); // refetch
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -450,9 +502,24 @@ const NewsManagement: React.FC = () => {
                 ) : undefined}
               />
             ) : !error ? (
-              <div className="relative">
+              <>
+                {canDelete && selectedNews.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <span className="text-sm font-medium">{selectedNews.length} selected</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button variant="destructive" size="sm" onClick={openBulkDelete}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Selected
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="relative">
                 {loading && newsItems.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={canDelete ? 9 : 8} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
@@ -470,10 +537,16 @@ const NewsManagement: React.FC = () => {
                       onPaginateChange={handlePaginateChange}
                       onSortChange={handleSortChange}
                       defaultSort={{ id: 'published_at', desc: true }}
+                      enableRowSelection={canDelete}
+                      getRowId={(row) => row.id}
+                      onSelectionChange={setSelectedNews}
+                      selectionResetKey={selectionResetKey}
+                      getRowSelectionLabel={(n) => `Select ${n.title || 'news'}`}
                     />
                   </>
                 )}
-              </div>
+                </div>
+              </>
             ) : null}
           </CardContent>
         </Card>
@@ -488,6 +561,55 @@ const NewsManagement: React.FC = () => {
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
+
+      <Dialog open={bulkOpen} onOpenChange={(open) => { if (!open && !bulkDeleting) { setBulkOpen(false); setBulkInput(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete {selectedNews.length} News Article(s)
+            </DialogTitle>
+            <DialogDescription>
+              This will delete {selectedNews.length} selected news article(s). This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="max-h-40 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1">
+              {selectedNews.map((n) => (
+                <div key={n.id} className="text-sm font-medium">{n.title || '(untitled)'}</div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkNewsConfirm">
+                Type <span className="font-mono font-semibold text-destructive">{bulkCode}</span> to confirm
+              </Label>
+              <Input
+                id="bulkNewsConfirm"
+                value={bulkInput}
+                onChange={(e) => setBulkInput(e.target.value.toUpperCase())}
+                placeholder="Enter the 6-character code"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setBulkOpen(false); setBulkInput(''); }} disabled={bulkDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmBulkDelete}
+              disabled={bulkDeleting || bulkInput !== bulkCode}
+            >
+              {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {bulkDeleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DevDebugSheet title="API Response" endpoint="GET /api/news" data={rawResponse} />
     </Layout>
