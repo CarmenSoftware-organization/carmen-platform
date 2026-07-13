@@ -70,7 +70,7 @@ const clearSelection = () => {
 
 ### 2. Selection toolbar
 
-Rendered in `CardHeader`, only when `selectedNews.length > 0`:
+Rendered in `CardContent` (prepended above the table), only when `selectedNews.length > 0`:
 
 - `{selectedNews.length} selected` text.
 - Destructive **Delete Selected** button → `openBulkDelete()`.
