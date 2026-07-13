@@ -28,6 +28,12 @@ describe('newsService.getTags', () => {
     const tags = await newsService.getTags();
     expect(tags).toEqual(['x']);
   });
+
+  it('returns [] when the payload is not an array', async () => {
+    mockedApi.get.mockResolvedValue({ data: { data: { not: 'an array' } } });
+    const tags = await newsService.getTags();
+    expect(tags).toEqual([]);
+  });
 });
 
 describe('newsService.create tags encoding', () => {

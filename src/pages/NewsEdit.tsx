@@ -108,8 +108,10 @@ const NewsEdit: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    newsService.getTags().then(setTagSuggestions).catch(() => setTagSuggestions([]));
-  }, []);
+    if (isNew || editing) {
+      newsService.getTags().then(setTagSuggestions).catch(() => setTagSuggestions([]));
+    }
+  }, [isNew, editing]);
 
   const fetchNews = async () => {
     try {
@@ -352,7 +354,9 @@ const NewsEdit: React.FC = () => {
                   onChange={(v) =>
                     setFormData((prev) => ({
                       ...prev,
-                      tags: v ? v.split(',').map((t) => t.trim()).filter(Boolean) : [],
+                      tags: v
+                        ? Array.from(new Set(v.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)))
+                        : [],
                     }))
                   }
                   suggestions={tagSuggestions}
