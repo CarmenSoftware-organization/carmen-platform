@@ -15,6 +15,9 @@ const buildNewsFormData = (data: Partial<News>, image: File): FormData => {
   if (data.business_unit_ids !== undefined) {
     fd.append('business_unit_ids', JSON.stringify(data.business_unit_ids));
   }
+  if (data.tags !== undefined) {
+    fd.append('tags', JSON.stringify(data.tags));
+  }
   if (data.doc_version !== undefined) fd.append('doc_version', String(data.doc_version));
   fd.append('image', image);
   return fd;
@@ -60,6 +63,12 @@ const newsService = {
   getById: async (id: string) => {
     const response = await api.get(`/api/news/${id}`);
     return response.data;
+  },
+
+  getTags: async (): Promise<string[]> => {
+    const response = await api.get('/api/news/tags');
+    const payload = response.data?.data ?? response.data;
+    return Array.isArray(payload) ? payload : [];
   },
 
   create: async (newsData: Partial<News>, image?: File) => {

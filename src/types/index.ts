@@ -351,6 +351,7 @@ export interface News {
   image_url?: string;           // presigned image URL returned by list + detail
   image?: string;               // legacy field name (older payloads); kept as fallback
   business_unit_ids?: string[]; // [] = global (all BUs); non-empty = those BUs
+  tags?: string[];              // free-form tags (lowercased, de-duplicated by server)
   status?: NewsStatus;
   published_at?: string;
   audit?: Audit;                // enriched audit object (from getById)
