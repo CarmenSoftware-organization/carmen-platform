@@ -9,7 +9,7 @@ vi.mock('../components/Layout', () => ({
 }));
 vi.mock('../context/AuthContext', () => ({ useAuth: vi.fn() }));
 vi.mock('../services/newsService', () => ({
-  default: { getAll: vi.fn(), getTags: vi.fn(), delete: vi.fn() },
+  default: { getAll: vi.fn(), getTags: vi.fn(), delete: vi.fn(), update: vi.fn() },
 }));
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -148,5 +148,73 @@ describe('NewsManagement bulk delete', () => {
     // result-set-changed reset effect should discard the stale selection.
     await user.click(screen.getByRole('button', { name: /title/i }));
     await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
+  });
+});
+
+const NEWS_DV = [
+  { id: 'n1', title: 'Alpha', status: 'published', doc_version: 3 },
+  { id: 'n2', title: 'Beta', status: 'draft' },
+];
+
+describe('NewsManagement bulk archive', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', makeLocalStorage());
+    vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({ hasPermission: () => true } as never);
+    vi.mocked(newsService.getAll).mockResolvedValue({
+      data: NEWS_DV,
+      paginate: { total: 2, page: 1, perpage: 10 },
+    } as never);
+    vi.mocked(newsService.getTags).mockResolvedValue([] as never);
+    vi.mocked(newsService.update).mockResolvedValue({} as never);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('shows Archive but not Delete for a news.update-only user', async () => {
+    vi.mocked(useAuth).mockReturnValue({ hasPermission: (k: string) => k === 'news.update' } as never);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    expect(await screen.findByRole('button', { name: /archive selected/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete selected/i })).not.toBeInTheDocument();
+  });
+
+  it('archives every selected row with status archived, forwarding doc_version only when present', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /archive selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^archive$/i }));
+    await waitFor(() => expect(newsService.update).toHaveBeenCalledTimes(2));
+    expect(newsService.update).toHaveBeenCalledWith('n1', { status: 'archived', doc_version: 3 });
+    expect(newsService.update).toHaveBeenCalledWith('n2', { status: 'archived' });
+    expect(toast.success).toHaveBeenCalledWith('Archived 2 news article(s)');
+    await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  });
+
+  it('warns on partial archive failure', async () => {
+    const user = userEvent.setup();
+    vi.mocked(newsService.update)
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockResolvedValueOnce({} as never);
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /archive selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^archive$/i }));
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledWith('Archived 1, 1 failed'));
   });
 });

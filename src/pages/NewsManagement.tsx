@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from '../components/ui/dialog';
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
+import { getDocVersion } from '../utils/docVersion';
 import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
@@ -61,6 +62,8 @@ const NewsManagement: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('news.delete');
+  const canArchive = hasPermission('news.update');
+  const canSelect = canDelete || canArchive;
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -92,9 +95,10 @@ const NewsManagement: React.FC = () => {
   const [selectedNews, setSelectedNews] = useState<News[]>([]);
   const [selectionResetKey, setSelectionResetKey] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState<'delete' | 'archive'>('delete');
   const [bulkCode, setBulkCode] = useState('');
   const [bulkInput, setBulkInput] = useState('');
-  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,31 +221,41 @@ const NewsManagement: React.FC = () => {
     return code;
   };
 
-  const openBulkDelete = () => {
+  const openBulk = (mode: 'delete' | 'archive') => {
+    setBulkMode(mode);
     setBulkCode(genBulkCode());
     setBulkInput('');
     setBulkOpen(true);
   };
 
-  const summarizeBulk = (results: PromiseSettledResult<unknown>[]) => {
+  const summarizeBulk = (results: PromiseSettledResult<unknown>[], pastVerb: string, baseVerb: string) => {
     const ok = results.filter((r) => r.status === 'fulfilled').length;
     const fail = results.length - ok;
-    if (fail === 0) toast.success(`Deleted ${ok} news article(s)`);
-    else if (ok === 0) toast.error(`Failed to delete ${fail} news article(s)`);
-    else toast.warning(`Deleted ${ok}, ${fail} failed`);
+    if (fail === 0) toast.success(`${pastVerb} ${ok} news article(s)`);
+    else if (ok === 0) toast.error(`Failed to ${baseVerb} ${fail} news article(s)`);
+    else toast.warning(`${pastVerb} ${ok}, ${fail} failed`);
   };
 
-  const handleConfirmBulkDelete = async () => {
-    setBulkDeleting(true);
+  const handleConfirmBulk = async () => {
+    setBulkBusy(true);
     try {
-      const results = await Promise.allSettled(selectedNews.map((n) => newsService.delete(n.id)));
-      summarizeBulk(results);
+      const results = await Promise.allSettled(
+        selectedNews.map((n) => {
+          if (bulkMode === 'archive') {
+            const dv = getDocVersion(n);
+            return newsService.update(n.id, { status: 'archived', ...(dv != null ? { doc_version: dv } : {}) });
+          }
+          return newsService.delete(n.id);
+        }),
+      );
+      if (bulkMode === 'archive') summarizeBulk(results, 'Archived', 'archive');
+      else summarizeBulk(results, 'Deleted', 'delete');
       setBulkOpen(false);
       setBulkInput('');
       clearSelection();
       setPaginate((prev) => ({ ...prev })); // refetch
     } finally {
-      setBulkDeleting(false);
+      setBulkBusy(false);
     }
   };
 
@@ -369,6 +383,8 @@ const NewsManagement: React.FC = () => {
       ),
     },
   ], [navigate, handleDelete]);
+
+  const isArchive = bulkMode === 'archive';
 
   return (
     <Layout>
@@ -511,14 +527,22 @@ const NewsManagement: React.FC = () => {
               />
             ) : !error ? (
               <>
-                {canDelete && selectedNews.length > 0 && (
+                {canSelect && selectedNews.length > 0 && (
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                     <span className="text-sm font-medium">{selectedNews.length} selected</span>
                     <div className="ml-auto flex items-center gap-2">
-                      <Button variant="destructive" size="sm" onClick={openBulkDelete}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Selected
-                      </Button>
+                      {canArchive && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('archive')}>
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive Selected
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="destructive" size="sm" onClick={() => openBulk('delete')}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" onClick={clearSelection}>
                         Clear
                       </Button>
@@ -527,7 +551,7 @@ const NewsManagement: React.FC = () => {
                 )}
                 <div className="relative">
                 {loading && newsItems.length === 0 ? (
-                  <TableSkeleton columns={canDelete ? 9 : 8} rows={paginate.perpage || 5} />
+                  <TableSkeleton columns={canSelect ? 9 : 8} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
@@ -545,7 +569,7 @@ const NewsManagement: React.FC = () => {
                       onPaginateChange={handlePaginateChange}
                       onSortChange={handleSortChange}
                       defaultSort={{ id: 'published_at', desc: true }}
-                      enableRowSelection={canDelete}
+                      enableRowSelection={canSelect}
                       getRowId={(row) => row.id}
                       onSelectionChange={setSelectedNews}
                       selectionResetKey={selectionResetKey}
@@ -570,26 +594,28 @@ const NewsManagement: React.FC = () => {
         onConfirm={handleConfirmDelete}
       />
 
-      <Dialog open={bulkOpen} onOpenChange={(open) => { if (!open && !bulkDeleting) { setBulkOpen(false); setBulkInput(''); } }}>
+      <Dialog open={bulkOpen} onOpenChange={(open) => { if (!open && !bulkBusy) { setBulkOpen(false); setBulkInput(''); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              Delete {selectedNews.length} News Article(s)
+            <DialogTitle className={`flex items-center gap-2 ${isArchive ? '' : 'text-destructive'}`}>
+              {isArchive ? <Archive className="h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
+              {isArchive ? 'Archive' : 'Delete'} {selectedNews.length} News Article(s)
             </DialogTitle>
             <DialogDescription>
-              This will delete {selectedNews.length} selected news article(s). This action cannot be undone.
+              {isArchive
+                ? `This will archive ${selectedNews.length} selected news article(s). They can be un-archived later by editing each article.`
+                : `This will delete ${selectedNews.length} selected news article(s). This action cannot be undone.`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="max-h-40 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 space-y-1">
+            <div className={`max-h-40 overflow-y-auto rounded-md border px-3 py-2 space-y-1 ${isArchive ? 'border-border bg-muted/50' : 'border-destructive/30 bg-destructive/5'}`}>
               {selectedNews.map((n) => (
                 <div key={n.id} className="text-sm font-medium">{n.title || '(untitled)'}</div>
               ))}
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulkNewsConfirm">
-                Type <span className="font-mono font-semibold text-destructive">{bulkCode}</span> to confirm
+                Type <span className={`font-mono font-semibold ${isArchive ? '' : 'text-destructive'}`}>{bulkCode}</span> to confirm
               </Label>
               <Input
                 id="bulkNewsConfirm"
@@ -603,17 +629,17 @@ const NewsManagement: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => { setBulkOpen(false); setBulkInput(''); }} disabled={bulkDeleting}>
+            <Button variant="outline" size="sm" onClick={() => { setBulkOpen(false); setBulkInput(''); }} disabled={bulkBusy}>
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant={isArchive ? 'default' : 'destructive'}
               size="sm"
-              onClick={handleConfirmBulkDelete}
-              disabled={bulkDeleting || bulkInput !== bulkCode}
+              onClick={handleConfirmBulk}
+              disabled={bulkBusy || bulkInput !== bulkCode}
             >
-              {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              {bulkDeleting ? 'Deleting...' : 'Delete'}
+              {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (isArchive ? <Archive className="mr-2 h-4 w-4" /> : <Trash2 className="mr-2 h-4 w-4" />)}
+              {bulkBusy ? (isArchive ? 'Archiving...' : 'Deleting...') : (isArchive ? 'Archive' : 'Delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
