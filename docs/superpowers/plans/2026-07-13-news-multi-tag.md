@@ -16,12 +16,12 @@
 - **Filter semantics:** OR across selected tags (match any).
 - **Public read exposes `tags`, but there is NO public tag filter.**
 - **Do NOT apply migrations to DEV/UAT** — the user runs those manually. Local dev DB / build verification only.
-- **No new libraries.** **Add new fields as optional (`?`).** **Do not touch `src/components/ui/`** except the single, clearly-motivated additive `suggestions` prop on `ChipInput` in Task F2.
+- **No new libraries.** **Add new fields as optional (`?`).** **Do not touch `src/components/ui/`** except the single, clearly-motivated additive `suggestions` prop on `ChipInput` in Task 6.
 - **TDD, frequent commits.** Backend tests: `bun run test` from the relevant app dir (Jest). Frontend tests: `bun run test` (Vitest, one-shot).
 
 ---
 
-## Task B1: Prisma schema — `tags` column + migration
+## Task 1: Prisma schema — `tags` column + migration
 
 **Files:**
 - Modify: `carmen-turborepo-backend-v2/packages/prisma-shared-schema-platform/prisma/schema.prisma:854` (inside `model tb_news`)
@@ -85,14 +85,14 @@ git commit -m "feat(news): add tags JsonB column to tb_news"
 
 ---
 
-## Task B2: micro-cluster service — normalize + persist + read `tags`
+## Task 2: micro-cluster service — normalize + persist + read `tags`
 
 **Files:**
 - Modify: `carmen-turborepo-backend-v2/apps/micro-cluster/src/cluster/news/news.service.ts`
 - Test: `carmen-turborepo-backend-v2/apps/micro-cluster/src/cluster/news/news.service.spec.ts`
 
 **Interfaces:**
-- Consumes: `tb_news.tags` (Task B1).
+- Consumes: `tb_news.tags` (Task 1).
 - Produces: `NewsService.normalizeTags(input: unknown): { error: Result<null> } | { tags: string[] }` (private); `create`/`update` persist `tags`; `findAll`, `findOne`, `findPublicAll`, `findPublicOne` select `tags`.
 
 - [ ] **Step 1: Write failing tests**
@@ -281,7 +281,7 @@ git commit -m "feat(news): normalize and persist tags in micro-cluster service"
 
 ---
 
-## Task B3: micro-cluster — distinct-tags query + message handler
+## Task 3: micro-cluster — distinct-tags query + message handler
 
 **Files:**
 - Modify: `carmen-turborepo-backend-v2/apps/micro-cluster/src/cluster/news/news.service.ts`
@@ -386,7 +386,7 @@ git commit -m "feat(news): add distinct-tags query and message handler"
 
 ---
 
-## Task B4: gateway — DTOs, body parser, `GET /api/news/tags`
+## Task 4: gateway — DTOs, body parser, `GET /api/news/tags`
 
 **Files:**
 - Modify: `carmen-turborepo-backend-v2/apps/backend-gateway/src/application/news/news-body.parser.ts`
@@ -397,7 +397,7 @@ git commit -m "feat(news): add distinct-tags query and message handler"
 - Test: `carmen-turborepo-backend-v2/apps/backend-gateway/src/application/news/news-body.parser` (spec — see Step 1)
 
 **Interfaces:**
-- Consumes: message pattern `news.find-tags` (Task B3).
+- Consumes: message pattern `news.find-tags` (Task 3).
 - Produces: gateway `NewsService.findTags(user_id): Promise<unknown>` (returns `Result<string[]>`); HTTP route `GET /api/news/tags`; `tags?: string[]` on request + response DTOs; `parseNewsBody` decodes a `tags` JSON string.
 
 - [ ] **Step 1: Write the failing parser test**
@@ -561,7 +561,7 @@ git commit -m "feat(news): gateway tags DTOs, body parsing, and GET /api/news/ta
 
 ---
 
-## Task F1: frontend types + service (`getTags`, formData tags)
+## Task 5: frontend types + service (`getTags`, formData tags)
 
 **Files:**
 - Modify: `carmen-platform/src/types/index.ts:353` (`News` interface)
@@ -685,7 +685,7 @@ git commit -m "feat(news): add tags to News type and newsService (getTags + form
 
 ---
 
-## Task F2: `ChipInput` autocomplete `suggestions` prop
+## Task 6: `ChipInput` autocomplete `suggestions` prop
 
 **Files:**
 - Modify: `carmen-platform/src/components/ui/chip-input.tsx`
@@ -805,14 +805,14 @@ git commit -m "feat(chip-input): add optional autocomplete suggestions datalist"
 
 ---
 
-## Task F3: NewsEdit — Tags field
+## Task 7: NewsEdit — Tags field
 
 **Files:**
 - Modify: `carmen-platform/src/pages/NewsEdit.tsx`
 - Test: `carmen-platform/src/pages/NewsEdit.test.tsx` (create)
 
 **Interfaces:**
-- Consumes: `ChipInput` `suggestions` (F2); `newsService.getTags` (F1); `News.tags` (F1).
+- Consumes: `ChipInput` `suggestions` (Task 6); `newsService.getTags` (Task 5); `News.tags` (Task 5).
 - Produces: `NewsFormData.tags: string[]`; the submit payload includes `tags`.
 
 - [ ] **Step 1: Write the failing test**
@@ -969,14 +969,14 @@ git commit -m "feat(news): add tags field to NewsEdit with autocomplete"
 
 ---
 
-## Task F4: NewsManagement — tag filter + column
+## Task 8: NewsManagement — tag filter + column
 
 **Files:**
 - Modify: `carmen-platform/src/pages/NewsManagement.tsx`
 - Test: `carmen-platform/src/pages/NewsManagement.buildAdvance.test.ts` (create)
 
 **Interfaces:**
-- Consumes: `newsService.getTags` (F1); `News.tags` (F1).
+- Consumes: `newsService.getTags` (Task 5); `News.tags` (Task 5).
 - Produces: exported `buildAdvance(statuses: string[], tags: string[]): string`; a tag filter control + a tags column.
 
 - [ ] **Step 1: Write the failing test**
