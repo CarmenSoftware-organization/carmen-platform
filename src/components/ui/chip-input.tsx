@@ -11,6 +11,7 @@ export interface ChipInputProps {
   id?: string;
   name?: string;
   className?: string;
+  suggestions?: string[];
 }
 
 function parseChips(value: string): string[] {
@@ -37,10 +38,17 @@ export const ChipInput: React.FC<ChipInputProps> = ({
   id,
   name,
   className,
+  suggestions,
 }) => {
   const [draft, setDraft] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
   const chips = React.useMemo(() => parseChips(value), [value]);
+
+  const listId = suggestions && suggestions.length > 0 && id ? `${id}-suggestions` : undefined;
+  const suggestionOptions = React.useMemo(
+    () => (suggestions ?? []).filter((s) => !chips.includes(s)),
+    [suggestions, chips],
+  );
 
   const commit = (raw: string) => {
     const next = raw.trim();
@@ -133,7 +141,15 @@ export const ChipInput: React.FC<ChipInputProps> = ({
         }}
         placeholder={chips.length === 0 ? placeholder : ''}
         className="flex-1 min-w-[120px] bg-transparent outline-none placeholder:text-muted-foreground"
+        list={listId}
       />
+      {listId && (
+        <datalist id={listId}>
+          {suggestionOptions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      )}
     </div>
   );
 };
