@@ -223,3 +223,51 @@ type-a-code confirmation as delete.
 - Archive flow → `newsService.update` called `{ status: 'archived' }` per id,
   `doc_version` forwarded only for the row that carries it, success toast, selection clears.
 - Archive partial failure → `Archived X, Y failed` warning.
+
+---
+
+## Addendum (2026-07-13): Bulk Publish
+
+Adds a third bulk action — **publish** (`status: 'published'`) — on the same
+`news.update` permission as archive, with the same type-a-code confirmation.
+
+### Constraints & Facts
+- Publish is an **update**: `newsService.update(id, { status: 'published' })`
+  (plain JSON `PUT`, partial). The backend **auto-sets `published_at`** when a
+  row transitions to `published` (micro-cluster `update`: `nextStatus ===
+  'published' && existingNews.status !== 'published' && existingNews.published_at
+  === null`), so the frontend sends only `{ status, doc_version }` — no date field.
+- Gated on **`news.update`** — the same permission as archive. Rename
+  `canArchive` → **`canUpdate`** (it now guards both Publish and Archive);
+  `canSelect = canDelete || canUpdate`.
+- Re-publishing an already-published row is a harmless no-op (backend keeps the
+  original `published_at`).
+
+### Design
+- **Config-map refactor:** replace the binary `isArchive` ternaries with a
+  module-level `BULK_ACTIONS: Record<BulkMode, {...}>` keyed by
+  `BulkMode = 'delete' | 'archive' | 'publish'` — each entry carries
+  `title` / `past` / `base` / `busy` verbs, `icon`, `destructive`, a
+  `description(n)`, and `status?` (the `NewsStatus` to set; **absent for
+  delete**). Dialog + handler read from `BULK_ACTIONS[bulkMode]`, so a third
+  mode needs no new ternaries.
+- **Toolbar:** **Publish Selected** (outline, `Send` icon) and **Archive
+  Selected** both shown when `canUpdate`; **Delete Selected** (destructive)
+  when `canDelete`; **Clear** always.
+- **Handler:** `handleConfirmBulk` uses `action.status` — present ⇒
+  `newsService.update(n.id, { status: action.status, ...token })`, absent ⇒
+  `newsService.delete(n.id)`. `summarizeBulk(results, action.past, action.base)`.
+
+### Edge Cases (additional)
+| Case | Behavior |
+|------|----------|
+| `news.update` but not `news.delete` | Checkboxes + Publish + Archive; no Delete |
+| Re-publish already-published row | No-op; `published_at` unchanged |
+| Active status filter excludes `published` | Newly-published rows drop out on refetch (expected) |
+| Publish partial failure | `allSettled` → `Published X, Y failed` warning |
+
+### Testing (additional)
+- `news.update`-only user → Publish + Archive visible, Delete absent.
+- Publish flow → `newsService.update` called `{ status: 'published' }` per id,
+  `doc_version` forwarded when present, success toast `Published N…`, selection clears.
+- Publish partial failure → `Published X, Y failed` warning.

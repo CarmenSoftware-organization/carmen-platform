@@ -791,3 +791,349 @@ EOF
 **Placeholder scan:** every step shows complete code. ✔
 
 **Type consistency:** `bulkMode: 'delete' | 'archive'`, `bulkBusy`/`setBulkBusy` (renamed consistently across state, dialog, handler, Cancel button), `openBulk(mode)`, `summarizeBulk(results, pastVerb, baseVerb)`, `handleConfirmBulk`, `getDocVersion(n)` → `Partial<News>` payload — consistent across all steps and match verified `newsService.update` / `getDocVersion` signatures. Old names (`openBulkDelete`, `handleConfirmBulkDelete`, `bulkDeleting`) fully replaced. ✔
+
+---
+
+### Task 3: Bulk publish + refactor the dialog to a config map
+
+**Depends on Task 2** (committed at `6301cd7`). Adds a third bulk action — **publish** (`status: 'published'`, same `news.update` permission as archive) — and refactors the binary `isArchive` ternaries into a `BULK_ACTIONS` config map so three modes stay clean. Line numbers below are the file's state at `6301cd7`; if an anchor drifted, match on the code text, not the number.
+
+**Files:**
+- Modify: `src/pages/NewsManagement.tsx`
+- Modify: `src/pages/NewsManagement.test.tsx`
+
+**Task 3 Global Constraints (additional):**
+- Publish = `newsService.update(id, { status: 'published' })`. Gated on **`news.update`**. The backend auto-sets `published_at` on the draft→published transition — send only `{ status, doc_version }`.
+- Rename `canArchive` → **`canUpdate`** (guards both Publish and Archive). `canSelect = canDelete || canUpdate`.
+- `doc_version` handling identical to archive: send `getDocVersion(n)` only when present.
+- Exact toast copy: publish → `Published N news article(s)` / `Failed to publish N news article(s)` / `Published X, Y failed`. Delete + archive copy must stay byte-identical (existing tests assert it).
+- Refactor the dialog/handler through `BULK_ACTIONS[bulkMode]`; do **not** leave any `isArchive` reference behind.
+
+**Interfaces:**
+- Consumes (existing, verified): `newsService.update`; `getDocVersion`; `NewsStatus` (`'published'` member); lucide `Send` icon + `LucideIcon` type; `News.doc_version`.
+
+- [ ] **Step 1: Extend the test file with failing publish tests**
+
+In `src/pages/NewsManagement.test.tsx`, inside the `describe('NewsManagement bulk archive', …)` block (its `beforeEach` already grants all perms and mocks `newsService.update`), append these three tests. (They will fail — no "Publish Selected" button yet.)
+
+```tsx
+  it('shows Publish and Archive but not Delete for a news.update-only user', async () => {
+    vi.mocked(useAuth).mockReturnValue({ hasPermission: (k: string) => k === 'news.update' } as never);
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    expect(await screen.findByRole('button', { name: /publish selected/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /archive selected/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete selected/i })).not.toBeInTheDocument();
+  });
+
+  it('publishes every selected row with status published, forwarding doc_version when present', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /publish selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^publish$/i }));
+    await waitFor(() => expect(newsService.update).toHaveBeenCalledTimes(2));
+    expect(newsService.update).toHaveBeenCalledWith('n1', { status: 'published', doc_version: 3 });
+    expect(newsService.update).toHaveBeenCalledWith('n2', { status: 'published' });
+    expect(toast.success).toHaveBeenCalledWith('Published 2 news article(s)');
+    await waitFor(() => expect(screen.queryByText('2 selected')).not.toBeInTheDocument());
+  });
+
+  it('warns on partial publish failure', async () => {
+    const user = userEvent.setup();
+    vi.mocked(newsService.update)
+      .mockRejectedValueOnce(new Error('nope'))
+      .mockResolvedValueOnce({} as never);
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /publish selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^publish$/i }));
+    await waitFor(() => expect(toast.warning).toHaveBeenCalledWith('Published 1, 1 failed'));
+  });
+```
+
+Note the `partial publish` test selects Alpha+Beta (2 rows). `NEWS_DV` has a third row `n3` (Gamma) from Task 2's fix — that's fine, it stays unselected.
+
+- [ ] **Step 2: Run to verify the publish tests fail**
+
+Run: `bun run test src/pages/NewsManagement.test.tsx`
+Expected: the 3 new publish tests FAIL (no "Publish Selected" button); all existing delete + archive tests still pass.
+
+- [ ] **Step 3: Imports + the `BULK_ACTIONS` config map**
+
+In `src/pages/NewsManagement.tsx`:
+
+Add `Send` to the lucide value import (line 14) and a `LucideIcon` type import right after it:
+
+```tsx
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Download, Newspaper, Globe, Building2, Loader2, Archive, Send } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+```
+
+Add the config map immediately after the `buildAdvance` function (before the `NewsManagement` component). It references `NewsStatus` (already imported) and the lucide icons above:
+
+```tsx
+type BulkMode = 'delete' | 'archive' | 'publish';
+
+const BULK_ACTIONS: Record<BulkMode, {
+  title: string;        // verb used in "{title} N News Article(s)" and the confirm button
+  past: string;         // toast success verb, e.g. 'Deleted'
+  base: string;         // toast failure verb, e.g. 'delete'
+  busy: string;         // in-flight button label, e.g. 'Deleting...'
+  icon: LucideIcon;
+  destructive: boolean; // destructive styling (delete only)
+  status?: NewsStatus;  // status to set for update-based actions; absent ⇒ delete
+  description: (n: number) => string;
+}> = {
+  delete: {
+    title: 'Delete', past: 'Deleted', base: 'delete', busy: 'Deleting...',
+    icon: Trash2, destructive: true,
+    description: (n) => `This will delete ${n} selected news article(s). This action cannot be undone.`,
+  },
+  archive: {
+    title: 'Archive', past: 'Archived', base: 'archive', busy: 'Archiving...',
+    icon: Archive, destructive: false, status: 'archived',
+    description: (n) => `This will archive ${n} selected news article(s). They can be un-archived later by editing each article.`,
+  },
+  publish: {
+    title: 'Publish', past: 'Published', base: 'publish', busy: 'Publishing...',
+    icon: Send, destructive: false, status: 'published',
+    description: (n) => `This will publish ${n} selected news article(s), making them visible to readers.`,
+  },
+};
+```
+
+- [ ] **Step 4: Permission rename + widen `bulkMode`**
+
+Replace (lines 65-66):
+
+```tsx
+  const canArchive = hasPermission('news.update');
+  const canSelect = canDelete || canArchive;
+```
+
+with:
+
+```tsx
+  const canUpdate = hasPermission('news.update');
+  const canSelect = canDelete || canUpdate;
+```
+
+Widen the `bulkMode` state type (line 98):
+
+```tsx
+  const [bulkMode, setBulkMode] = useState<BulkMode>('delete');
+```
+
+- [ ] **Step 5: Config-drive the open helper and handler**
+
+Replace `openBulk` (lines 224-229) — widen its parameter type:
+
+```tsx
+  const openBulk = (mode: BulkMode) => {
+    setBulkMode(mode);
+    setBulkCode(genBulkCode());
+    setBulkInput('');
+    setBulkOpen(true);
+  };
+```
+
+Replace `handleConfirmBulk` (lines 239-260) with a config-driven version (this removes the `bulkMode === 'archive'` branches):
+
+```tsx
+  const handleConfirmBulk = async () => {
+    setBulkBusy(true);
+    try {
+      const action = BULK_ACTIONS[bulkMode];
+      const results = await Promise.allSettled(
+        selectedNews.map((n) => {
+          if (action.status) {
+            const dv = getDocVersion(n);
+            return newsService.update(n.id, { status: action.status, ...(dv != null ? { doc_version: dv } : {}) });
+          }
+          return newsService.delete(n.id);
+        }),
+      );
+      summarizeBulk(results, action.past, action.base);
+      setBulkOpen(false);
+      setBulkInput('');
+      clearSelection();
+      setPaginate((prev) => ({ ...prev })); // refetch
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+```
+
+(`summarizeBulk` is unchanged — it already takes `(results, pastVerb, baseVerb)`.)
+
+- [ ] **Step 6: Toolbar — add Publish, rename gate**
+
+Replace the toolbar action buttons block (lines 530-549, the `canSelect && …` wrapper's inner buttons). Replace:
+
+```tsx
+                {canSelect && selectedNews.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <span className="text-sm font-medium">{selectedNews.length} selected</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {canArchive && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('archive')}>
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive Selected
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="destructive" size="sm" onClick={() => openBulk('delete')}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
+```
+
+with:
+
+```tsx
+                {canSelect && selectedNews.length > 0 && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <span className="text-sm font-medium">{selectedNews.length} selected</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      {canUpdate && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('publish')}>
+                          <Send className="mr-2 h-4 w-4" />
+                          Publish Selected
+                        </Button>
+                      )}
+                      {canUpdate && (
+                        <Button variant="outline" size="sm" onClick={() => openBulk('archive')}>
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive Selected
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button variant="destructive" size="sm" onClick={() => openBulk('delete')}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Selected
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                )}
+```
+
+- [ ] **Step 7: Config-drive the dialog**
+
+Replace `const isArchive = bulkMode === 'archive';` (line 387) with:
+
+```tsx
+  const bulkAction = BULK_ACTIONS[bulkMode];
+  const BulkActionIcon = bulkAction.icon;
+```
+
+Replace the entire `<Dialog open={bulkOpen} …> … </Dialog>` block (lines 597-646) with:
+
+```tsx
+      <Dialog open={bulkOpen} onOpenChange={(open) => { if (!open && !bulkBusy) { setBulkOpen(false); setBulkInput(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 ${bulkAction.destructive ? 'text-destructive' : ''}`}>
+              <BulkActionIcon className="h-5 w-5" />
+              {bulkAction.title} {selectedNews.length} News Article(s)
+            </DialogTitle>
+            <DialogDescription>
+              {bulkAction.description(selectedNews.length)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className={`max-h-40 overflow-y-auto rounded-md border px-3 py-2 space-y-1 ${bulkAction.destructive ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-muted/50'}`}>
+              {selectedNews.map((n) => (
+                <div key={n.id} className="text-sm font-medium">{n.title || '(untitled)'}</div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bulkNewsConfirm">
+                Type <span className={`font-mono font-semibold ${bulkAction.destructive ? 'text-destructive' : ''}`}>{bulkCode}</span> to confirm
+              </Label>
+              <Input
+                id="bulkNewsConfirm"
+                value={bulkInput}
+                onChange={(e) => setBulkInput(e.target.value.toUpperCase())}
+                placeholder="Enter the 6-character code"
+                autoComplete="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => { setBulkOpen(false); setBulkInput(''); }} disabled={bulkBusy}>
+              Cancel
+            </Button>
+            <Button
+              variant={bulkAction.destructive ? 'destructive' : 'default'}
+              size="sm"
+              onClick={handleConfirmBulk}
+              disabled={bulkBusy || bulkInput !== bulkCode}
+            >
+              {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BulkActionIcon className="mr-2 h-4 w-4" />}
+              {bulkBusy ? bulkAction.busy : bulkAction.title}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+```
+
+- [ ] **Step 8: Run publish + full-file tests**
+
+Run: `bun run test src/pages/NewsManagement.test.tsx`
+Expected: PASS — all delete + archive + publish tests green (15 total).
+
+- [ ] **Step 9: Run the full suite**
+
+Run: `bun run test`
+Expected: PASS — no regression.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add src/pages/NewsManagement.tsx src/pages/NewsManagement.test.tsx
+git commit -m "$(cat <<'EOF'
+feat(news): add bulk publish; refactor bulk dialog to a config map
+
+Third bulk action (status='published' via update, gated on news.update,
+doc_version-aware; backend auto-sets published_at). Replace the binary
+isArchive ternaries with a BULK_ACTIONS map keyed by delete|archive|publish.
+Rename canArchive -> canUpdate (guards Publish + Archive).
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+## Task 3 Self-Review
+
+**Spec coverage (publish addendum):** `news.update` gate via `canUpdate` (Step 4); Publish Selected toolbar button (Step 6); `BULK_ACTIONS` config map + config-driven dialog/handler (Steps 3, 5, 7); `status: 'published'` + `doc_version` when present (Step 5); parameterized toast copy via `action.past`/`action.base` (Step 5); backend auto-`published_at` (no date field sent — Step 5 payload); tests (Step 1). ✔
+
+**Placeholder scan:** every step shows complete code. ✔
+
+**Type consistency:** `BulkMode = 'delete' | 'archive' | 'publish'` used for `bulkMode` state, `openBulk(mode)`, and `BULK_ACTIONS` key; `bulkAction`/`BulkActionIcon` replace `isArchive` everywhere (no straggler); `canUpdate` replaces `canArchive` at all three sites (declaration, two toolbar gates); `action.status?: NewsStatus` drives update-vs-delete; `summarizeBulk(results, action.past, action.base)` matches its unchanged signature. ✔
