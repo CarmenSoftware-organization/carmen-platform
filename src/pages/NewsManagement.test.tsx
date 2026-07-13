@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -54,6 +54,10 @@ describe('NewsManagement bulk delete', () => {
     } as never);
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
     vi.mocked(newsService.delete).mockResolvedValue({} as never);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('shows the selection toolbar with a count when rows are checked', async () => {
@@ -117,5 +121,32 @@ describe('NewsManagement bulk delete', () => {
     renderPage();
     await screen.findByText('Alpha');
     expect(screen.queryByLabelText('Select Alpha')).not.toBeInTheDocument();
+  });
+
+  it('errors when every bulk delete fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(newsService.delete).mockRejectedValue(new Error('nope'));
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    await user.click(screen.getByLabelText('Select Beta'));
+    await user.click(screen.getByRole('button', { name: /delete selected/i }));
+    const dialog = await screen.findByRole('dialog');
+    const code = within(dialog).getByText(/^[A-Z0-9]{6}$/).textContent as string;
+    await user.type(within(dialog).getByRole('textbox'), code);
+    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to delete 2 news article(s)'));
+  });
+
+  it('resets bulk selection when the result set changes (e.g. a sort change)', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Alpha');
+    await user.click(screen.getByLabelText('Select Alpha'));
+    expect(await screen.findByText('1 selected')).toBeInTheDocument();
+    // Sorting is a real user interaction that changes paginate.sort — the
+    // result-set-changed reset effect should discard the stale selection.
+    await user.click(screen.getByRole('button', { name: /title/i }));
+    await waitFor(() => expect(screen.queryByText('1 selected')).not.toBeInTheDocument());
   });
 });

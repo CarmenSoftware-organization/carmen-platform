@@ -197,10 +197,18 @@ const NewsManagement: React.FC = () => {
     }
   };
 
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     setSelectedNews([]);
     setSelectionResetKey((k) => k + 1);
-  };
+  }, []);
+
+  // Selection is current-page only: discard it whenever the result set changes
+  // (page, page size, search, sort, or filters). Without this, TanStack keeps
+  // the selection map keyed by row id across data loads, leaving off-page rows
+  // selected and deletable while no visible checkbox is checked.
+  useEffect(() => {
+    clearSelection();
+  }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
 
   const genBulkCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
