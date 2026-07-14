@@ -1,7 +1,7 @@
 // src/pages/TenantMigrationManagement.test.tsx
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -37,7 +37,7 @@ describe('TenantMigrationManagement', () => {
     renderPage();
     expect(await screen.findByText('BU01')).toBeInTheDocument();
     expect(screen.getByText('Hotel Two')).toBeInTheDocument();
-    expect(screen.getAllByText('Unknown').length).toBeGreaterThanOrEqual(2);
+    expect(within(screen.getByRole('table')).getAllByText('Not checked').length).toBeGreaterThanOrEqual(2);
     expect(tenantMigrationService.getStatus).not.toHaveBeenCalled();
   });
 
@@ -58,8 +58,8 @@ describe('TenantMigrationManagement', () => {
     await screen.findByText('BU01');
     await user.click(screen.getByRole('button', { name: /check all/i }));
 
-    expect(await screen.findByText('Up to date')).toBeInTheDocument();
-    expect(await screen.findByText('2 pending')).toBeInTheDocument();
+    expect(await screen.findByText('2 behind')).toBeInTheDocument();
+    expect(within(screen.getByRole('table')).getAllByText('In sync').length).toBeGreaterThanOrEqual(1);
     expect(tenantMigrationService.getStatus).toHaveBeenCalledTimes(2);
   });
 
@@ -72,7 +72,7 @@ describe('TenantMigrationManagement', () => {
     await screen.findByText('BU01');
     const checkButtons = screen.getAllByRole('button', { name: /^check$/i });
     await user.click(checkButtons[0]);
-    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole('table')).getByText('In sync')).toBeInTheDocument());
     expect(tenantMigrationService.getStatus).toHaveBeenCalledTimes(1);
   });
 
@@ -97,7 +97,7 @@ describe('TenantMigrationManagement', () => {
     await user.click(await screen.findByRole('button', { name: /apply migrations/i })); // confirm
 
     expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function));
-    expect(await screen.findByText('Up to date')).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole('table')).getByText('In sync')).toBeInTheDocument());
   });
 
   it('Deploy all streams batch events, flips rows live, and toasts the summary', async () => {
@@ -114,8 +114,8 @@ describe('TenantMigrationManagement', () => {
     await user.click(screen.getByRole('button', { name: /deploy all/i }));            // header button
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /^deploy all$/i })); // confirm (dialog)
 
-    // both rows flip to up to date from the bu-complete events
-    expect(await screen.findAllByText('Up to date')).toHaveLength(2);
+    // both rows flip to in sync from the bu-complete events
+    await waitFor(() => expect(within(screen.getByRole('table')).getAllByText('In sync')).toHaveLength(2));
     const { toast } = await import('sonner');
     expect(toast.success).toHaveBeenCalledWith('Deployed: 2 ok, 0 failed.');
   });

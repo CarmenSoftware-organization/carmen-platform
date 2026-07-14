@@ -9,7 +9,6 @@ import { getErrorDetail } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
@@ -25,6 +24,9 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { handleMigrationError } from '../utils/migrationError';
 import { mapWithConcurrency } from '../utils/concurrent';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { FleetSync } from './tenantMigration/FleetSync';
+import { DeployConsole } from './tenantMigration/DeployConsole';
+import { cn } from '../lib/utils';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -58,13 +60,6 @@ export const rowStatusOf = (rs?: RowState): RowStatus => {
   if (rs.status.up_to_date) return 'up_to_date';
   if (rs.status.has_pending) return 'pending';
   return 'unknown';
-};
-
-const STATUS_BADGE: Record<RowStatus, { variant: 'success' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
-  up_to_date: { variant: 'success', label: 'Up to date' },
-  pending: { variant: 'secondary', label: 'Pending' },
-  unknown: { variant: 'outline', label: 'Unknown' },
-  error: { variant: 'destructive', label: 'Error' },
 };
 
 // Wrap a (possibly disabled) button so its tooltip still fires — Fluent UI tooltips
@@ -257,8 +252,11 @@ const TenantMigrationManagement: React.FC = () => {
   }, []);
 
   const summary = useMemo(() => {
-    const acc = { up_to_date: 0, pending: 0, unknown: 0, error: 0 };
-    for (const bu of bus) acc[rowStatusOf(rowState[bu.id])]++;
+    const acc = { up_to_date: 0, pending: 0, unknown: 0, error: 0, pendingMigrations: 0 };
+    for (const bu of bus) {
+      acc[rowStatusOf(rowState[bu.id])]++;
+      acc.pendingMigrations += rowState[bu.id]?.status?.pending?.length ?? 0;
+    }
     return acc;
   }, [bus, rowState]);
 
@@ -303,12 +301,20 @@ const TenantMigrationManagement: React.FC = () => {
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
         const st = rowStatusOf(rs);
-        const badge = STATUS_BADGE[st];
+        const pending = rs?.status?.pending.length ?? 0;
+        const dot = { up_to_date: 'bg-success', pending: 'bg-warning', error: 'bg-destructive', unknown: 'bg-muted-foreground/40' }[st];
+        const text =
+          st === 'pending' ? `${pending} behind`
+          : st === 'up_to_date' ? 'In sync'
+          : st === 'error' ? 'Error'
+          : 'Not checked';
+        const textCls = { up_to_date: 'text-success', pending: 'text-warning', error: 'text-destructive', unknown: 'text-muted-foreground' }[st];
         return (
           <div className="space-y-1">
-            <Badge variant={badge.variant}>
-              {st === 'pending' ? `${rs?.status?.pending.length ?? 0} pending` : badge.label}
-            </Badge>
+            <span className={cn('inline-flex items-center gap-2 text-[13px] font-medium', textCls)}>
+              <span className={cn('size-2 shrink-0 rounded-full', dot)} />
+              {text}
+            </span>
             {rs?.deploying && rs.progress && (
               <div className="break-all font-mono text-xs text-muted-foreground">
                 Applying {rs.progress.applied}/{rs.progress.total}
@@ -375,8 +381,13 @@ const TenantMigrationManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Tenant Migrations"
-          subtitle="Check and apply database schema migrations across all business units"
+          title="Tenant migrations"
+          subtitle="Check which tenant databases are behind on schema migrations, and roll them out."
+        />
+
+        <FleetSync
+          total={bus.length}
+          summary={summary}
           actions={
             <>
               {withTooltip(
@@ -411,45 +422,13 @@ const TenantMigrationManagement: React.FC = () => {
           }
         />
 
-        <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-muted-foreground">Summary:</span>
-          <Badge variant="success">Up to date {summary.up_to_date}</Badge>
-          <Badge variant="secondary">Pending {summary.pending}</Badge>
-          <Badge variant="outline">Unknown {summary.unknown}</Badge>
-          {summary.error > 0 && <Badge variant="destructive">Error {summary.error}</Badge>}
-          {totalRows > bus.length && (
-            <Badge variant="destructive">Showing {bus.length} of {totalRows}</Badge>
-          )}
-        </div>
-
-        {batch && (
-          <Card>
-            <CardContent className="space-y-2 pt-6">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">Deploying all BUs… {batch.buCode ? `(${batch.buCode})` : ''}</span>
-                <span className="text-muted-foreground">{batch.applied} / {batch.total}</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  role="progressbar"
-                  aria-valuenow={batch.applied}
-                  aria-valuemin={0}
-                  aria-valuemax={batch.total}
-                  className="h-full bg-primary transition-all"
-                  style={{ width: `${batch.total ? (batch.applied / batch.total) * 100 : 0}%` }}
-                />
-              </div>
-              {batch.current && <p className="break-all font-mono text-xs text-muted-foreground">{batch.current}</p>}
-              {batch.log.length > 0 && (
-                <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
-                  {batch.log.map((l, i) => (
-                    <li key={`${l}-${i}`} className="break-all font-mono text-xs text-muted-foreground">{l}</li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+        {totalRows > bus.length && (
+          <p className="text-warning text-xs">
+            Showing {bus.length} of {totalRows} business units — increase the page size to see all.
+          </p>
         )}
+
+        <DeployConsole batch={batch} />
 
         <Card>
           <CardHeader className="space-y-3">
