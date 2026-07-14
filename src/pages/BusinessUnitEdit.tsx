@@ -19,6 +19,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
+import TenantSeedCard from '../components/TenantSeedCard';
 import { initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
@@ -516,6 +517,18 @@ const BusinessUnitEdit: React.FC = () => {
         {!isNew && (
           <TenantMigrationCard
             key={id}
+            buId={id!}
+            buCode={formData.code}
+            buName={formData.name}
+            hasDbConnection={formData.db_connection.length > 0}
+            isSuperAdmin={isSuperAdmin}
+          />
+        )}
+
+        {/* Tenant default-data seeding (existing BU only; super-admin action) */}
+        {!isNew && (
+          <TenantSeedCard
+            key={`seed-${id}`}
             buId={id!}
             buCode={formData.code}
             buName={formData.name}
