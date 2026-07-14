@@ -77,4 +77,19 @@ describe('CalculationSettingsSection currency field', () => {
     expect(screen.getByText('Default Currency')).toBeInTheDocument();
     expect(screen.getByText('USD')).toBeInTheDocument();
   });
+
+  it('shows a disabled loading select while currencies are loading', () => {
+    render(
+      <CalculationSettingsSection
+        {...base()}
+        defaultCurrency={null}
+        getCalculationMethodLabel={label}
+        currenciesLoading
+      />,
+    );
+    const select = screen.getByLabelText('Default Currency ID') as HTMLSelectElement;
+    expect(select.tagName).toBe('SELECT');
+    expect(select).toBeDisabled();
+    expect(screen.getByText('Loading currencies…')).toBeInTheDocument();
+  });
 });
