@@ -226,4 +226,17 @@ describe('SqlWorkbench', () => {
       expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1; SELECT 2'),
     );
   });
+
+  it('saves SQL that the old CREATE/SELECT allowlist would have blocked', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.saveDdl).mockResolvedValue({
+      type: 'view', name: 't', schema: 'public', executed_sql: 'CREATE TABLE t (id int)',
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'CREATE TABLE t (id int)');
+    await user.type(screen.getByLabelText(/object name/i), 't');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(sqlQueryService.saveDdl).toHaveBeenCalled());
+  });
 });

@@ -222,14 +222,7 @@ export default function SqlWorkbench() {
       return;
     }
     try {
-      if (startsWithCreate) {
-        validateSqlSafety(formSqlText, { allowedLeading: ['CREATE'], allowMultiple: true });
-      } else {
-        validateSqlSafety(formSqlText, {
-          allowedLeading: ['SELECT', 'WITH'],
-          allowMultiple: false,
-        });
-      }
+      validateSqlSafety(formSqlText, { allowMultiple: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Invalid SQL', { duration: 8000 });
       return;
