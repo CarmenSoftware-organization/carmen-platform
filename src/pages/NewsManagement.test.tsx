@@ -48,10 +48,15 @@ describe('NewsManagement bulk delete', () => {
     vi.stubGlobal('localStorage', makeLocalStorage());
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue({ hasPermission: () => true } as never);
-    vi.mocked(newsService.getAll).mockResolvedValue({
-      data: NEWS,
-      paginate: { total: 2, page: 1, perpage: 10 },
-    } as never);
+    // The masthead issues a separate perpage:-1 roll-up; keep it empty so its
+    // lead-story headline doesn't duplicate the table's row text in queries.
+    vi.mocked(newsService.getAll).mockImplementation((p) =>
+      Promise.resolve(
+        p?.perpage === -1
+          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
+          : { data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } },
+      ) as never,
+    );
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
     vi.mocked(newsService.delete).mockResolvedValue({} as never);
   });
@@ -162,10 +167,13 @@ describe('NewsManagement bulk archive', () => {
     vi.stubGlobal('localStorage', makeLocalStorage());
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue({ hasPermission: () => true } as never);
-    vi.mocked(newsService.getAll).mockResolvedValue({
-      data: NEWS_DV,
-      paginate: { total: 3, page: 1, perpage: 10 },
-    } as never);
+    vi.mocked(newsService.getAll).mockImplementation((p) =>
+      Promise.resolve(
+        p?.perpage === -1
+          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
+          : { data: NEWS_DV, paginate: { total: 3, page: 1, perpage: 10 } },
+      ) as never,
+    );
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
     vi.mocked(newsService.update).mockResolvedValue({} as never);
   });

@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import { NewsroomSummary, summarizeNews, type NewsSummaryData } from './newsManagement/NewsroomSummary';
 import newsService from '../services/newsService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
@@ -98,6 +99,8 @@ const NewsManagement: React.FC = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [summary, setSummary] = useState<NewsSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const storedSearch = localStorage.getItem('search_news') || '';
   const storedFilters = getStoredJSON<string[]>('filters_news', []);
@@ -161,6 +164,25 @@ const NewsManagement: React.FC = () => {
   useEffect(() => {
     newsService.getTags().then(setTagOptions).catch(() => setTagOptions([]));
   }, []);
+
+  // Newsroom masthead: roll up the whole desk (all statuses, ignoring the active
+  // filters) so the pipeline counts and lead story reflect reality, not the view.
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const data = await newsService.getAll({ perpage: -1, sort: 'published_at:desc' });
+      const items = data.data || data;
+      setSummary(summarizeNews(Array.isArray(items) ? (items as Parameters<typeof summarizeNews>[0]) : []));
+    } catch {
+      setSummary(null); // masthead falls back to its skeleton; the table still works
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -226,6 +248,7 @@ const NewsManagement: React.FC = () => {
       toast.success('News deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       toast.error('Failed to delete news', { description: getErrorDetail(err) });
     }
@@ -284,6 +307,7 @@ const NewsManagement: React.FC = () => {
       setBulkInput('');
       clearSelection();
       setPaginate((prev) => ({ ...prev })); // refetch
+      loadSummary();
     } finally {
       setBulkBusy(false);
     }
@@ -439,6 +463,8 @@ const NewsManagement: React.FC = () => {
             </>
           }
         />
+
+        <NewsroomSummary summary={summary} loading={summaryLoading} />
 
         <Card>
           <CardHeader className="space-y-3">
