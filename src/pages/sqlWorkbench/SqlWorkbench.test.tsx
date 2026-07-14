@@ -239,4 +239,19 @@ describe('SqlWorkbench', () => {
     await user.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(sqlQueryService.saveDdl).toHaveBeenCalled());
   });
+
+  it('drops a SELECT into the editor when a table is clicked', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.getDbObjects).mockResolvedValueOnce({
+      tables: [{ schema: 'public', name: 'orders' }],
+      views: [],
+      procedures: [],
+      columns: [],
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.click(await screen.findByText('orders'));
+    expect(screen.getByLabelText('sql')).toHaveValue('SELECT * FROM public.orders LIMIT 100;');
+    expect(sqlQueryService.getDefinition).not.toHaveBeenCalled();
+  });
 });

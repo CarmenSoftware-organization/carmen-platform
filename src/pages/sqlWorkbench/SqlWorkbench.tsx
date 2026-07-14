@@ -176,18 +176,24 @@ export default function SqlWorkbench() {
   };
 
   const handlePickDbObject = async (obj: {
-    type: 'view' | 'procedure' | 'function';
+    type: 'view' | 'procedure' | 'function' | 'table';
     schema: string;
     name: string;
   }) => {
     if (!buCode) return;
+    if (obj.type === 'table') {
+      setFormSqlText(`SELECT * FROM ${obj.schema}.${obj.name} LIMIT 100;`);
+      setLoadedObject(null);
+      resetResult();
+      return;
+    }
     const code = buCode;
     const key = `${obj.type}:${obj.schema}.${obj.name}`;
     setLoadingObjectKey(key);
     try {
       const def = await sqlQueryService.getDefinition(code, obj);
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale definition
-      setLoadedObject(obj);
+      setLoadedObject({ type: obj.type, schema: obj.schema, name: obj.name });
       setFormName(def.name);
       setFormSqlText(def.definition);
       setFormQueryType(
