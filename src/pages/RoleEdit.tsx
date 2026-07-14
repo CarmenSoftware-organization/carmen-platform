@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
 import roleService from '../services/roleService';
+import { RoleIdentityHero } from './roleEdit/RoleIdentityHero';
 import permissionService from '../services/permissionService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -12,7 +12,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Pencil, X, Loader2, ShieldCheck } from 'lucide-react';
+import { Save, Pencil, X, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError } from '../utils/errorParser';
@@ -253,173 +253,200 @@ const RoleEdit: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          backTo="/platform/roles"
-          title={isNew ? 'New Role' : editing ? `Edit ${formData.name || 'Role'}` : (formData.name || 'Role')}
-          subtitle={isNew ? 'Create a new platform role' : editing ? 'Update role information and permissions' : 'View role information and permissions'}
-          actions={!isNew && !editing && (
-            <Button variant="outline" size="sm" onClick={handleEditToggle}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          )}
+      <div className="space-y-4 sm:space-y-6 pb-24">
+        <Link
+          to="/platform/roles"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Roles
+        </Link>
+
+        <RoleIdentityHero
+          name={formData.name}
+          isActive={formData.is_active}
+          permissions={formData.permissions}
+          catalogSize={catalog.length}
+          actions={
+            !isNew && !editing && (
+              <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            )
+          }
         />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-          {/* Role Details Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                Role Details
-              </CardTitle>
-              <CardDescription>
-                {isNew ? 'Fill in the details for the new role' : editing ? 'Modify the role details below' : 'Role information'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-                {/* Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name {editing && <span className="text-destructive">*</span>}</Label>
+        <form ref={formRef} onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,340px)]">
+            {/* Permissions — what the role can do */}
+            <div className="min-w-0 space-y-4 sm:space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Permissions</CardTitle>
+                  <CardDescription>
+                    {editing
+                      ? 'Select the permissions this role grants.'
+                      : formData.permissions.length > 0
+                      ? `${formData.permissions.length} permission${formData.permissions.length === 1 ? '' : 's'} granted`
+                      : 'No permissions granted'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
                   {editing ? (
-                    <>
-                      <Input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formData.name}
+                    catalog.length > 0 ? (
+                      <PermissionPicker
+                        catalog={catalog}
+                        value={formData.permissions}
+                        onChange={(next) => setFormData(f => ({ ...f, permissions: next }))}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading permission catalog…
+                      </div>
+                    )
+                  ) : formData.permissions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4 text-center">No permissions granted.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {readOnlyPermissionGroups.map(([resource, keys]) => (
+                        <div key={resource}>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{resource}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {keys.map((key) => (
+                              <Badge key={key} variant="secondary" className="text-xs font-mono">
+                                {key}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Settings — rail */}
+            <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name {editing && <span className="text-destructive">*</span>}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          placeholder="Role name"
+                          className={fieldErrors.name ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.name && (
+                          <p className="text-xs text-destructive">{fieldErrors.name}</p>
+                        )}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.name} />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    {editing ? (
+                      <Textarea
+                        id="description"
+                        name="description"
+                        value={formData.description}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="Role name"
-                        className={fieldErrors.name ? 'border-destructive' : ''}
-                        required
+                        placeholder="Optional description"
+                        rows={3}
+                        className={fieldErrors.description ? 'border-destructive' : ''}
                       />
-                      {fieldErrors.name && (
-                        <p className="text-xs text-destructive">{fieldErrors.name}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.name} />
-                  )}
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  {editing ? (
-                    <Textarea
-                      id="description"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      placeholder="Optional description"
-                      rows={3}
-                      className={fieldErrors.description ? 'border-destructive' : ''}
-                    />
-                  ) : (
-                    <ReadOnlyField value={formData.description} />
-                  )}
-                </div>
-
-                {/* Status */}
-                <div className="space-y-2">
-                  {editing ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="is_active"
-                        name="is_active"
-                        checked={formData.is_active}
-                        onChange={handleChange}
-                        className="h-4 w-4 rounded border-input"
-                      />
-                      <Label htmlFor="is_active">Active</Label>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Label>Status</Label>
-                      <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
-                        {formData.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-
-                {editing && (
-                  <div className="flex gap-3 pt-4">
-                    <Button type="submit" size="sm" disabled={saving}>
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/platform/roles') : handleCancelEdit}>
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </Button>
+                    ) : (
+                      <ReadOnlyField value={formData.description} />
+                    )}
                   </div>
-                )}
-              </form>
-            </CardContent>
-          </Card>
 
-          {/* Permissions Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Permissions</CardTitle>
-              <CardDescription>
-                {editing
-                  ? 'Select permissions granted to this role'
-                  : formData.permissions.length > 0
-                  ? `${formData.permissions.length} permission${formData.permissions.length === 1 ? '' : 's'} granted`
-                  : 'No permissions granted'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {editing ? (
-                catalog.length > 0 ? (
-                  <PermissionPicker
-                    catalog={catalog}
-                    value={formData.permissions}
-                    onChange={(next) => setFormData(f => ({ ...f, permissions: next }))}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading permission catalog…
-                  </div>
-                )
-              ) : formData.permissions.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No permissions granted.</p>
-              ) : (
-                <div className="space-y-3">
-                  {readOnlyPermissionGroups.map(([resource, keys]) => (
-                    <div key={resource}>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{resource}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {keys.map((key) => (
-                          <Badge key={key} variant="secondary" className="text-xs font-mono">
-                            {key}
-                          </Badge>
-                        ))}
+                  <div className="space-y-2">
+                    <Label htmlFor="is_active">Status</Label>
+                    {editing ? (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="is_active"
+                          name="is_active"
+                          checked={formData.is_active}
+                          onChange={handleChange}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                        <span className="text-sm">Active</span>
+                      </label>
+                    ) : (
+                      <div>
+                        <Badge variant={formData.is_active ? 'success' : 'secondary'}>
+                          {formData.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </form>
       </div>
+
+      {editing && (
+        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-border bg-background">
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              {hasChanges ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
+                  <span>Unsaved changes</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">No changes</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={isNew ? () => navigate('/platform/roles') : handleCancelEdit}
+                disabled={saving}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? 'Saving...' : isNew ? 'Create Role' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Debug Sheet — Development Only */}
       <DevDebugSheet
         title="Role Debug"
+        fabClassName={editing ? 'bottom-20' : undefined}
         tabs={[
           { key: 'role', label: 'Role', data: isNew ? null : rawResponse, endpoint: isNew ? 'New role (not yet saved)' : `GET /api-system/platform/roles/${id}` },
           { key: 'catalog', label: 'Catalog', data: catalog.length > 0 ? catalog : null, endpoint: 'GET /api-system/platform/permissions' },
