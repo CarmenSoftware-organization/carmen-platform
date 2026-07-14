@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import { ApplicationRegistrySummary, summarizeApplications, type ApplicationSummaryData } from './applicationManagement/ApplicationRegistrySummary';
 import applicationService from '../services/applicationService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -46,6 +47,8 @@ const ApplicationManagement: React.FC = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [summary, setSummary] = useState<ApplicationSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const storedSearch = localStorage.getItem('search_applications') || '';
   const storedFilters = getStoredJSON<string[]>('filters_applications', []);
@@ -78,6 +81,7 @@ const ApplicationManagement: React.FC = () => {
   });
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,6 +121,25 @@ const ApplicationManagement: React.FC = () => {
   useEffect(() => {
     fetchApplications(paginate);
   }, [fetchApplications, paginate]);
+
+  // Registry band: roll up the whole registry (all statuses, ignoring filters) so
+  // the scope split and device mix reflect reality, not the current view.
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const data = await applicationService.getAll({ perpage: -1 });
+      const raw = data.data || data;
+      setSummary(summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []));
+    } catch {
+      setSummary(null); // band falls back to its skeleton; the table still works
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -173,6 +196,17 @@ const ApplicationManagement: React.FC = () => {
     setDeleteId(id);
   }, []);
 
+  const handleCopyId = useCallback(async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 2000);
+      toast.success('App ID copied');
+    } catch {
+      toast.error('Could not copy App ID');
+    }
+  }, []);
+
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     try {
@@ -180,6 +214,7 @@ const ApplicationManagement: React.FC = () => {
       toast.success('Application deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       toast.error('Failed to delete application', { description: getErrorDetail(err) });
     }
@@ -220,11 +255,26 @@ const ApplicationManagement: React.FC = () => {
       id: 'app_id',
       header: 'App ID',
       enableSorting: false,
-      cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground" title={row.original.id}>
-          {row.original.id}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const id = row.original.id;
+        const copied = copiedId === id;
+        return (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-mono text-xs text-muted-foreground truncate min-w-0" title={id}>
+              {id}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label={copied ? 'App ID copied' : 'Copy App ID'}
+              onClick={() => handleCopyId(id)}
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'description',
@@ -318,7 +368,7 @@ const ApplicationManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete]);
+  ], [navigate, handleDelete, handleCopyId, copiedId]);
 
   return (
     <Layout>
@@ -342,6 +392,8 @@ const ApplicationManagement: React.FC = () => {
             </>
           }
         />
+
+        <ApplicationRegistrySummary summary={summary} loading={summaryLoading} />
 
         <Card>
           <CardHeader className="space-y-3">
