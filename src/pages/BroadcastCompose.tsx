@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
+import { BroadcastPreview } from './broadcastCompose/BroadcastPreview';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -269,6 +270,13 @@ const BroadcastCompose: React.FC = () => {
     },
   });
 
+  const buLabel = selectedBu ? `${selectedBu.name} (${selectedBu.code})` : (formData.buCode || undefined);
+  const scheduledLabel = (() => {
+    if (formData.sendMode !== 'schedule' || !formData.scheduledAtLocal) return undefined;
+    const t = new Date(formData.scheduledAtLocal);
+    return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
+  })();
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -278,198 +286,216 @@ const BroadcastCompose: React.FC = () => {
           subtitle="Push a notification to all users, specific users, or a business unit."
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Compose</CardTitle>
-            <CardDescription>
-              Choose a target, write the message, and send now or schedule for later.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Target</Label>
-              <Tabs value={targetMode} onValueChange={(v) => setTargetMode(v as BroadcastTargetMode)}>
-                <TabsList>
-                  {canSendSystem && (
-                    <TabsTrigger value="system_all">
-                      <Globe className="mr-2 h-4 w-4" /> All users
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,360px)]">
+          <Card className="min-w-0">
+            <CardContent className="space-y-6 pt-6">
+              {/* Audience */}
+              <section className="space-y-3">
+                <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Audience</div>
+                <Tabs value={targetMode} onValueChange={(v) => setTargetMode(v as BroadcastTargetMode)}>
+                  <TabsList>
+                    {canSendSystem && (
+                      <TabsTrigger value="system_all">
+                        <Globe className="mr-2 h-4 w-4" /> All users
+                      </TabsTrigger>
+                    )}
+                    {canSendSystem && (
+                      <TabsTrigger value="system_users">
+                        <Users className="mr-2 h-4 w-4" /> Specific users
+                      </TabsTrigger>
+                    )}
+                    <TabsTrigger value="bu">
+                      <Building2 className="mr-2 h-4 w-4" /> Business unit
                     </TabsTrigger>
-                  )}
-                  {canSendSystem && (
-                    <TabsTrigger value="system_users">
-                      <Users className="mr-2 h-4 w-4" /> Specific users
-                    </TabsTrigger>
-                  )}
-                  <TabsTrigger value="bu">
-                    <Building2 className="mr-2 h-4 w-4" /> Business Unit
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+                  </TabsList>
+                </Tabs>
 
-            {targetMode === 'system_users' && (
-              <div className="space-y-2">
-                <Label htmlFor="recipients">Recipients</Label>
-                <UserMultiSelect
-                  id="recipients"
-                  value={recipients}
-                  onChange={(next) => {
-                    setRecipients(next);
-                    if (fieldErrors.recipients && next.length > 0) {
-                      setFieldErrors((prev) => {
-                        const n = { ...prev };
-                        delete n.recipients;
-                        return n;
-                      });
-                    }
-                  }}
-                  error={!!fieldErrors.recipients}
-                />
-                {fieldErrors.recipients && (
-                  <p className="text-xs text-destructive">{fieldErrors.recipients}</p>
+                {targetMode === 'system_users' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="recipients">Recipients</Label>
+                    <UserMultiSelect
+                      id="recipients"
+                      value={recipients}
+                      onChange={(next) => {
+                        setRecipients(next);
+                        if (fieldErrors.recipients && next.length > 0) {
+                          setFieldErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.recipients;
+                            return n;
+                          });
+                        }
+                      }}
+                      error={!!fieldErrors.recipients}
+                    />
+                    {fieldErrors.recipients && (
+                      <p className="text-xs text-destructive">{fieldErrors.recipients}</p>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
 
-            {targetMode === 'bu' && (
-              <div className="space-y-2">
-                <Label htmlFor="buCode">Business Unit</Label>
-                <select
-                  id="buCode"
-                  value={formData.buCode}
-                  onChange={(e) => setField('buCode', e.target.value)}
-                  className={SELECT_CLASS + (fieldErrors.buCode ? ' border-destructive' : '')}
-                  disabled={buLoading}
-                >
-                  <option value="">{buLoading ? 'Loading business units…' : 'Select a business unit'}</option>
-                  {businessUnits
-                    .filter((b) => b.is_active !== false)
-                    .map((b) => (
-                      <option key={b.id} value={b.code}>
-                        {b.name} ({b.code})
-                      </option>
-                    ))}
-                </select>
-                {buLoadError && (
-                  <p className="text-xs text-destructive">
-                    {buLoadError}{' '}
-                    <button type="button" onClick={() => void loadBusinessUnits()} className="underline">
-                      Retry
-                    </button>
-                  </p>
+                {targetMode === 'bu' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="buCode">Business unit</Label>
+                    <select
+                      id="buCode"
+                      value={formData.buCode}
+                      onChange={(e) => setField('buCode', e.target.value)}
+                      className={SELECT_CLASS + (fieldErrors.buCode ? ' border-destructive' : '')}
+                      disabled={buLoading}
+                    >
+                      <option value="">{buLoading ? 'Loading business units…' : 'Select a business unit'}</option>
+                      {businessUnits
+                        .filter((b) => b.is_active !== false)
+                        .map((b) => (
+                          <option key={b.id} value={b.code}>
+                            {b.name} ({b.code})
+                          </option>
+                        ))}
+                    </select>
+                    {buLoadError && (
+                      <p className="text-xs text-destructive">
+                        {buLoadError}{' '}
+                        <button type="button" onClick={() => void loadBusinessUnits()} className="underline">
+                          Retry
+                        </button>
+                      </p>
+                    )}
+                    {fieldErrors.buCode && <p className="text-xs text-destructive">{fieldErrors.buCode}</p>}
+                  </div>
                 )}
-                {fieldErrors.buCode && <p className="text-xs text-destructive">{fieldErrors.buCode}</p>}
-              </div>
-            )}
+              </section>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="title">Title</Label>
-                <span className="text-xs text-muted-foreground">
-                  {formData.title.length}/{TITLE_MAX}
-                </span>
-              </div>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setField('title', e.target.value.slice(0, TITLE_MAX))}
-                placeholder="Scheduled maintenance"
-                className={fieldErrors.title ? 'border-destructive' : ''}
-              />
-              {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="message">Message</Label>
-                <span className="text-xs text-muted-foreground">
-                  {formData.message.length}/{MESSAGE_MAX}
-                </span>
-              </div>
-              <Textarea
-                id="message"
-                rows={6}
-                value={formData.message}
-                onChange={(e) => setField('message', e.target.value.slice(0, MESSAGE_MAX))}
-                placeholder="The system will be unavailable from 02:00 to 03:00 UTC."
-                className={fieldErrors.message ? 'border-destructive' : ''}
-              />
-              {fieldErrors.message && <p className="text-xs text-destructive">{fieldErrors.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="typePreset">Type</Label>
-              <select
-                id="typePreset"
-                value={formData.typePreset}
-                onChange={(e) => setField('typePreset', e.target.value as BroadcastTypePreset)}
-                className={SELECT_CLASS}
-              >
-                {TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-              {formData.typePreset === 'OTHER' && (
-                <div className="space-y-1">
+              {/* Message */}
+              <section className="space-y-4 border-t pt-6">
+                <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Message</div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="title">Title</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.title.length}/{TITLE_MAX}
+                    </span>
+                  </div>
                   <Input
-                    id="typeCustom"
-                    value={formData.typeCustom}
-                    onChange={(e) => setField('typeCustom', e.target.value.toUpperCase())}
-                    placeholder="CUSTOM_TYPE"
-                    className={fieldErrors.typeCustom ? 'border-destructive' : ''}
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setField('title', e.target.value.slice(0, TITLE_MAX))}
+                    placeholder="Scheduled maintenance"
+                    className={fieldErrors.title ? 'border-destructive' : ''}
                   />
-                  {fieldErrors.typeCustom && (
-                    <p className="text-xs text-destructive">{fieldErrors.typeCustom}</p>
+                  {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="message">Message</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {formData.message.length}/{MESSAGE_MAX}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="message"
+                    rows={6}
+                    value={formData.message}
+                    onChange={(e) => setField('message', e.target.value.slice(0, MESSAGE_MAX))}
+                    placeholder="The system will be unavailable from 02:00 to 03:00 UTC."
+                    className={fieldErrors.message ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.message && <p className="text-xs text-destructive">{fieldErrors.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="typePreset">Type</Label>
+                  <select
+                    id="typePreset"
+                    value={formData.typePreset}
+                    onChange={(e) => setField('typePreset', e.target.value as BroadcastTypePreset)}
+                    className={SELECT_CLASS}
+                  >
+                    {TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {formData.typePreset === 'OTHER' && (
+                    <div className="space-y-1">
+                      <Input
+                        id="typeCustom"
+                        value={formData.typeCustom}
+                        onChange={(e) => setField('typeCustom', e.target.value.toUpperCase())}
+                        placeholder="CUSTOM_TYPE"
+                        className={fieldErrors.typeCustom ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.typeCustom && (
+                        <p className="text-xs text-destructive">{fieldErrors.typeCustom}</p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
+              </section>
 
-            <div className="space-y-2">
-              <Label>Send time</Label>
-              <Tabs value={formData.sendMode} onValueChange={(v) => setField('sendMode', v as 'now' | 'schedule')}>
-                <TabsList>
-                  <TabsTrigger value="now">
-                    <Send className="mr-2 h-4 w-4" /> Send immediately
-                  </TabsTrigger>
-                  <TabsTrigger value="schedule">
-                    <Calendar className="mr-2 h-4 w-4" /> Schedule for later
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-              {formData.sendMode === 'schedule' && (
-                <div className="space-y-1">
-                  <input
-                    id="scheduledAtLocal"
-                    type="datetime-local"
-                    value={formData.scheduledAtLocal}
-                    onChange={(e) => setField('scheduledAtLocal', e.target.value)}
-                    className={SELECT_CLASS + (fieldErrors.scheduledAtLocal ? ' border-destructive' : '')}
-                  />
-                  {fieldErrors.scheduledAtLocal && (
-                    <p className="text-xs text-destructive">{fieldErrors.scheduledAtLocal}</p>
-                  )}
+              {/* Delivery */}
+              <section className="space-y-3 border-t pt-6">
+                <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Delivery</div>
+                <Tabs value={formData.sendMode} onValueChange={(v) => setField('sendMode', v as 'now' | 'schedule')}>
+                  <TabsList>
+                    <TabsTrigger value="now">
+                      <Send className="mr-2 h-4 w-4" /> Send immediately
+                    </TabsTrigger>
+                    <TabsTrigger value="schedule">
+                      <Calendar className="mr-2 h-4 w-4" /> Schedule for later
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {formData.sendMode === 'schedule' && (
+                  <div className="space-y-1">
+                    <input
+                      id="scheduledAtLocal"
+                      type="datetime-local"
+                      value={formData.scheduledAtLocal}
+                      onChange={(e) => setField('scheduledAtLocal', e.target.value)}
+                      className={SELECT_CLASS + (fieldErrors.scheduledAtLocal ? ' border-destructive' : '')}
+                    />
+                    {fieldErrors.scheduledAtLocal && (
+                      <p className="text-xs text-destructive">{fieldErrors.scheduledAtLocal}</p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </CardContent>
+          </Card>
+
+          {/* Preview + send */}
+          <div className="lg:sticky lg:top-4 lg:self-start">
+            <BroadcastPreview
+              typePreset={formData.typePreset}
+              customLabel={formData.typeCustom}
+              title={formData.title}
+              message={formData.message}
+              mode={targetMode}
+              recipientCount={recipients.length}
+              buLabel={buLabel}
+              sendMode={formData.sendMode}
+              scheduledLabel={scheduledLabel}
+              actions={
+                <div className="flex gap-2">
+                  <Button variant="outline" type="button" onClick={handleReset} disabled={sending}>
+                    Reset
+                  </Button>
+                  <Can permission="broadcast.send">
+                    <Button type="button" className="flex-1" onClick={handleSend} disabled={sending}>
+                      {sending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
+                    </Button>
+                  </Can>
                 </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" type="button" onClick={handleReset} disabled={sending}>
-                Reset
-              </Button>
-              <Can permission="broadcast.send">
-                <Button type="button" onClick={handleSend} disabled={sending}>
-                  {sending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-4 w-4" />
-                  )}
-                  {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
-                </Button>
-              </Can>
-            </div>
-          </CardContent>
-        </Card>
+              }
+            />
+          </div>
+        </div>
       </div>
 
       <ConfirmDialog
