@@ -66,29 +66,33 @@ beforeEach(() => {
 });
 
 describe('BusinessUnitEdit layout', () => {
-  it('renders the section nav for an existing BU', async () => {
+  it('renders the property profile (read mode) for an existing BU, no section nav yet', async () => {
     renderAt('/business-units/bu1/edit');
-    expect(await screen.findByRole('button', { name: /general/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /advanced/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /users/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Test BU' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit details/i })).toBeInTheDocument();
+    // the sectioned form + nav only appear once editing
+    expect(screen.queryByRole('button', { name: /^general$/i })).toBeNull();
   });
 
-  it('scrolls to a section when its nav item is clicked', async () => {
+  it('enters edit mode and scrolls to a section when its nav item is clicked', async () => {
     const user = userEvent.setup();
     renderAt('/business-units/bu1/edit');
+    await user.click(await screen.findByRole('button', { name: /edit details/i }));
     await user.click(await screen.findByRole('button', { name: /advanced/i }));
     const scrollIntoView = (Element.prototype as unknown as { scrollIntoView: ReturnType<typeof vi.fn> })
       .scrollIntoView;
     expect(scrollIntoView).toHaveBeenCalled();
   });
 
-  it('shows the sticky Save bar only in edit mode', async () => {
+  it('shows the section nav and sticky Save bar only in edit mode', async () => {
     const user = userEvent.setup();
     renderAt('/business-units/bu1/edit');
-    expect(await screen.findByRole('button', { name: /general/i })).toBeInTheDocument();
+    await screen.findByRole('button', { name: /edit details/i });
     expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull();
-    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(screen.queryByRole('button', { name: /^general$/i })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /edit details/i }));
     expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /general/i })).toBeInTheDocument();
   });
 
   it('hides existing-only nav items for a new BU', async () => {

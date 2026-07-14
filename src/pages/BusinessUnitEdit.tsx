@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import businessUnitService from '../services/businessUnitService';
@@ -8,7 +8,7 @@ import clusterService from '../services/clusterService';
 import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { Pencil, Save, X, Loader2 } from 'lucide-react';
+import { Pencil, Save, X, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
@@ -28,6 +28,7 @@ import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCar
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitFormFields from './businessUnitEdit/BusinessUnitFormFields';
+import BusinessUnitProfile from './businessUnitEdit/BusinessUnitProfile';
 import BusinessUnitSectionNav from './businessUnitEdit/BusinessUnitSectionNav';
 import { getVisibleSections } from './businessUnitEdit/sections';
 import { useScrollSpy } from '../hooks/useScrollSpy';
@@ -62,6 +63,12 @@ const BusinessUnitEdit: React.FC = () => {
     cluster_id: searchParams.get('cluster_id') || '',
   });
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  const [buMeta, setBuMeta] = useState<{
+    created_at?: string;
+    created_by_name?: string;
+    updated_at?: string;
+    updated_by_name?: string;
+  }>({});
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
 
@@ -92,6 +99,18 @@ const BusinessUnitEdit: React.FC = () => {
     setFormData(savedFormData);
     setEditing(false);
     setError('');
+  };
+
+  // Profile "Edit →": enter edit mode, then scroll to the section once the form mounts.
+  const handleEditSection = (sectionId: string) => {
+    setSavedFormData(formData);
+    setEditing(true);
+    selectSection(sectionId);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }),
+    );
   };
 
   const loadCurrencies = async (buCode: string) => {
@@ -204,6 +223,12 @@ const BusinessUnitEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(bu));
+      setBuMeta({
+        created_at: bu.created_at ?? bu.audit?.created?.at,
+        created_by_name: bu.created_by_name ?? bu.audit?.created?.name,
+        updated_at: bu.updated_at ?? bu.audit?.updated?.at,
+        updated_by_name: bu.updated_by_name ?? bu.audit?.updated?.name,
+      });
       setLogoUrl(bu.logo?.url || '');
       setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
@@ -465,6 +490,8 @@ const BusinessUnitEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
+        {isNew || editing ? (
+          <>
         <PageHeader
           backTo="/business-units"
           title={isNew ? 'Add Business Unit' : editing ? 'Edit Business Unit' : 'Business Unit Details'}
@@ -547,6 +574,41 @@ const BusinessUnitEdit: React.FC = () => {
             usersSlot={!isNew ? <BusinessUnitUsersCard users={users} /> : null}
           />
         </div>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/business-units"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Business units
+            </Link>
+
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+            )}
+
+            <BusinessUnitProfile
+              formData={formData}
+              clusterName={getClusterName(formData.cluster_id)}
+              logoUrl={logoUrl}
+              avatarUrl={avatarUrl}
+              currency={defaultCurrency}
+              userCount={users.buUsers.length}
+              meta={buMeta}
+              onNavigate={handleEditSection}
+              editAction={
+                <Can permission="cluster.update" clusterId={formData.cluster_id || undefined}>
+                  <Button size="sm" onClick={handleEditToggle}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit details
+                  </Button>
+                </Can>
+              }
+            />
+          </>
+        )}
       </div>
 
       {editing && (
