@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
 import applicationService from '../services/applicationService';
+import { ApplicationIdentityHero } from './applicationEdit/ApplicationIdentityHero';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ChipInput } from '../components/ui/chip-input';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -257,346 +257,367 @@ const ApplicationEdit: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          backTo="/applications"
-          title={isNew ? 'Add Application' : editing ? 'Edit Application' : 'Application Details'}
-          subtitle={isNew ? 'Create a new application' : editing ? 'Update application information' : 'View application information'}
-          actions={!isNew && !editing && (
-            <Can permission="application.update">
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Can>
-          )}
+      <div className="space-y-4 sm:space-y-6 pb-24">
+        <Link
+          to="/applications"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Applications
+        </Link>
+
+        <ApplicationIdentityHero
+          name={formData.name}
+          appId={isNew ? undefined : id}
+          device={formData.device}
+          isActive={formData.is_active}
+          allowAll={formData.allow_all}
+          apiNames={formData.api_names}
+          actions={
+            !isNew && !editing && (
+              <Can permission="application.update">
+                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </Can>
+            )
+          }
         />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Application Details</CardTitle>
-            <CardDescription>
-              {isNew ? 'Fill in the details for the new application' : editing ? 'Modify the application details below' : 'Application information'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name {editing && '*'}</Label>
-                {editing ? (
-                  <>
-                    <Input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="Application name"
-                      className={fieldErrors.name ? 'border-destructive' : ''}
-                      required
-                    />
-                    {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
-                  </>
-                ) : (
-                  <ReadOnlyField value={formData.name} />
-                )}
-              </div>
+        <form ref={formRef} onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,340px)]">
+            {/* API access — the app's whole purpose */}
+            <div className="min-w-0 space-y-4 sm:space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>API access</CardTitle>
+                  <CardDescription>Which endpoints this app may call.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {editing && (
+                    <div className="flex items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        id="allow_all"
+                        name="allow_all"
+                        checked={formData.allow_all}
+                        onChange={handleChange}
+                        className="mt-0.5 h-4 w-4 rounded border-input"
+                      />
+                      <div>
+                        <Label htmlFor="allow_all" className="cursor-pointer">Full access to every API</Label>
+                        <p className="text-muted-foreground text-xs">
+                          The app can call every endpoint. Turn off to grant specific endpoints only.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-              {/* App ID — the record's UUID, used as x-app-id. Server-generated, always read-only. */}
-              {!isNew && (
-                <div className="space-y-2">
-                  <Label htmlFor="app_id">App ID</Label>
-                  <ReadOnlyField
-                    className="font-mono text-xs text-muted-foreground"
-                    value={<span className="truncate">{id}</span>}
-                  />
-                </div>
-              )}
+                  {formData.allow_all ? (
+                    <div className="text-warning bg-warning/10 flex items-start gap-2 rounded-md px-3 py-2.5 text-sm">
+                      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                      <span>This app is not restricted to specific endpoints — it can call every API in the platform.</span>
+                    </div>
+                  ) : editing ? (
+                    <div className="space-y-2 border-t pt-4">
+                      {catalogFailed ? (
+                        <ChipInput
+                          id="api_names"
+                          name="api_names"
+                          value={formData.api_names.join(',')}
+                          onChange={(v) => setFormData(prev => ({ ...prev, api_names: v ? v.split(',').map(s => s.trim()).filter(Boolean) : [] }))}
+                          placeholder="Type an api_name and press Enter"
+                        />
+                      ) : (
+                        <div className="space-y-2">
+                          {/* Filter input */}
+                          <div className="relative">
+                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                type="text"
+                                value={apiSearch}
+                                onChange={(e) => setApiSearch(e.target.value)}
+                                placeholder="Filter by module or api_name..."
+                                className="pl-9 pr-9"
+                                aria-label="Filter API names"
+                              />
+                              {apiSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setApiSearch('')}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                  aria-label="Clear filter"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              )}
+                          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                {editing ? (
-                  <Input
-                    type="text"
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="Description"
-                  />
-                ) : (
-                  <ReadOnlyField value={formData.description} />
-                )}
-              </div>
+                          {catalogGroups.length === 0 ? (
+                            <div className="rounded-md border border-input p-2">
+                              <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
+                            </div>
+                          ) : (() => {
+                            const q = apiSearch.trim().toLowerCase();
+                            // A group matches if its module name matches; then only matching
+                            // api_names show. If the module name itself matches, show all of it.
+                            const visibleGroups = catalogGroups
+                              .map((g) => {
+                                if (!q) return g;
+                                const moduleMatch = g.module.toLowerCase().includes(q);
+                                if (moduleMatch) return g;
+                                const api_names = g.api_names.filter((n) => n.toLowerCase().includes(q));
+                                return api_names.length ? { ...g, api_names } : null;
+                              })
+                              .filter((g): g is ApiCatalogGroup => g !== null);
 
-              <div className="flex items-center gap-2">
-                {editing ? (
-                  <>
-                    <input
-                      type="checkbox"
-                      id="is_active"
-                      name="is_active"
-                      checked={formData.is_active}
-                      onChange={handleChange}
-                      className="h-4 w-4 rounded border-input"
-                    />
-                    <Label htmlFor="is_active">Active</Label>
-                  </>
-                ) : (
-                  <>
-                    <Label>Status</Label>
-                    <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
-                      {formData.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </>
-                )}
-              </div>
+                            if (visibleGroups.length === 0) {
+                              return (
+                                <div className="rounded-md border border-input p-2">
+                                  <p className="text-sm text-muted-foreground text-center py-4">No API names matching &ldquo;{apiSearch}&rdquo;</p>
+                                </div>
+                              );
+                            }
 
-              <div className="flex flex-col gap-2">
-                {editing ? (
-                  <>
-                    <Label htmlFor="device">Device</Label>
-                    <select
-                      id="device"
-                      name="device"
-                      value={formData.device}
-                      onChange={(e) => setFormData(prev => ({ ...prev, device: e.target.value as DeviceType }))}
-                      className={selectClassName}
-                    >
-                      {DEVICE_OPTIONS.map((d) => (
-                        <option key={d} value={d}>{d}</option>
+                            const allVisibleModules = visibleGroups.map((g) => g.module);
+                            const allVisibleExpanded = visibleGroups.every((g) => expandedModules.has(g.module));
+                            return (
+                              <>
+                                <div className="flex items-center justify-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() =>
+                                      allVisibleExpanded
+                                        ? collapseModules(allVisibleModules)
+                                        : expandModules(allVisibleModules)
+                                    }
+                                  >
+                                    {allVisibleExpanded ? 'Collapse all' : 'Expand all'}
+                                  </Button>
+                                </div>
+                                <div className="rounded-md border border-input max-h-80 overflow-y-auto divide-y">
+                                  {visibleGroups.map((g) => {
+                                    // A search auto-expands matching groups; otherwise honor manual state.
+                                    const expanded = q ? true : expandedModules.has(g.module);
+                                    const selectedCount = g.api_names.filter((n) => formData.api_names.includes(n)).length;
+                                    const allSelected = selectedCount === g.api_names.length;
+                                    return (
+                                      <div key={g.module}>
+                                        <div className="flex items-center gap-2 px-2 py-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => { if (!q) toggleModule(g.module); }}
+                                            className="flex flex-1 items-center gap-1.5 text-left text-sm font-medium"
+                                            aria-expanded={expanded}
+                                          >
+                                            {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                                            <span className="truncate">{g.module}</span>
+                                            <Badge variant={selectedCount > 0 ? 'default' : 'secondary'} className="text-xs">
+                                              {selectedCount}/{g.api_names.length}
+                                            </Badge>
+                                          </button>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-xs"
+                                            aria-label={allSelected ? `Deselect all ${g.module}` : `Select all ${g.module}`}
+                                            onClick={() => toggleModuleSelection(g.api_names)}
+                                          >
+                                            {allSelected ? 'None' : 'All'}
+                                          </Button>
+                                        </div>
+                                        {expanded && (
+                                          <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
+                                            {g.api_names.map((api) => {
+                                              const selected = formData.api_names.includes(api);
+                                              return (
+                                                <Button
+                                                  key={api}
+                                                  type="button"
+                                                  variant={selected ? 'default' : 'outline'}
+                                                  size="sm"
+                                                  className="h-7 text-xs gap-1"
+                                                  title={api}
+                                                  onClick={() => toggleApiName(api)}
+                                                  aria-pressed={selected}
+                                                >
+                                                  {actionOf(api)}
+                                                  {selected && <X className="h-3 w-3" />}
+                                                </Button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            );
+                          })()}
+                          <p className="text-xs text-muted-foreground">{formData.api_names.length} selected</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : formData.api_names.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No endpoints granted.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {groupApiNames(formData.api_names).map((g) => (
+                        <div key={g.module} className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {g.module} <span className="text-muted-foreground">({g.api_names.length})</span>
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {g.api_names.map((api) => (
+                              <Badge key={api} variant="outline" className="text-xs" title={api}>{actionOf(api)}</Badge>
+                            ))}
+                          </div>
+                        </div>
                       ))}
-                    </select>
-                  </>
-                ) : (
-                  <>
-                    <Label>Device</Label>
-                    <Badge variant="secondary" className="ml-2 w-fit">{formData.device}</Badge>
-                  </>
-                )}
-              </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
-              <div className="flex items-center gap-2">
-                {editing ? (
-                  <>
-                    <input
-                      type="checkbox"
-                      id="allow_all"
-                      name="allow_all"
-                      checked={formData.allow_all}
-                      onChange={handleChange}
-                      className="h-4 w-4 rounded border-input"
-                    />
-                    <Label htmlFor="allow_all">Allow all APIs</Label>
-                  </>
-                ) : (
-                  <>
-                    <Label>API Access</Label>
-                    <Badge variant={formData.allow_all ? 'outline' : 'secondary'} className="ml-2">
-                      {formData.allow_all ? 'All APIs' : `${formData.api_names.length} selected`}
-                    </Badge>
-                  </>
-                )}
-              </div>
+            {/* Settings — rail */}
+            <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name {editing && '*'}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="name"
+                          name="name"
+                          value={formData.name}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="Application name"
+                          className={fieldErrors.name ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.name} />
+                    )}
+                  </div>
 
-              {/* api_names — hidden entirely when allow_all is on */}
-              {!formData.allow_all && (
-                <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="api_names">API Names</Label>
-                  {editing ? (
-                    catalogFailed ? (
-                      <ChipInput
-                        id="api_names"
-                        name="api_names"
-                        value={formData.api_names.join(',')}
-                        onChange={(v) => setFormData(prev => ({ ...prev, api_names: v ? v.split(',').map(s => s.trim()).filter(Boolean) : [] }))}
-                        placeholder="Type an api_name and press Enter"
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    {editing ? (
+                      <Input
+                        type="text"
+                        id="description"
+                        name="description"
+                        value={formData.description}
+                        onChange={handleChange}
+                        placeholder="Description"
                       />
                     ) : (
-                      <div className="space-y-2">
-                        {/* Filter input */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              type="text"
-                              value={apiSearch}
-                              onChange={(e) => setApiSearch(e.target.value)}
-                              placeholder="Filter by module or api_name..."
-                              className="pl-9 pr-9"
-                              aria-label="Filter API names"
-                            />
-                            {apiSearch && (
-                              <button
-                                type="button"
-                                onClick={() => setApiSearch('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="Clear filter"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            )}
-                        </div>
+                      <ReadOnlyField value={formData.description} />
+                    )}
+                  </div>
 
-                        {catalogGroups.length === 0 ? (
-                          <div className="rounded-md border border-input p-2">
-                            <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
-                          </div>
-                        ) : (() => {
-                          const q = apiSearch.trim().toLowerCase();
-                          // A group matches if its module name matches; then only matching
-                          // api_names show. If the module name itself matches, show all of it.
-                          const visibleGroups = catalogGroups
-                            .map((g) => {
-                              if (!q) return g;
-                              const moduleMatch = g.module.toLowerCase().includes(q);
-                              if (moduleMatch) return g;
-                              const api_names = g.api_names.filter((n) => n.toLowerCase().includes(q));
-                              return api_names.length ? { ...g, api_names } : null;
-                            })
-                            .filter((g): g is ApiCatalogGroup => g !== null);
-
-                          if (visibleGroups.length === 0) {
-                            return (
-                              <div className="rounded-md border border-input p-2">
-                                <p className="text-sm text-muted-foreground text-center py-4">No API names matching &ldquo;{apiSearch}&rdquo;</p>
-                              </div>
-                            );
-                          }
-
-                          const allVisibleModules = visibleGroups.map((g) => g.module);
-                          const allVisibleExpanded = visibleGroups.every((g) => expandedModules.has(g.module));
-                          return (
-                            <>
-                              <div className="flex items-center justify-end">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() =>
-                                    allVisibleExpanded
-                                      ? collapseModules(allVisibleModules)
-                                      : expandModules(allVisibleModules)
-                                  }
-                                >
-                                  {allVisibleExpanded ? 'Collapse all' : 'Expand all'}
-                                </Button>
-                              </div>
-                              <div className="rounded-md border border-input max-h-80 overflow-y-auto divide-y">
-                                {visibleGroups.map((g) => {
-                                  // A search auto-expands matching groups; otherwise honor manual state.
-                                  const expanded = q ? true : expandedModules.has(g.module);
-                                  const selectedCount = g.api_names.filter((n) => formData.api_names.includes(n)).length;
-                                  const allSelected = selectedCount === g.api_names.length;
-                                  return (
-                                    <div key={g.module}>
-                                      <div className="flex items-center gap-2 px-2 py-1.5">
-                                        <button
-                                          type="button"
-                                          onClick={() => { if (!q) toggleModule(g.module); }}
-                                          className="flex flex-1 items-center gap-1.5 text-left text-sm font-medium"
-                                          aria-expanded={expanded}
-                                        >
-                                          {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                                          <span className="truncate">{g.module}</span>
-                                          <Badge variant={selectedCount > 0 ? 'default' : 'secondary'} className="text-xs">
-                                            {selectedCount}/{g.api_names.length}
-                                          </Badge>
-                                        </button>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 text-xs"
-                                          aria-label={allSelected ? `Deselect all ${g.module}` : `Select all ${g.module}`}
-                                          onClick={() => toggleModuleSelection(g.api_names)}
-                                        >
-                                          {allSelected ? 'None' : 'All'}
-                                        </Button>
-                                      </div>
-                                      {expanded && (
-                                        <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
-                                          {g.api_names.map((api) => {
-                                            const selected = formData.api_names.includes(api);
-                                            return (
-                                              <Button
-                                                key={api}
-                                                type="button"
-                                                variant={selected ? 'default' : 'outline'}
-                                                size="sm"
-                                                className="h-7 text-xs gap-1"
-                                                title={api}
-                                                onClick={() => toggleApiName(api)}
-                                                aria-pressed={selected}
-                                              >
-                                                {actionOf(api)}
-                                                {selected && <X className="h-3 w-3" />}
-                                              </Button>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )
-                  ) : (
-                    formData.api_names.length === 0 ? (
-                      <ReadOnlyField className="text-muted-foreground" />
-                    ) : (
-                      <div className="space-y-3">
-                        {groupApiNames(formData.api_names).map((g) => (
-                          <div key={g.module} className="space-y-1.5">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              {g.module} <span className="text-muted-foreground">({g.api_names.length})</span>
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {g.api_names.map((api) => (
-                                <Badge key={api} variant="outline" className="text-xs" title={api}>{actionOf(api)}</Badge>
-                              ))}
-                            </div>
-                          </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="device">Device</Label>
+                    {editing ? (
+                      <select
+                        id="device"
+                        name="device"
+                        value={formData.device}
+                        onChange={(e) => setFormData(prev => ({ ...prev, device: e.target.value as DeviceType }))}
+                        className={selectClassName}
+                      >
+                        {DEVICE_OPTIONS.map((d) => (
+                          <option key={d} value={d}>{d}</option>
                         ))}
-                      </div>
-                    )
-                  )}
-                  {editing && !catalogFailed && (
-                    <p className="text-xs text-muted-foreground">{formData.api_names.length} selected</p>
-                  )}
-                </div>
-              )}
-              </div>
+                      </select>
+                    ) : (
+                      <div><Badge variant="secondary" className="capitalize">{formData.device}</Badge></div>
+                    )}
+                  </div>
 
-              {editing && (
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit" size="sm" disabled={saving}>
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? 'Saving...' : isNew ? 'Create Application' : 'Save Changes'}
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/applications') : handleCancelEdit}>
-                    <X className="mr-2 h-4 w-4" />
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="is_active">Status</Label>
+                    {editing ? (
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="is_active"
+                          name="is_active"
+                          checked={formData.is_active}
+                          onChange={handleChange}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                        <span className="text-sm">Active</span>
+                      </label>
+                    ) : (
+                      <div>
+                        <Badge variant={formData.is_active ? 'success' : 'secondary'}>
+                          {formData.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </form>
       </div>
 
-      <DevDebugSheet title="API Response" endpoint={`GET /api-system/applications/${id}`} data={isNew ? null : rawResponse} />
+      {editing && (
+        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-border bg-background">
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              {hasChanges ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
+                  <span>Unsaved changes</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">No changes</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={isNew ? () => navigate('/applications') : handleCancelEdit}
+                disabled={saving}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? 'Saving...' : isNew ? 'Create Application' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DevDebugSheet title="API Response" endpoint={`GET /api-system/applications/${id}`} data={isNew ? null : rawResponse} fabClassName={editing ? 'bottom-20' : undefined} />
     </Layout>
   );
 };
