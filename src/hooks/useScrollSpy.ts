@@ -17,13 +17,29 @@ export function useScrollSpy(ids: string[]): [string, (id: string) => void] {
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined' || ids.length === 0) return;
 
+    // A callback only carries targets whose intersection *changed* this tick, not
+    // every intersecting one — so accumulate the latest state per section here.
+    const intersecting = new Map<string, { top: number }>();
+
     const observer = new IntersectionObserver(
       (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as Element).id;
+          if (entry.isIntersecting) intersecting.set(id, entry.boundingClientRect);
+          else intersecting.delete(id);
+        }
         if (Date.now() < suppressUntil.current) return;
-        const topmost = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (topmost) setActiveId((topmost.target as HTMLElement).id);
+        // Topmost intersecting section wins; ties resolve in registry order.
+        let topId = '';
+        let topTop = Infinity;
+        for (const id of ids) {
+          const rect = intersecting.get(id);
+          if (rect && rect.top < topTop) {
+            topTop = rect.top;
+            topId = id;
+          }
+        }
+        if (topId) setActiveId(topId);
       },
       { rootMargin: '-20% 0px -70% 0px', threshold: 0 },
     );

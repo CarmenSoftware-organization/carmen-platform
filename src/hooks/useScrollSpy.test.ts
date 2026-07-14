@@ -64,4 +64,37 @@ describe('useScrollSpy', () => {
     const { result } = renderHook(() => useScrollSpy(['x', 'y']));
     expect(result.current[0]).toBe('x');
   });
+
+  it('keeps the topmost section active when a lower one newly intersects', () => {
+    const { result } = renderHook(() => useScrollSpy(['a', 'b', 'c']));
+    act(() => ioCallback?.([entry('a', 5)]));
+    expect(result.current[0]).toBe('a');
+    // b newly intersects below a; this batch does NOT re-include a.
+    act(() => ioCallback?.([entry('b', 40)]));
+    expect(result.current[0]).toBe('a');
+  });
+
+  it('picks the higher section when several intersect in one batch', () => {
+    const { result } = renderHook(() => useScrollSpy(['a', 'b', 'c']));
+    act(() => ioCallback?.([entry('c', 30), entry('b', 10)]));
+    expect(result.current[0]).toBe('b');
+  });
+
+  it('drops a section once it stops intersecting', () => {
+    const { result } = renderHook(() => useScrollSpy(['a', 'b', 'c']));
+    act(() => ioCallback?.([entry('a', 5), entry('b', 40)]));
+    expect(result.current[0]).toBe('a');
+    act(() =>
+      ioCallback?.([
+        { isIntersecting: false, target: { id: 'a' }, boundingClientRect: { top: 5 } },
+      ]),
+    );
+    expect(result.current[0]).toBe('b');
+  });
+
+  it('disconnects the observer on unmount', () => {
+    const { unmount } = renderHook(() => useScrollSpy(['a', 'b']));
+    unmount();
+    expect(disconnect).toHaveBeenCalled();
+  });
 });
