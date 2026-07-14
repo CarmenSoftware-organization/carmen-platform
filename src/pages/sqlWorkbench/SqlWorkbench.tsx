@@ -125,6 +125,7 @@ export default function SqlWorkbench() {
     setFormQueryType('view');
     setExecuteResult(null);
     setExecuteError(null);
+    setConfirmSql(null); // discard any pending destructive confirm from the previous BU
     if (buCode) loadDbObjects(buCode);
     else setDbObjects(null);
   }, [buCode, loadDbObjects]);

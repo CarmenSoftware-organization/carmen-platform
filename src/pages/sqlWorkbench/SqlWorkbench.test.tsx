@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SqlWorkbench from './SqlWorkbench';
@@ -211,6 +211,33 @@ describe('SqlWorkbench', () => {
     await waitFor(() =>
       expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'DROP TABLE users'),
     );
+  });
+
+  it('discards a pending destructive confirm when the BU is switched', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'DROP TABLE users');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    expect(await screen.findByText(/run destructive sql/i)).toBeInTheDocument();
+
+    // Switch BU while the confirm dialog is open. The "Switch business unit"
+    // trigger button sits behind the ConfirmDialog's Radix overlay (pointer-events
+    // locked to the topmost dialog), so a literal click on it — as `connectBu`
+    // does in the other tests — can't reach it here. This mirrors the actual bug
+    // report, which is triggered via the global Ctrl/Cmd+B shortcut rather than a
+    // click, so fire that shortcut directly to open the BuSwitcher on top of the
+    // still-open confirm dialog, then pick the other BU from it.
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
+    await user.click(await screen.findByText('Other Hotel'));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/run destructive sql/i)).not.toBeInTheDocument(),
+    );
+    expect(sqlQueryService.executeSql).not.toHaveBeenCalled();
   });
 
   it('allows a multi-statement run', async () => {
