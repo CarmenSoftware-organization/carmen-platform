@@ -218,6 +218,35 @@ export type ProgressEvent =
   | { type: 'done'; success: boolean; summary: DeploySummary }
   | { type: 'error'; message: string };
 
+// Tenant seed data (super-admin) — /api-system/tenant/seeds/:bu_id/*
+export interface SeedSetStatus {
+  key: string;
+  label: string;
+  defined: number;
+  present: number;
+  missing: string[];
+}
+
+export interface TenantSeedStatus {
+  bu_id: string;
+  bu_code: string;
+  sets: SeedSetStatus[];
+  all_seeded: boolean;
+}
+
+export interface SeedDeploySummary {
+  bu_id: string;
+  bu_code: string;
+  created: number;
+  skipped: number;
+}
+
+export type SeedProgressEvent =
+  | { type: 'start'; bu_id: string; bu_code: string; total: number }
+  | { type: 'seeding'; bu_id: string; bu_code: string; key: string; row_type: string; index: number; total: number }
+  | { type: 'done'; success: boolean; summary: SeedDeploySummary }
+  | { type: 'error'; message: string };
+
 export interface UserInfo {
   firstname?: string;
   middlename?: string;
