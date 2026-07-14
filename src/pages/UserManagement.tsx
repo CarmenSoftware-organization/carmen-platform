@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
+import { UserDirectorySummary, summarizeUsers, type UserSummaryData } from "./userManagement/UserDirectorySummary";
 import userService from "../services/userService";
 import { getErrorDetail } from '../utils/errorParser';
 import { useAuth } from '../context/AuthContext';
@@ -84,6 +85,8 @@ const UserManagement: React.FC = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [summary, setSummary] = useState<UserSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const storedSearch = localStorage.getItem('search_users') || '';
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_users', []);
@@ -167,6 +170,32 @@ const UserManagement: React.FC = () => {
     fetchUsers(paginate);
   }, [fetchUsers, paginate]);
 
+  // Directory band: roll up the whole (non-deleted) set + a deleted-count read.
+  // Kept off the `paginate` effect so paging/searching never triggers the
+  // full-list read — only mount and population-changing mutations refresh it.
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const [allRes, deletedRes] = await Promise.all([
+        userService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
+        userService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
+      ]);
+      const items = ((allRes as { data?: unknown }).data ?? allRes) as Parameters<typeof summarizeUsers>[0];
+      const list = Array.isArray(items) ? items : [];
+      const deleted = deletedRes as { paginate?: { total?: number }; total?: number };
+      const archived = deleted.paginate?.total ?? deleted.total ?? 0;
+      setSummary(summarizeUsers(list, archived));
+    } catch {
+      setSummary(null); // band falls back to its skeleton; the table still works
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     localStorage.setItem('search_users', value);
@@ -243,6 +272,7 @@ const UserManagement: React.FC = () => {
       toast.success('User deleted successfully');
       setDeleteId(null);
       setPaginate((prev) => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       toast.error('Failed to delete user', { description: getErrorDetail(err) });
     }
@@ -262,6 +292,7 @@ const UserManagement: React.FC = () => {
       toast.success('User permanently deleted');
       setHardDeleteUser(null);
       setPaginate((prev) => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       toast.error('Failed to permanently delete user', { description: getErrorDetail(err) });
     } finally {
@@ -317,6 +348,7 @@ const UserManagement: React.FC = () => {
     setBulkSoftOpen(false);
     clearSelection();
     setPaginate((prev) => ({ ...prev }));
+    loadSummary();
   };
 
   const genBulkCode = () => {
@@ -341,6 +373,7 @@ const UserManagement: React.FC = () => {
       setBulkConfirmInput('');
       clearSelection();
       setPaginate((prev) => ({ ...prev }));
+      loadSummary();
     } finally {
       setBulkDeleting(false);
     }
@@ -363,6 +396,7 @@ const UserManagement: React.FC = () => {
       await userService.fetchKeycloakUsers();
       toast.success('Users fetched from Keycloak successfully');
       setPaginate(prev => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       toast.error('Failed to fetch users from Keycloak', { description: getErrorDetail(err) });
     } finally {
@@ -403,39 +437,51 @@ const UserManagement: React.FC = () => {
       {
         accessorKey: "username",
         header: "Username",
-        cell: ({ row }) => (
-          <Link
-            to={`/users/${row.original.id}/edit`}
-            className="text-primary hover:underline"
-          >
-            {row.original.username || row.original.user_id || "-"}
-          </Link>
-        ),
+        cell: ({ row }) => {
+          const label = row.original.username || row.original.user_id || "-";
+          return (
+            <Link
+              to={`/users/${row.original.id}/edit`}
+              className="text-primary hover:underline block truncate"
+              title={label}
+            >
+              {label}
+            </Link>
+          );
+        },
       },
       {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <span>{getNameDisplay(row.original)}</span>
-            {row.original.deleted_at && (
-              <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
-                Deleted
-              </Badge>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const name = getNameDisplay(row.original);
+          return (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="truncate" title={name}>{name}</span>
+              {row.original.deleted_at && (
+                <Badge variant="destructive" className="shrink-0 text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
+                  Deleted
+                </Badge>
+              )}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "email",
         header: "Email",
-        cell: ({ row }) => row.original.email || "-",
+        cell: ({ row }) => (
+          <div className="truncate" title={row.original.email || undefined}>
+            {row.original.email || "-"}
+          </div>
+        ),
       },
 
       {
         id: "bu_count",
         header: "BU",
         enableSorting: false,
+        meta: { headerClassName: "w-16" },
         cell: ({ row }) => {
           const bus = row.original.business_unit || [];
           const active = bus.filter(b => b.is_active).length;
@@ -454,6 +500,7 @@ const UserManagement: React.FC = () => {
       {
         accessorKey: "is_active",
         header: "Status",
+        meta: { headerClassName: "w-24" },
         cell: ({ row }) => (
           <Badge variant={row.original.is_active ? "success" : "secondary"}>
             {row.original.is_active ? "Active" : "Inactive"}
@@ -464,6 +511,7 @@ const UserManagement: React.FC = () => {
         accessorKey: "created_at",
         id: "created_at",
         header: "Created",
+        meta: { headerClassName: "w-40" },
         cell: ({ row }) => {
           const d = row.original;
           const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
@@ -479,6 +527,7 @@ const UserManagement: React.FC = () => {
         accessorKey: "updated_at",
         id: "updated_at",
         header: "Updated",
+        meta: { headerClassName: "w-40" },
         cell: ({ row }) => {
           const d = row.original;
           if (d.updated_at === d.created_at) return null;
@@ -494,6 +543,7 @@ const UserManagement: React.FC = () => {
       ...(showDeleted ? [{
         id: 'deleted_at',
         header: 'Deleted By',
+        meta: { headerClassName: "w-40" },
         cell: ({ row }: { row: { original: UserRecord } }) => {
           const d = row.original;
           if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
@@ -579,6 +629,8 @@ const UserManagement: React.FC = () => {
             </>
           }
         />
+
+        <UserDirectorySummary summary={summary} loading={summaryLoading} />
 
         <Card>
           <CardHeader className="space-y-3">
