@@ -73,15 +73,22 @@ vi.mock('../../services/sqlQueryService', () => ({
   },
 }));
 
-// CodeMirror needs layout APIs jsdom lacks; stub the editor to a textarea.
+// CodeMirror needs layout APIs jsdom lacks; stub the editor to a textarea + Run button.
 vi.mock('./SqlEditor', () => ({
   SqlEditor: ({
     value,
     onChange,
+    onRun,
   }: {
     value: string;
     onChange: (v: string) => void;
-  }) => <textarea aria-label="sql" value={value} onChange={(e) => onChange(e.target.value)} />,
+    onRun?: (sql: string) => void;
+  }) => (
+    <div>
+      <textarea aria-label="sql" value={value} onChange={(e) => onChange(e.target.value)} />
+      <button type="button" onClick={() => onRun?.(value)}>Run</button>
+    </div>
+  ),
 }));
 
 const renderPage = () =>
@@ -171,5 +178,52 @@ describe('SqlWorkbench', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(screen.getByLabelText('sql')).toHaveValue('');
+  });
+
+  it('runs a non-destructive statement without confirmation', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT * FROM t');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT * FROM t'),
+    );
+    expect(screen.queryByText(/run destructive sql/i)).not.toBeInTheDocument();
+  });
+
+  it('confirms before running a destructive statement', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'DROP TABLE users');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    // Dialog shown, nothing executed yet.
+    expect(await screen.findByText(/run destructive sql/i)).toBeInTheDocument();
+    expect(sqlQueryService.executeSql).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /run anyway/i }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'DROP TABLE users'),
+    );
+  });
+
+  it('allows a multi-statement run', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1; SELECT 2');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1; SELECT 2'),
+    );
   });
 });
