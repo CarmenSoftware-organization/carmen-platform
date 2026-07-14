@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
+import { PlatformAccessSummary, summarizeUserPlatform, type UserPlatformSummaryData } from "./userPlatformManagement/PlatformAccessSummary";
 import userService from "../services/userService";
 import userRoleService from "../services/userRoleService";
 import { getErrorDetail } from '../utils/errorParser';
@@ -66,6 +67,8 @@ const UserPlatformManagement: React.FC = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [summary, setSummary] = useState<UserPlatformSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const storedSearch = localStorage.getItem('search_user_platform') || '';
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_user_platform', []);
@@ -145,6 +148,33 @@ const UserPlatformManagement: React.FC = () => {
     fetchUsers(paginate);
   }, [fetchUsers, paginate]);
 
+  // Governance band: roll up the whole set (ignoring filters). Platform-role
+  // counts are an N+1 read per user — the same call the table already makes,
+  // extended to every user — so the band skeletons until they resolve.
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const data = (await userService.getAll({ perpage: -1 })) as unknown as Record<string, unknown>;
+      const raw = (data.data || data) as { id: string; is_active?: boolean }[];
+      const list = Array.isArray(raw) ? raw : [];
+      const pairs = await Promise.all(
+        list.map(async (u) => {
+          try { return [u.id, (await userRoleService.list(u.id)).length] as const; }
+          catch { return [u.id, 0] as const; }
+        }),
+      );
+      setSummary(summarizeUserPlatform(list, Object.fromEntries(pairs)));
+    } catch {
+      setSummary(null); // band falls back to its skeleton; the table still works
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     localStorage.setItem('search_user_platform', value);
@@ -212,7 +242,8 @@ const UserPlatformManagement: React.FC = () => {
         header: "Username",
         cell: ({ row }) => (
           <button
-            className="text-left font-medium text-primary hover:underline"
+            className="block w-full truncate text-left font-medium text-primary hover:underline"
+            title={row.original.username || undefined}
             onClick={() => navigate(`/platform/user-platform/${row.original.id}`)}
           >
             {row.original.username || "-"}
@@ -222,16 +253,22 @@ const UserPlatformManagement: React.FC = () => {
       {
         accessorKey: "name",
         header: "Name",
-        cell: ({ row }) => <span>{getNameDisplay(row.original)}</span>,
+        cell: ({ row }) => {
+          const name = getNameDisplay(row.original);
+          return <div className="truncate" title={name}>{name}</div>;
+        },
       },
       {
         accessorKey: "email",
         header: "Email",
-        cell: ({ row }) => <span>{row.original.email || "-"}</span>,
+        cell: ({ row }) => (
+          <div className="truncate" title={row.original.email || undefined}>{row.original.email || "-"}</div>
+        ),
       },
       {
         accessorKey: "is_active",
         header: "Status",
+        meta: { headerClassName: "w-28" },
         cell: ({ row }) => (
           <Badge variant={row.original.is_active ? "success" : "secondary"}>
             {row.original.is_active ? "Active" : "Inactive"}
@@ -242,7 +279,7 @@ const UserPlatformManagement: React.FC = () => {
         id: "roles_count",
         header: "Roles",
         enableSorting: false,
-        meta: { cellClassName: 'text-center' },
+        meta: { headerClassName: 'w-20', cellClassName: 'text-center' },
         cell: ({ row }) => {
           const c = rolesCount[row.original.id];
           if (c === undefined) return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground mx-auto" />;
@@ -253,6 +290,7 @@ const UserPlatformManagement: React.FC = () => {
         accessorKey: "created_at",
         id: "created_at",
         header: "Created",
+        meta: { headerClassName: "w-40" },
         cell: ({ row }) => {
           const d = row.original;
           return (
@@ -267,6 +305,7 @@ const UserPlatformManagement: React.FC = () => {
         accessorKey: "updated_at",
         id: "updated_at",
         header: "Updated",
+        meta: { headerClassName: "w-40" },
         cell: ({ row }) => {
           const d = row.original;
           if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
@@ -295,6 +334,8 @@ const UserPlatformManagement: React.FC = () => {
             </Button>
           }
         />
+
+        <PlatformAccessSummary summary={summary} loading={summaryLoading} />
 
         <Card>
           <CardHeader className="space-y-3">
