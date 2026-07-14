@@ -84,4 +84,23 @@ describe('tenantSeedService.deployStream', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(okStream(chunks) as never);
     await expect(tenantSeedService.deployStream('b', () => {})).rejects.toThrow(/seed failed/);
   });
+
+  it('sends a JSON body with selected keys when provided', async () => {
+    const spy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okStream([JSON.stringify({ type: 'done', success: true, summary: { bu_id: 'b', bu_code: 'B', created: 0, skipped: 0 } }) + '\n']) as never);
+    await tenantSeedService.deployStream('bu-7', () => {}, ['running-code']);
+    const [, init] = spy.mock.calls[0];
+    expect((init as RequestInit).headers).toMatchObject({ 'Content-Type': 'application/json' });
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ keys: ['running-code'] });
+  });
+
+  it('omits the body when no keys are provided', async () => {
+    const spy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okStream([JSON.stringify({ type: 'done', success: true, summary: { bu_id: 'b', bu_code: 'B', created: 0, skipped: 0 } }) + '\n']) as never);
+    await tenantSeedService.deployStream('bu-7', () => {});
+    const [, init] = spy.mock.calls[0];
+    expect((init as RequestInit).body).toBeUndefined();
+  });
 });

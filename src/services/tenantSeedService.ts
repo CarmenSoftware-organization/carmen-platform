@@ -19,14 +19,18 @@ const tenantSeedService = {
   deployStream: async (
     buId: string,
     onEvent: (e: SeedProgressEvent) => void,
+    keys?: string[],
   ): Promise<SeedDeploySummary> => {
     const base = api.defaults.baseURL ?? '';
+    const hasKeys = Array.isArray(keys) && keys.length > 0;
     const res = await fetch(`${base}/api-system/tenant/seeds/${buId}/deploy/stream`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
+        ...(hasKeys ? { 'Content-Type': 'application/json' } : {}),
       },
+      ...(hasKeys ? { body: JSON.stringify({ keys }) } : {}),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
