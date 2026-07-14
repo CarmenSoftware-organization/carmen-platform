@@ -37,7 +37,7 @@ describe('NewsEdit tags', () => {
   it('adds a typed tag and includes it in the create payload', async () => {
     const user = userEvent.setup();
     renderNew();
-    await user.type(screen.getByLabelText(/title/i), 'My news');
+    await user.type(screen.getByLabelText(/headline/i), 'My news');
     const tagInput = screen.getByPlaceholderText('Add a tag...');
     await user.type(tagInput, 'urgent{Enter}');
     await user.click(screen.getByRole('button', { name: /create news/i }));

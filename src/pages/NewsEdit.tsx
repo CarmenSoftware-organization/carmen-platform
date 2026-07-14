@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
 import newsService from '../services/newsService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,9 +10,11 @@ import { Badge } from '../components/ui/badge';
 import { ChipInput } from '../components/ui/chip-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Pencil, X, Loader2 } from 'lucide-react';
+import { Save, Pencil, X, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
+import { cn } from '../lib/utils';
+import { NewsMasthead } from './newsEdit/NewsMasthead';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, parseApiError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
@@ -262,227 +263,244 @@ const NewsEdit: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          backTo="/news"
-          title={isNew ? 'Add News' : editing ? 'Edit News' : 'News Details'}
-          subtitle={isNew ? 'Create a new news article' : editing ? 'Update news information' : 'View news information'}
-          actions={!isNew && !editing && (
-            <Can permission="news.update">
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Can>
-          )}
-        />
+      <div className="space-y-4 sm:space-y-6 pb-24">
+        <Link
+          to="/news"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          News
+        </Link>
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {/* Content */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Content</CardTitle>
-              <CardDescription>
-                {isNew ? 'Fill in the news content' : editing ? 'Modify the news content' : 'News content'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <NewsMasthead
+            status={formData.status}
+            isGlobal={formData.isGlobal}
+            buCount={formData.business_unit_ids.length}
+            title={formData.title}
+            publishedLabel={publishedAt ? fmt(publishedAt) : undefined}
+            editing={editing}
+            coverUrl={formData.image}
+            coverEditor={
               <div className="space-y-2">
-                <Label htmlFor="title">Title {editing && '*'}</Label>
-                {editing ? (
-                  <>
-                    <Input
-                      type="text"
-                      id="title"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="News title"
-                      className={fieldErrors.title ? 'border-destructive' : ''}
-                      required
-                    />
-                    {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
-                  </>
-                ) : (
-                  <ReadOnlyField value={formData.title} />
-                )}
+                <Label htmlFor="image">Cover image</Label>
+                <ImageUpload value={formData.image} onFileSelect={setSelectedImageFile} disabled={!editing} />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contents">Content (Markdown)</Label>
-                <MarkdownEditor
-                  id="contents"
-                  value={formData.contents}
-                  onChange={(v) => { setFormData(prev => ({ ...prev, contents: v })); setError(''); }}
-                  readOnly={!editing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="url">Source URL</Label>
-                {editing ? (
-                  <>
-                    <Input
-                      type="url"
-                      id="url"
-                      name="url"
-                      value={formData.url}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                      placeholder="https://example.com/news/123"
-                      className={fieldErrors.url ? 'border-destructive' : ''}
-                    />
-                    {fieldErrors.url && <p className="text-xs text-destructive">{fieldErrors.url}</p>}
-                  </>
-                ) : (
-                  <ReadOnlyField value={formData.url} />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tags">Tags</Label>
-                <ChipInput
-                  id="tags"
-                  value={formData.tags.join(',')}
-                  onChange={(v) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      tags: v
-                        ? Array.from(new Set(v.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)))
-                        : [],
-                    }))
-                  }
-                  suggestions={tagSuggestions}
-                  placeholder="Add a tag..."
-                  disabled={!editing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="image">Image</Label>
-                <ImageUpload
-                  value={formData.image}
-                  onFileSelect={setSelectedImageFile}
-                  disabled={!editing}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Publishing */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Publishing</CardTitle>
-              <CardDescription>Status and publication date</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                {editing ? (
-                  <select
-                    id="status"
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    className={selectClassName}
-                  >
-                    {NEWS_STATUSES.map((s) => (
-                      <option key={s} value={s}>{cap(s)}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div>
-                    <Badge variant={statusVariant(formData.status)}>{cap(formData.status)}</Badge>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>Published At</Label>
-                <ReadOnlyField value={fmt(publishedAt)} />
-                <p className="text-xs text-muted-foreground">
-                  Set automatically by the server when status becomes "Published".
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Targeting */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Targeting</CardTitle>
-              <CardDescription>Choose which business units can see this news</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
+            }
+            titleEditor={
+              <div className="space-y-1">
                 <input
-                  type="checkbox"
-                  id="isGlobal"
-                  name="isGlobal"
-                  checked={formData.isGlobal}
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
                   onChange={handleChange}
-                  disabled={!editing}
-                  className="h-4 w-4 rounded border-input"
-                />
-                <Label htmlFor="isGlobal">Visible to all business units (global)</Label>
-              </div>
-              {!formData.isGlobal && (
-                <div className="space-y-2">
-                  <Label>Business Units</Label>
-                  <BusinessUnitMultiSelect
-                    value={formData.business_unit_ids}
-                    onChange={(ids) => { setFormData(prev => ({ ...prev, business_unit_ids: ids })); setError(''); }}
-                    disabled={!editing}
-                  />
-                  {fieldErrors.business_unit_ids && (
-                    <p className="text-xs text-destructive">{fieldErrors.business_unit_ids}</p>
+                  onBlur={handleBlur}
+                  onFocus={handleFocus}
+                  placeholder="Headline"
+                  aria-label="Headline"
+                  className={cn(
+                    'w-full border-b border-transparent bg-transparent pb-1 text-2xl font-bold tracking-tight outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary sm:text-3xl',
+                    fieldErrors.title && 'border-destructive',
                   )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  required
+                />
+                {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
+              </div>
+            }
+            actions={
+              !isNew && !editing && (
+                <Can permission="news.update">
+                  <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                </Can>
+              )
+            }
+          />
 
-          {/* Metadata - existing records only */}
-          {!isNew && audit && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Metadata</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Created</Label>
-                  <div className="text-sm">{fmt(audit.created?.at)}{audit.created?.name ? ` by ${audit.created.name}` : ''}</div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Last Updated</Label>
-                  <div className="text-sm">{fmt(audit.updated?.at)}{audit.updated?.name ? ` by ${audit.updated.name}` : ''}</div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,340px)]">
+            {/* Article body */}
+            <div className="min-w-0 space-y-4 sm:space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Article</CardTitle>
+                  <CardDescription>The body readers see, plus its source and tags.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contents">Body (Markdown)</Label>
+                    <MarkdownEditor
+                      id="contents"
+                      value={formData.contents}
+                      onChange={(v) => { setFormData(prev => ({ ...prev, contents: v })); setError(''); }}
+                      readOnly={!editing}
+                    />
+                  </div>
 
-          {editing && (
-            <div className="flex gap-3">
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : isNew ? 'Create News' : 'Save Changes'}
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/news') : handleCancelEdit}>
-                <X className="mr-2 h-4 w-4" />
-                Cancel
-              </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="url">Source URL</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="url"
+                          id="url"
+                          name="url"
+                          value={formData.url}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder="https://example.com/news/123"
+                          className={fieldErrors.url ? 'border-destructive' : ''}
+                        />
+                        {fieldErrors.url && <p className="text-xs text-destructive">{fieldErrors.url}</p>}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.url} />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tags">Tags</Label>
+                    <ChipInput
+                      id="tags"
+                      value={formData.tags.join(',')}
+                      onChange={(v) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          tags: v
+                            ? Array.from(new Set(v.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)))
+                            : [],
+                        }))
+                      }
+                      suggestions={tagSuggestions}
+                      placeholder="Add a tag..."
+                      disabled={!editing}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          )}
+
+            {/* Publish rail */}
+            <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Publish</CardTitle>
+                  <CardDescription>Who sees this, and when.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    {editing ? (
+                      <select id="status" name="status" value={formData.status} onChange={handleChange} className={selectClassName}>
+                        {NEWS_STATUSES.map((s) => (
+                          <option key={s} value={s}>{cap(s)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div><Badge variant={statusVariant(formData.status)}>{cap(formData.status)}</Badge></div>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 border-t pt-4">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isGlobal"
+                        name="isGlobal"
+                        checked={formData.isGlobal}
+                        onChange={handleChange}
+                        disabled={!editing}
+                        className="h-4 w-4 rounded border-input"
+                      />
+                      <Label htmlFor="isGlobal">Visible to all business units</Label>
+                    </div>
+                    {!formData.isGlobal && (
+                      <div className="space-y-2">
+                        <Label>Business units</Label>
+                        <BusinessUnitMultiSelect
+                          value={formData.business_unit_ids}
+                          onChange={(ids) => { setFormData(prev => ({ ...prev, business_unit_ids: ids })); setError(''); }}
+                          disabled={!editing}
+                        />
+                        {fieldErrors.business_unit_ids && (
+                          <p className="text-xs text-destructive">{fieldErrors.business_unit_ids}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 border-t pt-4">
+                    <Label>Published at</Label>
+                    <ReadOnlyField value={fmt(publishedAt)} />
+                    <p className="text-xs text-muted-foreground">Set automatically when status becomes "Published".</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {!isNew && audit && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">History</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Created</div>
+                      <div>{fmt(audit.created?.at)}{audit.created?.name ? ` by ${audit.created.name}` : ''}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Last updated</div>
+                      <div>{fmt(audit.updated?.at)}{audit.updated?.name ? ` by ${audit.updated.name}` : ''}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         </form>
       </div>
 
-      <DevDebugSheet title="API Response" endpoint={`GET /api/news/${id}`} data={isNew ? null : rawResponse} />
+      {/* Sticky action bar */}
+      {editing && (
+        <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-border bg-background">
+          <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              {hasChanges ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
+                  <span>Unsaved changes</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">No changes</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={isNew ? () => navigate('/news') : handleCancelEdit}
+                disabled={saving}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? 'Saving...' : isNew ? 'Create News' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DevDebugSheet title="API Response" endpoint={`GET /api/news/${id}`} data={isNew ? null : rawResponse} fabClassName={editing ? 'bottom-20' : undefined} />
     </Layout>
   );
 };
