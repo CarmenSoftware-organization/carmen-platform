@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TenantSeedCard } from './TenantSeedCard';
 import tenantSeedService from '../services/tenantSeedService';
@@ -21,19 +21,22 @@ describe('TenantSeedCard', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => vi.restoreAllMocks());
 
-  it('checks status and shows missing rows, then enables seeding', async () => {
+  it('renders a checkbox per set (default checked) and counts selected missing', async () => {
     svc.getStatus.mockResolvedValue({
       bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: false,
-      sets: [{ key: 'running-code', label: 'Running codes', defined: 14, present: 12, missing: ['PRODUCT', 'PRICE-LIST'] }],
+      sets: [
+        { key: 'running-code', label: 'Running codes', defined: 14, present: 12, missing: ['PRODUCT', 'PRICE-LIST'] },
+        { key: 'currencies', label: 'Currencies', defined: 3, present: 0, missing: ['USD', 'THB', 'EUR'] },
+      ],
     });
     render(<TenantSeedCard {...baseProps} />);
     await userEvent.click(screen.getByRole('button', { name: /check status/i }));
-    // Exact match targets the summary Badge only — a loose /2 missing/i regex also
-    // matches the per-set detail text "(12/14 present, 2 missing)", which is an
-    // unrelated ambiguity from two conventions (summary badge + per-set breakdown)
-    // both legitimately reporting the same count when there's a single set.
-    expect(await screen.findByText('2 missing')).toBeInTheDocument();
-    expect(screen.getByText('PRODUCT')).toBeInTheDocument();
+    // both sets checked by default -> 2 + 3 = 5 missing
+    expect(await screen.findByRole('button', { name: /seed 5 row/i })).toBeEnabled();
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes).toHaveLength(2);
+    // uncheck the currencies set -> only running-code's 2 remain
+    await userEvent.click(boxes[1]);
     expect(screen.getByRole('button', { name: /seed 2 row/i })).toBeEnabled();
   });
 
@@ -48,31 +51,37 @@ describe('TenantSeedCard', () => {
     expect(screen.queryByRole('button', { name: /seed \d+ row/i })).not.toBeInTheDocument();
   });
 
-  it('runs a seed: streams progress, confirms, then re-checks', async () => {
+  it('seeds only the selected sets', async () => {
     svc.getStatus
       .mockResolvedValueOnce({
         bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: false,
-        sets: [{ key: 'running-code', label: 'Running codes', defined: 14, present: 13, missing: ['PRODUCT'] }],
+        sets: [
+          { key: 'running-code', label: 'Running codes', defined: 14, present: 13, missing: ['PRODUCT'] },
+          { key: 'currencies', label: 'Currencies', defined: 3, present: 0, missing: ['USD', 'THB', 'EUR'] },
+        ],
       })
       .mockResolvedValueOnce({
-        bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: true,
-        sets: [{ key: 'running-code', label: 'Running codes', defined: 14, present: 14, missing: [] }],
+        bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: false,
+        sets: [
+          { key: 'running-code', label: 'Running codes', defined: 14, present: 14, missing: [] },
+          { key: 'currencies', label: 'Currencies', defined: 3, present: 0, missing: ['USD', 'THB', 'EUR'] },
+        ],
       });
     svc.deployStream.mockImplementation(async (_buId: string, onEvent: (e: SeedProgressEvent) => void) => {
       onEvent({ type: 'start', bu_id: 'bu-1', bu_code: 'ZEBRA', total: 1 });
       onEvent({ type: 'seeding', bu_id: 'bu-1', bu_code: 'ZEBRA', key: 'running-code', row_type: 'PRODUCT', index: 1, total: 1 });
       return { bu_id: 'bu-1', bu_code: 'ZEBRA', created: 1, skipped: 13 };
     });
-
     render(<TenantSeedCard {...baseProps} />);
     await userEvent.click(screen.getByRole('button', { name: /check status/i }));
+    // uncheck currencies (2nd box), keep running-code
+    const boxes = screen.getAllByRole('checkbox');
+    await userEvent.click(boxes[1]);
     await userEvent.click(await screen.findByRole('button', { name: /seed 1 row/i }));
-    // ConfirmDialog confirm button
-    await userEvent.click(await screen.findByRole('button', { name: /^seed$/i }));
-
-    await waitFor(() => expect(svc.deployStream).toHaveBeenCalledWith('bu-1', expect.any(Function)));
-    await waitFor(() => expect(svc.getStatus).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText(/seeded/i)).toBeInTheDocument();
+    await userEvent.click(await within(screen.getByRole('dialog')).findByRole('button', { name: /^seed$/i }));
+    await waitFor(() =>
+      expect(svc.deployStream).toHaveBeenCalledWith('bu-1', expect.any(Function), ['running-code']),
+    );
   });
 
   it('disables actions and shows a reason when not super-admin', () => {

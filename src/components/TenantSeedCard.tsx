@@ -32,6 +32,7 @@ export const TenantSeedCard = ({
   const [lastChecked, setLastChecked] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number; current: string | null } | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
   const disabledReason = !isSuperAdmin
     ? 'Super-admin required.'
@@ -46,11 +47,28 @@ export const TenantSeedCard = ({
     [status],
   );
 
+  const selectedMissing = useMemo(
+    () =>
+      status
+        ? status.sets.reduce((acc, s) => (selectedKeys.has(s.key) ? acc + s.missing.length : acc), 0)
+        : 0,
+    [status, selectedKeys],
+  );
+
+  const toggleSet = (key: string) =>
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const fetchStatus = async () => {
     setLoadingStatus(true);
     try {
       const s = await tenantSeedService.getStatus(buId);
       setStatus(s);
+      setSelectedKeys(new Set(s.sets.filter((x) => x.missing.length > 0).map((x) => x.key)));
       const d = new Date();
       const p = (n: number) => String(n).padStart(2, '0');
       setLastChecked(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
@@ -64,7 +82,7 @@ export const TenantSeedCard = ({
   const runSeed = async () => {
     setConfirmOpen(false);
     setSeeding(true);
-    setProgress({ done: 0, total: totalMissing, current: null });
+    setProgress({ done: 0, total: selectedMissing, current: null });
     setLogLines([]);
     try {
       const onEvent = (e: SeedProgressEvent) => {
@@ -74,7 +92,7 @@ export const TenantSeedCard = ({
           setLogLines((prev) => [...prev, `${e.key}: ${e.row_type}`]);
         }
       };
-      const summary = await tenantSeedService.deployStream(buId, onEvent);
+      const summary = await tenantSeedService.deployStream(buId, onEvent, Array.from(selectedKeys));
       if (summary.created === 0) toast.info('Nothing to seed — already up to date.');
       else toast.success(`Created ${summary.created} row(s) for ${buCode} (skipped ${summary.skipped}).`);
       await fetchStatus();
@@ -132,12 +150,18 @@ export const TenantSeedCard = ({
               .filter((s) => s.missing.length > 0)
               .map((s) => (
                 <div key={s.key} className="space-y-1">
-                  <p className="text-sm font-medium">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={selectedKeys.has(s.key)}
+                      onChange={() => toggleSet(s.key)}
+                    />
                     {s.label}{' '}
-                    <span className="text-muted-foreground">
+                    <span className="font-normal text-muted-foreground">
                       ({s.present}/{s.defined} present, {s.missing.length} missing)
                     </span>
-                  </p>
+                  </label>
                   <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
                     {s.missing.map((name) => (
                       <li key={name} className="break-all font-mono text-xs text-muted-foreground">
@@ -148,9 +172,14 @@ export const TenantSeedCard = ({
                 </div>
               ))}
             {withTooltip(
-              <Button type="button" size="sm" onClick={() => setConfirmOpen(true)} disabled={actionsDisabled}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setConfirmOpen(true)}
+                disabled={actionsDisabled || selectedMissing === 0}
+              >
                 <Play className="mr-2 h-4 w-4" />
-                Seed {totalMissing} row(s)
+                Seed {selectedMissing} row(s)
               </Button>,
             )}
           </div>
@@ -194,7 +223,7 @@ export const TenantSeedCard = ({
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Seed tenant data"
-        description={`Seed ${totalMissing} default row(s) into ${buName} (${buCode})? This creates missing default master data in the tenant database. Existing rows are left unchanged.`}
+        description={`Seed ${selectedMissing} default row(s) into ${buName} (${buCode})? This creates missing default master data in the tenant database. Existing rows are left unchanged.`}
         confirmText="Seed"
         onConfirm={runSeed}
       />
