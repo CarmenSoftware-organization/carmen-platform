@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Building2, Users, Network, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Network, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -20,6 +20,9 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { FleetCapacity } from './clusterManagement/FleetCapacity';
+import { CapacityMeter } from './clusterManagement/CapacityMeter';
+import { summarizeFleet, type FleetSummary } from '../utils/capacity';
 import type { Cluster, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -49,6 +52,8 @@ const ClusterManagement: React.FC = () => {
   const [showDeleted, setShowDeleted] = useState<boolean>(getStoredJSON<boolean>('filter_clusters_deleted', false));
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [fleet, setFleet] = useState<FleetSummary | null>(null);
+  const [fleetLoading, setFleetLoading] = useState(true);
 
   const buildAdvance = (filters: string[], includeDeleted: boolean) => {
     const where: Record<string, unknown> = {};
@@ -113,6 +118,35 @@ const ClusterManagement: React.FC = () => {
   useEffect(() => {
     fetchClusters(paginate);
   }, [fetchClusters, paginate]);
+
+  // Fleet-capacity strip: summarise the whole (non-deleted) set, not just the
+  // current page. Clusters are few, so a single full-list read is cheap.
+  const loadFleet = useCallback(async () => {
+    setFleetLoading(true);
+    try {
+      const data = await clusterService.getAll({
+        perpage: -1,
+        advance: JSON.stringify({ where: { deleted_at: null } }),
+      });
+      const items = ((data as { data?: unknown }).data ?? data) as Record<string, unknown>[];
+      const mapped = (Array.isArray(items) ? items : []).map((item) => ({
+        is_active: item.is_active as boolean | undefined,
+        bu_count: (item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
+        max_license_bu: item.max_license_bu as number | null | undefined,
+        users_count: (item.users_count ?? (item._count as { tb_cluster_user?: number })?.tb_cluster_user ?? 0) as number,
+        total_max_license_users: item.total_max_license_users as number | null | undefined,
+      }));
+      setFleet(summarizeFleet(mapped));
+    } catch {
+      setFleet(null); // strip falls back to its skeleton; the table still works
+    } finally {
+      setFleetLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFleet();
+  }, [loadFleet]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -185,6 +219,7 @@ const ClusterManagement: React.FC = () => {
       toast.success('Cluster deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
+      loadFleet();
     } catch (err: unknown) {
       toast.error('Failed to delete cluster', { description: getErrorDetail(err) });
     }
@@ -241,42 +276,21 @@ const ClusterManagement: React.FC = () => {
         </Badge>
       ),
     },
-{
+    {
       id: 'bu_count',
-      header: 'BU',
-      cell: ({ row }) => {
-        const count = row.original.bu_count ?? 0;
-        const max = row.original.max_license_bu;
-        return (
-          <div className="flex items-center justify-center gap-1">
-            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-success font-medium">
-              {count} / {max ? max : 'unlimited'}
-            </span>
-          </div>
-        );
-      },
-      meta: { cellClassName: 'text-center' },
+      header: 'Business units',
+      cell: ({ row }) => (
+        <CapacityMeter used={row.original.bu_count} cap={row.original.max_license_bu} />
+      ),
       enableSorting: false,
     },
     {
       id: 'user_count',
       header: 'Users',
-      cell: ({ row }) => {
-        const count = row.original.users_count ?? 0;
-        // `total_max_license_users` = backend aggregate (sum of per-BU `max_license_users`).
-        // 0 / null / absent all mean "no cap" → show "unlimited"; a positive value is the cap.
-        const max = row.original.total_max_license_users;
-        return (
-          <div className="flex items-center justify-center gap-1">
-            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className={`font-medium ${max && count >= max ? 'text-destructive' : 'text-success'}`}>
-              {count} / {max ? max : 'unlimited'}
-            </span>
-          </div>
-        );
-      },
-      meta: { cellClassName: 'text-center' },
+      // `total_max_license_users` = backend aggregate of per-BU caps; 0 / null / absent = no cap.
+      cell: ({ row }) => (
+        <CapacityMeter used={row.original.users_count} cap={row.original.total_max_license_users} />
+      ),
       enableSorting: false,
     },
     {
@@ -379,6 +393,8 @@ const ClusterManagement: React.FC = () => {
             </>
           }
         />
+
+        <FleetCapacity summary={fleet} loading={fleetLoading} />
 
         <Card>
           <CardHeader className="space-y-3">

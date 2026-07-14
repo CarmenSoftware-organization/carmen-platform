@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
@@ -13,7 +13,7 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2 } from 'lucide-react';
+import { Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
@@ -25,16 +25,10 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { TableSkeleton } from '../components/TableSkeleton';
-import { ReadOnlyField } from '../components/ReadOnlyField';
+import { ClusterHero } from './clusterManagement/ClusterHero';
+import { ClusterIdentityFields, type ClusterFormData } from './clusterManagement/ClusterIdentityFields';
+import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import type { BusinessUnit, ClusterUser } from '../types';
-
-interface ClusterFormData {
-  code: string;
-  name: string;
-  alias_name: string;
-  max_license_bu: string;
-  is_active: boolean;
-}
 
 interface AllUser {
   id: string;
@@ -69,6 +63,12 @@ const ClusterEdit: React.FC = () => {
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  const [clusterMeta, setClusterMeta] = useState<{
+    created_at?: string;
+    created_by_name?: string;
+    updated_at?: string;
+    updated_by_name?: string;
+  }>({});
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
   const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
@@ -138,6 +138,12 @@ const ClusterEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(cluster));
+      setClusterMeta({
+        created_at: cluster.created_at ?? cluster.audit?.created?.at,
+        created_by_name: cluster.created_by_name ?? cluster.audit?.created?.name,
+        updated_at: cluster.updated_at ?? cluster.audit?.updated?.at,
+        updated_by_name: cluster.updated_by_name ?? cluster.audit?.updated?.name,
+      });
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
     } catch (err: unknown) {
@@ -449,195 +455,122 @@ const ClusterEdit: React.FC = () => {
     );
   }
 
+  const buUsed = businessUnits.length;
+  const buCap = formData.max_license_bu ? Number(formData.max_license_bu) : null;
+  const buActive = businessUnits.filter((b) => b.is_active).length;
+  const userUsed = clusterUsers.length;
+  const userTotalCap = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);
+  const userCap = businessUnits.some((bu) => bu.max_license_users != null) ? userTotalCap : null;
+  const userActive = clusterUsers.filter((u) => u.is_active !== false).length;
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          backTo="/clusters"
-          title={isNew ? 'Add Cluster' : editing ? 'Edit Cluster' : 'Cluster Details'}
-          subtitle={isNew ? 'Create a new cluster' : editing ? 'Update cluster information' : 'View cluster information'}
-          actions={!isNew && !editing && (
-            <Can permission="cluster.update" clusterId={id}>
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Can>
-          )}
-        />
-
-        {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
-        )}
-
-        <div className={`grid gap-4 sm:gap-6 ${!isNew ? 'grid-cols-1 lg:grid-cols-3' : ''}`}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Cluster Details</CardTitle>
-              <CardDescription>
-                {isNew ? 'Fill in the details for the new cluster' : editing ? 'Modify the cluster details below' : 'Cluster information'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="code">Code {editing && '*'}</Label>
-                    {editing ? (
-                      <>
-                        <Input
-                          type="text"
-                          id="code"
-                          name="code"
-                          value={formData.code}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          onFocus={handleFocus}
-                          placeholder="Cluster code"
-                          className={fieldErrors.code ? 'border-destructive' : ''}
-                          required
-                        />
-                        {fieldErrors.code && (
-                          <p className="text-xs text-destructive">{fieldErrors.code}</p>
-                        )}
-                      </>
-                    ) : (
-                      <ReadOnlyField value={formData.code} />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="alias_name">Alias Name</Label>
-                    {editing ? (
-                      <>
-                        <Input
-                          type="text"
-                          id="alias_name"
-                          name="alias_name"
-                          value={formData.alias_name}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          onFocus={handleFocus}
-                          placeholder="Max 3 chars"
-                          maxLength={3}
-                          className={fieldErrors.alias_name ? 'border-destructive' : ''}
-                        />
-                        {fieldErrors.alias_name && (
-                          <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
-                        )}
-                      </>
-                    ) : (
-                      <ReadOnlyField value={formData.alias_name} />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name {editing && '*'}</Label>
-                    {editing ? (
-                      <Input
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder="Cluster name"
-                        required
-                      />
-                    ) : (
-                      <ReadOnlyField value={formData.name} />
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="max_license_bu">Max Licensed BUs</Label>
-                    {editing ? (
-                      <>
-                        <Input
-                          type="number"
-                          id="max_license_bu"
-                          name="max_license_bu"
-                          value={formData.max_license_bu}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          onFocus={handleFocus}
-                          placeholder="Unlimited"
-                          min={0}
-                          className={fieldErrors.max_license_bu ? 'border-destructive' : ''}
-                        />
-                        {fieldErrors.max_license_bu && (
-                          <p className="text-xs text-destructive">{fieldErrors.max_license_bu}</p>
-                        )}
-                      </>
-                    ) : (
-                      <ReadOnlyField value={formData.max_license_bu || 'Unlimited'} />
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {editing ? (
-                      <>
-                        <input
-                          type="checkbox"
-                          id="is_active"
-                          name="is_active"
-                          checked={formData.is_active}
-                          onChange={handleChange}
-                          className="h-4 w-4 rounded border-input"
-                        />
-                        <Label htmlFor="is_active">Active</Label>
-                      </>
-                    ) : (
-                      <>
-                        <Label>Status</Label>
-                        <Badge variant={formData.is_active ? 'success' : 'secondary'} className="ml-2">
-                          {formData.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {editing && (
+        {isNew ? (
+          <>
+            <PageHeader backTo="/clusters" title="Add Cluster" subtitle="Create a new cluster" />
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+            )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Cluster details</CardTitle>
+                <CardDescription>Fill in the details for the new cluster</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+                  <ClusterIdentityFields
+                    formData={formData}
+                    fieldErrors={fieldErrors}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    onFocus={handleFocus}
+                  />
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" size="sm" disabled={saving}>
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      {saving ? 'Saving...' : isNew ? 'Create Cluster' : 'Save Changes'}
+                      {saving ? 'Creating...' : 'Create Cluster'}
                     </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={isNew ? () => navigate('/clusters') : handleCancelEdit}>
+                    <Button type="button" size="sm" variant="outline" onClick={() => navigate('/clusters')}>
                       <X className="mr-2 h-4 w-4" />
                       Cancel
                     </Button>
                   </div>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Right column - Edit mode only */}
-          {!isNew && (
-            <div className="space-y-6 lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Branding</CardTitle>
-                <CardDescription>Logo and avatar shown across the platform</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-6 sm:flex-row sm:gap-10">
-                <BrandingImageUpload
-                  label="Logo"
-                  value={logoUrl}
-                  disabled={!editing}
-                  shape="rect"
-                  onUpload={handleUploadLogo}
-                />
-                <BrandingImageUpload
-                  label="Avatar"
-                  value={avatarUrl}
-                  disabled={!editing}
-                  shape="square"
-                  onUpload={handleUploadAvatar}
-                />
+                </form>
               </CardContent>
             </Card>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/clusters"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Clusters
+            </Link>
+
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+            )}
+
+            <ClusterHero
+              name={formData.name}
+              code={formData.code}
+              alias={formData.alias_name}
+              isActive={formData.is_active}
+              logoUrl={logoUrl}
+              avatarUrl={avatarUrl}
+              meta={clusterMeta}
+              bu={{ used: buUsed, cap: buCap, active: buActive }}
+              users={{ used: userUsed, cap: userCap, active: userActive }}
+              actions={
+                !editing && (
+                  <Can permission="cluster.update" clusterId={id}>
+                    <Button size="sm" onClick={handleEditToggle}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit details
+                    </Button>
+                  </Can>
+                )
+              }
+            />
+
+            {editing && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Edit cluster</CardTitle>
+                  <CardDescription>{formData.name} · {formData.code}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+                    <ClusterIdentityFields
+                      formData={formData}
+                      fieldErrors={fieldErrors}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      onFocus={handleFocus}
+                    />
+                    <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+                      <BrandingImageUpload label="Logo" value={logoUrl} shape="rect" onUpload={handleUploadLogo} />
+                      <BrandingImageUpload label="Avatar" value={avatarUrl} shape="square" onUpload={handleUploadAvatar} />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <Button type="submit" size="sm" disabled={saving}>
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {saving ? 'Saving...' : 'Save changes'}
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>
+                        <X className="mr-2 h-4 w-4" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -647,17 +580,7 @@ const ClusterEdit: React.FC = () => {
                       Business Units
                     </CardTitle>
                     <CardDescription>
-                      {buLoading
-                        ? 'Loading...'
-                        : (
-                          <span className="flex items-center gap-2 mt-0.5">
-                            <Badge variant="success" className="text-xs px-1.5 py-0">{businessUnits.filter(bu => bu.is_active).length} Active</Badge>
-                            <span className="text-muted-foreground text-xs">
-                              of {businessUnits.length} total
-                              {formData.max_license_bu && ` (${businessUnits.length} of ${formData.max_license_bu} licensed)`}
-                            </span>
-                          </span>
-                        )}
+                      {buLoading ? 'Loading…' : `${businessUnits.length} total · ${buActive} active`}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
@@ -687,7 +610,7 @@ const ClusterEdit: React.FC = () => {
                       <tr className="border-b-2 border-border bg-muted">
                         <th className="text-left font-medium px-4 py-2">Code</th>
                         <th className="text-left font-medium px-4 py-2">Name</th>
-                        <th className="text-center font-medium px-4 py-2">Users</th>
+                        <th className="text-left font-medium px-4 py-2">Users</th>
                         <th className="text-left font-medium px-4 py-2">Status</th>
                         <th className="text-right font-medium px-4 py-2 w-12"></th>
                       </tr>
@@ -699,17 +622,11 @@ const ClusterEdit: React.FC = () => {
                             <Badge variant="outline" className="text-xs">{bu.code}</Badge>
                           </td>
                           <td className="px-4 py-2">{bu.name}</td>
-                          <td className="px-4 py-2 text-center">
-                            {(() => {
-                              const buUserCount = clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length;
-                              const max = bu.max_license_users;
-                              const atLimit = max != null && buUserCount >= max;
-                              return (
-                                <span className={`text-xs ${atLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                                  {buUserCount}{max != null ? `/${max}` : ''}
-                                </span>
-                              );
-                            })()}
+                          <td className="px-4 py-2">
+                            <CapacityMeter
+                              used={clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length}
+                              cap={bu.max_license_users}
+                            />
                           </td>
                           <td className="px-4 py-2">
                             <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
@@ -745,24 +662,7 @@ const ClusterEdit: React.FC = () => {
                       Users
                     </CardTitle>
                     <CardDescription>
-                      {usersLoading
-                        ? 'Loading...'
-                        : (
-                          <span className="flex items-center gap-2 flex-wrap mt-0.5">
-                            <Badge variant="success" className="text-xs px-1.5 py-0">{clusterUsers.filter((u) => u.is_active !== false).length} Active</Badge>
-                            <span className="text-muted-foreground text-xs">of {clusterUsers.length} total</span>
-                            {(() => {
-                              const totalMaxLicense = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);
-                              const hasLicense = businessUnits.some(bu => bu.max_license_users != null);
-                              if (!hasLicense) return null;
-                              return (
-                                <span className={`text-xs ${clusterUsers.length >= totalMaxLicense ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                  ({clusterUsers.length}/{totalMaxLicense} licensed)
-                                </span>
-                              );
-                            })()}
-                          </span>
-                        )}
+                      {usersLoading ? 'Loading…' : `${clusterUsers.length} total · ${userActive} active`}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1039,8 +939,8 @@ const ClusterEdit: React.FC = () => {
               </CardContent>
             </Card>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       <ConfirmDialog

@@ -76,17 +76,17 @@ beforeEach(() => {
 });
 
 describe('ClusterEdit (integration)', () => {
-  it('loads an existing cluster into read-only view, then reveals inputs on Edit', async () => {
+  it('loads an existing cluster into the overview hub, then reveals inputs in the edit dialog', async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
     const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
 
-    expect(await screen.findByText('Acme Cluster')).toBeInTheDocument();
-    expect(screen.getByText('CLS1')).toBeInTheDocument();
-    // page title (h1) — disambiguated from the "Cluster Details" CardTitle (h3)
-    expect(screen.getByRole('heading', { level: 1, name: 'Cluster Details' })).toBeInTheDocument();
+    // The hub hero leads with the cluster name (h1) and its code.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
+    expect(screen.getByText('CLS1', { selector: 'span' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /edit/i }));
+    // Edit details opens the dialog with editable fields.
+    await user.click(screen.getByRole('button', { name: /edit details/i }));
     expect(await screen.findByDisplayValue('Acme Cluster')).toBeInTheDocument();
     expect(screen.getByDisplayValue('CLS1')).toBeInTheDocument();
   });
