@@ -20,6 +20,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { BuSummary, summarizeBus, type BuSummaryData } from './businessUnitManagement/BuSummary';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -50,6 +51,8 @@ const BusinessUnitManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [summary, setSummary] = useState<BuSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -108,6 +111,31 @@ const BusinessUnitManagement: React.FC = () => {
   useEffect(() => {
     fetchBusinessUnits(paginate);
   }, [fetchBusinessUnits, paginate]);
+
+  // Summary strip: roll up the whole set (not just the current page). Business
+  // units are few enough that a single full-list read + a deleted-count read is cheap.
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const [allRes, deletedRes] = await Promise.all([
+        businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
+        businessUnitService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
+      ]);
+      const items = ((allRes as { data?: unknown }).data ?? allRes) as Parameters<typeof summarizeBus>[0];
+      const list = Array.isArray(items) ? items : [];
+      const deleted = deletedRes as { paginate?: { total?: number }; total?: number };
+      const archived = deleted.paginate?.total ?? deleted.total ?? 0;
+      setSummary(summarizeBus(list, archived));
+    } catch {
+      setSummary(null); // strip falls back to its skeleton; the table still works
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -180,6 +208,7 @@ const BusinessUnitManagement: React.FC = () => {
       toast.success('Business unit deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       toast.error('Failed to delete business unit', { description: getErrorDetail(err) });
     }
@@ -343,6 +372,8 @@ const BusinessUnitManagement: React.FC = () => {
             </>
           }
         />
+
+        <BuSummary summary={summary} loading={summaryLoading} />
 
         <Card>
           <CardHeader className="space-y-3">
