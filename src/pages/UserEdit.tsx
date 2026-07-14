@@ -10,11 +10,12 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
-import { Save, Pencil, X, Building2, Network, Plus, Trash2, Loader2, KeyRound } from "lucide-react";
+import { Save, Pencil, X, Plus, Loader2, KeyRound, ArrowLeft } from "lucide-react";
+import { UserIdentityHero } from "./userEdit/UserIdentityHero";
+import { UserAccessTree } from "./userEdit/UserAccessTree";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
@@ -420,60 +421,65 @@ const UserEdit: React.FC = () => {
     );
   }
 
+  const heroName = [formData.firstname, formData.middlename, formData.lastname].filter(Boolean).join(" ") || formData.username || formData.email;
+  const heroInitials = ((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase()
+    || (formData.username || formData.email || "?").slice(0, 2).toUpperCase();
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          backTo="/users"
-          beforeTitle={!isNew && (
-            <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                {(((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase())
-                  || (formData.username || formData.email || "?").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-              {avatarUrl && (
-                <AvatarImage
-                  src={avatarUrl}
-                  alt=""
-                  className="absolute inset-0 object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
+        {isNew ? (
+          <PageHeader backTo="/users" title="Add User" subtitle="Create a new user" />
+        ) : (
+          <>
+            <Link
+              to="/users"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Users
+            </Link>
+
+            <UserIdentityHero
+              name={heroName}
+              initials={heroInitials}
+              avatarUrl={avatarUrl}
+              username={formData.username}
+              email={formData.email}
+              alias={formData.alias_name}
+              isActive={formData.is_active}
+              buCount={businessUnits.length}
+              clusterCount={userClusters.length}
+              actions={!editing && (
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Change password
+                  </Button>
+                  <Can permission="user.update">
+                    <Button size="sm" onClick={handleEditToggle}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                  </Can>
+                </div>
               )}
-            </Avatar>
-          )}
-          title={isNew ? "Add User" : editing ? "Edit User" : "User Details"}
-          subtitle={isNew ? "Create a new user" : editing ? "Update user information" : "View user information"}
-          actions={!isNew && !editing && (
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
-                <KeyRound className="mr-2 h-4 w-4" />
-                Change Password
-              </Button>
-              <Can permission="user.update">
-                <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-              </Can>
-            </div>
-          )}
-        />
+            />
+          </>
+        )}
 
         {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>User Details</CardTitle>
-            <CardDescription>
-              {isNew
-                ? "Fill in the details for the new user"
-                : editing
-                  ? "Modify the user details below"
-                  : "User information"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+        {editing && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{isNew ? "Account details" : "Edit account"}</CardTitle>
+              <CardDescription>
+                {isNew ? "Fill in the details for the new user" : "Modify the account details below"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="username">Username {editing && "*"}</Label>
@@ -634,138 +640,20 @@ const UserEdit: React.FC = () => {
             </form>
           </CardContent>
         </Card>
-        {/* Clusters */}
-        {!isNew && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Network className="h-5 w-5" />
-                Clusters
-              </CardTitle>
-              <CardDescription>
-                <span className="flex items-center gap-2 mt-0.5">
-                  <Badge variant="success" className="text-xs px-1.5 py-0">{userClusters.filter(uc => uc.cluster?.is_active).length} Active</Badge>
-                  <span className="text-muted-foreground text-xs">of {userClusters.length} total</span>
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {userClusters.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Not assigned to any cluster.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {userClusters.map((uc) => (
-                    <Card key={uc.id} className="border">
-                      <CardContent className="p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          {uc.cluster?.id ? (
-                            <div>
-                              <Link
-                                to={`/clusters/${uc.cluster.id}`}
-                                className="font-medium text-sm text-primary hover:underline"
-                              >
-                                {uc.cluster.name || "-"}
-                              </Link>
-                              <div className="text-xs text-muted-foreground">{uc.cluster.code || "-"}</div>
-                            </div>
-                          ) : (
-                            <span className="font-medium text-sm">-</span>
-                          )}
-                          <Badge variant={uc.cluster?.is_active ? "success" : "secondary"} className="text-xs">
-                            {uc.cluster?.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs capitalize">{uc.role}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
         )}
 
-        {/* Business Units */}
         {!isNew && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Business Units
-                  </CardTitle>
-                  <CardDescription>
-                    <span className="flex items-center gap-2 mt-0.5">
-                      <Badge variant="success" className="text-xs px-1.5 py-0">{businessUnits.filter(ub => ub.is_active).length} Active</Badge>
-                      <span className="text-muted-foreground text-xs">of {businessUnits.length} total</span>
-                    </span>
-                  </CardDescription>
-                </div>
-                {userClusters.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={handleOpenAddBU}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add BU
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {businessUnits.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No business units assigned yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {businessUnits.map((ub) => (
-                    <Card key={ub.id} className="border">
-                      <CardContent className="p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          {ub.business_unit?.id ? (
-                            <div>
-                              <Link
-                                to={`/business-units/${ub.business_unit.id}/edit`}
-                                className="font-medium text-sm text-primary hover:underline"
-                              >
-                                {ub.business_unit.name || "-"}
-                              </Link>
-                              <div className="text-xs text-muted-foreground">{ub.business_unit.code || "-"}</div>
-                            </div>
-                          ) : (
-                            <span className="font-medium text-sm">-</span>
-                          )}
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant={ub.is_active ? "success" : "secondary"} className="text-xs">
-                              {ub.is_active ? "Active" : "Inactive"}
-                            </Badge>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => handleDeleteBU(ub)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        {ub.business_unit?.cluster_id && (() => {
-                          const cluster = userClusters.find(uc => uc.cluster_id === ub.business_unit!.cluster_id)?.cluster;
-                          return cluster ? (
-                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                              <Network className="h-3 w-3" />
-                              <Link
-                                to={`/clusters/${cluster.id}`}
-                                className="hover:underline hover:text-foreground"
-                              >
-                                {cluster.name}
-                              </Link>
-                            </div>
-                          ) : null;
-                        })()}
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs capitalize">{ub.role}</Badge>
-                          {ub.is_default && <Badge variant="outline" className="text-xs text-info border-info/40">Default</Badge>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+          <UserAccessTree
+            clusters={userClusters}
+            businessUnits={businessUnits}
+            canAddBU={userClusters.length > 0}
+            onAddBU={handleOpenAddBU}
+            onDeleteBU={handleDeleteBU}
+          />
+        )}
+
+        {!isNew && (
+          <>
 
               <ConfirmDialog
                 open={deleteBU !== null}
@@ -847,8 +735,7 @@ const UserEdit: React.FC = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </CardContent>
-          </Card>
+          </>
         )}
 
       </div>
