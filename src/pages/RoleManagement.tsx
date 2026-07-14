@@ -3,6 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import { RolesAccessSummary, summarizeRoles, type RolesSummaryData } from './roleManagement/RolesAccessSummary';
 import roleService from '../services/roleService';
 import { getErrorDetail, devLog, parseApiError } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
@@ -57,6 +58,8 @@ const RoleManagement: React.FC = () => {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [summary, setSummary] = useState<RolesSummaryData | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const storedSearch = localStorage.getItem('search_roles') || '';
   const storedFilters = getStoredJSON<string[]>('filters_roles', []);
@@ -124,6 +127,25 @@ const RoleManagement: React.FC = () => {
     fetchRoles(paginate);
   }, [fetchRoles, paginate]);
 
+  // RBAC band: roll up the whole set (ignoring filters) so the counts and breadth
+  // ranking reflect every role, not the current view.
+  const loadSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      const data = await roleService.getAll({ perpage: -1 });
+      const raw = data.data || data;
+      setSummary(summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []));
+    } catch {
+      setSummary(null); // band falls back to its skeleton; the table still works
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+  }, [loadSummary]);
+
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     localStorage.setItem('search_roles', value);
@@ -184,6 +206,7 @@ const RoleManagement: React.FC = () => {
       toast.success('Role deleted successfully');
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
+      loadSummary();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
       toast.error('Failed to delete role', { description: parsed.message });
@@ -346,6 +369,8 @@ const RoleManagement: React.FC = () => {
             </>
           }
         />
+
+        <RolesAccessSummary summary={summary} loading={summaryLoading} />
 
         <Card>
           <CardHeader className="space-y-3">
