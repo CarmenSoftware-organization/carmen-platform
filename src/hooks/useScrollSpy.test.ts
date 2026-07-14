@@ -97,4 +97,13 @@ describe('useScrollSpy', () => {
     unmount();
     expect(disconnect).toHaveBeenCalled();
   });
+
+  it('subscribes once ids arrive after starting empty', () => {
+    const { rerender } = renderHook(({ ids }) => useScrollSpy(ids), {
+      initialProps: { ids: [] as string[] },
+    });
+    expect(ioCallback).toBeNull(); // no observer while ids are empty (skeleton up)
+    rerender({ ids: ['a', 'b'] });
+    expect(ioCallback).not.toBeNull(); // effect re-ran and constructed the observer
+  });
 });

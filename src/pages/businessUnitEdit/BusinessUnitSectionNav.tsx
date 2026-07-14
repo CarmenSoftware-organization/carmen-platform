@@ -33,6 +33,7 @@ const BusinessUnitSectionNav: React.FC<BusinessUnitSectionNavProps> = ({
             {s.label}
             {s.badge && (
               <span
+                aria-hidden="true"
                 className={cn(
                   'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
                   active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-warning/15 text-warning',

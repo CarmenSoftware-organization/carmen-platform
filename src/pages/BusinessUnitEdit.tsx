@@ -61,7 +61,9 @@ const BusinessUnitEdit: React.FC = () => {
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
 
   const visibleSections = getVisibleSections(isNew);
-  const [activeSection, selectSection] = useScrollSpy(visibleSections.map((s) => s.id));
+  // ids empty while the skeleton is up; once loaded they change, so the observer
+  // (re-)subscribes to the sections that now exist in the DOM.
+  const [activeSection, selectSection] = useScrollSpy(loading ? [] : visibleSections.map((s) => s.id));
 
   const handleNavigate = (sectionId: string) => {
     selectSection(sectionId);
@@ -72,7 +74,7 @@ const BusinessUnitEdit: React.FC = () => {
   useUnsavedChanges(hasChanges);
 
   useGlobalShortcuts({
-    onSave: () => { if (editing && !saving) handleSave(); },
+    onSave: () => { if (editing && !saving && (isNew || hasChanges)) handleSave(); },
     onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
   });
 
