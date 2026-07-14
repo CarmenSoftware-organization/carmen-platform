@@ -19,6 +19,8 @@ import type { BusinessUnit, DbObjectsResponse, SqlExecuteResult } from '../../ty
 import { SqlEditor } from './SqlEditor';
 import { ResultPanel } from './ResultPanel';
 import { DbObjectTree } from './DbObjectTree';
+import { ConnectionBar } from './ConnectionBar';
+import { BuSwitcher } from './BuSwitcher';
 
 const QUERY_TYPES = [
   { value: 'view', label: 'View' },
@@ -40,6 +42,7 @@ export default function SqlWorkbench() {
 
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buCode, setBuCode] = useState('');
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const [dbObjects, setDbObjects] = useState<DbObjectsResponse | null>(null);
   const [dbLoading, setDbLoading] = useState(false);
@@ -79,6 +82,20 @@ export default function SqlWorkbench() {
   useEffect(() => {
     buCodeRef.current = buCode;
   }, [buCode]);
+
+  // ⌘B / Ctrl+B toggles the BU switcher — the workbench's primary "jump to tenant".
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        setSwitcherOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const selectedBu = businessUnits.find((b) => b.code === buCode) ?? null;
 
   // Load db objects whenever the selected BU changes.
   const dbReqSeq = useRef(0);
@@ -271,20 +288,6 @@ export default function SqlWorkbench() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-56">
-              <Select value={buCode} onValueChange={setBuCode}>
-                <SelectTrigger aria-label="Business unit">
-                  <SelectValue placeholder="Select business unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {businessUnits.map((bu) => (
-                    <SelectItem key={bu.id} value={bu.code}>
-                      {bu.name} ({bu.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             {canManage && loadedObject && (
               <Button
                 size="sm"
@@ -314,10 +317,30 @@ export default function SqlWorkbench() {
           </div>
         </div>
 
+        <div className="mt-4">
+          <ConnectionBar
+            bu={selectedBu}
+            canWrite={canManage}
+            onSwitch={() => setSwitcherOpen(true)}
+          />
+        </div>
+
+        <BuSwitcher
+          open={switcherOpen}
+          onOpenChange={setSwitcherOpen}
+          businessUnits={businessUnits}
+          currentCode={buCode}
+          onSelect={setBuCode}
+        />
+
         {!buCode ? (
-          <div className="text-muted-foreground mt-10 flex items-center justify-center rounded-lg border border-dashed py-16 text-sm">
+          <button
+            type="button"
+            onClick={() => setSwitcherOpen(true)}
+            className="text-muted-foreground hover:border-border/80 hover:text-foreground mt-4 flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
+          >
             Select a business unit to begin.
-          </div>
+          </button>
         ) : (
           <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="rounded-lg border lg:max-h-[calc(100vh-220px)] lg:overflow-hidden">

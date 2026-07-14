@@ -34,6 +34,9 @@
   --zebra-even: rgba(0, 0, 0, 0.015);
   --zebra-hover: hsl(221 61% 48% / 0.05);
   --zebra-hover-accent: hsl(221 61% 48% / 0.5);
+  /* per-BU colour identity (SQL Workbench): hue comes from the BU code, S/L tuned per theme */
+  --bu-chip-s: 62%;
+  --bu-chip-l: 46%;
 }
 
 .dark {
@@ -67,6 +70,9 @@
   --zebra-even: rgba(255, 255, 255, 0.015);
   --zebra-hover: hsl(217 65% 55% / 0.08);
   --zebra-hover-accent: hsl(217 65% 55% / 0.4);
+  /* lighter chips read better on the dark ground */
+  --bu-chip-s: 58%;
+  --bu-chip-l: 58%;
 }
 
 * {

@@ -28,6 +28,20 @@ vi.mock('../../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+// Node 26 exposes bare `localStorage` as undefined; the BU switcher reads/writes
+// it for its "recent BUs" list, so stub it with a fresh in-memory store per test.
+const makeLocalStorage = () => {
+  const store: Record<string, string> = {};
+  return {
+    setItem: (k: string, v: string) => { store[k] = v; },
+    getItem: (k: string) => store[k] ?? null,
+    removeItem: (k: string) => { delete store[k]; },
+    clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+    length: 0,
+    key: () => null,
+  };
+};
+
 const hasPermission = vi.fn();
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ hasPermission }),
@@ -80,8 +94,15 @@ const renderPage = () =>
 describe('SqlWorkbench', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('localStorage', makeLocalStorage()); // fresh "recent BUs" store per test
     hasPermission.mockReturnValue(true);
   });
+
+  // Open the BU switcher palette and connect to a BU by its display name.
+  const connectBu = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    await user.click(await screen.findByLabelText('Switch business unit'));
+    await user.click(await screen.findByText(name));
+  };
 
   it('shows the BU-gated empty state before a BU is chosen', async () => {
     renderPage();
@@ -91,8 +112,7 @@ describe('SqlWorkbench', () => {
   it('reveals the editor after selecting a business unit', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByLabelText('Business unit'));
-    await user.click(await screen.findByText('Test Hotel (T02)'));
+    await connectBu(user, 'Test Hotel');
     await waitFor(() => expect(screen.getByLabelText('sql')).toBeInTheDocument());
   });
 
@@ -128,8 +148,7 @@ describe('SqlWorkbench', () => {
 
     // Pick BU T02 and load the db object tree, then click the view — this kicks off
     // getDefinition('T02', ...) and leaves it pending.
-    await user.click(await screen.findByLabelText('Business unit'));
-    await user.click(await screen.findByText('Test Hotel (T02)'));
+    await connectBu(user, 'Test Hotel');
     await user.click(await screen.findByText('v_test'));
     expect(sqlQueryService.getDefinition).toHaveBeenCalledWith(
       'T02',
@@ -138,8 +157,7 @@ describe('SqlWorkbench', () => {
 
     // Switch to BU T03 before the pending getDefinition('T02', ...) resolves. The
     // reset-on-BU-change effect clears the editor immediately.
-    await user.click(await screen.findByLabelText('Business unit'));
-    await user.click(await screen.findByText('Other Hotel (T03)'));
+    await connectBu(user, 'Other Hotel');
     await waitFor(() => expect(screen.getByLabelText('sql')).toHaveValue(''));
 
     // Now let the stale T02 definition resolve — it must be discarded, not repopulate
