@@ -1,6 +1,4 @@
 import React from 'react';
-import { Button } from '../../components/ui/button';
-import { Save, X, Loader2 } from 'lucide-react';
 import BasicInfoSection from './sections/BasicInfoSection';
 import HotelInfoSection from './sections/HotelInfoSection';
 import CompanyInfoSection from './sections/CompanyInfoSection';
@@ -25,12 +23,13 @@ interface BusinessUnitFormFieldsProps extends SectionFieldProps {
   onDbExtraChange: (index: number, field: 'key' | 'value', value: string) => void;
   onAddDbExtraRow: () => void;
   onRemoveDbExtraRow: (index: number) => void;
-  formRef: React.RefObject<HTMLFormElement | null>;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  saving: boolean;
-  isNew: boolean;
-  onCancel: () => void;
+  brandingSlot?: React.ReactNode;
+  advancedExtraSlot?: React.ReactNode;
+  usersSlot?: React.ReactNode;
 }
+
+// scroll-mt keeps an anchored section clear of the sticky mobile nav on jump.
+const sectionClass = 'scroll-mt-24 space-y-4';
 
 const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
   formData,
@@ -50,128 +49,67 @@ const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
   onDbExtraChange,
   onAddDbExtraRow,
   onRemoveDbExtraRow,
-  formRef,
-  onSubmit,
-  saving,
-  isNew,
-  onCancel,
-}) => (
-  <form ref={formRef} onSubmit={onSubmit} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
-    {/* Section 1: Basic Information */}
-    <BasicInfoSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      clusters={clusters}
-      getClusterName={getClusterName}
-    />
+  brandingSlot,
+  advancedExtraSlot,
+  usersSlot,
+}) => {
+  const field = { formData, editing, fieldErrors, onChange, onBlur, onFocus };
+  return (
+    <div className="min-w-0 space-y-6">
+      <section id="general" className={sectionClass}>
+        <BasicInfoSection {...field} clusters={clusters} getClusterName={getClusterName} />
+        <CalculationSettingsSection
+          {...field}
+          defaultCurrency={defaultCurrency}
+          getCalculationMethodLabel={getCalculationMethodLabel}
+        />
+      </section>
 
-    {/* Section 2: Hotel Information */}
-    <HotelInfoSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-    />
+      <section id="address" className={sectionClass}>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <HotelInfoSection {...field} />
+          <CompanyInfoSection {...field} />
+        </div>
+        <TaxInfoSection {...field} />
+      </section>
 
-    {/* Section 3: Company Information */}
-    <CompanyInfoSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-    />
+      <section id="localization" className={sectionClass}>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DateTimeFormatsSection {...field} />
+          <NumberFormatsSection {...field} />
+        </div>
+      </section>
 
-    {/* Section 4: Tax Information */}
-    <TaxInfoSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-    />
+      {brandingSlot && (
+        <section id="branding" className={sectionClass}>
+          {brandingSlot}
+        </section>
+      )}
 
-    {/* Section 5: Date/Time Formats */}
-    <DateTimeFormatsSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-    />
+      <section id="advanced" className={sectionClass}>
+        <ConfigurationSection
+          {...field}
+          onConfigChange={onConfigChange}
+          onAddConfigRow={onAddConfigRow}
+          onRemoveConfigRow={onRemoveConfigRow}
+        />
+        <DatabaseConnectionSection
+          {...field}
+          onDbFieldChange={onDbFieldChange}
+          onDbExtraChange={onDbExtraChange}
+          onAddDbExtraRow={onAddDbExtraRow}
+          onRemoveDbExtraRow={onRemoveDbExtraRow}
+        />
+        {advancedExtraSlot}
+      </section>
 
-    {/* Section 6: Number Formats */}
-    <NumberFormatsSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-    />
-
-    {/* Section 7: Calculation Settings */}
-    <CalculationSettingsSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      defaultCurrency={defaultCurrency}
-      getCalculationMethodLabel={getCalculationMethodLabel}
-    />
-
-    {/* Section 8: Configuration */}
-    <ConfigurationSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      onConfigChange={onConfigChange}
-      onAddConfigRow={onAddConfigRow}
-      onRemoveConfigRow={onRemoveConfigRow}
-    />
-
-    {/* Section 9: Database Connection */}
-    <DatabaseConnectionSection
-      formData={formData}
-      editing={editing}
-      fieldErrors={fieldErrors}
-      onChange={onChange}
-      onBlur={onBlur}
-      onFocus={onFocus}
-      onDbFieldChange={onDbFieldChange}
-      onDbExtraChange={onDbExtraChange}
-      onAddDbExtraRow={onAddDbExtraRow}
-      onRemoveDbExtraRow={onRemoveDbExtraRow}
-    />
-
-    {/* Submit Buttons */}
-    {editing && (
-      <div className="flex gap-3 pt-2 lg:col-span-2">
-        <Button type="submit" size="sm" disabled={saving}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          {saving ? 'Saving...' : isNew ? 'Create Business Unit' : 'Save Changes'}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onClick={onCancel}>
-          <X className="mr-2 h-4 w-4" />
-          Cancel
-        </Button>
-      </div>
-    )}
-  </form>
-);
+      {usersSlot && (
+        <section id="users" className={sectionClass}>
+          {usersSlot}
+        </section>
+      )}
+    </div>
+  );
+};
 
 export default BusinessUnitFormFields;

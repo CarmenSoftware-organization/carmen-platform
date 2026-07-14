@@ -50,6 +50,7 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({ formData, e
                   <option value="number">Number</option>
                   <option value="boolean">Boolean</option>
                   <option value="date">Date</option>
+                  <option value="enum">Enum</option>
                   <option value="json">JSON</option>
                 </select>
               </div>
