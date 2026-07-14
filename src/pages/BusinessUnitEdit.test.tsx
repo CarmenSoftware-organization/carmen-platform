@@ -11,7 +11,7 @@ vi.mock('../components/Can', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ isSuperAdmin: false }),
+  useAuth: () => ({ isSuperAdmin: false, hasPermission: () => true }),
 }));
 // Heavy child cards → trivial stubs (their internals are out of scope here).
 vi.mock('../components/TenantMigrationCard', () => ({ default: () => <div>tenant-migration</div> }));
@@ -30,6 +30,9 @@ vi.mock('../services/businessUnitService', () => ({
     getById: vi.fn(), getAll: vi.fn(), create: vi.fn(), update: vi.fn(),
     uploadLogo: vi.fn(), uploadAvatar: vi.fn(),
   },
+}));
+vi.mock('../services/currencyService', () => ({
+  default: { getForBu: vi.fn().mockResolvedValue([]) },
 }));
 vi.mock('../services/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -65,41 +68,31 @@ beforeEach(() => {
   asMock(businessUnitService.getById).mockResolvedValue({ data: fakeBu });
 });
 
-describe('BusinessUnitEdit layout', () => {
-  it('renders the property profile (read mode) for an existing BU, no section nav yet', async () => {
+describe('BusinessUnitEdit (one-document)', () => {
+  it('renders one editable document — name in the hero, fact groups, no read/edit toggle', async () => {
     renderAt('/business-units/bu1/edit');
-    expect(await screen.findByRole('heading', { name: 'Test BU' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /edit details/i })).toBeInTheDocument();
-    // the sectioned form + nav only appear once editing
-    expect(screen.queryByRole('button', { name: /^general$/i })).toBeNull();
-  });
-
-  it('enters edit mode and scrolls to a section when its nav item is clicked', async () => {
-    const user = userEvent.setup();
-    renderAt('/business-units/bu1/edit');
-    await user.click(await screen.findByRole('button', { name: /edit details/i }));
-    await user.click(await screen.findByRole('button', { name: /advanced/i }));
-    const scrollIntoView = (Element.prototype as unknown as { scrollIntoView: ReturnType<typeof vi.fn> })
-      .scrollIntoView;
-    expect(scrollIntoView).toHaveBeenCalled();
-  });
-
-  it('shows the section nav and sticky Save bar only in edit mode', async () => {
-    const user = userEvent.setup();
-    renderAt('/business-units/bu1/edit');
-    await screen.findByRole('button', { name: /edit details/i });
+    expect(await screen.findByRole('button', { name: 'Test BU' })).toBeInTheDocument();
+    expect(screen.getByText('Location')).toBeInTheDocument();
+    // there is no separate read view / "Edit details" affordance any more
+    expect(screen.queryByRole('button', { name: /edit details/i })).toBeNull();
+    // no changes yet → no save bar
     expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^general$/i })).toBeNull();
-    await user.click(screen.getByRole('button', { name: /edit details/i }));
-    expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /general/i })).toBeInTheDocument();
   });
 
-  it('hides existing-only nav items for a new BU', async () => {
+  it('reveals the save bar after editing a field in place', async () => {
+    const user = userEvent.setup();
+    renderAt('/business-units/bu1/edit');
+    await user.click(await screen.findByRole('button', { name: 'Test BU' }));
+    const input = screen.getByRole('textbox', { name: /business unit name/i });
+    await user.clear(input);
+    await user.type(input, 'Renamed BU');
+    await user.tab(); // blur commits
+    expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
+  });
+
+  it('starts a new BU in create mode (save bar shown), without calling getById', async () => {
     renderAt('/business-units/new');
-    expect(await screen.findByRole('button', { name: /general/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /branding/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /users/i })).toBeNull();
+    expect(await screen.findByRole('button', { name: /create business unit/i })).toBeInTheDocument();
     expect(businessUnitService.getById).not.toHaveBeenCalled();
   });
 });

@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
 import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { Pencil, Save, X, Loader2, ArrowLeft } from 'lucide-react';
+import { Save, X, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
@@ -27,18 +25,14 @@ import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
 import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCard';
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
-import BusinessUnitFormFields from './businessUnitEdit/BusinessUnitFormFields';
-import BusinessUnitProfile from './businessUnitEdit/BusinessUnitProfile';
-import BusinessUnitSectionNav from './businessUnitEdit/BusinessUnitSectionNav';
-import { getVisibleSections } from './businessUnitEdit/sections';
-import { useScrollSpy } from '../hooks/useScrollSpy';
+import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isNew = !id;
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, hasPermission } = useAuth();
 
   const [formData, setFormData] = useState<BusinessUnitFormData>({
     ...initialFormData,
@@ -46,7 +40,6 @@ const BusinessUnitEdit: React.FC = () => {
   });
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(!isNew);
-  const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
@@ -63,54 +56,40 @@ const BusinessUnitEdit: React.FC = () => {
     cluster_id: searchParams.get('cluster_id') || '',
   });
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
-  const [buMeta, setBuMeta] = useState<{
-    created_at?: string;
-    created_by_name?: string;
-    updated_at?: string;
-    updated_by_name?: string;
-  }>({});
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
 
-  const visibleSections = getVisibleSections(isNew);
-  // ids empty while the skeleton is up; once loaded they change, so the observer
-  // (re-)subscribes to the sections that now exist in the DOM.
-  const [activeSection, selectSection] = useScrollSpy(loading ? [] : visibleSections.map((s) => s.id));
+  // One-document surface: everything is editable in place (no read/edit toggle),
+  // gated by permission. Create needs cluster.create; edit needs cluster.update.
+  const canEdit = isNew
+    ? hasPermission('cluster.create')
+    : hasPermission('cluster.update', formData.cluster_id ? { clusterId: formData.cluster_id } : undefined);
 
-  const handleNavigate = (sectionId: string) => {
-    selectSection(sectionId);
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
 
   useGlobalShortcuts({
-    onSave: () => { if (editing && !saving && (isNew || hasChanges)) handleSave(); },
-    onCancel: () => { if (editing && !isNew) handleCancelEdit(); },
+    onSave: () => { if (!saving && (isNew || hasChanges)) handleSave(); },
+    onCancel: () => { if (!isNew && hasChanges) handleCancelEdit(); },
   });
 
-  const handleEditToggle = () => {
-    setSavedFormData(formData);
-    setEditing(true);
-  };
-
+  // Discard reverts the whole document back to the last-saved snapshot.
   const handleCancelEdit = () => {
     setFormData(savedFormData);
-    setEditing(false);
     setError('');
   };
 
-  // Profile "Edit →": enter edit mode, then scroll to the section once the form mounts.
-  const handleEditSection = (sectionId: string) => {
-    setSavedFormData(formData);
-    setEditing(true);
-    selectSection(sectionId);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }),
-    );
+  // Edit-in-place commits from InlineField / toggles.
+  const handleInlineCommit = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+  const handleInlineToggle = (name: string, value: boolean) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+  const handleInlineValidate = (name: string, value: string) => {
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
 
   const loadCurrencies = async (buCode: string) => {
@@ -136,14 +115,15 @@ const BusinessUnitEdit: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Lazy-load the tenant currency list the first time the operator edits an existing BU.
+  // Load the tenant currency list once the existing BU's code is known (fields are
+  // always editable now, so the currency dropdown must be ready on load).
   useEffect(() => {
-    const buCode = savedFormData.code || formData.code;
-    if (editing && !isNew && buCode && currenciesLoadedFor !== buCode && !currenciesLoading) {
+    const buCode = formData.code;
+    if (!isNew && buCode && currenciesLoadedFor !== buCode && !currenciesLoading) {
       loadCurrencies(buCode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, isNew]);
+  }, [formData.code, isNew]);
 
   const fetchClusters = async () => {
     try {
@@ -223,12 +203,6 @@ const BusinessUnitEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(bu));
-      setBuMeta({
-        created_at: bu.created_at ?? bu.audit?.created?.at,
-        created_by_name: bu.created_by_name ?? bu.audit?.created?.name,
-        updated_at: bu.updated_at ?? bu.audit?.updated?.at,
-        updated_by_name: bu.updated_by_name ?? bu.audit?.updated?.name,
-      });
       setLogoUrl(bu.logo?.url || '');
       setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
@@ -400,7 +374,6 @@ const BusinessUnitEdit: React.FC = () => {
         await businessUnitService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
         toast.success('Changes saved successfully');
         await fetchBusinessUnit();
-        setEditing(false);
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
@@ -490,128 +463,82 @@ const BusinessUnitEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        {isNew || editing ? (
-          <>
-        <PageHeader
-          backTo="/business-units"
-          title={isNew ? 'Add Business Unit' : editing ? 'Edit Business Unit' : 'Business Unit Details'}
-          subtitle={isNew ? 'Create a new business unit' : editing ? 'Update business unit information' : 'View business unit information'}
-          actions={!isNew && !editing && (
-            <Can permission="cluster.update" clusterId={formData.cluster_id || undefined}>
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Can>
-          )}
-        />
+        <Link
+          to="/business-units"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Business units
+        </Link>
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[200px_1fr] lg:gap-6">
-          <BusinessUnitSectionNav
-            sections={visibleSections}
-            activeId={activeSection}
-            onNavigate={handleNavigate}
-          />
-
-          <BusinessUnitFormFields
-            formData={formData}
-            editing={editing}
-            fieldErrors={fieldErrors}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            onFocus={handleFocus}
-            clusters={clusters}
-            getClusterName={getClusterName}
-            defaultCurrency={defaultCurrency}
-            currencies={currencies}
-            currenciesLoading={currenciesLoading}
-            currenciesFailed={currenciesFailed}
-            getCalculationMethodLabel={getCalculationMethodLabel}
-            onConfigChange={handleConfigChange}
-            onAddConfigRow={addConfigRow}
-            onRemoveConfigRow={removeConfigRow}
-            onDbFieldChange={handleDbFieldChange}
-            onDbExtraChange={handleDbExtraChange}
-            onAddDbExtraRow={addDbExtraRow}
-            onRemoveDbExtraRow={removeDbExtraRow}
-            brandingSlot={
-              !isNew ? (
-                <BusinessUnitBrandingCard
-                  logoUrl={logoUrl}
-                  avatarUrl={avatarUrl}
-                  editing={editing}
-                  onUploadLogo={handleUploadLogo}
-                  onUploadAvatar={handleUploadAvatar}
+        <BusinessUnitDocument
+          formData={formData}
+          fieldErrors={fieldErrors}
+          clusterName={getClusterName(formData.cluster_id)}
+          logoUrl={logoUrl}
+          avatarUrl={avatarUrl}
+          clusters={clusters}
+          defaultCurrency={defaultCurrency}
+          currencies={currencies}
+          currenciesLoading={currenciesLoading}
+          currenciesFailed={currenciesFailed}
+          getCalculationMethodLabel={getCalculationMethodLabel}
+          canEdit={canEdit}
+          onCommit={handleInlineCommit}
+          onToggle={handleInlineToggle}
+          onValidate={handleInlineValidate}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          onConfigChange={handleConfigChange}
+          onAddConfigRow={addConfigRow}
+          onRemoveConfigRow={removeConfigRow}
+          onDbFieldChange={handleDbFieldChange}
+          onDbExtraChange={handleDbExtraChange}
+          onAddDbExtraRow={addDbExtraRow}
+          onRemoveDbExtraRow={removeDbExtraRow}
+          brandingSlot={
+            !isNew ? (
+              <BusinessUnitBrandingCard
+                logoUrl={logoUrl}
+                avatarUrl={avatarUrl}
+                editing
+                onUploadLogo={handleUploadLogo}
+                onUploadAvatar={handleUploadAvatar}
+              />
+            ) : null
+          }
+          advancedExtraSlot={
+            !isNew ? (
+              <>
+                <TenantMigrationCard
+                  key={id}
+                  buId={id!}
+                  buCode={formData.code}
+                  buName={formData.name}
+                  hasDbConnection={formData.db_connection.length > 0}
+                  isSuperAdmin={isSuperAdmin}
                 />
-              ) : null
-            }
-            advancedExtraSlot={
-              !isNew ? (
-                <>
-                  <TenantMigrationCard
-                    key={id}
-                    buId={id!}
-                    buCode={formData.code}
-                    buName={formData.name}
-                    hasDbConnection={formData.db_connection.length > 0}
-                    isSuperAdmin={isSuperAdmin}
-                  />
-                  <TenantSeedCard
-                    key={`seed-${id}`}
-                    buId={id!}
-                    buCode={formData.code}
-                    buName={formData.name}
-                    hasDbConnection={formData.db_connection.length > 0}
-                    isSuperAdmin={isSuperAdmin}
-                  />
-                </>
-              ) : null
-            }
-            usersSlot={!isNew ? <BusinessUnitUsersCard users={users} /> : null}
-          />
-        </div>
-          </>
-        ) : (
-          <>
-            <Link
-              to="/business-units"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Business units
-            </Link>
-
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
-            )}
-
-            <BusinessUnitProfile
-              formData={formData}
-              clusterName={getClusterName(formData.cluster_id)}
-              logoUrl={logoUrl}
-              avatarUrl={avatarUrl}
-              currency={defaultCurrency}
-              userCount={users.buUsers.length}
-              meta={buMeta}
-              onNavigate={handleEditSection}
-              editAction={
-                <Can permission="cluster.update" clusterId={formData.cluster_id || undefined}>
-                  <Button size="sm" onClick={handleEditToggle}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit details
-                  </Button>
-                </Can>
-              }
-            />
-          </>
-        )}
+                <TenantSeedCard
+                  key={`seed-${id}`}
+                  buId={id!}
+                  buCode={formData.code}
+                  buName={formData.name}
+                  hasDbConnection={formData.db_connection.length > 0}
+                  isSuperAdmin={isSuperAdmin}
+                />
+              </>
+            ) : null
+          }
+          usersSlot={!isNew ? <BusinessUnitUsersCard users={users} /> : null}
+        />
       </div>
 
-      {editing && (
+      {(hasChanges || isNew) && (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background md:left-16 lg:left-60">
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
@@ -660,7 +587,7 @@ const BusinessUnitEdit: React.FC = () => {
           rawClusterUsersResponse={users.rawClusterUsersResponse}
           id={id}
           clusterId={formData.cluster_id}
-          fabClassName={editing ? 'bottom-20' : undefined}
+          fabClassName={hasChanges || isNew ? 'bottom-20' : undefined}
         />
       )}
     </Layout>

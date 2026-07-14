@@ -79,6 +79,13 @@ const ClusterManagement: React.FC = () => {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Latest clusters, so the (stable) delete handler can read bu_count without
+  // re-memoising the columns each fetch.
+  const clustersRef = useRef(clusters);
+  useEffect(() => {
+    clustersRef.current = clusters;
+  }, [clusters]);
+
   useGlobalShortcuts({
     onSearch: () => searchInputRef.current?.focus(),
   });
@@ -209,6 +216,17 @@ const ClusterManagement: React.FC = () => {
   };
 
   const handleDelete = useCallback((id: string) => {
+    // Guard: deleting a cluster does not cascade to its business units on the
+    // backend, so a cluster with BUs would orphan them (they'd keep pointing at
+    // a soft-deleted cluster). Block it here until the backend cascades/reassigns.
+    const cluster = clustersRef.current.find((c) => c.id === id);
+    const buCount = cluster?.bu_count ?? 0;
+    if (buCount > 0) {
+      toast.error(`Can't delete ${cluster?.name || 'this cluster'}`, {
+        description: `It still has ${buCount} business unit${buCount > 1 ? 's' : ''}. Delete or move them to another cluster first.`,
+      });
+      return;
+    }
     setDeleteId(id);
   }, []);
 
