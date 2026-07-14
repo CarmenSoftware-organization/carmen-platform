@@ -482,3 +482,13 @@ export interface SaveDdlResult {
   schema: string;
   executed_sql: string;
 }
+
+export interface TenantCurrency {
+  id: string;
+  code: string;
+  name: string;
+  symbol?: string;
+  decimal_places?: number;
+  is_active?: boolean;
+  description?: string;
+}

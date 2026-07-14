@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
+import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { Pencil, Save, X, Loader2 } from 'lucide-react';
@@ -16,7 +17,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { objectToDbFields, dbFieldsToObject } from '../utils/dbConnection';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import type { Cluster, BusinessUnitConfig } from '../types';
+import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
@@ -48,6 +49,10 @@ const BusinessUnitEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
+  const [currencies, setCurrencies] = useState<TenantCurrency[] | null>(null);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [currenciesFailed, setCurrenciesFailed] = useState(false);
+  const [currenciesLoadedFor, setCurrenciesLoadedFor] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -89,6 +94,21 @@ const BusinessUnitEdit: React.FC = () => {
     setError('');
   };
 
+  const loadCurrencies = async (buCode: string) => {
+    setCurrenciesLoading(true);
+    setCurrenciesFailed(false);
+    try {
+      const list = await currencyService.getForBu(buCode);
+      setCurrencies(list);
+      setCurrenciesLoadedFor(buCode);
+    } catch (err) {
+      setCurrenciesFailed(true);
+      if (process.env.NODE_ENV === 'development') console.error('loadCurrencies', err);
+    } finally {
+      setCurrenciesLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchClusters();
     if (!isNew) {
@@ -96,6 +116,15 @@ const BusinessUnitEdit: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Lazy-load the tenant currency list the first time the operator edits an existing BU.
+  useEffect(() => {
+    const buCode = savedFormData.code || formData.code;
+    if (editing && !isNew && buCode && currenciesLoadedFor !== buCode && !currenciesLoading) {
+      loadCurrencies(buCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, isNew]);
 
   const fetchClusters = async () => {
     try {
@@ -471,6 +500,9 @@ const BusinessUnitEdit: React.FC = () => {
             clusters={clusters}
             getClusterName={getClusterName}
             defaultCurrency={defaultCurrency}
+            currencies={currencies}
+            currenciesLoading={currenciesLoading}
+            currenciesFailed={currenciesFailed}
             getCalculationMethodLabel={getCalculationMethodLabel}
             onConfigChange={handleConfigChange}
             onAddConfigRow={addConfigRow}

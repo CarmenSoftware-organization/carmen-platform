@@ -8,13 +8,16 @@ import NumberFormatsSection from './sections/NumberFormatsSection';
 import CalculationSettingsSection from './sections/CalculationSettingsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
 import DatabaseConnectionSection from './sections/DatabaseConnectionSection';
-import type { Cluster, BusinessUnitConfig } from '../../types';
+import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { SectionFieldProps, DefaultCurrency } from './types';
 
 interface BusinessUnitFormFieldsProps extends SectionFieldProps {
   clusters: Cluster[];
   getClusterName: (clusterId: string) => string;
   defaultCurrency: DefaultCurrency | null;
+  currencies?: TenantCurrency[] | null;
+  currenciesLoading?: boolean;
+  currenciesFailed?: boolean;
   getCalculationMethodLabel: (method: string) => string;
   onConfigChange: (index: number, field: keyof BusinessUnitConfig, value: string) => void;
   onAddConfigRow: () => void;
@@ -41,6 +44,9 @@ const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
   clusters,
   getClusterName,
   defaultCurrency,
+  currencies,
+  currenciesLoading,
+  currenciesFailed,
   getCalculationMethodLabel,
   onConfigChange,
   onAddConfigRow,
@@ -62,6 +68,9 @@ const BusinessUnitFormFields: React.FC<BusinessUnitFormFieldsProps> = ({
           {...field}
           defaultCurrency={defaultCurrency}
           getCalculationMethodLabel={getCalculationMethodLabel}
+          currencies={currencies}
+          currenciesLoading={currenciesLoading}
+          currenciesFailed={currenciesFailed}
         />
       </section>
 
