@@ -227,14 +227,14 @@ describe('SqlWorkbench', () => {
     );
   });
 
-  it('saves SQL that the old CREATE/SELECT allowlist would have blocked', async () => {
+  it('saves a multi-statement script (old code blocked multiple statements)', async () => {
     const user = userEvent.setup();
     vi.mocked(sqlQueryService.saveDdl).mockResolvedValue({
-      type: 'view', name: 't', schema: 'public', executed_sql: 'CREATE TABLE t (id int)',
+      type: 'view', name: 't', schema: 'public', executed_sql: 'SELECT 1; SELECT 2',
     });
     renderPage();
     await connectBu(user, 'Test Hotel');
-    await user.type(await screen.findByLabelText('sql'), 'CREATE TABLE t (id int)');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1; SELECT 2');
     await user.type(screen.getByLabelText(/object name/i), 't');
     await user.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(sqlQueryService.saveDdl).toHaveBeenCalled());
