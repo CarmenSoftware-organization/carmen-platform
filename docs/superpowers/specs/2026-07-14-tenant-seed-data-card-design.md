@@ -171,8 +171,37 @@ Fail-fast per BU, surfaced through the stream/toast — never a silent partial s
   states (non-super-admin, no db_connection). `tenantSeedService` NDJSON parsing
   test (mirror `tenantMigrationService.test.ts`).
 
+## v2 increment — per-set selection (2026-07-14)
+
+The card seeds a **user-selected subset** of seed sets, not always all. Forward
+design for when more sets (currency, units, …) are added.
+
+- **Granularity:** per seed-**set** (one checkbox per set). "Seed type" = a set.
+- **UI:** after Check, each set with missing rows renders a checkbox (default all
+  checked); the Seed button seeds only the checked sets' missing rows and is
+  disabled when nothing is selected. Fully-seeded sets show "Seeded" (no checkbox).
+- **Transport:** `deployStream` sends `POST { keys: string[] }` (Content-Type
+  application/json). Backend `deployStream(bu_id, keys?)` filters `seedSets` to
+  `keys` when provided and non-empty; omitted/empty = all sets (backward-compat).
+  An unrecognized key simply matches no set (seeds nothing).
+- **Summary semantics under selection:** `created` = rows created across the
+  selected sets; `skipped` = already-present rows **within the selected sets**
+  (`sum(selectedSets.definedKeys) - created`). Unselected sets are not part of
+  the run.
+- `getStatus` is unchanged — it always returns every set so the UI can render the
+  full checkbox list.
+
+### Fixes folded into this increment (from the final whole-branch reviews)
+- **BE FIX-NOW:** `tenant_seed.service.disconnect()` wraps `$disconnect()` in
+  try/catch so a disconnect failure never masks the real resolve/row error (which
+  would break the error-string → HTTP-status contract, returning 500 instead of
+  404/422).
+- **Test closes:** add a per-row-abort test (BE service, spec-named case that was
+  missing) and `seedError.test.ts` (FE, the one uncovered util path).
+
 ## Out of scope
 
+- Per-**row** selection (individual running-code types). Selection is per-set.
 - Cross-BU "Seed all" (list-page batch). Future.
 - Seed sets beyond running-code (registry is ready; adding data is a follow-up).
 - Overwrite/reset mode, live pull from a source DB, reconciling the in-app
