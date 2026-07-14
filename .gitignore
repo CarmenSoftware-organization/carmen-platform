@@ -154,3 +154,4 @@ build/
 .env.test.local
 .env.production.local
 .vercel
+.superpowers/
