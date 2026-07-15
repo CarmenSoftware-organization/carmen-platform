@@ -1,7 +1,13 @@
+> **Status: SUPERSEDED — historical record, do not execute.** The current env-mode design is
+> [2026-07-15-four-env-targets-design.md](./2026-07-15-four-env-targets-design.md). This document
+> describes an earlier wave on the same branch; its script definitions (`dev:local` →
+> `--mode dev`) are obsolete and would re-introduce a fixed bug — the final wave exists precisely
+> to fix `dev:local` running against `dev.blueledgers.com` instead of `localhost`.
+
 # Rename Env Modes to `dev` / `prod` — Design
 
 **Date:** 2026-07-15
-**Status:** Approved
+**Status:** Superseded — see [2026-07-15-four-env-targets-design.md](./2026-07-15-four-env-targets-design.md)
 **Branch:** `feat/env-modes` (renamed from `feat/uat-environment`, which this builds on)
 **Scope:** Rename two env files and the two Vite modes that select them, add a fail-fast guard for required env vars, update docs. No `src/` changes.
 

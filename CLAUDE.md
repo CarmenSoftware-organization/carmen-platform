@@ -148,7 +148,7 @@ const xService = {
 };
 ```
 
-- **Base path:** `/api-system/...` (proxied in dev)
+- **Base path:** `/api-system/...` (absolute `baseURL` — never proxied, see Environment above)
 - **Headers:** `Content-Type: application/json`, `x-app-id` (env), `Authorization: Bearer <token>` (added by interceptor)
 - **Response shape:** `{ data: T | T[], paginate?: { total, page, perpage } }` — unwrap with `response.data.data || response.data`
 

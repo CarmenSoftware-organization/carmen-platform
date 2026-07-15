@@ -1,3 +1,10 @@
+> **Status: SUPERSEDED — historical record, do not execute.** The `uat` mode this plan implements
+> shipped and is live — `uat` is not going away. What's superseded is the two-mode world it was
+> written against (`development`/`production`); the current four-mode design is
+> [2026-07-15-four-env-targets-design.md](../specs/2026-07-15-four-env-targets-design.md)
+> (`localhost` / `dev` / `uat` / `prod`). The `package.json` snippets below (`--mode production`
+> etc.) are historical — do not run this plan task-by-task.
+
 # UAT Environment Target Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

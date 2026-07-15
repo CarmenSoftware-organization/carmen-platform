@@ -1,3 +1,11 @@
+> **Status: SUPERSEDED — historical record, do not execute.** The current env-mode design is
+> [2026-07-15-four-env-targets-design.md](../specs/2026-07-15-four-env-targets-design.md). This
+> document describes an earlier wave on the same branch; its script definitions (`dev:local` →
+> `--mode dev`) are obsolete and would re-introduce a fixed bug — the final wave exists precisely
+> to fix `dev:local` running against `dev.blueledgers.com` instead of `localhost`. Task 1 Step 1's
+> instructions are knowingly self-contradictory with the final state; that is expected of a
+> historical record, not an error to fix.
+
 # Env Mode Rename (`dev` / `prod`) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

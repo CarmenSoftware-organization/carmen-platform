@@ -1,3 +1,9 @@
+> **Status: SUPERSEDED — historical record, do not execute.** The `uat` mode and target this
+> document designed shipped and is live — `uat` is not going away. What's superseded is the
+> two-mode world it was written against (`development`/`production`); the current four-mode
+> design is [2026-07-15-four-env-targets-design.md](./2026-07-15-four-env-targets-design.md)
+> (`localhost` / `dev` / `uat` / `prod`). Treat the script and file names below as historical.
+
 # UAT Environment Target — Design
 
 **Date:** 2026-07-15
