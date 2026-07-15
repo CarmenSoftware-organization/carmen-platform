@@ -40,15 +40,18 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "scripts": {
-    "start": "vite --mode dev",
-    "dev": "vite --mode dev",
-    "dev:local": "vite --mode dev",
-    "dev:prod": "vite --mode prod",
+    "start": "vite --mode localhost",
+    "dev": "vite --mode localhost",
+    "dev:local": "vite --mode localhost",
+    "dev:dev": "vite --mode dev",
     "dev:uat": "vite --mode uat",
+    "dev:prod": "vite --mode prod",
     "build": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode prod",
-    "build:local": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode dev",
-    "build:prod": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode prod",
+    "build:local": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode localhost",
+    "build:dev": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode dev",
     "build:uat": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode uat",
+    "build:prod": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode prod",
+    "preview": "vite preview --mode prod",
     "changelog": "node scripts/generate-changelog.mjs",
     "build:bump": "node scripts/bump-version.mjs && node scripts/generate-changelog.mjs && npm run build",
     "build:bump:minor": "node scripts/bump-version.mjs minor && node scripts/generate-changelog.mjs && npm run build",
@@ -56,8 +59,7 @@
     "test:scripts": "node --test scripts/lib/*.test.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:cov": "vitest run --coverage",
-    "preview": "vite preview --mode prod"
+    "test:cov": "vitest run --coverage"
   },
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
