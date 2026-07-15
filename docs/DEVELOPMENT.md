@@ -246,7 +246,7 @@ fails CORS.
 ## Troubleshooting
 
 **Login fails with "network error" in dev.**
-Check that `REACT_APP_API_BASE_URL` in `.env.dev` is reachable from your machine. If it uses a self-signed cert, the dev proxy (`secure: false`) handles it — but only for requests going through the proxy (`/api`, `/api-system`).
+Check that `REACT_APP_API_BASE_URL` in `.env.localhost` is reachable from your machine. If it uses a self-signed cert, the dev proxy (`secure: false`) handles it — but only for requests going through the proxy (`/api`, `/api-system`).
 
 **CORS errors in production.**
 The frontend is a static SPA served via Cloud CDN + the GCP load balancer (no app server of its own). CORS must be configured on the backend to accept the frontend's origin — see [Deployment (GCP)](#deployment-gcp) above.
