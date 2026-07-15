@@ -278,7 +278,7 @@ describe('SqlWorkbench', () => {
     renderPage();
     await connectBu(user, 'Test Hotel');
     await user.click(await screen.findByText('orders'));
-    expect(screen.getByLabelText('sql')).toHaveValue('SELECT * FROM public.orders LIMIT 100;');
+    expect(screen.getByLabelText('sql')).toHaveValue('SELECT * FROM orders LIMIT 100;');
     expect(sqlQueryService.getDefinition).not.toHaveBeenCalled();
   });
 });

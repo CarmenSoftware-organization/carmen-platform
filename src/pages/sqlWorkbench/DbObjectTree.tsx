@@ -109,7 +109,6 @@ export function DbObjectTree({
               {filtered.tables.map((t) => (
                 <ItemRow
                   key={keyOf("table", t)}
-                  schema={t.schema}
                   name={t.name}
                   loading={loadingKey === keyOf("table", t)}
                   onClick={() =>
@@ -132,7 +131,6 @@ export function DbObjectTree({
               {filtered.views.map((v) => (
                 <ItemRow
                   key={keyOf("view", v)}
-                  schema={v.schema}
                   name={v.name}
                   loading={loadingKey === keyOf("view", v)}
                   onClick={() =>
@@ -157,7 +155,6 @@ export function DbObjectTree({
                 return (
                   <ItemRow
                     key={keyOf(type, p)}
-                    schema={p.schema}
                     name={p.name}
                     badge={p.kind === "procedure" ? "PROC" : "FN"}
                     loading={loadingKey === keyOf(type, p)}
@@ -221,13 +218,11 @@ function Section({
 }
 
 function ItemRow({
-  schema,
   name,
   badge,
   loading,
   onClick,
 }: {
-  schema: string;
   name: string;
   badge?: string;
   loading?: boolean;
@@ -242,13 +237,10 @@ function ItemRow({
         "group hover:bg-muted/60 flex w-full items-center gap-2 px-3 py-1 text-left text-xs",
         "disabled:opacity-60",
       )}
-      title={`${schema}.${name}`}
+      title={name}
     >
       {loading && <Loader2 className="size-3 animate-spin" />}
-      <span className="truncate">
-        <span className="text-muted-foreground">{schema}.</span>
-        {name}
-      </span>
+      <span className="truncate">{name}</span>
       {badge && (
         <span className="bg-muted text-muted-foreground ml-auto rounded px-1 py-0.5 text-[9px] font-semibold">
           {badge}

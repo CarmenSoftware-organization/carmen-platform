@@ -183,7 +183,7 @@ export default function SqlWorkbench() {
   }) => {
     if (!buCode) return;
     if (obj.type === 'table') {
-      setFormSqlText(`SELECT * FROM ${obj.schema}.${obj.name} LIMIT 100;`);
+      setFormSqlText(`SELECT * FROM ${obj.name} LIMIT 100;`);
       setLoadedObject(null);
       resetResult();
       return;
@@ -426,7 +426,7 @@ export default function SqlWorkbench() {
                     <p className="text-muted-foreground truncate text-xs">
                       Editing:{' '}
                       <span className="text-foreground">
-                        {loadedObject.schema}.{loadedObject.name}
+                        {loadedObject.name}
                       </span>{' '}
                       ({loadedObject.type})
                     </p>
