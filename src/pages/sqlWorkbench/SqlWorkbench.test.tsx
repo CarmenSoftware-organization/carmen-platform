@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SqlWorkbench from './SqlWorkbench';
@@ -73,15 +73,22 @@ vi.mock('../../services/sqlQueryService', () => ({
   },
 }));
 
-// CodeMirror needs layout APIs jsdom lacks; stub the editor to a textarea.
+// CodeMirror needs layout APIs jsdom lacks; stub the editor to a textarea + Run button.
 vi.mock('./SqlEditor', () => ({
   SqlEditor: ({
     value,
     onChange,
+    onRun,
   }: {
     value: string;
     onChange: (v: string) => void;
-  }) => <textarea aria-label="sql" value={value} onChange={(e) => onChange(e.target.value)} />,
+    onRun?: (sql: string) => void;
+  }) => (
+    <div>
+      <textarea aria-label="sql" value={value} onChange={(e) => onChange(e.target.value)} />
+      <button type="button" onClick={() => onRun?.(value)}>Run</button>
+    </div>
+  ),
 }));
 
 const renderPage = () =>
@@ -171,5 +178,107 @@ describe('SqlWorkbench', () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(screen.getByLabelText('sql')).toHaveValue('');
+  });
+
+  it('runs a non-destructive statement without confirmation', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT * FROM t');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT * FROM t'),
+    );
+    expect(screen.queryByText(/run destructive sql/i)).not.toBeInTheDocument();
+  });
+
+  it('confirms before running a destructive statement', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'DROP TABLE users');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    // Dialog shown, nothing executed yet.
+    expect(await screen.findByText(/run destructive sql/i)).toBeInTheDocument();
+    expect(sqlQueryService.executeSql).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: /run anyway/i }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'DROP TABLE users'),
+    );
+  });
+
+  it('discards a pending destructive confirm when the BU is switched', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'DROP TABLE users');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    expect(await screen.findByText(/run destructive sql/i)).toBeInTheDocument();
+
+    // Switch BU while the confirm dialog is open. The "Switch business unit"
+    // trigger button sits behind the ConfirmDialog's Radix overlay (pointer-events
+    // locked to the topmost dialog), so a literal click on it — as `connectBu`
+    // does in the other tests — can't reach it here. This mirrors the actual bug
+    // report, which is triggered via the global Ctrl/Cmd+B shortcut rather than a
+    // click, so fire that shortcut directly to open the BuSwitcher on top of the
+    // still-open confirm dialog, then pick the other BU from it.
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
+    await user.click(await screen.findByText('Other Hotel'));
+
+    await waitFor(() =>
+      expect(screen.queryByText(/run destructive sql/i)).not.toBeInTheDocument(),
+    );
+    expect(sqlQueryService.executeSql).not.toHaveBeenCalled();
+  });
+
+  it('allows a multi-statement run', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1; SELECT 2');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1; SELECT 2'),
+    );
+  });
+
+  it('saves a multi-statement script (old code blocked multiple statements)', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.saveDdl).mockResolvedValue({
+      type: 'view', name: 't', schema: 'public', executed_sql: 'SELECT 1; SELECT 2',
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1; SELECT 2');
+    await user.type(screen.getByLabelText(/object name/i), 't');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(sqlQueryService.saveDdl).toHaveBeenCalled());
+  });
+
+  it('drops a SELECT into the editor when a table is clicked', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.getDbObjects).mockResolvedValueOnce({
+      tables: [{ schema: 'public', name: 'orders' }],
+      views: [],
+      procedures: [],
+      columns: [],
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.click(await screen.findByText('orders'));
+    expect(screen.getByLabelText('sql')).toHaveValue('SELECT * FROM orders LIMIT 100;');
+    expect(sqlQueryService.getDefinition).not.toHaveBeenCalled();
   });
 });

@@ -1,15 +1,12 @@
 /**
- * Client-side SQL safety validator — UI feedback only. The backend validator is
- * the source of truth; the allowlist here is intentionally bypassable and must
- * never be treated as a server authorisation gate.
+ * Client-side SQL classifier — UI feedback only. The backend validator is the
+ * source of truth; nothing here is a security gate and it is intentionally
+ * bypassable. It exists to (a) reject structurally empty / accidental multi-
+ * statement input and (b) flag destructive statements so the UI can confirm
+ * before executing.
  */
 
-const FORBIDDEN_LEADING = new Set([
-  'DROP', 'TRUNCATE', 'GRANT', 'REVOKE', 'COPY', 'VACUUM', 'CLUSTER',
-  'REASSIGN', 'REINDEX', 'ALTER',
-]);
-
-function extractTopLevelStatements(sql: string): string[] {
+export function extractTopLevelStatements(sql: string): string[] {
   const stmts: string[] = [];
   let buf = '';
   let i = 0;
@@ -75,7 +72,7 @@ function extractTopLevelStatements(sql: string): string[] {
   return stmts;
 }
 
-function leadingKeyword(stmt: string): string {
+export function leadingKeyword(stmt: string): string {
   const cleaned = stmt
     .replace(/^\s*(?:--[^\n]*\n|\/\*[\s\S]*?\*\/)\s*/g, '')
     .trimStart();
@@ -83,8 +80,11 @@ function leadingKeyword(stmt: string): string {
   return m ? m[1].toUpperCase() : '';
 }
 
+const DESTRUCTIVE_LEADING = new Set([
+  'DROP', 'TRUNCATE', 'DELETE', 'UPDATE', 'ALTER', 'GRANT', 'REVOKE',
+]);
+
 export interface SqlValidationOptions {
-  allowedLeading?: string[];
   allowMultiple?: boolean;
 }
 
@@ -106,19 +106,36 @@ export function validateSqlSafety(
       `Multiple statements are not allowed (found ${stmts.length}). Send one statement at a time.`,
     );
   }
+}
 
-  const allowed = opts.allowedLeading?.map((k) => k.toUpperCase());
+export interface SqlClassification {
+  statements: string[];
+  leadingKeywords: string[];
+  destructive: boolean;
+  destructiveKeywords: string[];
+  unguardedWrite: boolean;
+}
 
-  for (const stmt of stmts) {
-    const kw = leadingKeyword(stmt);
-    if (!kw) throw new Error('Could not parse leading keyword of a statement');
-    if (FORBIDDEN_LEADING.has(kw)) {
-      throw new Error(`Forbidden statement: "${kw}" is not allowed from the SQL editor`);
-    }
-    if (allowed && !allowed.includes(kw)) {
-      throw new Error(
-        `Statement type "${kw}" is not allowed here. Allowed: ${allowed.join(', ')}`,
-      );
-    }
-  }
+function stripComments(stmt: string): string {
+  return stmt.replace(/--[^\n]*/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+}
+
+export function classifyStatements(sql: string): SqlClassification {
+  const statements = extractTopLevelStatements(sql);
+  const leadingKeywords = statements.map(leadingKeyword);
+  const destructiveKeywords = Array.from(
+    new Set(leadingKeywords.filter((kw) => DESTRUCTIVE_LEADING.has(kw))),
+  );
+  const unguardedWrite = statements.some((stmt, i) => {
+    const kw = leadingKeywords[i];
+    if (kw !== 'DELETE' && kw !== 'UPDATE') return false;
+    return !/\bWHERE\b/i.test(stripComments(stmt));
+  });
+  return {
+    statements,
+    leadingKeywords,
+    destructive: destructiveKeywords.length > 0,
+    destructiveKeywords,
+    unguardedWrite,
+  };
 }

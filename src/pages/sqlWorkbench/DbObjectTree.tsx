@@ -8,6 +8,7 @@ import {
   Loader2,
   Search,
   Database,
+  Table,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { DbObject, DbObjectsResponse } from '../../types';
@@ -18,7 +19,7 @@ interface DbObjectTreeProps {
   isError: boolean;
   onRetry: () => void;
   onSelect: (obj: {
-    type: 'view' | 'procedure' | 'function';
+    type: 'view' | 'procedure' | 'function' | 'table';
     schema: string;
     name: string;
   }) => void;
@@ -34,24 +35,27 @@ export function DbObjectTree({
   loadingKey,
 }: DbObjectTreeProps) {
   const [search, setSearch] = useState('');
+  const [openTables, setOpenTables] = useState(true);
   const [openViews, setOpenViews] = useState(true);
   const [openProcs, setOpenProcs] = useState(true);
 
   const lower = search.trim().toLowerCase();
   const filtered = (() => {
-    if (!data) return { views: [], procedures: [] };
+    if (!data) return { tables: [], views: [], procedures: [] };
     const match = (o: DbObject) => {
       if (!lower) return true;
       const fq = `${o.schema}.${o.name}`.toLowerCase();
       return fq.includes(lower);
     };
     return {
+      tables: data.tables.filter(match),
       views: data.views.filter(match),
       procedures: data.procedures.filter(match),
     };
   })();
 
   const isSearching = lower.length > 0;
+  const showTables = isSearching ? filtered.tables.length > 0 : openTables;
   const showViews = isSearching ? filtered.views.length > 0 : openViews;
   const showProcs = isSearching ? filtered.procedures.length > 0 : openProcs;
 
@@ -69,7 +73,7 @@ export function DbObjectTree({
           <input
             type="text"
             className="bg-background ring-offset-background focus:ring-ring h-7 w-full rounded border pr-2 pl-7 text-xs outline-none focus:ring-2"
-            placeholder="Search views, procedures..."
+            placeholder="Search tables, views, procedures..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             autoComplete="off"
@@ -95,6 +99,28 @@ export function DbObjectTree({
         ) : (
           <>
             <Section
+              title="Tables"
+              icon={<Table className="size-3.5" />}
+              count={filtered.tables.length}
+              total={data?.tables.length ?? 0}
+              open={showTables}
+              onToggle={() => setOpenTables((v) => !v)}
+            >
+              {filtered.tables.map((t) => (
+                <ItemRow
+                  key={keyOf("table", t)}
+                  name={t.name}
+                  loading={loadingKey === keyOf("table", t)}
+                  onClick={() =>
+                    onSelect({ type: "table", schema: t.schema, name: t.name })
+                  }
+                />
+              ))}
+              {filtered.tables.length === 0 && (
+                <EmptyHint>{search ? "No matches" : "No tables"}</EmptyHint>
+              )}
+            </Section>
+            <Section
               title="Views"
               icon={<Eye className="size-3.5" />}
               count={filtered.views.length}
@@ -105,7 +131,6 @@ export function DbObjectTree({
               {filtered.views.map((v) => (
                 <ItemRow
                   key={keyOf("view", v)}
-                  schema={v.schema}
                   name={v.name}
                   loading={loadingKey === keyOf("view", v)}
                   onClick={() =>
@@ -130,7 +155,6 @@ export function DbObjectTree({
                 return (
                   <ItemRow
                     key={keyOf(type, p)}
-                    schema={p.schema}
                     name={p.name}
                     badge={p.kind === "procedure" ? "PROC" : "FN"}
                     loading={loadingKey === keyOf(type, p)}
@@ -194,13 +218,11 @@ function Section({
 }
 
 function ItemRow({
-  schema,
   name,
   badge,
   loading,
   onClick,
 }: {
-  schema: string;
   name: string;
   badge?: string;
   loading?: boolean;
@@ -215,13 +237,10 @@ function ItemRow({
         "group hover:bg-muted/60 flex w-full items-center gap-2 px-3 py-1 text-left text-xs",
         "disabled:opacity-60",
       )}
-      title={`${schema}.${name}`}
+      title={name}
     >
       {loading && <Loader2 className="size-3 animate-spin" />}
-      <span className="truncate">
-        <span className="text-muted-foreground">{schema}.</span>
-        {name}
-      </span>
+      <span className="truncate">{name}</span>
       {badge && (
         <span className="bg-muted text-muted-foreground ml-auto rounded px-1 py-0.5 text-[9px] font-semibold">
           {badge}

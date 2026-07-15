@@ -14,7 +14,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import sqlQueryService from '../../services/sqlQueryService';
 import businessUnitService from '../../services/businessUnitService';
-import { validateSqlSafety } from '../../utils/sqlValidator';
+import { validateSqlSafety, classifyStatements } from '../../utils/sqlValidator';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import type { BusinessUnit, DbObjectsResponse, SqlExecuteResult } from '../../types';
 import { SqlEditor } from './SqlEditor';
 import { ResultPanel } from './ResultPanel';
@@ -59,6 +60,7 @@ export default function SqlWorkbench() {
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDropping, setIsDropping] = useState(false);
+  const [confirmSql, setConfirmSql] = useState<string | null>(null);
 
   // Load the BU list once.
   useEffect(() => {
@@ -123,6 +125,7 @@ export default function SqlWorkbench() {
     setFormQueryType('view');
     setExecuteResult(null);
     setExecuteError(null);
+    setConfirmSql(null); // discard any pending destructive confirm from the previous BU
     if (buCode) loadDbObjects(buCode);
     else setDbObjects(null);
   }, [buCode, loadDbObjects]);
@@ -132,21 +135,7 @@ export default function SqlWorkbench() {
     setExecuteError(null);
   };
 
-  const handleRun = async (sqlToRun: string) => {
-    if (!buCode) {
-      toast.error('Select a business unit first');
-      return;
-    }
-    const code = buCode;
-    try {
-      validateSqlSafety(sqlToRun, {
-        allowedLeading: ['SELECT', 'WITH', 'SHOW', 'EXPLAIN', 'DESCRIBE', 'DESC'],
-        allowMultiple: false,
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Invalid SQL');
-      return;
-    }
+  const runSql = async (code: string, sqlToRun: string) => {
     setIsRunning(true);
     resetResult();
     try {
@@ -161,6 +150,24 @@ export default function SqlWorkbench() {
     }
   };
 
+  const handleRun = async (sqlToRun: string) => {
+    if (!buCode) {
+      toast.error('Select a business unit first');
+      return;
+    }
+    try {
+      validateSqlSafety(sqlToRun, { allowMultiple: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Invalid SQL');
+      return;
+    }
+    if (classifyStatements(sqlToRun).destructive) {
+      setConfirmSql(sqlToRun);
+      return;
+    }
+    await runSql(buCode, sqlToRun);
+  };
+
   const handleNew = () => {
     setFormName('');
     setFormSqlText('');
@@ -170,18 +177,24 @@ export default function SqlWorkbench() {
   };
 
   const handlePickDbObject = async (obj: {
-    type: 'view' | 'procedure' | 'function';
+    type: 'view' | 'procedure' | 'function' | 'table';
     schema: string;
     name: string;
   }) => {
     if (!buCode) return;
+    if (obj.type === 'table') {
+      setFormSqlText(`SELECT * FROM ${obj.name} LIMIT 100;`);
+      setLoadedObject(null);
+      resetResult();
+      return;
+    }
     const code = buCode;
     const key = `${obj.type}:${obj.schema}.${obj.name}`;
     setLoadingObjectKey(key);
     try {
       const def = await sqlQueryService.getDefinition(code, obj);
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale definition
-      setLoadedObject(obj);
+      setLoadedObject({ type: obj.type, schema: obj.schema, name: obj.name });
       setFormName(def.name);
       setFormSqlText(def.definition);
       setFormQueryType(
@@ -216,14 +229,7 @@ export default function SqlWorkbench() {
       return;
     }
     try {
-      if (startsWithCreate) {
-        validateSqlSafety(formSqlText, { allowedLeading: ['CREATE'], allowMultiple: true });
-      } else {
-        validateSqlSafety(formSqlText, {
-          allowedLeading: ['SELECT', 'WITH'],
-          allowMultiple: false,
-        });
-      }
+      validateSqlSafety(formSqlText, { allowMultiple: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Invalid SQL', { duration: 8000 });
       return;
@@ -333,6 +339,33 @@ export default function SqlWorkbench() {
           onSelect={setBuCode}
         />
 
+        {confirmSql !== null &&
+          (() => {
+            const c = classifyStatements(confirmSql);
+            return (
+              <ConfirmDialog
+                open
+                onOpenChange={(o) => {
+                  if (!o) setConfirmSql(null);
+                }}
+                title="Run destructive SQL?"
+                description={
+                  `This runs ${c.destructiveKeywords.join(', ')} on the ` +
+                  `${selectedBu?.code ?? 'tenant'} database and cannot be undone.` +
+                  (c.unguardedWrite
+                    ? ' A DELETE/UPDATE has no WHERE clause and will affect ALL rows.'
+                    : '')
+                }
+                confirmText="Run anyway"
+                confirmVariant="destructive"
+                onConfirm={async () => {
+                  await runSql(buCode, confirmSql);
+                  setConfirmSql(null);
+                }}
+              />
+            );
+          })()}
+
         {!buCode ? (
           <button
             type="button"
@@ -393,7 +426,7 @@ export default function SqlWorkbench() {
                     <p className="text-muted-foreground truncate text-xs">
                       Editing:{' '}
                       <span className="text-foreground">
-                        {loadedObject.schema}.{loadedObject.name}
+                        {loadedObject.name}
                       </span>{' '}
                       ({loadedObject.type})
                     </p>
