@@ -24,9 +24,11 @@ bun install                 # or: npm install
 bun start                   # Vite dev server on :3304 (mode development → .env.development)
 bun run dev:local           # dev server against local backend (.env.development)
 bun run dev:prod            # dev server against deployed dev backend (.env.production, --mode production)
+bun run dev:uat             # dev server against UAT backend (.env.uat, --mode uat)
 bun run build               # production build (mode production → .env.production; sets REACT_APP_BUILD_DATE, emits to build/)
 bun run build:local         # build with development env (.env.development)
 bun run build:prod          # build with production env (.env.production)
+bun run build:uat           # build with UAT env (.env.uat, --mode uat)
 bun run preview             # serve the production build locally on :3304
 bun run test                # unit + component tests (Vitest, jsdom) — one-shot
 bun run test:watch          # Vitest watch mode
@@ -38,7 +40,7 @@ No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pas
 
 ## Environment
 
-Copy `.env.example` → `.env.development` (local backend) and `.env.production` (deployed dev backend). Both are gitignored. The Vite **mode** selects the file: `vite` / `vite --mode development` → `.env.development`; `vite --mode production` → `.env.production`. Vite forbids a mode literally named `local` (it conflicts with the `.local` suffix), so we use `development`/`production` — never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`). Variables:
+Copy `.env.example` → `.env.development` (local backend), `.env.production` (deployed dev backend), and `.env.uat` (UAT backend, `https://api-carmen-web.pncsb-app.com`). All are gitignored. The Vite **mode** selects the file: `vite` / `vite --mode development` → `.env.development`; `vite --mode production` → `.env.production`; `vite --mode uat` → `.env.uat`. Vite forbids a mode literally named `local` (it conflicts with the `.local` suffix), so we use `development`/`production`/`uat` — never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`). Every mode uses port `3304`, so only one dev server can run at a time. Variables:
 
 | Variable | Purpose |
 |----------|---------|
