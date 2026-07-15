@@ -4,9 +4,21 @@ import checker from 'vite-plugin-checker';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'REACT_APP_');
+
+  // loadEnv merges prefixed process.env vars, so CI (which sets them directly)
+  // satisfies this without an .env file on disk.
+  const required = ['REACT_APP_API_BASE_URL', 'REACT_APP_API_APP_ID'] as const;
+  const missing = required.filter((k) => !env[k]);
+  if (missing.length) {
+    throw new Error(
+      `[env] Missing ${missing.join(', ')} for mode "${mode}".\n` +
+      `Expected in .env.${mode} (or the process environment).`
+    );
+  }
+
   const ci = process.env.CI === 'true';
   const port = Number(env.REACT_APP_PORT) || 3304;
-  const apiTarget = env.REACT_APP_API_BASE_URL || 'http://localhost:4000';
+  const apiTarget = env.REACT_APP_API_BASE_URL;
 
   return {
     plugins: [
