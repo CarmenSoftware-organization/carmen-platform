@@ -13,17 +13,16 @@ Setup, commands, API, auth, testing, GCP deployment, and CI. For product overvie
 ```bash
 git clone <repo-url> carmen-platform
 cd carmen-platform
-cp .env.example .env
-# edit .env and set REACT_APP_API_BASE_URL + REACT_APP_API_APP_ID
+cp .env.example .env.localhost   # then set REACT_APP_API_BASE_URL=http://localhost:4000
 bun install        # or: npm install
 bun start          # or: npm start
 ```
 
-Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`).
+Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`). `bun start` only needs `.env.localhost`; if you'll also run against the deployed DEV, UAT, or prod backends, copy `.env.example` to `.env.dev` / `.env.uat` / `.env.prod` too — see [Commands](#commands) for which script uses which file, and the `.env.example` header for each mode's URL and app id.
 
 ## Environment variables
 
-Defined in `.env` at the project root:
+Defined in the mode-scoped `.env.<mode>` file (e.g. `.env.dev`) at the project root:
 
 | Variable | Required | Purpose | Example |
 |---|---|---|---|
@@ -32,18 +31,23 @@ Defined in `.env` at the project root:
 | `REACT_APP_ENV` | No | Environment label | `development`, `uat`, `production` |
 | `REACT_APP_BUILD_DATE` | Auto | Injected at build time by the `build` script | `2026-04-20 12:30:45` |
 
-Changing `.env` requires restarting the dev server.
+Changing `.env.<mode>` requires restarting the dev server.
 
 ## Commands
 
 ```bash
-bun start                 # Vite dev server on :3304 (mode development → .env.development)
-bun run dev:local         # dev server against local backend (.env.development)
-bun run dev:prod          # dev server against deployed dev backend (.env.production)
-bun run build             # Production build; sets REACT_APP_BUILD_DATE, emits to build/
-bun run build:local       # build with .env.development
-bun run build:prod        # build with .env.production
-bun run preview           # Serve the production build locally on :3304
+bun start                 # Vite dev server on :3304 (--mode localhost → .env.localhost)
+bun run dev               # same as bun start / dev:local (--mode localhost)
+bun run dev:local         # dev server against local backend (.env.localhost)
+bun run dev:dev           # dev server against deployed DEV backend (.env.dev)
+bun run dev:uat           # dev server against UAT backend (.env.uat)
+bun run dev:prod          # dev server against the prod slot (.env.prod) — placeholder: points at DEV
+bun run build             # Production build (--mode prod → .env.prod); sets REACT_APP_BUILD_DATE, emits to build/
+bun run build:local       # build with .env.localhost
+bun run build:dev         # build with .env.dev
+bun run build:uat         # build with .env.uat
+bun run build:prod        # build with .env.prod — placeholder: points at DEV
+bun run preview           # Serve the production build locally on :3304 (--mode prod → .env.prod)
 bun run test              # Vitest unit/component tests (jsdom) — one-shot
 bun run test:watch        # Vitest watch mode
 bun run test:cov          # Vitest with v8 coverage
@@ -52,18 +56,18 @@ bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mj
 
 No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
 
-The Vite **mode** selects the env file: `vite` / `--mode development` → `.env.development`; `--mode production` → `.env.production`. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`).
+The Vite **mode** selects the env file: `--mode localhost` → `.env.localhost`; `--mode dev` → `.env.dev`; `--mode uat` → `.env.uat`; `--mode prod` → `.env.prod`. Vite throws on a mode named `local` (it conflicts with the `.local` suffix), so the local-backend mode is `localhost`. Every script passes `--mode` explicitly — Vite's defaults match no mode file, so a bare `vite` finds no `.env.<mode>` and `vite.config.ts` throws — unless a bare `.env` exists, which Vite loads in **every** mode and would silently satisfy the guard. Never create a bare `.env` or `.env.local` (both load in every mode and leak across all four targets).
 
 ## Dev proxy
 
-`vite.config.ts` (`server.proxy`) proxies two paths to the backend during local development:
+`vite.config.ts` (`server.proxy`) configures `/api` and `/api-system` to proxy to `REACT_APP_API_BASE_URL`:
 
 | Path | Target | Flags |
 |---|---|---|
 | `/api` | `REACT_APP_API_BASE_URL` | `changeOrigin: true`, `secure: false` |
 | `/api-system` | `REACT_APP_API_BASE_URL` | `changeOrigin: true`, `secure: false` |
 
-`secure: false` permits self-signed certificates on the backend. Production builds make direct HTTPS calls to the backend; CORS is handled on the backend.
+This proxy never fires: `src/services/api.ts` sets axios's `baseURL` to the absolute `REACT_APP_API_BASE_URL`, so every request goes straight from the browser to the backend host in every mode. CORS must be allowed on the backend for whichever origin is calling it.
 
 ## API layer
 
@@ -242,7 +246,7 @@ fails CORS.
 ## Troubleshooting
 
 **Login fails with "network error" in dev.**
-Check that `REACT_APP_API_BASE_URL` in `.env` is reachable from your machine. If it uses a self-signed cert, the dev proxy (`secure: false`) handles it — but only for requests going through the proxy (`/api`, `/api-system`).
+Check that `REACT_APP_API_BASE_URL` in `.env.localhost` is reachable from your machine. Requests bypass the Vite proxy entirely (`api.ts` uses an absolute `baseURL`), so a self-signed backend cert must be trusted by your browser directly, and the backend must allow origin `http://localhost:3304`.
 
 **CORS errors in production.**
 The frontend is a static SPA served via Cloud CDN + the GCP load balancer (no app server of its own). CORS must be configured on the backend to accept the frontend's origin — see [Deployment (GCP)](#deployment-gcp) above.
