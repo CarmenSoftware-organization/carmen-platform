@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
   if (missing.length) {
     throw new Error(
       `[env] Missing ${missing.join(', ')} for mode "${mode}".\n` +
-      `Expected in .env.${mode} (or the process environment).`
+      `Expected in .env.${mode} (or the process environment).\n` +
+      `Modes: dev | prod | uat — a bare \`vite\` won't pick one up.`
     );
   }
 
