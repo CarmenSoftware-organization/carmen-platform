@@ -44,12 +44,12 @@ Copy `.env.example` → `.env.development` (local backend), `.env.production` (d
 
 | Variable | Purpose |
 |----------|---------|
-| `REACT_APP_API_BASE_URL` | Backend base URL (proxied in dev) |
+| `REACT_APP_API_BASE_URL` | Backend base URL (axios uses it directly as an absolute `baseURL` — not proxied) |
 | `REACT_APP_API_APP_ID`   | Sent as `x-app-id` on every request |
 | `REACT_APP_ENV`          | `development` \| `uat` \| `production` |
 | `REACT_APP_PORT`         | Dev server / preview port (default `3304` if unset) |
 
-`vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK). `server.port`/`preview.port` read `REACT_APP_PORT` (fallback `3304`).
+`vite.config.ts` (`server.proxy`) configures `/api` and `/api-system` proxying with `secure: false` (self-signed certs OK) — but `src/services/api.ts` gives axios an absolute `baseURL`, so this proxy never fires; every mode calls the backend directly and depends on backend CORS. `server.port`/`preview.port` read `REACT_APP_PORT` (fallback `3304`).
 
 Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagger`) — there is **no `/swagger-json`**. The full OpenAPI 3.0 spec is HTML-entity-embedded in that page; extract it by unescaping the HTML and brace-matching from `"openapi":"3.0.0"`. Always confirm endpoint paths/DTO shapes against swagger (this repo has two backends — `/api` and `/api-system`).
 

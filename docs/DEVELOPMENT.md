@@ -40,9 +40,11 @@ Changing `.env` requires restarting the dev server.
 bun start                 # Vite dev server on :3304 (mode development → .env.development)
 bun run dev:local         # dev server against local backend (.env.development)
 bun run dev:prod          # dev server against deployed dev backend (.env.production)
+bun run dev:uat           # dev server against UAT backend (.env.uat)
 bun run build             # Production build; sets REACT_APP_BUILD_DATE, emits to build/
 bun run build:local       # build with .env.development
 bun run build:prod        # build with .env.production
+bun run build:uat         # build with .env.uat
 bun run preview           # Serve the production build locally on :3304
 bun run test              # Vitest unit/component tests (jsdom) — one-shot
 bun run test:watch        # Vitest watch mode
@@ -52,18 +54,18 @@ bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mj
 
 No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
 
-The Vite **mode** selects the env file: `vite` / `--mode development` → `.env.development`; `--mode production` → `.env.production`. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`).
+The Vite **mode** selects the env file: `vite` / `--mode development` → `.env.development`; `--mode production` → `.env.production`; `--mode uat` → `.env.uat`. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`).
 
 ## Dev proxy
 
-`vite.config.ts` (`server.proxy`) proxies two paths to the backend during local development:
+`vite.config.ts` (`server.proxy`) configures `/api` and `/api-system` to proxy to `REACT_APP_API_BASE_URL`:
 
 | Path | Target | Flags |
 |---|---|---|
 | `/api` | `REACT_APP_API_BASE_URL` | `changeOrigin: true`, `secure: false` |
 | `/api-system` | `REACT_APP_API_BASE_URL` | `changeOrigin: true`, `secure: false` |
 
-`secure: false` permits self-signed certificates on the backend. Production builds make direct HTTPS calls to the backend; CORS is handled on the backend.
+This proxy never fires: `src/services/api.ts` sets axios's `baseURL` to the absolute `REACT_APP_API_BASE_URL`, so every request goes straight from the browser to the backend host in every mode. CORS must be allowed on the backend for whichever origin is calling it.
 
 ## API layer
 
