@@ -78,8 +78,10 @@ cannot fire during tests. The 453-test suite is unaffected.
 - **Renaming the `REACT_APP_ENV` *values*.** `REACT_APP_ENV` is a display value — it drives the
   badge on Login and Landing — and is independent of the Vite mode that selects the file. Its
   legal values stay `development | uat | production` (per `src/vite-env.d.ts` and the CLAUDE.md
-  variable table). So `.env.dev` keeps `REACT_APP_ENV=development`. Only the *mode* and the
-  *filename* change.
+  variable table). In practice, only `.env.uat` sets it (`REACT_APP_ENV=uat`); `.env.dev` and
+  `.env.prod` carry no `REACT_APP_ENV` key at all, so `import.meta.env.REACT_APP_ENV` is
+  `undefined` in those modes and the Login/Landing badge only ever renders under `uat`. Only the
+  *mode* and the *filename* change.
 - Changing CI, infra, or the deploy workflow.
 - Reworking `docs/DEVELOPMENT.md:16`'s `cp .env.example .env` guidance (tracked separately).
 
@@ -119,7 +121,15 @@ today (all three are a bare `vite`), and preserving it keeps the change to a ren
 ### 3. `vite.config.ts` — fail-fast guard replaces the silent fallback
 
 Current line 9 is `const apiTarget = env.REACT_APP_API_BASE_URL || 'http://localhost:4000';`.
-That fallback is precisely what makes a missing env file silent. It goes away:
+`apiTarget` only ever feeds `server.proxy['/api'].target` and `server.proxy['/api-system'].target`
+— dev-server-only config that a `vite build` never reaches — so that fallback was not itself the
+source of a silent *build* failure. The real silent failure is `src/services/api.ts:4`, which
+reads `import.meta.env.REACT_APP_API_BASE_URL` directly: with no env file, Vite inlines that as
+`undefined`, and the build still succeeds — a complete, exit-0 bundle running
+`axios.create({ baseURL: undefined })`, so every request silently resolves relative to whatever
+origin serves the SPA. The fallback still goes away, because removing it is what lets the guard
+below make `apiTarget` (and by extension every required var) provably non-empty before anything
+reads it:
 
 ```ts
 const required = ['REACT_APP_API_BASE_URL', 'REACT_APP_API_APP_ID'] as const;

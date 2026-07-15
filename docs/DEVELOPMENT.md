@@ -37,13 +37,13 @@ Changing `.env` requires restarting the dev server.
 ## Commands
 
 ```bash
-bun start                 # Vite dev server on :3304 (mode development → .env.development)
-bun run dev:local         # dev server against local backend (.env.development)
-bun run dev:prod          # dev server against deployed dev backend (.env.production)
+bun start                 # Vite dev server on :3304 (--mode dev → .env.dev)
+bun run dev:local         # dev server against local backend (.env.dev)
+bun run dev:prod          # dev server against deployed dev backend (.env.prod)
 bun run dev:uat           # dev server against UAT backend (.env.uat)
-bun run build             # Production build; sets REACT_APP_BUILD_DATE, emits to build/
-bun run build:local       # build with .env.development
-bun run build:prod        # build with .env.production
+bun run build             # Production build (--mode prod → .env.prod); sets REACT_APP_BUILD_DATE, emits to build/
+bun run build:local       # build with .env.dev
+bun run build:prod        # build with .env.prod
 bun run build:uat         # build with .env.uat
 bun run preview           # Serve the production build locally on :3304
 bun run test              # Vitest unit/component tests (jsdom) — one-shot
@@ -54,7 +54,7 @@ bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mj
 
 No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
 
-The Vite **mode** selects the env file: `vite` / `--mode development` → `.env.development`; `--mode production` → `.env.production`; `--mode uat` → `.env.uat`. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`).
+The Vite **mode** selects the env file: `--mode dev` → `.env.dev`; `--mode prod` → `.env.prod`; `--mode uat` → `.env.uat`. Every script passes `--mode` explicitly — Vite's defaults match no file, so a bare `vite` finds no env and `vite.config.ts` throws. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`).
 
 ## Dev proxy
 

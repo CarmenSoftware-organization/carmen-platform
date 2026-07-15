@@ -21,15 +21,15 @@ Frontend-only React + TypeScript admin dashboard for clusters, business units, u
 
 ```bash
 bun install                 # or: npm install
-bun start                   # Vite dev server on :3304 (mode development → .env.development)
-bun run dev:local           # dev server against local backend (.env.development)
-bun run dev:prod            # dev server against deployed dev backend (.env.production, --mode production)
+bun start                   # Vite dev server on :3304 (--mode dev → .env.dev)
+bun run dev:local           # dev server against local backend (.env.dev, --mode dev)
+bun run dev:prod            # dev server against deployed dev backend (.env.prod, --mode prod)
 bun run dev:uat             # dev server against UAT backend (.env.uat, --mode uat)
-bun run build               # production build (mode production → .env.production; sets REACT_APP_BUILD_DATE, emits to build/)
-bun run build:local         # build with development env (.env.development)
-bun run build:prod          # build with production env (.env.production)
+bun run build               # production build (--mode prod → .env.prod; sets REACT_APP_BUILD_DATE, emits to build/)
+bun run build:local         # build with dev env (.env.dev, --mode dev)
+bun run build:prod          # build with prod env (.env.prod, --mode prod)
 bun run build:uat           # build with UAT env (.env.uat, --mode uat)
-bun run preview             # serve the production build locally on :3304
+bun run preview             # serve the production build locally on :3304 (--mode prod → .env.prod)
 bun run test                # unit + component tests (Vitest, jsdom) — one-shot
 bun run test:watch          # Vitest watch mode
 bun run test:cov            # Vitest with v8 coverage
@@ -40,7 +40,7 @@ No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pas
 
 ## Environment
 
-Copy `.env.example` → `.env.development` (local backend), `.env.production` (deployed dev backend), and `.env.uat` (UAT backend, `https://api-carmen-web.pncsb-app.com`). All are gitignored. The Vite **mode** selects the file: `vite` / `vite --mode development` → `.env.development`; `vite --mode production` → `.env.production`; `vite --mode uat` → `.env.uat`. Vite forbids a mode literally named `local` (it conflicts with the `.local` suffix), so we use `development`/`production`/`uat` — never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`). Every mode uses port `3304`, so only one dev server can run at a time. Variables:
+Copy `.env.example` → `.env.dev` (local backend), `.env.prod` (deployed dev backend), and `.env.uat` (UAT backend, `https://api-carmen-web.pncsb-app.com`). All are gitignored. The Vite **mode** selects the file: `vite --mode dev` → `.env.dev`; `vite --mode prod` → `.env.prod`; `vite --mode uat` → `.env.uat`. **Every script passes `--mode` explicitly** — Vite's defaults (`development` for `vite`, `production` for `vite build`/`vite preview`) match no file, so a bare `vite` finds no env and `vite.config.ts` throws `[env] Missing …` rather than silently falling back. Vite forbids a mode literally named `local` (it conflicts with the `.local` suffix), so the local-backend mode is `dev` — never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`). Every mode uses port `3304`, so only one dev server can run at a time. Variables:
 
 | Variable | Purpose |
 |----------|---------|

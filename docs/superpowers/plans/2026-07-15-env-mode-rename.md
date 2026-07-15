@@ -14,7 +14,7 @@
 
 - **Mode/file mapping after this plan:** `dev` → `.env.dev` (local backend, `http://localhost:4000`), `prod` → `.env.prod` (deployed DEV backend, `https://dev.blueledgers.com:4001`), `uat` → `.env.uat` (`https://api-carmen-web.pncsb-app.com`).
 - **`uat` is NOT renamed.** `.env.uat`, `dev:uat`, `build:uat` stay exactly as they are.
-- **`REACT_APP_ENV` values are NOT renamed.** It is a display value driving the badge on Login/Landing, independent of the Vite mode. Legal values stay `development | uat | production`, so `.env.dev` keeps `REACT_APP_ENV=development`. Only the *mode* and the *filename* change.
+- **`REACT_APP_ENV` values are NOT renamed.** It is a display value driving the badge on Login/Landing, independent of the Vite mode. Legal values stay `development | uat | production`. In practice only `.env.uat` sets it (`REACT_APP_ENV=uat`); `.env.dev` and `.env.prod` carry no `REACT_APP_ENV` key at all, so `import.meta.env.REACT_APP_ENV` is `undefined` in those modes and the badge only ever renders under `uat`. Only the *mode* and the *filename* change.
 - **No changes under `src/`.** No source file reads `import.meta.env.MODE`. If a task seems to need a `src/` edit, stop and report — the spec's premise is that the source is mode-agnostic.
 - **Env files are gitignored** (`.gitignore:70` `.env.*`). They are renamed on disk and never staged. `git status` must never show them.
 - **Never create `.env.local`** — Vite loads it in every mode and it leaks across targets.
@@ -64,7 +64,7 @@ grep -rqo "localhost:4000" build/assets && echo "SILENT FAILURE: fell back to lo
 grep -rqo "dev.blueledgers.com" build/assets || echo "  (and the real backend URL is absent)"
 ```
 
-Expected: the build **succeeds** and prints `SILENT FAILURE: fell back to localhost:4000`. That is the bug — a missing env file silently produces a bundle pointed at nothing, because of the `|| 'http://localhost:4000'` fallback on `vite.config.ts:9`.
+Expected: the build **succeeds** and prints `SILENT FAILURE: fell back to localhost:4000`. The `vite.config.ts:9` fallback itself only ever fed the dev-server proxy target (`server.proxy[...].target`), never the client bundle — the actual bug is `src/services/api.ts:4`, which reads `import.meta.env.REACT_APP_API_BASE_URL` directly and gets inlined as `undefined` when no env file is present, so the build still succeeds running `axios.create({ baseURL: undefined })` against whatever origin serves the SPA.
 
 Leave `.env.production.bak` in place for Step 3.
 
@@ -102,7 +102,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.REACT_APP_API_BASE_URL;
 ```
 
-The `|| 'http://localhost:4000'` fallback is deleted deliberately — it is what makes the failure silent. Both vars are required because both are mandatory for any request to succeed: `src/services/api.ts:4` uses the base URL as the axios `baseURL`, and `:7` sends the app id as `x-app-id`, which the backend's `AppIdGuard` enforces.
+The `|| 'http://localhost:4000'` fallback is deleted deliberately, even though it only ever fed the dev-server proxy target and never the client bundle — the actual silent failure lives in `src/services/api.ts:4` (reads `import.meta.env.REACT_APP_API_BASE_URL` directly, inlined as `undefined` with no env file, so `vite build` still succeeds running `axios.create({ baseURL: undefined })`). Removing the fallback here still closes the gap: it makes `apiTarget` provably non-empty before the proxy config reads it, and the guard enforces the same required vars for every mode. Both vars are required because both are mandatory for any request to succeed: `src/services/api.ts:4` uses the base URL as the axios `baseURL`, and `:7` sends the app id as `x-app-id`, which the backend's `AppIdGuard` enforces.
 
 Leave the rest of the file (plugins, server, preview, build blocks) untouched.
 
@@ -188,7 +188,7 @@ npx vite build 2>&1 | grep -o "\[env\] Missing.*mode \"production\"" | head -1
 ```
 Expected: prints `[env] Missing REACT_APP_API_BASE_URL, REACT_APP_API_APP_ID for mode "production"`.
 
-This is the whole point of the plan's ordering: Task 1's guard means the rename fails **loudly** here. Without it, this build would have silently emitted a localhost bundle.
+This is the whole point of the plan's ordering: Task 1's guard means the rename fails **loudly** here. Without it, this build would have silently emitted a bundle with `baseURL: undefined` (`src/services/api.ts:4` inlines the missing var as `undefined`, not a localhost URL).
 
 - [ ] **Step 3: Pin an explicit `--mode` on every script**
 
