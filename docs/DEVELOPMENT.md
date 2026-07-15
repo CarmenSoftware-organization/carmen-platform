@@ -13,17 +13,16 @@ Setup, commands, API, auth, testing, GCP deployment, and CI. For product overvie
 ```bash
 git clone <repo-url> carmen-platform
 cd carmen-platform
-cp .env.example .env
-# edit .env and set REACT_APP_API_BASE_URL + REACT_APP_API_APP_ID
+cp .env.example .env.dev     # then set REACT_APP_API_BASE_URL=http://localhost:4000
 bun install        # or: npm install
 bun start          # or: npm start
 ```
 
-Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`).
+Dev server runs on `http://localhost:3304` (port set in `vite.config.ts`). `bun start` only needs `.env.dev`; if you'll also run against the deployed DEV or UAT backends, copy `.env.example` to `.env.prod` / `.env.uat` too — see [Commands](#commands) for which script uses which file, and the `.env.example` header for each mode's URL/app id.
 
 ## Environment variables
 
-Defined in `.env` at the project root:
+Defined in the mode-scoped `.env.<mode>` file (e.g. `.env.dev`) at the project root:
 
 | Variable | Required | Purpose | Example |
 |---|---|---|---|
@@ -32,7 +31,7 @@ Defined in `.env` at the project root:
 | `REACT_APP_ENV` | No | Environment label | `development`, `uat`, `production` |
 | `REACT_APP_BUILD_DATE` | Auto | Injected at build time by the `build` script | `2026-04-20 12:30:45` |
 
-Changing `.env` requires restarting the dev server.
+Changing `.env.<mode>` requires restarting the dev server.
 
 ## Commands
 
@@ -45,7 +44,7 @@ bun run build             # Production build (--mode prod → .env.prod); sets R
 bun run build:local       # build with .env.dev
 bun run build:prod        # build with .env.prod
 bun run build:uat         # build with .env.uat
-bun run preview           # Serve the production build locally on :3304
+bun run preview           # Serve the production build locally on :3304 (--mode prod → .env.prod)
 bun run test              # Vitest unit/component tests (jsdom) — one-shot
 bun run test:watch        # Vitest watch mode
 bun run test:cov          # Vitest with v8 coverage
@@ -54,7 +53,7 @@ bun run test:scripts      # node --test for build scripts (scripts/lib/*.test.mj
 
 No separate lint command. ESLint runs automatically via vite-plugin-eslint during `start` and `build`. Pass `CI=true` to treat warnings as errors.
 
-The Vite **mode** selects the env file: `--mode dev` → `.env.dev`; `--mode prod` → `.env.prod`; `--mode uat` → `.env.uat`. Every script passes `--mode` explicitly — Vite's defaults match no file, so a bare `vite` finds no env and `vite.config.ts` throws. Never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`/`dev:uat`).
+The Vite **mode** selects the env file: `--mode dev` → `.env.dev`; `--mode prod` → `.env.prod`; `--mode uat` → `.env.uat`. Every script passes `--mode` explicitly — Vite's defaults match no mode file, so a bare `vite` finds no `.env.<mode>` and `vite.config.ts` throws — unless a bare `.env` exists, which Vite loads in **every** mode and would silently satisfy the guard. Never create a bare `.env` or `.env.local` (both load in every mode and leak across `dev:local`/`dev:prod`/`dev:uat`).
 
 ## Dev proxy
 
