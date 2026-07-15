@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SqlWorkbench from './SqlWorkbench';
@@ -280,5 +280,38 @@ describe('SqlWorkbench', () => {
     await user.click(await screen.findByText('orders'));
     expect(screen.getByLabelText('sql')).toHaveValue('SELECT * FROM orders LIMIT 100;');
     expect(sqlQueryService.getDefinition).not.toHaveBeenCalled();
+  });
+
+  it('confirms via ConfirmDialog before dropping a loaded object', async () => {
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.getDefinition).mockResolvedValue({
+      type: 'view',
+      schema: 'public',
+      name: 'v_test',
+      definition: 'SELECT 1',
+    });
+    vi.mocked(sqlQueryService.dropObject).mockResolvedValue({
+      dropped: true,
+      type: 'view',
+      schema: 'public',
+      name: 'v_test',
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    // Load the view so the Drop button appears.
+    await user.click(await screen.findByText('v_test'));
+    await user.click(await screen.findByRole('button', { name: /drop/i }));
+    // Dialog shown, nothing dropped yet.
+    expect(await screen.findByText(/drop view\?/i)).toBeInTheDocument();
+    expect(sqlQueryService.dropObject).not.toHaveBeenCalled();
+    // Confirm from within the dialog.
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /^drop$/i }));
+    await waitFor(() =>
+      expect(sqlQueryService.dropObject).toHaveBeenCalledWith(
+        'T02',
+        expect.objectContaining({ type: 'view', schema: 'public', name: 'v_test' }),
+      ),
+    );
   });
 });
