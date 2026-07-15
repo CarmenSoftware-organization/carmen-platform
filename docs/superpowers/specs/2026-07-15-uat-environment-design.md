@@ -1,5 +1,4 @@
-> **Status: SUPERSEDED — historical record, do not execute.** The `uat` mode and target this
-> document designed shipped and is live — `uat` is not going away. What's superseded is the
+> **Status: SUPERSEDED — historical record, do not execute.** The `uat` mode and target that this document designed have shipped and are live — `uat` is not going away. What's superseded is the
 > two-mode world it was written against (`development`/`production`); the current four-mode
 > design is [2026-07-15-four-env-targets-design.md](./2026-07-15-four-env-targets-design.md)
 > (`localhost` / `dev` / `uat` / `prod`). Treat the script and file names below as historical.
