@@ -61,6 +61,7 @@ export default function SqlWorkbench() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDropping, setIsDropping] = useState(false);
   const [confirmSql, setConfirmSql] = useState<string | null>(null);
+  const [dropConfirm, setDropConfirm] = useState(false);
 
   // Load the BU list once.
   useEffect(() => {
@@ -126,6 +127,7 @@ export default function SqlWorkbench() {
     setExecuteResult(null);
     setExecuteError(null);
     setConfirmSql(null); // discard any pending destructive confirm from the previous BU
+    setDropConfirm(false); // and any pending drop confirm
     if (buCode) loadDbObjects(buCode);
     else setDbObjects(null);
   }, [buCode, loadDbObjects]);
@@ -258,14 +260,8 @@ export default function SqlWorkbench() {
     }
   };
 
-  const handleDrop = async () => {
+  const doDrop = async () => {
     if (!loadedObject || !buCode) return;
-    if (
-      !window.confirm(
-        `Drop ${loadedObject.type} "${loadedObject.schema}.${loadedObject.name}"? This cannot be undone.`,
-      )
-    )
-      return;
     setIsDropping(true);
     try {
       await sqlQueryService.dropObject(buCode, loadedObject);
@@ -299,7 +295,7 @@ export default function SqlWorkbench() {
                 size="sm"
                 variant="outline"
                 className="text-destructive"
-                onClick={handleDrop}
+                onClick={() => setDropConfirm(true)}
                 disabled={isDropping}
               >
                 {isDropping ? (
@@ -365,6 +361,27 @@ export default function SqlWorkbench() {
               />
             );
           })()}
+
+        {dropConfirm && loadedObject && (
+          <ConfirmDialog
+            open
+            onOpenChange={(o) => {
+              if (!o) setDropConfirm(false);
+            }}
+            title={`Drop ${loadedObject.type}?`}
+            description={
+              `This permanently drops ${loadedObject.type} ` +
+              `"${loadedObject.schema}.${loadedObject.name}" from the ` +
+              `${selectedBu?.code ?? 'tenant'} database. This cannot be undone.`
+            }
+            confirmText="Drop"
+            confirmVariant="destructive"
+            onConfirm={async () => {
+              await doDrop();
+              setDropConfirm(false);
+            }}
+          />
+        )}
 
         {!buCode ? (
           <button
