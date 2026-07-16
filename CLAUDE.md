@@ -21,13 +21,18 @@ Frontend-only React + TypeScript admin dashboard for clusters, business units, u
 
 ```bash
 bun install                 # or: npm install
-bun start                   # Vite dev server on :3304 (mode development → .env.development)
-bun run dev:local           # dev server against local backend (.env.development)
-bun run dev:prod            # dev server against deployed dev backend (.env.production, --mode production)
-bun run build               # production build (mode production → .env.production; sets REACT_APP_BUILD_DATE, emits to build/)
-bun run build:local         # build with development env (.env.development)
-bun run build:prod          # build with production env (.env.production)
-bun run preview             # serve the production build locally on :3304
+bun start                   # Vite dev server on :3304 (--mode localhost → .env.localhost)
+bun run dev                 # same as bun start / dev:local (--mode localhost)
+bun run dev:local           # dev server against local backend (.env.localhost, --mode localhost)
+bun run dev:dev             # dev server against deployed DEV backend (.env.dev, --mode dev)
+bun run dev:uat             # dev server against UAT backend (.env.uat, --mode uat)
+bun run dev:prod            # dev server against the prod slot (.env.prod, --mode prod) — placeholder: points at DEV
+bun run build               # production build (--mode prod → .env.prod; sets REACT_APP_BUILD_DATE, emits to build/)
+bun run build:local         # build with local env (.env.localhost, --mode localhost)
+bun run build:dev           # build with DEV env (.env.dev, --mode dev)
+bun run build:uat           # build with UAT env (.env.uat, --mode uat)
+bun run build:prod          # build with prod env (.env.prod, --mode prod) — placeholder: points at DEV
+bun run preview             # serve the production build locally on :3304 (--mode prod → .env.prod)
 bun run test                # unit + component tests (Vitest, jsdom) — one-shot
 bun run test:watch          # Vitest watch mode
 bun run test:cov            # Vitest with v8 coverage
@@ -38,16 +43,16 @@ No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pas
 
 ## Environment
 
-Copy `.env.example` → `.env.development` (local backend) and `.env.production` (deployed dev backend). Both are gitignored. The Vite **mode** selects the file: `vite` / `vite --mode development` → `.env.development`; `vite --mode production` → `.env.production`. Vite forbids a mode literally named `local` (it conflicts with the `.local` suffix), so we use `development`/`production` — never create a `.env.local` (it loads in every mode and leaks across `dev:local`/`dev:prod`). Variables:
+Copy `.env.example` → `.env.localhost` (local backend), `.env.dev` (deployed DEV backend), `.env.uat` (UAT backend), and `.env.prod` (production slot — **currently a placeholder pointing at DEV**). All are gitignored. The Vite **mode** selects the file: `vite --mode localhost` → `.env.localhost`; `--mode dev` → `.env.dev`; `--mode uat` → `.env.uat`; `--mode prod` → `.env.prod`. **Every script passes `--mode` explicitly** — Vite's defaults (`development` for `vite`, `production` for `vite build`/`vite preview`) match no file, so a bare `vite` finds no env and `vite.config.ts` throws `[env] Missing …` rather than silently falling back. Vite **throws** on a mode literally named `local` (it conflicts with the `.local` suffix), which is why the local-backend mode is `localhost` — and never create a bare `.env` or `.env.local`: Vite loads both in every mode, so they leak across all four targets and silently satisfy the guard. Every mode uses port `3304`, so only one dev server can run at a time. Variables:
 
 | Variable | Purpose |
 |----------|---------|
-| `REACT_APP_API_BASE_URL` | Backend base URL (proxied in dev) |
+| `REACT_APP_API_BASE_URL` | Backend base URL (axios uses it directly as an absolute `baseURL` — not proxied) |
 | `REACT_APP_API_APP_ID`   | Sent as `x-app-id` on every request |
 | `REACT_APP_ENV`          | `development` \| `uat` \| `production` |
 | `REACT_APP_PORT`         | Dev server / preview port (default `3304` if unset) |
 
-`vite.config.ts` (`server.proxy`) proxies `/api` and `/api-system` with `secure: false` (self-signed certs OK). `server.port`/`preview.port` read `REACT_APP_PORT` (fallback `3304`).
+`vite.config.ts` (`server.proxy`) configures `/api` and `/api-system` proxying with `secure: false` (self-signed certs OK) — but `src/services/api.ts` gives axios an absolute `baseURL`, so this proxy never fires; every mode calls the backend directly and depends on backend CORS. `server.port`/`preview.port` read `REACT_APP_PORT` (fallback `3304`).
 
 Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagger`) — there is **no `/swagger-json`**. The full OpenAPI 3.0 spec is HTML-entity-embedded in that page; extract it by unescaping the HTML and brace-matching from `"openapi":"3.0.0"`. Always confirm endpoint paths/DTO shapes against swagger (this repo has two backends — `/api` and `/api-system`).
 
@@ -143,7 +148,7 @@ const xService = {
 };
 ```
 
-- **Base path:** `/api-system/...` (proxied in dev)
+- **Base path:** `/api-system/...` (absolute `baseURL` — never proxied, see Environment above)
 - **Headers:** `Content-Type: application/json`, `x-app-id` (env), `Authorization: Bearer <token>` (added by interceptor)
 - **Response shape:** `{ data: T | T[], paginate?: { total, page, perpage } }` — unwrap with `response.data.data || response.data`
 
