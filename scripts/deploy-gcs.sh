@@ -4,7 +4,8 @@
 #   <gcs-bucket>   ชื่อ bucket (ไม่ต้องมี gs:// นำหน้า)
 #   [cdn-url-map]  (optional) ชื่อ URL map ของ HTTPS LB — ถ้าให้มา จะ invalidate /index.html
 # หมายเหตุ: ต่างจาก carmen-web, แอปนี้ bake ค่า REACT_APP_* เข้า bundle ตอน build (ไม่มี
-# runtime config.json) ดังนั้นต้องมี .env.production ที่ถูกต้องอยู่ก่อนรันสคริปต์นี้
+# runtime config.json) — `build:prod` = `vite build --mode prod` โหลด .env.prod (ไม่ใช่
+# .env.production) ดังนั้นต้องมี .env.prod ที่ถูกต้องอยู่ก่อนรันสคริปต์นี้
 set -euo pipefail
 
 BUCKET="${1:?Usage: deploy-gcs.sh <bucket> [cdn-url-map]}"
