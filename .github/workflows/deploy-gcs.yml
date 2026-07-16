@@ -31,9 +31,9 @@ jobs:
       # there is no runtime config.json like carmen-web) — written here from repo variables
       # instead of being committed. Set these under Settings > Secrets and variables > Actions
       # > Variables in this repo before the first real deploy.
-      - name: Write .env.production
+      - name: Write .env.uat
         run: |
-          cat > .env.production <<EOF
+          cat > .env.uat <<EOF
           REACT_APP_API_BASE_URL=${{ vars.REACT_APP_API_BASE_URL }}
           REACT_APP_API_APP_ID=${{ vars.REACT_APP_API_APP_ID }}
           REACT_APP_ENV=production
