@@ -173,7 +173,9 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           <div className="min-w-0 flex-1">
             <HeroName value={f.name} disabled={!canEdit} onCommit={(v) => onCommit('name', v)} />
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-primary bg-primary/10 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">{f.code}</span>
+              {f.code && (
+                <span className="text-primary bg-primary/10 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">{f.code}</span>
+              )}
               {clusterName && clusterName !== '-' && <span className="text-foreground/80">{clusterName}</span>}
               <button
                 type="button"
@@ -201,6 +203,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
 
         {/* inline fact groups */}
         <Group label="Details">
+          {inline('code', 'Code', { mono: true, validate: true })}
           {inline('alias_name', 'Alias', { validate: true })}
           {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions })}
           {inline('max_license_users', 'Max users', { type: 'number', mono: true, validate: true })}
@@ -208,6 +211,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
         </Group>
 
         <Group label="Location">
+          {inline('hotel_name', 'Hotel name')}
           {inline('hotel_address_line1', 'Address line 1')}
           {inline('hotel_address_line2', 'Address line 2')}
           {inline('hotel_sub_district', 'Sub-district')}
@@ -225,11 +229,23 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           {inline('hotel_email', 'Email', { type: 'email' })}
         </Group>
 
-        <Group label="Company & tax">
+        <Group label="Company">
           {inline('company_name', 'Company')}
-          {inline('company_address_line1', 'Address')}
-          {inline('company_city', 'City')}
-          {inline('company_country', 'Country')}
+          {inline('company_tel', 'Company phone', { mono: true })}
+          {inline('company_email', 'Company email', { type: 'email' })}
+          {inline('company_address_line1', 'Company address line 1')}
+          {inline('company_address_line2', 'Company address line 2')}
+          {inline('company_sub_district', 'Company sub-district')}
+          {inline('company_district', 'Company district')}
+          {inline('company_city', 'Company city')}
+          {inline('company_province', 'Company province')}
+          {inline('company_postal_code', 'Company postal code', { mono: true })}
+          {inline('company_country', 'Company country')}
+          {inline('company_latitude', 'Company latitude', { mono: true })}
+          {inline('company_longitude', 'Company longitude', { mono: true })}
+        </Group>
+
+        <Group label="Tax">
           {inline('tax_no', 'Tax ID', { mono: true })}
           {inline('branch_no', 'Branch', { mono: true })}
         </Group>
@@ -239,6 +255,8 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           {inline('date_format', 'Date format', { mono: true })}
           {inline('date_time_format', 'Date-time format', { mono: true })}
           {inline('time_format', 'Time format', { mono: true })}
+          {inline('long_time_format', 'Long time format', { mono: true })}
+          {inline('short_time_format', 'Short time format', { mono: true })}
         </Group>
       </Card>
 
