@@ -341,7 +341,25 @@ const BusinessUnitEdit: React.FC = () => {
     return payload;
   };
 
+  // Backend requires cluster_id, code, name (is_hq/is_active always sent). Guard
+  // them client-side so a blank required field never fires a doomed request.
+  const validateRequired = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!formData.cluster_id) errs.cluster_id = 'Cluster is required';
+    if (!formData.code.trim()) errs.code = 'Code is required';
+    else errs.code = validateField('code', formData.code);
+    if (!formData.name.trim()) errs.name = 'Name is required';
+    const active = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
+    setFieldErrors((prev) => ({ ...prev, ...errs }));
+    if (Object.keys(active).length > 0) {
+      setError('Please fix the highlighted fields: ' + Object.values(active).join(', '));
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
+    if (!validateRequired()) return;
     setSaving(true);
     setError('');
 
