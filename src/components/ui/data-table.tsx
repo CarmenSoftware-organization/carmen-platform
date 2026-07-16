@@ -21,6 +21,7 @@ import {
   TableRow,
 } from './table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 const PAGE_SIZES = [10, 25, 50, 100];
 
@@ -254,11 +255,14 @@ function DataTable<TData>({
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className={(header.column.columnDef.meta as Record<string, string>)?.headerClassName || ''}
+                  className={cn(
+                    'text-xs font-medium uppercase tracking-wide text-muted-foreground',
+                    (header.column.columnDef.meta as Record<string, string>)?.headerClassName
+                  )}
                 >
                   {header.isPlaceholder ? null : header.column.getCanSort() ? (
                     <button
-                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-semibold"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium"
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -290,7 +294,10 @@ function DataTable<TData>({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={(cell.column.columnDef.meta as Record<string, string>)?.cellClassName || ''}
+                    className={cn(
+                      'tabular-nums',
+                      (cell.column.columnDef.meta as Record<string, string>)?.cellClassName
+                    )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>

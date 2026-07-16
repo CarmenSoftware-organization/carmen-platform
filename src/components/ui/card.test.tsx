@@ -15,10 +15,10 @@ describe('Card', () => {
   it('reproduces the Fluent medium-Card interior layout (padding/gap/stack)', () => {
     render(<Card>Card body</Card>);
     const card = screen.getByText('Card body');
-    expect(card.className).toContain('p-3');
+    expect(card.className).toContain('p-5');
     expect(card.className).toContain('flex');
     expect(card.className).toContain('flex-col');
-    expect(card.className).toContain('gap-3');
+    expect(card.className).toContain('gap-4');
   });
 
   it('merges a custom className onto Card', () => {
