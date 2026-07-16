@@ -27,13 +27,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # .env.production is gitignored (bakes REACT_APP_* into the build at compile time,
+      # .env.prod is gitignored (bakes REACT_APP_* into the build at compile time,
       # there is no runtime config.json like carmen-web) — written here from repo variables
-      # instead of being committed. Set these under Settings > Secrets and variables > Actions
-      # > Variables in this repo before the first real deploy.
-      - name: Write .env.production
+      # instead of being committed. `build:prod` runs `vite build --mode prod`, which loads
+      # .env.prod (NOT .env.production). Set these under Settings > Secrets and variables >
+      # Actions > Variables in this repo before the first real deploy.
+      - name: Write .env.prod
         run: |
-          cat > .env.production <<EOF
+          cat > .env.prod <<EOF
           REACT_APP_API_BASE_URL=${{ vars.REACT_APP_API_BASE_URL }}
           REACT_APP_API_APP_ID=${{ vars.REACT_APP_API_APP_ID }}
           REACT_APP_ENV=production
