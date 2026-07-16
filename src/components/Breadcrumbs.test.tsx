@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { crumbsFromPath } from './Breadcrumbs';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { crumbsFromPath, Breadcrumbs } from './Breadcrumbs';
 
 describe('crumbsFromPath', () => {
   it('maps a section list route to a single unlinked crumb', () => {
@@ -29,5 +31,17 @@ describe('crumbsFromPath', () => {
 
   it('returns an empty list for the dashboard', () => {
     expect(crumbsFromPath('/dashboard')).toEqual([]);
+  });
+});
+
+describe('Breadcrumbs', () => {
+  it('renders a linked section crumb and a current-page crumb', () => {
+    render(
+      <MemoryRouter initialEntries={['/clusters/abc-123/edit']}>
+        <Breadcrumbs />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'Clusters' })).toHaveAttribute('href', '/clusters');
+    expect(screen.getByText('Edit')).toBeInTheDocument();
   });
 });
