@@ -1,0 +1,54 @@
+name: Deploy to GCP (Cloud Storage + CDN)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCS_BUCKET: carmen-platform-web-static
+  CDN_URL_MAP: carmen-lb
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # .env.production is gitignored (bakes REACT_APP_* into the build at compile time,
+      # there is no runtime config.json like carmen-web) — written here from repo variables
+      # instead of being committed. Set these under Settings > Secrets and variables > Actions
+      # > Variables in this repo before the first real deploy.
+      - name: Write .env.production
+        run: |
+          cat > .env.production <<EOF
+          REACT_APP_API_BASE_URL=${{ vars.REACT_APP_API_BASE_URL }}
+          REACT_APP_API_APP_ID=${{ vars.REACT_APP_API_APP_ID }}
+          REACT_APP_ENV=production
+          EOF
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/54906806682/locations/global/workloadIdentityPools/github-provider/providers/github-provider
+          service_account: carmen-frontend-deployer@carmen-software-poc.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to GCS + invalidate CDN
+        run: |
+          chmod +x scripts/deploy-gcs.sh
+          scripts/deploy-gcs.sh "${GCS_BUCKET}" "${CDN_URL_MAP}"
