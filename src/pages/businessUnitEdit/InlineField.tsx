@@ -70,7 +70,14 @@ export function InlineField({
     }
   };
 
-  const displayValue = value.trim() ? value : null;
+  const promptText = placeholder || `Set ${label.toLowerCase()}…`;
+  // Selects store the option value (e.g. a UUID); show its human label in read mode.
+  const displayValue =
+    type === 'select'
+      ? (options?.find((o) => o.value === value)?.label ?? (value.trim() ? value : null))
+      : value.trim()
+        ? value
+        : null;
 
   return (
     <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
@@ -91,6 +98,12 @@ export function InlineField({
               onBlur={cancel}
               className={inputClass}
             >
+              {/* Empty prompt so an unset select shows the placeholder (not the
+                  first option as pre-selected) — otherwise picking that first
+                  option fires no change event and never commits. */}
+              <option value="" disabled>
+                {promptText}
+              </option>
               {options?.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -133,7 +146,7 @@ export function InlineField({
               mono && displayValue && 'font-mono tabular-nums',
             )}
           >
-            <span className="whitespace-pre-line">{displayValue ?? (placeholder || `Set ${label.toLowerCase()}…`)}</span>
+            <span className="whitespace-pre-line">{displayValue ?? promptText}</span>
             {!disabled && (
               <Pencil className="text-muted-foreground/60 ml-auto size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
             )}
