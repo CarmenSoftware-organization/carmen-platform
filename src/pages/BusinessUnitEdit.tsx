@@ -19,6 +19,7 @@ import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../types';
 import { useAuth } from '../context/AuthContext';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
+import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
 import { initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
@@ -547,6 +548,11 @@ const BusinessUnitEdit: React.FC = () => {
                   buCode={formData.code}
                   buName={formData.name}
                   hasDbConnection={formData.db_connection.length > 0}
+                  isSuperAdmin={isSuperAdmin}
+                />
+                <InterfaceEntitlementCard
+                  key={`interface-${id}`}
+                  buCode={formData.code}
                   isSuperAdmin={isSuperAdmin}
                 />
               </>
