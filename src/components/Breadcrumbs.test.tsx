@@ -1,0 +1,33 @@
+import { describe, it, expect } from 'vitest';
+import { crumbsFromPath } from './Breadcrumbs';
+
+describe('crumbsFromPath', () => {
+  it('maps a section list route to a single unlinked crumb', () => {
+    expect(crumbsFromPath('/clusters')).toEqual([{ label: 'Clusters' }]);
+  });
+
+  it('maps an edit route to Section > Edit with the section linked', () => {
+    expect(crumbsFromPath('/clusters/abc-123/edit')).toEqual([
+      { label: 'Clusters', to: '/clusters' },
+      { label: 'Edit' },
+    ]);
+  });
+
+  it('maps a new route to Section > New', () => {
+    expect(crumbsFromPath('/business-units/new')).toEqual([
+      { label: 'Business Units', to: '/business-units' },
+      { label: 'New' },
+    ]);
+  });
+
+  it('handles nested platform routes', () => {
+    expect(crumbsFromPath('/platform/roles')).toEqual([
+      { label: 'Platform', to: '/platform' },
+      { label: 'Roles' },
+    ]);
+  });
+
+  it('returns an empty list for the dashboard', () => {
+    expect(crumbsFromPath('/dashboard')).toEqual([]);
+  });
+});
