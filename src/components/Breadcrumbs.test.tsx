@@ -24,8 +24,15 @@ describe('crumbsFromPath', () => {
 
   it('handles nested platform routes', () => {
     expect(crumbsFromPath('/platform/roles')).toEqual([
-      { label: 'Platform', to: '/platform' },
+      { label: 'Platform' },
       { label: 'Roles' },
+    ]);
+  });
+
+  it('leaves the broadcasts section crumb unlinked (no index route)', () => {
+    expect(crumbsFromPath('/broadcasts/new')).toEqual([
+      { label: 'Broadcasts' },
+      { label: 'New' },
     ]);
   });
 

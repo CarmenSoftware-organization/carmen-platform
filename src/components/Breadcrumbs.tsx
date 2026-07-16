@@ -31,6 +31,11 @@ const labelFor = (seg: string): string =>
   SEGMENT_LABELS[seg] ??
   seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
+// Section segments with no index route of their own — only child routes exist
+// (e.g. /platform/roles, /broadcasts/new). Linking to the bare segment would
+// hit the router's catch-all and bounce an authenticated admin to Landing.
+const NON_NAVIGABLE = new Set(['platform', 'broadcasts']);
+
 // Segments that are opaque record ids (uuid-ish) carry no label of their own.
 const isIdSegment = (seg: string): boolean =>
   !SEGMENT_LABELS[seg] && /\d/.test(seg) && seg.length > 6;
@@ -44,6 +49,7 @@ export function crumbsFromPath(pathname: string): Crumb[] {
   return meaningful.map((seg, i) => {
     const isLast = i === meaningful.length - 1;
     if (isLast) return { label: labelFor(seg) };
+    if (NON_NAVIGABLE.has(seg)) return { label: labelFor(seg) };
     return { label: labelFor(seg), to: `/${meaningful.slice(0, i + 1).join('/')}` };
   });
 }
