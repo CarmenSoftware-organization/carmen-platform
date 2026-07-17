@@ -15,7 +15,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Building2, Download } 
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -242,8 +242,12 @@ const BusinessUnitManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            to={`/business-units/${row.original.id}/edit`}
+            className="text-primary hover:underline truncate max-w-[220px]"
+            title={row.original.name}
+          >
             {row.original.name}
           </Link>
           {row.original.deleted_at && (
@@ -481,21 +485,28 @@ const BusinessUnitManagement: React.FC = () => {
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
             {!error && businessUnits.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Building2}
-                title="No business units yet"
-                description={searchTerm ? `No business units matching "${searchTerm}"` : "Get started by creating your first business unit."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/business-units/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Business Unit
-                  </Button>
-                ) : undefined}
+                emptyTitle="No business units yet"
+                emptyDescription="Get started by creating your first business unit."
+                addAction={
+                  <Can permission="cluster.create">
+                    <Button size="sm" onClick={() => navigate('/business-units/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Business Unit
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
                 {loading && businessUnits.length === 0 ? (
-                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count
+                  // (including the conditional Deleted column when showDeleted is on).
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
