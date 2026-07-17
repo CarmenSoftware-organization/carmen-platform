@@ -98,7 +98,13 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
 
 const BroadcastCompose: React.FC = () => {
   const { hasPermission } = useAuth();
+  // TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped grantee
+  // reaches system-wide send modes. See the W3 plan's Scope & Deferrals.
   const canSendSystem = hasPermission('broadcast.send');
+  // Same permission also gates the Send action for every mode, not just system-wide
+  // (see the <Can> around the Send button below) — reused (not duplicated) as the
+  // single source of truth for every send-gate check on this page.
+  const canSend = canSendSystem;
 
   const defaultMode: BroadcastTargetMode = canSendSystem ? 'system_all' : 'bu';
   const [targetMode, setTargetMode] = useState<BroadcastTargetMode>(defaultMode);
@@ -248,6 +254,10 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const handleSend = () => {
+    // Defence-in-depth: mirrors the <Can permission="broadcast.send"> gate on the Send
+    // button. handleSend is also reachable via the Ctrl/Cmd+S shortcut, which bypasses
+    // that button entirely, so the same check must live here too.
+    if (!canSend) return;
     const errors = validate();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -258,6 +268,13 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const handleConfirmedSend = async () => {
+    // Final gate: every caller (Send button, Ctrl/Cmd+S) funnels through here. The
+    // ConfirmDialog itself renders outside the <Can> gate, so this is the last chance
+    // to fail closed before the mutating call.
+    if (!canSend) {
+      setConfirmOpen(false);
+      return;
+    }
     setSending(true);
     setSendError('');
     try {
@@ -307,7 +324,9 @@ const BroadcastCompose: React.FC = () => {
   useUnsavedChanges(isDirty);
   useGlobalShortcuts({
     onSave: () => {
-      if (!sending && !confirmOpen) handleSend();
+      // The shortcut reaches handleSend without going through the Send button, so a
+      // hidden/disabled button is no defence on its own — check canSend here too.
+      if (canSend && !sending && !confirmOpen) handleSend();
     },
     onCancel: () => {
       if (!sending && !confirmOpen) handleReset();
@@ -552,6 +571,8 @@ const BroadcastCompose: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={handleReset} disabled={sending}>
               Reset
             </Button>
+            {/* TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped
+                grantee reaches system-wide send modes. See the W3 plan's Scope & Deferrals. */}
             <Can permission="broadcast.send">
               <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
                 {sending ? (

@@ -174,29 +174,55 @@ Information hierarchy · Interaction/flow · Responsive · A11y.**
   `role="alert"`.
 
 ## A6 — Composer / Authoring (reference: `NewsEdit`, `BroadcastCompose`)
+
+*A6 covers two shapes: a **persisted, versioned** composer editing a record that already
+exists in the database (`NewsEdit`) and a **fire-once** composer with no persisted record at
+all (`BroadcastCompose` — a broadcast is sent, not saved-and-reopened). Facets below are
+hedged "where applicable" wherever they depend on the composer having a saved record, an
+upload, or a draft — do not read those clauses as unqualified requirements of every A6 page.
+(Corrected 2026-07-17, final-review round: the prior wording stated `doc_version` conflict
+handling, upload in-progress/error, and "`Cmd/Ctrl+S` saves the draft" as unhedged
+requirements of *both* reference pages. `BroadcastCompose` has no persisted record (nothing
+to attach a `doc_version` to), no upload, and nothing to "save as a draft" — it structurally
+cannot satisfy any of the three, and no amount of implementation work on that page could. The
+contract was written from the Wave-0 skeleton without reading `BroadcastCompose`; see the W3
+plan's Scope & Deferrals for the full record, following the same pattern as the A5
+"no wide table" correction.)*
+
 - **Anatomy:** the A4 shell (header with back + title + Edit/read toggle where applicable,
-  error display, `Card` metadata sections) plus a dedicated authoring surface — rich/
-  Markdown body editor + image/attachment upload control; a Preview toggle or split-pane
-  preview; sticky action bar for Save/Publish (offset matches sidebar, page `pb-20`) →
-  `DevDebugSheet`.
-- **Required states:** draft (unsaved edits guarded by `useUnsavedChanges`), dirty vs clean
-  indicator, saving (button spinner + disabled), image/attachment upload in-progress and
-  upload-error, publish vs save-as-draft as distinct actions where applicable, `doc_version`
-  conflict handling identical to A4 (409 → `notifyVersionConflict()` + refetch).
+  error display, `Card` metadata sections) plus a dedicated authoring surface — a rich/
+  Markdown body editor + image/attachment upload control where the composer persists a
+  record (e.g. `NewsEdit`), or a structured message/audience form where it doesn't (e.g.
+  `BroadcastCompose`); a Preview toggle or split-pane preview where applicable; sticky action
+  bar for Save/Send/Publish (offset matches sidebar, page `pb-20`) → `DevDebugSheet`.
+- **Required states:** draft (unsaved edits guarded by `useUnsavedChanges`) where a draft
+  concept exists, dirty vs clean indicator, saving/sending (button spinner + disabled);
+  **where the composer accepts an image/attachment upload** (e.g. `NewsEdit`) — upload
+  in-progress and upload-error states; publish vs save-as-draft as distinct actions where
+  applicable; **where the composer persists a versioned record** (e.g. `NewsEdit`) —
+  `doc_version` conflict handling identical to A4 (409 → `notifyVersionConflict()` +
+  refetch). A fire-once composer with no persisted record (e.g. `BroadcastCompose`) has none
+  of the three preceding clauses — it substitutes a pre-send `ConfirmDialog` summarizing what
+  will be sent, to whom, and when.
 - **Information hierarchy:** metadata fields (title, tags, dates) grouped above/beside the
-  body in a titled section; status (draft/published) via
-  `<Badge variant="success|secondary">`; the body content is the visual focus — the metadata
-  card stays secondary and doesn't compete for width.
-- **Interaction/flow:** `Cmd/Ctrl+S` saves the draft; `Esc` triggers the same
-  unsaved-changes guard as other A4 pages; image upload shows inline progress and
-  `toast.error` on failure; Preview renders through the same Markdown/rich renderer used at
-  read-time (no drift between edit-preview and the live page); metadata fields validate on
-  blur.
+  body in a titled section; status (draft/published, or the send target/mode for a fire-once
+  composer) via `<Badge variant="success|secondary">`; the body content is the visual focus —
+  the metadata card stays secondary and doesn't compete for width.
+- **Interaction/flow:** `Cmd/Ctrl+S` triggers the composer's primary write action — saves the
+  draft where a persisted record exists, or opens the pre-send confirmation for a fire-once
+  composer; either way it **must enforce the same permission gate as the primary action's
+  visible button**, since the shortcut calls the handler directly and bypasses any `<Can>` or
+  `disabled` state on the button itself. `Esc` triggers the same unsaved-changes guard as
+  other A4 pages, or a plain form reset where there is no persisted draft to guard. Where
+  applicable: image upload shows inline progress and `toast.error` on failure; Preview
+  renders through the same Markdown/rich renderer used at read-time (no drift between
+  edit-preview and the live page). Metadata fields validate on blur.
 - **Responsive:** body editor and preview stack vertically on mobile, side-by-side (or
-  tabbed) from `lg:` up; long-form content scrolls independently of the sticky action bar.
-- **A11y:** editor toolbar buttons carry `aria-label`; upload progress `role="status"`;
-  upload/save errors `role="alert"`; the preview pane sits in a sane keyboard tab order
-  after the editor, never orphaned.
+  tabbed) from `lg:` up, where a body editor/preview exists; long-form content scrolls
+  independently of the sticky action bar.
+- **A11y:** editor toolbar buttons carry `aria-label` where applicable; upload progress
+  `role="status"` where applicable; upload/save/send errors `role="alert"`; the preview pane
+  (where one exists) sits in a sane keyboard tab order after the editor, never orphaned.
 
 ## A7 — Console / Operational (reference: `SqlWorkbench`, `TenantMigration`)
 - **Anatomy:** shared `PageHeader` (never hand-rolled); `Layout` wrapper; standard `space-y-4 sm:space-y-6` rhythm; bespoke core (editor / results / streaming console) below.
