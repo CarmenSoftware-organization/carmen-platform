@@ -240,3 +240,62 @@ without report_template.update / report_template.delete`, `gates Edit on report_
 alone — Delete stays hidden`) because the now-unwrapped Delete item rendered regardless of
 `hasPermission`'s return value. Restored the gate; `diff` against the pre-edit backup showed zero
 residual change; suite green again (8/8). See task-4-report.md §3 for both raw command outputs.
+
+### RoleManagement (`src/pages/RoleManagement.tsx` / `src/pages/RoleManagement.test.tsx`)
+
+No pre-existing test file (first coverage added this task). This is the **platform roles** page
+(`/platform/roles`, backed by the `platform_role` service via `roleService` ->
+`/api-system/platform/roles`) — **not** application roles (`/api-system/roles`); verified by
+reading `roleService.ts` and the route registration in `App.tsx:255-278`.
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| Row action: Edit (opens `/platform/roles/:id/edit`) | `<Can>` at `:318` | `role.update` | platform (unscoped) | **Yes — discriminating** | None |
+| Row action: Delete (opens confirm dialog → `roleService.delete`) | `<Can>` at `:327` | `role.delete` | platform (unscoped) | **Yes — discriminating** | None |
+| Header "Add Role" button | `<Can>` at `:368` | `role.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Empty-state "Add Role" button | `<Can>` at `:502` | `role.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Header "Permission Catalog" button (navigates to `/platform/permissions`) | Ungated; route itself requires only `role.read` (`App.tsx:280-286`) | — | — | N/A — read-only navigation, no mutation | None |
+| Header "Export" button | Client-side CSV of already-fetched, already-permitted data; no write | — | — | N/A, not a mutation (matches prior pages' precedent) | None |
+| Name column link (row → `/platform/roles/:id/edit`) + summary-band "Broadest roles" links (same target) | Ungated `<Link>`s; route itself requires `role.update` (`App.tsx:271-278`) and `RoleEdit.tsx` has its own `<Can permission="role.update">` gate (`:335`) on the actual mutating controls | — | — | N/A — same accepted pattern as ClusterManagement's/BusinessUnitManagement's/ReportTemplateManagement's Name-column link | None |
+| `Ctrl/Cmd+S` global shortcut | N/A — page wires `useGlobalShortcuts({ onSearch })` only (`:95-97`), no `onSave` | — | — | **N/A — no `onSave` wired, no shortcut-driven mutation path exists** | None |
+| Row-selection / bulk actions | **Does not exist on this page** — no `enableRowSelection`, no checkbox column, no bulk action bar (verified by grep: `selectionResetKey`/`clearSelection`/`enableRowSelection`/`bulk` all absent from the file) | — | — | N/A — not a consumer | None |
+
+**Audit result: no ungated mutation found.** All 4 `<Can>` gates (3 distinct permission strings —
+`role.update`, `role.delete`, `role.create`, the latter gating two separate DOM locations: header
++ empty-state) trace to real permission checks present in `DEV_MOCK_EFFECTIVE_PERMISSIONS.platform`
+(`utils/permissions.ts:51`) and are mirrored by the route-level `PrivateRoute` guards
+(`role.read` for the list, `role.create` for `/platform/roles/new`, `role.update` for
+`/platform/roles/:id/edit` — `App.tsx:255-278`); every mutating path (row Edit, row Delete, both
+Add Role entry points) was already reachable only through a gate before this task started. None
+of the four gates pass a `clusterId` prop — `role.*` is platform-only (never appears per-cluster
+in `permissions.ts`), matching the UserManagement/ReportTemplateManagement precedent rather than
+the ClusterManagement/BusinessUnitManagement scoped pattern, so there is no scope-drop
+discrimination to demonstrate here.
+
+**Selection-reset (`data-table.tsx`) regression guard: not applicable.** `RoleManagement` does not
+pass `selectionResetKey` to `<DataTable>`, does not set `enableRowSelection`, and has no
+bulk-action bar — confirmed by grep (no matches for `selectionResetKey`, `clearSelection`,
+`enableRowSelection`, or `bulk` in the file). It is not a consumer of the Task 1 `data-table.tsx`
+fix, so no regression test was added.
+
+**Test file:** `src/pages/RoleManagement.test.tsx` (new) — mutable `vi.hoisted` `AuthContext`
+mock (`hasPermission`), `<Can>` left real throughout; `roleService` mocked (`getAll`, `getById`,
+`create`, `update`, `delete`); localStorage stub + Radix pointer-capture/`scrollIntoView`
+polyfills copied from `ClusterManagement.test.tsx` (this page also reads `localStorage` directly
+on every render and uses a Radix `DropdownMenu` for row actions). `roleService.getAll` is mocked
+with a `perpage`-aware implementation so the page's independent RBAC summary band
+(`RolesAccessSummary`, which separately calls `getAll({ perpage: -1 })` on mount) always resolves
+empty — this keeps the summary's "Broadest roles" panel from rendering a second node with the
+same role name as the table row, which would otherwise make `findByText('Admin')` throw on an
+unrelated duplicate. 8 tests: 4 for the row-action `DropdownMenu` (full-deny negative,
+discriminating positive with both permissions, and two single-permission splits proving Edit/
+Delete are gated independently), 4 for the two `role.create` Add Role locations (negative +
+discriminating positive per location, header and empty-state).
+
+Discrimination formally proved by deleting a gate: removed the entire
+`<Can permission="role.delete">` wrapper from around the row Delete item (leaving the
+`DropdownMenuItem` rendering unconditionally). 2 of 8 tests failed (`hides Edit and Delete without
+role.update / role.delete`, `gates Edit on role.update alone — Delete stays hidden`) because the
+now-unwrapped Delete item rendered regardless of `hasPermission`'s return value. Restored the
+gate; `diff` against the pre-edit backup showed zero residual change; suite green again (8/8). See
+task-5-report.md §3 for both raw command outputs.
