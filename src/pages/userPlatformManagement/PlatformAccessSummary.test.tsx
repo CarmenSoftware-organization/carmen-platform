@@ -29,7 +29,19 @@ describe('summarizeUserPlatform', () => {
     const s = summarizeUserPlatform([{ id: 'x', is_active: true }], {});
     expect(s.privileged).toBe(0);
     expect(s.unprivileged).toBe(1);
+    expect(s.unknown).toBe(0);
     expect(s.assignments).toBe(0);
+  });
+
+  it('counts a failed role fetch as unknown, not unprivileged, and excludes it from assignments', () => {
+    const s = summarizeUserPlatform(
+      [{ id: 'a', is_active: true }, { id: 'b', is_active: true }],
+      { a: 'error', b: 3 },
+    );
+    expect(s.privileged).toBe(1); // b only
+    expect(s.unprivileged).toBe(0); // a is unknown, not unprivileged
+    expect(s.unknown).toBe(1); // a
+    expect(s.assignments).toBe(3); // a's failed fetch contributes nothing
   });
 });
 
@@ -40,6 +52,7 @@ describe('PlatformAccessSummary', () => {
     inactive: 2,
     privileged: 8,
     unprivileged: 26,
+    unknown: 0,
     assignments: 18,
   };
 
@@ -66,5 +79,20 @@ describe('PlatformAccessSummary', () => {
   it('shows a skeleton while the N+1 role counts resolve', () => {
     const { container } = render(<PlatformAccessSummary summary={null} loading />);
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
+  });
+
+  it('surfaces failed role fetches as a distinct "Unknown" segment, not folded into privileged/unprivileged', () => {
+    render(
+      <PlatformAccessSummary
+        summary={{ ...summary, total: 36, privileged: 8, unprivileged: 26, unknown: 2 }}
+        loading={false}
+      />,
+    );
+    expect(screen.getByText(/Unknown/)).toBeInTheDocument();
+  });
+
+  it('omits the "Unknown" segment when every role fetch resolved', () => {
+    render(<PlatformAccessSummary summary={summary} loading={false} />);
+    expect(screen.queryByText(/Unknown/)).not.toBeInTheDocument();
   });
 });

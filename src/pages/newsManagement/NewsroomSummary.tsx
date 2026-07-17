@@ -122,10 +122,30 @@ function Reach({ buCount }: { buCount: number }) {
   );
 }
 
-export function NewsroomSummary({ summary, loading }: { summary: NewsSummaryData | null; loading: boolean }) {
+interface NewsroomSummaryProps {
+  summary: NewsSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function NewsroomSummary({ summary, loading, error = false, onRetry }: NewsroomSummaryProps) {
   return (
     <Card className="p-4 sm:p-5">
-      {loading || !summary ? (
+      {error ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 py-2" role="alert">
+          <span className="text-muted-foreground text-sm">Couldn't load the newsroom summary.</span>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="text-primary text-sm underline underline-offset-2"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-[16rem] flex-1 space-y-2">
             <Skeleton className="h-3 w-16" />

@@ -2,6 +2,8 @@
 
 > Rubric + contracts: [`page-patterns.md`](../system/page-patterns.md).
 > Ranked findings-first (score is a gauge, not the driver — see master design §5.2). Sort order: P0 count desc → P1 count desc → Total asc (worst first); ties broken alphabetically by page name.
+>
+> **Post-audit correction (2026-07-17):** the original audit missed a P1 on ClusterManagement (empty state ignored active filters, identical to the bug found on the other 8 A3 pages). Its row was scored 12/12, 0 P1 — that was an audit error, corrected below. The gap was fixed in Wave 1.
 
 ## Ranked summary
 | Page | Arch | D1 | D2 | D3 | D4 | Total | P0 | P1 | P2 | Wave |
@@ -29,11 +31,11 @@
 | ReportTemplateEdit | A4 | 2 | 3 | 2 | 3 | 10 | 0 | 1 | 5 | W2 |
 | UserManagement | A3 | 3 | 2 | 2 | 3 | 10 | 0 | 1 | 2 | W1 |
 | BusinessUnitManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 2 | W1 |
+| ClusterManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 4 | W1 |
 | Landing | A1 | 2 | 3 | 3 | 3 | 11 | 0 | 1 | 3 | W5 |
 | NewsManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 2 | W1 |
 | ReportTemplateManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 2 | W1 |
 | RoleEdit | A4 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 3 | W2 |
-| ClusterManagement | A3 | 3 | 3 | 3 | 3 | 12 | 0 | 0 | 4 | W1 |
 
 ## Findings by page
 
@@ -223,7 +225,8 @@
 - [P2][S] "Active" status checkbox row (native `<input type="checkbox" className="h-4 w-4 .../>` in an unpadded `<label>`) has a tappable hit area far below 44px on mobile (src/pages/RoleEdit.tsx:387-397).
 - [P2][S] No dedicated not-found state — an invalid/deleted role id renders an empty Hero ("(unnamed role)") plus a generic "Failed to load role: …" banner instead of a distinct not-found affordance (src/pages/RoleEdit.tsx:96-101). Same gap exists in the ClusterEdit reference, so this is a systemic pattern rather than a RoleEdit-specific regression.
 
-### ClusterManagement (A3, 12/12)
+### ClusterManagement (A3, 11/12)
+- [P1][S] Empty state ignores active filters — gates on searchTerm alone though activeFilterCount exists at :210; filtering to zero rows shows the "create your first cluster" copy + Add CTA (ClusterManagement.tsx:524-534). FIXED in Wave 1.
 - [P2][S] No visible in-page affordance/placeholder hint for the Cmd/Ctrl+K search shortcut (ClusterManagement.tsx:420)
 - [P2][S] Inline date fmt helper duplicated in three column cells instead of a shared util (ClusterManagement.tsx:320,336,351)
 - [P2][S] Filter Sheet uses raw <input type="checkbox"> (h-4 w-4 = 16px) not shadcn Checkbox; label row is tappable (ClusterManagement.tsx:474)

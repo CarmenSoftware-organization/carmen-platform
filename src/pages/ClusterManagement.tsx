@@ -15,7 +15,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Network, Download } fr
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -521,21 +521,28 @@ const ClusterManagement: React.FC = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
             {!error && clusters.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Network}
-                title="No clusters yet"
-                description={searchTerm ? `No clusters matching "${searchTerm}"` : "Get started by creating your first cluster to organize business units."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/clusters/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Cluster
-                  </Button>
-                ) : undefined}
+                emptyTitle="No clusters yet"
+                emptyDescription="Get started by creating your first cluster to organize business units."
+                addAction={
+                  <Can permission="cluster.create">
+                    <Button size="sm" onClick={() => navigate('/clusters/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Cluster
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
                 {loading && clusters.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count
+                  // (including the conditional Deleted column when showDeleted is on).
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (

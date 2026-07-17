@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogD
 import { Label } from '../components/ui/label';
 import { Input } from '../components/ui/input';
 import { getDocVersion } from '../utils/docVersion';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -101,6 +101,7 @@ const NewsManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<NewsSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_news') || '';
   const storedFilters = getStoredJSON<string[]>('filters_news', []);
@@ -169,12 +170,14 @@ const NewsManagement: React.FC = () => {
   // filters) so the pipeline counts and lead story reflect reality, not the view.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const data = await newsService.getAll({ perpage: -1, sort: 'published_at:desc' });
       const items = data.data || data;
       setSummary(summarizeNews(Array.isArray(items) ? (items as Parameters<typeof summarizeNews>[0]) : []));
     } catch {
-      setSummary(null); // masthead falls back to its skeleton; the table still works
+      setSummary(null); // masthead swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -329,9 +332,15 @@ const NewsManagement: React.FC = () => {
       accessorKey: 'title',
       header: 'Title',
       cell: ({ row }) => (
-        <Link to={`/news/${row.original.id}/edit`} className="text-primary hover:underline">
-          {row.original.title || '(untitled)'}
-        </Link>
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            to={`/news/${row.original.id}/edit`}
+            className="text-primary hover:underline truncate max-w-[220px]"
+            title={row.original.title || '(untitled)'}
+          >
+            {row.original.title || '(untitled)'}
+          </Link>
+        </div>
       ),
     },
     {
@@ -464,7 +473,7 @@ const NewsManagement: React.FC = () => {
           }
         />
 
-        <NewsroomSummary summary={summary} loading={summaryLoading} />
+        <NewsroomSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">
@@ -571,16 +580,20 @@ const NewsManagement: React.FC = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
             {!error && newsItems.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Newspaper}
-                title="No news yet"
-                description={searchTerm ? `No news matching "${searchTerm}"` : 'Get started by creating your first news article.'}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/news/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add News
-                  </Button>
-                ) : undefined}
+                emptyTitle="No news yet"
+                emptyDescription="Get started by creating your first news article."
+                addAction={
+                  <Can permission="news.create">
+                    <Button size="sm" onClick={() => navigate('/news/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add News
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <>
