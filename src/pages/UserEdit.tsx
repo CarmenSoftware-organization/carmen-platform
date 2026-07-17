@@ -89,6 +89,7 @@ const UserEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [rawClusterBUsResponse, setRawClusterBUsResponse] = useState<unknown>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
   const [userClusters, setUserClusters] = useState<UserCluster[]>([]);
@@ -220,6 +221,7 @@ const UserEdit: React.FC = () => {
         perpage: -1,
         advance: JSON.stringify({ where: { cluster_id: clusterId } }),
       });
+      setRawClusterBUsResponse(data);
       const items = data.data || data;
       setClusterBUs(Array.isArray(items) ? items : []);
     } catch {
@@ -452,10 +454,12 @@ const UserEdit: React.FC = () => {
               clusterCount={userClusters.length}
               actions={!editing && (
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Change password
-                  </Button>
+                  <Can permission="user.update">
+                    <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Change password
+                    </Button>
+                  </Can>
                   <Can permission="user.update">
                     <Button size="sm" onClick={handleEditToggle}>
                       <Pencil className="mr-2 h-4 w-4" />
@@ -535,14 +539,22 @@ const UserEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="alias_name">Alias Name</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="alias_name"
-                      name="alias_name"
-                      value={formData.alias_name}
-                      onChange={handleChange}
-                      placeholder="Alias name"
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="alias_name"
+                        name="alias_name"
+                        value={formData.alias_name}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Alias name"
+                        className={fieldErrors.alias_name ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.alias_name && (
+                        <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyField value={formData.alias_name} />
                   )}
@@ -790,7 +802,13 @@ const UserEdit: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <DevDebugSheet title="API Response" endpoint={`GET /api-system/user/${id}`} data={rawResponse} />
+      <DevDebugSheet
+        title="User Debug"
+        tabs={[
+          { key: 'user', label: 'User', data: rawResponse, endpoint: `GET /api-system/user/${id}` },
+          { key: 'clusterBUs', label: 'Cluster BUs', data: rawClusterBUsResponse, endpoint: 'GET /api-system/business-units' },
+        ]}
+      />
     </Layout>
   );
 };

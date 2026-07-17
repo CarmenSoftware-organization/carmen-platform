@@ -100,7 +100,11 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
       <Button
         variant="ghost"
         size="icon"
-        className="text-destructive hover:text-destructive size-7 shrink-0"
+        // Visual box stays compact (size-7 = 28px) so the row doesn't bloat; an
+        // invisible ::before overlay stretches the *tappable* area to 44px,
+        // centred on the button. Per the A4 contract: "the tappable area
+        // governs, not the visual control" (same technique as InlineField.tsx).
+        className="text-destructive hover:text-destructive relative size-7 shrink-0 before:absolute before:left-1/2 before:top-1/2 before:size-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']"
         aria-label={`Remove ${unit?.name || unit?.code || 'business unit'}`}
         onClick={() => onDelete(bu)}
       >
