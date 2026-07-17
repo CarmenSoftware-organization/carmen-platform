@@ -47,6 +47,10 @@ export interface BatchProgress {
   log: string[];
 }
 
+// Key used in activeStreamControllersRef for the batch "Deploy all" stream (distinct from any
+// real bu.id, which is always a UUID).
+const ALL_BU_STREAM_KEY = '__all__';
+
 export const nowTime = (): string => {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
@@ -89,6 +93,23 @@ const TenantMigrationManagement: React.FC = () => {
   const [batch, setBatch] = useState<BatchProgress | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Tracks in-flight deploy stream requests so they can be aborted on unmount/navigation
+  // (bu.id -> its AbortController for a per-row Apply; ALL_BU_STREAM_KEY for Deploy all). This
+  // is NOT a user-facing Cancel: aborting only stops the browser from listening — the
+  // micro-business handler is explicitly designed to keep running `prisma migrate deploy` to
+  // completion after a client disconnect (see tenantMigrationService.ts `_streamDeploy` doc
+  // comment for the backend evidence). The controller exists purely to avoid a leaked fetch /
+  // stale state update after this page is navigated away from, and doubles as the source of
+  // truth for the re-entry guards in applyOne/deployAll below.
+  const activeStreamControllersRef = useRef<Map<string, AbortController>>(new Map());
+  useEffect(() => {
+    const controllers = activeStreamControllersRef.current;
+    return () => {
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+  }, []);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
@@ -154,6 +175,10 @@ const TenantMigrationManagement: React.FC = () => {
     // The button is disabled for non-super-admins today, but that's UI-layer only — fail
     // closed here too so a future refactor that renders the button enabled can't mutate.
     if (!isSuperAdmin) return;
+    // Re-entry guard: a ref (not rowState, which can be stale in this closure) so a second
+    // trigger for the same BU while one is already streaming is ignored rather than orphaning
+    // the first controller's map entry.
+    if (activeStreamControllersRef.current.has(bu.id)) return;
     setApplyTarget(null);
     setRowState((prev) => ({
       ...prev,
@@ -164,6 +189,8 @@ const TenantMigrationManagement: React.FC = () => {
         errorMsg: undefined,
       },
     }));
+    const controller = new AbortController();
+    activeStreamControllersRef.current.set(bu.id, controller);
     try {
       const onEvent = (e: ProgressEvent) => {
         if (e.type === 'start') {
@@ -172,18 +199,23 @@ const TenantMigrationManagement: React.FC = () => {
           setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], progress: { applied: e.index, total: e.total, current: e.name } } }));
         }
       };
-      const result = await tenantMigrationService.deployStream(bu.id, onEvent);
+      const result = await tenantMigrationService.deployStream(bu.id, onEvent, controller.signal);
       const applied = 'applied_migrations' in result ? result.applied_migrations : [];
       if (applied.length === 0) toast.info('Already up to date.');
       else toast.success(`Applied ${applied.length} migration(s) to ${bu.code}.`);
       setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined } }));
       await checkOne(bu);
     } catch (err) {
+      // Aborted on unmount — the migration itself keeps running server-side (see
+      // tenantMigrationService.ts), but this page is gone, so there's nothing left to update.
+      if (controller.signal.aborted) return;
       handleMigrationError(err);
       setRowState((prev) => ({
         ...prev,
         [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
       }));
+    } finally {
+      if (activeStreamControllersRef.current.get(bu.id) === controller) activeStreamControllersRef.current.delete(bu.id);
     }
   }, [checkOne, isSuperAdmin]);
 
@@ -192,8 +224,14 @@ const TenantMigrationManagement: React.FC = () => {
     // button. The button is disabled for non-super-admins today, but that's UI-layer only —
     // fail closed here too so a future refactor that renders the button enabled can't mutate.
     if (!isSuperAdmin) return;
+    // Re-entry guard: batchRunning already disables the "Deploy all" button while a batch is in
+    // flight, but this ref-backed check is the source of truth (mirrors applyOne) so a second
+    // trigger can't orphan the first controller's map entry.
+    if (activeStreamControllersRef.current.has(ALL_BU_STREAM_KEY)) return;
     setConfirmAll(false);
     setBatch({ applied: 0, total: 0, current: null, buCode: null, log: [] });
+    const controller = new AbortController();
+    activeStreamControllersRef.current.set(ALL_BU_STREAM_KEY, controller);
     try {
       const onEvent = (e: ProgressEvent) => {
         if (e.type === 'start') {
@@ -221,7 +259,7 @@ const TenantMigrationManagement: React.FC = () => {
           setBatch((b) => (b ? { ...b, log: [...b.log, e.message] } : b));
         }
       };
-      const result = await tenantMigrationService.deployAllStream(onEvent);
+      const result = await tenantMigrationService.deployAllStream(onEvent, controller.signal);
       if (result && 'succeeded' in result) {
         const s = result as BatchDeploySummary;
         const msg = `Deployed: ${s.succeeded} ok, ${s.failed} failed.`;
@@ -231,9 +269,13 @@ const TenantMigrationManagement: React.FC = () => {
         toast.success('Deploy completed.');
       }
     } catch (err) {
+      // Aborted on unmount — the BU currently mid-migration keeps running to completion
+      // server-side (see tenantMigrationService.ts); this page is gone either way.
+      if (controller.signal.aborted) return;
       handleMigrationError(err);
     } finally {
-      setBatch(null);
+      activeStreamControllersRef.current.delete(ALL_BU_STREAM_KEY);
+      if (!controller.signal.aborted) setBatch(null);
     }
   }, [isSuperAdmin]);
 
