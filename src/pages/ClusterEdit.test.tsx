@@ -196,7 +196,12 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
   });
 
   it('shows them when the permissions are held (discriminating control)', async () => {
-    // Proves the negative assertions above aren't passing for the wrong reason.
+    // Proves the negative assertions above aren't passing for the wrong reason — AND that
+    // the check is genuinely scoped to *this* cluster, not just "any truthy permission".
+    // A wholesale `() => true` mock would pass even if `<Can>` lost its `clusterId` prop
+    // (the exact regression this suite exists to catch); this mock only grants
+    // cluster.update when the real `checkPermission` scoping context matches cluster c1.
+    auth.hasPermission = (perm, ctx) => perm === 'cluster.update' && ctx?.clusterId === 'c1';
     renderAt('/clusters/c1/edit');
 
     expect(await screen.findByRole('button', { name: /add user/i })).toBeInTheDocument();
