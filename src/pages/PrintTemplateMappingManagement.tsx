@@ -11,7 +11,8 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Skeleton } from '../components/ui/skeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Plus, Trash2, Printer } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import { Plus, Trash2, Pencil, MoreHorizontal, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import printTemplateMappingService, {
   type PrintTemplateMapping,
@@ -250,7 +251,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
                             <th className="text-center px-4 py-2 font-medium w-16 whitespace-nowrap">Default</th>
                             <th className="text-center px-4 py-2 font-medium w-16 whitespace-nowrap">Order</th>
                             <th className="text-center px-4 py-2 font-medium w-16 whitespace-nowrap">Active</th>
-                            <th className="px-4 py-2 w-16"></th>
+                            <th className="px-4 py-2 w-14"></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -293,23 +294,44 @@ const PrintTemplateMappingManagement: React.FC = () => {
                                 </Badge>
                               </td>
                               <td className="px-4 py-2 text-right">
-                                <Can permission="print_template_mapping.delete">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    aria-label={`Delete mapping ${r.template_name || r.report_template_id}`}
-                                    className={`h-7 w-7 text-destructive hover:text-destructive ${HIT_SLOP_44}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteTarget({
-                                        id: r.id,
-                                        label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
-                                      });
-                                    }}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </Can>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      aria-label={`Actions for ${r.template_name || r.report_template_id}`}
+                                      className={`h-7 w-7 ${HIT_SLOP_44}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreHorizontal className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <Can permission="print_template_mapping.update">
+                                      <DropdownMenuItem
+                                        onClick={() => navigate(`/print-template-mapping/${r.id}/edit`)}
+                                        className="cursor-pointer"
+                                      >
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                    </Can>
+                                    <Can permission="print_template_mapping.delete">
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          setDeleteTarget({
+                                            id: r.id,
+                                            label: `${r.document_type} → ${r.template_name || r.report_template_id}`,
+                                          })
+                                        }
+                                        className="cursor-pointer text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </Can>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </td>
                             </tr>
                           ))}

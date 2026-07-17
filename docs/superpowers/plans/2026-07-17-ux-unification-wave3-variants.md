@@ -47,6 +47,20 @@ Each was learned by getting it wrong first:
 - **The five primary-record error banners** (`ClusterEdit`, `UserEdit`, `ApplicationEdit`, `RoleEdit`, `ReportTemplateEdit`) are plain `<div role="alert">{error}</div>` with **no retry**, despite comments calling them "retryable" — a 5xx on the primary fetch leaves a blank form recoverable only by browser reload.
 - **`formatDateTime` util extraction**; **CLAUDE.md's stale "Form Field Pattern"** (shows `ReadOnlyText`; the real shared primitive is `ReadOnlyField`).
 - **`TenantMigrationManagement.tsx:461`** hardcoded skeleton count → Wave 4 (A7).
+- **Contract correction (2026-07-17, post-Task-2 review round):** `page-patterns.md`'s A5
+  Responsive facet said the card-grouped layout "avoids horizontal scroll entirely (no wide
+  table)." `PrintTemplateMappingManagement`'s per-group table (Template, Display Label,
+  Default, Order, Active, actions — 6 columns) still wraps in `overflow-x-auto`, contradicting
+  that line. Re-examined both artefacts: the page's data is genuinely tabular, the scroll is
+  already contained within each group's `Card` (never escapes to page-level scroll), and A3's
+  own Responsive facet explicitly *permits* "table scrolls horizontally within its container"
+  for the same shape of data via the shared `DataTable` primitive — used on every A3 page. A5
+  is a lighter variant of A3, not a stricter one, so a rule forbidding what A3 allows had no
+  basis. Concluded the contract line was wrong (written in Wave 0 without checking the page's
+  real columns or the app's existing table-responsive convention), not the implementation.
+  **Corrected `page-patterns.md`'s A5 Responsive facet** to permit the table with contained
+  scroll + legible minimum column width, instead of touching the page. No code change was
+  needed since the existing `overflow-x-auto` scoping already satisfied the corrected rule.
 
 ---
 

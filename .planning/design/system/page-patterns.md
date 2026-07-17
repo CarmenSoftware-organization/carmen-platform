@@ -158,7 +158,17 @@ Information hierarchy · Interaction/flow · Responsive · A11y.**
   `toast.*` on save/delete; permission gates via `<Can>`; **no CSV export** — the dataset is
   too small to warrant it (documented deviation from A3, not a finding).
 - **Responsive:** groups stack single-column on mobile; toolbar (select + checkbox) wraps
-  below `sm:`; card-grouped layout avoids horizontal scroll entirely (no wide table).
+  below `sm:`; each group's row table is permitted — this is genuinely tabular config data
+  (Template, Display Label, Default, Order, Active, actions) — provided horizontal scroll is
+  **contained within that group's own card** (`overflow-x-auto` scoped inside `CardContent`,
+  never escaping into page-level scroll) and columns keep a legible minimum width
+  (`whitespace-nowrap`, not crushed to illegibility as the viewport narrows). This mirrors
+  the A3 Responsive facet verbatim ("table scrolls horizontally within its container") and
+  the same contained-scroll pattern the shared `DataTable` primitive uses on every A3 page —
+  A5 has no basis for a *stricter* rule than the archetype it's a lighter variant of.
+  *(Corrected 2026-07-17: the prior wording — "avoids horizontal scroll entirely, no wide
+  table" — was written in Wave 0 without checking this page's real 6-column data shape or
+  the app's existing table-responsive convention; see Wave 3 plan's Scope & Deferrals.)*
 - **A11y:** the active-only control has a bound `<label>`; group headings use real heading
   elements (`<h2>`/`<h3>`) for screen-reader navigation; loading `role="status"`; error
   `role="alert"`.
