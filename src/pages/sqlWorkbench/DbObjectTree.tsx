@@ -83,7 +83,11 @@ export function DbObjectTree({
       </div>
       <div className="flex-1 overflow-auto py-1 text-sm">
         {isLoading ? (
-          <div className="text-muted-foreground flex items-center justify-center py-8">
+          <div
+            role="status"
+            aria-label="Loading database objects"
+            className="text-muted-foreground flex items-center justify-center py-8"
+          >
             <Loader2 className="size-4 animate-spin" />
           </div>
         ) : isError ? (

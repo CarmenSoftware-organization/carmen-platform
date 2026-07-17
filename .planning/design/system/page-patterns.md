@@ -226,7 +226,7 @@ plan's Scope & Deferrals for the full record, following the same pattern as the 
 
 ## A7 — Console / Operational (reference: `SqlWorkbench`, `TenantMigration`)
 - **Anatomy:** shared `PageHeader` (never hand-rolled); `Layout` wrapper; standard `space-y-4 sm:space-y-6` rhythm; bespoke core (editor / results / streaming console) below.
-- **Required states:** every async surface has idle / running / empty-result / error; long ops show progress and are cancellable where they block.
+- **Required states:** every async surface has idle / running / empty-result / error; long ops show progress and are cancellable where the backend supports cancellation (otherwise: honest progress + abort the client request on unmount; a Cancel that only stops the client while the server-side op continues is a lie — see W4 Scope & Deferrals).
 - **Information hierarchy:** clear regions (input vs output vs actions); status via `<Badge>`; semantic tokens only.
 - **Interaction/flow:** dangerous ops (DDL/DML, drops) via `ConfirmDialog` + `<Can>` permission gate; `toast.*` feedback (never `alert`); keyboard shortcuts where relevant.
 - **Responsive:** works mobile→desktop; panels reflow, no fixed-width overflow.
