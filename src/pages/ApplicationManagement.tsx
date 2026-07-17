@@ -494,10 +494,12 @@ const ApplicationManagement: React.FC = () => {
                 emptyTitle="No applications yet"
                 emptyDescription="Get started by creating your first application."
                 addAction={
-                  <Button size="sm" onClick={() => navigate('/applications/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Application
-                  </Button>
+                  <Can permission="application.create">
+                    <Button size="sm" onClick={() => navigate('/applications/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Application
+                    </Button>
+                  </Can>
                 }
               />
             ) : !error ? (
