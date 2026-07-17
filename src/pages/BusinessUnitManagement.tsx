@@ -53,6 +53,7 @@ const BusinessUnitManagement: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [summary, setSummary] = useState<BuSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -116,6 +117,7 @@ const BusinessUnitManagement: React.FC = () => {
   // units are few enough that a single full-list read + a deleted-count read is cheap.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
         businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
@@ -127,7 +129,8 @@ const BusinessUnitManagement: React.FC = () => {
       const archived = deleted.paginate?.total ?? deleted.total ?? 0;
       setSummary(summarizeBus(list, archived));
     } catch {
-      setSummary(null); // strip falls back to its skeleton; the table still works
+      setSummary(null); // strip swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -377,7 +380,7 @@ const BusinessUnitManagement: React.FC = () => {
           }
         />
 
-        <BuSummary summary={summary} loading={summaryLoading} />
+        <BuSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">

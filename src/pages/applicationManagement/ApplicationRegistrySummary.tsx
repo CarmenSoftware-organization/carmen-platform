@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface AppLike {
   is_active?: boolean;
@@ -64,7 +65,14 @@ function ScopeLegend({ color, label, value, warn }: { color: string; label: stri
   );
 }
 
-export function ApplicationRegistrySummary({ summary, loading }: { summary: ApplicationSummaryData | null; loading: boolean }) {
+interface ApplicationRegistrySummaryProps {
+  summary: ApplicationSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function ApplicationRegistrySummary({ summary, loading, error = false, onRetry = () => {} }: ApplicationRegistrySummaryProps) {
   const total = summary?.total ?? 0;
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
@@ -72,7 +80,9 @@ export function ApplicationRegistrySummary({ summary, loading }: { summary: Appl
     <Card className="p-4 sm:p-5">
       <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Registry</div>
 
-      {loading || !summary ? (
+      {error ? (
+        <FetchErrorState message="Couldn't load the registry summary." onRetry={onRetry} className="py-3" />
+      ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <Skeleton className="h-14 w-24" />
           <Skeleton className="h-14 min-w-[12rem] flex-1" />

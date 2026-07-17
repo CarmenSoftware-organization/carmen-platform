@@ -489,7 +489,9 @@ const ClusterEdit: React.FC = () => {
               <Skeleton className="h-4 w-40 mt-1" />
             </CardHeader>
             <CardContent className="p-0">
-              <TableSkeleton columns={4} rows={3} />
+              {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
+                  <th>: Code, Name, Users, Status, and a trailing blank actions column. */}
+              <TableSkeleton columns={5} rows={3} />
             </CardContent>
           </Card>
 
@@ -500,7 +502,9 @@ const ClusterEdit: React.FC = () => {
               <Skeleton className="h-4 w-36 mt-1" />
             </CardHeader>
             <CardContent className="p-0">
-              <TableSkeleton columns={4} rows={3} />
+              {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
+                  <th>: Name, Email, Parent Business Unit, Status, and a trailing blank actions column. */}
+              <TableSkeleton columns={5} rows={3} />
             </CardContent>
           </Card>
         </div>

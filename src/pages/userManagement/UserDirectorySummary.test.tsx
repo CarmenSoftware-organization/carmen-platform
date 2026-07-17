@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { summarizeUsers, UserDirectorySummary, FACE_LIMIT } from './UserDirectorySummary';
 
 describe('summarizeUsers', () => {
@@ -84,5 +85,13 @@ describe('UserDirectorySummary', () => {
   it('hides the archived legend when there are none', () => {
     render(<UserDirectorySummary summary={{ ...summary, archived: 0 }} loading={false} />);
     expect(screen.queryByText('Archived')).not.toBeInTheDocument();
+  });
+
+  it('shows an error state with a working retry instead of skeletoning forever', async () => {
+    const onRetry = vi.fn();
+    render(<UserDirectorySummary summary={null} loading={false} error onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the directory summary.");
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

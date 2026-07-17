@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { summarizeUserPlatform, PlatformAccessSummary } from './PlatformAccessSummary';
 
 describe('summarizeUserPlatform', () => {
@@ -94,5 +95,13 @@ describe('PlatformAccessSummary', () => {
   it('omits the "Unknown" segment when every role fetch resolved', () => {
     render(<PlatformAccessSummary summary={summary} loading={false} />);
     expect(screen.queryByText(/Unknown/)).not.toBeInTheDocument();
+  });
+
+  it('shows an error state with a working retry instead of skeletoning forever', async () => {
+    const onRetry = vi.fn();
+    render(<PlatformAccessSummary summary={null} loading={false} error onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the platform access summary.");
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

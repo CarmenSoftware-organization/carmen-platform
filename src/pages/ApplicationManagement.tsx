@@ -49,6 +49,7 @@ const ApplicationManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<ApplicationSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_applications') || '';
   const storedFilters = getStoredJSON<string[]>('filters_applications', []);
@@ -126,12 +127,14 @@ const ApplicationManagement: React.FC = () => {
   // the scope split and device mix reflect reality, not the current view.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const data = await applicationService.getAll({ perpage: -1 });
       const raw = data.data || data;
       setSummary(summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -393,7 +396,7 @@ const ApplicationManagement: React.FC = () => {
           }
         />
 
-        <ApplicationRegistrySummary summary={summary} loading={summaryLoading} />
+        <ApplicationRegistrySummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">

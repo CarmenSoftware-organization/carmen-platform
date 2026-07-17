@@ -23,7 +23,7 @@ export function FetchErrorState({
       role="alert"
       className={cn('flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-muted-foreground', className)}
     >
-      <span>{message}</span>
+      <span>{message}</span>{' '}
       <button type="button" onClick={onRetry} className="text-primary underline underline-offset-2">
         {retryLabel}
       </button>

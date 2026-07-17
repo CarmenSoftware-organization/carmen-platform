@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, History } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 import { formatClock, dayGroup, relativeTime } from '../../utils/relativeTime';
 import { ACTIVITY_SOURCES, type ActivityItem, type ActivityVerb } from './activity';
 
@@ -63,12 +64,15 @@ export function ActivityStream({ items, loading, error, onRetry }: ActivityStrea
       {loading ? (
         <StreamSkeleton />
       ) : error ? (
-        <div className="text-muted-foreground rounded-lg border border-dashed py-14 text-center text-sm">
-          Couldn’t load recent activity.{' '}
-          <button type="button" onClick={onRetry} className="text-primary underline underline-offset-2">
-            Try again
-          </button>
-        </div>
+        // Note for future readers: this trades exact inline text-wrap (button riding the
+        // last line with the message) for FetchErrorState's flex-wrap layout, where the
+        // button can drop to its own centered line at narrow widths. Accepted deliberately
+        // to keep a single error/retry implementation — see Task 10 report for the trade-off.
+        <FetchErrorState
+          message="Couldn’t load recent activity."
+          onRetry={onRetry}
+          className="rounded-lg border border-dashed py-14"
+        />
       ) : shown.length === 0 ? (
         <div className="text-muted-foreground flex flex-col items-center gap-2 rounded-lg border border-dashed py-14 text-center">
           <History className="text-muted-foreground/60 size-6" />

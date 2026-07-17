@@ -87,6 +87,7 @@ const UserManagement: React.FC = () => {
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<UserSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_users') || '';
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_users', []);
@@ -175,6 +176,7 @@ const UserManagement: React.FC = () => {
   // full-list read — only mount and population-changing mutations refresh it.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
         userService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
@@ -186,7 +188,8 @@ const UserManagement: React.FC = () => {
       const archived = deleted.paginate?.total ?? deleted.total ?? 0;
       setSummary(summarizeUsers(list, archived));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -630,7 +633,7 @@ const UserManagement: React.FC = () => {
           }
         />
 
-        <UserDirectorySummary summary={summary} loading={summaryLoading} />
+        <UserDirectorySummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">

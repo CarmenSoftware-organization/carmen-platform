@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface RoleLike {
   id: string;
@@ -49,10 +50,19 @@ export function summarizeRoles(list: RoleLike[]): RolesSummaryData {
   };
 }
 
-export function RolesAccessSummary({ summary, loading }: { summary: RolesSummaryData | null; loading: boolean }) {
+interface RolesAccessSummaryProps {
+  summary: RolesSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function RolesAccessSummary({ summary, loading, error = false, onRetry = () => {} }: RolesAccessSummaryProps) {
   return (
     <Card className="p-4 sm:p-5">
-      {loading || !summary ? (
+      {error ? (
+        <FetchErrorState message="Couldn't load the roles summary." onRetry={onRetry} className="py-3" />
+      ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <Skeleton className="h-14 w-24" />
           <Skeleton className="h-14 min-w-[16rem] flex-1" />
