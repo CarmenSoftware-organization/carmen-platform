@@ -25,6 +25,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { useAuth } from '../context/AuthContext';
 
 interface UserBusinessUnit {
   id: string;
@@ -75,6 +76,7 @@ const UserEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
+  const { hasPermission } = useAuth();
 
   const [formData, setFormData] = useState<UserFormData>({
     username: "",
@@ -222,6 +224,17 @@ const UserEdit: React.FC = () => {
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
+  // Data precondition (honestly named, separate from permission): Add BU only
+  // makes sense if this user belongs to at least one cluster to add into.
+  const hasAddableClusters = userClusters.length > 0;
+  // The real permission check — same mutation BusinessUnitEdit gates on scoped
+  // cluster.update (see BusinessUnitUsersCard). Checked across this user's own
+  // clusters (the pool the Add-BU dialog lets the admin pick from), not a
+  // global "any cluster" check, and not a stand-in like `hasAddableClusters`
+  // above (that was the bug: a data condition wearing a permission's name).
+  const canAddBU = hasAddableClusters
+    && userClusters.some(uc => uc.cluster_id && hasPermission('cluster.update', { clusterId: uc.cluster_id }));
+
   const handleOpenAddBU = () => {
     setShowAddBU(true);
     setSelectedClusterId('');
@@ -256,6 +269,12 @@ const UserEdit: React.FC = () => {
 
   const handleAddBU = async () => {
     if (!selectedBUId || !id) return;
+    // Defence-in-depth funnel (matches BusinessUnitEdit.tsx's `if (!canEdit) return;`
+    // in handleSave): re-check against the SPECIFIC cluster chosen in the dialog,
+    // not just the broader `canAddBU` used to show the button — those can diverge
+    // when the admin holds cluster.update on one of the user's clusters but not
+    // the one actually selected.
+    if (!hasPermission('cluster.update', { clusterId: selectedClusterId })) return;
     setAddingBU(true);
     try {
       await businessUnitService.createUserBusinessUnit({
@@ -279,6 +298,10 @@ const UserEdit: React.FC = () => {
 
   const handleConfirmDeleteBU = async () => {
     if (!deleteBU) return;
+    // Defence-in-depth funnel — scoped to the BU's own cluster (not the viewer's
+    // broader membership), mirroring the <Can> gate on the Remove button itself
+    // (UserAccessTree.tsx) so no state path can fire this write unauthorized.
+    if (!hasPermission('cluster.update', { clusterId: deleteBU.business_unit?.cluster_id })) return;
     try {
       await businessUnitService.deleteUserBusinessUnit(deleteBU.id);
       toast.success('Business unit removed successfully');
@@ -702,7 +725,7 @@ const UserEdit: React.FC = () => {
           <UserAccessTree
             clusters={userClusters}
             businessUnits={businessUnits}
-            canAddBU={userClusters.length > 0}
+            canAddBU={canAddBU}
             onAddBU={handleOpenAddBU}
             onDeleteBU={handleDeleteBU}
           />

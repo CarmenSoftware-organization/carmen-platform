@@ -54,6 +54,27 @@ const fakeUser = {
   clusters: [],
 };
 
+const fakeUserWithAccess = {
+  ...fakeUser,
+  business_units: [
+    {
+      id: 'ub1',
+      role: 'user',
+      is_default: true,
+      is_active: true,
+      business_unit: { id: 'bu1', code: 'BU1', name: 'Business Unit One', is_active: true, cluster_id: 'c1' },
+    },
+  ],
+  clusters: [
+    {
+      id: 'uc1',
+      cluster_id: 'c1',
+      role: 'admin',
+      cluster: { id: 'c1', code: 'C1', name: 'Cluster One', is_active: true },
+    },
+  ],
+};
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -160,5 +181,46 @@ describe('UserEdit — Alias Name validation', () => {
 
     await user.click(aliasInput);
     expect(screen.queryByText(/alias must be 1-3 alphanumeric characters/i)).toBeNull();
+  });
+});
+
+// SECURITY REGRESSION. Remove-BU fired businessUnitService.deleteUserBusinessUnit
+// with NO <Can> gate at all, and Add-BU was gated on `userClusters.length > 0` — a
+// data condition wearing a permission's name, not a check. Both fire the identical
+// mutation pair BusinessUnitEdit gates on scoped cluster.update (see
+// BusinessUnitUsersCard behind BusinessUnitEdit.tsx:69). `Can` here is the REAL
+// component (not mocked, see the mock block above) so these assertions aren't
+// vacuous — the "shows" tests are discriminating positive controls.
+describe('UserEdit — BU-membership writes are gated on scoped cluster.update', () => {
+  beforeEach(() => {
+    asMock(userService.getById).mockResolvedValue({ data: fakeUserWithAccess });
+  });
+
+  it('hides Remove business unit without cluster.update scoped to the BU\'s own cluster', async () => {
+    auth.hasPermission = (perm: string) => perm !== 'cluster.update';
+    renderAt('/users/u1/edit');
+
+    expect(await screen.findByText('Business Unit One')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /remove business unit one/i })).toBeNull();
+  });
+
+  it('shows Remove business unit when the user holds cluster.update scoped to the BU\'s cluster (discriminating control)', async () => {
+    renderAt('/users/u1/edit');
+
+    expect(await screen.findByRole('button', { name: /remove business unit one/i })).toBeInTheDocument();
+  });
+
+  it('hides Add BU without cluster.update on any of the user\'s clusters', async () => {
+    auth.hasPermission = (perm: string) => perm !== 'cluster.update';
+    renderAt('/users/u1/edit');
+
+    expect(await screen.findByText('Business Unit One')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add bu/i })).toBeNull();
+  });
+
+  it('shows Add BU when the user holds cluster.update on the user\'s cluster (discriminating control)', async () => {
+    renderAt('/users/u1/edit');
+
+    expect(await screen.findByRole('button', { name: /add bu/i })).toBeInTheDocument();
   });
 });

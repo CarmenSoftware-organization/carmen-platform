@@ -7,9 +7,10 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 vi.mock('../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('../components/Can', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
+// Note: no vi.mock('../components/Can') here — BusinessUnitEdit.tsx never imports
+// `Can` (gating goes through `canEdit` props instead), so mocking it would be a
+// landmine that silently hollows out this file's permission tests the moment
+// someone adds a `<Can>` to this page. See Fix 5 in the final-review round.
 // Mutable auth so a test can revoke cluster.update / cluster.create.
 const auth = vi.hoisted(() => ({
   isSuperAdmin: false,

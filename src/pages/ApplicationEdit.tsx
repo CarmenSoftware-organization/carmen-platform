@@ -26,16 +26,7 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { groupApiNames, actionOf } from '../utils/apiCatalog';
 import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
-
-/**
- * Icon/text hit-slop. The visual control stays compact so the dense ~120-module
- * accordion doesn't bloat, while an invisible ::before overlay stretches the
- * *tappable* area to 44px, centred on the control. Per the A4 contract: "the
- * tappable area governs, not the visual control" (same technique as
- * `ClusterEdit.tsx`, `userEdit/UserAccessTree.tsx`, `businessUnitEdit/InlineField.tsx`).
- */
-const HIT_SLOP_44 =
-  "relative before:absolute before:left-1/2 before:top-1/2 before:size-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
+import { HIT_SLOP_44 } from '../lib/hitSlop';
 
 interface ApplicationFormData {
   name: string;

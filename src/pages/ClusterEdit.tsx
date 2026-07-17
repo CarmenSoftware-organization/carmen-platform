@@ -29,6 +29,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { ClusterHero } from './clusterManagement/ClusterHero';
 import { ClusterIdentityFields, type ClusterFormData } from './clusterManagement/ClusterIdentityFields';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
+import { HIT_SLOP_44, HIT_SLOP_44_ROW } from '../lib/hitSlop';
 import type { BusinessUnit, ClusterUser } from '../types';
 
 interface AllUser {
@@ -42,18 +43,7 @@ interface AllUser {
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
 
-/**
- * Icon-button hit-slop. The visual box stays compact (28-32px) so table rows don't
- * bloat, while an invisible ::before overlay stretches the *tappable* area to 44px,
- * centred on the button. Per the A4 contract: "the tappable area governs, not the
- * visual control" (same technique as `businessUnitEdit/InlineField.tsx`).
- */
-const HIT_SLOP_44 =
-  "relative before:absolute before:left-1/2 before:top-1/2 before:size-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
-
-/** Same idea for a full-width text trigger: stretch the tappable band to 44px tall. */
-const HIT_SLOP_44_ROW =
-  "relative before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']";
+// Icon/text-button hit-slop — shared constant, see `src/lib/hitSlop.ts`.
 
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();

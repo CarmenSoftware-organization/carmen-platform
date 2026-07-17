@@ -3,6 +3,8 @@ import { Building2, Network, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import Can from '../../components/Can';
+import { HIT_SLOP_44 } from '../../lib/hitSlop';
 
 export interface AccessCluster {
   id: string;
@@ -97,19 +99,25 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
       <Badge variant={bu.is_active ? 'success' : 'secondary'} className="shrink-0 text-[11px]">
         {bu.is_active ? 'Active' : 'Inactive'}
       </Badge>
-      <Button
-        variant="ghost"
-        size="icon"
-        // Visual box stays compact (size-7 = 28px) so the row doesn't bloat; an
-        // invisible ::before overlay stretches the *tappable* area to 44px,
-        // centred on the button. Per the A4 contract: "the tappable area
-        // governs, not the visual control" (same technique as InlineField.tsx).
-        className="text-destructive hover:text-destructive relative size-7 shrink-0 before:absolute before:left-1/2 before:top-1/2 before:size-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']"
-        aria-label={`Remove ${unit?.name || unit?.code || 'business unit'}`}
-        onClick={() => onDelete(bu)}
-      >
-        <Trash2 className="size-3.5" />
-      </Button>
+      {/* Removing BU membership is the same write BusinessUnitEdit gates on scoped
+          cluster.update (see BusinessUnitUsersCard) — scope to this BU's own
+          cluster, not the viewing user's memberships, so a write to cluster A
+          can't be authorized by permission held in cluster B. */}
+      <Can permission="cluster.update" clusterId={unit?.cluster_id}>
+        <Button
+          variant="ghost"
+          size="icon"
+          // Visual box stays compact (size-7 = 28px) so the row doesn't bloat; an
+          // invisible ::before overlay stretches the *tappable* area to 44px,
+          // centred on the button. Per the A4 contract: "the tappable area
+          // governs, not the visual control" (same technique as InlineField.tsx).
+          className={`text-destructive hover:text-destructive size-7 shrink-0 ${HIT_SLOP_44}`}
+          aria-label={`Remove ${unit?.name || unit?.code || 'business unit'}`}
+          onClick={() => onDelete(bu)}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </Can>
     </div>
   );
 }
@@ -152,6 +160,12 @@ function ClusterGroup({ group, onDeleteBU }: { group: AccessGroup; onDeleteBU: (
 interface UserAccessTreeProps {
   clusters: AccessCluster[];
   businessUnits: AccessBU[];
+  /**
+   * Write access for BU membership — resolved by the caller from
+   * `cluster.update` scoped across this user's own clusters (see UserEdit.tsx).
+   * NOT a data condition (e.g. "does this user belong to any cluster") — that
+   * precondition is folded in by the caller before this is ever `true`.
+   */
   canAddBU: boolean;
   onAddBU: () => void;
   onDeleteBU: (bu: AccessBU) => void;

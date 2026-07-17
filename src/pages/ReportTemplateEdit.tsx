@@ -26,15 +26,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
 import { ReadOnlyField } from '../components/ReadOnlyField';
-
-/**
- * Icon-button hit-slop (matches `ClusterEdit.tsx`): the visual box stays compact
- * so this inline probe row doesn't bloat, while an invisible ::before overlay
- * stretches the *tappable* area to 44px, centred on the button. Per the A4
- * contract: "the tappable area governs, not the visual control".
- */
-const HIT_SLOP_44 =
-  "relative before:absolute before:left-1/2 before:top-1/2 before:size-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
+import { HIT_SLOP_44 } from '../lib/hitSlop';
 
 const REQUIRED_FIELD_LABELS: Record<string, string> = {
   name: 'Name',
