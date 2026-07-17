@@ -128,3 +128,66 @@ output. None of this page's 5 `<Can>` gates are `clusterId`-scoped (verified: `u
 appears in `DEV_MOCK_EFFECTIVE_PERMISSIONS.platform`, never per-cluster, and no `<Can>` call site
 on this page passes a `clusterId` prop), so unlike ClusterEdit/ClusterManagement there is no
 scope-drop discrimination to demonstrate here.
+
+### BusinessUnitManagement (`src/pages/BusinessUnitManagement.tsx` / `src/pages/BusinessUnitManagement.test.tsx`)
+
+No pre-existing test file (first coverage added this task). Confirms the brief's W1 finding: BU
+permissions are modeled entirely under `cluster.*` — `business_unit.*` does not appear anywhere
+in the codebase (verified by grep), and the `/business-units*` routes themselves are gated on
+`cluster.read` / `cluster.create` / `cluster.update` (`App.tsx:120-141`), matching the page's own
+`<Can>` gates.
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| Row action: Edit (opens `/business-units/:id/edit`) | `<Can>` at `:342` | `cluster.update` | **cluster-scoped** — `clusterId={row.original.cluster_id}` (the BU row's own cluster) | **Yes — discriminating** | None |
+| Row action: Delete (confirm dialog → `businessUnitService.delete`) | `<Can>` at `:348` | `cluster.delete` | **cluster-scoped** — `clusterId={row.original.cluster_id}` | **Yes — discriminating** | None |
+| Header "Add Business Unit" button | `<Can>` at `:372` | `cluster.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Empty-state "Add Business Unit" button | `<Can>` at `:498` | `cluster.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Header "Export" button | Client-side CSV of already-fetched, already-permitted data; no write | — | — | N/A, not a mutation (matches NewsManagement/UserManagement precedent) | None |
+| "Show soft-deleted" filter checkbox, status filter buttons, search, sort, pagination | Read-only query params, no mutation | — | — | N/A | None |
+| `Ctrl/Cmd+S` global shortcut | N/A — page wires `useGlobalShortcuts({ onSearch })` only, no `onSave` | — | — | **N/A — no `onSave` wired, no shortcut-driven mutation path exists** (verified by reading `BusinessUnitManagement.tsx:59-61`) | None |
+| Row-selection / bulk actions | **Does not exist on this page** — no `enableRowSelection`, no checkbox column, no bulk action bar (verified by grep: `selectionResetKey`/`clearSelection`/`enableRowSelection` all absent from the file) | — | — | N/A — not a consumer | None |
+
+**Audit result: no ungated mutation found.** All 4 `<Can>` gates (3 distinct permission strings —
+`cluster.update`, `cluster.delete`, `cluster.create`, the latter gating two separate DOM
+locations) trace to real, correctly-scoped permission checks; every mutating path (row Edit, row
+Delete, both Add Business Unit entry points) was already reachable only through a gate before
+this task started. The row Edit/Delete gates are notable as this plan's **first genuinely
+cluster-scoped, per-row** gates on a *list* page (ClusterManagement's row gates are scoped to the
+row's own id, which is also a cluster id — this page's rows are BUs whose `cluster_id` points at
+a *different* entity than the row itself, making the scope-drop discrimination meaningfully
+different to prove — see below).
+
+**Selection-reset (`data-table.tsx`) regression guard: not applicable.** `BusinessUnitManagement`
+does not pass `selectionResetKey` to `<DataTable>`, does not set `enableRowSelection`, and has no
+bulk-action bar — confirmed by grep (no matches for `selectionResetKey`, `clearSelection`, or
+`enableRowSelection` in the file). It is not a consumer of the Task 1 `data-table.tsx` fix, so no
+regression test was added (unlike NewsManagement/UserManagement).
+
+**Test file:** `src/pages/BusinessUnitManagement.test.tsx` (new) — mutable `vi.hoisted`
+`AuthContext` mock (`hasPermission`), `<Can>` left real throughout; `businessUnitService` mocked
+(`getAll`, `delete`); localStorage stub + Radix pointer-capture/`scrollIntoView` polyfills copied
+from `ClusterManagement.test.tsx` (this page also reads `localStorage` directly on every render
+and uses a Radix `DropdownMenu` for row actions). Two-row fixture (`bu1` in cluster `c1`, `bu2` in
+cluster `c2`) so the scoped gates can be proven per-row, not just present/absent. 8 tests: 4 for
+the row-action `DropdownMenu` (full-deny negative, scope-matched discriminating positive, a
+scope-leak negative proving a `c1` grant does not apply to a `c2` row, and a single-permission
+split proving Edit/Delete are gated independently), 4 for the two `cluster.create` Add Business
+Unit locations (negative + discriminating positive per location).
+
+Discrimination formally proved two ways (both required by the brief: "delete a gate" and "drop a
+clusterId"):
+1. **Gate deletion** — removed the entire `<Can permission="cluster.update" clusterId={...}>`
+   wrapper from around the row Edit item. 2 tests failed (`hides both row actions without
+   cluster.update / cluster.delete`, `does not leak a c1-scoped grant into a business unit in
+   another cluster`) because the now-unwrapped Edit item rendered unconditionally. Restored;
+   `git diff` showed zero residual change; suite green again (8/8).
+2. **`clusterId` drop** — kept the `<Can permission="cluster.delete">` wrapper but removed its
+   `clusterId={row.original.cluster_id}` prop. 1 test failed (`shows both row actions when scoped
+   to this exact cluster (discriminating control)`) because `Can` now calls
+   `hasPermission('cluster.delete', undefined)`, and the scope-aware mock
+   (`ctx?.clusterId === 'c1'`) evaluates false for every row once `ctx` is `undefined` — Delete
+   disappeared even for the `c1` row that should have shown it. Restored; `git diff` showed zero
+   residual change; suite green again (8/8).
+
+See task-3-report.md §3 for both raw command outputs.
