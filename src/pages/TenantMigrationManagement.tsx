@@ -8,6 +8,7 @@ import businessUnitService from '../services/businessUnitService';
 import { getErrorDetail } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
@@ -26,7 +27,6 @@ import { mapWithConcurrency } from '../utils/concurrent';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FleetSync } from './tenantMigration/FleetSync';
 import { DeployConsole } from './tenantMigration/DeployConsole';
-import { cn } from '../lib/utils';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -310,26 +310,34 @@ const TenantMigrationManagement: React.FC = () => {
         const rs = rowState[row.original.id];
         const st = rowStatusOf(rs);
         const pending = rs?.status?.pending.length ?? 0;
-        const dot = { up_to_date: 'bg-success', pending: 'bg-warning', error: 'bg-destructive', unknown: 'bg-muted-foreground/40' }[st];
+        // Mirrors TenantMigrationCard's variant mapping (up_to_date -> success, has_pending
+        // -> secondary) so the two surfaces render the same status consistently; error/unknown
+        // have no analog there, so destructive/outline follow the app-wide Badge convention.
+        const variant = {
+          up_to_date: 'success',
+          pending: 'secondary',
+          error: 'destructive',
+          unknown: 'outline',
+        }[st] as 'success' | 'secondary' | 'destructive' | 'outline';
         const text =
           st === 'pending' ? `${pending} behind`
           : st === 'up_to_date' ? 'In sync'
           : st === 'error' ? 'Error'
           : 'Not checked';
-        const textCls = { up_to_date: 'text-success', pending: 'text-warning', error: 'text-destructive', unknown: 'text-muted-foreground' }[st];
         return (
           <div className="space-y-1">
-            <span className={cn('inline-flex items-center gap-2 text-[13px] font-medium', textCls)}>
-              <span className={cn('size-2 shrink-0 rounded-full', dot)} />
-              {text}
-            </span>
+            <Badge variant={variant}>{text}</Badge>
             {rs?.deploying && rs.progress && (
-              <div className="break-all font-mono text-xs text-muted-foreground">
+              <div role="status" aria-live="polite" className="break-all font-mono text-xs text-muted-foreground">
                 Applying {rs.progress.applied}/{rs.progress.total}
                 {rs.progress.current ? ` · ${rs.progress.current}` : ''}
               </div>
             )}
-            {rs?.errorMsg && <div className="break-all text-xs text-destructive">{rs.errorMsg}</div>}
+            {rs?.errorMsg && (
+              <div role="alert" className="break-all text-xs text-destructive">
+                {rs.errorMsg}
+              </div>
+            )}
           </div>
         );
       },
@@ -466,7 +474,7 @@ const TenantMigrationManagement: React.FC = () => {
               />
             ) : !error ? (
               loading && bus.length === 0 ? (
-                <TableSkeleton columns={5} rows={6} />
+                <TableSkeleton columns={columns.length + 1} rows={6} />
               ) : (
                 <DataTable
                   columns={columns}
