@@ -87,7 +87,7 @@ export function DbObjectTree({
             <Loader2 className="size-4 animate-spin" />
           </div>
         ) : isError ? (
-          <div className="text-destructive px-3 py-4 text-xs">
+          <div role="alert" className="text-destructive px-3 py-4 text-xs">
             Failed to load.{" "}
             <button
               className="underline"
