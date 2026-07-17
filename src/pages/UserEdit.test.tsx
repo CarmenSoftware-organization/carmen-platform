@@ -205,6 +205,11 @@ describe('UserEdit — BU-membership writes are gated on scoped cluster.update',
   });
 
   it('shows Remove business unit when the user holds cluster.update scoped to the BU\'s cluster (discriminating control)', async () => {
+    // Scope-aware mock (mirrors ClusterEdit.test.tsx:249) — only grants cluster.update when
+    // the real checkPermission scoping context matches the BU's own cluster (c1). A wholesale
+    // `() => true` mock would pass even if `<Can>` lost its `clusterId` prop (the exact
+    // regression this test exists to catch — see the "Fix 2" re-review round).
+    auth.hasPermission = (perm: string, ctx?: { clusterId?: string }) => perm === 'cluster.update' && ctx?.clusterId === 'c1';
     renderAt('/users/u1/edit');
 
     expect(await screen.findByRole('button', { name: /remove business unit one/i })).toBeInTheDocument();
@@ -219,8 +224,55 @@ describe('UserEdit — BU-membership writes are gated on scoped cluster.update',
   });
 
   it('shows Add BU when the user holds cluster.update on the user\'s cluster (discriminating control)', async () => {
+    // Same scope-aware mock as the Remove-BU positive control above.
+    auth.hasPermission = (perm: string, ctx?: { clusterId?: string }) => perm === 'cluster.update' && ctx?.clusterId === 'c1';
     renderAt('/users/u1/edit');
 
     expect(await screen.findByRole('button', { name: /add bu/i })).toBeInTheDocument();
+  });
+});
+
+// SECURITY REGRESSION (Fix 1, re-review round). `business_unit.cluster_id` is optional —
+// `groupAccessByCluster` collects BUs whose cluster is unresolved into a trailing "Other
+// business units" group (see UserAccessTree.test.tsx). For those rows, `unit?.cluster_id`
+// is `undefined`; the old `<Can permission="cluster.update" clusterId={undefined}>` made
+// `Can` pass `undefined` opts to `hasPermission`, which falls through to checkPermission's
+// broad "any cluster" nav-visibility check — authorizing the write with cluster.update held
+// on ANY cluster, not the (unknowable) cluster this BU actually belongs to. Must fail CLOSED:
+// only a platform-wide grant (not a same-mock "any cluster" fallback) may authorize Remove
+// here.
+describe('UserEdit — orphan business units (unknown cluster) fail closed on Remove', () => {
+  const fakeUserWithOrphanBU = {
+    ...fakeUser,
+    business_units: [
+      {
+        id: 'ub9',
+        role: 'user',
+        is_default: false,
+        is_active: true,
+        business_unit: { id: 'bu9', code: 'GH', name: 'Ghost BU', is_active: true, cluster_id: undefined },
+      },
+    ],
+    clusters: [],
+  };
+
+  beforeEach(() => {
+    asMock(userService.getById).mockResolvedValue({ data: fakeUserWithOrphanBU });
+  });
+
+  it('hides Remove on an orphan BU even though the admin holds cluster.update on another cluster', async () => {
+    // Mirrors real checkPermission's two branches: scoped to a real cluster id -> only c1
+    // passes; NOT scoped (ctx undefined, what `<Can clusterId={undefined}>` used to produce)
+    // -> broad "any cluster" fallback -> true, since the admin holds cluster.update on c1.
+    // A correct fix must never call hasPermission with ctx undefined for this row.
+    auth.hasPermission = (perm: string, ctx?: { clusterId?: string }) => {
+      if (perm !== 'cluster.update') return false;
+      if (ctx?.clusterId) return ctx.clusterId === 'c1';
+      return true;
+    };
+    renderAt('/users/u1/edit');
+
+    expect(await screen.findByText('Ghost BU')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /remove ghost bu/i })).toBeNull();
   });
 });

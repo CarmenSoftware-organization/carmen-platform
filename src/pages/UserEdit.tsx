@@ -22,6 +22,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -301,7 +302,10 @@ const UserEdit: React.FC = () => {
     // Defence-in-depth funnel — scoped to the BU's own cluster (not the viewer's
     // broader membership), mirroring the <Can> gate on the Remove button itself
     // (UserAccessTree.tsx) so no state path can fire this write unauthorized.
-    if (!hasPermission('cluster.update', { clusterId: deleteBU.business_unit?.cluster_id })) return;
+    // Fall back to the sentinel (never `undefined`) when the BU's cluster is
+    // unresolved, so this also fails CLOSED for orphan BUs instead of sliding
+    // into checkPermission's broad "any cluster" fallback.
+    if (!hasPermission('cluster.update', { clusterId: deleteBU.business_unit?.cluster_id ?? UNRESOLVED_CLUSTER_ID })) return;
     try {
       await businessUnitService.deleteUserBusinessUnit(deleteBU.id);
       toast.success('Business unit removed successfully');

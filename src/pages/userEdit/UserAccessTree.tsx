@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import Can from '../../components/Can';
 import { HIT_SLOP_44 } from '../../lib/hitSlop';
+import { UNRESOLVED_CLUSTER_ID } from '../../utils/permissions';
 
 export interface AccessCluster {
   id: string;
@@ -102,8 +103,14 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
       {/* Removing BU membership is the same write BusinessUnitEdit gates on scoped
           cluster.update (see BusinessUnitUsersCard) — scope to this BU's own
           cluster, not the viewing user's memberships, so a write to cluster A
-          can't be authorized by permission held in cluster B. */}
-      <Can permission="cluster.update" clusterId={unit?.cluster_id}>
+          can't be authorized by permission held in cluster B. When the BU's own
+          cluster is unresolved (the "Other business units" group — cluster_id
+          is optional), fall back to a sentinel that can never match a real
+          cluster instead of `undefined`, which would otherwise make `Can` pass
+          `undefined` opts and fail OPEN via checkPermission's broad "any
+          cluster" nav-visibility check. Only a platform-wide grant authorizes
+          Remove on an orphan row. */}
+      <Can permission="cluster.update" clusterId={unit?.cluster_id ?? UNRESOLVED_CLUSTER_ID}>
         <Button
           variant="ghost"
           size="icon"

@@ -43,8 +43,6 @@ interface AllUser {
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
 
-// Icon/text-button hit-slop — shared constant, see `src/lib/hitSlop.ts`.
-
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
