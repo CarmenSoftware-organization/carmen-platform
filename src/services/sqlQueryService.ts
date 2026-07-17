@@ -43,13 +43,24 @@ const sqlQueryService = {
     return unwrap<DbObjectDefinition>(response);
   },
 
+  // `signal` only aborts the browser's HTTP request to the gateway — it does NOT cancel the
+  // query on the tenant Postgres database. The gateway's execute() handler
+  // (config_sql-query.controller.ts) awaits the microservice call to completion before
+  // responding and never wires client disconnect to an early unsubscribe, and the query itself
+  // runs inside a Prisma transaction (sql-query.service.ts) with no cancellation hook. So an
+  // abort here only stops the client from waiting; the statement keeps running server-side
+  // until it finishes or hits its own statement_timeout/transaction timeout. Callers must not
+  // present this as a real "Cancel" — see SqlWorkbench.tsx's abort-on-unmount usage.
   executeSql: async (
     buCode: string,
     sqlText: string,
+    signal?: AbortSignal,
   ): Promise<SqlExecuteResult> => {
-    const response = await api.post(`${base(buCode)}/execute`, {
-      sql_text: sqlText,
-    });
+    const response = await api.post(
+      `${base(buCode)}/execute`,
+      { sql_text: sqlText },
+      { signal },
+    );
     return unwrap<SqlExecuteResult>(response);
   },
 

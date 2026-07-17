@@ -197,7 +197,7 @@ describe('SqlWorkbench', () => {
     await user.type(await screen.findByLabelText('sql'), 'SELECT * FROM t');
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() =>
-      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT * FROM t'),
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT * FROM t', expect.any(AbortSignal)),
     );
     expect(screen.queryByText(/run destructive sql/i)).not.toBeInTheDocument();
   });
@@ -216,7 +216,7 @@ describe('SqlWorkbench', () => {
     expect(sqlQueryService.executeSql).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: /run anyway/i }));
     await waitFor(() =>
-      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'DROP TABLE users'),
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'DROP TABLE users', expect.any(AbortSignal)),
     );
   });
 
@@ -257,8 +257,34 @@ describe('SqlWorkbench', () => {
     await user.type(await screen.findByLabelText('sql'), 'SELECT 1; SELECT 2');
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() =>
-      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1; SELECT 2'),
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1; SELECT 2', expect.any(AbortSignal)),
     );
+  });
+
+  // This does NOT prove the SQL query is cancelled on the database — it isn't (see the doc
+  // comment on sqlQueryService.executeSql). It proves the client stops waiting / holding the
+  // connection open when the page is left mid-query, which is the honest scope of what an
+  // AbortController can do here.
+  it('aborts the in-flight Run request on unmount (client-side only — the DB query itself is not cancelled)', async () => {
+    const user = userEvent.setup();
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(sqlQueryService.executeSql).mockImplementation(
+      (_buCode, _sql, signal) =>
+        new Promise((_resolve, reject) => {
+          capturedSignal = signal;
+          signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }),
+    );
+    const { unmount } = renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() => expect(capturedSignal).toBeInstanceOf(AbortSignal));
+    expect(capturedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
   });
 
   it('saves a multi-statement script (old code blocked multiple statements)', async () => {
@@ -351,7 +377,7 @@ describe('SqlWorkbench — sql_workbench.manage gates (Run / Save / Drop)', () =
     await user.type(await screen.findByLabelText('sql'), 'SELECT 1');
     await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() =>
-      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1'),
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1', expect.any(AbortSignal)),
     );
   });
 

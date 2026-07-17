@@ -138,18 +138,34 @@ export default function SqlWorkbench() {
     setExecuteError(null);
   };
 
+  // Holds the in-flight Run request's AbortController so it can be aborted on unmount. This is
+  // NOT a user-facing Cancel: aborting only stops the browser from waiting on the response — the
+  // query keeps running on the tenant database until it completes or hits its own timeout (see
+  // sqlQueryService.executeSql). The controller exists purely to avoid a leaked request /
+  // state update after this page is navigated away from.
+  const runAbortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      runAbortControllerRef.current?.abort();
+    };
+  }, []);
+
   const runSql = async (code: string, sqlToRun: string) => {
     setIsRunning(true);
     resetResult();
+    const controller = new AbortController();
+    runAbortControllerRef.current = controller;
     try {
-      const result = await sqlQueryService.executeSql(code, sqlToRun);
+      const result = await sqlQueryService.executeSql(code, sqlToRun, controller.signal);
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale result
       setExecuteResult(result);
     } catch (e) {
+      if (controller.signal.aborted) return; // aborted on unmount — nothing left to update
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale error
       setExecuteError(e instanceof Error ? e.message : 'Failed to execute SQL');
     } finally {
-      setIsRunning(false);
+      if (runAbortControllerRef.current === controller) runAbortControllerRef.current = null;
+      if (!controller.signal.aborted) setIsRunning(false);
     }
   };
 
