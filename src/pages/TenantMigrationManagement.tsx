@@ -150,6 +150,10 @@ const TenantMigrationManagement: React.FC = () => {
   }, [bus]);
 
   const applyOne = useCallback(async (bu: BusinessUnit) => {
+    // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Apply button.
+    // The button is disabled for non-super-admins today, but that's UI-layer only — fail
+    // closed here too so a future refactor that renders the button enabled can't mutate.
+    if (!isSuperAdmin) return;
     setApplyTarget(null);
     setRowState((prev) => ({
       ...prev,
@@ -181,9 +185,13 @@ const TenantMigrationManagement: React.FC = () => {
         [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
       }));
     }
-  }, [checkOne]);
+  }, [checkOne, isSuperAdmin]);
 
   const deployAll = useCallback(async () => {
+    // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Deploy all
+    // button. The button is disabled for non-super-admins today, but that's UI-layer only —
+    // fail closed here too so a future refactor that renders the button enabled can't mutate.
+    if (!isSuperAdmin) return;
     setConfirmAll(false);
     setBatch({ applied: 0, total: 0, current: null, buCode: null, log: [] });
     try {
@@ -227,7 +235,7 @@ const TenantMigrationManagement: React.FC = () => {
     } finally {
       setBatch(null);
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     (async () => {

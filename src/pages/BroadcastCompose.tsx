@@ -20,6 +20,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import broadcastService from '../services/broadcastService';
 import businessUnitService from '../services/businessUnitService';
 import { parseApiError } from '../utils/errorParser';
+import { PERMISSIONS } from '../utils/permissions';
 import type {
   BroadcastTargetMode,
   BroadcastTypePreset,
@@ -100,11 +101,13 @@ const BroadcastCompose: React.FC = () => {
   const { hasPermission } = useAuth();
   // TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped grantee
   // reaches system-wide send modes. See the W3 plan's Scope & Deferrals.
-  const canSendSystem = hasPermission('broadcast.send');
-  // Same permission also gates the Send action for every mode, not just system-wide
-  // (see the <Can> around the Send button below) — reused (not duplicated) as the
-  // single source of truth for every send-gate check on this page.
-  const canSend = canSendSystem;
+  const canSendSystem = hasPermission(PERMISSIONS.BROADCAST.SEND);
+  // Deliberately its OWN hasPermission call, NOT `= canSendSystem`. canSend means "may
+  // send at all" (gates the Send shortcut + funnel below); canSendSystem means "may send
+  // system-wide modes". They happen to be the same check today, but once canSendSystem
+  // is scoped per the TODO above, canSend must NOT silently inherit that scoping and
+  // start blocking legitimate BU sends — so the two are kept independent.
+  const canSend = hasPermission(PERMISSIONS.BROADCAST.SEND);
 
   const defaultMode: BroadcastTargetMode = canSendSystem ? 'system_all' : 'bu';
   const [targetMode, setTargetMode] = useState<BroadcastTargetMode>(defaultMode);
@@ -573,7 +576,7 @@ const BroadcastCompose: React.FC = () => {
             </Button>
             {/* TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped
                 grantee reaches system-wide send modes. See the W3 plan's Scope & Deferrals. */}
-            <Can permission="broadcast.send">
+            <Can permission={PERMISSIONS.BROADCAST.SEND}>
               <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
                 {sending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
