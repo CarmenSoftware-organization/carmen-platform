@@ -287,6 +287,54 @@ describe('SqlWorkbench', () => {
     expect(capturedSignal?.aborted).toBe(true);
   });
 
+  // The mocked SqlEditor's Run button (SqlEditor mock above) fires onRun on every click with no
+  // isRunning guard — this mirrors the REAL SqlEditor's Mod-Enter keymap (SqlEditor.tsx:111-116),
+  // which calls onRun via runFromEditor with no isRunning check at all (only the real Run
+  // button element is disabled while running). So clicking this mocked button twice in a row
+  // reproduces exactly what Mod-Enter can do to the real page: trigger a second run while the
+  // first is still in flight. Without a re-entry guard, the second runSql() call would overwrite
+  // runAbortControllerRef with a new AbortController, orphaning the first in-flight request —
+  // aborting on unmount would only cancel the second, leaving the first to resolve later and
+  // call setExecuteResult/setExecuteError after unmount.
+  it('blocks a re-entrant Run while one is already in flight', async () => {
+    const user = userEvent.setup();
+    let resolveExec!: (value: {
+      columns: string[];
+      rows: Record<string, unknown>[];
+      rowCount: number;
+      durationMs: number;
+    }) => void;
+    const deferred = new Promise<{
+      columns: string[];
+      rows: Record<string, unknown>[];
+      rowCount: number;
+      durationMs: number;
+    }>((resolve) => {
+      resolveExec = resolve;
+    });
+    vi.mocked(sqlQueryService.executeSql).mockReturnValueOnce(deferred);
+
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1');
+
+    const runButton = screen.getByRole('button', { name: 'Run' });
+    await user.click(runButton);
+    await waitFor(() => expect(sqlQueryService.executeSql).toHaveBeenCalledTimes(1));
+
+    // Second trigger while the first run is still in flight (simulates Mod-Enter bypassing the
+    // real Run button's disabled state).
+    await user.click(runButton);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(sqlQueryService.executeSql).toHaveBeenCalledTimes(1);
+
+    // Happy path still works: resolving the in-flight run surfaces its result normally.
+    resolveExec({ columns: [], rows: [], rowCount: 0, durationMs: 1 });
+    expect(
+      await screen.findByText(/query executed successfully — no rows returned/i),
+    ).toBeInTheDocument();
+  });
+
   it('saves a multi-statement script (old code blocked multiple statements)', async () => {
     const user = userEvent.setup();
     vi.mocked(sqlQueryService.saveDdl).mockResolvedValue({

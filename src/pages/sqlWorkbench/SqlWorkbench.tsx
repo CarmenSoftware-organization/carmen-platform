@@ -150,7 +150,19 @@ export default function SqlWorkbench() {
     };
   }, []);
 
+  // Re-entry guard: prevents a second run from starting while one is already in flight. The Run
+  // button is disabled via `isRunning` while running (SqlEditor.tsx), but the Mod-Enter keymap
+  // (SqlEditor.tsx runFromEditor) has no such check and calls onRun regardless — so without this
+  // guard a second runSql() call would overwrite runAbortControllerRef with a new
+  // AbortController, orphaning the first in-flight request. Aborting on unmount would then only
+  // cancel the second run, leaving the first to resolve later and call
+  // setExecuteResult/setExecuteError on an unmounted component. A ref (not `isRunning` state) is
+  // required because the keymap callback closes over a value that can be stale.
+  const runInFlightRef = useRef(false);
+
   const runSql = async (code: string, sqlToRun: string) => {
+    if (runInFlightRef.current) return; // a run is already in flight — ignore the re-entrant trigger
+    runInFlightRef.current = true;
     setIsRunning(true);
     resetResult();
     const controller = new AbortController();
@@ -166,6 +178,7 @@ export default function SqlWorkbench() {
     } finally {
       if (runAbortControllerRef.current === controller) runAbortControllerRef.current = null;
       if (!controller.signal.aborted) setIsRunning(false);
+      runInFlightRef.current = false;
     }
   };
 
