@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import roleService from '../services/roleService';
 import { RoleIdentityHero } from './roleEdit/RoleIdentityHero';
 import permissionService from '../services/permissionService';
@@ -12,10 +13,13 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Pencil, X, Loader2, ArrowLeft } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
+import { FetchErrorState } from '../components/FetchErrorState';
+import Can from '../components/Can';
+import { Save, Pencil, X, Loader2, ArrowLeft, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { parseApiError } from '../utils/errorParser';
+import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
@@ -46,12 +50,18 @@ const RoleEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
-  // Catalog + original permissions for delta computation
+  // Catalog + original permissions for delta computation. Fetch state is modelled
+  // explicitly (loading/failed) rather than inferred from `catalog.length === 0` —
+  // a genuinely empty catalog must render its own empty state, not look like an
+  // endless loading spinner (and a failed fetch must not look like either).
   const [catalog, setCatalog] = useState<PermissionCatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogFailed, setCatalogFailed] = useState(false);
   const [originalPermissions, setOriginalPermissions] = useState<string[]>([]);
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -80,9 +90,19 @@ const RoleEdit: React.FC = () => {
     if (!id) return;
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear it
+      // so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await roleService.getById(id);
       setRawResponse(data);
       const r = data.data || data;
+      // A 200 carrying no record is a not-found too — don't fall through and
+      // render the shell over blank data.
+      if (!r?.id) {
+        setNotFound(true);
+        return;
+      }
       const loaded: RoleFormData = {
         name: r.name ?? '',
         description: r.description ?? '',
@@ -94,21 +114,38 @@ const RoleEdit: React.FC = () => {
       setDocVersion(getDocVersion(r));
       setOriginalPermissions(r.permissions ?? []);
     } catch (err: unknown) {
-      const { message } = parseApiError(err);
-      setError('Failed to load role: ' + message);
+      // A bad/deleted id gates the whole shell (see the notFound branch below); a
+      // transient failure keeps the retryable inline banner.
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        const { message } = parseApiError(err);
+        setError('Failed to load role: ' + message);
+      }
     } finally {
       setLoading(false);
     }
   }, [id]);
 
-  useEffect(() => {
-    // Always load the permission catalog
-    permissionService.getCatalog()
-      .then(setCatalog)
+  const fetchCatalog = useCallback(() => {
+    setCatalogLoading(true);
+    setCatalogFailed(false);
+    return permissionService.getCatalog()
+      .then((data) => {
+        setCatalog(data);
+      })
       .catch((err: unknown) => {
+        setCatalogFailed(true);
+        devLog('Failed to load permission catalog:', err);
         const { message } = parseApiError(err);
         toast.error('Failed to load permission catalog: ' + message);
-      });
+      })
+      .finally(() => setCatalogLoading(false));
+  }, []);
+
+  useEffect(() => {
+    // Always load the permission catalog
+    fetchCatalog();
 
     if (!isNew) {
       fetchRole();
@@ -211,7 +248,7 @@ const RoleEdit: React.FC = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading role">
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
             <div className="flex-1">
@@ -251,12 +288,38 @@ const RoleEdit: React.FC = () => {
     );
   }
 
+  // Not-found gate: a bad/deleted id must never render the edit shell (hero, form,
+  // permissions picker) over blank data with just a banner on top.
+  if (notFound) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo="/platform/roles" title="Role" />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="Role not found"
+                description="This role doesn't exist, or it may have been deleted. Check the link, or pick one from the role list."
+                action={
+                  <Button size="sm" onClick={() => navigate('/platform/roles')}>
+                    Back to roles
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
         <Link
           to="/platform/roles"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+          className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Roles
@@ -269,10 +332,12 @@ const RoleEdit: React.FC = () => {
           catalogSize={catalog.length}
           actions={
             !isNew && !editing && (
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
+              <Can permission="role.update">
+                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </Can>
             )
           }
         />
@@ -298,17 +363,26 @@ const RoleEdit: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   {editing ? (
-                    catalog.length > 0 ? (
+                    catalogFailed ? (
+                      <FetchErrorState
+                        message="Couldn't load the permission catalog."
+                        onRetry={fetchCatalog}
+                      />
+                    ) : catalogLoading ? (
+                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground" role="status">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading permission catalog…
+                      </div>
+                    ) : catalog.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        No permissions are defined in the catalog yet.
+                      </p>
+                    ) : (
                       <PermissionPicker
                         catalog={catalog}
                         value={formData.permissions}
                         onChange={(next) => setFormData(f => ({ ...f, permissions: next }))}
                       />
-                    ) : (
-                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading permission catalog…
-                      </div>
                     )
                   ) : formData.permissions.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No permissions granted.</p>
@@ -384,7 +458,7 @@ const RoleEdit: React.FC = () => {
                   <div className="space-y-2">
                     <Label htmlFor="is_active">Status</Label>
                     {editing ? (
-                      <label className="flex items-center gap-2">
+                      <label className="flex min-h-11 items-center gap-2">
                         <input
                           type="checkbox"
                           id="is_active"
