@@ -16,7 +16,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, C
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -266,7 +266,7 @@ const ApplicationManagement: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+              className="h-auto w-auto shrink-0 -m-2 p-2 text-muted-foreground hover:text-foreground"
               aria-label={copied ? 'App ID copied' : 'Copy App ID'}
               onClick={() => handleCopyId(id)}
             >
@@ -487,16 +487,18 @@ const ApplicationManagement: React.FC = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
             {!error && applications.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={AppWindow}
-                title="No applications yet"
-                description={searchTerm ? `No applications matching "${searchTerm}"` : 'Get started by creating your first application.'}
-                action={!searchTerm ? (
+                emptyTitle="No applications yet"
+                emptyDescription="Get started by creating your first application."
+                addAction={
                   <Button size="sm" onClick={() => navigate('/applications/new')}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Application
                   </Button>
-                ) : undefined}
+                }
               />
             ) : !error ? (
               <div className="relative">
