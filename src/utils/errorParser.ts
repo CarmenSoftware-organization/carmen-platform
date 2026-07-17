@@ -52,6 +52,18 @@ export const getErrorDetail = (err: unknown): string => {
 };
 
 /**
+ * True when a fetch failed because the record does not exist (HTTP 404).
+ *
+ * A4 pages use this to gate the whole edit shell behind a dedicated not-found
+ * state — a bad/deleted id must never render the form + related-data cards over
+ * blank data with only an error banner on top. Transient failures (5xx, network)
+ * deliberately keep the existing inline `role="alert"` banner instead, because a
+ * retry can still succeed.
+ */
+export const isNotFoundError = (err: unknown): boolean =>
+  (err as { response?: { status?: number } })?.response?.status === 404;
+
+/**
  * Conditionally logs errors only in development.
  */
 export const devLog = (label: string, err: unknown) => {

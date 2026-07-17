@@ -13,13 +13,14 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
-import { Save, Pencil, X, Plus, Loader2, KeyRound, ArrowLeft } from "lucide-react";
+import { Save, Pencil, X, Plus, Loader2, KeyRound, ArrowLeft, SearchX } from "lucide-react";
+import { EmptyState } from "../components/EmptyState";
 import { UserIdentityHero } from "./userEdit/UserIdentityHero";
 import { UserAccessTree } from "./userEdit/UserAccessTree";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
-import { getErrorDetail } from '../utils/errorParser';
+import { getErrorDetail, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
@@ -88,6 +89,7 @@ const UserEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawClusterBUsResponse, setRawClusterBUsResponse] = useState<unknown>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -178,6 +180,12 @@ const UserEdit: React.FC = () => {
       const data = await userService.getById(id!);
       setRawResponse(data);
       const user = data.data || data;
+      // A 200 carrying no record is a not-found too — don't fall through and
+      // render the shell over blank data.
+      if (!user?.id) {
+        setNotFound(true);
+        return;
+      }
       const profile = user.profile || {};
       const loaded: UserFormData = {
         username: user.username || "",
@@ -195,7 +203,14 @@ const UserEdit: React.FC = () => {
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
     } catch (err: unknown) {
-      setError("Failed to load user: " + getErrorDetail(err));
+      // Shared A4 not-found pattern (established on the ClusterEdit reference):
+      // a bad/deleted id gates the whole shell; a transient failure keeps the
+      // retryable inline banner.
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError("Failed to load user: " + getErrorDetail(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -416,6 +431,31 @@ const UserEdit: React.FC = () => {
                   </Card>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Not-found gate — shared A4 pattern, mirrors the ClusterEdit reference.
+  if (notFound) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo="/users" title="User" />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="User not found"
+                description="This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list."
+                action={
+                  <Button size="sm" onClick={() => navigate('/users')}>
+                    Back to users
+                  </Button>
+                }
+              />
             </CardContent>
           </Card>
         </div>

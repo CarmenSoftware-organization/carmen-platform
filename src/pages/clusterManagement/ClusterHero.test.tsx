@@ -13,11 +13,16 @@ const base = {
 };
 
 describe('ClusterHero', () => {
-  it('leads with the cluster name, code and status', () => {
+  it('leads with the cluster code, alias and status', () => {
     render(<ClusterHero {...base} />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Acme Hotels' })).toBeInTheDocument();
     expect(screen.getByText('ACME', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getByText('AH', { selector: 'span' })).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+
+  it('renders no heading — the page PageHeader owns the title (A4 anatomy)', () => {
+    render(<ClusterHero {...base} />);
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
   it('shows both capacity gauges with used / cap', () => {
@@ -38,10 +43,5 @@ describe('ClusterHero', () => {
   it('reads users capacity as uncapped when there is no per-BU cap', () => {
     render(<ClusterHero {...base} users={{ used: 312, cap: null, active: 287 }} />);
     expect(screen.getByText(/no per-BU user cap set/)).toBeInTheDocument();
-  });
-
-  it('renders the provided edit action', () => {
-    render(<ClusterHero {...base} actions={<button type="button">Edit details</button>} />);
-    expect(screen.getByRole('button', { name: 'Edit details' })).toBeInTheDocument();
   });
 });

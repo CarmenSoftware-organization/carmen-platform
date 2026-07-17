@@ -79,6 +79,35 @@ describe('UserEdit (integration)', () => {
   });
 });
 
+// Shared A4 not-found pattern, established on the ClusterEdit reference: a bad/deleted
+// id gates the whole shell instead of rendering it over blank data under a banner.
+describe('UserEdit — not-found state', () => {
+  it('gates the edit shell behind a not-found state on a 404', async () => {
+    asMock(userService.getById).mockRejectedValue({ response: { status: 404 } });
+    renderAt('/users/nope/edit');
+
+    expect(await screen.findByText('User not found')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /change password/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /back to users/i })).toBeInTheDocument();
+  });
+
+  it('treats a 200 carrying no record as not-found', async () => {
+    asMock(userService.getById).mockResolvedValue({ data: null });
+    renderAt('/users/nope/edit');
+
+    expect(await screen.findByText('User not found')).toBeInTheDocument();
+  });
+
+  it('keeps the retryable inline banner for a transient failure (not not-found)', async () => {
+    asMock(userService.getById).mockRejectedValue({ response: { status: 500 } });
+    renderAt('/users/u1/edit');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to load user/i);
+    expect(screen.queryByText('User not found')).toBeNull();
+  });
+});
+
 // SECURITY REGRESSION. Change password previously had no <Can> gate at all, while
 // the adjacent Edit button was gated on user.update — any user who could reach this
 // page could open the reset-password dialog and call userService.resetPassword with
