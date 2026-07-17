@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { Card } from '../../components/ui/card';
-import { cn } from '../../lib/utils';
+import { Badge } from '../../components/ui/badge';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
 import { InlineField, type InlineOption } from './InlineField';
@@ -40,49 +39,6 @@ interface BusinessUnitDocumentProps {
   brandingSlot?: React.ReactNode;
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
-}
-
-function HeroName({ value, disabled, onCommit }: { value: string; disabled: boolean; onCommit: (v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  if (editing) {
-    return (
-      <input
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place
-        autoFocus
-        aria-label="Business unit name"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          setEditing(false);
-          if (draft !== value) onCommit(draft);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            e.currentTarget.blur();
-          } else if (e.key === 'Escape') {
-            setDraft(value);
-            setEditing(false);
-          }
-        }}
-        className="border-primary bg-background text-foreground w-full max-w-sm rounded-md border px-2 py-0.5 text-xl font-bold tracking-tight outline-none"
-      />
-    );
-  }
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => {
-        setDraft(value);
-        setEditing(true);
-      }}
-      className="hover:bg-primary/5 -mx-1.5 rounded px-1.5 text-left text-xl font-bold tracking-tight disabled:hover:bg-transparent sm:text-2xl"
-    >
-      {value.trim() || '(unnamed business unit)'}
-    </button>
-  );
 }
 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
@@ -126,13 +82,22 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     usersSlot,
   } = props;
 
-  const sectionField = { formData: f, editing: true, fieldErrors, onChange, onBlur, onFocus };
+  // `canEdit` is the one source of write access on this page. Each section already
+  // renders a read-only branch when `editing` is false, so gating here disables
+  // every control they own (DB credentials, calculation method, config rows).
+  const sectionField = { formData: f, editing: canEdit, fieldErrors, onChange, onBlur, onFocus };
   const clusterOptions: InlineOption[] = clusters.map((c) => ({ value: c.id, label: c.name }));
 
   const inline = (
     name: keyof BusinessUnitFormData,
     label: string,
-    opts?: { type?: 'text' | 'number' | 'email' | 'textarea' | 'select'; options?: InlineOption[]; mono?: boolean; validate?: boolean },
+    opts?: {
+      type?: 'text' | 'number' | 'email' | 'textarea' | 'select';
+      options?: InlineOption[];
+      mono?: boolean;
+      validate?: boolean;
+      required?: boolean;
+    },
   ) => (
     <InlineField
       key={name}
@@ -142,6 +107,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       type={opts?.type}
       options={opts?.options}
       mono={opts?.mono}
+      required={opts?.required}
       error={fieldErrors[name]}
       disabled={!canEdit}
       onCommit={onCommit}
@@ -171,41 +137,43 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <HeroName value={f.name} disabled={!canEdit} onCommit={(v) => onCommit('name', v)} />
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               {f.code && (
                 <span className="text-primary bg-primary/10 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">{f.code}</span>
               )}
               {clusterName && clusterName !== '-' && <span className="text-foreground/80">{clusterName}</span>}
+              {/* Status toggles: the Badge carries the status semantics, the button
+                  carries the affordance. Hit area reaches 44px via padding on the
+                  wrapping button, without growing the badge itself. */}
               <button
                 type="button"
                 disabled={!canEdit}
+                aria-pressed={f.is_active}
                 onClick={() => onToggle('is_active', !f.is_active)}
-                className="hover:bg-accent inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs disabled:hover:bg-transparent"
+                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-none focus-visible:ring-1"
               >
-                <span className={cn('size-2 rounded-full', f.is_active ? 'bg-success' : 'bg-muted-foreground/50')} />
-                {f.is_active ? 'Active' : 'Inactive'}
+                <Badge variant={f.is_active ? 'success' : 'secondary'}>{f.is_active ? 'Active' : 'Inactive'}</Badge>
               </button>
               <button
                 type="button"
                 disabled={!canEdit}
+                aria-pressed={f.is_hq}
                 onClick={() => onToggle('is_hq', !f.is_hq)}
-                className={cn(
-                  'rounded-full border px-2.5 py-0.5 text-xs',
-                  f.is_hq ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
-                )}
+                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-none focus-visible:ring-1"
               >
-                HQ
+                <Badge variant={f.is_hq ? 'default' : 'secondary'}>HQ</Badge>
               </button>
             </div>
           </div>
         </div>
 
         {/* inline fact groups */}
+        {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
+            validateRequired() enforces — they are the only ones marked required. */}
         <Group label="Details">
-          {inline('code', 'Code', { mono: true, validate: true })}
+          {inline('code', 'Code', { mono: true, validate: true, required: true })}
           {inline('alias_name', 'Alias', { validate: true })}
-          {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions })}
+          {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
           {inline('max_license_users', 'Max users', { type: 'number', mono: true, validate: true })}
           {inline('description', 'Description', { type: 'textarea' })}
         </Group>

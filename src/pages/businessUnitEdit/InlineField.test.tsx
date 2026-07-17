@@ -50,6 +50,51 @@ describe('InlineField', () => {
     await user.click(screen.getByRole('button', { name: /alice/i }));
     expect(screen.queryByRole('textbox')).toBeNull();
   });
+
+  it('pairs the error message with a destructive border, not the resting primary one', async () => {
+    const user = userEvent.setup();
+    setup({ error: 'Bad value' });
+    expect(screen.getByText('Bad value')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /alice/i }));
+    const input = screen.getByRole('textbox', { name: 'Name' });
+    expect(input.className).toContain('border-destructive');
+    expect(input.className).not.toContain('border-primary');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('keeps the primary border when there is no error', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: /alice/i }));
+    const input = screen.getByRole('textbox', { name: 'Name' });
+    expect(input.className).toContain('border-primary');
+    expect(input.className).not.toContain('border-destructive');
+  });
+
+  // The visual box stays ~32px so a ~50-row form does not bloat; a ::before
+  // overlay carries the 44px tappable area instead.
+  it('gives the read control a 44px tappable overlay without a taller visual box', () => {
+    setup();
+    const btn = screen.getByRole('button', { name: /alice/i });
+    expect(btn.className).toContain('before:h-11');
+    expect(btn.className).toContain('relative');
+    // still the compact resting padding — no min-h bloat
+    expect(btn.className).toContain('py-1.5');
+    expect(btn.className).not.toContain('min-h-');
+  });
+
+  it('marks a required field and flags it to assistive tech', async () => {
+    const user = userEvent.setup();
+    setup({ required: true });
+    expect(screen.getByText('*')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /alice/i }));
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveAttribute('aria-required', 'true');
+  });
+
+  it('does not mark required on a field the user cannot edit', () => {
+    setup({ required: true, disabled: true });
+    expect(screen.queryByText('*')).toBeNull();
+  });
 });
 
 describe('InlineField (select)', () => {

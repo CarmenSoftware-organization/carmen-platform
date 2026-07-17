@@ -10,14 +10,29 @@ vi.mock('../components/Layout', () => ({
 vi.mock('../components/Can', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+// Mutable auth so a test can revoke cluster.update / cluster.create.
+const auth = vi.hoisted(() => ({
+  isSuperAdmin: false,
+  hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
+}));
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ isSuperAdmin: false, hasPermission: () => true }),
+  useAuth: () => auth,
 }));
 // Heavy child cards → trivial stubs (their internals are out of scope here).
+// The branding/users stubs surface the permission prop they are handed, so the
+// page's obligation to gate them is asserted at this seam.
 vi.mock('../components/TenantMigrationCard', () => ({ default: () => <div>tenant-migration</div> }));
 vi.mock('../components/TenantSeedCard', () => ({ default: () => <div>tenant-seed</div> }));
-vi.mock('./businessUnitEdit/BusinessUnitBrandingCard', () => ({ default: () => <div>branding-card</div> }));
-vi.mock('./businessUnitEdit/BusinessUnitUsersCard', () => ({ default: () => <div>users-card</div> }));
+vi.mock('./businessUnitEdit/BusinessUnitBrandingCard', () => ({
+  default: ({ editing }: { editing: boolean }) => (
+    <div data-testid="branding-card" data-editing={String(editing)}>branding-card</div>
+  ),
+}));
+vi.mock('./businessUnitEdit/BusinessUnitUsersCard', () => ({
+  default: ({ canEdit }: { canEdit?: boolean }) => (
+    <div data-testid="users-card" data-can-edit={String(canEdit)}>users-card</div>
+  ),
+}));
 vi.mock('./businessUnitEdit/useBusinessUnitUsers', () => ({
   useBusinessUnitUsers: () => ({ buUsers: [], setBuUsers: vi.fn(), rawClusterUsersResponse: null }),
 }));
@@ -62,6 +77,8 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  auth.isSuperAdmin = false;
+  auth.hasPermission = () => true;
   (Element.prototype as unknown as { scrollIntoView: () => void }).scrollIntoView = vi.fn();
   asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme' }] });
   asMock(businessUnitService.getAll).mockResolvedValue({ data: [] });
@@ -131,5 +148,76 @@ describe('BusinessUnitEdit (one-document)', () => {
     expect(asMock(businessUnitService.create).mock.calls[0][0]).toMatchObject({
       code: 'BU9', name: 'New BU', cluster_id: 'c1',
     });
+  });
+});
+
+// SECURITY REGRESSION. `canEdit` is the page's single source of truth for write
+// access (cluster.create on new, cluster.update on existing). Every mutating
+// surface must honour it. It previously reached only the InlineField rows and
+// the is_active/is_hq toggles, while the DB-connection / calculation / number-
+// format / configuration sections were hardcoded `editing: true`, branding got a
+// literal `true`, the users card had no gate at all, and neither the Save button
+// nor the Ctrl/Cmd+S shortcut checked it — so a read-only user could edit
+// database credentials and persist them.
+describe('BusinessUnitEdit — write access is gated on canEdit', () => {
+  it('offers no editable database-connection, calculation or config controls without cluster.update', async () => {
+    auth.hasPermission = () => false;
+    renderAt('/business-units/bu1/edit');
+
+    // page has loaded
+    expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
+
+    // DB connection: the credential inputs must not be reachable at all.
+    expect(screen.queryByRole('textbox', { name: 'Host' })).toBeNull();
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect(screen.queryByRole('spinbutton', { name: 'Port' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'User' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /add field/i })).toBeNull();
+
+    // Calculation settings / number formats / configuration.
+    expect(screen.queryByRole('combobox', { name: /calculation method/i })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: /amount format/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /add config entry/i })).toBeNull();
+
+    // Slotted cards are handed the gate.
+    expect(screen.getByTestId('branding-card')).toHaveAttribute('data-editing', 'false');
+    expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'false');
+  });
+
+  it('keeps those controls when the user does hold cluster.update', async () => {
+    // Discriminating control: proves the assertions above are not vacuous.
+    renderAt('/business-units/bu1/edit');
+
+    expect(await screen.findByRole('textbox', { name: 'Host' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /calculation method/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add config entry/i })).toBeInTheDocument();
+    expect(screen.getByTestId('branding-card')).toHaveAttribute('data-editing', 'true');
+    expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'true');
+  });
+
+  it('does not let a user without cluster.create save a new business unit', async () => {
+    const user = userEvent.setup();
+    auth.hasPermission = () => false;
+    renderAt('/business-units/new?cluster_id=c1');
+
+    const createBtn = await screen.findByRole('button', { name: /create business unit/i });
+    expect(createBtn).toBeDisabled();
+
+    await user.click(createBtn);
+    expect(businessUnitService.create).not.toHaveBeenCalled();
+  });
+
+  it('does not let the Ctrl/Cmd+S shortcut bypass the disabled Save button', async () => {
+    const user = userEvent.setup();
+    auth.hasPermission = () => false;
+    renderAt('/business-units/new?cluster_id=c1');
+    await screen.findByRole('button', { name: /create business unit/i });
+
+    // The keyboard shortcut calls handleSave directly — a disabled button is no
+    // defence on its own.
+    await user.keyboard('{Control>}s{/Control}');
+
+    expect(businessUnitService.create).not.toHaveBeenCalled();
+    expect(businessUnitService.update).not.toHaveBeenCalled();
   });
 });
