@@ -101,6 +101,10 @@ Information hierarchy · Interaction/flow · Responsive · A11y.**
   filter `Sheet` — the only filterable field (`is_active`) is effectively always true for a
   super-admin grant, so `SearchInput` alone covers the toolbar and `activeFilterCount` stays
   `0` (documented deviation from A3, not a finding).
+- **Documented deviations (`UserPlatformManagement`):** no primary `Add` action and no
+  row-actions `DropdownMenu` — rows are derived one-for-one from `User` accounts, the page has
+  no create route, and role assignment/removal lives on the row's detail page rather than
+  inline (documented deviation from A3, not a finding).
 
 ## A4 — Detail / Edit (reference: `ClusterEdit.tsx` simple, `ReportTemplateEdit.tsx` tabbed)
 
