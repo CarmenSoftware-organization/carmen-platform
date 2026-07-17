@@ -95,6 +95,12 @@ Information hierarchy · Interaction/flow · Responsive · A11y.**
 - **A11y:** interactive hit area ≥44px on mobile (the *tappable area*, not the visual
   control, governs — flag when the hit area itself is <44px); icon-only buttons carry
   `aria-label`; error region `role="alert"`; loading region `role="status"`.
+- **Documented deviations (`SuperAdminManagement`):** no `<Can>` gating — the route is
+  `superAdminOnly` and super admins by definition bypass all permission checks, so a `<Can>`
+  wrapper would always pass and add nothing (documented deviation from A3, not a finding); no
+  filter `Sheet` — the only filterable field (`is_active`) is effectively always true for a
+  super-admin grant, so `SearchInput` alone covers the toolbar and `activeFilterCount` stays
+  `0` (documented deviation from A3, not a finding).
 
 ## A4 — Detail / Edit (reference: `ClusterEdit.tsx` simple, `ReportTemplateEdit.tsx` tabbed)
 
