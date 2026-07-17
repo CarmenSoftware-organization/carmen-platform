@@ -140,6 +140,10 @@ const ClusterEdit: React.FC = () => {
   const fetchCluster = async () => {
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
+      // it so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await clusterService.getById(id!);
       setRawResponse(data);
       const cluster = data.data || data;

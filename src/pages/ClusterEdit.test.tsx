@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 
 // Mock the shell so no AuthContext/Sidebar is needed.
 vi.mock('../components/Layout', () => ({
@@ -159,6 +159,51 @@ describe('ClusterEdit — not-found state', () => {
     renderAt('/clusters/c1/edit');
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/failed to load cluster/i);
+    expect(screen.queryByText('Cluster not found')).toBeNull();
+  });
+
+  // A stale notFound must not survive a later successful fetch on the same mounted
+  // instance — e.g. client-side nav from a bad id to a valid one, or a retry.
+  it('clears a stale not-found once a later fetch on the same instance succeeds', async () => {
+    asMock(clusterService.getById).mockImplementation((clusterId: string) =>
+      clusterId === 'c1'
+        ? Promise.resolve({ data: fakeCluster })
+        : Promise.reject({ response: { status: 404 } })
+    );
+
+    function NavigateToValid() {
+      const navigate = useNavigate();
+      return (
+        <button type="button" onClick={() => navigate('/clusters/c1/edit')}>
+          go to valid cluster
+        </button>
+      );
+    }
+
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/clusters/nope/edit']}>
+        <Routes>
+          <Route
+            path="/clusters/:id/edit"
+            element={
+              <>
+                <NavigateToValid />
+                <ClusterEdit />
+              </>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Cluster not found')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /go to valid cluster/i }));
+
+    // The refetch for the now-valid id succeeded — the stale not-found gate must
+    // not keep hiding the shell.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
     expect(screen.queryByText('Cluster not found')).toBeNull();
   });
 });

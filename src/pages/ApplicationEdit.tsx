@@ -128,6 +128,10 @@ const ApplicationEdit: React.FC = () => {
   const fetchApplication = async () => {
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
+      // it so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await applicationService.getById(id!);
       setRawResponse(data);
       const app = data.data || data;
@@ -562,7 +566,16 @@ const ApplicationEdit: React.FC = () => {
                                           </Button>
                                         </div>
                                         {expanded && (
-                                          <div className="flex flex-wrap gap-2 px-2 pb-2 pl-7">
+                                          // Chips deliberately do NOT get a HIT_SLOP_44 overlay: at
+                                          // h-7 (28px) with only gap-1.5 (6px) between wrapped rows,
+                                          // a centred 44px overlay bleeds 8px past each edge — more
+                                          // than the row gap — so vertically-adjacent rows' overlays
+                                          // overlap and a tap can land on the wrong chip. On this
+                                          // permission-granting surface that's a correctness hazard,
+                                          // not just a small target, so this stays at its pre-hit-slop
+                                          // size instead of an overlay that lies about safety. See the
+                                          // wave's documented <44px deferral for this surface.
+                                          <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
                                             {g.api_names.map((api) => {
                                               const selected = formData.api_names.includes(api);
                                               return (
@@ -571,7 +584,7 @@ const ApplicationEdit: React.FC = () => {
                                                   type="button"
                                                   variant={selected ? 'default' : 'outline'}
                                                   size="sm"
-                                                  className={`h-7 text-xs gap-1 ${HIT_SLOP_44}`}
+                                                  className="h-7 text-xs gap-1"
                                                   title={api}
                                                   onClick={() => toggleApiName(api)}
                                                   aria-pressed={selected}
