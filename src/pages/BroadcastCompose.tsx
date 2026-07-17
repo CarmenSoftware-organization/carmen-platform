@@ -98,7 +98,13 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
 
 const BroadcastCompose: React.FC = () => {
   const { hasPermission } = useAuth();
+  // TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped grantee
+  // reaches system-wide send modes. See the W3 plan's Scope & Deferrals.
   const canSendSystem = hasPermission('broadcast.send');
+  // Same permission also gates the Send action for every mode, not just system-wide
+  // (see the <Can> around the Send button below) — reused (not duplicated) as the
+  // single source of truth for every send-gate check on this page.
+  const canSend = canSendSystem;
 
   const defaultMode: BroadcastTargetMode = canSendSystem ? 'system_all' : 'bu';
   const [targetMode, setTargetMode] = useState<BroadcastTargetMode>(defaultMode);
@@ -108,6 +114,8 @@ const BroadcastCompose: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+
+  const [sendError, setSendError] = useState('');
 
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -143,6 +151,7 @@ const BroadcastCompose: React.FC = () => {
 
   const setField = <K extends keyof BroadcastFormData>(name: K, value: BroadcastFormData[K]) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (sendError) setSendError('');
     if (fieldErrors[name as string]) {
       setFieldErrors((prev) => {
         const next = { ...prev };
@@ -152,39 +161,75 @@ const BroadcastCompose: React.FC = () => {
     }
   };
 
+  type ValidatableField = 'title' | 'message' | 'typeCustom' | 'scheduledAtLocal' | 'buCode' | 'recipients';
+
+  // `validateField` (utils/validation.ts) switches on field-name heuristics (email/code/url/…)
+  // and bails out early with '' for any empty value — it cannot express "this field is
+  // required" and doesn't recognize these field names at all. So required-ness + format
+  // rules for this form are hand-rolled here, per field, and reused for both onBlur and
+  // full-form submit validation (single source of truth, no drift between the two).
+  const validateOne = (
+    name: ValidatableField,
+    form: BroadcastFormData,
+    mode: BroadcastTargetMode,
+    recipientList: UserOption[],
+  ): string => {
+    switch (name) {
+      case 'title': {
+        const title = form.title.trim();
+        if (!title) return 'Title is required';
+        if (title.length > TITLE_MAX) return `Max ${TITLE_MAX} characters`;
+        return '';
+      }
+      case 'message': {
+        const message = form.message.trim();
+        if (!message) return 'Message is required';
+        if (message.length > MESSAGE_MAX) return `Max ${MESSAGE_MAX} characters`;
+        return '';
+      }
+      case 'typeCustom': {
+        if (form.typePreset !== 'OTHER') return '';
+        const t = form.typeCustom.trim();
+        if (!t) return 'Custom type is required';
+        if (t.length > TYPE_CUSTOM_MAX) return `Max ${TYPE_CUSTOM_MAX} characters`;
+        if (!TYPE_CUSTOM_RE.test(t)) return 'Use uppercase letters, digits, and underscores only';
+        return '';
+      }
+      case 'scheduledAtLocal': {
+        if (form.sendMode !== 'schedule') return '';
+        const v = form.scheduledAtLocal;
+        if (!v) return 'Pick a date and time';
+        const ts = new Date(v).getTime();
+        if (Number.isNaN(ts)) return 'Invalid date/time';
+        if (ts <= Date.now()) return 'Scheduled time must be in the future';
+        return '';
+      }
+      case 'buCode':
+        if (mode === 'bu' && !form.buCode) return 'Choose a business unit';
+        return '';
+      case 'recipients':
+        if (mode === 'system_users' && recipientList.length === 0) return 'Pick at least one recipient';
+        return '';
+      default:
+        return '';
+    }
+  };
+
+  const VALIDATABLE_FIELDS: ValidatableField[] = [
+    'title', 'message', 'typeCustom', 'scheduledAtLocal', 'buCode', 'recipients',
+  ];
+
   const validate = (): Record<string, string> => {
     const errors: Record<string, string> = {};
-    const title = formData.title.trim();
-    const message = formData.message.trim();
-
-    if (!title) errors.title = 'Title is required';
-    else if (title.length > TITLE_MAX) errors.title = `Max ${TITLE_MAX} characters`;
-
-    if (!message) errors.message = 'Message is required';
-    else if (message.length > MESSAGE_MAX) errors.message = `Max ${MESSAGE_MAX} characters`;
-
-    if (formData.typePreset === 'OTHER') {
-      const t = formData.typeCustom.trim();
-      if (!t) errors.typeCustom = 'Custom type is required';
-      else if (t.length > TYPE_CUSTOM_MAX) errors.typeCustom = `Max ${TYPE_CUSTOM_MAX} characters`;
-      else if (!TYPE_CUSTOM_RE.test(t)) errors.typeCustom = 'Use uppercase letters, digits, and underscores only';
-    }
-
-    if (formData.sendMode === 'schedule') {
-      const v = formData.scheduledAtLocal;
-      if (!v) errors.scheduledAtLocal = 'Pick a date and time';
-      else {
-        const ts = new Date(v).getTime();
-        if (Number.isNaN(ts)) errors.scheduledAtLocal = 'Invalid date/time';
-        else if (ts <= Date.now()) errors.scheduledAtLocal = 'Scheduled time must be in the future';
-      }
-    }
-
-    if (targetMode === 'bu' && !formData.buCode) errors.buCode = 'Choose a business unit';
-    if (targetMode === 'system_users' && recipients.length === 0)
-      errors.recipients = 'Pick at least one recipient';
-
+    VALIDATABLE_FIELDS.forEach((name) => {
+      const err = validateOne(name, formData, targetMode, recipients);
+      if (err) errors[name] = err;
+    });
     return errors;
+  };
+
+  const handleFieldBlur = (name: ValidatableField) => {
+    setFieldErrors((prev) => ({ ...prev, [name]: validateOne(name, formData, targetMode, recipients) }));
   };
 
   const confirmTitle = (): string => {
@@ -209,6 +254,10 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const handleSend = () => {
+    // Defence-in-depth: mirrors the <Can permission="broadcast.send"> gate on the Send
+    // button. handleSend is also reachable via the Ctrl/Cmd+S shortcut, which bypasses
+    // that button entirely, so the same check must live here too.
+    if (!canSend) return;
     const errors = validate();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -219,7 +268,15 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const handleConfirmedSend = async () => {
+    // Final gate: every caller (Send button, Ctrl/Cmd+S) funnels through here. The
+    // ConfirmDialog itself renders outside the <Can> gate, so this is the last chance
+    // to fail closed before the mutating call.
+    if (!canSend) {
+      setConfirmOpen(false);
+      return;
+    }
     setSending(true);
+    setSendError('');
     try {
       const response = targetMode === 'bu'
         ? await broadcastService.sendBu(buildBuPayload(formData))
@@ -236,6 +293,9 @@ const BroadcastCompose: React.FC = () => {
       setConfirmOpen(false);
     } catch (err) {
       const parsed = parseApiError(err);
+      // A toast auto-dismisses — it's the only record of a failed send unless we also
+      // keep a persistent, in-page banner (mirrors NewsEdit's save-failure banner).
+      setSendError('Failed to send broadcast: ' + parsed.message);
       toast.error(parsed.message);
       if (parsed.fields) setFieldErrors((prev) => ({ ...prev, ...parsed.fields }));
       setConfirmOpen(false);
@@ -248,6 +308,7 @@ const BroadcastCompose: React.FC = () => {
     setFormData(initialForm);
     setRecipients([]);
     setFieldErrors({});
+    setSendError('');
   };
 
   const isDirty =
@@ -263,7 +324,9 @@ const BroadcastCompose: React.FC = () => {
   useUnsavedChanges(isDirty);
   useGlobalShortcuts({
     onSave: () => {
-      if (!sending && !confirmOpen) handleSend();
+      // The shortcut reaches handleSend without going through the Send button, so a
+      // hidden/disabled button is no defence on its own — check canSend here too.
+      if (canSend && !sending && !confirmOpen) handleSend();
     },
     onCancel: () => {
       if (!sending && !confirmOpen) handleReset();
@@ -279,12 +342,16 @@ const BroadcastCompose: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6 pb-24">
         <PageHeader
           beforeTitle={<Megaphone className="h-6 w-6 text-primary" />}
           title="Send Broadcast"
           subtitle="Push a notification to all users, specific users, or a business unit."
         />
+
+        {sendError && (
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{sendError}</div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,360px)]">
           <Card className="min-w-0">
@@ -341,6 +408,7 @@ const BroadcastCompose: React.FC = () => {
                       id="buCode"
                       value={formData.buCode}
                       onChange={(e) => setField('buCode', e.target.value)}
+                      onBlur={() => handleFieldBlur('buCode')}
                       className={SELECT_CLASS + (fieldErrors.buCode ? ' border-destructive' : '')}
                       disabled={buLoading}
                     >
@@ -354,7 +422,7 @@ const BroadcastCompose: React.FC = () => {
                         ))}
                     </select>
                     {buLoadError && (
-                      <p className="text-xs text-destructive">
+                      <p className="text-xs text-destructive" role="alert">
                         {buLoadError}{' '}
                         <button type="button" onClick={() => void loadBusinessUnits()} className="underline">
                           Retry
@@ -380,6 +448,7 @@ const BroadcastCompose: React.FC = () => {
                     id="title"
                     value={formData.title}
                     onChange={(e) => setField('title', e.target.value.slice(0, TITLE_MAX))}
+                    onBlur={() => handleFieldBlur('title')}
                     placeholder="Scheduled maintenance"
                     className={fieldErrors.title ? 'border-destructive' : ''}
                   />
@@ -398,6 +467,7 @@ const BroadcastCompose: React.FC = () => {
                     rows={6}
                     value={formData.message}
                     onChange={(e) => setField('message', e.target.value.slice(0, MESSAGE_MAX))}
+                    onBlur={() => handleFieldBlur('message')}
                     placeholder="The system will be unavailable from 02:00 to 03:00 UTC."
                     className={fieldErrors.message ? 'border-destructive' : ''}
                   />
@@ -422,6 +492,7 @@ const BroadcastCompose: React.FC = () => {
                         id="typeCustom"
                         value={formData.typeCustom}
                         onChange={(e) => setField('typeCustom', e.target.value.toUpperCase())}
+                        onBlur={() => handleFieldBlur('typeCustom')}
                         placeholder="CUSTOM_TYPE"
                         className={fieldErrors.typeCustom ? 'border-destructive' : ''}
                       />
@@ -453,6 +524,7 @@ const BroadcastCompose: React.FC = () => {
                       type="datetime-local"
                       value={formData.scheduledAtLocal}
                       onChange={(e) => setField('scheduledAtLocal', e.target.value)}
+                      onBlur={() => handleFieldBlur('scheduledAtLocal')}
                       className={SELECT_CLASS + (fieldErrors.scheduledAtLocal ? ' border-destructive' : '')}
                     />
                     {fieldErrors.scheduledAtLocal && (
@@ -464,7 +536,7 @@ const BroadcastCompose: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Preview + send */}
+          {/* Preview */}
           <div className="lg:sticky lg:top-4 lg:self-start">
             <BroadcastPreview
               typePreset={formData.typePreset}
@@ -476,24 +548,41 @@ const BroadcastCompose: React.FC = () => {
               buLabel={buLabel}
               sendMode={formData.sendMode}
               scheduledLabel={scheduledLabel}
-              actions={
-                <div className="flex gap-2">
-                  <Button variant="outline" type="button" onClick={handleReset} disabled={sending}>
-                    Reset
-                  </Button>
-                  <Can permission="broadcast.send">
-                    <Button type="button" className="flex-1" onClick={handleSend} disabled={sending}>
-                      {sending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-4 w-4" />
-                      )}
-                      {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
-                    </Button>
-                  </Can>
-                </div>
-              }
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky action bar — keeps Send reachable without scrolling the whole form,
+          especially on mobile where the grid above collapses to one column. */}
+      <div className="fixed bottom-0 left-0 right-0 md:left-16 lg:left-60 z-40 border-t border-border bg-background">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3">
+          <div className="flex items-center gap-2 text-xs sm:text-sm">
+            {isDirty ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
+                <span>Unsaved changes</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">No changes</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" type="button" onClick={handleReset} disabled={sending}>
+              Reset
+            </Button>
+            {/* TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped
+                grantee reaches system-wide send modes. See the W3 plan's Scope & Deferrals. */}
+            <Can permission="broadcast.send">
+              <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
+                {sending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
+              </Button>
+            </Can>
           </div>
         </div>
       </div>
@@ -508,7 +597,12 @@ const BroadcastCompose: React.FC = () => {
         onConfirm={handleConfirmedSend}
       />
 
-      <DevDebugSheet title="Dev Debug" endpoint="Last API response from this session." data={rawResponse} />
+      <DevDebugSheet
+        title="Dev Debug"
+        endpoint="Last API response from this session."
+        data={rawResponse}
+        fabClassName="bottom-20"
+      />
     </Layout>
   );
 };
