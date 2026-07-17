@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { RolesAccessSummary, summarizeRoles, type RolesSummaryData } from './roleManagement/RolesAccessSummary';
@@ -16,10 +16,11 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, ShieldCheck, Download,
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import Can from '../components/Can';
+import { ListEmptyState } from '../components/ListEmptyState';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -229,13 +230,9 @@ const RoleManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/platform/roles/${row.original.id}/edit`)}
-          className="text-primary hover:underline text-left font-medium"
-        >
+        <Link to={`/platform/roles/${row.original.id}/edit`} className="text-primary hover:underline font-medium">
           {row.original.name}
-        </button>
+        </Link>
       ),
     },
     {
@@ -315,20 +312,24 @@ const RoleManagement: React.FC = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => navigate(`/platform/roles/${row.original.id}/edit`)}
-              className="cursor-pointer"
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleDelete(row.original.id)}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
+            <Can permission="role.update">
+              <DropdownMenuItem
+                onClick={() => navigate(`/platform/roles/${row.original.id}/edit`)}
+                className="cursor-pointer"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+            </Can>
+            <Can permission="role.delete">
+              <DropdownMenuItem
+                onClick={() => handleDelete(row.original.id)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </Can>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -361,11 +362,13 @@ const RoleManagement: React.FC = () => {
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
-              <Button onClick={() => navigate('/platform/roles/new')}>
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Add Role</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
+              <Can permission="role.create">
+                <Button onClick={() => navigate('/platform/roles/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Add Role</span>
+                  <span className="sm:hidden">Add</span>
+                </Button>
+              </Can>
             </>
           }
         />
@@ -453,17 +456,21 @@ const RoleManagement: React.FC = () => {
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Filters:</span>
-                {statusFilter.map((s) => (
-                  <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === 'true' ? 'Active' : 'Inactive'}
-                    <button
-                      onClick={() => handleStatusFilter(s)}
-                      className="ml-0.5 hover:text-foreground"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
+                {statusFilter.map((s) => {
+                  const label = s === 'true' ? 'Active' : 'Inactive';
+                  return (
+                    <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                      {label}
+                      <button
+                        onClick={() => handleStatusFilter(s)}
+                        className="ml-0.5 hover:text-foreground"
+                        aria-label={`Remove ${label} filter`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
                 <button
                   onClick={handleClearAllFilters}
                   className="text-xs text-muted-foreground hover:text-foreground underline"
@@ -482,21 +489,19 @@ const RoleManagement: React.FC = () => {
             )}
 
             {!error && roles.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={ShieldCheck}
-                title="No roles yet"
-                description={
-                  searchTerm
-                    ? `No roles matching "${searchTerm}"`
-                    : 'Get started by creating your first role to manage platform permissions.'
-                }
-                action={
-                  !searchTerm ? (
+                emptyTitle="No roles yet"
+                emptyDescription="Get started by creating your first role to manage platform permissions."
+                addAction={
+                  <Can permission="role.create">
                     <Button size="sm" onClick={() => navigate('/platform/roles/new')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Role
                     </Button>
-                  ) : undefined
+                  </Can>
                 }
               />
             ) : !error ? (
