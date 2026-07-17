@@ -376,3 +376,64 @@ Discrimination formally proved two ways:
    not a side effect of a shared fixture). Restored the gate; `diff` showed zero residual change;
    suite green again (8/8). See task-6-report.md §3–4 for all four raw command outputs (delete/
    restore × row gate/empty-state gate).
+
+### SuperAdminManagement (`src/pages/SuperAdminManagement.tsx` / `src/pages/SuperAdminManagement.test.tsx`)
+
+No pre-existing test file (first coverage added this task). **Deviation from every prior row in
+this table:** this page has **zero per-control `<Can>` gates and zero `isSuperAdmin` checks in
+its own source** (verified by reading the file — no `useAuth` import at all). This is
+**intentional, documented by Wave 2**: super admins bypass every permission check
+(`checkPermission` short-circuits to `true` once `is_super_admin` is set —
+`utils/permissions.ts:28`), so a `<Can>` gate on this page would always evaluate true for the
+only audience that can ever legitimately reach it — a checked box with no real discrimination.
+Protection is **entirely route-level**: `App.tsx:287-294` registers `/platform/super-admins` as
+`<PrivateRoute requireSuperAdmin><SuperAdminManagement /></PrivateRoute>` — the only place this
+component is ever rendered (verified by grep) — and `PrivateRoute` (`:60-62`) renders
+`<AccessDenied>` instead of `children` whenever `requireSuperAdmin && !isSuperAdmin`, so the page
+(and its unconditionally-wired mutating UI) never mounts for a non-super-admin. The sidebar nav
+item is separately hidden for non-super-admins (`Layout.tsx:65,73`, `superAdminOnly: true`), but
+that's UX, not the security boundary.
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| Header "Add Super Admin" button + dialog → `superAdminService.add` | **None in-component** — route-level `<PrivateRoute requireSuperAdmin>` only | — (`isSuperAdmin`) | route (platform) | **Yes — discriminating, at the route layer** | None — by design, see deviation note above |
+| Empty-state "Add Super Admin" button (same dialog) | Same — route-level only | — (`isSuperAdmin`) | route (platform) | **Yes — discriminating, at the route layer** (same test covers both entry points, since neither has its own gate to distinguish) | None |
+| Row action: Remove (`DropdownMenuItem` → `ConfirmDialog` → `superAdminService.remove`) | Same — route-level only | — (`isSuperAdmin`) | route (platform) | **Yes — discriminating, at the route layer** | None |
+| `Ctrl/Cmd+S` global shortcut | N/A — page wires `useGlobalShortcuts({ onSearch })` only (`:68-70`), no `onSave` | — | — | **N/A — no `onSave` wired, no shortcut-driven mutation path exists** | None |
+| Row-selection / bulk actions | **Does not exist on this page** — no `enableRowSelection`, no checkbox column, no bulk action bar, no `selectionResetKey` (verified by grep) | — | — | N/A — not a consumer | None |
+
+**Audit result: no ungated mutation found; route-level protection is sufficient and matches Wave
+2's documented design.** All three mutating controls (Add dialog reachable from two entry
+points, Remove) are wired unconditionally in the component itself, but the component only ever
+mounts behind `<PrivateRoute requireSuperAdmin>` — there is no second path (no other route, no
+other importer) that renders `SuperAdminManagement`. **This is the first row in the table where
+"gate-covered" is proven one layer up (`PrivateRoute`) instead of inside the page**, because the
+page has no internal branch on `isSuperAdmin`/`hasPermission` to assert a discriminating pair
+against — it would render identically for a super-admin and a non-super-admin if it were ever
+mounted directly.
+
+**Selection-reset (`data-table.tsx`) regression guard: not applicable.** No `selectionResetKey`,
+`enableRowSelection`, or `clearSelection` anywhere in the file (confirmed by grep) — not a
+consumer of the Task 1 `data-table.tsx` fix.
+
+**Test file:** `src/pages/SuperAdminManagement.test.tsx` (new) — mutable `vi.hoisted`
+`AuthContext` mock (`isAuthenticated`, `loading`, `isSuperAdmin`, `hasPermission`); `Layout`
+mocked (shell only), `superAdminService` and `userService` mocked; localStorage stub + Radix
+pointer-capture/`scrollIntoView` polyfills copied from `UserManagement.test.tsx` (this page also
+reads `localStorage` directly and uses a Radix `DropdownMenu`/`Select`/`Dialog`). Renders through
+the **real** `<PrivateRoute requireSuperAdmin>` wrapper (not a bespoke stand-in), mirroring the
+exact route registration in `App.tsx`. 3 tests: (1) negative — `isSuperAdmin: false` renders
+`AccessDenied`, no "Super Admins" heading, no "Add Super Admin" button, and — critically —
+`superAdminService.list`/`userService.getAll` are never called, proving the page never mounts
+rather than just being visually covered; (2) positive — `isSuperAdmin: true` renders the page
+heading and an actionable "Add Super Admin" button (discriminating control for the Add path);
+(3) positive — a super-admin can open a row's actions menu and see "Remove" (discriminating
+control for the second mutating control).
+
+Discrimination formally proved by disabling the gate: changed
+`if (requireSuperAdmin && !isSuperAdmin)` to `if (false && requireSuperAdmin && !isSuperAdmin)`
+in `PrivateRoute.tsx`. The negative test failed (`findByText('Access Denied')` timed out — the
+full `SuperAdminManagement` page rendered instead for a non-super-admin); the two positive tests
+stayed green (already asserting the allowed state, so an always-allowing bypass doesn't disturb
+them). Restored the original condition; `git diff --stat` on `PrivateRoute.tsx` showed no
+changes; suite green again (3/3). See task-7-report.md for the raw command output.
