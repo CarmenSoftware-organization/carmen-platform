@@ -308,7 +308,7 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 ## Styling Reference
 
-**Color tokens (HSL):** `--primary` 221 61% 48% (blue) · `--accent` 220 14% 96% (neutral subtle surface, not a brand hue) · `--destructive` 0 84% 60% · `--muted-foreground` 220 10% 46% · `--border` / `--input` 220 15% 90% · `--radius` 0.375rem. Status accents (success/warning/info) use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`.
+**Color tokens (HSL):** warm-neutral ground + single blue accent (calm-corporate reskin). `--primary` 221 61% 48% (blue) · `--accent` 40 8% 94% (neutral warm surface, not a brand hue) · `--destructive` 0 72% 51% · `--muted-foreground` 33 5% 43% · `--border` 40 8% 90% / `--input` 40 8% 87% · `--radius` 0.5rem. Status accents (success/warning/info) use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`. Full token reference (light + dark, all roles, hex, spacing, shadows, contrast) lives in **`.planning/design/system/tokens.md`** — sourced from `src/index.css` + `tailwind.config.js` (the source of truth; keep the doc in sync when those change).
 
 **Surfaces:** glassmorphism (`.glass` / `.glass-strong`) was removed in the enterprise redesign — surfaces are now flat `bg-card` / `bg-background` with a 1px `border`.
 
