@@ -114,6 +114,9 @@ function DataTable<TData>({
     pageSize: serverSide ? perpage : defaultPageSize,
   });
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  // Tracks the selectionResetKey value THIS instance has already applied, so the
+  // reset effect below only fires on a genuine change, never on mount.
+  const lastSeenResetKey = React.useRef(selectionResetKey);
 
   React.useEffect(() => {
     if (serverSide) {
@@ -211,6 +214,15 @@ function DataTable<TData>({
 
   React.useEffect(() => {
     if (selectionResetKey === undefined) return;
+    // Callers (e.g. NewsManagement) bump a single "result set changed" counter that
+    // starts incrementing from their OWN mount — often before this table ever mounts
+    // (it's commonly gated behind a loading/empty check). Without the guard below,
+    // THIS effect's first run (on mount) would treat that already-elevated starting
+    // value as "changed" and force a redundant setRowSelection({}) — which, being an
+    // unconditional overwrite rather than a functional update, can race a user's very
+    // first checkbox click (queued around the same time) and silently drop it.
+    if (lastSeenResetKey.current === selectionResetKey) return;
+    lastSeenResetKey.current = selectionResetKey;
     setRowSelection({});
   }, [selectionResetKey]);
 
