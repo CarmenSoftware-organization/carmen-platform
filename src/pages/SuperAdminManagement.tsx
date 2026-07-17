@@ -56,9 +56,14 @@ const SuperAdminManagement: React.FC = () => {
   const [adding, setAdding] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('search_super_admins') || '');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    localStorage.setItem('search_super_admins', value);
+  };
 
   useGlobalShortcuts({
     onSearch: () => searchInputRef.current?.focus(),
@@ -268,7 +273,7 @@ const SuperAdminManagement: React.FC = () => {
               <SearchInput
                 ref={searchInputRef}
                 value={searchTerm}
-                onValueChange={setSearchTerm}
+                onValueChange={handleSearchChange}
                 placeholder="Search super admins..."
                 className="flex-1 sm:max-w-sm"
               />
@@ -348,7 +353,12 @@ const SuperAdminManagement: React.FC = () => {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowAddDialog(false)} disabled={adding}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setShowAddDialog(false); setSelectedUserId(''); }}
+              disabled={adding}
+            >
               Cancel
             </Button>
             <Button size="sm" onClick={handleAdd} disabled={adding || !selectedUserId}>

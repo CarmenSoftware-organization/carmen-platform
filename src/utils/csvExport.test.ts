@@ -46,3 +46,59 @@ describe('generateCSV', () => {
     expect(csv).toBe('Note\n');
   });
 });
+
+// OWASP CSV Injection (formula injection): a backend-supplied value opened in
+// Excel/Google Sheets can execute as a formula if it starts with a trigger
+// character. Cells must be neutralised with a leading single quote.
+describe('generateCSV - formula injection hardening', () => {
+  it('neutralises a value starting with =', () => {
+    const csv = generateCSV<Row>([{ name: '=1+1', code: 'x' }], cols);
+    expect(csv).toBe("Name,Code\n'=1+1,x");
+  });
+
+  it('neutralises a value starting with +', () => {
+    const csv = generateCSV<Row>([{ name: '+1+1', code: 'x' }], cols);
+    expect(csv).toBe("Name,Code\n'+1+1,x");
+  });
+
+  it('neutralises a value starting with @', () => {
+    const csv = generateCSV<Row>([{ name: '@SUM(A1)', code: 'x' }], cols);
+    expect(csv).toBe("Name,Code\n'@SUM(A1),x");
+  });
+
+  it('neutralises a value starting with a tab', () => {
+    const csv = generateCSV<Row>([{ name: '\t=1+1', code: 'x' }], cols);
+    expect(csv).toBe("Name,Code\n'\t=1+1,x");
+  });
+
+  it('neutralises a value starting with a carriage return', () => {
+    const csv = generateCSV<Row>([{ name: '\r=1+1', code: 'x' }], cols);
+    expect(csv).toBe("Name,Code\n'\r=1+1,x");
+  });
+
+  it('does NOT alter a legitimate negative number', () => {
+    const csv = generateCSV<Row>([{ name: '-5', code: '-12.5' }], cols);
+    expect(csv).toBe('Name,Code\n-5,-12.5');
+  });
+
+  it('neutralises a leading - that is not a valid negative number', () => {
+    const csv = generateCSV<Row>([{ name: '-=1+1', code: '-cmd' }], cols);
+    expect(csv).toBe("Name,Code\n'-=1+1,'-cmd");
+  });
+
+  it('still applies RFC-4180 quoting after neutralising a formula prefix', () => {
+    const csv = generateCSV<Row>([{ name: '=A1,B1', code: 'x' }], cols);
+    expect(csv).toBe('Name,Code\n"\'=A1,B1",x');
+  });
+
+  it('leaves a plain value unchanged', () => {
+    const csv = generateCSV<Row>([{ name: 'Acme', code: '1' }], cols);
+    expect(csv).toBe('Name,Code\nAcme,1');
+  });
+
+  it('emits headers unchanged and only neutralises data cells', () => {
+    const csv = generateCSV<Row>([{ name: '=1+1', code: '1' }], cols);
+    const [headerLine] = csv.split('\n');
+    expect(headerLine).toBe('Name,Code');
+  });
+});
