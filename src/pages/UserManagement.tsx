@@ -28,7 +28,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Filter, X, Building2
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -716,7 +716,11 @@ const UserManagement: React.FC = () => {
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
-                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleStatusFilter(s)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${s === "true" ? "Active" : "Inactive"} filter`}
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -724,7 +728,11 @@ const UserManagement: React.FC = () => {
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
                     Show Deleted
-                    <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={handleShowDeletedToggle}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label="Remove Show Deleted filter"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -738,16 +746,20 @@ const UserManagement: React.FC = () => {
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
             {!error && users.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Users}
-                title="No users yet"
-                description={searchTerm ? `No users matching "${searchTerm}"` : "Get started by creating your first user."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/users/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add User
-                  </Button>
-                ) : undefined}
+                emptyTitle="No users yet"
+                emptyDescription="Get started by creating your first user."
+                addAction={
+                  <Can permission="user.create">
+                    <Button size="sm" onClick={() => navigate('/users/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add User
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <>
