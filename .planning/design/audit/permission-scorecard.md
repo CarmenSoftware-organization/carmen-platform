@@ -437,3 +437,46 @@ full `SuperAdminManagement` page rendered instead for a non-super-admin); the tw
 stayed green (already asserting the allowed state, so an always-allowing bypass doesn't disturb
 them). Restored the original condition; `git diff --stat` on `PrivateRoute.tsx` showed no
 changes; suite green again (3/3). See task-7-report.md for the raw command output.
+
+### TenantMigrationManagement (`src/pages/TenantMigrationManagement.tsx` / `src/pages/TenantMigrationManagement.test.tsx`)
+
+Added by the final-review fix round — this page was omitted from the original task sweep despite
+being the single most destructive page in the app (it deploys/applies schema migrations directly
+to tenant databases). Pre-existing test coverage (`disables all action buttons for a
+non-super-admin`) already proved the UI-layer gate; this round adds the handler-level
+defence-in-depth guard plus its own discriminating tests.
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| Per-row "Apply" (opens confirm dialog → `tenantMigrationService.deployStream`) | UI: `disabled={!!disabledReason}` at `:376` where `disabledReason = !isSuperAdmin ? '...' : null` (`:95`); **handler-level: `if (!isSuperAdmin) return;`** added to `applyOne` this round (`:156`) | — (`isSuperAdmin`, not a permission string) | route (platform) | **Yes — discriminating, both layers** (see Finding) | **Fixed this round.** The disabled button already blocked a normal click (not a live hole — proven by the pre-existing "disables all action buttons" test), but `applyOne` itself had no guard, unlike `BroadcastCompose.handleSend`'s `if (!canSend) return;` funnel. Added the guard, and — because `applyOne`'s `useCallback` deps were `[checkOne]` (no `isSuperAdmin`) — also added `isSuperAdmin` to the dependency array; without that, the guard would have closed over a stale `isSuperAdmin` value captured at first render and could wrongly allow a deploy after a mid-session permission revocation. New discriminating pair proves the *handler's own* check, not just the disabled attribute: opens the confirm dialog while `isSuperAdmin: true` (a reachable state — the dialog's own Confirm button is never itself gated), then flips `isSuperAdmin` to `false` and forces a re-render before clicking Confirm, modelling a permission revoked mid-session between opening the dialog and confirming it. |
+| Header "Deploy all" (opens confirm dialog → `tenantMigrationService.deployAllStream`) | UI: `disabled={!!disabledReason}` at `:418`; **handler-level: `if (!isSuperAdmin) return;`** added to `deployAll` this round (`:194`) | — (`isSuperAdmin`) | route (platform) | **Yes — discriminating, both layers** | **Fixed this round**, same pattern and same stale-closure fix (`deployAll`'s deps were `[]`, now `[isSuperAdmin]`) as the row above. |
+| Per-row "Check" / header "Check all" (`tenantMigrationService.getStatus` — read-only, no mutation) | UI: `disabled={!!disabledReason}` only | — | — | N/A — not a mutation; left ungated at the handler level intentionally (nothing to protect) | None |
+| `Ctrl/Cmd+S` global shortcut | N/A — page wires `useGlobalShortcuts({ onSearch })` only, no `onSave` | — | — | **N/A — no `onSave` wired, no shortcut-driven mutation path exists** | None |
+| Row-selection / bulk actions | **Does not exist on this page** — no `enableRowSelection`, no checkbox column (verified by grep) | — | — | N/A — not a consumer | None |
+
+**Deferred question, reconciled:** the `/tenant-migrations` route itself only requires
+`cluster.read` (`App.tsx:144-149`) — someone with plain read access to clusters can *view* this
+page. The actual mutating actions require `isSuperAdmin`, enforced in-component (both the
+disabled buttons and, as of this round, the handler guards) rather than at the route. This is the
+same "route is broad, component narrows further" shape as `BroadcastCompose` (route requires no
+specific broadcast permission; the Send button and its handlers gate on `broadcast.send`) — not a
+gap, since the narrower in-component check is what actually stands between a `cluster.read`-only
+viewer and a mutating deploy.
+
+**Test file:** `src/pages/TenantMigrationManagement.test.tsx` — 4 new tests added this round
+under `handler-level super-admin guard (defence-in-depth)`: 2 for `applyOne` (negative: guard
+holds when `isSuperAdmin` is revoked after the confirm dialog opens; positive: deploy proceeds
+when `isSuperAdmin` stays true throughout) and the same pair for `deployAll`. All 7 pre-existing
+tests in the file stayed green throughout. Discrimination formally proved by temporarily removing
+both `if (!isSuperAdmin) return;` guards: both new negative tests failed (`expected "vi.fn()" to
+not be called at all, but actually been called 1 times`) while all 9 other tests (including the
+new positive controls) stayed green; guards restored, `git diff --stat` showed the intended
+2-line-per-guard change only, suite green again (11/11).
+
+### UserPlatformManagement (`src/pages/UserPlatformManagement.tsx`)
+
+Reviewed — no in-page mutation (nav-only `<Link>` at `:254` to
+`/platform/user-platform/:id`); edit route gated separately. No `useAuth`/`<Can>` import, no
+`*Service.create`/`update`/`delete` call anywhere in the file (verified by grep) — only
+`userService.getAll` and `userRoleService.list`, both reads. No test file added; there is no
+mutating control on this page to gate or discriminate.

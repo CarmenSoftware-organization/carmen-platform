@@ -188,14 +188,19 @@ describe('RoleManagement — Add Role gates (role.create)', () => {
     expect(screen.queryByRole('button', { name: /add role/i })).toBeNull();
   });
 
-  it('shows the empty-state Add Role button with role.create (discriminating control)', async () => {
+  it('shows both the header and empty-state Add Role buttons with role.create (discriminating control)', async () => {
     setupGetAll(emptyResponse);
     auth.hasPermission = (perm) => perm === 'role.create';
     renderPage();
 
     expect(await screen.findByText('No roles yet')).toBeInTheDocument();
-    // Header + empty-state both render one; both are gated on role.create.
-    expect(screen.getAllByRole('button', { name: /add role/i }).length).toBeGreaterThan(0);
+    // Exact-count discrimination (matches the ApplicationManagement pattern): with the list
+    // forced empty, BOTH the header Add Role button AND the empty-state Add Role button
+    // render when role.create is granted, so this asserts exactly 2 — proving the
+    // empty-state gate is independently satisfied, not just riding on `length > 0`, which
+    // the header button alone would already satisfy even if the empty-state gate were
+    // broken (e.g. a typo'd permission string that never matches).
+    expect(screen.getAllByRole('button', { name: /add role/i })).toHaveLength(2);
   });
 });
 

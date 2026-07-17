@@ -10,7 +10,6 @@ import type { EffectivePermissions } from '../types';
  */
 export const PERMISSIONS = {
   BROADCAST: {
-    READ: 'broadcast.read',
     SEND: 'broadcast.send',
   },
 } as const;

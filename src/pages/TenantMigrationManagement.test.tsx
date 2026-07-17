@@ -130,4 +130,92 @@ describe('TenantMigrationManagement', () => {
       expect(btn).toBeDisabled();
     }
   });
+
+  // Fix 1 (defence-in-depth): applyOne/deployAll now early-return `if (!isSuperAdmin) return;`
+  // before ever calling the service. The disabled buttons already block a normal click (see
+  // the test above), so to prove the *handler's own* guard — not just the disabled attribute
+  // — is what stops the mutating call, these tests open the ConfirmDialog while isSuperAdmin
+  // is still true (a real, reachable state), then flip isSuperAdmin to false and force a
+  // re-render *before* clicking Confirm. The ConfirmDialog's own Confirm button is never
+  // itself gated on isSuperAdmin, so this is the one path that reaches the handler without
+  // going through a disabled DOM button — modelling a permission revoked mid-session (e.g. a
+  // role change or token refresh) between opening the dialog and confirming it. This also
+  // requires applyOne/deployAll's useCallback dependency arrays to include `isSuperAdmin`
+  // (fixed alongside the guard) — otherwise the callback would close over the stale `true`
+  // from when the dialog was opened and the guard would never see the revoked state.
+  describe('handler-level super-admin guard (defence-in-depth)', () => {
+    it('applyOne does NOT call deployStream if isSuperAdmin is revoked after the confirm dialog opens', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
+      vi.mocked(tenantMigrationService.getStatus).mockResolvedValue(
+        { bu_id: 'b1', bu_code: 'BU01', up_to_date: false, has_pending: true, pending: ['m1', 'm2'], raw: '' } as never,
+      );
+      const { rerender } = renderPage();
+      await screen.findByText('BU01');
+
+      const checkButtons = screen.getAllByRole('button', { name: /^check$/i });
+      await user.click(checkButtons[0]);
+      await screen.findByText('2 behind');
+      await user.click(await screen.findByRole('button', { name: /^apply$/i }));
+      await screen.findByRole('dialog');
+
+      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: false } as never);
+      rerender(<MemoryRouter><TenantMigrationManagement /></MemoryRouter>);
+
+      await user.click(screen.getByRole('button', { name: /apply migrations/i }));
+
+      expect(tenantMigrationService.deployStream).not.toHaveBeenCalled();
+    });
+
+    it('applyOne DOES call deployStream when isSuperAdmin stays true throughout (positive control)', async () => {
+      const user = userEvent.setup();
+      vi.mocked(tenantMigrationService.getStatus).mockResolvedValue(
+        { bu_id: 'b1', bu_code: 'BU01', up_to_date: false, has_pending: true, pending: ['m1'], raw: '' } as never,
+      );
+      vi.mocked(tenantMigrationService.deployStream).mockResolvedValue(
+        { bu_id: 'b1', bu_code: 'BU01', success: true, already_up_to_date: false, applied_migrations: ['m1'] } as never,
+      );
+      renderPage();
+      await screen.findByText('BU01');
+
+      await user.click(screen.getAllByRole('button', { name: /^check$/i })[0]);
+      await screen.findByText('1 behind');
+      await user.click(await screen.findByRole('button', { name: /^apply$/i }));
+      await user.click(await screen.findByRole('button', { name: /apply migrations/i }));
+
+      expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function));
+    });
+
+    it('deployAll does NOT call deployAllStream if isSuperAdmin is revoked after the confirm dialog opens', async () => {
+      const user = userEvent.setup();
+      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
+      const { rerender } = renderPage();
+      await screen.findByText('BU01');
+
+      await user.click(screen.getByRole('button', { name: /deploy all/i }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByRole('button', { name: /^deploy all$/i })).toBeInTheDocument();
+
+      vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: false } as never);
+      rerender(<MemoryRouter><TenantMigrationManagement /></MemoryRouter>);
+
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^deploy all$/i }));
+
+      expect(tenantMigrationService.deployAllStream).not.toHaveBeenCalled();
+    });
+
+    it('deployAll DOES call deployAllStream when isSuperAdmin stays true throughout (positive control)', async () => {
+      const user = userEvent.setup();
+      vi.mocked(tenantMigrationService.deployAllStream).mockResolvedValue(
+        { total: 2, succeeded: 2, failed: 0, results: [] } as never,
+      );
+      renderPage();
+      await screen.findByText('BU01');
+
+      await user.click(screen.getByRole('button', { name: /deploy all/i }));
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /^deploy all$/i }));
+
+      expect(tenantMigrationService.deployAllStream).toHaveBeenCalled();
+    });
+  });
 });

@@ -457,14 +457,18 @@ describe('NewsManagement — Add News gates (news.create)', () => {
       expect(screen.queryByRole('button', { name: /add news/i })).toBeNull();
     });
 
-    it('shows the empty-state Add News button with news.create (discriminating control)', async () => {
+    it('shows both the header and empty-state Add News buttons with news.create (discriminating control)', async () => {
       auth.hasPermission = (perm: string) => perm === 'news.create';
       renderPage();
 
       expect(await screen.findByText('No news yet')).toBeInTheDocument();
-      // Header + empty-state gate both render one Add News button; both gated on
-      // the same news.create permission.
-      expect(screen.getAllByRole('button', { name: /add news/i }).length).toBeGreaterThan(0);
+      // Exact-count discrimination (matches the ApplicationManagement pattern): with the
+      // list forced empty, BOTH the header Add News button AND the empty-state Add News
+      // button render when news.create is granted, so this asserts exactly 2 — proving the
+      // empty-state gate is independently satisfied, not just riding on `length > 0`, which
+      // the header button alone would already satisfy even if the empty-state gate were
+      // broken (e.g. a typo'd permission string that never matches).
+      expect(screen.getAllByRole('button', { name: /add news/i })).toHaveLength(2);
     });
   });
 });
