@@ -4,7 +4,9 @@
 
 **Goal:** Bring the 9 List/Management (A3) pages up to the elevated A3 contract — fixing every A3 P1 finding and the mechanical consistency P2s — anchored on one shared filter-aware empty-state component so the dominant recurring gap is fixed once, not nine times.
 
-**Architecture:** Task 1 builds a `<ListEmptyState>` component (wraps the existing `EmptyState` + the W0 `resolveListEmptyState` util) — the single fix for the "empty state ignores active filters" P1 that recurs in 7 of 9 A3 pages. Tasks 2–9 are per-page: each adopts `<ListEmptyState>` where flagged and fixes that page's remaining findings against the A3 contract in `.planning/design/system/page-patterns.md`. Pages are ordered worst-score-first. `ClusterManagement` (12/12 reference, P2-only) is intentionally **deferred** — it already meets the contract.
+**Architecture:** Task 1 builds a `<ListEmptyState>` component (wraps the existing `EmptyState` + the W0 `resolveListEmptyState` util) — the single fix for the "empty state ignores active filters" P1 that recurs across the A3 pages. Tasks 2–9 are per-page: each adopts `<ListEmptyState>` where flagged and fixes that page's remaining findings against the A3 contract in `.planning/design/system/page-patterns.md`. Pages are ordered worst-score-first.
+
+> **Correction (post-final-review):** this plan originally said the P1 recurred in "7 of 9" pages and deferred `ClusterManagement` as a 12/12 reference that "already meets the contract". **Both were wrong** — the audit missed that the reference page carried the same P1 (it gates on `searchTerm` alone despite having `activeFilterCount`). The real count was **8 of 9**, and `ClusterManagement`'s empty state was fixed in this wave; `scorecard.md` was corrected to 11/12 / 1 P1. Only its P2 polish remains deferred.
 
 **Tech Stack:** React 19 + TypeScript (Vite), Vitest (jsdom) + React Testing Library, shadcn/ui + Tailwind, TanStack Table (`DataTable`), react-router-dom. Package manager: Bun.
 
@@ -30,7 +32,7 @@ _Every task's requirements implicitly include this section (from the master desi
 
 **Deferred (documented, not silently dropped):**
 - **Systemic <44px touch targets tied to the shared `Button`/`Input` defaults** (`h-9` = 36px) — fixing the base primitive height is an app-wide design decision, out of A3 scope. Only page-authored undersized overrides (explicit `h-6`/`h-7` the page itself set, e.g. ApplicationManagement's App-ID copy button) are fixed here. Tracked for a global control-sizing pass.
-- **`ClusterManagement` (12/12)** — reference page, P2 polish only (Cmd/K hint, duplicated inline date-fmt, raw filter checkbox, unbounded fleet fetch). Deferred to a polish backlog; it already meets the contract.
+- **`ClusterManagement` P2 polish** (Cmd/K hint, duplicated inline date-fmt, raw filter checkbox, unbounded fleet fetch) — deferred to a polish backlog. ⚠️ **Corrected post-final-review:** the original "12/12 — already meets the contract" premise was an audit error; the page's filter-aware empty-state **P1 was fixed in this wave** (see the Architecture correction above). Only the P2 polish above is deferred.
 - **Shared `formatDateTime` util extraction** (the duplicated inline `fmt` helper across pages) — a worthwhile DRY cleanup but P2 and broad; tracked separately.
 - **Permanent skeleton on summary-fetch failure** — the anti-pattern (`catch { setSummary(null) }` feeding a `{loading || !summary ? <Skeleton/> ...}` gate, so a failed summary fetch renders as a forever-loading state instead of an error) was fixed only on `NewsroomSummary` (Task 8). The same pattern remains on 5 pages this wave touched: `ApplicationManagement.tsx:134`, `BusinessUnitManagement.tsx:130`, `RoleManagement.tsx:140`, `UserPlatformManagement.tsx:175`, `UserManagement.tsx:189`. Tracked as a Wave 2 item — `NewsroomSummary`'s `error` + `onRetry` prop pair is the ready-made template to replicate on these 5. Not implemented in Wave 1.
 
