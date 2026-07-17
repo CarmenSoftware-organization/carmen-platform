@@ -299,3 +299,80 @@ role.update / role.delete`, `gates Edit on role.update alone — Delete stays hi
 now-unwrapped Delete item rendered regardless of `hasPermission`'s return value. Restored the
 gate; `diff` against the pre-edit backup showed zero residual change; suite green again (8/8). See
 task-5-report.md §3 for both raw command outputs.
+
+### ApplicationManagement (`src/pages/ApplicationManagement.tsx` / `src/pages/ApplicationManagement.test.tsx`)
+
+No pre-existing test file (first coverage added this task). Wave 1 had already added a `<Can>`
+gate on the empty-state "Add Application" CTA (in addition to the 3 pre-existing gates), so this
+page shipped with 4 gates and zero tests before this task.
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| Header "Add Application" button | `<Can>` at `:388` | `application.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Empty-state "Add Application" button (Wave 1 addition) | `<Can>` at `:500` | `application.create` | platform (unscoped) | **Yes — discriminating, exact-count (2) positive control** | None |
+| Row action: Edit (opens `/applications/:id/edit`) | `<Can>` at `:358` | `application.update` | platform (unscoped) | **Yes — discriminating** | None |
+| Row action: Delete (opens confirm dialog → `applicationService.delete`) | `<Can>` at `:364` | `application.delete` | platform (unscoped) | **Yes — discriminating** | None |
+| App ID column "copy" icon button (`navigator.clipboard.writeText`) | Ungated | — | — | N/A — not a mutation; never calls `applicationService`, writes nothing to the backend | None |
+| Header "Export" button | Client-side CSV of already-fetched, already-permitted data; no write | — | — | N/A, not a mutation (matches prior pages' precedent) | None |
+| Name column link (row → `/applications/:id/edit`) | Ungated `<Link>`; route itself requires `application.update` (`App.tsx:111-118`) and `ApplicationEdit.tsx` gates its own save action | — | — | N/A — same accepted pattern as ClusterManagement's/RoleManagement's Name-column link | None |
+| Status/Device filter Sheet, search | Read-only query refinement over data already permitted by the route (`application.read`) | — | — | N/A, not a mutation | None |
+| `Ctrl/Cmd+S` global shortcut | N/A — page wires `useGlobalShortcuts({ onSearch })` only (`:89-91`), no `onSave` | — | — | **N/A — no `onSave` wired, no shortcut-driven mutation path exists** | None |
+| Row-selection / bulk actions | **Does not exist on this page** — no `enableRowSelection`, no checkbox column, no bulk action bar (verified by grep: `selectionResetKey`/`clearSelection`/`enableRowSelection`/`bulk` all absent from the file) | — | — | N/A — not a consumer | None |
+
+**Audit result: no ungated mutation found.** All 4 `<Can>` gates (3 distinct permission strings —
+`application.create`, `application.update`, `application.delete`, the first gating two separate
+DOM locations: header + empty-state) trace to real permission checks present in
+`DEV_MOCK_EFFECTIVE_PERMISSIONS.platform` (`utils/permissions.ts:48`) and are mirrored by the
+route-level `PrivateRoute` guards (`application.read` for the list, `application.create` for
+`/applications/new`, `application.update` for `/applications/:id/edit` — `App.tsx:96-118`); every
+mutating path (row Edit, row Delete, both Add Application entry points) was already reachable
+only through a gate before this task started. None of the four gates pass a `clusterId` prop —
+`application.*` is platform-only (never appears per-cluster in `permissions.ts`), matching the
+UserManagement/RoleManagement precedent rather than the ClusterManagement/BusinessUnitManagement
+scoped pattern, so there is no scope-drop discrimination to demonstrate here.
+
+**Selection-reset (`data-table.tsx`) regression guard: not applicable.** `ApplicationManagement`
+does not pass `selectionResetKey` to `<DataTable>`, does not set `enableRowSelection`, and has no
+bulk-action bar — confirmed by grep (no matches for `selectionResetKey`, `clearSelection`,
+`enableRowSelection`, or `bulk` in the file). It is not a consumer of the Task 1 `data-table.tsx`
+fix, so no regression test was added.
+
+**Test file:** `src/pages/ApplicationManagement.test.tsx` (new) — mutable `vi.hoisted`
+`AuthContext` mock (`hasPermission`), `<Can>` left real throughout; `applicationService` mocked
+(`getAll`, `getById`, `create`, `update`, `delete`, `getApiCatalog`); localStorage stub + Radix
+pointer-capture/`scrollIntoView` polyfills copied from `RoleManagement.test.tsx` (this page also
+reads `localStorage` directly on every render and uses a Radix `DropdownMenu` for row actions).
+`applicationService.getAll` is mocked with a `perpage`-aware implementation so the page's
+independent registry summary band (`ApplicationRegistrySummary`, which separately calls
+`getAll({ perpage: -1 })` on mount) always resolves empty. 8 tests: 4 for the row-action
+`DropdownMenu` (full-deny negative, discriminating positive with both permissions, and two
+single-permission splits proving Edit/Delete are gated independently), 4 for the two
+`application.create` Add Application locations (negative + discriminating positive per location,
+header and empty-state).
+
+**Test-quality nit fixed for this page (per Task 6 brief):** Task 2/5's empty-state positive
+control asserted `getAllByRole('button', {name:/add .../i}).length > 0` — satisfied by the header
+button alone, so it would NOT catch a typo'd/mis-scoped empty-state gate (e.g. a permission string
+of `applications.create` that never matches) that silently never rendered. This page's positive
+control instead asserts an **exact count of 2** (`toHaveLength(2)`) with the list forced empty, so
+both the header's and the empty-state's `application.create` gates must independently be satisfied
+for the test to pass.
+
+Discrimination formally proved two ways:
+
+1. **Whole-page discrimination** (a gate deleted): removed the entire
+   `<Can permission="application.update">` wrapper from around the row Edit item (leaving the
+   `DropdownMenuItem` rendering unconditionally). 2 of 8 tests failed (`hides Edit and Delete
+   without application.update / application.delete`, `gates Delete on application.delete alone —
+   Edit stays hidden`) because the now-unwrapped Edit item rendered regardless of
+   `hasPermission`'s return value. Restored the gate; `diff` against the pre-edit backup showed
+   zero residual change; suite green again (8/8).
+2. **Empty-state gate independently discriminated**: with the row-action and header gates left
+   untouched, removed only the `<Can permission="application.create">` wrapper around the
+   empty-state "Add Application" button (leaving that one `Button` rendering unconditionally). 1
+   of 8 tests failed — exactly the targeted
+   `hides the empty-state Add Application button without application.create` test (all header and
+   row-action tests stayed green, proving the failure was scoped to the empty-state gate alone,
+   not a side effect of a shared fixture). Restored the gate; `diff` showed zero residual change;
+   suite green again (8/8). See task-6-report.md §3–4 for all four raw command outputs (delete/
+   restore × row gate/empty-state gate).
