@@ -74,6 +74,9 @@ vi.mock('../../services/sqlQueryService', () => ({
 }));
 
 // CodeMirror needs layout APIs jsdom lacks; stub the editor to a textarea + Run button.
+// The Run button is rendered conditionally on `onRun` being passed at all — mirroring the
+// real SqlEditor's `{onRun && (<Button>...Run</Button>)}` (SqlEditor.tsx:208) — so a test can
+// prove the permission gate by asserting the button is entirely absent, not just non-functional.
 vi.mock('./SqlEditor', () => ({
   SqlEditor: ({
     value,
@@ -86,7 +89,9 @@ vi.mock('./SqlEditor', () => ({
   }) => (
     <div>
       <textarea aria-label="sql" value={value} onChange={(e) => onChange(e.target.value)} />
-      <button type="button" onClick={() => onRun?.(value)}>Run</button>
+      {onRun && (
+        <button type="button" onClick={() => onRun(value)}>Run</button>
+      )}
     </div>
   ),
 }));
@@ -98,19 +103,21 @@ const renderPage = () =>
     </MemoryRouter>,
   );
 
+// Open the BU switcher palette and connect to a BU by its display name. Module-scoped (not
+// inside a single describe block) so both the general behavior suite below and the
+// sql_workbench.manage gate suite can share it.
+const connectBu = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  await user.click(await screen.findByLabelText('Switch business unit'));
+  await user.click(await screen.findByText(name));
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubGlobal('localStorage', makeLocalStorage()); // fresh "recent BUs" store per test
+  hasPermission.mockReturnValue(true);
+});
+
 describe('SqlWorkbench', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.stubGlobal('localStorage', makeLocalStorage()); // fresh "recent BUs" store per test
-    hasPermission.mockReturnValue(true);
-  });
-
-  // Open the BU switcher palette and connect to a BU by its display name.
-  const connectBu = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
-    await user.click(await screen.findByLabelText('Switch business unit'));
-    await user.click(await screen.findByText(name));
-  };
-
   it('shows the BU-gated empty state before a BU is chosen', async () => {
     renderPage();
     expect(await screen.findByText(/select a business unit to begin/i)).toBeInTheDocument();
@@ -313,5 +320,83 @@ describe('SqlWorkbench', () => {
         expect.objectContaining({ type: 'view', schema: 'public', name: 'v_test' }),
       ),
     );
+  });
+});
+
+// SECURITY. This page executes arbitrary SQL (incl. DDL/DML) against tenant databases. All
+// three mutating surfaces — Run, Save, Drop — share one permission string,
+// `sql_workbench.manage`; the route itself only requires `sql_workbench.read`
+// (App.tsx:312-316), so a read-only user CAN reach this page. Each gate below is proven with a
+// negative (control absent + backing service never called) paired with a discriminating
+// positive control, per the audit harness (see ClusterEdit.test.tsx / UserManagement.test.tsx).
+describe('SqlWorkbench — sql_workbench.manage gates (Run / Save / Drop)', () => {
+  it('hides Run and blocks execution without sql_workbench.manage', async () => {
+    hasPermission.mockImplementation((k: string) => k !== 'sql_workbench.manage');
+    const user = userEvent.setup();
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await screen.findByLabelText('sql');
+    expect(screen.queryByRole('button', { name: 'Run' })).not.toBeInTheDocument();
+    expect(sqlQueryService.executeSql).not.toHaveBeenCalled();
+  });
+
+  it('shows Run and executes SQL with sql_workbench.manage (discriminating control)', async () => {
+    hasPermission.mockReturnValue(true);
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.executeSql).mockResolvedValue({
+      columns: [], rows: [], rowCount: 0, durationMs: 1,
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.type(await screen.findByLabelText('sql'), 'SELECT 1');
+    await user.click(screen.getByRole('button', { name: 'Run' }));
+    await waitFor(() =>
+      expect(sqlQueryService.executeSql).toHaveBeenCalledWith('T02', 'SELECT 1'),
+    );
+  });
+
+  it('hides Save without sql_workbench.manage', async () => {
+    hasPermission.mockImplementation((k: string) => k !== 'sql_workbench.manage');
+    renderPage();
+    await screen.findByText(/select a business unit to begin/i);
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Save with sql_workbench.manage (discriminating control)', async () => {
+    hasPermission.mockReturnValue(true);
+    renderPage();
+    await screen.findByText(/select a business unit to begin/i);
+    expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+  });
+
+  it('hides Drop without sql_workbench.manage', async () => {
+    hasPermission.mockImplementation((k: string) => k !== 'sql_workbench.manage');
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.getDefinition).mockResolvedValue({
+      type: 'view', schema: 'public', name: 'v_test', definition: 'SELECT 1',
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.click(await screen.findByText('v_test'));
+    await screen.findByText(/editing:/i);
+    expect(screen.queryByRole('button', { name: /drop/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Drop and completes the drop flow with sql_workbench.manage (discriminating control)', async () => {
+    hasPermission.mockReturnValue(true);
+    const user = userEvent.setup();
+    vi.mocked(sqlQueryService.getDefinition).mockResolvedValue({
+      type: 'view', schema: 'public', name: 'v_test', definition: 'SELECT 1',
+    });
+    vi.mocked(sqlQueryService.dropObject).mockResolvedValue({
+      dropped: true, type: 'view', schema: 'public', name: 'v_test',
+    });
+    renderPage();
+    await connectBu(user, 'Test Hotel');
+    await user.click(await screen.findByText('v_test'));
+    await user.click(await screen.findByRole('button', { name: /drop/i }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /^drop$/i }));
+    await waitFor(() => expect(sqlQueryService.dropObject).toHaveBeenCalled());
   });
 });

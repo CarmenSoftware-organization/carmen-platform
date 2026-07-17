@@ -6,7 +6,7 @@ import { buHueColor, buInitials } from '../../utils/buHue';
 interface ConnectionBarProps {
   /** The currently connected BU, or null when none is selected yet. */
   bu: BusinessUnit | null;
-  /** True when the user holds `sql_workbench.manage` (can Save/Drop) — the write signal. */
+  /** True when the user holds `sql_workbench.manage` (can Run/Save/Drop) — the write signal. */
   canWrite: boolean;
   /** Open the BU switcher. */
   onSwitch: () => void;

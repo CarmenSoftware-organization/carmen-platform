@@ -473,6 +473,66 @@ not be called at all, but actually been called 1 times`) while all 9 other tests
 new positive controls) stayed green; guards restored, `git diff --stat` showed the intended
 2-line-per-guard change only, suite green again (11/11).
 
+### SqlWorkbench (`src/pages/sqlWorkbench/SqlWorkbench.tsx` / `src/pages/sqlWorkbench/SqlWorkbench.test.tsx`)
+
+This is UX Unification Wave 4's Task 1, not a continuation of the original permission-gating
+plan above, but uses the same harness and is logged in the same ledger since it closes a
+security finding of the identical shape. **This page executes arbitrary SQL (incl. DDL/DML)
+against live tenant databases** — the most destructive class of surface in this codebase,
+alongside `TenantMigrationManagement`. A pre-existing test file (`SqlWorkbench.test.tsx`, 12
+tests) already existed before this task — the brief's claim of "no test file exists" was stale.
+
+**Route:** `/sql-workbench` requires only `sql_workbench.read` (`App.tsx:312-316`; nav item
+`Layout.tsx:67` gates on the same string) — **a read-only user CAN reach this page.** This is the
+load-bearing fact that makes the finding real: the page is not protected end-to-end by the route
+alone, unlike e.g. `SuperAdminManagement`'s `requireSuperAdmin` route gate.
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| "Run" (`SqlEditor` toolbar button + Ctrl/⌘+Enter shortcut) → `sqlQueryService.executeSql` (any SQL, incl. destructive DDL/DML) | **Was ungated** — now `onRun={canManage ? handleRun : undefined}` at `SqlWorkbench.tsx:471` (this task's fix); `SqlEditor` itself already conditionally rendered the button via `{onRun && (<Button>...Run</Button>)}` (`SqlEditor.tsx:208`), so omitting the prop hides the button entirely and makes the Ctrl/⌘+Enter path a no-op (`runFromEditor` returns `false` when its `onRun` ref is `undefined`) | `sql_workbench.manage` | platform (unscoped) | **Yes — discriminating (fixed this task)** | **SECURITY FINDING — fixed.** Run had zero UI-permission gating; only the backend's own rejection stood between a `sql_workbench.read`-only user and executing arbitrary SQL (incl. `DROP`/`DELETE`/`UPDATE`/`ALTER`) against a tenant DB, while `ConnectionBar` simultaneously displayed a "read-only" badge next to the connected BU (`ConnectionBar.tsx` — badge text driven by the same `canManage` boolean) — i.e. the UI actively told the user they were read-only while Run remained fully live. Save/Drop (below) were already correctly gated on the same string; Run was the one surface missed. |
+| Header "Save" button → `sqlQueryService.saveDdl` (persists a view/procedure/function) | Pre-existing JS conditional `canManage && (...)` at `SqlWorkbench.tsx:309` | `sql_workbench.manage` | platform (unscoped) | **Yes — discriminating** (pre-existing negative test; positive control added this task) | None — was already correctly gated |
+| Header "Drop" button (loaded object only) → confirm dialog → `sqlQueryService.dropObject` | Pre-existing JS conditional `canManage && loadedObject && (...)` at `SqlWorkbench.tsx:293` | `sql_workbench.manage` | platform (unscoped) | **Yes — discriminating** (both negative and positive control added this task — page had zero Drop-gate tests before) | None — was already correctly gated |
+| DB object tree click → `sqlQueryService.getDefinition` (loads a view/procedure/function definition into the editor, read-only) | Ungated | — | — | N/A — not a mutation; loads text into local state only | None |
+| Table click → auto-fills `SELECT * FROM t LIMIT 100;` into the editor | Ungated | — | — | N/A — not a mutation, no `sqlQueryService` call at all until Run | None |
+| BU switcher (`⌘B`/click) | Ungated | — | — | N/A — not a mutation; selects which tenant DB subsequent reads/writes target, itself gated on the route-level `sql_workbench.read` | None |
+
+**SELECT-vs-DML decision, made honestly.** `src/utils/sqlValidator.ts`'s own top-of-file comment
+states its `classifyStatements`/`validateSqlSafety` functions are "UI feedback only… nothing here
+is a security gate and it is intentionally bypassable" — used solely to drive the pre-existing
+"confirm before running a destructive statement" dialog (any user, regardless of permission,
+still gets that confirm). Reusing that same classifier to let `sql_workbench.read` users run
+SELECT while blocking DML/DDL would mean promoting a self-documented non-security parser into a
+permission boundary — exactly the "client-side SQL parser that lies" the brief warned against
+(it also doesn't classify `INSERT` as destructive at all, so it isn't even a complete DML
+detector). Gated conservatively instead: **the entire Run executor requires
+`sql_workbench.manage`**, matching exactly what Save/Drop already required and what the
+`ConnectionBar` "read-only" badge already promised the user. Net effect: `sql_workbench.read`
+alone now lets a user reach the page, browse the schema tree, view object definitions, and stage
+SQL text in the editor — but not execute anything, including SELECT. This is a deliberate,
+reported product trade-off, not an oversight.
+
+**Test file:** `src/pages/sqlWorkbench/SqlWorkbench.test.tsx` — pre-existing `hasPermission =
+vi.fn()` mock (not `vi.hoisted`, since this page has no `<Can>` usage at all, only a raw
+`hasPermission('sql_workbench.manage')` boolean — verified by grep across
+`src/pages/sqlWorkbench/*.tsx`), reset to `mockReturnValue(true)` in a (now module-scoped)
+`beforeEach`; real `AuthContext`/`hasPermission` function exercised throughout, never hardcoded
+to bypass. The `SqlEditor` mock (CodeMirror needs layout APIs jsdom lacks, so it's stubbed to a
+textarea + Run button) was corrected to conditionally render the Run button only when `onRun` is
+passed — mirroring the real component's `{onRun && (...)}` — so the test can assert the button's
+**absence**, not just non-functionality. 6 new tests added under a `SqlWorkbench —
+sql_workbench.manage gates (Run / Save / Drop)` describe block: negative + discriminating
+positive for each of Run, Save, Drop (Save's negative already existed; its positive control and
+both Drop tests were net-new). All 11 pre-existing tests stayed green throughout (17/17 total).
+
+Discrimination formally proved by deleting the Run gate: changed
+`onRun={canManage ? handleRun : undefined}` back to `onRun={handleRun}`. Exactly 1 of 17 tests
+failed — `hides Run and blocks execution without sql_workbench.manage` (`expected document not to
+contain element, found <button type="button">Run</button>`) — while the other 16, including the
+new Run positive control and the pre-existing Run-behavior tests (destructive confirm,
+multi-statement run, etc., which all run with `hasPermission` defaulted to `true`), stayed green.
+Restored the gate; `diff` against the pre-edit backup showed zero residual change; suite green
+again (17/17). See task-1-report.md §3 for both raw command outputs.
+
 ### UserPlatformManagement (`src/pages/UserPlatformManagement.tsx`)
 
 Reviewed — no in-page mutation (nav-only `<Link>` at `:254` to

@@ -459,7 +459,16 @@ export default function SqlWorkbench() {
                 <SqlEditor
                   value={formSqlText}
                   onChange={setFormSqlText}
-                  onRun={handleRun}
+                  // Run executes arbitrary SQL (incl. DDL/DML) against the tenant DB, same as
+                  // Save/Drop below — gate it on the same sql_workbench.manage permission rather
+                  // than relying on the backend to reject it. The client cannot reliably tell
+                  // SELECT apart from DML/DDL (sqlValidator.ts is explicitly UI-feedback-only,
+                  // not a security boundary), so this gates the whole executor rather than
+                  // pretending to allow read-only SELECT through a client-side parser. Omitting
+                  // onRun makes SqlEditor hide the Run button entirely (mirrors Save/Drop below)
+                  // and also disables the Ctrl/⌘+Enter shortcut, since runFromEditor no-ops when
+                  // the callback ref is undefined.
+                  onRun={canManage ? handleRun : undefined}
                   isRunning={isRunning}
                   schema={dbObjects ?? undefined}
                 />
