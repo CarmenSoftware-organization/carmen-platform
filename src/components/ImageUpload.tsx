@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
@@ -7,17 +7,21 @@ import { Button } from './ui/button';
 const DEFAULT_ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
 interface ImageUploadProps {
+  id?: string; // forwarded to the file input so a <Label htmlFor> can bind to it
   value: string; // saved image URL (presigned) shown as preview
   onFileSelect: (file: File | null) => void;
   disabled?: boolean;
+  uploading?: boolean; // true while a selected file is part of an in-flight save
   maxSizeMB?: number;
   accept?: string[];
 }
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({
+  id,
   value,
   onFileSelect,
   disabled = false,
+  uploading = false,
   maxSizeMB = 5,
   accept = DEFAULT_ACCEPT,
 }) => {
@@ -63,7 +67,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragActive(false);
-    if (disabled) return;
+    if (disabled || uploading) return;
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
   };
@@ -90,16 +94,18 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       <div
         data-testid="image-drop-zone"
         role="button"
-        tabIndex={0}
+        tabIndex={uploading ? -1 : 0}
         aria-label="Upload image"
-        onClick={() => inputRef.current?.click()}
+        aria-disabled={uploading}
+        onClick={() => { if (!uploading) inputRef.current?.click(); }}
         onKeyDown={(e) => {
+          if (uploading) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             inputRef.current?.click();
           }
         }}
-        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        onDragOver={(e) => { e.preventDefault(); if (!uploading) setDragActive(true); }}
         onDragLeave={(e) => {
           e.preventDefault();
           if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragActive(false);
@@ -108,6 +114,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         className={cn(
           'flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-input bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground transition-colors cursor-pointer hover:bg-muted/50',
           dragActive && 'border-primary bg-primary/5',
+          uploading && 'cursor-not-allowed opacity-60 hover:bg-muted/30',
         )}
       >
         <Upload className="h-5 w-5" />
@@ -119,13 +126,22 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         </span>
         <input
           ref={inputRef}
+          id={id}
           type="file"
           data-testid="image-upload-input"
           accept={accept.join(',')}
           className="hidden"
+          disabled={uploading}
           onChange={onInputChange}
         />
       </div>
+
+      {uploading && (
+        <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Uploading image…
+        </div>
+      )}
 
       {previewSrc && (
         <div className="flex items-center gap-3">
@@ -136,7 +152,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
             className="h-16 w-auto rounded object-contain border"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
-          {localPreview && (
+          {localPreview && !uploading && (
             <Button
               type="button"
               variant="outline"

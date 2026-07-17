@@ -220,6 +220,7 @@ const NewsEdit: React.FC = () => {
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict();
+        setSelectedImageFile(null);
         await fetchNews();
       } else {
         const { message, fields } = parseApiError(err);
@@ -288,7 +289,13 @@ const NewsEdit: React.FC = () => {
             coverEditor={
               <div className="space-y-2">
                 <Label htmlFor="image">Cover image</Label>
-                <ImageUpload value={formData.image} onFileSelect={setSelectedImageFile} disabled={!editing} />
+                <ImageUpload
+                  id="image"
+                  value={formData.image}
+                  onFileSelect={setSelectedImageFile}
+                  disabled={!editing}
+                  uploading={saving && selectedImageFile !== null}
+                />
               </div>
             }
             titleEditor={

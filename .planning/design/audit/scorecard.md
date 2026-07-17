@@ -31,7 +31,6 @@
 | ApplicationEdit | A4 | 2 | 1 | 2 | 3 | 8 | 0 | 1 | 4 | W2 |
 | ReportTemplateEdit | A4 | 2 | 2 | 2 | 3 | 9 | 0 | 1 | 6 | W2 |
 | ApplicationManagement | A3 | 3 | 2 | 3 | 2 | 10 | 0 | 1 | 1 | W1 |
-| NewsEdit | A6 | 3 | 2 | 2 | 3 | 10 | 0 | 1 | 3 | W3 |
 | RoleEdit | A4 | 3 | 2 | 3 | 2 | 10 | 0 | 1 | 4 | W2 |
 | UserManagement | A3 | 3 | 2 | 2 | 3 | 10 | 0 | 1 | 2 | W1 |
 | BusinessUnitManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 2 | W1 |
@@ -40,6 +39,7 @@
 | NewsManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 2 | W1 |
 | ReportTemplateManagement | A3 | 3 | 2 | 3 | 3 | 11 | 0 | 1 | 2 | W1 |
 | ClusterEdit | A4 | 1 | 2 | 2 | 3 | 8 | 0 | 0 | 2 | W2 |
+| NewsEdit | A6 | 3 | 2 | 2 | 3 | 10 | 0 | 0 | 1 | W3 |
 | UserEdit | A4 | 3 | 3 | 3 | 1 | 10 | 0 | 0 | 0 | W2 |
 | BusinessUnitEdit | A4 | 3 | 2 | 3 | 3 | 11 | 0 | 0 | 0 | W2 |
 
@@ -192,11 +192,11 @@ D2 (state completeness) is left at 2/3, unchanged and uncredited by any finding 
 - [P1][S] Empty state ignores active filters — only `searchTerm` gates the messaging/CTA, so filtering to zero rows by Status or Device (with no search text) still shows "No applications yet / Get started by creating your first application" with an Add-Application action, even though applications exist outside the filter. Contract requires the no-match branch to consider search AND active filters. (src/pages/ApplicationManagement.tsx:489-500, condition uses `searchTerm ? ... : ...` with no reference to `activeFilterCount`/`statusFilter`/`deviceFilter`)
 - [P2][S] App-ID copy icon-button's tappable hit area is 24×24px (`h-6 w-6`), under the 44px minimum for touch targets, inside a dense table cell. (src/pages/ApplicationManagement.tsx:266-274)
 
-### NewsEdit (A6, 10/12)
-- [P1][S] "Cover image" label is orphaned — `ImageUpload` never accepts or forwards an `id`, so `<Label htmlFor="image">` (NewsEdit.tsx:290) binds to nothing even while editing, unlike the Body/Source URL/Tags fields which do bind correctly (ImageUpload.tsx:9-23; NewsEdit.tsx:288-293)
-- [P2][S] No distinct upload-in-progress state for the cover image — the file is only sent inside the whole-form multipart submit, so a slow image upload shows nothing beyond the generic "Saving..." button spinner, short of the A6 contract's separate upload-progress requirement (src/components/ImageUpload.tsx; src/pages/NewsEdit.tsx:494-497)
-- [P2][S] A saved cover image can only be replaced, never removed — the "Remove" button in `ImageUpload` only renders when `localPreview` (a newly picked file) is set, not for an existing saved `value` (src/components/ImageUpload.tsx:130-151)
-- [P2][S] `selectedImageFile` is not cleared when a `doc_version` conflict triggers `fetchNews()`, leaving a stale locally-picked file selected against the freshly reloaded server state (src/pages/NewsEdit.tsx:220-224)
+### NewsEdit (A6, 10/12 — re-audited in Wave 3 Task 4; no additional gaps found beyond the four below)
+- [P1][S] "Cover image" label is orphaned — `ImageUpload` never accepts or forwards an `id`, so `<Label htmlFor="image">` (NewsEdit.tsx:290) binds to nothing even while editing, unlike the Body/Source URL/Tags fields which do bind correctly (ImageUpload.tsx:9-23; NewsEdit.tsx:288-293) **FIXED in Wave 3 Task 4** — `ImageUpload` now accepts an optional `id` prop forwarded to its file input; `NewsEdit` passes `id="image"`, so `<Label htmlFor="image">` resolves to the input (verified via `getByLabelText` in the new `ImageUpload.test.tsx`). (src/components/ImageUpload.tsx:10,20,129; src/pages/NewsEdit.tsx:292-298)
+- [P2][S] No distinct upload-in-progress state for the cover image — the file is only sent inside the whole-form multipart submit, so a slow image upload shows nothing beyond the generic "Saving..." button spinner, short of the A6 contract's separate upload-progress requirement (src/components/ImageUpload.tsx; src/pages/NewsEdit.tsx:494-497) **FIXED in Wave 3 Task 4** — `ImageUpload` gained an `uploading` prop; `NewsEdit` sets it to `saving && selectedImageFile !== null`, which renders a `role="status"` "Uploading image…" region and locks the drop zone/input (tabIndex, aria-disabled, `disabled` on the file input) for the duration of the save request. (src/components/ImageUpload.tsx:97-144; src/pages/NewsEdit.tsx:297)
+- [P2][S] A saved cover image can only be replaced, never removed — the "Remove" button in `ImageUpload` only renders when `localPreview` (a newly picked file) is set, not for an existing saved `value` (src/components/ImageUpload.tsx:130-151) **INVESTIGATED, NOT FIXED — genuine backend contract gap, stays OPEN.** Traced the full write path in the sibling `carmen-turborepo-backend-v2` repo: the gateway's update handler only ever *replaces* the stored image token when a new file is uploaded (`news.service.ts` `update()`: `if (newToken) data.image_file_token = newToken;` — no branch ever sets it to null) and otherwise falls back to the old token (`effectiveToken = newToken ?? oldToken`); `NewsUpdateRequestDto` (`swagger/request.ts`) exposes no field to request removal, and it is not part of the documented multipart contract. There is currently no supported way for the frontend to clear a saved image without uploading a replacement — shipping a Remove control for the saved case would silently no-op, so it was not built. See Scope & Deferrals in `docs/superpowers/plans/2026-07-17-ux-unification-wave3-variants.md` for the recommended backend follow-up.
+- [P2][S] `selectedImageFile` is not cleared when a `doc_version` conflict triggers `fetchNews()`, leaving a stale locally-picked file selected against the freshly reloaded server state (src/pages/NewsEdit.tsx:220-224) **FIXED in Wave 3 Task 4** — the conflict branch now calls `setSelectedImageFile(null)` before refetching. (src/pages/NewsEdit.tsx:221-224)
 
 ### ReportTemplateEdit (A4, 9/12)
 - [P1][S] Icon-only "remove source param" button has no `aria-label` — screen-reader users get an unlabeled button (src/pages/ReportTemplateEdit.tsx:754-767).
