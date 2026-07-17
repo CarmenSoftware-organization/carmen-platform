@@ -1,6 +1,21 @@
 import type { EffectivePermissions } from '../types';
 
 /**
+ * Permission-string constants, grouped by resource. A permission key (e.g. `broadcast.send`)
+ * is otherwise a bare string literal that can drift silently when it's duplicated across
+ * multiple call sites in the same file (`hasPermission('broadcast.send')` vs
+ * `<Can permission="broadcast.send">`). Reference the constant instead of retyping the
+ * literal wherever a duplicate exists. Values MUST stay byte-identical to the backend's
+ * permission keys (see `DEV_MOCK_EFFECTIVE_PERMISSIONS` below for the full known set).
+ */
+export const PERMISSIONS = {
+  BROADCAST: {
+    READ: 'broadcast.read',
+    SEND: 'broadcast.send',
+  },
+} as const;
+
+/**
  * Sentinel `clusterId` for a scoped write whose target record has no resolvable cluster
  * (e.g. a BusinessUnit row with `cluster_id` missing/undefined). Pass this instead of
  * `undefined` to keep the check on checkPermission's *scoped* branch — platform-level grant
