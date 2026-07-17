@@ -191,3 +191,52 @@ clusterId"):
    residual change; suite green again (8/8).
 
 See task-3-report.md §3 for both raw command outputs.
+
+### ReportTemplateManagement (`src/pages/ReportTemplateManagement.tsx` / `src/pages/ReportTemplateManagement.test.tsx`)
+
+No pre-existing test file (first coverage added this task).
+
+| Mutating control | Gate | Permission string | Scope | Gate-covered? | Finding |
+|---|---|---|---|---|---|
+| Row action: Edit (opens `/report-templates/:id/edit`) | `<Can>` at `:306` | `report_template.update` | platform (unscoped) | **Yes — discriminating** | None |
+| Row action: Delete (opens confirm dialog → `reportTemplateService.delete`) | `<Can>` at `:312` | `report_template.delete` | platform (unscoped) | **Yes — discriminating** | None |
+| Header "Add Template" button | `<Can>` at `:336` | `report_template.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Empty-state "Add Template" button | `<Can>` at `:471` | `report_template.create` | platform (unscoped) | **Yes — discriminating** | None |
+| Header "Export" button | Client-side CSV of already-fetched, already-permitted data; no write | — | — | N/A, not a mutation (matches NewsManagement/UserManagement/BusinessUnitManagement precedent) | None |
+| Name column link (row → `/report-templates/:id/edit`) | Ungated `<Link>`; route itself requires `report_template.update` (`App.tsx:194`) and `ReportTemplateEdit.tsx` has its own `<Can permission="report_template.update">` gate (`:390`) on the actual mutating controls | — | — | N/A — same accepted pattern as ClusterManagement's/BusinessUnitManagement's Name-column link | None |
+| `Ctrl/Cmd+S` global shortcut | N/A — page wires `useGlobalShortcuts({ onSearch })` only (`:81-83`), no `onSave` | — | — | **N/A — no `onSave` wired, no shortcut-driven mutation path exists** | None |
+| Row-selection / bulk actions | **Does not exist on this page** — no `enableRowSelection`, no checkbox column, no bulk action bar (verified by grep: `selectionResetKey`/`clearSelection`/`enableRowSelection` all absent from the file) | — | — | N/A — not a consumer | None |
+
+**Audit result: no ungated mutation found.** All 4 `<Can>` gates (3 distinct permission strings —
+`report_template.update`, `report_template.delete`, `report_template.create`, the latter gating
+two separate DOM locations: header + empty-state) trace to real permission checks present in
+`DEV_MOCK_EFFECTIVE_PERMISSIONS.platform` (`utils/permissions.ts:46`); every mutating path (row
+Edit, row Delete, both Add Template entry points) was already reachable only through a gate
+before this task started. None of the four gates pass a `clusterId` prop — `report_template.*`
+is platform-only (never appears per-cluster), matching the UserManagement precedent rather than
+the ClusterManagement/BusinessUnitManagement scoped pattern, so there is no scope-drop
+discrimination to demonstrate here.
+
+**Selection-reset (`data-table.tsx`) regression guard: not applicable.** `ReportTemplateManagement`
+does not pass `selectionResetKey` to `<DataTable>`, does not set `enableRowSelection`, and has no
+bulk-action bar — confirmed by grep (no matches for `selectionResetKey`, `clearSelection`, or
+`enableRowSelection` in the file). It is not a consumer of the Task 1 `data-table.tsx` fix, so no
+regression test was added.
+
+**Test file:** `src/pages/ReportTemplateManagement.test.tsx` (new) — mutable `vi.hoisted`
+`AuthContext` mock (`hasPermission`), `<Can>` left real throughout; `reportTemplateService` mocked
+(`getAll`, `getById`, `create`, `update`, `delete`, `listDbObjects`); localStorage stub + Radix
+pointer-capture/`scrollIntoView` polyfills copied from `ClusterManagement.test.tsx` (this page
+also reads `localStorage` directly on every render and uses a Radix `DropdownMenu` for row
+actions). 8 tests: 4 for the row-action `DropdownMenu` (full-deny negative, discriminating
+positive with both permissions, and two single-permission splits proving Edit/Delete are gated
+independently), 4 for the two `report_template.create` Add Template locations (negative +
+discriminating positive per location, header and empty-state).
+
+Discrimination formally proved by deleting a gate: removed the entire
+`<Can permission="report_template.delete">` wrapper from around the row Delete item (leaving the
+`DropdownMenuItem` rendering unconditionally). 2 of 8 tests failed (`hides Edit and Delete
+without report_template.update / report_template.delete`, `gates Edit on report_template.update
+alone — Delete stays hidden`) because the now-unwrapped Delete item rendered regardless of
+`hasPermission`'s return value. Restored the gate; `diff` against the pre-edit backup showed zero
+residual change; suite green again (8/8). See task-4-report.md §3 for both raw command outputs.
