@@ -1,28 +1,29 @@
 import { Globe, Users, Building2, Send, Calendar, AlertTriangle } from 'lucide-react';
 import { Card } from '../../components/ui/card';
+import { Badge, type BadgeProps } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
 import type { BroadcastTargetMode, BroadcastTypePreset } from '../../types';
 
 export interface SeverityStyle {
   label: string;
   bar: string; // accent bar background
-  badge: string; // badge bg + text
+  variant: NonNullable<BadgeProps['variant']>; // <Badge variant=...> for the type chip
 }
 
 /** Map a broadcast type to its severity presentation. Static class strings so Tailwind keeps them. */
 export function severityStyle(preset: BroadcastTypePreset): SeverityStyle {
   switch (preset) {
     case 'WARNING':
-      return { label: 'Warning', bar: 'bg-warning', badge: 'bg-warning/10 text-warning' };
+      return { label: 'Warning', bar: 'bg-warning', variant: 'warning' };
     case 'CRITICAL':
-      return { label: 'Critical', bar: 'bg-destructive', badge: 'bg-destructive/10 text-destructive' };
+      return { label: 'Critical', bar: 'bg-destructive', variant: 'destructive' };
     case 'MAINTENANCE':
-      return { label: 'Maintenance', bar: 'bg-muted-foreground', badge: 'bg-muted text-muted-foreground' };
+      return { label: 'Maintenance', bar: 'bg-muted-foreground', variant: 'secondary' };
     case 'OTHER':
-      return { label: 'Custom', bar: 'bg-primary', badge: 'bg-primary/10 text-primary' };
+      return { label: 'Custom', bar: 'bg-primary', variant: 'default' };
     case 'INFO':
     default:
-      return { label: 'Info', bar: 'bg-info', badge: 'bg-info/10 text-info' };
+      return { label: 'Info', bar: 'bg-info', variant: 'info' };
   }
 }
 
@@ -57,7 +58,6 @@ interface BroadcastPreviewProps {
   buLabel?: string;
   sendMode: 'now' | 'schedule';
   scheduledLabel?: string; // formatted scheduled time, when valid
-  actions?: React.ReactNode;
 }
 
 /** The signature: the broadcast rendered as recipients will see it, plus who it reaches and when. */
@@ -71,7 +71,6 @@ export function BroadcastPreview({
   buLabel,
   sendMode,
   scheduledLabel,
-  actions,
 }: BroadcastPreviewProps) {
   const sev = severityStyle(typePreset);
   const typeLabel = typePreset === 'OTHER' ? (customLabel?.trim() || 'Custom') : sev.label;
@@ -86,9 +85,9 @@ export function BroadcastPreview({
       <div className="flex overflow-hidden rounded-lg border">
         <div className={cn('w-1 shrink-0', sev.bar)} aria-hidden />
         <div className="min-w-0 flex-1 space-y-1.5 p-3">
-          <span className={cn('inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide', sev.badge)}>
+          <Badge variant={sev.variant} className="text-[10px] font-bold uppercase tracking-wide">
             {typeLabel}
-          </span>
+          </Badge>
           <div className={cn('text-sm font-semibold leading-snug', !title.trim() && 'text-muted-foreground/50 font-normal italic')}>
             {title.trim() || 'Your title appears here'}
           </div>
@@ -129,8 +128,6 @@ export function BroadcastPreview({
           )}
         </div>
       </div>
-
-      {actions && <div className="mt-4 border-t pt-4">{actions}</div>}
     </Card>
   );
 }
