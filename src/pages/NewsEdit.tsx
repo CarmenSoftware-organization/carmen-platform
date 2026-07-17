@@ -82,6 +82,13 @@ const NewsEdit: React.FC = () => {
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  // Bumped whenever selectedImageFile is discarded out from under ImageUpload (Cancel,
+  // save success, or a doc_version conflict) so its internal preview can't go stale.
+  const [imageResetSignal, setImageResetSignal] = useState(0);
+  const discardSelectedImage = () => {
+    setSelectedImageFile(null);
+    setImageResetSignal((s) => s + 1);
+  };
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -92,7 +99,7 @@ const NewsEdit: React.FC = () => {
 
   const handleCancelEdit = () => {
     setFormData(savedFormData);
-    setSelectedImageFile(null);
+    discardSelectedImage();
     setEditing(false);
     setError('');
     setFieldErrors({});
@@ -203,7 +210,7 @@ const NewsEdit: React.FC = () => {
         const result = await newsService.create(payload, selectedImageFile ?? undefined);
         const created = result.data || result;
         toast.success('News created successfully');
-        setSelectedImageFile(null);
+        discardSelectedImage();
         if (created?.id) {
           setEditing(false);
           navigate(`/news/${created.id}/edit`, { replace: true });
@@ -214,13 +221,13 @@ const NewsEdit: React.FC = () => {
         await newsService.update(id!, payload, selectedImageFile ?? undefined);
         toast.success('Changes saved successfully');
         await fetchNews();
-        setSelectedImageFile(null);
+        discardSelectedImage();
         setEditing(false);
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict();
-        setSelectedImageFile(null);
+        discardSelectedImage();
         await fetchNews();
       } else {
         const { message, fields } = parseApiError(err);
@@ -295,6 +302,7 @@ const NewsEdit: React.FC = () => {
                   onFileSelect={setSelectedImageFile}
                   disabled={!editing}
                   uploading={saving && selectedImageFile !== null}
+                  resetSignal={imageResetSignal}
                 />
               </div>
             }

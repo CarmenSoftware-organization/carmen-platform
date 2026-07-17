@@ -14,6 +14,10 @@ interface ImageUploadProps {
   uploading?: boolean; // true while a selected file is part of an in-flight save
   maxSizeMB?: number;
   accept?: string[];
+  // Bump (e.g. increment a counter) to force-discard any pending local pick — even when
+  // `value` hasn't changed — such as after a doc_version conflict or a Cancel-edit that
+  // silently nulls the parent's selected-file state out from under this component.
+  resetSignal?: number;
 }
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -24,6 +28,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   uploading = false,
   maxSizeMB = 5,
   accept = DEFAULT_ACCEPT,
+  resetSignal,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -32,6 +37,21 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   useEffect(() => {
     return () => { if (localPreview) URL.revokeObjectURL(localPreview); };
   }, [localPreview]);
+
+  // The parent is the source of truth for whether a local pick is still queued (it owns
+  // the File that actually gets sent on save). When it discards that pick, this widget
+  // must drop its own preview too, or it keeps showing a file that will never be resent.
+  useEffect(() => {
+    if (resetSignal === undefined) return;
+    setLocalPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return '';
+    });
+    if (inputRef.current) inputRef.current.value = '';
+    // Only re-run when the signal itself changes — this is an explicit external
+    // discard trigger, not a response to `localPreview` or other local state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetSignal]);
 
   const validate = (file: File): string => {
     if (!accept.includes(file.type)) {

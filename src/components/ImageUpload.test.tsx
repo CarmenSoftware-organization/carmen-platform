@@ -83,6 +83,73 @@ describe('ImageUpload — upload-in-progress state', () => {
   });
 });
 
+describe('ImageUpload — external discard of a pending pick', () => {
+  it('clears the stale local preview and Remove action when the parent discards the pick without the saved value changing', async () => {
+    const onFileSelect = vi.fn();
+    const { rerender } = render(
+      <div>
+        <Label htmlFor="image">Cover image</Label>
+        <ImageUpload
+          id="image"
+          value="https://example.com/cover.png"
+          onFileSelect={onFileSelect}
+          resetSignal={0}
+        />
+      </div>,
+    );
+    const file = new File(['data'], 'photo.png', { type: 'image/png' });
+    await pickFile(screen.getByTestId('image-upload-input'), file);
+    expect(onFileSelect).toHaveBeenCalledWith(file);
+    expect(screen.getByTestId('image-remove')).toBeInTheDocument();
+
+    // Parent discards the local pick (e.g. a doc_version conflict or Cancel) — the
+    // saved `value` is unchanged, so the widget can't infer this from `value` alone.
+    rerender(
+      <div>
+        <Label htmlFor="image">Cover image</Label>
+        <ImageUpload
+          id="image"
+          value="https://example.com/cover.png"
+          onFileSelect={onFileSelect}
+          resetSignal={1}
+        />
+      </div>,
+    );
+
+    expect(screen.queryByTestId('image-remove')).not.toBeInTheDocument();
+    expect(screen.getByTestId('image-preview')).toHaveAttribute('src', 'https://example.com/cover.png');
+  });
+
+  it('clears the stale local preview when the parent replaces the saved value after discarding the pick', async () => {
+    const onFileSelect = vi.fn();
+    const { rerender } = render(
+      <div>
+        <Label htmlFor="image">Cover image</Label>
+        <ImageUpload id="image" value="" onFileSelect={onFileSelect} resetSignal={0} />
+      </div>,
+    );
+    const file = new File(['data'], 'photo.png', { type: 'image/png' });
+    await pickFile(screen.getByTestId('image-upload-input'), file);
+    expect(screen.getByTestId('image-remove')).toBeInTheDocument();
+
+    // Parent refetches after the conflict and the server's current image is now known.
+    rerender(
+      <div>
+        <Label htmlFor="image">Cover image</Label>
+        <ImageUpload
+          id="image"
+          value="https://example.com/server-cover.png"
+          onFileSelect={onFileSelect}
+          resetSignal={1}
+        />
+      </div>,
+    );
+
+    expect(screen.queryByTestId('image-remove')).not.toBeInTheDocument();
+    expect(screen.getByTestId('image-preview')).toHaveAttribute('src', 'https://example.com/server-cover.png');
+  });
+});
+
 describe('ImageUpload — fully read-only (disabled)', () => {
   it('renders only a static preview, no drop zone', () => {
     setup({ disabled: true, value: 'https://example.com/cover.png' });
