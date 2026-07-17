@@ -614,10 +614,12 @@ const UserManagement: React.FC = () => {
           subtitle="Manage users and permissions"
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
-                {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                {syncing ? 'Fetching...' : 'Fetch Keycloak'}
-              </Button>
+              <Can permission="user.create">
+                <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
+                  {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {syncing ? 'Fetching...' : 'Fetch Keycloak'}
+                </Button>
+              </Can>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
