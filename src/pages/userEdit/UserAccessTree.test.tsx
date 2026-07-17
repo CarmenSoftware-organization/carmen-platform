@@ -1,16 +1,26 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { groupAccessByCluster, UserAccessTree, type AccessCluster, type AccessBU } from './UserAccessTree';
 
-// This is a presentational-component test — permission gating itself (Fix 1) is
-// covered by the integration tests in `UserEdit.test.tsx`. Here `Can` stays the
-// REAL component (not mocked), but `useAuth` is stubbed to always grant, so the
-// existing structural/behavioral assertions below are unaffected by the
-// `<Can>` gate now wrapping the Remove-BU button.
-vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ hasPermission: () => true, isSuperAdmin: false }),
+// `Can` stays the REAL component (not mocked) — mutable, scope-aware `hasPermission`
+// mirrors the harness in ClusterEdit.test.tsx / UserEdit.test.tsx. Defaults to grant in
+// `beforeEach` so the structural/behavioral assertions below (groupAccessByCluster,
+// rendering, onDeleteBU wiring) are unaffected — they don't depend on permissions — but
+// individual tests can revoke or scope it to prove the `cluster.update` gate on the
+// Remove-BU button (see UserAccessTree.tsx's BuRow) is genuinely enforced, not masked.
+const auth = vi.hoisted(() => ({
+  isSuperAdmin: false,
+  hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
 }));
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => auth,
+}));
+
+beforeEach(() => {
+  auth.isSuperAdmin = false;
+  auth.hasPermission = () => true;
+});
 
 const cluster = (cluster_id: string, name: string, is_active = true): AccessCluster => ({
   id: `m-${cluster_id}`,
@@ -26,6 +36,20 @@ const bu = (id: string, name: string, cluster_id?: string): AccessBU => ({
   is_active: true,
   business_unit: { id: `bu-${id}`, code: name.slice(0, 2).toUpperCase(), name, is_active: true, cluster_id },
 });
+
+const renderTree = (props: Partial<React.ComponentProps<typeof UserAccessTree>> = {}) =>
+  render(
+    <MemoryRouter>
+      <UserAccessTree
+        clusters={[cluster('z', 'Zebra')]}
+        businessUnits={[bu('1', 'Front Office', 'z')]}
+        canAddBU
+        onAddBU={() => {}}
+        onDeleteBU={() => {}}
+        {...props}
+      />
+    </MemoryRouter>,
+  );
 
 describe('groupAccessByCluster', () => {
   it('nests business units under the cluster they belong to', () => {
@@ -64,20 +88,6 @@ describe('groupAccessByCluster', () => {
 });
 
 describe('UserAccessTree', () => {
-  const renderTree = (props: Partial<React.ComponentProps<typeof UserAccessTree>> = {}) =>
-    render(
-      <MemoryRouter>
-        <UserAccessTree
-          clusters={[cluster('z', 'Zebra')]}
-          businessUnits={[bu('1', 'Front Office', 'z')]}
-          canAddBU
-          onAddBU={() => {}}
-          onDeleteBU={() => {}}
-          {...props}
-        />
-      </MemoryRouter>,
-    );
-
   it('renders the cluster header and its business unit', () => {
     renderTree();
     expect(screen.getByText('Zebra')).toBeInTheDocument();
@@ -99,5 +109,36 @@ describe('UserAccessTree', () => {
   it('hides the Add BU control when the user belongs to no cluster', () => {
     renderTree({ canAddBU: false });
     expect(screen.queryByRole('button', { name: /Add BU/ })).not.toBeInTheDocument();
+  });
+});
+
+// Scope-aware discriminating pair for the `cluster.update` gate on Remove-BU (BuRow
+// inside UserAccessTree.tsx). `UserEdit.test.tsx` already covers this same gate through
+// the full page (real userService/businessUnitService mocks, real data assembly), plus
+// the UNRESOLVED_CLUSTER_ID fail-closed case for orphan BUs. Adding it here too, mounting
+// UserAccessTree directly, is deliberately minimal (just the hide/show pair, not the
+// orphan case which UserEdit.test.tsx already exercises in depth) — it isolates the
+// component's own gate from the page's data-loading machinery and gives a failure signal
+// that points straight at this component if its Can wrapper ever loses its clusterId.
+describe('UserAccessTree — Remove BU is gated on cluster.update scoped to the BU\'s own cluster', () => {
+  it('hides the Remove button without cluster.update scoped to the BU\'s own cluster', () => {
+    auth.hasPermission = (perm) => perm !== 'cluster.update';
+    renderTree();
+
+    expect(screen.getByText('Front Office')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Remove Front Office/ })).not.toBeInTheDocument();
+  });
+
+  it('shows the Remove button when cluster.update is scoped to the BU\'s own cluster (discriminating control)', () => {
+    // Scope-aware mock (mirrors ClusterEdit.test.tsx / UserEdit.test.tsx) — only grants
+    // cluster.update when the real checkPermission scoping context matches the BU's own
+    // cluster_id ('z', from `bu('1', 'Front Office', 'z')` — note this is the raw
+    // cluster_id field, distinct from the resolved cluster's `id` of 'c-z'). A wholesale
+    // `() => true` mock would pass even if `<Can>` lost its `clusterId` prop — the exact
+    // regression class this effort exists to catch.
+    auth.hasPermission = (perm, ctx) => perm === 'cluster.update' && ctx?.clusterId === 'z';
+    renderTree();
+
+    expect(screen.getByRole('button', { name: /Remove Front Office/ })).toBeInTheDocument();
   });
 });
