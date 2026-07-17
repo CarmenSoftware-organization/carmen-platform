@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Database, Loader2, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../../components/Layout';
+import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -277,55 +278,47 @@ export default function SqlWorkbench() {
 
   return (
     <Layout>
-      <div className="pb-4">
-        {/* Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Database className="size-5" />
-              <h1 className="text-lg font-semibold">SQL Workbench</h1>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Run queries · create views, stored procedures and functions in a tenant database
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {canManage && loadedObject && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-destructive"
-                onClick={() => setDropConfirm(true)}
-                disabled={isDropping}
-              >
-                {isDropping ? (
-                  <Loader2 className="mr-1 size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-1 size-4" />
-                )}
-                Drop
-              </Button>
-            )}
-            {canManage && (
-              <Button size="sm" onClick={handleSave} disabled={isSaving || !buCode}>
-                {isSaving ? (
-                  <Loader2 className="mr-1 size-4 animate-spin" />
-                ) : (
-                  <Save className="mr-1 size-4" />
-                )}
-                Save
-              </Button>
-            )}
-          </div>
-        </div>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="SQL Workbench"
+          subtitle="Run queries · create views, stored procedures and functions in a tenant database"
+          actions={
+            <>
+              {canManage && loadedObject && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => setDropConfirm(true)}
+                  disabled={isDropping}
+                >
+                  {isDropping ? (
+                    <Loader2 className="mr-1 size-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1 size-4" />
+                  )}
+                  Drop
+                </Button>
+              )}
+              {canManage && (
+                <Button size="sm" onClick={handleSave} disabled={isSaving || !buCode}>
+                  {isSaving ? (
+                    <Loader2 className="mr-1 size-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-1 size-4" />
+                  )}
+                  Save
+                </Button>
+              )}
+            </>
+          }
+        />
 
-        <div className="mt-4">
-          <ConnectionBar
-            bu={selectedBu}
-            canWrite={canManage}
-            onSwitch={() => setSwitcherOpen(true)}
-          />
-        </div>
+        <ConnectionBar
+          bu={selectedBu}
+          canWrite={canManage}
+          onSwitch={() => setSwitcherOpen(true)}
+        />
 
         <BuSwitcher
           open={switcherOpen}
@@ -387,12 +380,12 @@ export default function SqlWorkbench() {
           <button
             type="button"
             onClick={() => setSwitcherOpen(true)}
-            className="text-muted-foreground hover:border-border/80 hover:text-foreground mt-4 flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
+            className="text-muted-foreground hover:border-border/80 hover:text-foreground flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
           >
             Select a business unit to begin.
           </button>
         ) : (
-          <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="rounded-lg border lg:max-h-[calc(100vh-220px)] lg:overflow-hidden">
               <DbObjectTree
                 data={dbObjects}

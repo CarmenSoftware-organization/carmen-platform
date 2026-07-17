@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
+import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
 import type { BusinessUnit } from '../../types';
 import { buHueColor, buInitials } from '../../utils/buHue';
@@ -228,9 +229,9 @@ export function BuSwitcher({
                         </span>
                       )}
                       {isCurrent && (
-                        <span className="text-primary bg-accent shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px]">
+                        <Badge variant="success" className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono">
                           connected
-                        </span>
+                        </Badge>
                       )}
                     </button>
                   );

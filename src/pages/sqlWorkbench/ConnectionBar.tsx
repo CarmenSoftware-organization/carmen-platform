@@ -1,5 +1,6 @@
 import { ChevronsUpDown, Database } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
 import type { BusinessUnit } from '../../types';
 import { buHueColor, buInitials } from '../../utils/buHue';
 
@@ -61,11 +62,9 @@ export function ConnectionBar({ bu, canWrite, onSwitch }: ConnectionBarProps) {
                 </span>
                 <span>tenant db{bu.cluster_name ? ` · ${bu.cluster_name}` : ''}</span>
                 <span className="opacity-40">·</span>
-                {canWrite ? (
-                  <span className="text-[hsl(var(--warning))]">read / write</span>
-                ) : (
-                  <span>read-only</span>
-                )}
+                <Badge variant={canWrite ? 'warning' : 'secondary'} className="px-1.5 py-0 text-[10px] font-mono">
+                  {canWrite ? 'read / write' : 'read-only'}
+                </Badge>
               </div>
             </>
           ) : (
