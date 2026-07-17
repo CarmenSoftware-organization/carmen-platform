@@ -129,6 +129,10 @@ Information hierarchy · Interaction/flow · Responsive · A11y.**
 - **A11y:** labels bound to inputs; async buttons disabled in-flight; error region
   `role="alert"`; loading region `role="status"`; icon-only buttons carry `aria-label`;
   interactive hit area ≥44px on mobile (the tappable area governs, not the visual control).
+- **Documented deviations (`UserPlatformEdit`):** no primary form `Card` and no Edit/read
+  toggle — the entity (a user's platform role assignments) has no own editable attributes,
+  only the Roles & Scope related-data card, so there is nothing for a primary form section to
+  hold (documented deviation from A4, not a finding).
 
 ## A5 — Config (small-dimension) (reference: `PrintTemplateMappingManagement`)
 - **Anatomy:** shared `PageHeader` (title + subtitle + primary `Add`) → lighter toolbar: a
