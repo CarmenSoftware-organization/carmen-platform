@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
@@ -13,13 +13,14 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2, ArrowLeft } from 'lucide-react';
+import { Save, Pencil, Building2, Users, RefreshCw, X, UserPlus, Search, Loader2, Trash2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BrandingImageUpload } from '../components/BrandingImageUpload';
+import { EmptyState } from '../components/EmptyState';
 import Can from '../components/Can';
 import { validateField } from '../utils/validation';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import api from '../services/api';
@@ -28,6 +29,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { ClusterHero } from './clusterManagement/ClusterHero';
 import { ClusterIdentityFields, type ClusterFormData } from './clusterManagement/ClusterIdentityFields';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
+import { HIT_SLOP_44, HIT_SLOP_44_ROW } from '../lib/hitSlop';
 import type { BusinessUnit, ClusterUser } from '../types';
 
 interface AllUser {
@@ -59,6 +61,7 @@ const ClusterEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
@@ -125,9 +128,19 @@ const ClusterEdit: React.FC = () => {
   const fetchCluster = async () => {
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
+      // it so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await clusterService.getById(id!);
       setRawResponse(data);
       const cluster = data.data || data;
+      // A 200 carrying no record is a not-found too — don't fall through and
+      // render the shell over blank data.
+      if (!cluster?.id) {
+        setNotFound(true);
+        return;
+      }
       const loaded = {
         code: cluster.code || '',
         name: cluster.name || '',
@@ -147,7 +160,13 @@ const ClusterEdit: React.FC = () => {
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
     } catch (err: unknown) {
-      setError('Failed to load cluster: ' + getErrorDetail(err));
+      // A bad/deleted id gates the whole shell (see the notFound branch below);
+      // a transient failure keeps the retryable inline banner.
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError('Failed to load cluster: ' + getErrorDetail(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -397,9 +416,11 @@ const ClusterEdit: React.FC = () => {
   };
 
   if (loading) {
+    // Mirrors the loaded layout exactly — single column, hero → details → BU → users —
+    // so nothing snaps sideways when the data lands.
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading cluster">
           {/* Header skeleton */}
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
@@ -409,47 +430,97 @@ const ClusterEdit: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-            {/* Cluster Details Card */}
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-48 mt-1" />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-9 w-full" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              {/* Business Units Card */}
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-4 w-40 mt-1" />
-                </CardHeader>
-                <CardContent className="p-0">
-                  <TableSkeleton columns={4} rows={3} />
-                </CardContent>
-              </Card>
-
-              {/* Users Card */}
-              <Card>
-                <CardHeader>
-                  <Skeleton className="h-5 w-24" />
-                  <Skeleton className="h-4 w-36 mt-1" />
-                </CardHeader>
-                <CardContent className="p-0">
-                  <TableSkeleton columns={4} rows={3} />
-                </CardContent>
-              </Card>
+          {/* Hero skeleton */}
+          <Card className="overflow-hidden p-0">
+            <div className="flex flex-wrap items-start gap-4 p-5 sm:p-6">
+              <div className="flex shrink-0 gap-2.5">
+                <Skeleton className="h-11 w-16 rounded-lg" />
+                <Skeleton className="size-11 rounded-lg" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-3 w-64" />
+                <Skeleton className="h-3 w-56" />
+              </div>
             </div>
-          </div>
+            <div className="bg-muted/30 grid gap-6 border-t p-5 sm:grid-cols-2 sm:p-6">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Cluster Details Card */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48 mt-1" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Business Units Card */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-40 mt-1" />
+            </CardHeader>
+            <CardContent className="p-0">
+              {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
+                  <th>: Code, Name, Users, Status, and a trailing blank actions column. */}
+              <TableSkeleton columns={5} rows={3} />
+            </CardContent>
+          </Card>
+
+          {/* Users Card */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-36 mt-1" />
+            </CardHeader>
+            <CardContent className="p-0">
+              {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
+                  <th>: Name, Email, Parent Business Unit, Status, and a trailing blank actions column. */}
+              <TableSkeleton columns={5} rows={3} />
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Not-found gate: a bad/deleted id must never render the edit shell (hero, form,
+  // BU/Users tables, Add User) over blank data with just a banner on top.
+  if (notFound) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo="/clusters" title="Cluster" />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="Cluster not found"
+                description="This cluster doesn't exist, or it may have been deleted. Check the link, or pick one from the cluster list."
+                action={
+                  <Button size="sm" onClick={() => navigate('/clusters')}>
+                    Back to clusters
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
         </div>
       </Layout>
     );
@@ -482,6 +553,7 @@ const ClusterEdit: React.FC = () => {
                   <ClusterIdentityFields
                     formData={formData}
                     fieldErrors={fieldErrors}
+                    editing
                     onChange={handleChange}
                     onBlur={handleBlur}
                     onFocus={handleFocus}
@@ -502,13 +574,21 @@ const ClusterEdit: React.FC = () => {
           </>
         ) : (
           <>
-            <Link
-              to="/clusters"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Clusters
-            </Link>
+            <PageHeader
+              backTo="/clusters"
+              title={formData.name || '(unnamed cluster)'}
+              subtitle="Cluster details"
+              actions={
+                !editing && (
+                  <Can permission="cluster.update" clusterId={id}>
+                    <Button size="sm" onClick={handleEditToggle}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit details
+                    </Button>
+                  </Can>
+                )
+              }
+            />
 
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -524,51 +604,48 @@ const ClusterEdit: React.FC = () => {
               meta={clusterMeta}
               bu={{ used: buUsed, cap: buCap, active: buActive }}
               users={{ used: userUsed, cap: userCap, active: userActive }}
-              actions={
-                !editing && (
-                  <Can permission="cluster.update" clusterId={id}>
-                    <Button size="sm" onClick={handleEditToggle}>
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit details
-                    </Button>
-                  </Can>
-                )
-              }
             />
 
-            {editing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Edit cluster</CardTitle>
-                  <CardDescription>{formData.name} · {formData.code}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-                    <ClusterIdentityFields
-                      formData={formData}
-                      fieldErrors={fieldErrors}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      onFocus={handleFocus}
-                    />
-                    <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
-                      <BrandingImageUpload label="Logo" value={logoUrl} shape="rect" onUpload={handleUploadLogo} />
-                      <BrandingImageUpload label="Avatar" value={avatarUrl} shape="square" onUpload={handleUploadAvatar} />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <Button type="submit" size="sm" disabled={saving}>
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        {saving ? 'Saving...' : 'Save changes'}
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>
-                        <X className="mr-2 h-4 w-4" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
+            {/* The form section stays mounted in both modes — `ClusterIdentityFields`
+                swaps each control for its `ReadOnlyField` read mode. Unmounting the
+                whole Card would leave `max_license_bu` with nowhere to be read. */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Cluster details</CardTitle>
+                <CardDescription>Identity and licensing for this cluster</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+                  <ClusterIdentityFields
+                    formData={formData}
+                    fieldErrors={fieldErrors}
+                    editing={editing}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    onFocus={handleFocus}
+                  />
+                  {/* Branding has no read-mode control of its own — the hero above is it. */}
+                  {editing && (
+                    <>
+                      <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
+                        <BrandingImageUpload label="Logo" value={logoUrl} shape="rect" onUpload={handleUploadLogo} />
+                        <BrandingImageUpload label="Avatar" value={avatarUrl} shape="square" onUpload={handleUploadAvatar} />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <Button type="submit" size="sm" disabled={saving}>
+                          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                          {saving ? 'Saving...' : 'Save changes'}
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>
+                          <X className="mr-2 h-4 w-4" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
 
             <div className="space-y-6">
             <Card>
@@ -584,19 +661,22 @@ const ClusterEdit: React.FC = () => {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={fetchBusinessUnits} disabled={buLoading} className="h-8 w-8" aria-label="Refresh business units">
+                    <Button variant="outline" size="icon" onClick={fetchBusinessUnits} disabled={buLoading} className={`h-8 w-8 ${HIT_SLOP_44}`} aria-label="Refresh business units">
                       <RefreshCw className={`h-4 w-4 ${buLoading ? 'animate-spin' : ''}`} />
                     </Button>
-                    {(() => {
-                      const maxBu = formData.max_license_bu ? Number(formData.max_license_bu) : null;
-                      const atLimit = maxBu != null && businessUnits.length >= maxBu;
-                      return (
-                        <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)} disabled={atLimit}
-                          title={atLimit ? `License limit reached (${businessUnits.length}/${maxBu})` : undefined}>
-                          Add
-                        </Button>
-                      );
-                    })()}
+                    {/* Creating a BU needs cluster.create — the /business-units/new route requires it. */}
+                    <Can permission="cluster.create">
+                      {(() => {
+                        const maxBu = formData.max_license_bu ? Number(formData.max_license_bu) : null;
+                        const atLimit = maxBu != null && businessUnits.length >= maxBu;
+                        return (
+                          <Button size="sm" onClick={() => navigate(`/business-units/new?cluster_id=${id}`)} disabled={atLimit}
+                            title={atLimit ? `License limit reached (${businessUnits.length}/${maxBu})` : undefined}>
+                            Add
+                          </Button>
+                        );
+                      })()}
+                    </Can>
                   </div>
                 </div>
               </CardHeader>
@@ -637,7 +717,8 @@ const ClusterEdit: React.FC = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className={`h-7 w-7 ${HIT_SLOP_44}`}
+                              aria-label={`Edit ${bu.name || bu.code || 'business unit'}`}
                               onClick={() => navigate(`/business-units/${bu.id}/edit`)}
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -666,13 +747,15 @@ const ClusterEdit: React.FC = () => {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={fetchClusterUsers} disabled={usersLoading} className="h-8 w-8" aria-label="Refresh users">
+                    <Button variant="outline" size="icon" onClick={fetchClusterUsers} disabled={usersLoading} className={`h-8 w-8 ${HIT_SLOP_44}`} aria-label="Refresh users">
                       <RefreshCw className={`h-4 w-4 ${usersLoading ? 'animate-spin' : ''}`} />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleOpenAddUser}>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add User
-                    </Button>
+                    <Can permission="cluster.update" clusterId={id}>
+                      <Button variant="outline" size="sm" onClick={handleOpenAddUser}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add User
+                      </Button>
+                    </Can>
                   </div>
                 </div>
               </CardHeader>
@@ -692,18 +775,24 @@ const ClusterEdit: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {clusterUsers.map((user) => (
+                      {clusterUsers.map((user) => {
+                        const displayName = user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
+                          ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
+                          : user.name || user.email;
+                        return (
                         <tr key={user.id || user.user_id} className="zebra-row border-b last:border-0 transition-colors">
                           <td className="px-4 py-2">
-                            <button
-                              type="button"
-                              className="text-primary hover:underline bg-transparent border-0 p-0 cursor-pointer text-left"
-                              onClick={() => handleOpenEditClusterUser(user)}
-                            >
-                              {user.userInfo?.firstname || user.userInfo?.middlename || user.userInfo?.lastname
-                                ? [user.userInfo.firstname, user.userInfo.middlename, user.userInfo.lastname].filter(Boolean).join(' ')
-                                : user.name || user.email}
-                            </button>
+                            {/* The name is the edit-membership trigger — without the permission
+                                it's just text, not a button that opens a dialog you can't save. */}
+                            <Can permission="cluster.update" clusterId={id} fallback={<span>{displayName}</span>}>
+                              <button
+                                type="button"
+                                className={`text-primary hover:underline bg-transparent border-0 p-0 cursor-pointer text-left ${HIT_SLOP_44_ROW}`}
+                                onClick={() => handleOpenEditClusterUser(user)}
+                              >
+                                {displayName}
+                              </button>
+                            </Can>
                           </td>
                           <td className="px-4 py-2 text-muted-foreground">{user.email}</td>
                           <td className="px-4 py-2">
@@ -722,12 +811,21 @@ const ClusterEdit: React.FC = () => {
                             </Badge>
                           </td>
                           <td className="px-4 py-2 text-center">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteClusterUser(user)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            <Can permission="cluster.update" clusterId={id}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-7 w-7 text-destructive hover:text-destructive ${HIT_SLOP_44}`}
+                                aria-label={`Remove ${displayName || 'user'} from this cluster`}
+                                onClick={() => setDeleteClusterUser(user)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </Can>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                   </div>
@@ -751,7 +849,13 @@ const ClusterEdit: React.FC = () => {
                               {[selectedUser.firstname, selectedUser.middlename, selectedUser.lastname].filter(Boolean).join(' ') || '-'}
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedUser(null)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-6 w-6 ${HIT_SLOP_44}`}
+                            aria-label="Clear selected user"
+                            onClick={() => setSelectedUser(null)}
+                          >
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -814,8 +918,9 @@ const ClusterEdit: React.FC = () => {
 
                       {/* Role select */}
                       <div className="space-y-2">
-                        <Label>Cluster Role</Label>
+                        <Label htmlFor="add-user-role">Cluster Role</Label>
                         <select
+                          id="add-user-role"
                           value={addUserRole}
                           onChange={(e) => setAddUserRole(e.target.value)}
                           className={selectClassName}
@@ -828,8 +933,9 @@ const ClusterEdit: React.FC = () => {
 
                       {/* Business Unit select */}
                       <div className="space-y-2">
-                        <Label>Business Unit</Label>
+                        <Label htmlFor="add-user-bu">Business Unit</Label>
                         <select
+                          id="add-user-bu"
                           value={addUserBuId}
                           onChange={(e) => setAddUserBuId(e.target.value)}
                           className={selectClassName}
@@ -893,8 +999,9 @@ const ClusterEdit: React.FC = () => {
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                       <div className="space-y-2">
-                        <Label>Cluster Role</Label>
+                        <Label htmlFor="edit-user-role">Cluster Role</Label>
                         <select
+                          id="edit-user-role"
                           value={editClusterUserForm.role}
                           onChange={(e) => setEditClusterUserForm(prev => ({ ...prev, role: e.target.value }))}
                           className={selectClassName}
@@ -906,8 +1013,9 @@ const ClusterEdit: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Parent Business Unit</Label>
+                        <Label htmlFor="edit-user-parent-bu">Parent Business Unit</Label>
                         <select
+                          id="edit-user-parent-bu"
                           value={editClusterUserForm.parent_bu_id}
                           onChange={(e) => setEditClusterUserForm(prev => ({ ...prev, parent_bu_id: e.target.value }))}
                           className={selectClassName}

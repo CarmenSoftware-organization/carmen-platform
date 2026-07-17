@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { ArrowLeft, Save, Pencil, X, Loader2 } from 'lucide-react';
+import { Skeleton } from '../components/ui/skeleton';
+import { Save, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import printTemplateMappingService, {
@@ -16,11 +18,13 @@ import printTemplateMappingService, {
   type PrintTemplateMappingCreateInput,
 } from '../services/printTemplateMappingService';
 import reportTemplateService, { type ReportTemplate } from '../services/reportTemplateService';
+import { validateField } from '../utils/validation';
 import { getErrorDetail } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { cn } from '../lib/utils';
 
 interface FormData {
   document_type: string;
@@ -44,6 +48,20 @@ const empty: FormData = {
   is_active: true,
 };
 
+// validateField (utils/validation.ts) returns '' for any falsy value, so it
+// cannot express required-ness on its own — pair it with an explicit empty
+// check for the two fields the backend requires.
+const REQUIRED_FIELD_MESSAGES: Record<string, string> = {
+  document_type: 'Document type is required',
+  report_template_id: 'Report template is required',
+};
+
+const validateFieldValue = (name: string, value: string): string => {
+  const requiredMessage = REQUIRED_FIELD_MESSAGES[name];
+  if (requiredMessage && !value) return requiredMessage;
+  return validateField(name, value);
+};
+
 const PrintTemplateMappingEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -59,6 +77,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const hasChanges = editing && JSON.stringify(form) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -134,6 +153,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
   const handleEdit = () => {
     setSavedFormData(form);
     setEditing(true);
+    setFieldErrors({});
   };
 
   const handleCancel = () => {
@@ -144,17 +164,33 @@ const PrintTemplateMappingEdit: React.FC = () => {
     setForm(savedFormData);
     setEditing(false);
     setError('');
+    setFieldErrors({});
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { id, value } = e.target;
+    if (!id) return;
+    setFieldErrors((prev) => ({ ...prev, [id]: validateFieldValue(id, value) }));
+  };
+
+  const clearFieldError = (name: string) => {
+    setFieldErrors((prev) => (prev[name] ? { ...prev, [name]: '' } : prev));
+  };
+
+  const validateRequired = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.document_type) errs.document_type = REQUIRED_FIELD_MESSAGES.document_type;
+    if (!form.report_template_id) errs.report_template_id = REQUIRED_FIELD_MESSAGES.report_template_id;
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...errs }));
+      setError('Please fix the highlighted fields: ' + Object.values(errs).join(', '));
+      return false;
+    }
+    return true;
   };
 
   const handleSave = async () => {
-    if (!form.document_type) {
-      toast.error('Document type is required');
-      return;
-    }
-    if (!form.report_template_id) {
-      toast.error('Report template is required');
-      return;
-    }
+    if (!validateRequired()) return;
 
     const payload: PrintTemplateMappingCreateInput = {
       document_type: form.document_type,
@@ -242,31 +278,54 @@ const PrintTemplateMappingEdit: React.FC = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="space-y-4" role="status" aria-label="Loading print template mapping">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-9 rounded-md" />
+            <Skeleton className="h-6 w-64" />
+          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-28" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/print-template-mapping')}>
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-lg font-semibold">
-              {isNew ? 'New Print Template Mapping' : 'Edit Print Template Mapping'}
-            </h1>
-          </div>
-          {!isNew && !editing && !loading && (
-            <Can permission="print_template_mapping.update">
-              <Button size="sm" onClick={handleEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Can>
-          )}
-        </div>
+        <PageHeader
+          backTo="/print-template-mapping"
+          title={isNew ? 'New Print Template Mapping' : 'Edit Print Template Mapping'}
+          actions={
+            !isNew && !editing && (
+              <Can permission="print_template_mapping.update">
+                <Button size="sm" onClick={handleEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </Can>
+            )
+          }
+        />
 
         {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
         <form onSubmit={handleSubmit}>
@@ -279,21 +338,31 @@ const PrintTemplateMappingEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="document_type">Document Type *</Label>
                   {editing ? (
-                    <select
-                      id="document_type"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      value={form.document_type}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, document_type: e.target.value }))
-                      }
-                    >
-                      <option value="">Select document type…</option>
-                      {docTypes.map((d) => (
-                        <option key={d.code} value={d.code}>
-                          {d.code} — {d.label}
-                        </option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        id="document_type"
+                        className={cn(
+                          'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          fieldErrors.document_type && 'border-destructive'
+                        )}
+                        value={form.document_type}
+                        onChange={(e) => {
+                          setForm((prev) => ({ ...prev, document_type: e.target.value }));
+                          clearFieldError('document_type');
+                        }}
+                        onBlur={handleBlur}
+                      >
+                        <option value="">Select document type…</option>
+                        {docTypes.map((d) => (
+                          <option key={d.code} value={d.code}>
+                            {d.code} — {d.label}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.document_type && (
+                        <p className="text-xs text-destructive">{fieldErrors.document_type}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyField
                       value={form.document_type ? `${form.document_type} — ${docTypeLabel(form.document_type)}` : ''}
@@ -307,11 +376,16 @@ const PrintTemplateMappingEdit: React.FC = () => {
                     <>
                       <select
                         id="report_template_id"
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className={cn(
+                          'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                          fieldErrors.report_template_id && 'border-destructive'
+                        )}
                         value={form.report_template_id}
-                        onChange={(e) =>
-                          setForm((prev) => ({ ...prev, report_template_id: e.target.value }))
-                        }
+                        onChange={(e) => {
+                          setForm((prev) => ({ ...prev, report_template_id: e.target.value }));
+                          clearFieldError('report_template_id');
+                        }}
+                        onBlur={handleBlur}
                         disabled={loading}
                       >
                         <option value="">
@@ -327,6 +401,9 @@ const PrintTemplateMappingEdit: React.FC = () => {
                           </option>
                         ))}
                       </select>
+                      {fieldErrors.report_template_id && (
+                        <p className="text-xs text-destructive">{fieldErrors.report_template_id}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Filtered by report_group matching the document type. Pick a different
                         document type to widen the list.
@@ -343,13 +420,19 @@ const PrintTemplateMappingEdit: React.FC = () => {
                     <Input
                       id="display_label"
                       value={form.display_label}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, display_label: e.target.value }))
-                      }
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, display_label: e.target.value }));
+                        clearFieldError('display_label');
+                      }}
+                      onBlur={handleBlur}
                       placeholder="e.g. Standard PR (A4 Portrait)"
+                      className={fieldErrors.display_label ? 'border-destructive' : ''}
                     />
                   ) : (
                     <ReadOnlyField value={form.display_label} />
+                  )}
+                  {editing && fieldErrors.display_label && (
+                    <p className="text-xs text-destructive">{fieldErrors.display_label}</p>
                   )}
                   {editing && (
                     <p className="text-xs text-muted-foreground">
@@ -362,17 +445,25 @@ const PrintTemplateMappingEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="display_order">Display Order</Label>
                   {editing ? (
-                    <Input
-                      id="display_order"
-                      type="number"
-                      value={String(form.display_order)}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          display_order: Number(e.target.value) || 0,
-                        }))
-                      }
-                    />
+                    <>
+                      <Input
+                        id="display_order"
+                        type="number"
+                        value={String(form.display_order)}
+                        onChange={(e) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            display_order: Number(e.target.value) || 0,
+                          }));
+                          clearFieldError('display_order');
+                        }}
+                        onBlur={handleBlur}
+                        className={fieldErrors.display_order ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.display_order && (
+                        <p className="text-xs text-destructive">{fieldErrors.display_order}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyField value={String(form.display_order)} />
                   )}
@@ -381,14 +472,22 @@ const PrintTemplateMappingEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="allow_business_unit">Allow Business Units</Label>
                   {editing ? (
-                    <Input
-                      id="allow_business_unit"
-                      value={form.allow_business_unit}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, allow_business_unit: e.target.value }))
-                      }
-                      placeholder="e.g. T01,T03 (comma-separated, blank = all)"
-                    />
+                    <>
+                      <Input
+                        id="allow_business_unit"
+                        value={form.allow_business_unit}
+                        onChange={(e) => {
+                          setForm((prev) => ({ ...prev, allow_business_unit: e.target.value }));
+                          clearFieldError('allow_business_unit');
+                        }}
+                        onBlur={handleBlur}
+                        placeholder="e.g. T01,T03 (comma-separated, blank = all)"
+                        className={fieldErrors.allow_business_unit ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.allow_business_unit && (
+                        <p className="text-xs text-destructive">{fieldErrors.allow_business_unit}</p>
+                      )}
+                    </>
                   ) : (
                     buListReadOnly(form.allow_business_unit)
                   )}
@@ -397,14 +496,22 @@ const PrintTemplateMappingEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="deny_business_unit">Deny Business Units</Label>
                   {editing ? (
-                    <Input
-                      id="deny_business_unit"
-                      value={form.deny_business_unit}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, deny_business_unit: e.target.value }))
-                      }
-                      placeholder="e.g. T02 (comma-separated, blank = none)"
-                    />
+                    <>
+                      <Input
+                        id="deny_business_unit"
+                        value={form.deny_business_unit}
+                        onChange={(e) => {
+                          setForm((prev) => ({ ...prev, deny_business_unit: e.target.value }));
+                          clearFieldError('deny_business_unit');
+                        }}
+                        onBlur={handleBlur}
+                        placeholder="e.g. T02 (comma-separated, blank = none)"
+                        className={fieldErrors.deny_business_unit ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.deny_business_unit && (
+                        <p className="text-xs text-destructive">{fieldErrors.deny_business_unit}</p>
+                      )}
+                    </>
                   ) : (
                     buListReadOnly(form.deny_business_unit)
                   )}
@@ -428,7 +535,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       </label>
                     </div>
                   ) : (
-                    <Badge variant={form.is_default ? 'default' : 'secondary'}>
+                    <Badge variant={form.is_default ? 'success' : 'secondary'}>
                       {form.is_default ? 'Default' : 'Not default'}
                     </Badge>
                   )}

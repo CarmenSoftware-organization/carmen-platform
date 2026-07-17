@@ -15,14 +15,23 @@ import { Skeleton } from '../components/ui/skeleton';
 import { ChipInput } from '../components/ui/chip-input';
 import { XmlEditor } from '../components/XmlEditor';
 import { DialogPreview } from '../components/DialogPreview';
-import { Save, Pencil, X, Loader2 } from 'lucide-react';
+import { EmptyState } from '../components/EmptyState';
+import { FetchErrorState } from '../components/FetchErrorState';
+import { Save, Pencil, X, Loader2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import { validateField } from '../utils/validation';
+import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { HIT_SLOP_44 } from '../lib/hitSlop';
+
+const REQUIRED_FIELD_LABELS: Record<string, string> = {
+  name: 'Name',
+  report_group: 'Report group',
+};
 
 interface SourceParamRow {
   filter: string;
@@ -89,6 +98,7 @@ const ReportTemplateEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -108,19 +118,23 @@ const ReportTemplateEdit: React.FC = () => {
     procedures: Array<{ name: string; kind: string }>;
   } | null>(null);
   const [loadingDbObjects, setLoadingDbObjects] = useState(false);
+  const [dbObjectsFailed, setDbObjectsFailed] = useState(false);
 
   const loadDbObjects = async (bu: string) => {
     if (!bu) {
       setDbObjects(null);
+      setDbObjectsFailed(false);
       return;
     }
     setLoadingDbObjects(true);
+    setDbObjectsFailed(false);
     try {
       const data = await reportTemplateService.listDbObjects(bu);
       setDbObjects(data);
     } catch (err) {
       toast.error(`Failed to load DB objects from ${bu}: ${getErrorDetail(err)}`);
       setDbObjects(null);
+      setDbObjectsFailed(true);
     } finally {
       setLoadingDbObjects(false);
     }
@@ -160,9 +174,19 @@ const ReportTemplateEdit: React.FC = () => {
     if (!id) return;
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
+      // it so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await reportTemplateService.getById(id);
       setRawResponse(data);
       const template = data.data || data;
+      // A 200 carrying no record is a not-found too — don't fall through and
+      // render the shell over blank data.
+      if (!template?.id) {
+        setNotFound(true);
+        return;
+      }
       const toCsv = (v: unknown): string => {
         if (!v) return '';
         if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean).join(',');
@@ -199,8 +223,14 @@ const ReportTemplateEdit: React.FC = () => {
         updated_by_name: template.updated_by_name,
       });
     } catch (err: unknown) {
-      setError('Failed to load report template: ' + getErrorDetail(err));
-      devLog('Error fetching report template:', err);
+      // A bad/deleted id gates the whole shell (see the notFound branch below);
+      // a transient failure keeps the retryable inline banner.
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError('Failed to load report template: ' + getErrorDetail(err));
+        devLog('Error fetching report template:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -221,11 +251,12 @@ const ReportTemplateEdit: React.FC = () => {
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (!value && ['name', 'report_group'].includes(name)) {
-      setFieldErrors((prev) => ({ ...prev, [name]: `${name.replace('_', ' ')} is required` }));
-    } else {
-      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
-    }
+    // validateField has no case for name/report_group (it can't express
+    // required-ness), so the required check layers on top — same OR-pattern
+    // ApplicationEdit's pre-submit validation uses.
+    const requiredLabel = REQUIRED_FIELD_LABELS[name];
+    const error = validateField(name, value) || (requiredLabel && !value.trim() ? `${requiredLabel} is required` : '');
+    setFieldErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -300,12 +331,42 @@ const ReportTemplateEdit: React.FC = () => {
     }
   };
 
+  // Not-found gate: a bad/deleted id must never render the edit shell (form,
+  // data source, XML tabs) over blank data with just a banner on top.
+  if (notFound) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo="/report-templates" title="Report Template" />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="Report template not found"
+                description="This report template doesn't exist, or it may have been deleted. Check the link, or pick one from the report template list."
+                action={
+                  <Button size="sm" onClick={() => navigate('/report-templates')}>
+                    Back to report templates
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
   const dialogLines = countLines(formData.dialog);
   const contentLines = countLines(formData.content);
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6 pb-24">
+      <div
+        className="space-y-4 sm:space-y-6 pb-24"
+        role={loading ? 'status' : undefined}
+        aria-label={loading ? 'Loading report template' : undefined}
+      >
         {/* Header */}
         <PageHeader
           backTo="/report-templates"
@@ -411,9 +472,10 @@ const ReportTemplateEdit: React.FC = () => {
                             className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                           />
                         ) : (
-                          <div className="flex w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-sm min-h-[4.5rem] whitespace-pre-wrap">
-                            {formData.description || '-'}
-                          </div>
+                          <ReadOnlyField
+                            value={formData.description}
+                            className="h-auto min-h-[4.5rem] items-start whitespace-pre-wrap py-2"
+                          />
                         )}
                       </div>
 
@@ -444,7 +506,7 @@ const ReportTemplateEdit: React.FC = () => {
                         )}
                       </div>
 
-                      {editing && (
+                      {editing ? (
                         <div className="grid grid-cols-2 gap-3">
                           <label className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
@@ -468,6 +530,25 @@ const ReportTemplateEdit: React.FC = () => {
                             />
                             Active
                           </label>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Kind</Label>
+                            <div>
+                              <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+                                {formData.is_standard ? 'Standard' : 'Custom'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">Status</Label>
+                            <div>
+                              <Badge variant={formData.is_active ? 'success' : 'secondary'}>
+                                {formData.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </>
@@ -519,20 +600,14 @@ const ReportTemplateEdit: React.FC = () => {
                   <CardHeader>
                     <CardTitle className="text-base">Metadata</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 text-xs">
+                  <CardContent className="space-y-1 text-[11px] leading-tight text-muted-foreground">
                     <div>
-                      <div className="text-muted-foreground">Created</div>
-                      <div className="font-medium">{fmtDateTime(metadata.created_at)}</div>
-                      {metadata.created_by_name && (
-                        <div className="text-muted-foreground">by {metadata.created_by_name}</div>
-                      )}
+                      <span className="font-medium">Created</span> {fmtDateTime(metadata.created_at)}
+                      {metadata.created_by_name && ` by ${metadata.created_by_name}`}
                     </div>
                     <div>
-                      <div className="text-muted-foreground">Updated</div>
-                      <div className="font-medium">{fmtDateTime(metadata.updated_at)}</div>
-                      {metadata.updated_by_name && (
-                        <div className="text-muted-foreground">by {metadata.updated_by_name}</div>
-                      )}
+                      <span className="font-medium">Updated</span> {fmtDateTime(metadata.updated_at)}
+                      {metadata.updated_by_name && ` by ${metadata.updated_by_name}`}
                     </div>
                   </CardContent>
                 </Card>
@@ -609,19 +684,26 @@ const ReportTemplateEdit: React.FC = () => {
                                 localStorage.setItem('report_template_probe_bu', e.target.value);
                               }}
                               placeholder="e.g. T03"
-                              className="h-7 text-xs"
+                              className="h-9 text-xs"
                             />
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="h-7 text-xs"
+                              className={`h-7 text-xs ${HIT_SLOP_44}`}
                               onClick={() => loadDbObjects(probeBuCode)}
                               disabled={!probeBuCode || loadingDbObjects}
                             >
                               {loadingDbObjects ? 'Loading…' : 'Load'}
                             </Button>
                           </div>
+                          {dbObjectsFailed && !loadingDbObjects && (
+                            <FetchErrorState
+                              message={`Couldn't load DB objects from ${probeBuCode}.`}
+                              onRetry={() => loadDbObjects(probeBuCode)}
+                              className="mt-2 justify-start"
+                            />
+                          )}
                           {dbObjects && (
                             <div className="mt-2 space-y-1">
                               {(() => {
@@ -640,6 +722,7 @@ const ReportTemplateEdit: React.FC = () => {
                                 }
                                 return (
                                   <select
+                                    aria-label={`Pick from available ${formData.source_type}s in ${probeBuCode}`}
                                     className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
                                     value={
                                       list.some((o) => o.name === formData.source_name)
@@ -717,6 +800,7 @@ const ReportTemplateEdit: React.FC = () => {
                               <>
                                 <Input
                                   type="text"
+                                  aria-label={`Parameter ${i + 1} filter field`}
                                   value={p.filter}
                                   onChange={(e) =>
                                     setFormData((prev) => {
@@ -729,6 +813,7 @@ const ReportTemplateEdit: React.FC = () => {
                                 />
                                 <Input
                                   type="text"
+                                  aria-label={`Parameter ${i + 1} PG type`}
                                   value={p.type}
                                   onChange={(e) =>
                                     setFormData((prev) => {
@@ -741,6 +826,7 @@ const ReportTemplateEdit: React.FC = () => {
                                 />
                                 <input
                                   type="checkbox"
+                                  aria-label={`Parameter ${i + 1} nullable`}
                                   checked={p.nullable}
                                   onChange={(e) =>
                                     setFormData((prev) => {
@@ -755,6 +841,8 @@ const ReportTemplateEdit: React.FC = () => {
                                   type="button"
                                   size="sm"
                                   variant="ghost"
+                                  aria-label={`Remove parameter${p.filter ? ` "${p.filter}"` : ` ${i + 1}`}`}
+                                  className={HIT_SLOP_44}
                                   onClick={() =>
                                     setFormData((prev) => ({
                                       ...prev,
@@ -930,7 +1018,19 @@ const ReportTemplateEdit: React.FC = () => {
         </div>
       )}
 
-      <DevDebugSheet title="API Response" endpoint={`GET /api-system/report-templates/${id}`} data={rawResponse} fabClassName="bottom-20" />
+      <DevDebugSheet
+        title="Report Template Debug"
+        tabs={[
+          { key: 'template', label: 'Template', data: rawResponse, endpoint: `GET /api-system/report-templates/${id}` },
+          {
+            key: 'db-objects',
+            label: 'DB Objects',
+            data: dbObjects,
+            endpoint: `GET /api-system/report-templates/db-objects?bu_code=${probeBuCode || '<bu_code>'}`,
+          },
+        ]}
+        fabClassName="bottom-20"
+      />
     </Layout>
   );
 };

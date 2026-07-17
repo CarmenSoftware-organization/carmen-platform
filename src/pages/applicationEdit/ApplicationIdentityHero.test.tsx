@@ -56,4 +56,30 @@ describe('ApplicationIdentityHero', () => {
     render(<ApplicationIdentityHero {...base} name="" />);
     expect(screen.getByRole('heading', { name: '(unnamed application)' })).toBeInTheDocument();
   });
+
+  it('renders no audit lines when meta is absent', () => {
+    render(<ApplicationIdentityHero {...base} />);
+    expect(screen.queryByText(/Created/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
+  });
+
+  it('surfaces created/updated by + at when meta is present', () => {
+    render(
+      <ApplicationIdentityHero
+        {...base}
+        meta={{
+          created_at: '2026-01-05T10:00:00Z',
+          created_by_name: 'Ada Lovelace',
+          updated_at: '2026-02-10T10:00:00Z',
+          updated_by_name: 'Grace Hopper',
+        }}
+      />
+    );
+    expect(screen.getByText(/Created/)).toBeInTheDocument();
+    expect(screen.getByText(/5 Jan 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/by Ada Lovelace/)).toBeInTheDocument();
+    expect(screen.getByText(/Updated/)).toBeInTheDocument();
+    expect(screen.getByText(/10 Feb 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/by Grace Hopper/)).toBeInTheDocument();
+  });
 });

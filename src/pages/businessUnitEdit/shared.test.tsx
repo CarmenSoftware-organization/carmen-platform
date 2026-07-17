@@ -48,4 +48,25 @@ describe('CollapsibleSection', () => {
     await user.click(screen.getByText('Forced'));
     expect(screen.getByText('always here')).toBeInTheDocument();
   });
+
+  // A pinned-open section must not advertise a collapse it will not perform: the
+  // chevron and the pointer affordance are dropped, not just made inert.
+  it('drops the collapse affordance entirely when forceOpen', () => {
+    const { container } = render(
+      <CollapsibleSection title="Forced" description="desc" forceOpen>
+        <p>always here</p>
+      </CollapsibleSection>,
+    );
+    expect(container.querySelector('svg.lucide-chevron-down')).toBeNull();
+    expect(container.querySelector('.cursor-pointer')).toBeNull();
+  });
+
+  it('keeps the collapse affordance when it actually collapses', () => {
+    const { container } = render(
+      <CollapsibleSection title="Real">
+        <p>body</p>
+      </CollapsibleSection>,
+    );
+    expect(container.querySelector('.cursor-pointer')).not.toBeNull();
+  });
 });

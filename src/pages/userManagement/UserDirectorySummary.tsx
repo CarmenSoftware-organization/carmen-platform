@@ -1,6 +1,7 @@
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface UserLike {
   id: string;
@@ -127,8 +128,15 @@ function Faces({ faces, total }: { faces: FaceItem[]; total: number }) {
   );
 }
 
+interface UserDirectorySummaryProps {
+  summary: UserSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
 /** Read-first overview band for the user directory: population, lifecycle, faces. */
-export function UserDirectorySummary({ summary, loading }: { summary: UserSummaryData | null; loading: boolean }) {
+export function UserDirectorySummary({ summary, loading, error = false, onRetry = () => {} }: UserDirectorySummaryProps) {
   const total = summary?.total ?? 0;
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
@@ -136,7 +144,9 @@ export function UserDirectorySummary({ summary, loading }: { summary: UserSummar
     <Card className="p-4 sm:p-5">
       <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Directory</div>
 
-      {loading || !summary ? (
+      {error ? (
+        <FetchErrorState message="Couldn't load the directory summary." onRetry={onRetry} className="py-3" />
+      ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
           <Skeleton className="h-14 w-24" />
           <Skeleton className="h-14 min-w-[12rem] flex-1" />

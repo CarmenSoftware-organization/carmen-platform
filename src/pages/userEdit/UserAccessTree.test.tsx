@@ -3,6 +3,15 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { groupAccessByCluster, UserAccessTree, type AccessCluster, type AccessBU } from './UserAccessTree';
 
+// This is a presentational-component test — permission gating itself (Fix 1) is
+// covered by the integration tests in `UserEdit.test.tsx`. Here `Can` stays the
+// REAL component (not mocked), but `useAuth` is stubbed to always grant, so the
+// existing structural/behavioral assertions below are unaffected by the
+// `<Can>` gate now wrapping the Remove-BU button.
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ hasPermission: () => true, isSuperAdmin: false }),
+}));
+
 const cluster = (cluster_id: string, name: string, is_active = true): AccessCluster => ({
   id: `m-${cluster_id}`,
   cluster_id,

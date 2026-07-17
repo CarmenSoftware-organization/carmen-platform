@@ -1,5 +1,6 @@
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface UserLike {
   id: string;
@@ -60,13 +61,22 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
   );
 }
 
-export function PlatformAccessSummary({ summary, loading }: { summary: UserPlatformSummaryData | null; loading: boolean }) {
+interface PlatformAccessSummaryProps {
+  summary: UserPlatformSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function PlatformAccessSummary({ summary, loading, error = false, onRetry = () => {} }: PlatformAccessSummaryProps) {
   const total = summary?.total ?? 0;
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
   return (
     <Card className="p-4 sm:p-5">
-      {loading || !summary ? (
+      {error ? (
+        <FetchErrorState message="Couldn't load the platform access summary." onRetry={onRetry} className="py-3" />
+      ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <Skeleton className="h-14 w-24" />
           <Skeleton className="h-14 min-w-[14rem] flex-1" />

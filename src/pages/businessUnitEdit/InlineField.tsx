@@ -17,14 +17,31 @@ interface InlineFieldProps {
   placeholder?: string;
   error?: string;
   disabled?: boolean;
+  /** Renders a required marker and sets aria-required on the control. */
+  required?: boolean;
   /** Commit a new value into formData. */
   onCommit: (name: string, value: string) => void;
   /** Optional field-level validation on commit. */
   onValidate?: (name: string, value: string) => void;
 }
 
-const inputClass =
-  'w-full max-w-sm rounded-md border border-primary bg-background px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring';
+const inputBase =
+  'w-full max-w-sm rounded-md border bg-background px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring';
+
+// The contract pairs the message with a destructive border; the border must track
+// the error, not stay primary while the message shouts.
+const inputClassFor = (error?: string) => cn(inputBase, error ? 'border-destructive' : 'border-primary');
+
+/**
+ * Read-mode control. The visual box stays compact (~32px) — a ~50-row form would
+ * bloat badly at 44px of real padding — while an invisible ::before overlay
+ * stretches the *tappable* area to 44px, centred on the row. Row pitch is already
+ * 44px (12px wrapper padding + 32px control), so hit areas tile without overlap.
+ * Per the A4 contract: "the tappable area governs, not the visual control".
+ */
+const readButtonClass =
+  'group hover:bg-primary/5 relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:cursor-default disabled:hover:bg-transparent ' +
+  "before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']";
 
 /**
  * One row of the edit-in-place document: shows the value, and turns into an
@@ -40,6 +57,7 @@ export function InlineField({
   placeholder,
   error,
   disabled,
+  required,
   onCommit,
   onValidate,
 }: InlineFieldProps) {
@@ -81,7 +99,15 @@ export function InlineField({
 
   return (
     <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
-      <span className="text-muted-foreground pt-2 text-xs">{label}</span>
+      <span className="text-muted-foreground pt-2 text-xs">
+        {label}
+        {/* Required markers only mean something where the field can be filled in. */}
+        {required && !disabled && (
+          <span className="text-destructive ml-0.5" aria-hidden="true">
+            *
+          </span>
+        )}
+      </span>
       <div className="min-w-0">
         {editing ? (
           type === 'select' ? (
@@ -89,6 +115,8 @@ export function InlineField({
               // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place: focus the field the user just opened
               autoFocus
               aria-label={label}
+              aria-required={required}
+              aria-invalid={!!error}
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value);
@@ -96,7 +124,7 @@ export function InlineField({
                 if (e.target.value !== value) onCommit(name, e.target.value);
               }}
               onBlur={cancel}
-              className={inputClass}
+              className={inputClassFor(error)}
             >
               {/* Empty prompt so an unset select shows the placeholder (not the
                   first option as pre-selected) — otherwise picking that first
@@ -115,24 +143,28 @@ export function InlineField({
               // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place
               autoFocus
               aria-label={label}
+              aria-required={required}
+              aria-invalid={!!error}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commit}
               onKeyDown={onKeyDown}
               rows={3}
-              className={cn(inputClass, 'resize-y', mono && 'font-mono')}
+              className={cn(inputClassFor(error), 'resize-y', mono && 'font-mono')}
             />
           ) : (
             <input
               // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place
               autoFocus
               aria-label={label}
+              aria-required={required}
+              aria-invalid={!!error}
               type={type}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commit}
               onKeyDown={onKeyDown}
-              className={cn(inputClass, mono && 'font-mono')}
+              className={cn(inputClassFor(error), mono && 'font-mono')}
             />
           )
         ) : (
@@ -141,7 +173,7 @@ export function InlineField({
             onClick={start}
             disabled={disabled}
             className={cn(
-              'group hover:bg-primary/5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:cursor-default disabled:hover:bg-transparent',
+              readButtonClass,
               !displayValue && 'text-muted-foreground/70 italic',
               mono && displayValue && 'font-mono tabular-nums',
             )}

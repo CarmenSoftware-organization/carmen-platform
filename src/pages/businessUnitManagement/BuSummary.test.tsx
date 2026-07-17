@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { summarizeBus, BuSummary } from './BuSummary';
 
 describe('summarizeBus', () => {
@@ -38,5 +39,13 @@ describe('BuSummary', () => {
   it('hides the archived legend when there are none', () => {
     render(<BuSummary summary={{ total: 5, active: 5, inactive: 0, archived: 0, clusters: 1 }} loading={false} />);
     expect(screen.queryByText('Archived')).not.toBeInTheDocument();
+  });
+
+  it('shows an error state with a working retry instead of skeletoning forever', async () => {
+    const onRetry = vi.fn();
+    render(<BuSummary summary={null} loading={false} error onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the business unit summary.");
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

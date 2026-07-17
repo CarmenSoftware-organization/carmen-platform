@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useGlobalShortcuts } from "../components/KeyboardShortcuts";
 import { useParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
@@ -7,10 +8,12 @@ import userRoleService from "../services/userRoleService";
 import roleService from "../services/roleService";
 import clusterService from "../services/clusterService";
 import { getErrorDetail, parseApiError } from "../utils/errorParser";
+import { useUnsavedChanges } from "../hooks/useUnsavedChanges";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Skeleton } from "../components/ui/skeleton";
 import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
 import { ConfirmDialog } from "../components/ui/confirm-dialog";
 import Can from "../components/Can";
@@ -40,6 +43,26 @@ const UserPlatformEdit: React.FC = () => {
   const [scopeClusterId, setScopeClusterId] = useState("");
   const [addingRole, setAddingRole] = useState(false);
   const [deleteRoleAssignment, setDeleteRoleAssignment] = useState<UserRoleAssignment | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // The add-role mini-form is ephemeral (no saved baseline) — "dirty" means any
+  // field has been touched while the form is open, so it's discarded silently
+  // (e.g. tab close) without a warning.
+  const hasChanges = showAddRole && (selectedRoleId !== "" || scopeType !== "platform" || scopeClusterId !== "");
+  useUnsavedChanges(hasChanges);
+
+  const handleCancelAddRole = useCallback(() => {
+    setShowAddRole(false);
+    setSelectedRoleId("");
+    setScopeType("platform");
+    setScopeClusterId("");
+    setFieldErrors({});
+  }, []);
+
+  useGlobalShortcuts({
+    onSave: () => { if (showAddRole && !addingRole) handleAddRole(); },
+    onCancel: () => { if (showAddRole) handleCancelAddRole(); },
+  });
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -75,8 +98,16 @@ const UserPlatformEdit: React.FC = () => {
   useEffect(() => { load(); }, [load]);
 
   const handleAddRole = async () => {
-    if (!selectedRoleId) { toast.error("Select a role"); return; }
-    if (scopeType === "cluster" && !scopeClusterId) { toast.error("Select a cluster"); return; }
+    if (!selectedRoleId) {
+      setFieldErrors((prev) => ({ ...prev, role_id: "Role is required" }));
+      toast.error("Select a role");
+      return;
+    }
+    if (scopeType === "cluster" && !scopeClusterId) {
+      setFieldErrors((prev) => ({ ...prev, cluster_id: "Cluster is required" }));
+      toast.error("Select a cluster");
+      return;
+    }
     setAddingRole(true);
     try {
       const scope: Scope = scopeType === "cluster"
@@ -84,10 +115,7 @@ const UserPlatformEdit: React.FC = () => {
         : { type: "platform" };
       await userRoleService.add(userId!, { role_id: selectedRoleId, scope });
       toast.success("Role assigned");
-      setShowAddRole(false);
-      setSelectedRoleId("");
-      setScopeType("platform");
-      setScopeClusterId("");
+      handleCancelAddRole();
       setRoleAssignments(await userRoleService.list(userId!));
     } catch (err: unknown) {
       const { message } = parseApiError(err);
@@ -111,6 +139,46 @@ const UserPlatformEdit: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading user roles">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Skeleton className="h-9 w-9 rounded-md" />
+            <div className="flex-1">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-4 w-56 mt-2" />
+            </div>
+          </div>
+
+          {/* Roles & Scope card skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-48 mt-1" />
+                </div>
+                <Skeleton className="h-8 w-24" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-md border px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-6 w-6 rounded-md" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -122,7 +190,10 @@ const UserPlatformEdit: React.FC = () => {
         />
 
         {error && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div
+            className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            role="alert"
+          >
             {error}
           </div>
         )}
@@ -167,6 +238,7 @@ const UserPlatformEdit: React.FC = () => {
                           size="icon"
                           className="h-6 w-6 text-destructive hover:text-destructive"
                           onClick={() => setDeleteRoleAssignment(assignment)}
+                          aria-label={`Remove ${assignment.role_name || "role"}`}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -181,17 +253,29 @@ const UserPlatformEdit: React.FC = () => {
               {showAddRole && (
                 <div className="rounded-md border p-3 space-y-3 mt-2">
                   <div className="space-y-2">
-                    <Label>Role</Label>
-                    <select value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)} className={selectClassName}>
+                    <Label htmlFor="role_id">Role *</Label>
+                    <select
+                      id="role_id"
+                      value={selectedRoleId}
+                      onChange={(e) => { setSelectedRoleId(e.target.value); setFieldErrors((prev) => ({ ...prev, role_id: "" })); }}
+                      onBlur={() => setFieldErrors((prev) => ({ ...prev, role_id: selectedRoleId ? "" : "Role is required" }))}
+                      className={`${selectClassName} ${fieldErrors.role_id ? "border-destructive" : ""}`}
+                    >
                       <option value="">Select role…</option>
                       {roleOptions.map((r) => (<option key={r.id} value={r.id}>{r.name}</option>))}
                     </select>
+                    {fieldErrors.role_id && <p className="text-xs text-destructive">{fieldErrors.role_id}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label>Scope</Label>
+                    <Label htmlFor="scope_type">Scope</Label>
                     <select
+                      id="scope_type"
                       value={scopeType}
-                      onChange={(e) => { setScopeType(e.target.value as "platform" | "cluster"); setScopeClusterId(""); }}
+                      onChange={(e) => {
+                        setScopeType(e.target.value as "platform" | "cluster");
+                        setScopeClusterId("");
+                        setFieldErrors((prev) => ({ ...prev, cluster_id: "" }));
+                      }}
                       className={selectClassName}
                     >
                       <option value="platform">Platform</option>
@@ -200,11 +284,18 @@ const UserPlatformEdit: React.FC = () => {
                   </div>
                   {scopeType === "cluster" && (
                     <div className="space-y-2">
-                      <Label>Cluster</Label>
-                      <select value={scopeClusterId} onChange={(e) => setScopeClusterId(e.target.value)} className={selectClassName}>
+                      <Label htmlFor="cluster_id">Cluster *</Label>
+                      <select
+                        id="cluster_id"
+                        value={scopeClusterId}
+                        onChange={(e) => { setScopeClusterId(e.target.value); setFieldErrors((prev) => ({ ...prev, cluster_id: "" })); }}
+                        onBlur={() => setFieldErrors((prev) => ({ ...prev, cluster_id: scopeClusterId ? "" : "Cluster is required" }))}
+                        className={`${selectClassName} ${fieldErrors.cluster_id ? "border-destructive" : ""}`}
+                      >
                         <option value="">Select cluster…</option>
                         {clusterOptions.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                       </select>
+                      {fieldErrors.cluster_id && <p className="text-xs text-destructive">{fieldErrors.cluster_id}</p>}
                     </div>
                   )}
                   <div className="flex gap-2">
@@ -212,11 +303,7 @@ const UserPlatformEdit: React.FC = () => {
                       {addingRole ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                       {addingRole ? "Adding…" : "Add"}
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => { setShowAddRole(false); setSelectedRoleId(""); setScopeType("platform"); setScopeClusterId(""); }}
-                    >
+                    <Button size="sm" variant="outline" onClick={handleCancelAddRole}>
                       Cancel
                     </Button>
                   </div>

@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { summarizeApplications, ApplicationRegistrySummary } from './ApplicationRegistrySummary';
 
 describe('summarizeApplications', () => {
@@ -66,5 +67,13 @@ describe('ApplicationRegistrySummary', () => {
   it('shows a skeleton while loading', () => {
     const { container } = render(<ApplicationRegistrySummary summary={null} loading />);
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
+  });
+
+  it('shows an error state with a working retry instead of skeletoning forever', async () => {
+    const onRetry = vi.fn();
+    render(<ApplicationRegistrySummary summary={null} loading={false} error onRetry={onRetry} />);
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the registry summary.");
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

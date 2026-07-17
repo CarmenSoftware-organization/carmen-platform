@@ -68,6 +68,7 @@ const UserPlatformManagement: React.FC = () => {
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<UserPlatformSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_user_platform') || '';
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_user_platform', []);
@@ -160,6 +161,7 @@ const UserPlatformManagement: React.FC = () => {
   // extended to every user — so the band skeletons until they resolve.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const data = (await userService.getAll({ perpage: -1 })) as unknown as Record<string, unknown>;
       const raw = (data.data || data) as { id: string; is_active?: boolean }[];
@@ -172,7 +174,8 @@ const UserPlatformManagement: React.FC = () => {
       );
       setSummary(summarizeUserPlatform(list, Object.fromEntries(pairs)));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -354,7 +357,7 @@ const UserPlatformManagement: React.FC = () => {
           }
         />
 
-        <PlatformAccessSummary summary={summary} loading={summaryLoading} />
+        <PlatformAccessSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">

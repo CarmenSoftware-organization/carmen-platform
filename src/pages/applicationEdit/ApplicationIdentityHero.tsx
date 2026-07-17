@@ -13,6 +13,34 @@ export function accessSummary(allowAll: boolean, apiNames: string[]): string {
   return `${n} endpoint${n === 1 ? '' : 's'} across ${modules} module${modules === 1 ? '' : 's'}`;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtDate = (v?: string) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+};
+
+// Mirrors ClusterHero's auditLine — same read-first "who created/updated this,
+// and when" convention across every A4 identity hero.
+function auditLine(verb: string, at?: string, by?: string) {
+  const date = fmtDate(at);
+  if (!date) return null;
+  return (
+    <div>
+      <span className="text-muted-foreground font-medium">{verb}</span> {date}
+      {by ? ` by ${by}` : ''}
+    </div>
+  );
+}
+
+export interface ApplicationIdentityMeta {
+  created_at?: string;
+  created_by_name?: string;
+  updated_at?: string;
+  updated_by_name?: string;
+}
+
 function AppIdChip({ appId }: { appId: string }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -46,6 +74,7 @@ interface ApplicationIdentityHeroProps {
   isActive: boolean;
   allowAll: boolean;
   apiNames: string[];
+  meta?: ApplicationIdentityMeta;
   actions?: React.ReactNode;
 }
 
@@ -57,8 +86,11 @@ export function ApplicationIdentityHero({
   isActive,
   allowAll,
   apiNames,
+  meta = {},
   actions,
 }: ApplicationIdentityHeroProps) {
+  const hasAuditMeta = Boolean(meta.created_at || meta.updated_at);
+
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex flex-wrap items-start gap-4 p-5 sm:p-6">
@@ -79,6 +111,12 @@ export function ApplicationIdentityHero({
             {allowAll && <AlertTriangle className="size-3.5 shrink-0" />}
             {accessSummary(allowAll, apiNames)}
           </div>
+          {hasAuditMeta && (
+            <div className="text-muted-foreground mt-2 space-y-0.5 text-[11px] leading-tight">
+              {auditLine('Created', meta.created_at, meta.created_by_name)}
+              {auditLine('Updated', meta.updated_at, meta.updated_by_name)}
+            </div>
+          )}
         </div>
 
         {actions && <div className="shrink-0">{actions}</div>}

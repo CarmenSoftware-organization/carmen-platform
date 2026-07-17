@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Newspaper, Globe, Building2, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface NewsLike {
   id: string;
@@ -129,22 +130,15 @@ interface NewsroomSummaryProps {
   onRetry?: () => void;
 }
 
-export function NewsroomSummary({ summary, loading, error = false, onRetry }: NewsroomSummaryProps) {
+export function NewsroomSummary({ summary, loading, error = false, onRetry = () => {} }: NewsroomSummaryProps) {
   return (
     <Card className="p-4 sm:p-5">
       {error ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 py-2" role="alert">
-          <span className="text-muted-foreground text-sm">Couldn't load the newsroom summary.</span>
-          {onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="text-primary text-sm underline underline-offset-2"
-            >
-              Try again
-            </button>
-          )}
-        </div>
+        <FetchErrorState
+          message="Couldn't load the newsroom summary."
+          onRetry={onRetry}
+          className="justify-between gap-3 py-2"
+        />
       ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-[16rem] flex-1 space-y-2">

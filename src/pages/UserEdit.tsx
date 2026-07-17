@@ -13,17 +13,20 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
-import { Save, Pencil, X, Plus, Loader2, KeyRound, ArrowLeft } from "lucide-react";
+import { Save, Pencil, X, Plus, Loader2, KeyRound, ArrowLeft, SearchX } from "lucide-react";
+import { EmptyState } from "../components/EmptyState";
 import { UserIdentityHero } from "./userEdit/UserIdentityHero";
 import { UserAccessTree } from "./userEdit/UserAccessTree";
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
-import { getErrorDetail } from '../utils/errorParser';
+import { getErrorDetail, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { useAuth } from '../context/AuthContext';
 
 interface UserBusinessUnit {
   id: string;
@@ -74,6 +77,7 @@ const UserEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
+  const { hasPermission } = useAuth();
 
   const [formData, setFormData] = useState<UserFormData>({
     username: "",
@@ -88,7 +92,9 @@ const UserEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [rawClusterBUsResponse, setRawClusterBUsResponse] = useState<unknown>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
   const [userClusters, setUserClusters] = useState<UserCluster[]>([]);
@@ -174,9 +180,19 @@ const UserEdit: React.FC = () => {
   const fetchUser = async () => {
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
+      // it so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await userService.getById(id!);
       setRawResponse(data);
       const user = data.data || data;
+      // A 200 carrying no record is a not-found too — don't fall through and
+      // render the shell over blank data.
+      if (!user?.id) {
+        setNotFound(true);
+        return;
+      }
       const profile = user.profile || {};
       const loaded: UserFormData = {
         username: user.username || "",
@@ -194,13 +210,31 @@ const UserEdit: React.FC = () => {
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
     } catch (err: unknown) {
-      setError("Failed to load user: " + getErrorDetail(err));
+      // Shared A4 not-found pattern (established on the ClusterEdit reference):
+      // a bad/deleted id gates the whole shell; a transient failure keeps the
+      // retryable inline banner.
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError("Failed to load user: " + getErrorDetail(err));
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+  // Data precondition (honestly named, separate from permission): Add BU only
+  // makes sense if this user belongs to at least one cluster to add into.
+  const hasAddableClusters = userClusters.length > 0;
+  // The real permission check — same mutation BusinessUnitEdit gates on scoped
+  // cluster.update (see BusinessUnitUsersCard). Checked across this user's own
+  // clusters (the pool the Add-BU dialog lets the admin pick from), not a
+  // global "any cluster" check, and not a stand-in like `hasAddableClusters`
+  // above (that was the bug: a data condition wearing a permission's name).
+  const canAddBU = hasAddableClusters
+    && userClusters.some(uc => uc.cluster_id && hasPermission('cluster.update', { clusterId: uc.cluster_id }));
 
   const handleOpenAddBU = () => {
     setShowAddBU(true);
@@ -220,6 +254,7 @@ const UserEdit: React.FC = () => {
         perpage: -1,
         advance: JSON.stringify({ where: { cluster_id: clusterId } }),
       });
+      setRawClusterBUsResponse(data);
       const items = data.data || data;
       setClusterBUs(Array.isArray(items) ? items : []);
     } catch {
@@ -235,6 +270,12 @@ const UserEdit: React.FC = () => {
 
   const handleAddBU = async () => {
     if (!selectedBUId || !id) return;
+    // Defence-in-depth funnel (matches BusinessUnitEdit.tsx's `if (!canEdit) return;`
+    // in handleSave): re-check against the SPECIFIC cluster chosen in the dialog,
+    // not just the broader `canAddBU` used to show the button — those can diverge
+    // when the admin holds cluster.update on one of the user's clusters but not
+    // the one actually selected.
+    if (!hasPermission('cluster.update', { clusterId: selectedClusterId })) return;
     setAddingBU(true);
     try {
       await businessUnitService.createUserBusinessUnit({
@@ -258,6 +299,13 @@ const UserEdit: React.FC = () => {
 
   const handleConfirmDeleteBU = async () => {
     if (!deleteBU) return;
+    // Defence-in-depth funnel — scoped to the BU's own cluster (not the viewer's
+    // broader membership), mirroring the <Can> gate on the Remove button itself
+    // (UserAccessTree.tsx) so no state path can fire this write unauthorized.
+    // Fall back to the sentinel (never `undefined`) when the BU's cluster is
+    // unresolved, so this also fails CLOSED for orphan BUs instead of sliding
+    // into checkPermission's broad "any cluster" fallback.
+    if (!hasPermission('cluster.update', { clusterId: deleteBU.business_unit?.cluster_id ?? UNRESOLVED_CLUSTER_ID })) return;
     try {
       await businessUnitService.deleteUserBusinessUnit(deleteBU.id);
       toast.success('Business unit removed successfully');
@@ -421,6 +469,31 @@ const UserEdit: React.FC = () => {
     );
   }
 
+  // Not-found gate — shared A4 pattern, mirrors the ClusterEdit reference.
+  if (notFound) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo="/users" title="User" />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="User not found"
+                description="This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list."
+                action={
+                  <Button size="sm" onClick={() => navigate('/users')}>
+                    Back to users
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
   const heroName = [formData.firstname, formData.middlename, formData.lastname].filter(Boolean).join(" ") || formData.username || formData.email;
   const heroInitials = ((formData.firstname?.[0] || "") + (formData.lastname?.[0] || "")).toUpperCase()
     || (formData.username || formData.email || "?").slice(0, 2).toUpperCase();
@@ -452,10 +525,12 @@ const UserEdit: React.FC = () => {
               clusterCount={userClusters.length}
               actions={!editing && (
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Change password
-                  </Button>
+                  <Can permission="user.update">
+                    <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Change password
+                    </Button>
+                  </Can>
                   <Can permission="user.update">
                     <Button size="sm" onClick={handleEditToggle}>
                       <Pencil className="mr-2 h-4 w-4" />
@@ -535,14 +610,22 @@ const UserEdit: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="alias_name">Alias Name</Label>
                   {editing ? (
-                    <Input
-                      type="text"
-                      id="alias_name"
-                      name="alias_name"
-                      value={formData.alias_name}
-                      onChange={handleChange}
-                      placeholder="Alias name"
-                    />
+                    <>
+                      <Input
+                        type="text"
+                        id="alias_name"
+                        name="alias_name"
+                        value={formData.alias_name}
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        onFocus={handleFocus}
+                        placeholder="Alias name"
+                        className={fieldErrors.alias_name ? 'border-destructive' : ''}
+                      />
+                      {fieldErrors.alias_name && (
+                        <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
+                      )}
+                    </>
                   ) : (
                     <ReadOnlyField value={formData.alias_name} />
                   )}
@@ -646,7 +729,7 @@ const UserEdit: React.FC = () => {
           <UserAccessTree
             clusters={userClusters}
             businessUnits={businessUnits}
-            canAddBU={userClusters.length > 0}
+            canAddBU={canAddBU}
             onAddBU={handleOpenAddBU}
             onDeleteBU={handleDeleteBU}
           />
@@ -790,7 +873,13 @@ const UserEdit: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <DevDebugSheet title="API Response" endpoint={`GET /api-system/user/${id}`} data={rawResponse} />
+      <DevDebugSheet
+        title="User Debug"
+        tabs={[
+          { key: 'user', label: 'User', data: rawResponse, endpoint: `GET /api-system/user/${id}` },
+          { key: 'clusterBUs', label: 'Cluster BUs', data: rawClusterBUsResponse, endpoint: 'GET /api-system/business-units' },
+        ]}
+      />
     </Layout>
   );
 };

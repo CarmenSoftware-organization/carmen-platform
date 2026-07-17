@@ -61,6 +61,7 @@ const RoleManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<RolesSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_roles') || '';
   const storedFilters = getStoredJSON<string[]>('filters_roles', []);
@@ -132,12 +133,14 @@ const RoleManagement: React.FC = () => {
   // ranking reflect every role, not the current view.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const data = await roleService.getAll({ perpage: -1 });
       const raw = data.data || data;
       setSummary(summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -373,7 +376,7 @@ const RoleManagement: React.FC = () => {
           }
         />
 
-        <RolesAccessSummary summary={summary} loading={summaryLoading} />
+        <RolesAccessSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">
