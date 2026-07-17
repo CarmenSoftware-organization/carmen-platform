@@ -32,6 +32,7 @@ _Every task's requirements implicitly include this section (from the master desi
 - **Systemic <44px touch targets tied to the shared `Button`/`Input` defaults** (`h-9` = 36px) — fixing the base primitive height is an app-wide design decision, out of A3 scope. Only page-authored undersized overrides (explicit `h-6`/`h-7` the page itself set, e.g. ApplicationManagement's App-ID copy button) are fixed here. Tracked for a global control-sizing pass.
 - **`ClusterManagement` (12/12)** — reference page, P2 polish only (Cmd/K hint, duplicated inline date-fmt, raw filter checkbox, unbounded fleet fetch). Deferred to a polish backlog; it already meets the contract.
 - **Shared `formatDateTime` util extraction** (the duplicated inline `fmt` helper across pages) — a worthwhile DRY cleanup but P2 and broad; tracked separately.
+- **Permanent skeleton on summary-fetch failure** — the anti-pattern (`catch { setSummary(null) }` feeding a `{loading || !summary ? <Skeleton/> ...}` gate, so a failed summary fetch renders as a forever-loading state instead of an error) was fixed only on `NewsroomSummary` (Task 8). The same pattern remains on 5 pages this wave touched: `ApplicationManagement.tsx:134`, `BusinessUnitManagement.tsx:130`, `RoleManagement.tsx:140`, `UserPlatformManagement.tsx:175`, `UserManagement.tsx:189`. Tracked as a Wave 2 item — `NewsroomSummary`'s `error` + `onRetry` prop pair is the ready-made template to replicate on these 5. Not implemented in Wave 1.
 
 ---
 

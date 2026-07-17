@@ -22,7 +22,7 @@ export const generateCSV = <T extends Record<string, any>>(
     columns.map(col => {
       const value = item[col.key];
       const stringValue = neutraliseFormulaPrefix(String(value ?? ''));
-      return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
+      return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')
         ? `"${stringValue.replace(/"/g, '""')}"`
         : stringValue;
     }).join(',')

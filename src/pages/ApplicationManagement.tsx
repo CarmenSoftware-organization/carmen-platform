@@ -505,7 +505,9 @@ const ApplicationManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && applications.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count.
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (

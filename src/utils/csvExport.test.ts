@@ -72,8 +72,10 @@ describe('generateCSV - formula injection hardening', () => {
   });
 
   it('neutralises a value starting with a carriage return', () => {
+    // The neutralised value still contains a raw \r, so RFC-4180 quoting
+    // (which now checks for \r, not just \n) wraps it in quotes.
     const csv = generateCSV<Row>([{ name: '\r=1+1', code: 'x' }], cols);
-    expect(csv).toBe("Name,Code\n'\r=1+1,x");
+    expect(csv).toBe('Name,Code\n"\'\r=1+1",x');
   });
 
   it('does NOT alter a legitimate negative number', () => {

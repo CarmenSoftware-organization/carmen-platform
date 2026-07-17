@@ -297,7 +297,9 @@ const SuperAdminManagement: React.FC = () => {
             ) : !error ? (
               <div className="relative">
                 {loading && rows.length === 0 ? (
-                  <TableSkeleton columns={4} rows={5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count.
+                  <TableSkeleton columns={columns.length + 1} rows={5} />
                 ) : (
                   <>
                     {loading && (
