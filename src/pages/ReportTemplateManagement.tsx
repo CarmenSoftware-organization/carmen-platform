@@ -15,7 +15,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, FileText, Download } f
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -192,9 +192,15 @@ const ReportTemplateManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <Link to={`/report-templates/${row.original.id}/edit`} className="text-primary hover:underline">
-          {row.original.name}
-        </Link>
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            to={`/report-templates/${row.original.id}/edit`}
+            className="text-primary hover:underline truncate max-w-[220px]"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </Link>
+        </div>
       ),
     },
     {
@@ -424,7 +430,11 @@ const ReportTemplateManagement: React.FC = () => {
                 {statusFilter.map((s) => (
                   <Badge key={`status-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
-                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleStatusFilter(s)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${s === "true" ? "Active" : "Inactive"} filter`}
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -432,7 +442,11 @@ const ReportTemplateManagement: React.FC = () => {
                 {sourceTypeFilter.map((t) => (
                   <Badge key={`source-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
                     {t}
-                    <button onClick={() => handleSourceTypeFilter(t)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleSourceTypeFilter(t)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${t} filter`}
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -447,16 +461,20 @@ const ReportTemplateManagement: React.FC = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
             {!error && templates.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={FileText}
-                title="No report templates yet"
-                description={searchTerm ? `No report templates matching "${searchTerm}"` : "Get started by creating your first report template."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/report-templates/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Template
-                  </Button>
-                ) : undefined}
+                emptyTitle="No report templates yet"
+                emptyDescription="Get started by creating your first report template."
+                addAction={
+                  <Can permission="report_template.create">
+                    <Button size="sm" onClick={() => navigate('/report-templates/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Template
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
