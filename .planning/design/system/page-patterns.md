@@ -114,8 +114,11 @@ Information hierarchy · Interaction/flow · Responsive · A11y.**
   guard; `Cmd/Ctrl+S` save, `Esc` cancel; `validateField` on blur; after create
   `navigate(/x/:id, {replace:true})`; versioned entities thread `doc_version` via
   `utils/docVersion.ts` (never in `formData`).
-- **Responsive/A11y:** two-column collapses to one on mobile; sticky bar offsets match the
-  sidebar; labels bound to inputs; async buttons disabled in-flight.
+- **Responsive:** two-column collapses to one on mobile; sticky action bar offsets match the
+  sidebar (`md:left-16 lg:left-60`).
+- **A11y:** labels bound to inputs; async buttons disabled in-flight; error region
+  `role="alert"`; loading region `role="status"`; icon-only buttons carry `aria-label`;
+  interactive hit area ≥44px on mobile (the tappable area governs, not the visual control).
 
 ## A5 — Config (small-dimension) (reference: `PrintTemplateMappingManagement`)
 - **Anatomy:** shared `PageHeader` (title + subtitle + primary `Add`) → lighter toolbar: a

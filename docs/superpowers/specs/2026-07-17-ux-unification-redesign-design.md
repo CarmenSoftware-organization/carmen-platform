@@ -7,7 +7,7 @@
 
 ## 1. Goal & non-goals
 
-**Goal.** Bring all ~25 app pages to a single, elevated, consistent UX. Two intertwined
+**Goal.** Bring all ~28 app pages to a single, elevated, consistent UX. Two intertwined
 outcomes the user asked for: (a) **same style** — structural/visual consistency across
 pages, and (b) **better UX** — higher quality on flow, states, and information hierarchy.
 
@@ -40,7 +40,7 @@ today's inconsistency).
 ## 3. Page archetypes
 
 The codebase has ~8 archetypes, not the 2 that `components.md` documents. Each gets its own
-canonical contract. **A3 + A4 = 17/25 pages** → the core of the effort.
+canonical contract. **A3 + A4 = 17/28 pages** → the core of the effort.
 
 | # | Archetype | Pages | Count |
 |---|-----------|-------|:---:|
@@ -110,8 +110,11 @@ Wave 0. The durable, standalone version lives in `.planning/design/system/page-p
   guard; `Cmd/Ctrl+S` save, `Esc` cancel; `validateField` on blur; after create
   `navigate(/x/:id, {replace:true})`; versioned entities thread `doc_version` via
   `utils/docVersion.ts` (never in `formData`).
-- **Responsive/A11y:** two-column collapses to one on mobile; sticky bar offsets match the
-  sidebar; labels bound to inputs; async buttons disabled in-flight.
+- **Responsive:** two-column collapses to one on mobile; sticky action bar offsets match the
+  sidebar (`md:left-16 lg:left-60`).
+- **A11y:** labels bound to inputs; async buttons disabled in-flight; error region
+  `role="alert"`; loading region `role="status"`; icon-only buttons carry `aria-label`;
+  interactive hit area ≥44px on mobile (the tappable area governs, not the visual control).
 
 ### 4.3 Skeleton contracts (completed in Wave 0)
 
