@@ -29,6 +29,11 @@ vi.mock('../services/userService', () => ({
   default: { getAll: vi.fn() },
 }));
 
+// Mocked so the failure-path test below can assert exactly what text reaches the
+// user, instead of relying on sonner's real (headless-in-jsdom) toast store.
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
+vi.mock('sonner', () => ({ toast }));
+
 import BroadcastCompose from './BroadcastCompose';
 import broadcastService from '../services/broadcastService';
 import businessUnitService from '../services/businessUnitService';
@@ -102,5 +107,44 @@ describe('BroadcastCompose — Ctrl/Cmd+S is gated on broadcast.send', () => {
 
     await waitFor(() => expect(broadcastService.sendSystem).toHaveBeenCalledTimes(1));
     expect(broadcastService.sendBu).not.toHaveBeenCalled();
+  });
+});
+
+// HONEST ERROR HANDLING. Backend PR #239 now enforces broadcast.send server-side
+// (previously the FE gate was the only boundary). When that server-side check
+// rejects the request, the failure must reach the user as the backend's own
+// message — never sonner's default/axios-generated "Request failed with status
+// code 403" — otherwise a user who slips past the (intentionally coarse) FE gate
+// gets a useless, unactionable error instead of the real reason.
+describe('BroadcastCompose — send failure surfaces the backend-parsed message, not a raw axios string', () => {
+  it('shows the parsed backend message on a 403 from broadcastService.sendSystem', async () => {
+    asMock(broadcastService.sendSystem).mockRejectedValue({
+      response: {
+        status: 403,
+        data: { error: { message: 'Missing platform permission: broadcast.send' } },
+      },
+    });
+    const user = userEvent.setup();
+    renderAt('/broadcasts/new');
+
+    // canSendSystem=true (default mock) defaults to the "All users" tab.
+    await user.type(screen.getByLabelText('Title'), 'Scheduled maintenance');
+    await user.type(screen.getByLabelText('Message'), 'The system will be down briefly.');
+
+    await user.click(screen.getByRole('button', { name: /^send$/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: /^send$/i }));
+
+    await waitFor(() => expect(broadcastService.sendSystem).toHaveBeenCalledTimes(1));
+
+    // The real backend message must reach the user...
+    expect(toast.error).toHaveBeenCalledWith('Missing platform permission: broadcast.send');
+    // ...and the raw axios-generated message must never be what the toast shows.
+    expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining('Request failed with status code'));
+    expect(toast.error).not.toHaveBeenCalledWith('[object Object]');
+
+    // Same message persists in the in-page banner (BroadcastCompose keeps a banner
+    // alongside the toast since the toast auto-dismisses).
+    expect(await screen.findByRole('alert')).toHaveTextContent('Missing platform permission: broadcast.send');
   });
 });
