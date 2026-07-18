@@ -224,4 +224,52 @@ describe('DatabaseConnectionSection — write-only password + guarded reveal', (
     render(<DatabaseConnectionSection {...baseProps({ businessUnitId: undefined })} />);
     expect(screen.queryByRole('button', { name: /reveal current password/i })).not.toBeInTheDocument();
   });
+
+  it('clears the revealed password once the section leaves edit mode', async () => {
+    const user = userEvent.setup();
+    vi.mocked(businessUnitService.revealDbPassword).mockResolvedValue({
+      host: 'db.example.com',
+      password: 'super-secret',
+    });
+    const props = baseProps({
+      formData: {
+        ...initialFormData,
+        db_connection: [
+          { key: 'host', value: 'db.example.com' },
+          { key: 'password', value: '' },
+        ],
+      },
+      businessUnitId: 'bu1',
+    });
+    const { rerender } = render(<DatabaseConnectionSection {...props} />);
+
+    await user.click(screen.getByRole('button', { name: /reveal current password/i }));
+    expect(await screen.findByText('super-secret')).toBeInTheDocument();
+
+    // Leave edit mode, then come back — a reset-on-unmount would be indistinguishable
+    // from this test, so the round-trip through the read-only branch is deliberate:
+    // it proves the state itself was cleared, not just hidden by the branch.
+    rerender(<DatabaseConnectionSection {...props} editing={false} />);
+    rerender(<DatabaseConnectionSection {...props} editing={true} />);
+
+    expect(screen.queryByText('super-secret')).not.toBeInTheDocument();
+  });
+
+  it('scopes the reveal gate to the business unit\'s own cluster (genuine per-cluster defense-in-depth)', () => {
+    auth.hasPermission = (_perm: string, ctx?: { clusterId?: string }) => ctx?.clusterId === 'cluster-42';
+    render(<DatabaseConnectionSection {...baseProps({
+      businessUnitId: 'bu1',
+      formData: { ...initialFormData, cluster_id: 'cluster-42', db_connection: [] },
+    })} />);
+    expect(screen.getByRole('button', { name: /reveal current password/i })).toBeInTheDocument();
+  });
+
+  it('does not grant the reveal when cluster.update is held for a different cluster', () => {
+    auth.hasPermission = (_perm: string, ctx?: { clusterId?: string }) => ctx?.clusterId === 'cluster-other';
+    render(<DatabaseConnectionSection {...baseProps({
+      businessUnitId: 'bu1',
+      formData: { ...initialFormData, cluster_id: 'cluster-42', db_connection: [] },
+    })} />);
+    expect(screen.queryByRole('button', { name: /reveal current password/i })).not.toBeInTheDocument();
+  });
 });

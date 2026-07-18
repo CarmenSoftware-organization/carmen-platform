@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -46,6 +46,15 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [revealing, setRevealing] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+
+  // Defense-in-depth: a previously revealed plaintext password must not linger
+  // once the admin leaves edit mode — clear it rather than relying on unmount.
+  useEffect(() => {
+    if (!editing) {
+      setRevealedPassword(null);
+    }
+  }, [editing]);
+
   const fields = formData.db_connection;
   const valueOf = (key: string) => fields.find((f) => f.key === key)?.value ?? '';
   const extras = fields
@@ -137,7 +146,7 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
                     Leave blank to keep the current password.
                   </p>
                   {businessUnitId && (
-                    <Can permission="cluster.update">
+                    <Can permission="cluster.update" clusterId={formData.cluster_id}>
                       <div className="space-y-2 pt-1">
                         <Button
                           type="button"
