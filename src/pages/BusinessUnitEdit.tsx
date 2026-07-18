@@ -511,6 +511,7 @@ const BusinessUnitEdit: React.FC = () => {
         <BusinessUnitDocument
           formData={formData}
           fieldErrors={fieldErrors}
+          businessUnitId={id}
           clusterName={getClusterName(formData.cluster_id)}
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}

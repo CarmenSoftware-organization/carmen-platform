@@ -11,6 +11,8 @@ import DatabaseConnectionSection from './sections/DatabaseConnectionSection';
 interface BusinessUnitDocumentProps {
   formData: BusinessUnitFormData;
   fieldErrors: Record<string, string>;
+  // Undefined when creating a new BU — there is no stored db_connection to reveal yet.
+  businessUnitId?: string;
   clusterName: string;
   logoUrl?: string;
   avatarUrl?: string;
@@ -54,6 +56,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
   const {
     formData: f,
     fieldErrors,
+    businessUnitId,
     clusterName,
     logoUrl,
     avatarUrl,
@@ -247,6 +250,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       />
       <DatabaseConnectionSection
         {...sectionField}
+        businessUnitId={businessUnitId}
         onDbFieldChange={onDbFieldChange}
         onDbExtraChange={onDbExtraChange}
         onAddDbExtraRow={onAddDbExtraRow}

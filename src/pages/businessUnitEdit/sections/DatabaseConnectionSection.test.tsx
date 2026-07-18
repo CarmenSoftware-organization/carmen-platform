@@ -1,11 +1,32 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import DatabaseConnectionSection from './DatabaseConnectionSection';
 import { initialFormData } from '../types';
 import type { SectionFieldProps } from '../types';
 
+// Mutable auth so a test can grant/revoke cluster.update. `Can` (the REAL
+// component, not mocked here) reads this via useAuth() — mocking `Can` itself to
+// always render its children would make the reveal-gate test below vacuous.
+const auth = vi.hoisted(() => ({
+  isSuperAdmin: false,
+  hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
+}));
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => auth,
+}));
+
+vi.mock('../../../services/businessUnitService', () => ({
+  default: { revealDbPassword: vi.fn() },
+}));
+
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
+vi.mock('sonner', () => ({ toast }));
+
+import DatabaseConnectionSection from './DatabaseConnectionSection';
+import businessUnitService from '../../../services/businessUnitService';
+
 type DbProps = SectionFieldProps & {
+  businessUnitId?: string;
   onDbFieldChange: (key: string, value: string) => void;
   onDbExtraChange: (index: number, field: 'key' | 'value', value: string) => void;
   onAddDbExtraRow: () => void;
@@ -116,5 +137,91 @@ describe('DatabaseConnectionSection (edit mode)', () => {
       formData: { ...initialFormData, db_connection: [{ key: '', value: 'orphan' }] },
     })} />);
     expect(screen.getByText(/key is required/i)).toBeInTheDocument();
+  });
+});
+
+// SECURITY. db_connection.password is now redacted to '' by the backend on every
+// list/detail read (a separate PR), so the password field is write-only from the
+// client's perspective: it never round-trips a real value from the API. The only
+// path to the stored plaintext is the guarded on-demand reveal endpoint, gated
+// server-side on cluster.update. This suite proves (a) the input never pretends to
+// hold a real value, and (b) the reveal control is genuinely gated, not decorative.
+describe('DatabaseConnectionSection — write-only password + guarded reveal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    auth.hasPermission = () => true;
+  });
+
+  it('renders the password write-only: blank input + "leave blank" hint, even when loaded with a (redacted) empty password', () => {
+    render(<DatabaseConnectionSection {...baseProps({
+      formData: {
+        ...initialFormData,
+        db_connection: [
+          { key: 'host', value: 'db.example.com' },
+          { key: 'password', value: '' },
+        ],
+      },
+      businessUnitId: 'bu1',
+    })} />);
+
+    expect(screen.getByLabelText('Password')).toHaveValue('');
+    expect(screen.getByText(/leave blank to keep the current password/i)).toBeInTheDocument();
+  });
+
+  it('does not render the reveal control without cluster.update (discriminating negative)', () => {
+    auth.hasPermission = () => false;
+    render(<DatabaseConnectionSection {...baseProps({ businessUnitId: 'bu1' })} />);
+
+    expect(screen.queryByRole('button', { name: /reveal current password/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the reveal control with cluster.update, and shows the fetched plaintext on click without prefilling the input', async () => {
+    auth.hasPermission = () => true;
+    const user = userEvent.setup();
+    vi.mocked(businessUnitService.revealDbPassword).mockResolvedValue({
+      host: 'db.example.com',
+      password: 'super-secret',
+    });
+    render(<DatabaseConnectionSection {...baseProps({
+      formData: {
+        ...initialFormData,
+        db_connection: [
+          { key: 'host', value: 'db.example.com' },
+          { key: 'password', value: '' },
+        ],
+      },
+      businessUnitId: 'bu1',
+    })} />);
+
+    const revealBtn = screen.getByRole('button', { name: /reveal current password/i });
+    await user.click(revealBtn);
+
+    expect(businessUnitService.revealDbPassword).toHaveBeenCalledWith('bu1');
+    expect(await screen.findByText('super-secret')).toBeInTheDocument();
+    // Never prefills the write-only input with the revealed value.
+    expect(screen.getByLabelText('Password')).toHaveValue('');
+  });
+
+  it('does not auto-fetch the reveal on mount', () => {
+    render(<DatabaseConnectionSection {...baseProps({ businessUnitId: 'bu1' })} />);
+    expect(businessUnitService.revealDbPassword).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast (not a thrown error) when the reveal fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(businessUnitService.revealDbPassword).mockRejectedValue({
+      response: { data: { message: 'Forbidden' } },
+    });
+    render(<DatabaseConnectionSection {...baseProps({ businessUnitId: 'bu1' })} />);
+
+    await user.click(screen.getByRole('button', { name: /reveal current password/i }));
+
+    expect(await screen.findByRole('button', { name: /reveal current password/i })).not.toBeDisabled();
+    expect(toast.error).toHaveBeenCalledWith('Forbidden');
+  });
+
+  it('has no reveal affordance for a new (unsaved) business unit even with cluster.update', () => {
+    render(<DatabaseConnectionSection {...baseProps({ businessUnitId: undefined })} />);
+    expect(screen.queryByRole('button', { name: /reveal current password/i })).not.toBeInTheDocument();
   });
 });
