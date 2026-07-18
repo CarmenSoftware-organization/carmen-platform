@@ -17,6 +17,7 @@ import {
   closeBracketsKeymap,
 } from '@codemirror/autocomplete';
 import { format as sqlFormat } from 'sql-formatter';
+import { toast } from 'sonner';
 import { Play, Wand2, Search as SearchIcon, Eraser, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
@@ -185,8 +186,8 @@ export function SqlEditor({
         tabWidth: 2,
       });
       replaceAll(formatted);
-    } catch {
-      // ignore format errors silently
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to format SQL — check for syntax errors.');
     }
   };
 

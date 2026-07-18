@@ -122,6 +122,7 @@ export function ResultPanel({
               className="size-7"
               onClick={onClose}
               title="Close results"
+              aria-label="Close results"
             >
               <X className="size-3.5" />
             </Button>
@@ -132,7 +133,10 @@ export function ResultPanel({
       {/* Body */}
       {error ? (
         <div className="p-3">
-          <pre className="border-destructive/30 bg-destructive/5 text-destructive rounded border p-3 text-xs whitespace-pre-wrap">
+          <pre
+            role="alert"
+            className="border-destructive/30 bg-destructive/5 text-destructive rounded border p-3 text-xs whitespace-pre-wrap"
+          >
             {error}
           </pre>
           {errorLine !== null && (
@@ -143,7 +147,11 @@ export function ResultPanel({
           )}
         </div>
       ) : isRunning && !result ? (
-        <div className="text-muted-foreground flex items-center justify-center py-10 text-sm">
+        <div
+          role="status"
+          aria-live="polite"
+          className="text-muted-foreground flex items-center justify-center py-10 text-sm"
+        >
           Running query…
         </div>
       ) : result && result.rowCount === 0 ? (

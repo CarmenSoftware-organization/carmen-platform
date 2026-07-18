@@ -81,6 +81,20 @@ describe('tenantMigrationService.deployStream', () => {
     await expect(tenantMigrationService.deployStream('b', () => {})).rejects.toThrow(/already running/);
   });
 
+  // The signal only aborts the browser's wait on this fetch — it does not cancel the migration
+  // running server-side (see the doc comment on _streamDeploy). This test only proves the
+  // signal is actually forwarded to fetch, so TenantMigrationManagement's abort-on-unmount has
+  // an effect on the client side.
+  it('forwards the abort signal to fetch', async () => {
+    const spy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(okStream([JSON.stringify({ type: 'done', success: true, summary: {} }) + '\n']) as never);
+    const controller = new AbortController();
+    await tenantMigrationService.deployStream('b', () => {}, controller.signal);
+    const [, init] = spy.mock.calls[0];
+    expect((init as RequestInit).signal).toBe(controller.signal);
+  });
+
   it('rejects on a terminal error event', async () => {
     const chunks = [
       JSON.stringify({ type: 'start', bu_id: 'b', bu_code: 'B', total: 1 }) + '\n',

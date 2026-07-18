@@ -96,7 +96,7 @@ describe('TenantMigrationManagement', () => {
     await user.click(await screen.findByRole('button', { name: /^apply$/i }));
     await user.click(await screen.findByRole('button', { name: /apply migrations/i })); // confirm
 
-    expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function));
+    expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function), expect.any(AbortSignal));
     await waitFor(() => expect(within(screen.getByRole('table')).getByText('In sync')).toBeInTheDocument());
   });
 
@@ -118,6 +118,65 @@ describe('TenantMigrationManagement', () => {
     await waitFor(() => expect(within(screen.getByRole('table')).getAllByText('In sync')).toHaveLength(2));
     const { toast } = await import('sonner');
     expect(toast.success).toHaveBeenCalledWith('Deployed: 2 ok, 0 failed.');
+  });
+
+  // This does NOT prove the migration is cancelled on the server — it isn't (see the doc
+  // comment on tenantMigrationService._streamDeploy: the micro-business handler is explicitly
+  // designed to keep running `prisma migrate deploy` to completion after a client disconnect).
+  // It proves the client stops waiting / holding the fetch open when the page is left mid-apply,
+  // which is the honest scope of what an AbortController can do here — no user-facing Cancel is
+  // shipped because one would lie about stopping an irreversible schema migration.
+  it('aborts the in-flight per-row deploy stream request on unmount (client-side only — the migration itself keeps running)', async () => {
+    const user = userEvent.setup();
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(tenantMigrationService.getStatus).mockResolvedValue(
+      { bu_id: 'b1', bu_code: 'BU01', up_to_date: false, has_pending: true, pending: ['m1'], raw: '' } as never,
+    );
+    vi.mocked(tenantMigrationService.deployStream).mockImplementation(
+      (_id, _onEvent, signal) =>
+        new Promise((_resolve, reject) => {
+          capturedSignal = signal;
+          signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }) as never,
+    );
+
+    const { unmount } = renderPage();
+    await screen.findByText('BU01');
+    await user.click(screen.getAllByRole('button', { name: /^check$/i })[0]);
+    await screen.findByText('1 behind');
+    await user.click(await screen.findByRole('button', { name: /^apply$/i }));
+    await user.click(await screen.findByRole('button', { name: /apply migrations/i }));
+
+    await waitFor(() => expect(capturedSignal).toBeInstanceOf(AbortSignal));
+    expect(capturedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('aborts the in-flight Deploy all stream request on unmount (client-side only — the BU mid-migration keeps running)', async () => {
+    const user = userEvent.setup();
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(tenantMigrationService.deployAllStream).mockImplementation(
+      (_onEvent, signal) =>
+        new Promise((_resolve, reject) => {
+          capturedSignal = signal;
+          signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }) as never,
+    );
+
+    const { unmount } = renderPage();
+    await screen.findByText('BU01');
+    await user.click(screen.getByRole('button', { name: /deploy all/i }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /^deploy all$/i }));
+
+    await waitFor(() => expect(capturedSignal).toBeInstanceOf(AbortSignal));
+    expect(capturedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
   });
 
   it('disables all action buttons for a non-super-admin', async () => {
@@ -183,7 +242,7 @@ describe('TenantMigrationManagement', () => {
       await user.click(await screen.findByRole('button', { name: /^apply$/i }));
       await user.click(await screen.findByRole('button', { name: /apply migrations/i }));
 
-      expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function));
+      expect(tenantMigrationService.deployStream).toHaveBeenCalledWith('b1', expect.any(Function), expect.any(AbortSignal));
     });
 
     it('deployAll does NOT call deployAllStream if isSuperAdmin is revoked after the confirm dialog opens', async () => {
