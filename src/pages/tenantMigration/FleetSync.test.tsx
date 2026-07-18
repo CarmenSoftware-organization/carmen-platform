@@ -27,7 +27,7 @@ describe('FleetSync', () => {
         actions={<span />}
       />,
     );
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('-')).toBeInTheDocument();
     expect(screen.getByText(/Not checked yet/)).toBeInTheDocument();
   });
 });

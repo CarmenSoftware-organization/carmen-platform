@@ -331,7 +331,7 @@ describe('SqlWorkbench', () => {
     // Happy path still works: resolving the in-flight run surfaces its result normally.
     resolveExec({ columns: [], rows: [], rowCount: 0, durationMs: 1 });
     expect(
-      await screen.findByText(/query executed successfully — no rows returned/i),
+      await screen.findByText(/query executed successfully\. no rows returned/i),
     ).toBeInTheDocument();
   });
 

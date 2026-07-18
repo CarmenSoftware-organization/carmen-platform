@@ -73,9 +73,9 @@ export function summarizeNews(list: NewsLike[]): NewsSummaryData {
 
 /** Relative "time since" for the lead story's publish date. `now` is injectable for tests. */
 export function timeAgo(iso?: string, now = Date.now()): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const then = Date.parse(iso);
-  if (Number.isNaN(then)) return '—';
+  if (Number.isNaN(then)) return '-';
   const sec = Math.floor((now - then) / 1000);
   if (sec < 60) return 'just now';
   const min = Math.floor(sec / 60);

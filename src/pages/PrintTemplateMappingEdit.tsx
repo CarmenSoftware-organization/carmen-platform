@@ -355,7 +355,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                         <option value="">Select document type…</option>
                         {docTypes.map((d) => (
                           <option key={d.code} value={d.code}>
-                            {d.code} — {d.label}
+                            {d.code} - {d.label}
                           </option>
                         ))}
                       </select>
@@ -365,7 +365,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                     </>
                   ) : (
                     <ReadOnlyField
-                      value={form.document_type ? `${form.document_type} — ${docTypeLabel(form.document_type)}` : ''}
+                      value={form.document_type ? `${form.document_type} - ${docTypeLabel(form.document_type)}` : ''}
                     />
                   )}
                 </div>
@@ -390,7 +390,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
                       >
                         <option value="">
                           {filteredTemplates.length === 0
-                            ? '— no templates available —'
+                            ? 'No templates available'
                             : form.document_type
                               ? `Select template (${matchedCount} match / ${filteredTemplates.length} total)…`
                               : `Select template (${filteredTemplates.length} total)…`}
@@ -592,7 +592,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
         </form>
       </div>
 
-      <DevDebugSheet title="Debug — Raw API Response" endpoint="Last response from GET /print-template-mapping/:id" data={isNew ? null : rawResponse} />
+      <DevDebugSheet title="Debug - Raw API Response" endpoint="Last response from GET /print-template-mapping/:id" data={isNew ? null : rawResponse} />
     </Layout>
   );
 };

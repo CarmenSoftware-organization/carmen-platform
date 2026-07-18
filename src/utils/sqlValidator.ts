@@ -94,7 +94,7 @@ export function validateSqlSafety(
 ): void {
   if (typeof window === 'undefined') {
     throw new Error(
-      'validateSqlSafety is client-only — use the server validator instead',
+      'validateSqlSafety is client-only - use the server validator instead',
     );
   }
   if (!sql?.trim()) throw new Error('SQL is empty');

@@ -177,7 +177,7 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
           ))}
         </div>
         <p className="mt-4 text-[11px] text-muted-foreground italic">
-          Preview only — controls are disabled and lookup data is not loaded.
+          Preview only. Controls are disabled and lookup data is not loaded.
         </p>
       </div>
     </div>
