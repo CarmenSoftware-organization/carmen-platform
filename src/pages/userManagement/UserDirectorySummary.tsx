@@ -97,7 +97,7 @@ function Faces({ faces, total }: { faces: FaceItem[]; total: number }) {
   const extra = Math.max(0, total - faces.length);
   return (
     <div className="shrink-0">
-      <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">
+      <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">
         Recently added
       </div>
       <div className="flex items-center -space-x-2">
@@ -142,7 +142,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Directory</div>
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Directory</div>
 
       {error ? (
         <FetchErrorState message="Couldn't load the directory summary." onRetry={onRetry} className="py-3" />

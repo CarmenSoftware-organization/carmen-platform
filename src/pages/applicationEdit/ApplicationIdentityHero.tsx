@@ -106,7 +106,7 @@ export function ApplicationIdentityHero({
             {appId && <AppIdChip appId={appId} />}
           </div>
           <div
-            className={`mt-2 flex items-center gap-1.5 text-[11.5px] ${allowAll ? 'text-warning' : 'text-muted-foreground/80'}`}
+            className={`mt-2 flex items-center gap-1.5 text-[11px] ${allowAll ? 'text-warning' : 'text-muted-foreground/80'}`}
           >
             {allowAll && <AlertTriangle className="size-3.5 shrink-0" />}
             {accessSummary(allowAll, apiNames)}

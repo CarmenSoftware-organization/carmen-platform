@@ -150,7 +150,7 @@ export function NewsroomSummary({ summary, loading, error = false, onRetry = () 
       ) : (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-[16rem] flex-1">
-            <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">Latest</div>
+            <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Latest</div>
             {summary.latest ? (
               <div className="flex items-start gap-3">
                 {summary.latest.imageUrl ? (

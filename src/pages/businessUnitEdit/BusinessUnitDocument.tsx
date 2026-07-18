@@ -46,7 +46,7 @@ interface BusinessUnitDocumentProps {
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-t p-4 sm:px-6 sm:py-5">
-      <div className="text-muted-foreground mb-1 text-[10.5px] font-bold uppercase tracking-[0.13em]">{label}</div>
+      <div className="text-muted-foreground mb-1 text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
       <div>{children}</div>
     </div>
   );

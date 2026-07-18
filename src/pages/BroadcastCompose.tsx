@@ -370,7 +370,7 @@ const BroadcastCompose: React.FC = () => {
             <CardContent className="space-y-6 pt-6">
               {/* Audience */}
               <section className="space-y-3">
-                <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Audience</div>
+                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Audience</div>
                 <Tabs value={targetMode} onValueChange={(v) => setTargetMode(v as BroadcastTargetMode)}>
                   <TabsList>
                     {canSendSystem && (
@@ -448,7 +448,7 @@ const BroadcastCompose: React.FC = () => {
 
               {/* Message */}
               <section className="space-y-4 border-t pt-6">
-                <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Message</div>
+                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Message</div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="title">Title</Label>
@@ -518,7 +518,7 @@ const BroadcastCompose: React.FC = () => {
 
               {/* Delivery */}
               <section className="space-y-3 border-t pt-6">
-                <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Delivery</div>
+                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Delivery</div>
                 <Tabs value={formData.sendMode} onValueChange={(v) => setField('sendMode', v as 'now' | 'schedule')}>
                   <TabsList>
                     <TabsTrigger value="now">

@@ -78,7 +78,7 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
           </div>
 
           <div className="min-w-[16rem] flex-1">
-            <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">Broadest roles</div>
+            <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Broadest roles</div>
             {summary.topRoles.length === 0 ? (
               <p className="text-muted-foreground text-sm">No roles yet.</p>
             ) : (

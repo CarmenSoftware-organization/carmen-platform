@@ -79,7 +79,7 @@ export function BroadcastPreview({
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Preview</div>
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Preview</div>
 
       {/* Notification as recipients see it */}
       <div className="flex overflow-hidden rounded-lg border">
@@ -99,7 +99,7 @@ export function BroadcastPreview({
 
       {/* Reach */}
       <div className="mt-4 space-y-1">
-        <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Reaches</div>
+        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Reaches</div>
         <div
           className={cn(
             'flex items-center gap-2 rounded-md px-2.5 py-2 text-sm',
@@ -113,7 +113,7 @@ export function BroadcastPreview({
 
       {/* Delivery */}
       <div className="mt-3 space-y-1">
-        <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Delivery</div>
+        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Delivery</div>
         <div className="text-foreground flex items-center gap-2 px-2.5 py-1 text-sm">
           {sendMode === 'schedule' ? (
             <>
