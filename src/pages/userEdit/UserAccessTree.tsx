@@ -188,7 +188,7 @@ export function UserAccessTree({ clusters, businessUnits, canAddBU, onAddBU, onD
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.14em]">Access</div>
+            <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Access</div>
             <p className="text-muted-foreground mt-1 text-xs">
               {businessUnits.length} business unit{businessUnits.length === 1 ? '' : 's'} across {clusters.length} cluster
               {clusters.length === 1 ? '' : 's'}

@@ -78,7 +78,7 @@ export function ApplicationRegistrySummary({ summary, loading, error = false, on
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Registry</div>
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Registry</div>
 
       {error ? (
         <FetchErrorState message="Couldn't load the registry summary." onRetry={onRetry} className="py-3" />
@@ -99,7 +99,7 @@ export function ApplicationRegistrySummary({ summary, loading, error = false, on
           </div>
 
           <div className="min-w-[14rem] flex-1">
-            <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">API access scope</div>
+            <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">API access scope</div>
             <div
               className="bg-muted flex h-3 overflow-hidden rounded-full"
               role="img"
@@ -116,7 +116,7 @@ export function ApplicationRegistrySummary({ summary, loading, error = false, on
 
           {summary.devices.length > 0 && (
             <div className="shrink-0">
-              <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">Devices</div>
+              <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Devices</div>
               <div className="flex flex-wrap gap-1.5">
                 {summary.devices.map((d) => (
                   <span key={d.device} className="text-muted-foreground inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs">

@@ -109,7 +109,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
               </div>
             )}
             <div className="grid grid-cols-[3.25rem_1.25rem_1fr] items-start">
-              <div className="text-muted-foreground pt-[11px] text-right font-mono text-[11.5px] tabular-nums">
+              <div className="text-muted-foreground pt-3 text-right font-mono text-[11px] tabular-nums">
                 {formatClock(it.at)}
               </div>
               {/* rail + dot */}
@@ -122,7 +122,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
                   )}
                   aria-hidden="true"
                 />
-                <span className={cn('relative z-[1] mt-[9px] size-2.5 rounded-full ring-2 ring-background', verb.dot)} aria-hidden="true" />
+                <span className={cn('relative z-[1] mt-2 size-2.5 rounded-full ring-2 ring-background', verb.dot)} aria-hidden="true" />
               </div>
               {/* body */}
               <Link
@@ -138,7 +138,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
                     <Badge variant={verb.variant} className="text-[11px] font-bold uppercase tracking-wide">
                       {it.verb}
                     </Badge>
-                    <span className="text-foreground text-[13.5px] font-semibold">
+                    <span className="text-foreground text-sm font-semibold">
                       {it.name}
                       {it.code && <span className="text-muted-foreground ml-1.5 font-mono text-xs font-medium">{it.code}</span>}
                     </span>

@@ -63,7 +63,7 @@ export function UserIdentityHero({
             {alias && <span className="text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-xs">{alias}</span>}
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
           </div>
-          <div className="text-muted-foreground/80 mt-2 text-[11.5px] leading-relaxed">
+          <div className="text-muted-foreground/80 mt-2 text-[11px] leading-relaxed">
             {hasAccess ? (
               <>
                 Access to {buCount} business unit{buCount === 1 ? '' : 's'} across {clusterCount} cluster

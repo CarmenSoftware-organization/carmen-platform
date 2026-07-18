@@ -21,7 +21,7 @@ export function CountsRail({ counts, governed, loading, error, onRetry }: Counts
   return (
     <Card className="overflow-hidden p-0">
       <div className="border-b px-3.5 py-3">
-        <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.13em]">Estate</div>
+        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">Estate</div>
         <div className="mt-0.5 font-mono text-2xl font-semibold tabular-nums tracking-tight">
           {error ? '—' : governed ?? '—'}
           <span className="text-muted-foreground ml-1.5 font-sans text-[11px] font-normal">records governed</span>
@@ -55,8 +55,8 @@ function DomainRows({ counts }: { counts: Record<string, DomainCount> }) {
             <span className="text-muted-foreground grid size-[22px] shrink-0 place-items-center rounded-md">
               <Icon className="size-[13px]" />
             </span>
-            <span className="text-foreground/90 flex-1 truncate text-[12.5px]">{s.label}</span>
-            <span className="font-mono text-[12.5px] tabular-nums">
+            <span className="text-foreground/90 flex-1 truncate text-xs">{s.label}</span>
+            <span className="font-mono text-xs tabular-nums">
               <span className="text-foreground font-semibold">{c.active ?? '—'}</span>
               <span className="text-muted-foreground/60"> / </span>
               <span className="text-muted-foreground">{c.total ?? '—'}</span>

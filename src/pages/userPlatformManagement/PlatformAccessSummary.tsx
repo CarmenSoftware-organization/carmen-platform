@@ -93,7 +93,7 @@ export function PlatformAccessSummary({ summary, loading, error = false, onRetry
           </div>
 
           <div className="min-w-[14rem] flex-1">
-            <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">Platform roles held</div>
+            <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Platform roles held</div>
             <div
               className="bg-muted flex h-3 overflow-hidden rounded-full"
               role="img"

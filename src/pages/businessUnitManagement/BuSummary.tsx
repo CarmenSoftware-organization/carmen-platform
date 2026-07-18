@@ -59,7 +59,7 @@ export function BuSummary({ summary, loading, error = false, onRetry = () => {} 
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Overview</div>
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Overview</div>
 
       {error ? (
         <FetchErrorState message="Couldn't load the business unit summary." onRetry={onRetry} className="py-3" />
