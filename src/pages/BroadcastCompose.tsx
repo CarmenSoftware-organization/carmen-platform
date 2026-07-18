@@ -99,8 +99,17 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
 
 const BroadcastCompose: React.FC = () => {
   const { hasPermission } = useAuth();
-  // TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped grantee
-  // reaches system-wide send modes. See the W3 plan's Scope & Deferrals.
+  // broadcast.send is checked unscoped here — a cluster-scoped grantee reaches
+  // system-wide send modes. As of backend PR #239, both broadcast endpoints now
+  // ENFORCE broadcast.send server-side (previously the FE gate below was the
+  // *only* boundary) — but the backend enforcement is also coarse (platform OR
+  // any-cluster grant passes), so this coarse FE gate now matches the real
+  // server-side boundary rather than being purely decorative. Fine per-cluster
+  // scoping (system-wide requiring a platform-only grant; bu mode scoped to the
+  // selected BU's cluster) remains DEFERRED: it needs backend cluster-scope-
+  // resolution infra (bu_code -> cluster_id + a scoped permission check) that
+  // doesn't exist yet. Do NOT fake that scoping here — the backend can't enforce
+  // it, so a client-side-only restriction would be theater, not security.
   const canSendSystem = hasPermission(PERMISSIONS.BROADCAST.SEND);
   // Deliberately its OWN hasPermission call, NOT `= canSendSystem`. canSend means "may
   // send at all" (gates the Send shortcut + funnel below); canSendSystem means "may send
@@ -574,8 +583,12 @@ const BroadcastCompose: React.FC = () => {
             <Button variant="outline" size="sm" type="button" onClick={handleReset} disabled={sending}>
               Reset
             </Button>
-            {/* TODO(RBAC): broadcast.send is checked unscoped here — a cluster-scoped
-                grantee reaches system-wide send modes. See the W3 plan's Scope & Deferrals. */}
+            {/* broadcast.send is checked unscoped here — a cluster-scoped grantee reaches
+                system-wide send modes. Backend PR #239 now ENFORCES broadcast.send
+                server-side on both endpoints (coarsely: platform OR any-cluster), so this
+                coarse gate matches the real boundary. Fine per-cluster scoping is DEFERRED
+                pending backend cluster-scope-resolution infra — see the canSendSystem
+                comment above. Keep this gate as-is; do not fake scoping client-side. */}
             <Can permission={PERMISSIONS.BROADCAST.SEND}>
               <Button type="button" size="sm" onClick={handleSend} disabled={sending}>
                 {sending ? (

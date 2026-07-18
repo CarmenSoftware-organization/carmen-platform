@@ -44,7 +44,7 @@ vi.mock('../services/clusterService', () => ({
 vi.mock('../services/businessUnitService', () => ({
   default: {
     getById: vi.fn(), getAll: vi.fn(), create: vi.fn(), update: vi.fn(),
-    uploadLogo: vi.fn(), uploadAvatar: vi.fn(),
+    uploadLogo: vi.fn(), uploadAvatar: vi.fn(), revealDbPassword: vi.fn(),
   },
 }));
 vi.mock('../services/currencyService', () => ({
@@ -220,5 +220,76 @@ describe('BusinessUnitEdit — write access is gated on canEdit', () => {
 
     expect(businessUnitService.create).not.toHaveBeenCalled();
     expect(businessUnitService.update).not.toHaveBeenCalled();
+  });
+});
+
+// SECURITY REGRESSION (final review). `canEdit` had the identical fail-open pattern as
+// the DB-password reveal gate (DatabaseConnectionSection.test.tsx): `formData.cluster_id
+// ? { clusterId } : undefined` passes ctx undefined for a cluster-less BU, which
+// checkPermission's broad "any cluster" branch then authorizes off cluster.update held
+// on ANY OTHER cluster — granting write access to the whole edit surface. Must fail
+// CLOSED via UNRESOLVED_CLUSTER_ID (mirrors UserEdit.test.tsx's orphan-BU case).
+describe('BusinessUnitEdit — canEdit fails closed on an empty cluster_id', () => {
+  it('does not grant write access on a BU with no cluster_id, even though cluster.update is held on a different cluster', async () => {
+    asMock(businessUnitService.getById).mockResolvedValue({ data: { ...fakeBu, cluster_id: '' } });
+    // Mirrors real checkPermission's two branches: scoped to a real cluster id -> only
+    // 'some-other-cluster' passes; NOT scoped (ctx undefined, what the old canEdit
+    // ternary produced for an empty cluster_id) -> broad "any cluster" fallback -> true,
+    // since the admin holds cluster.update on 'some-other-cluster'.
+    auth.hasPermission = (perm: string, ctx?: { clusterId?: string }) => {
+      if (perm !== 'cluster.update') return false;
+      if (ctx?.clusterId) return ctx.clusterId === 'some-other-cluster';
+      return true;
+    };
+    renderAt('/business-units/bu1/edit');
+
+    expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Host' })).toBeNull();
+    expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'false');
+  });
+});
+
+// SECURITY. db_connection.password is now redacted to '' by the backend on every
+// read, so the field is write-only: a blank input must never overwrite the stored
+// password with an empty string. dbFieldsToObject already drops blank-valued
+// fields from the save payload — these tests lock that behaviour in for the
+// password key specifically, in both directions.
+describe('BusinessUnitEdit — save omits a blank db_connection password', () => {
+  const buWithDbConnection = {
+    ...fakeBu,
+    db_connection: { host: 'db.example.com', port: 5432, password: '' },
+  };
+
+  it('omits password from the update payload when the field is left blank', async () => {
+    const user = userEvent.setup();
+    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithDbConnection });
+    renderAt('/business-units/bu1/edit');
+
+    // Edit an unrelated field to reveal the save bar; the password input is untouched.
+    await user.click(await screen.findByRole('button', { name: 'Test BU' }));
+    const nameInput = screen.getByRole('textbox', { name: /business unit name/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Renamed BU');
+    await user.tab();
+
+    await user.click(await screen.findByRole('button', { name: /save changes/i }));
+
+    expect(businessUnitService.update).toHaveBeenCalledTimes(1);
+    const payload = asMock(businessUnitService.update).mock.calls[0][1];
+    expect(payload.db_connection).toMatchObject({ host: 'db.example.com', port: 5432 });
+    expect(payload.db_connection).not.toHaveProperty('password');
+  });
+
+  it('includes the new password in the update payload when the user sets one', async () => {
+    const user = userEvent.setup();
+    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithDbConnection });
+    renderAt('/business-units/bu1/edit');
+
+    await user.type(await screen.findByLabelText('Password'), 'newpass123');
+    await user.click(await screen.findByRole('button', { name: /save changes/i }));
+
+    expect(businessUnitService.update).toHaveBeenCalledTimes(1);
+    const payload = asMock(businessUnitService.update).mock.calls[0][1];
+    expect(payload.db_connection).toMatchObject({ password: 'newpass123' });
   });
 });
