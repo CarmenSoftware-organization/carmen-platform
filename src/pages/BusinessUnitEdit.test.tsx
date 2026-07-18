@@ -293,3 +293,58 @@ describe('BusinessUnitEdit — save omits a blank db_connection password', () =>
     expect(payload.db_connection).toMatchObject({ password: 'newpass123' });
   });
 });
+
+// FEATURE. "Copy from hotel address" on the Company group must go through the
+// same setFormData path as every other edit-in-place field — not a side-channel
+// setState — so it marks hasChanges (dirty), is included in the next Save
+// payload, and is reverted by Cancel like any other field.
+describe('BusinessUnitEdit — copy hotel address to company', () => {
+  const buWithHotelAddress = {
+    ...fakeBu,
+    hotel_address_line1: '123 Hotel Street',
+  };
+
+  it('copies the hotel address fields into the company address fields and marks the form dirty', async () => {
+    const user = userEvent.setup();
+    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithHotelAddress });
+    renderAt('/business-units/bu1/edit');
+
+    await screen.findByRole('heading', { name: /test bu/i });
+    // Before copying, only the hotel field carries the value; no save bar yet.
+    expect(screen.getAllByText('123 Hotel Street')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /copy from hotel address/i }));
+
+    // Company address line 1 now shows the copied value too (hotel's original +
+    // company's copy = 2 occurrences), proving the copy actually landed in formData
+    // and re-rendered — not just that a handler fired.
+    expect(screen.getAllByText('123 Hotel Street')).toHaveLength(2);
+    // Went through the real dirty-tracking mechanism (setFormData vs savedFormData).
+    expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
+  });
+
+  it('is revertable via Cancel, like any other edit-in-place field', async () => {
+    const user = userEvent.setup();
+    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithHotelAddress });
+    renderAt('/business-units/bu1/edit');
+
+    await screen.findByRole('heading', { name: /test bu/i });
+    await user.click(screen.getByRole('button', { name: /copy from hotel address/i }));
+    expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+    expect(screen.getAllByText('123 Hotel Street')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull();
+  });
+
+  it('hides the copy-from-hotel-address action without cluster.update', async () => {
+    auth.hasPermission = () => false;
+    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithHotelAddress });
+    renderAt('/business-units/bu1/edit');
+
+    expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /copy from hotel address/i })).toBeNull();
+  });
+});

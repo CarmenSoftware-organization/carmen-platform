@@ -15,7 +15,7 @@ interface CalculationSettingsSectionProps extends SectionFieldProps {
 }
 
 const currencyLabel = (c: TenantCurrency) =>
-  `${c.code} — ${c.name}${c.is_active === false ? ' (inactive)' : ''}`;
+  `${c.code} - ${c.name}${c.is_active === false ? ' (inactive)' : ''}`;
 
 const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
   formData,
@@ -33,7 +33,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
   const currentInList = !currentId || (currencies ?? []).some((c) => c.id === currentId);
   const currentLabel =
     defaultCurrency && defaultCurrency.id === currentId
-      ? `${defaultCurrency.code} — ${defaultCurrency.name}`
+      ? `${defaultCurrency.code} - ${defaultCurrency.name}`
       : currentId;
 
   const renderCurrencyField = () => {
