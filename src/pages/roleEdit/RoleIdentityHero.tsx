@@ -14,7 +14,7 @@ const resourceOf = (key: string) => {
  */
 export function permissionSummary(permissions: string[], catalogSize: number): { text: string; full: boolean } {
   const n = permissions.length;
-  if (catalogSize > 0 && n >= catalogSize) return { text: 'Full access — every permission', full: true };
+  if (catalogSize > 0 && n >= catalogSize) return { text: 'Full access to every permission', full: true };
   if (n === 0) return { text: 'No permissions granted yet', full: false };
   const resources = new Set(permissions.map(resourceOf)).size;
   return {

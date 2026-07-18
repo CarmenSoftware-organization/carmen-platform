@@ -140,7 +140,7 @@ const UserPlatformManagement: React.FC = () => {
         setRolesCount(Object.fromEntries(pairs));
         const failed = pairs.filter(([, count]) => count === 'error').length;
         if (failed > 0) {
-          toast.error(`Couldn't load role counts for ${failed} user${failed === 1 ? '' : 's'}. Shown as "—" until retried.`);
+          toast.error(`Couldn't load role counts for ${failed} user${failed === 1 ? '' : 's'}. Shown as "-" until retried.`);
         }
       });
     } catch (err: unknown) {
@@ -301,7 +301,7 @@ const UserPlatformManagement: React.FC = () => {
                 aria-label="Couldn't load roles"
               >
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-                <span aria-hidden="true">—</span>
+                <span aria-hidden="true">-</span>
               </span>
             );
           }

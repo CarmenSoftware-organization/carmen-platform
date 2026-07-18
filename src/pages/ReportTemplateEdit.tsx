@@ -736,8 +736,8 @@ const ReportTemplateEdit: React.FC = () => {
                                     }}
                                   >
                                     <option value="">
-                                      — pick from {list.length} {formData.source_type}
-                                      {list.length === 1 ? '' : 's'} in {probeBuCode} —
+                                      Pick from {list.length} {formData.source_type}
+                                      {list.length === 1 ? '' : 's'} in {probeBuCode}
                                     </option>
                                     {list.map((o) => (
                                       <option key={o.name} value={o.name}>
@@ -752,7 +752,7 @@ const ReportTemplateEdit: React.FC = () => {
                         </div>
 
                         <p className="text-xs text-muted-foreground">
-                          Plain identifier only — no schema prefix, no quotes. Resolved against each tenant&apos;s schema at runtime.
+                          Plain identifier only. No schema prefix, no quotes. Resolved against each tenant&apos;s schema at runtime.
                         </p>
                       </>
                     ) : (
@@ -783,7 +783,7 @@ const ReportTemplateEdit: React.FC = () => {
                     {formData.source_params.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
                         {formData.source_type === 'view'
-                          ? 'Views do not take parameters — filters apply via WHERE clause.'
+                          ? 'Views do not take parameters. Filters apply via WHERE clause.'
                           : 'No parameters defined yet. Add one to bind a dialog filter to the function/procedure argument list.'}
                       </p>
                     ) : (
@@ -868,7 +868,7 @@ const ReportTemplateEdit: React.FC = () => {
 
                     {formData.source_type === 'procedure' && editing && (
                       <p className="text-xs text-muted-foreground italic">
-                        Procedure must accept these positional args plus an INOUT refcursor at the end (default name "rs"). Filters are applied inside the procedure — executor will not add a WHERE clause.
+                        Procedure must accept these positional args plus an INOUT refcursor at the end (default name "rs"). Filters are applied inside the procedure. The executor will not add a WHERE clause.
                       </p>
                     )}
                   </div>

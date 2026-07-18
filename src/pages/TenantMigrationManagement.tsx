@@ -290,7 +290,7 @@ const TenantMigrationManagement: React.FC = () => {
         setBus(arr);
         setTotalRows(data.paginate?.total ?? arr.length);
         if (typeof data.paginate?.total === 'number' && data.paginate.total > arr.length) {
-          toast.warning(`Showing ${arr.length} of ${data.paginate.total} business units — increase the page size to see all.`);
+          toast.warning(`Showing ${arr.length} of ${data.paginate.total} business units. Increase the page size to see all.`);
         }
         setError('');
       } catch (err) {
@@ -391,7 +391,7 @@ const TenantMigrationManagement: React.FC = () => {
       meta: { cellClassName: 'text-center' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
-        return <span className="text-muted-foreground">{rs?.status ? rs.status.pending.length : '–'}</span>;
+        return <span className="text-muted-foreground">{rs?.status ? rs.status.pending.length : '-'}</span>;
       },
     },
     {
@@ -400,7 +400,7 @@ const TenantMigrationManagement: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
-        return <span className="text-xs text-muted-foreground">{rs?.lastChecked ?? '–'}</span>;
+        return <span className="text-xs text-muted-foreground">{rs?.lastChecked ?? '-'}</span>;
       },
     },
     {
@@ -482,7 +482,7 @@ const TenantMigrationManagement: React.FC = () => {
 
         {totalRows > bus.length && (
           <p className="text-warning text-xs">
-            Showing {bus.length} of {totalRows} business units — increase the page size to see all.
+            Showing {bus.length} of {totalRows} business units. Increase the page size to see all.
           </p>
         )}
 

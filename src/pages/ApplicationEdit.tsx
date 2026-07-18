@@ -424,7 +424,7 @@ const ApplicationEdit: React.FC = () => {
                   {formData.allow_all ? (
                     <div className="text-warning bg-warning/10 flex items-start gap-2 rounded-md px-3 py-2.5 text-sm">
                       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                      <span>This app is not restricted to specific endpoints — it can call every API in the platform.</span>
+                      <span>This app is not restricted to specific endpoints. It can call every API in the platform.</span>
                     </div>
                   ) : editing ? (
                     <div className="space-y-2 border-t pt-4">

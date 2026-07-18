@@ -4,8 +4,8 @@ import { ApplicationIdentityHero, accessSummary } from './ApplicationIdentityHer
 
 describe('accessSummary', () => {
   it('calls out full access', () => {
-    expect(accessSummary(true, [])).toBe('Full access — every endpoint');
-    expect(accessSummary(true, ['cluster.read'])).toBe('Full access — every endpoint');
+    expect(accessSummary(true, [])).toBe('Full access to every endpoint');
+    expect(accessSummary(true, ['cluster.read'])).toBe('Full access to every endpoint');
   });
 
   it('counts endpoints and distinct modules for a scoped app', () => {
@@ -49,7 +49,7 @@ describe('ApplicationIdentityHero', () => {
 
   it('flags full access in the summary', () => {
     render(<ApplicationIdentityHero {...base} allowAll />);
-    expect(screen.getByText('Full access — every endpoint')).toBeInTheDocument();
+    expect(screen.getByText('Full access to every endpoint')).toBeInTheDocument();
   });
 
   it('falls back to a placeholder name when unnamed', () => {

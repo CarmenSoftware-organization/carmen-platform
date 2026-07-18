@@ -176,7 +176,7 @@ export const InterfaceEntitlementCard = ({
               </Button>
               {selected.size === 0 && loaded && (
                 <span className="text-xs text-muted-foreground">
-                  Not restricted — BU sees all interfaces.
+                  Not restricted. BU sees all interfaces.
                 </span>
               )}
             </div>

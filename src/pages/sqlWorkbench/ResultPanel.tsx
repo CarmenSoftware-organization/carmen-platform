@@ -156,7 +156,7 @@ export function ResultPanel({
         </div>
       ) : result && result.rowCount === 0 ? (
         <div className="text-muted-foreground flex items-center justify-center py-10 text-sm">
-          Query executed successfully — no rows returned.
+          Query executed successfully. No rows returned.
         </div>
       ) : result ? (
         <>
@@ -229,7 +229,7 @@ export function ResultPanel({
                 ))}
               </select>
               <span className="text-muted-foreground ml-auto">
-                {safePage * pageSize + 1}–
+                {safePage * pageSize + 1}-
                 {Math.min((safePage + 1) * pageSize, totalRows)} of {totalRows}
               </span>
               <Button

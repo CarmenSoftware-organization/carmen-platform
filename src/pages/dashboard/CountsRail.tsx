@@ -23,7 +23,7 @@ export function CountsRail({ counts, governed, loading, error, onRetry }: Counts
       <div className="border-b px-3.5 py-3">
         <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">Estate</div>
         <div className="mt-0.5 font-mono text-2xl font-semibold tabular-nums tracking-tight">
-          {error ? '—' : governed ?? '—'}
+          {error ? '-' : governed ?? '-'}
           <span className="text-muted-foreground ml-1.5 font-sans text-[11px] font-normal">records governed</span>
         </div>
       </div>
@@ -57,9 +57,9 @@ function DomainRows({ counts }: { counts: Record<string, DomainCount> }) {
             </span>
             <span className="text-foreground/90 flex-1 truncate text-xs">{s.label}</span>
             <span className="font-mono text-xs tabular-nums">
-              <span className="text-foreground font-semibold">{c.active ?? '—'}</span>
+              <span className="text-foreground font-semibold">{c.active ?? '-'}</span>
               <span className="text-muted-foreground/60"> / </span>
-              <span className="text-muted-foreground">{c.total ?? '—'}</span>
+              <span className="text-muted-foreground">{c.total ?? '-'}</span>
             </span>
           </Link>
         );

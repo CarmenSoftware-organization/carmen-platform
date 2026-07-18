@@ -178,7 +178,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
                 <SelectItem value={ALL_DOC_TYPES}>All document types</SelectItem>
                 {docTypes.map((d) => (
                   <SelectItem key={d.code} value={d.code}>
-                    {d.code} — {d.label}
+                    {d.code} - {d.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -357,7 +357,7 @@ const PrintTemplateMappingManagement: React.FC = () => {
       />
 
       <DevDebugSheet
-        title="Debug — Raw API Response"
+        title="Debug - Raw API Response"
         endpoint="GET /api-system/print-template-mappings"
         data={rawResponse}
       />

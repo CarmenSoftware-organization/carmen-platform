@@ -6,7 +6,7 @@ import { moduleOf } from '../../utils/apiCatalog';
 
 /** One-line summary of an app's API reach — full access, or the granted endpoint/module count. */
 export function accessSummary(allowAll: boolean, apiNames: string[]): string {
-  if (allowAll) return 'Full access — every endpoint';
+  if (allowAll) return 'Full access to every endpoint';
   const n = apiNames.length;
   if (n === 0) return 'No endpoints granted yet';
   const modules = new Set(apiNames.map(moduleOf)).size;

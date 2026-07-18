@@ -16,8 +16,8 @@ const VersionBadge = ({ collapsed = false, className }: VersionBadgeProps) => (
   <Link
     to="/changelog"
     className={cn('inline-flex', className)}
-    aria-label={`Version ${currentVersion} — view changelog`}
-    title={`v${currentVersion} — view changelog`}
+    aria-label={`Version ${currentVersion} - view changelog`}
+    title={`v${currentVersion} - view changelog`}
   >
     <Badge
       variant="secondary"

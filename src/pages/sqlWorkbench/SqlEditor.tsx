@@ -187,7 +187,7 @@ export function SqlEditor({
       });
       replaceAll(formatted);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to format SQL — check for syntax errors.');
+      toast.error(e instanceof Error ? e.message : 'Failed to format SQL. Check for syntax errors.');
     }
   };
 

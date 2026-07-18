@@ -97,7 +97,7 @@ export function PlatformAccessSummary({ summary, loading, error = false, onRetry
             <div
               className="bg-muted flex h-3 overflow-hidden rounded-full"
               role="img"
-              aria-label={`${summary.privileged} with platform roles, ${summary.unprivileged} with none${summary.unknown > 0 ? `, ${summary.unknown} unknown — role data failed to load` : ''}`}
+              aria-label={`${summary.privileged} with platform roles, ${summary.unprivileged} with none${summary.unknown > 0 ? `, ${summary.unknown} unknown - role data failed to load` : ''}`}
             >
               <span className="bg-primary" style={{ width: `${pct(summary.privileged)}%` }} />
               <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.unprivileged)}%` }} />
@@ -107,7 +107,7 @@ export function PlatformAccessSummary({ summary, loading, error = false, onRetry
               <Legend color="hsl(var(--primary))" label="With platform roles" value={summary.privileged} />
               <Legend color="hsl(var(--muted-foreground) / 0.4)" label="None" value={summary.unprivileged} />
               {summary.unknown > 0 && (
-                <Legend color="hsl(var(--warning))" label="Unknown — couldn't load" value={summary.unknown} />
+                <Legend color="hsl(var(--warning))" label="Unknown - couldn't load" value={summary.unknown} />
               )}
             </div>
           </div>
