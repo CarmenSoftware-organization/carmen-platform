@@ -13,7 +13,7 @@ interface CountsRailProps {
   governed: number | null;
   loading?: boolean;
   error?: boolean;
-  onRetry?: () => void;
+  onRetry: () => void;
 }
 
 /** Slim at-a-glance rail: total records governed + active / total per domain. */
@@ -23,11 +23,11 @@ export function CountsRail({ counts, governed, loading, error, onRetry }: Counts
       <div className="border-b px-3.5 py-3">
         <div className="text-muted-foreground text-[10.5px] font-bold uppercase tracking-[0.13em]">Estate</div>
         <div className="mt-0.5 font-mono text-2xl font-semibold tabular-nums tracking-tight">
-          {governed ?? '—'}
+          {error ? '—' : governed ?? '—'}
           <span className="text-muted-foreground ml-1.5 font-sans text-[11px] font-normal">records governed</span>
         </div>
       </div>
-      {error && onRetry ? (
+      {error ? (
         <FetchErrorState message="Couldn’t load estate counts." onRetry={onRetry} className="px-3.5 py-6" />
       ) : loading ? (
         <div role="status" aria-label="Loading estate counts">

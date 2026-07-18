@@ -111,16 +111,6 @@ describe('Login — onBlur validation', () => {
     expect(await screen.findByText(/required/i)).toBeInTheDocument();
   });
 
-  it('flags a non-email username as invalid on blur', async () => {
-    const user = userEvent.setup();
-    renderLogin();
-
-    await user.type(screen.getByLabelText(/username|email/i), 'not-an-email');
-    await user.tab();
-
-    expect(await screen.findByText(/valid email address/i)).toBeInTheDocument();
-  });
-
   it('clears the field error once the user edits the field again', async () => {
     const user = userEvent.setup();
     renderLogin();
@@ -141,23 +131,31 @@ describe('Login — onBlur validation', () => {
     await user.type(usernameInput, 'a@b.co');
     expect(screen.queryByText('Username is required')).toBeNull();
   });
+});
 
-  it('blocks submission and does not call login when the username is not a valid email', async () => {
+describe('Login — non-email username support', () => {
+  // The field is labeled "Email or username" and the backend's own 401 copy is
+  // 'Invalid email/username or password.' — plain usernames (e.g. 'admin') are a
+  // supported, first-class login path, not just email addresses. A prior
+  // (buggy) version of getFieldError delegated every non-empty username to
+  // validateField('username', …), which is email-only — that silently blocked
+  // all username-based logins. This test fails against that buggy code.
+  it('accepts a plain non-email username on blur and submits it to login()', async () => {
     const user = userEvent.setup();
+    asMock(auth.login).mockResolvedValue({ success: true });
     renderLogin();
 
-    // A non-empty but invalid value is used here (not an empty field) because
-    // the native HTML `required` attribute on the input already blocks jsdom
-    // from ever dispatching the submit event for an empty required field —
-    // handleSubmit's own pre-submit re-validation never even runs in that
-    // case. An invalid-format value bypasses `required` and actually reaches
-    // handleSubmit's validateField() check.
-    await user.type(screen.getByLabelText(/username|email/i), 'not-an-email');
+    const usernameInput = screen.getByLabelText(/username|email/i);
+    await user.type(usernameInput, 'admin');
+    await user.tab();
+
+    // No email-format error on blur for a plain username.
+    expect(screen.queryByText(/valid email address/i)).toBeNull();
+
     await user.type(screen.getByLabelText(/password/i), 'secret123');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(await screen.findByText(/valid email address/i)).toBeInTheDocument();
-    expect(auth.login).not.toHaveBeenCalled();
+    expect(auth.login).toHaveBeenCalledWith({ username: 'admin', password: 'secret123' });
   });
 });
 

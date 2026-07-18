@@ -25,6 +25,11 @@ const REQUIRED_MESSAGES: Record<string, string> = {
 // format), so "required" has to be handled here before delegating to it.
 const getFieldError = (name: string, value: string): string => {
   if (!value.trim()) return REQUIRED_MESSAGES[name] ?? '';
+  // 'username' is dual-purpose (email OR plain username per the field label
+  // "Email or username" and the backend's 'Invalid email/username or
+  // password'), so don't force email format here — that would block valid
+  // username-based logins.
+  if (name === 'username') return '';
   return validateField(name, value);
 };
 
@@ -70,6 +75,10 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Defense-in-depth: the disabled attribute already blocks this today, but
+    // this effort has a recurring keyboard-bypass class (W2/W3/W4) — lock the
+    // invariant in code too, not just in the DOM.
+    if (locked) return;
 
     const usernameError = getFieldError('username', credentials.username);
     const passwordError = getFieldError('password', credentials.password);
