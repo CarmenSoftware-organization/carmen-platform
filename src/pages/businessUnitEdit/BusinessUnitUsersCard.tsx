@@ -119,7 +119,7 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
               <DialogTitle>Edit User in Business Unit</DialogTitle>
               <DialogDescription>
                 {users.editingUser && (
-                  <span>{users.editingUser.username} — {[users.editingUser.firstname, users.editingUser.middlename, users.editingUser.lastname].filter(Boolean).join(' ') || users.editingUser.email}</span>
+                  <span>{users.editingUser.username} - {[users.editingUser.firstname, users.editingUser.middlename, users.editingUser.lastname].filter(Boolean).join(' ') || users.editingUser.email}</span>
                 )}
               </DialogDescription>
             </DialogHeader>

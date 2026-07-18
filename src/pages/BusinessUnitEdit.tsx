@@ -102,6 +102,27 @@ const BusinessUnitEdit: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
 
+  // One-way copy: hotel address -> company address. Goes through the same
+  // setFormData path as every other edit, so it marks hasChanges (dirty), is
+  // included in the next Save, and is reverted by Cancel like any other field.
+  const copyHotelAddressToCompany = () => {
+    setFormData((prev) => ({
+      ...prev,
+      company_address_line1: prev.hotel_address_line1,
+      company_address_line2: prev.hotel_address_line2,
+      company_sub_district: prev.hotel_sub_district,
+      company_district: prev.hotel_district,
+      company_city: prev.hotel_city,
+      company_province: prev.hotel_province,
+      company_postal_code: prev.hotel_postal_code,
+      company_country: prev.hotel_country,
+      company_latitude: prev.hotel_latitude,
+      company_longitude: prev.hotel_longitude,
+    }));
+    setError('');
+    toast.success('Copied hotel address to company address');
+  };
+
   const loadCurrencies = async (buCode: string) => {
     setCurrenciesLoading(true);
     setCurrenciesFailed(false);
@@ -530,6 +551,7 @@ const BusinessUnitEdit: React.FC = () => {
           onCommit={handleInlineCommit}
           onToggle={handleInlineToggle}
           onValidate={handleInlineValidate}
+          onCopyHotelAddress={copyHotelAddressToCompany}
           onChange={handleChange}
           onBlur={handleBlur}
           onFocus={handleFocus}

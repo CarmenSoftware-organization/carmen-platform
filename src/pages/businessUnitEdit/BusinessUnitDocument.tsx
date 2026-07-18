@@ -1,5 +1,7 @@
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Copy } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
 import { InlineField, type InlineOption } from './InlineField';
@@ -27,6 +29,7 @@ interface BusinessUnitDocumentProps {
   onCommit: (name: string, value: string) => void;
   onToggle: (name: string, value: boolean) => void;
   onValidate: (name: string, value: string) => void;
+  onCopyHotelAddress: () => void;
   // event-based handlers for the reused complex sections
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -43,10 +46,21 @@ interface BusinessUnitDocumentProps {
   usersSlot?: React.ReactNode;
 }
 
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
+function Group({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="border-t p-4 sm:px-6 sm:py-5">
-      <div className="text-muted-foreground mb-1 text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
+        {action}
+      </div>
       <div>{children}</div>
     </div>
   );
@@ -70,6 +84,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     onCommit,
     onToggle,
     onValidate,
+    onCopyHotelAddress,
     onChange,
     onBlur,
     onFocus,
@@ -200,7 +215,17 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           {inline('hotel_email', 'Email', { type: 'email' })}
         </Group>
 
-        <Group label="Company">
+        <Group
+          label="Company"
+          action={
+            canEdit && (
+              <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy from hotel address
+              </Button>
+            )
+          }
+        >
           {inline('company_name', 'Company')}
           {inline('company_tel', 'Company phone', { mono: true })}
           {inline('company_email', 'Company email', { type: 'email' })}

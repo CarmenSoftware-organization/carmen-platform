@@ -174,7 +174,7 @@ export function InlineField({
             disabled={disabled}
             className={cn(
               readButtonClass,
-              !displayValue && 'text-muted-foreground/70 italic',
+              !displayValue && 'text-muted-foreground italic',
               mono && displayValue && 'font-mono tabular-nums',
             )}
           >
