@@ -232,30 +232,37 @@ plan's Scope & Deferrals for the full record, following the same pattern as the 
 - **Responsive:** works mobile→desktop; panels reflow, no fixed-width overflow.
 - **A11y:** icon buttons have `aria-label`; error `role="alert"`; loading `role="status"`.
 
-## A8 — Reference / read-only (reference: `Changelog`, `PermissionCatalog`, `Profile`)
+## A8 — Reference / read-only (reference: `Changelog`, `PermissionCatalog`, `Profile`†)
 - **Anatomy:** shared `PageHeader` (title + subtitle, no primary destructive action) →
-  single readable content column (no two-column form grid) — a list/timeline (Changelog), a
-  searchable reference table or grouped list (PermissionCatalog), or a light single-mode
-  account form (Profile, treated as A8/account); no `DevDebugSheet` requirement unless the
-  page fetches raw API data worth inspecting.
+  single readable content column (no two-column form grid) — a list/timeline (Changelog) or
+  a searchable reference table or grouped list (PermissionCatalog); no `DevDebugSheet`
+  requirement unless the page fetches raw API data worth inspecting.
 - **Required states:** loading (skeleton matching the content shape — list-skeleton for
-  Changelog/PermissionCatalog, form-skeleton for Profile), empty (`EmptyState`, e.g. "No
-  entries yet"), error banner `role="alert"`; Profile additionally has a saving state
-  (button spinner + disabled) since it's a light form.
+  Changelog/PermissionCatalog), empty (`EmptyState`, e.g. "No entries yet"), error banner
+  `role="alert"`. Exception: pages whose data is a **static build-time import** (e.g.
+  `Changelog`, sourced from a bundled JSON module rather than a fetch) have no runtime
+  loading/error states at all — only empty applies.
 - **Information hierarchy:** entries/rows use consistent meta styling
   (`text-[11px] leading-tight text-muted-foreground` for dates/authors, matching A3);
   status/category via `<Badge>` where applicable (e.g. permission scope, changelog entry
   type); the content column keeps a generous line-length (not full-bleed) for readability.
-- **Interaction/flow:** Profile is a single-mode form — always editable, no read-only
-  toggle, `Cmd/Ctrl+S` saves, `toast.*` feedback; Changelog/PermissionCatalog support
-  in-page search/filter (client-side, given small/static datasets) without the full A3
-  server-side toolbar; external links (e.g. docs) open in a new tab with
-  `rel="noopener noreferrer"`.
+- **Interaction/flow:** Changelog/PermissionCatalog support in-page search/filter
+  (client-side, given small/static datasets) without the full A3 server-side toolbar;
+  external links (e.g. docs) open in a new tab with `rel="noopener noreferrer"`.
 - **Responsive:** single column at all breakpoints; the content column caps max-width for
   readability on large screens (no full-bleed text).
 - **A11y:** timeline/list entries use semantic list markup where appropriate; loading
-  `role="status"`; error `role="alert"`; Profile form inputs have bound labels like any A4
-  form.
+  `role="status"`; error `role="alert"`.
+
+† **Profile is grouped here by proximity (an account/reference page) but its actual contract
+is A4, not A8's single-mode rule.** It is a self-service edit page — `editingProfile` state,
+Edit/Cancel/Save buttons, every field two-mode (`Input` when editing, read-only div/
+`ReadOnlyField` otherwise) — and correctly keeps that edit/read-only toggle (design decision
+2026-07-18, W5). The single-mode "always editable, no toggle, `Cmd/Ctrl+S` just saves" rule
+below applies to genuine reference/display pages only (Changelog, PermissionCatalog); Profile
+instead follows the A4 Edit contract in full (see `ClusterEdit.tsx` as the A4 reference),
+including bound labels, a saving state (button spinner + disabled), and onBlur field
+validation via `validateField`.
 
 ## Audit rubric
 

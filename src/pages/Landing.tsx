@@ -63,7 +63,11 @@ const Landing: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-background">
+      <div
+        role="status"
+        aria-label="Loading"
+        className="min-h-dvh flex items-center justify-center bg-background"
+      >
         <div className="space-y-4 text-center">
           <div className="mx-auto grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-sm">
             C
@@ -90,81 +94,81 @@ const Landing: React.FC = () => {
             </div>
           </div>
         </div>
-        <Link to="/login">
-          <Button variant="outline" className="bg-transparent">
-            Sign in
-          </Button>
-        </Link>
+        <Button asChild variant="outline" className="bg-transparent">
+          <Link to="/login">Sign in</Link>
+        </Button>
       </header>
 
-      {/* Hero — a left-aligned thesis, not a centered pitch */}
-      <section className="relative overflow-hidden">
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -top-20 right-0 select-none text-[22rem] font-black leading-none text-primary/[0.04]"
-        >
-          C
-        </span>
-        <div className="container relative mx-auto px-4 pt-14 pb-16 sm:pt-20 sm:pb-20">
-          <div className="max-w-3xl">
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
-              Operations console
-            </p>
-            <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
-              Run the whole operation from{' '}
-              <span className="text-primary">one console.</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Carmen brings your clusters, business units, users, and the documents
-              that keep them running into a single admin platform.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-              <Link to="/login">
-                <Button className="gap-2 px-6">
-                  Sign in
-                  <ArrowRight className="h-4 w-4" />
+      <main>
+        {/* Hero — a left-aligned thesis, not a centered pitch */}
+        <section className="relative overflow-hidden">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -top-20 right-0 select-none text-[22rem] font-black leading-none text-primary/[0.04]"
+          >
+            C
+          </span>
+          <div className="container relative mx-auto px-4 pt-14 pb-16 sm:pt-20 sm:pb-20">
+            <div className="max-w-3xl">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
+                Operations console
+              </p>
+              <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
+                Run the whole operation from{' '}
+                <span className="text-primary">one console.</span>
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Carmen brings your clusters, business units, users, and the documents
+                that keep them running into a single admin platform.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+                <Button asChild className="gap-2 px-6">
+                  <Link to="/login">
+                    Sign in
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </Button>
-              </Link>
-              <Link
-                to="/changelog"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                See what's new
-              </Link>
+                <Link
+                  to="/changelog"
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  See what's new
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Operations index — what the console governs, laid out like its own contents */}
-      <section className="container mx-auto px-4 pb-20 sm:pb-28">
-        <p className="mb-8 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-          Inside the console
-        </p>
-        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 md:grid-cols-3">
-          {groups.map((group) => (
-            <div key={group.label} className="border-t border-border pt-5">
-              <div className="flex items-baseline justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                  {group.label}
-                </h2>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                  {String(group.items.length).padStart(2, '0')}
-                </span>
+        {/* Operations index — what the console governs, laid out like its own contents */}
+        <section className="container mx-auto px-4 pb-20 sm:pb-28">
+          <p className="mb-8 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            Inside the console
+          </p>
+          <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 md:grid-cols-3">
+            {groups.map((group) => (
+              <div key={group.label} className="border-t border-border pt-5">
+                <div className="flex items-baseline justify-between">
+                  <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    {group.label}
+                  </h2>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {String(group.items.length).padStart(2, '0')}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{group.caption}</p>
+                <ul className="mt-5 space-y-4">
+                  {group.items.map((item) => (
+                    <li key={item.name} className="flex flex-col">
+                      <span className="text-sm font-medium text-foreground">{item.name}</span>
+                      <span className="text-xs text-muted-foreground">{item.desc}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">{group.caption}</p>
-              <ul className="mt-5 space-y-4">
-                {group.items.map((item) => (
-                  <li key={item.name} className="flex flex-col">
-                    <span className="text-sm font-medium text-foreground">{item.name}</span>
-                    <span className="text-xs text-muted-foreground">{item.desc}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      </main>
 
       {/* Footer — version stamp + honest environment */}
       <footer className="container mx-auto border-t border-border/60 px-4 py-8">

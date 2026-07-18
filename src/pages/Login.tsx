@@ -6,8 +6,32 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Loader2 } from 'lucide-react';
 import type { LoginCredentials } from '../types';
+import { validateField } from '../utils/validation';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
+
+// AuthContext.login() maps HTTP 429 to 'Too many login attempts. Please try
+// again later.' (prod) or a dev-mode '[429] ...' message that may carry a
+// different backend-supplied detail string. Match a stable substring instead
+// of the exact prod copy so both paths lock the button.
+const RATE_LIMIT_PATTERN = /too many|rate limit/i;
+
+const REQUIRED_MESSAGES: Record<string, string> = {
+  username: 'Username is required',
+  password: 'Password is required',
+};
+
+// validateField() short-circuits to '' for an empty value (it only checks
+// format), so "required" has to be handled here before delegating to it.
+const getFieldError = (name: string, value: string): string => {
+  if (!value.trim()) return REQUIRED_MESSAGES[name] ?? '';
+  // 'username' is dual-purpose (email OR plain username per the field label
+  // "Email or username" and the backend's 'Invalid email/username or
+  // password'), so don't force email format here — that would block valid
+  // username-based logins.
+  if (name === 'username') return '';
+  return validateField(name, value);
+};
 
 const Login: React.FC = () => {
   const [credentials, setCredentials] = useState<LoginCredentials>({
@@ -16,6 +40,12 @@ const Login: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Set when login() reports a rate-limit (429) response — keeps submit
+  // disabled so the user can't immediately resubmit into the same window.
+  // No countdown: the backend doesn't return a Retry-After, so a plain
+  // disabled state + the existing error banner is the honest fix.
+  const [locked, setLocked] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -28,15 +58,35 @@ const Login: React.FC = () => {
   }, [isAuthenticated, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setCredentials({
       ...credentials,
-      [e.target.name]: e.target.value
+      [name]: value
     });
     setError('');
+    setLocked(false);
+    setFieldErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFieldErrors(prev => ({ ...prev, [name]: getFieldError(name, value) }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Defense-in-depth: the disabled attribute already blocks this today, but
+    // this effort has a recurring keyboard-bypass class (W2/W3/W4) — lock the
+    // invariant in code too, not just in the DOM.
+    if (locked) return;
+
+    const usernameError = getFieldError('username', credentials.username);
+    const passwordError = getFieldError('password', credentials.password);
+    if (usernameError || passwordError) {
+      setFieldErrors({ username: usernameError, password: passwordError });
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -46,6 +96,7 @@ const Login: React.FC = () => {
       navigate('/dashboard', { replace: true });
     } else {
       setError(result.error || 'Login failed');
+      setLocked(RATE_LIMIT_PATTERN.test(result.error ?? ''));
     }
 
     setLoading(false);
@@ -133,9 +184,14 @@ const Login: React.FC = () => {
                 autoComplete="username"
                 value={credentials.username}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
                 placeholder="you@company.com"
+                className={fieldErrors.username ? 'border-destructive' : ''}
               />
+              {fieldErrors.username && (
+                <p className="text-xs text-destructive">{fieldErrors.username}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -147,9 +203,14 @@ const Login: React.FC = () => {
                 autoComplete="current-password"
                 value={credentials.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 required
                 placeholder="Enter your password"
+                className={fieldErrors.password ? 'border-destructive' : ''}
               />
+              {fieldErrors.password && (
+                <p className="text-xs text-destructive">{fieldErrors.password}</p>
+              )}
             </div>
 
             {error && (
@@ -162,9 +223,9 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || locked}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? 'Signing in…' : locked ? 'Please wait' : 'Sign in'}
             </Button>
           </form>
 

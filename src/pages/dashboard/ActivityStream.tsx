@@ -3,14 +3,15 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, History } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Skeleton } from '../../components/ui/skeleton';
+import { Badge, type BadgeProps } from '../../components/ui/badge';
 import { FetchErrorState } from '../../components/FetchErrorState';
 import { formatClock, dayGroup, relativeTime } from '../../utils/relativeTime';
 import { ACTIVITY_SOURCES, type ActivityItem, type ActivityVerb } from './activity';
 
-const VERB: Record<ActivityVerb, { text: string; dot: string }> = {
-  created: { text: 'text-success', dot: 'bg-success' },
-  updated: { text: 'text-info', dot: 'bg-info' },
-  published: { text: 'text-warning', dot: 'bg-warning' },
+const VERB: Record<ActivityVerb, { dot: string; variant: NonNullable<BadgeProps['variant']> }> = {
+  created: { dot: 'bg-success', variant: 'success' },
+  updated: { dot: 'bg-info', variant: 'info' },
+  published: { dot: 'bg-warning', variant: 'warning' },
 };
 
 interface ActivityStreamProps {
@@ -134,7 +135,9 @@ function Timeline({ items }: { items: ActivityItem[] }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-baseline gap-x-2">
-                    <span className={cn('text-[11px] font-bold uppercase tracking-wide', verb.text)}>{it.verb}</span>
+                    <Badge variant={verb.variant} className="text-[11px] font-bold uppercase tracking-wide">
+                      {it.verb}
+                    </Badge>
                     <span className="text-foreground text-[13.5px] font-semibold">
                       {it.name}
                       {it.code && <span className="text-muted-foreground ml-1.5 font-mono text-xs font-medium">{it.code}</span>}
@@ -157,7 +160,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
 
 function StreamSkeleton() {
   return (
-    <div className="space-y-2" aria-hidden="true">
+    <div className="space-y-2" role="status" aria-label="Loading activity">
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-2.5 py-2">
           <Skeleton className="size-7 rounded-lg" />

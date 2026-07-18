@@ -55,6 +55,15 @@ canonical contract. **A3 + A4 = 17/28 pages** → the core of the effort.
 
 A5/A6 are variants of A3/A4. A7 stays bespoke at the core; only the shell aligns.
 
+> **Correction (2026-07-18, W5):** Profile is grouped under A8 above by proximity (an
+> account/reference page), but it actually follows the **A4 Edit contract** — an
+> edit/read-only toggle, not A8's single-mode always-editable rule. This was mis-scoped
+> from the W0 archetype skeletons and corrected once W5 re-grounded the page against source
+> (see `page-patterns.md` §A8 footnote and `scorecard.md`'s Profile P0). Same root cause as
+> the A5 wide-table, A6 doc_version/upload, and A7 cancellable-ops corrections earlier in
+> the effort — the archetype map was accurate at a glance but not fully verified per-page
+> until each wave actually touched the code.
+
 ## 4. Elevated canonical pattern spec (north star)
 
 Each archetype's contract has **6 facets**: Anatomy · Required states · Information
