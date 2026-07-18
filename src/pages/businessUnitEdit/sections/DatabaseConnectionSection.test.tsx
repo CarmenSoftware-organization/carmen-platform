@@ -272,4 +272,29 @@ describe('DatabaseConnectionSection — write-only password + guarded reveal', (
     })} />);
     expect(screen.queryByRole('button', { name: /reveal current password/i })).not.toBeInTheDocument();
   });
+
+  // SECURITY REGRESSION (final review). `formData.cluster_id` can be empty/falsy for a
+  // cluster-less BU. The old `<Can clusterId={formData.cluster_id}>` turned that into
+  // `clusterId ? { clusterId } : undefined` -> `hasPermission(perm, undefined)`, which
+  // falls through to checkPermission's broad "any cluster" branch — granting the reveal
+  // off cluster.update held on ANY OTHER cluster. Must fail CLOSED via
+  // UNRESOLVED_CLUSTER_ID (mirrors UserEdit.test.tsx's orphan-BU case / UserAccessTree.tsx).
+  it('fails CLOSED on an empty cluster_id — cluster.update held on a different cluster must not grant the reveal', () => {
+    // Mirrors real checkPermission's two branches: scoped to a real cluster id -> only
+    // 'some-other-cluster' passes; NOT scoped (ctx undefined, what the old `<Can
+    // clusterId={formData.cluster_id}>` produced for an empty cluster_id) -> broad "any
+    // cluster" fallback -> true, since the admin holds cluster.update on
+    // 'some-other-cluster'. A correct fix must never call hasPermission with ctx
+    // undefined for this row.
+    auth.hasPermission = (perm: string, ctx?: { clusterId?: string }) => {
+      if (perm !== 'cluster.update') return false;
+      if (ctx?.clusterId) return ctx.clusterId === 'some-other-cluster';
+      return true;
+    };
+    render(<DatabaseConnectionSection {...baseProps({
+      businessUnitId: 'bu1',
+      formData: { ...initialFormData, cluster_id: '', db_connection: [] },
+    })} />);
+    expect(screen.queryByRole('button', { name: /reveal current password/i })).not.toBeInTheDocument();
+  });
 });

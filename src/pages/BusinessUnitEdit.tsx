@@ -18,6 +18,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
 import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
@@ -64,9 +65,13 @@ const BusinessUnitEdit: React.FC = () => {
 
   // One-document surface: everything is editable in place (no read/edit toggle),
   // gated by permission. Create needs cluster.create; edit needs cluster.update.
+  // formData.cluster_id can be empty for a cluster-less BU — fall back to the
+  // UNRESOLVED_CLUSTER_ID sentinel so the check stays on checkPermission's scoped
+  // branch (fail closed) instead of falling through to its broad "any cluster"
+  // branch (fail open on cluster.update held elsewhere).
   const canEdit = isNew
     ? hasPermission('cluster.create')
-    : hasPermission('cluster.update', formData.cluster_id ? { clusterId: formData.cluster_id } : undefined);
+    : hasPermission('cluster.update', { clusterId: formData.cluster_id || UNRESOLVED_CLUSTER_ID });
 
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);

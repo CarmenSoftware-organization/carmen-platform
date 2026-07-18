@@ -223,6 +223,32 @@ describe('BusinessUnitEdit — write access is gated on canEdit', () => {
   });
 });
 
+// SECURITY REGRESSION (final review). `canEdit` had the identical fail-open pattern as
+// the DB-password reveal gate (DatabaseConnectionSection.test.tsx): `formData.cluster_id
+// ? { clusterId } : undefined` passes ctx undefined for a cluster-less BU, which
+// checkPermission's broad "any cluster" branch then authorizes off cluster.update held
+// on ANY OTHER cluster — granting write access to the whole edit surface. Must fail
+// CLOSED via UNRESOLVED_CLUSTER_ID (mirrors UserEdit.test.tsx's orphan-BU case).
+describe('BusinessUnitEdit — canEdit fails closed on an empty cluster_id', () => {
+  it('does not grant write access on a BU with no cluster_id, even though cluster.update is held on a different cluster', async () => {
+    asMock(businessUnitService.getById).mockResolvedValue({ data: { ...fakeBu, cluster_id: '' } });
+    // Mirrors real checkPermission's two branches: scoped to a real cluster id -> only
+    // 'some-other-cluster' passes; NOT scoped (ctx undefined, what the old canEdit
+    // ternary produced for an empty cluster_id) -> broad "any cluster" fallback -> true,
+    // since the admin holds cluster.update on 'some-other-cluster'.
+    auth.hasPermission = (perm: string, ctx?: { clusterId?: string }) => {
+      if (perm !== 'cluster.update') return false;
+      if (ctx?.clusterId) return ctx.clusterId === 'some-other-cluster';
+      return true;
+    };
+    renderAt('/business-units/bu1/edit');
+
+    expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Host' })).toBeNull();
+    expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'false');
+  });
+});
+
 // SECURITY. db_connection.password is now redacted to '' by the backend on every
 // read, so the field is write-only: a blank input must never overwrite the stored
 // password with an empty string. dbFieldsToObject already drops blank-valued

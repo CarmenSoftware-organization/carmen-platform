@@ -9,6 +9,7 @@ import DbConnectionView from '../../../components/DbConnectionView';
 import { dbFieldsToObject } from '../../../utils/dbConnection';
 import businessUnitService from '../../../services/businessUnitService';
 import { parseApiError } from '../../../utils/errorParser';
+import { UNRESOLVED_CLUSTER_ID } from '../../../utils/permissions';
 import { CollapsibleSection, ReadOnlyText } from '../shared';
 import type { SectionFieldProps } from '../types';
 
@@ -146,7 +147,11 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
                     Leave blank to keep the current password.
                   </p>
                   {businessUnitId && (
-                    <Can permission="cluster.update" clusterId={formData.cluster_id}>
+                    // formData.cluster_id can be empty for a cluster-less BU — fall back to
+                    // the UNRESOLVED_CLUSTER_ID sentinel so the check stays on checkPermission's
+                    // scoped branch (fail closed) instead of falling through to its broad
+                    // "any cluster" branch (fail open on cluster.update held elsewhere).
+                    <Can permission="cluster.update" clusterId={formData.cluster_id || UNRESOLVED_CLUSTER_ID}>
                       <div className="space-y-2 pt-1">
                         <Button
                           type="button"
