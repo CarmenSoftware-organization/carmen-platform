@@ -239,7 +239,9 @@ plan's Scope & Deferrals for the full record, following the same pattern as the 
   requirement unless the page fetches raw API data worth inspecting.
 - **Required states:** loading (skeleton matching the content shape — list-skeleton for
   Changelog/PermissionCatalog), empty (`EmptyState`, e.g. "No entries yet"), error banner
-  `role="alert"`.
+  `role="alert"`. Exception: pages whose data is a **static build-time import** (e.g.
+  `Changelog`, sourced from a bundled JSON module rather than a fetch) have no runtime
+  loading/error states at all — only empty applies.
 - **Information hierarchy:** entries/rows use consistent meta styling
   (`text-[11px] leading-tight text-muted-foreground` for dates/authors, matching A3);
   status/category via `<Badge>` where applicable (e.g. permission scope, changelog entry
