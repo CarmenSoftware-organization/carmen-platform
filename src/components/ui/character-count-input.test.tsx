@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CharacterCountInput, deriveCounterState } from './character-count-input';
 
-describe('CharacterCountInput — scaffold', () => {
+describe('CharacterCountInput - scaffold', () => {
   it('associates the label with a single-line text input', () => {
     render(<CharacterCountInput label="Bio" value="" onChange={vi.fn()} />);
     const field = screen.getByLabelText('Bio');
@@ -36,7 +36,7 @@ describe('deriveCounterState', () => {
   });
 });
 
-describe('CharacterCountInput — counter color', () => {
+describe('CharacterCountInput - counter color', () => {
   it('shows amber (text-warning) within 10% of the limit', () => {
     render(
       <CharacterCountInput label="Bio" value="123456789" onChange={vi.fn()} maxLength={10} />,
@@ -59,7 +59,7 @@ describe('CharacterCountInput — counter color', () => {
   });
 });
 
-describe('CharacterCountInput — hard cap', () => {
+describe('CharacterCountInput - hard cap', () => {
   it('blocks a change that would exceed maxLength (default hardCap)', () => {
     const onChange = vi.fn();
     render(
@@ -94,7 +94,7 @@ describe('CharacterCountInput — hard cap', () => {
   });
 });
 
-describe('CharacterCountInput — validation & a11y', () => {
+describe('CharacterCountInput - validation & a11y', () => {
   it('does not show an error while typing (before blur)', () => {
     render(
       <CharacterCountInput label="Bio" value="short" onChange={vi.fn()} minLength={10} />,
@@ -135,7 +135,7 @@ describe('CharacterCountInput — validation & a11y', () => {
   });
 });
 
-describe('CharacterCountInput — onValidChange', () => {
+describe('CharacterCountInput - onValidChange', () => {
   it('reports invalid on mount and valid after the value satisfies the bounds', () => {
     const onValidChange = vi.fn();
     const { rerender } = render(
