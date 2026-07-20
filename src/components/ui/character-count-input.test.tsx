@@ -186,3 +186,27 @@ describe('CharacterCountInput - multiline', () => {
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });
+
+describe('CharacterCountInput - embeddable (no visible label)', () => {
+  it('renders no <label> element when label is omitted, naming the field via aria-label', () => {
+    render(<CharacterCountInput ariaLabel="Alias" value="" onChange={vi.fn()} maxLength={3} />);
+    expect(document.querySelector('label')).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Alias' })).toBeInTheDocument();
+  });
+
+  it('still renders a visible label when label is provided', () => {
+    render(<CharacterCountInput label="Bio" value="" onChange={vi.fn()} />);
+    expect(screen.getByText('Bio').tagName).toBe('LABEL');
+    expect(screen.getByLabelText('Bio')).toBeInTheDocument();
+  });
+
+  it('focuses the field on mount when autoFocus is set', () => {
+    render(<CharacterCountInput ariaLabel="Alias" value="" onChange={vi.fn()} autoFocus />);
+    expect(screen.getByRole('textbox', { name: 'Alias' })).toHaveFocus();
+  });
+
+  it('marks the field required for assistive tech when ariaRequired', () => {
+    render(<CharacterCountInput ariaLabel="Code" value="" onChange={vi.fn()} ariaRequired />);
+    expect(screen.getByRole('textbox', { name: 'Code' })).toHaveAttribute('aria-required', 'true');
+  });
+});

@@ -46,7 +46,7 @@ const counterColor: Record<CounterState, string> = {
 };
 
 export interface CharacterCountInputProps {
-  label: string;
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   maxLength?: number;
@@ -59,6 +59,12 @@ export interface CharacterCountInputProps {
   name?: string;
   disabled?: boolean;
   className?: string;
+  /** Accessible name for the field when no visible `label` is rendered. */
+  ariaLabel?: string;
+  /** Sets aria-required on the field (no visual change). */
+  ariaRequired?: boolean;
+  /** Focus the field on mount (edit-in-place hosts). */
+  autoFocus?: boolean;
 }
 
 export function CharacterCountInput({
@@ -75,6 +81,9 @@ export function CharacterCountInput({
   name,
   disabled,
   className,
+  ariaLabel,
+  ariaRequired,
+  autoFocus,
 }: CharacterCountInputProps) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
@@ -115,8 +124,11 @@ export function CharacterCountInput({
     value,
     placeholder,
     disabled,
+    autoFocus,
     onChange: handleChange,
     onBlur: () => setTouched(true),
+    'aria-label': label ? undefined : ariaLabel,
+    'aria-required': ariaRequired,
     'aria-invalid': showError,
     'aria-describedby': showError ? `${counterId} ${errorId}` : counterId,
     className: cn(
@@ -129,7 +141,7 @@ export function CharacterCountInput({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={fieldId}>{label}</Label>
+      {label && <Label htmlFor={fieldId}>{label}</Label>}
       <div className="relative">
         {multiline ? (
           <Textarea {...sharedProps} />
