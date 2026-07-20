@@ -1,4 +1,5 @@
-import { useId, type ChangeEvent } from 'react';
+import { useId, useMemo, useState, type ChangeEvent } from 'react';
+import { z } from 'zod';
 import { Input } from './input';
 import { Label } from './label';
 import { cn } from '../../lib/utils';
@@ -42,6 +43,7 @@ export function CharacterCountInput({
   value,
   onChange,
   maxLength = 200,
+  minLength = 0,
   placeholder,
   id,
   name,
@@ -52,9 +54,21 @@ export function CharacterCountInput({
   const generatedId = useId();
   const fieldId = id ?? generatedId;
   const counterId = `${fieldId}-counter`;
+  const errorId = `${fieldId}-error`;
+  const [touched, setTouched] = useState(false);
+
+  const schema = useMemo(
+    () => z.string().min(minLength).max(maxLength),
+    [minLength, maxLength],
+  );
+  const result = schema.safeParse(value);
+  const isValid = result.success;
+  const error = result.success ? undefined : result.error.issues[0].message;
+
   const len = value.length;
   const warnAt = Math.ceil(maxLength * 0.9);
   const counterState = deriveCounterState(len, warnAt, maxLength);
+  const showError = touched && !isValid;
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -76,8 +90,10 @@ export function CharacterCountInput({
           placeholder={placeholder}
           disabled={disabled}
           onChange={handleChange}
-          aria-describedby={counterId}
-          className={cn('pr-16', className)}
+          onBlur={() => setTouched(true)}
+          aria-invalid={showError}
+          aria-describedby={showError ? `${counterId} ${errorId}` : counterId}
+          className={cn('pr-16', showError && 'border-destructive', className)}
         />
         <span
           id={counterId}
@@ -90,6 +106,11 @@ export function CharacterCountInput({
           {len} / {maxLength}
         </span>
       </div>
+      {showError && (
+        <p id={errorId} role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

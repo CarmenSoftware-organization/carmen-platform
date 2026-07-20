@@ -93,3 +93,44 @@ describe('CharacterCountInput — hard cap', () => {
     expect(onChange).toHaveBeenCalledWith('123456');
   });
 });
+
+describe('CharacterCountInput — validation & a11y', () => {
+  it('does not show an error while typing (before blur)', () => {
+    render(
+      <CharacterCountInput label="Bio" value="short" onChange={vi.fn()} minLength={10} />,
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByLabelText('Bio')).toHaveAttribute('aria-invalid', 'false');
+  });
+
+  it('shows the Zod min-length error after blur', () => {
+    render(
+      <CharacterCountInput label="Bio" value="short" onChange={vi.fn()} minLength={10} />,
+    );
+    const field = screen.getByLabelText('Bio');
+    fireEvent.blur(field);
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert.textContent).toMatch(/at least/i);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveClass('border-destructive');
+  });
+
+  it('links the field to the error node via aria-describedby after blur', () => {
+    render(
+      <CharacterCountInput label="Bio" value="short" onChange={vi.fn()} minLength={10} id="bio" />,
+    );
+    const field = screen.getByLabelText('Bio');
+    fireEvent.blur(field);
+    expect(field.getAttribute('aria-describedby')).toContain('bio-error');
+    expect(field.getAttribute('aria-describedby')).toContain('bio-counter');
+  });
+
+  it('reports an over-max error for an externally supplied value', () => {
+    render(
+      <CharacterCountInput label="Bio" value={'x'.repeat(11)} onChange={vi.fn()} maxLength={10} />,
+    );
+    fireEvent.blur(screen.getByLabelText('Bio'));
+    expect(screen.getByRole('alert').textContent).toMatch(/at most/i);
+  });
+});
