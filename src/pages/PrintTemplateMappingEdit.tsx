@@ -246,7 +246,7 @@ const PrintTemplateMappingEdit: React.FC = () => {
 
   const matches = (t: ReportTemplate) => {
     if (!form.document_type) return false;
-    return t.kind === 'print' && t.report_group === form.document_type;
+    return t.template_type === 'form' && t.report_group === form.document_type;
   };
   const filteredTemplates = useMemo(() => {
     if (!form.document_type) return templates;

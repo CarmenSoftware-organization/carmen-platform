@@ -45,6 +45,7 @@ interface ReportTemplateFormData {
   report_group: string;
   dialog: string;
   content: string;
+  template_type: 'form' | 'list';
   is_standard: boolean;
   allow_business_unit: string;
   deny_business_unit: string;
@@ -68,6 +69,7 @@ const initialFormData: ReportTemplateFormData = {
   report_group: '',
   dialog: '',
   content: '',
+  template_type: 'list',
   is_standard: true,
   allow_business_unit: '',
   deny_business_unit: '',
@@ -198,6 +200,7 @@ const ReportTemplateEdit: React.FC = () => {
         report_group: template.report_group || '',
         dialog: template.dialog || '',
         content: template.content || '',
+        template_type: (template.template_type as 'form' | 'list') ?? 'list',
         is_standard: template.is_standard ?? true,
         allow_business_unit: toCsv(template.allow_business_unit),
         deny_business_unit: toCsv(template.deny_business_unit),
@@ -619,6 +622,29 @@ const ReportTemplateEdit: React.FC = () => {
                   <CardTitle className="text-base">Data Source</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="template_type">Template Type</Label>
+                    {editing ? (
+                      <select
+                        id="template_type"
+                        name="template_type"
+                        value={formData.template_type}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            template_type: e.target.value as 'form' | 'list',
+                          }))
+                        }
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="list">List</option>
+                        <option value="form">Form</option>
+                      </select>
+                    ) : (
+                      <Badge variant="outline">{formData.template_type}</Badge>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="source_type">Source Type</Label>
                     {editing ? (

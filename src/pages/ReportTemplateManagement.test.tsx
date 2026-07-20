@@ -63,7 +63,7 @@ const sampleTemplate = {
   name: 'Sales Summary',
   description: 'Monthly sales summary report',
   report_group: 'Sales',
-  kind: 'report' as const,
+  template_type: 'list' as const,
   dialog: '<Dialog/>',
   content: '<Content/>',
   is_standard: true,
@@ -195,3 +195,12 @@ describe('ReportTemplateManagement — Add Template gates (report_template.creat
 // ReportTemplateManagement.tsx). It is therefore NOT a consumer of the shared
 // `data-table.tsx` `selectionResetKey` reset mechanism Task 1 fixed, so no regression
 // guard test is added here (unlike NewsManagement/UserManagement).
+
+describe('ReportTemplateManagement — template_type badge', () => {
+  it('renders a template_type badge for each row', async () => {
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    expect(await screen.findByText(/list/i)).toBeInTheDocument();
+  });
+});
