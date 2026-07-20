@@ -115,6 +115,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       mono?: boolean;
       validate?: boolean;
       required?: boolean;
+      maxLength?: number;
     },
   ) => (
     <InlineField
@@ -126,6 +127,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       options={opts?.options}
       mono={opts?.mono}
       required={opts?.required}
+      maxLength={opts?.maxLength}
       error={fieldErrors[name]}
       disabled={!canEdit}
       onCommit={onCommit}
@@ -189,15 +191,15 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
         {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
             validateRequired() enforces — they are the only ones marked required. */}
         <Group label="Details">
-          {inline('code', 'Code', { mono: true, validate: true, required: true })}
-          {inline('alias_name', 'Alias', { validate: true })}
+          {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
+          {inline('alias_name', 'Alias', { validate: true, maxLength: 3 })}
           {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
           {inline('max_license_users', 'Max users', { type: 'number', mono: true, validate: true })}
-          {inline('description', 'Description', { type: 'textarea' })}
+          {inline('description', 'Description', { type: 'textarea', maxLength: 500 })}
         </Group>
 
         <Group label="Location">
-          {inline('hotel_name', 'Hotel name')}
+          {inline('hotel_name', 'Hotel name', { maxLength: 100 })}
           {inline('hotel_address_line1', 'Address line 1')}
           {inline('hotel_address_line2', 'Address line 2')}
           {inline('hotel_sub_district', 'Sub-district')}
@@ -226,7 +228,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             )
           }
         >
-          {inline('company_name', 'Company')}
+          {inline('company_name', 'Company', { maxLength: 100 })}
           {inline('company_tel', 'Company phone', { mono: true })}
           {inline('company_email', 'Company email', { type: 'email' })}
           {inline('company_address_line1', 'Company address line 1')}

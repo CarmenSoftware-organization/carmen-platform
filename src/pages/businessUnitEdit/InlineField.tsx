@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { CharacterCountInput } from '../../components/ui/character-count-input';
 
 export interface InlineOption {
   value: string;
@@ -19,6 +20,8 @@ interface InlineFieldProps {
   disabled?: boolean;
   /** Renders a required marker and sets aria-required on the control. */
   required?: boolean;
+  /** When set (and type !== 'select'), edit mode renders a CharacterCountInput with a live counter and hard cap. */
+  maxLength?: number;
   /** Commit a new value into formData. */
   onCommit: (name: string, value: string) => void;
   /** Optional field-level validation on commit. */
@@ -58,6 +61,7 @@ export function InlineField({
   error,
   disabled,
   required,
+  maxLength,
   onCommit,
   onValidate,
 }: InlineFieldProps) {
@@ -82,6 +86,17 @@ export function InlineField({
     if (e.key === 'Enter' && type !== 'textarea') {
       e.preventDefault();
       (e.currentTarget as HTMLElement).blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancel();
+    }
+  };
+  // Same commit/revert semantics as onKeyDown, but the handler sits on the
+  // wrapper div, so blur the event target (the field) rather than currentTarget.
+  const ccKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && type !== 'textarea') {
+      e.preventDefault();
+      (e.target as HTMLElement).blur();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       cancel();
@@ -138,6 +153,22 @@ export function InlineField({
                 </option>
               ))}
             </select>
+          ) : maxLength != null ? (
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- wrapper only forwards blur/keydown from the focused field inside; not itself interactive
+            <div className="max-w-sm" onBlur={commit} onKeyDown={ccKeyDown}>
+              <CharacterCountInput
+                ariaLabel={label}
+                ariaRequired={required}
+                value={draft}
+                onChange={setDraft}
+                maxLength={maxLength}
+                multiline={type === 'textarea'}
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place: focus the field the user just opened
+                autoFocus
+                placeholder={promptText}
+                className={cn(error ? 'border-destructive' : 'border-primary', mono && 'font-mono')}
+              />
+            </div>
           ) : type === 'textarea' ? (
             <textarea
               // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place

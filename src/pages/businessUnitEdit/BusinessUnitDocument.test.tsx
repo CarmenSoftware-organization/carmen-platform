@@ -140,3 +140,19 @@ describe('BusinessUnitDocument — copy hotel address to company', () => {
     expect(screen.queryByRole('button', { name: /copy from hotel address/i })).not.toBeInTheDocument();
   });
 });
+
+describe('BusinessUnitDocument - character counters', () => {
+  it('shows a 0 / 500 counter when editing the description', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: /^set description…$/i }));
+    expect(screen.getByText('0 / 500')).toBeInTheDocument();
+  });
+
+  it('shows a 0 / 20 counter when editing the code', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: /set code/i }));
+    expect(screen.getByText('0 / 20')).toBeInTheDocument();
+  });
+});
