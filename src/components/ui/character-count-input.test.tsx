@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { CharacterCountInput } from './character-count-input';
+import { CharacterCountInput, deriveCounterState } from './character-count-input';
 
 describe('CharacterCountInput — scaffold', () => {
   it('associates the label with a single-line text input', () => {
@@ -20,5 +20,41 @@ describe('CharacterCountInput — scaffold', () => {
       <CharacterCountInput label="Bio" value="hi" onChange={vi.fn()} maxLength={10} />,
     );
     expect(screen.getByText('2 / 10')).toBeInTheDocument();
+  });
+});
+
+describe('deriveCounterState', () => {
+  it('is normal below the warning threshold', () => {
+    expect(deriveCounterState(5, 9, 10)).toBe('normal');
+  });
+  it('is warning at/above the threshold and up to max', () => {
+    expect(deriveCounterState(9, 9, 10)).toBe('warning');
+    expect(deriveCounterState(10, 9, 10)).toBe('warning');
+  });
+  it('is error above max (over-max wins over warning)', () => {
+    expect(deriveCounterState(11, 9, 10)).toBe('error');
+  });
+});
+
+describe('CharacterCountInput — counter color', () => {
+  it('shows amber (text-warning) within 10% of the limit', () => {
+    render(
+      <CharacterCountInput label="Bio" value="123456789" onChange={vi.fn()} maxLength={10} />,
+    );
+    expect(screen.getByText('9 / 10')).toHaveClass('text-warning');
+  });
+
+  it('shows neutral (text-muted-foreground) well below the limit', () => {
+    render(
+      <CharacterCountInput label="Bio" value="12345678" onChange={vi.fn()} maxLength={10} />,
+    );
+    expect(screen.getByText('8 / 10')).toHaveClass('text-muted-foreground');
+  });
+
+  it('shows red (text-destructive) when the value is over max', () => {
+    render(
+      <CharacterCountInput label="Bio" value={'x'.repeat(11)} onChange={vi.fn()} maxLength={10} />,
+    );
+    expect(screen.getByText('11 / 10')).toHaveClass('text-destructive');
   });
 });

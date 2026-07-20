@@ -3,6 +3,24 @@ import { Input } from './input';
 import { Label } from './label';
 import { cn } from '../../lib/utils';
 
+export type CounterState = 'normal' | 'warning' | 'error';
+
+export function deriveCounterState(
+  len: number,
+  warnAt: number,
+  maxLength: number,
+): CounterState {
+  if (len > maxLength) return 'error';
+  if (len >= warnAt) return 'warning';
+  return 'normal';
+}
+
+const counterColor: Record<CounterState, string> = {
+  normal: 'text-muted-foreground',
+  warning: 'text-warning',
+  error: 'text-destructive',
+};
+
 export interface CharacterCountInputProps {
   label: string;
   value: string;
@@ -34,6 +52,8 @@ export function CharacterCountInput({
   const fieldId = id ?? generatedId;
   const counterId = `${fieldId}-counter`;
   const len = value.length;
+  const warnAt = Math.ceil(maxLength * 0.9);
+  const counterState = deriveCounterState(len, warnAt, maxLength);
 
   return (
     <div className="space-y-2">
@@ -53,7 +73,10 @@ export function CharacterCountInput({
         <span
           id={counterId}
           aria-live="polite"
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground"
+          className={cn(
+            'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs transition-colors',
+            counterColor[counterState],
+          )}
         >
           {len} / {maxLength}
         </span>
