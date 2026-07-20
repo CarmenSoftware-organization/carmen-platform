@@ -120,6 +120,7 @@ export function CharacterCountInput({
     'aria-invalid': showError,
     'aria-describedby': showError ? `${counterId} ${errorId}` : counterId,
     className: cn(
+      'transition-colors',
       multiline ? 'resize-none pb-6' : 'pr-16',
       showError && 'border-destructive',
       className,
