@@ -50,4 +50,30 @@ describe('useClusterUsers', () => {
     await act(async () => { await result.current.removeUser('cu1'); });
     expect(api.delete).toHaveBeenCalledWith('/api-system/user/clusters/cu1');
   });
+
+  it('updateUser rolls back the optimistic change and rethrows, toast-free, on failure', async () => {
+    asMock(api.put).mockRejectedValue(new Error('nope'));
+    const { result } = renderHook(() => useClusterUsers('c1'));
+    await waitFor(() => expect(result.current.clusterUsers).toHaveLength(1));
+    expect(result.current.clusterUsers[0].role).toBe('user'); // original
+
+    await act(async () => {
+      await expect(result.current.updateUser('cu1', { role: 'admin' })).rejects.toThrow();
+    });
+
+    expect(result.current.clusterUsers[0].role).toBe('user'); // rolled back
+    expect(toast.error).not.toHaveBeenCalled(); // primitive is toast-free
+  });
+
+  it('bulkRun with an empty id list does nothing and toasts nothing', async () => {
+    const { result } = renderHook(() => useClusterUsers('c1'));
+    await waitFor(() => expect(result.current.clusterUsers).toHaveLength(1));
+    const op = vi.fn();
+    let summary: { ok: number; failed: number } | undefined;
+    await act(async () => { summary = await result.current.bulkRun([], op, 'update'); });
+    expect(op).not.toHaveBeenCalled();
+    expect(summary).toEqual({ ok: 0, failed: 0 });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
 });

@@ -29,6 +29,17 @@ function sortByName(list: ClusterUser[]): ClusterUser[] {
 
 export function useClusterUsers(clusterId: string | undefined) {
   const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
+  // Mirrors `clusterUsers` synchronously (plain ref write, not routed through React's
+  // deferred state-update scheduling). `updateUser`'s rollback needs to read the list
+  // as it stood immediately before its own optimistic write — reading it back out of a
+  // `setClusterUsers(list => { prev = list; ... })` side effect is NOT safe here: React
+  // does not guarantee that updater runs before the very next `await` resolves, so a
+  // fast-rejecting `api.put` can hit the `catch` while `prev` is still its initial value.
+  const clusterUsersRef = useRef<ClusterUser[]>([]);
+  const applyClusterUsers = useCallback((next: ClusterUser[]) => {
+    clusterUsersRef.current = next;
+    setClusterUsers(next);
+  }, []);
   const [usersLoading, setUsersLoading] = useState(false);
   const [rawUsersResponse, setRawUsersResponse] = useState<unknown>(null);
 
@@ -47,13 +58,13 @@ export function useClusterUsers(clusterId: string | undefined) {
       const data = response.data;
       setRawUsersResponse(data);
       const items = data.data || data;
-      setClusterUsers(sortByName(Array.isArray(items) ? items : []));
+      applyClusterUsers(sortByName(Array.isArray(items) ? items : []));
     } catch {
       // Secondary data — keep prior list, no blocking error.
     } finally {
       setUsersLoading(false);
     }
-  }, [clusterId]);
+  }, [clusterId, applyClusterUsers]);
 
   useEffect(() => {
     fetchClusterUsers();
@@ -106,32 +117,44 @@ export function useClusterUsers(clusterId: string | undefined) {
 
   const addUser = useCallback(async (input: { userId: string; role: string; parentBuId?: string }) => {
     if (!clusterId) return;
-    await api.post('/api-system/user/clusters', {
-      user_id: input.userId,
-      cluster_id: clusterId,
-      role: input.role,
-      is_active: true,
-      ...(input.parentBuId ? { parent_bu_id: input.parentBuId } : {}),
-    });
+    try {
+      await api.post('/api-system/user/clusters', {
+        user_id: input.userId,
+        cluster_id: clusterId,
+        role: input.role,
+        is_active: true,
+        ...(input.parentBuId ? { parent_bu_id: input.parentBuId } : {}),
+      });
+    } catch (err) {
+      toast.error('Failed to add user', { description: getErrorDetail(err) });
+      throw err;
+    }
     toast.success('User added to cluster');
     await fetchClusterUsers();
   }, [clusterId, fetchClusterUsers]);
 
+  // Toast-free: on failure it rolls back the optimistic update and rethrows.
+  // Callers own error toasting — single-use callers toast, bulkRun aggregates a summary.
   const updateUser = useCallback(async (
     clusterUserId: string,
     patch: { role?: string; parent_bu_id?: string | null; is_active?: boolean },
   ) => {
-    const prev = clusterUsers;
-    setClusterUsers((list) => list.map((u) => (u.id === clusterUserId ? { ...u, ...patch } : u)));
+    // Read the pre-change list off the ref (synchronous, not a deferred setState
+    // callback), so when bulkRun invokes this repeatedly the rollback reverts only
+    // THIS item — not back to a stale pre-batch snapshot that would discard earlier
+    // items' successful updates.
+    const prev = clusterUsersRef.current;
+    applyClusterUsers(prev.map((u) => (u.id === clusterUserId ? { ...u, ...patch } : u)));
     try {
       await api.put(`/api-system/user/clusters/${clusterUserId}`, patch);
     } catch (err) {
-      setClusterUsers(prev); // rollback
-      toast.error('Failed to update user', { description: getErrorDetail(err) });
+      applyClusterUsers(prev); // rollback to the list as it was when this call started
       throw err;
     }
-  }, [clusterUsers]);
+  }, [applyClusterUsers]);
 
+  // Toast-free: rethrows on failure. Callers own error toasting — the single-use
+  // caller toasts, bulkRun aggregates a summary.
   const removeUser = useCallback(async (clusterUserId: string) => {
     await api.delete(`/api-system/user/clusters/${clusterUserId}`);
     await fetchClusterUsers();
@@ -143,6 +166,7 @@ export function useClusterUsers(clusterId: string | undefined) {
     op: (id: string) => Promise<void>,
     label: string,
   ): Promise<{ ok: number; failed: number }> => {
+    if (ids.length === 0) return { ok: 0, failed: 0 };
     let ok = 0;
     let failed = 0;
     for (const id of ids) {
