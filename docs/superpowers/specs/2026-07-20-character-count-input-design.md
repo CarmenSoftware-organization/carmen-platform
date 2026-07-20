@@ -78,8 +78,14 @@ const isValid = result.success;
 const error = result.success ? undefined : result.error.issues[0].message;
 ```
 
-- `onValidChange` fires from a `useEffect` keyed on `[isValid, error]`, so the
-  parent is notified once per meaningful change (not on every render).
+- `onValidChange` fires from a `useEffect` keyed on `[isValid, error,
+  onValidChange]` (the callback is included to satisfy
+  `react-hooks/exhaustive-deps` and to avoid calling a stale callback).
+  `isValid`/`error` are primitives, so with a stable callback identity the
+  parent is notified only when validity actually changes. A parent passing an
+  inline callback re-fires the effect every render; this is harmless (React
+  bails on an identical `setState`), but expensive consumers should memoize
+  `onValidChange`.
 - Length is measured with `value.length` (UTF-16 code units) — the **same unit
   Zod `.max()` uses**, so the counter and the validation boundary never disagree.
   Astral characters (most emoji) count as 2. This limitation is documented in the
