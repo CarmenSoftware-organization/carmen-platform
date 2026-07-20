@@ -1,6 +1,29 @@
+/**
+ * CharacterCountInput - a controlled text field with a live character count and
+ * Zod validation. Renders an <input> or a <textarea> (multiline); the counter
+ * and warning color update in real time, while the error border + message
+ * appear only after the first blur while the value is invalid. Surface validity
+ * to a parent via onValidChange to gate submit.
+ *
+ * @example
+ * const [bio, setBio] = useState('');
+ * const [valid, setValid] = useState(false);
+ * <form onSubmit={handleSubmit}>
+ *   <CharacterCountInput
+ *     label="Bio" value={bio} onChange={setBio}
+ *     minLength={10} maxLength={200} multiline
+ *     onValidChange={(ok) => setValid(ok)}
+ *   />
+ *   <Button type="submit" disabled={!valid}>Save</Button>
+ * </form>
+ *
+ * Note: length is counted with String.length (UTF-16 code units); astral
+ * characters such as most emoji count as 2 - the same unit Zod's .max() uses.
+ */
 import { useEffect, useId, useMemo, useState, type ChangeEvent } from 'react';
 import { z } from 'zod';
 import { Input } from './input';
+import { Textarea } from './textarea';
 import { Label } from './label';
 import { cn } from '../../lib/utils';
 
@@ -45,12 +68,13 @@ export function CharacterCountInput({
   maxLength = 200,
   minLength = 0,
   placeholder,
+  multiline = false,
+  hardCap = true,
+  onValidChange,
   id,
   name,
   disabled,
   className,
-  hardCap = true,
-  onValidChange,
 }: CharacterCountInputProps) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
@@ -85,28 +109,38 @@ export function CharacterCountInput({
     onChange(next);
   };
 
+  const sharedProps = {
+    id: fieldId,
+    name,
+    value,
+    placeholder,
+    disabled,
+    onChange: handleChange,
+    onBlur: () => setTouched(true),
+    'aria-invalid': showError,
+    'aria-describedby': showError ? `${counterId} ${errorId}` : counterId,
+    className: cn(
+      multiline ? 'resize-none pb-6' : 'pr-16',
+      showError && 'border-destructive',
+      className,
+    ),
+  };
+
   return (
     <div className="space-y-2">
       <Label htmlFor={fieldId}>{label}</Label>
       <div className="relative">
-        <Input
-          id={fieldId}
-          name={name}
-          type="text"
-          value={value}
-          placeholder={placeholder}
-          disabled={disabled}
-          onChange={handleChange}
-          onBlur={() => setTouched(true)}
-          aria-invalid={showError}
-          aria-describedby={showError ? `${counterId} ${errorId}` : counterId}
-          className={cn('pr-16', showError && 'border-destructive', className)}
-        />
+        {multiline ? (
+          <Textarea {...sharedProps} />
+        ) : (
+          <Input type="text" {...sharedProps} />
+        )}
         <span
           id={counterId}
           aria-live="polite"
           className={cn(
-            'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs transition-colors',
+            'pointer-events-none absolute text-xs transition-colors',
+            multiline ? 'bottom-2 right-3' : 'right-3 top-1/2 -translate-y-1/2',
             counterColor[counterState],
           )}
         >

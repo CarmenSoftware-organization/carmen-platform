@@ -153,3 +153,36 @@ describe('CharacterCountInput — onValidChange', () => {
     expect(onValidChange).toHaveBeenLastCalledWith(true, undefined);
   });
 });
+
+describe('CharacterCountInput - multiline', () => {
+  it('renders a textarea when multiline', () => {
+    render(<CharacterCountInput label="Bio" value="" onChange={vi.fn()} multiline />);
+    const field = screen.getByLabelText('Bio');
+    expect(field.tagName).toBe('TEXTAREA');
+    expect(field).toHaveClass('resize-none');
+  });
+
+  it('applies the hard cap on the textarea too', () => {
+    const onChange = vi.fn();
+    render(
+      <CharacterCountInput label="Bio" value="12345" onChange={onChange} maxLength={5} multiline />,
+    );
+    fireEvent.change(screen.getByLabelText('Bio'), { target: { value: '123456' } });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('applies warning color and blur-gated error on the textarea', () => {
+    render(
+      <CharacterCountInput label="Bio" value="123456789" onChange={vi.fn()} maxLength={10} multiline />,
+    );
+    expect(screen.getByText('9 / 10')).toHaveClass('text-warning');
+
+    render(
+      <CharacterCountInput label="Note" value="hey" onChange={vi.fn()} minLength={10} multiline />,
+    );
+    const field = screen.getByLabelText('Note');
+    expect(screen.queryByRole('alert')).toBeNull();
+    fireEvent.blur(field);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+});
