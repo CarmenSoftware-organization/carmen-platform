@@ -151,7 +151,7 @@ export function UsersSection({
                         ariaLabel={`Parent business unit for ${displayName(u)}`}
                         value={u.parent_bu_id ?? ''}
                         disabled={!canEdit}
-                        options={[{ value: '', label: '—' }, ...buOptions]}
+                        options={[{ value: '', label: '-' }, ...buOptions]}
                         display={bu ? <Badge variant="outline" className="text-xs">{bu.code} - {bu.name}</Badge> : <span className="text-muted-foreground text-xs">-</span>}
                         onCommit={(v) => { void onUpdateUser(u.id, { parent_bu_id: v || null }); }}
                       />

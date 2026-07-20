@@ -92,9 +92,17 @@ const ClusterEdit: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
 
+  // Reverting formData must also drop any field errors tied to the discarded edits —
+  // otherwise a red validation message can linger under a now-reverted field.
+  const handleCancelEdit = () => {
+    setFormData(savedFormData);
+    setFieldErrors({});
+    setError('');
+  };
+
   useGlobalShortcuts({
     onSave: () => { if (hasChanges && !saving) void handleSaveCluster(); },
-    onCancel: () => { if (hasChanges) setFormData(savedFormData); },
+    onCancel: () => { if (hasChanges) handleCancelEdit(); },
   });
 
   useEffect(() => {
@@ -270,6 +278,7 @@ const ClusterEdit: React.FC = () => {
   const handleRemoveUser = async (cuId: string) => {
     try {
       await users.removeUser(cuId);
+      await users.fetchClusterUsers();
     } catch (err) {
       toast.error('Failed to remove user', { description: getErrorDetail(err) });
     }
@@ -613,7 +622,7 @@ const ClusterEdit: React.FC = () => {
               <span>Unsaved changes</span>
             </div>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setFormData(savedFormData)} disabled={saving}>
+              <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
                 <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>

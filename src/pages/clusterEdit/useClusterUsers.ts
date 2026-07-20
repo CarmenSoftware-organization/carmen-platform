@@ -153,12 +153,11 @@ export function useClusterUsers(clusterId: string | undefined) {
     }
   }, [applyClusterUsers]);
 
-  // Toast-free: rethrows on failure. Callers own error toasting — the single-use
-  // caller toasts, bulkRun aggregates a summary.
+  // Toast-free: rethrows on failure and does NOT refetch — callers refetch (single-use
+  // caller after success; bulkRun does one final refetch).
   const removeUser = useCallback(async (clusterUserId: string) => {
     await api.delete(`/api-system/user/clusters/${clusterUserId}`);
-    await fetchClusterUsers();
-  }, [fetchClusterUsers]);
+  }, []);
 
   // Sequential fan-out: one request per id, never abort the batch on a single failure.
   const bulkRun = useCallback(async (

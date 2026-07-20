@@ -43,12 +43,14 @@ describe('useClusterUsers', () => {
     expect(toast.success).toHaveBeenCalled();
   });
 
-  it('removeUser calls DELETE and refetches', async () => {
+  it('removeUser deletes without refetching (callers refetch)', async () => {
     asMock(api.delete).mockResolvedValue({ data: {} });
     const { result } = renderHook(() => useClusterUsers('c1'));
     await waitFor(() => expect(result.current.clusterUsers).toHaveLength(1));
+    const getCallsBefore = asMock(api.get).mock.calls.length;
     await act(async () => { await result.current.removeUser('cu1'); });
     expect(api.delete).toHaveBeenCalledWith('/api-system/user/clusters/cu1');
+    expect(asMock(api.get).mock.calls.length).toBe(getCallsBefore);
   });
 
   it('updateUser rolls back the optimistic change and rethrows, toast-free, on failure', async () => {

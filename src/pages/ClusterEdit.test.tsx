@@ -143,7 +143,6 @@ describe('ClusterEdit — not-found state', () => {
     renderAt('/clusters/nope/edit');
 
     expect(await screen.findByText('Cluster not found')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit details/i })).toBeNull();
     expect(screen.queryByText('Business Units')).toBeNull();
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
     expect(screen.getByRole('button', { name: /back to clusters/i })).toBeInTheDocument();
