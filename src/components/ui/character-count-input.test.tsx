@@ -201,7 +201,10 @@ describe('CharacterCountInput - embeddable (no visible label)', () => {
   });
 
   it('focuses the field on mount when autoFocus is set', () => {
-    render(<CharacterCountInput ariaLabel="Alias" value="" onChange={vi.fn()} autoFocus />);
+    render(
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- verifying the autoFocus behavior
+      <CharacterCountInput ariaLabel="Alias" value="" onChange={vi.fn()} autoFocus />,
+    );
     expect(screen.getByRole('textbox', { name: 'Alias' })).toHaveFocus();
   });
 
