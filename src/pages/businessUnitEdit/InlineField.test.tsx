@@ -141,3 +141,55 @@ describe('InlineField (select)', () => {
     expect(onCommit).toHaveBeenCalledWith('cluster', 'c1');
   });
 });
+
+describe('InlineField (character count)', () => {
+  const setupCC = (props: Partial<React.ComponentProps<typeof InlineField>> = {}) => {
+    const onCommit = vi.fn();
+    render(<InlineField name="alias" label="Alias" value="AB" maxLength={3} onCommit={onCommit} {...props} />);
+    return { onCommit };
+  };
+
+  it('shows a character counter and focuses the field on open', async () => {
+    const user = userEvent.setup();
+    setupCC();
+    await user.click(screen.getByRole('button', { name: /ab/i }));
+    const field = screen.getByRole('textbox', { name: 'Alias' });
+    expect(field).toHaveFocus();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
+  });
+
+  it('hard-caps typing at maxLength', async () => {
+    const user = userEvent.setup();
+    setupCC({ value: '' });
+    await user.click(screen.getByRole('button', { name: /set alias/i }));
+    const field = screen.getByRole('textbox', { name: 'Alias' });
+    await user.type(field, 'ABCD');
+    expect(field).toHaveValue('ABC');
+    expect(screen.getByText('3 / 3')).toBeInTheDocument();
+  });
+
+  it('commits the changed value on blur', async () => {
+    const user = userEvent.setup();
+    const { onCommit } = setupCC({ value: '' });
+    await user.click(screen.getByRole('button', { name: /set alias/i }));
+    await user.type(screen.getByRole('textbox', { name: 'Alias' }), 'XY');
+    await user.tab();
+    expect(onCommit).toHaveBeenCalledWith('alias', 'XY');
+  });
+
+  it('reverts on Escape without committing', async () => {
+    const user = userEvent.setup();
+    const { onCommit } = setupCC();
+    await user.click(screen.getByRole('button', { name: /ab/i }));
+    await user.type(screen.getByRole('textbox', { name: 'Alias' }), 'C{Escape}');
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /ab/i })).toBeInTheDocument();
+  });
+
+  it('shows the destructive border when a validateField error is present', async () => {
+    const user = userEvent.setup();
+    setupCC({ error: 'Bad' });
+    await user.click(screen.getByRole('button', { name: /ab/i }));
+    expect(screen.getByRole('textbox', { name: 'Alias' }).className).toContain('border-destructive');
+  });
+});
