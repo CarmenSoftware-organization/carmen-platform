@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 
@@ -85,19 +85,22 @@ beforeEach(() => {
 });
 
 describe('ClusterEdit (integration)', () => {
-  it('loads an existing cluster into the overview hub, then reveals inputs in the edit dialog', async () => {
+  it('loads an existing cluster into the overview hub, then reveals a field input on click', async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
     const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
 
-    // The hub hero leads with the cluster name (h1) and its code.
+    // The hub hero leads with the cluster name (h1) and its code. Scoped to the
+    // overview section — the Details section below now also renders "CLS1" as its
+    // own read-mode field text.
     expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
-    expect(screen.getByText('CLS1', { selector: 'span' })).toBeInTheDocument();
+    const overviewSection = document.getElementById('overview') as HTMLElement;
+    expect(within(overviewSection).getByText('CLS1', { selector: 'span' })).toBeInTheDocument();
 
-    // Edit details opens the dialog with editable fields.
-    await user.click(screen.getByRole('button', { name: /edit details/i }));
+    // Edit-in-place: the field is read-only text until clicked, then reveals its input.
+    expect(screen.queryByDisplayValue('Acme Cluster')).toBeNull();
+    await user.click(screen.getByRole('button', { name: /acme cluster/i }));
     expect(await screen.findByDisplayValue('Acme Cluster')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('CLS1')).toBeInTheDocument();
   });
 
   it('starts a new cluster in edit mode without calling getById', async () => {
@@ -108,27 +111,26 @@ describe('ClusterEdit (integration)', () => {
   });
 });
 
-// A4 two-mode field contract. This page is the reference CLAUDE.md points at, so the
-// read mode must actually exist — previously the whole form Card unmounted and
-// max_license_bu had nowhere to be read at all.
-describe('ClusterEdit — two-mode fields (A4 contract)', () => {
-  it('renders every field read-only (including max licensed BUs) before Edit is pressed', async () => {
+// Edit-in-place contract. This page is the reference CLAUDE.md points at, so the
+// read mode must actually exist — values show as plain read-mode text/buttons until
+// a field is clicked, and cluster.update gates whether that click opens an editor.
+describe('ClusterEdit — edit-in-place details', () => {
+  it('shows values read-only until a field is clicked (with permission)', async () => {
+    auth.hasPermission = (perm, ctx) => perm === 'cluster.update' && ctx?.clusterId === 'c1';
     asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
+    const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
-    // Read mode: no editable controls at all…
-    expect(screen.queryByPlaceholderText('Cluster code')).toBeNull();
+    // No inputs until a field is opened.
     expect(screen.queryByDisplayValue('Acme Cluster')).toBeNull();
-    // …but the values are still on the page, max_license_bu included.
-    expect(screen.getByText('Max licensed BUs')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /acme cluster/i }));
+    expect(await screen.findByDisplayValue('Acme Cluster')).toBeInTheDocument();
   });
 
-  it('reads an unset cap as "Unlimited" rather than an empty dash', async () => {
+  it('reads an unset cap as "Unlimited"', async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: { ...fakeCluster, max_license_bu: null } });
     renderAt('/clusters/c1/edit');
-
     expect(await screen.findByText('Unlimited')).toBeInTheDocument();
   });
 });
@@ -141,7 +143,6 @@ describe('ClusterEdit — not-found state', () => {
     renderAt('/clusters/nope/edit');
 
     expect(await screen.findByText('Cluster not found')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit details/i })).toBeNull();
     expect(screen.queryByText('Business Units')).toBeNull();
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
     expect(screen.getByRole('button', { name: /back to clusters/i })).toBeInTheDocument();
@@ -231,16 +232,17 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
     renderAt('/clusters/c1/edit');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit details/i })).toBeNull();
+    // Edit-in-place: with no permission, the Details fields are read-only (no edit trigger),
+    // and the user write surfaces are absent.
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^add$/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /remove jane doe/i })).toBeNull();
-    // The membership row degrades to plain text, not a dialog trigger.
-    expect(screen.queryByRole('button', { name: 'Jane Doe' })).toBeNull();
-    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).toBeNull();               // no bulk-select
+    expect(screen.queryByRole('button', { name: /role for jane doe/i })).toBeNull(); // no inline role editor
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument();        // still shown as text
   });
 
-  it('shows them when the permissions are held (discriminating control)', async () => {
+  it('shows them when cluster.update is held for this cluster (discriminating control)', async () => {
     // Proves the negative assertions above aren't passing for the wrong reason — AND that
     // the check is genuinely scoped to *this* cluster, not just "any truthy permission".
     // A wholesale `() => true` mock would pass even if `<Can>` lost its `clusterId` prop
@@ -250,8 +252,8 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
     renderAt('/clusters/c1/edit');
 
     expect(await screen.findByRole('button', { name: /add user/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /edit details/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /remove jane doe/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Jane Doe' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /role for jane doe/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /select jane doe/i })).toBeInTheDocument();
   });
 });
