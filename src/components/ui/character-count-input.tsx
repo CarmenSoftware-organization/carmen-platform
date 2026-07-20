@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ChangeEvent } from 'react';
 import { Input } from './input';
 import { Label } from './label';
 import { cn } from '../../lib/utils';
@@ -47,6 +47,7 @@ export function CharacterCountInput({
   name,
   disabled,
   className,
+  hardCap = true,
 }: CharacterCountInputProps) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
@@ -54,6 +55,14 @@ export function CharacterCountInput({
   const len = value.length;
   const warnAt = Math.ceil(maxLength * 0.9);
   const counterState = deriveCounterState(len, warnAt, maxLength);
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const next = e.target.value;
+    if (hardCap && next.length > maxLength) return;
+    onChange(next);
+  };
 
   return (
     <div className="space-y-2">
@@ -66,7 +75,7 @@ export function CharacterCountInput({
           value={value}
           placeholder={placeholder}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleChange}
           aria-describedby={counterId}
           className={cn('pr-16', className)}
         />

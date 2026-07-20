@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { CharacterCountInput, deriveCounterState } from './character-count-input';
 
 describe('CharacterCountInput — scaffold', () => {
@@ -56,5 +56,40 @@ describe('CharacterCountInput — counter color', () => {
       <CharacterCountInput label="Bio" value={'x'.repeat(11)} onChange={vi.fn()} maxLength={10} />,
     );
     expect(screen.getByText('11 / 10')).toHaveClass('text-destructive');
+  });
+});
+
+describe('CharacterCountInput — hard cap', () => {
+  it('blocks a change that would exceed maxLength (default hardCap)', () => {
+    const onChange = vi.fn();
+    render(
+      <CharacterCountInput label="Code" value="12345" onChange={onChange} maxLength={5} />,
+    );
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('allows a change within maxLength', () => {
+    const onChange = vi.fn();
+    render(
+      <CharacterCountInput label="Code" value="123" onChange={onChange} maxLength={5} />,
+    );
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '1234' } });
+    expect(onChange).toHaveBeenCalledWith('1234');
+  });
+
+  it('allows exceeding when hardCap is false', () => {
+    const onChange = vi.fn();
+    render(
+      <CharacterCountInput
+        label="Code"
+        value="12345"
+        onChange={onChange}
+        maxLength={5}
+        hardCap={false}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    expect(onChange).toHaveBeenCalledWith('123456');
   });
 });
