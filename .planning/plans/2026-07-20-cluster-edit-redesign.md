@@ -1918,14 +1918,43 @@ const navItems: NavItem[] = [
 ];
 ```
 
-- Bulk handlers wired to `useClusterUsers`:
+- **Toast ownership (decided during Task 5 review):** the `useClusterUsers` mutation primitives (`addUser`, `updateUser`, `removeUser`) are **toast-free and rethrow** on failure — this is what lets them compose inside `bulkRun` without per-item toast spam. Therefore **every single-use caller in this orchestrator must catch and toast**; `bulkRun` owns the aggregate summary toast. Wrappers passed to sections:
 
 ```tsx
+// Single-use: the section fires these; they own the error toast (primitives are toast-free).
+const handleUpdateUser = async (cuId: string, patch: { role?: string; parent_bu_id?: string | null }) => {
+  // updateUser already rolled the optimistic UI back on failure; we just surface it.
+  try {
+    await users.updateUser(cuId, patch);
+  } catch (err) {
+    toast.error('Failed to update user', { description: getErrorDetail(err) });
+  }
+};
+const handleRemoveUser = async (cuId: string) => {
+  try {
+    await users.removeUser(cuId);
+  } catch (err) {
+    toast.error('Failed to remove user', { description: getErrorDetail(err) });
+  }
+};
+// Add dialog submit: rethrow-free wrapper that keeps the dialog open on failure.
+const handleAddUser = async (input: { userId: string; role: string; parentBuId?: string }) => {
+  try {
+    await users.addUser(input);   // addUser toasts its own success; on failure it rethrows
+    setShowAddUser(false);
+  } catch {
+    // addUser already toasted the error; leave the dialog open so the user can retry
+  }
+};
+
+// Bulk: bulkRun catches per item and toasts one summary — pass the toast-free primitives.
 const handleBulkRemove = async (ids: string[]) =>
   users.bulkRun(ids, (cuId) => users.removeUser(cuId), 'Remove users');
 const handleBulkMoveBu = async (ids: string[], buId: string) =>
   users.bulkRun(ids, (cuId) => users.updateUser(cuId, { parent_bu_id: buId }), 'Move users');
 ```
+
+Wire `onUpdateUser={handleUpdateUser}`, `onRemoveUser={handleRemoveUser}` into `UsersSection`, and the add dialog's submit to `handleAddUser`. (Note: `addUser` keeps its own `toast.success` on success and toasts+rethrows on failure — it is the one primitive with no bulk composition, so its self-toast is safe.)
 
 - The `isNew` branch keeps the current single-form create UI (PageHeader "Add Cluster" + `ClusterIdentityFields editing` + Create/Cancel) — unchanged.
 
