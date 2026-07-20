@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useId, useMemo, useState, type ChangeEvent } from 'react';
 import { z } from 'zod';
 import { Input } from './input';
 import { Label } from './label';
@@ -50,6 +50,7 @@ export function CharacterCountInput({
   disabled,
   className,
   hardCap = true,
+  onValidChange,
 }: CharacterCountInputProps) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
@@ -64,6 +65,12 @@ export function CharacterCountInput({
   const result = schema.safeParse(value);
   const isValid = result.success;
   const error = result.success ? undefined : result.error.issues[0].message;
+
+  // Redundant calls with an unchanged value are harmless (React bails on an
+  // identical setState); parents doing expensive work should memoize onValidChange.
+  useEffect(() => {
+    onValidChange?.(isValid, error);
+  }, [isValid, error, onValidChange]);
 
   const len = value.length;
   const warnAt = Math.ceil(maxLength * 0.9);

@@ -134,3 +134,22 @@ describe('CharacterCountInput — validation & a11y', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/at most/i);
   });
 });
+
+describe('CharacterCountInput — onValidChange', () => {
+  it('reports invalid on mount and valid after the value satisfies the bounds', () => {
+    const onValidChange = vi.fn();
+    const { rerender } = render(
+      <CharacterCountInput
+        label="Bio" value="ab" onChange={vi.fn()} minLength={3} onValidChange={onValidChange}
+      />,
+    );
+    expect(onValidChange).toHaveBeenLastCalledWith(false, expect.any(String));
+
+    rerender(
+      <CharacterCountInput
+        label="Bio" value="abc" onChange={vi.fn()} minLength={3} onValidChange={onValidChange}
+      />,
+    );
+    expect(onValidChange).toHaveBeenLastCalledWith(true, undefined);
+  });
+});
