@@ -211,7 +211,7 @@ const ReportTemplateManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5">
           <Link
             to={`/report-templates/${row.original.id}/edit`}
             className="text-primary hover:underline whitespace-nowrap"
@@ -219,23 +219,15 @@ const ReportTemplateManagement: React.FC = () => {
           >
             {row.original.name}
           </Link>
+          {row.original.description && (
+            <span
+              className="text-xs text-muted-foreground truncate max-w-[320px]"
+              title={row.original.description}
+            >
+              {row.original.description}
+            </span>
+          )}
         </div>
-      ),
-    },
-    {
-      accessorKey: 'description',
-      header: 'Description',
-      cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm truncate max-w-[200px] block">
-          {row.original.description || '-'}
-        </span>
-      ),
-    },
-    {
-      accessorKey: 'report_group',
-      header: 'Report Group',
-      cell: ({ row }) => (
-        <Badge variant="outline">{row.original.report_group}</Badge>
       ),
     },
     {
@@ -246,27 +238,11 @@ const ReportTemplateManagement: React.FC = () => {
       ),
     },
     {
-      accessorKey: 'source_type',
-      header: 'Source',
-      cell: ({ row }) => {
-        const r = row.original as ReportTemplate & { view_name?: string };
-        const t: string = r.source_type || (r.view_name ? 'view' : '-');
-        const name = r.source_name || r.view_name || '';
-        const variant: 'secondary' | 'default' | 'outline' =
-          t === 'function' ? 'default' : t === 'procedure' ? 'secondary' : 'outline';
-        return (
-          <div className="flex flex-col gap-0.5">
-            <Badge variant={variant} className="w-fit text-xs capitalize">
-              {t}
-            </Badge>
-            {name && (
-              <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[200px]">
-                {name}
-              </span>
-            )}
-          </div>
-        );
-      },
+      accessorKey: 'report_group',
+      header: 'Report Group',
+      cell: ({ row }) => (
+        <Badge variant="outline">{row.original.report_group}</Badge>
+      ),
     },
     {
       accessorKey: 'is_standard',

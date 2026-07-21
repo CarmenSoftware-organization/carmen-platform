@@ -219,3 +219,42 @@ describe('ReportTemplateManagement — Name column fit-content', () => {
     expect(link.className).not.toContain('max-w-');
   });
 });
+
+// The standalone Description column is removed; its value now renders as a
+// secondary line inside the Name cell. Fails if the column returns or the
+// description value stops rendering under the name.
+describe('ReportTemplateManagement — description under name', () => {
+  it('drops the Description column header', async () => {
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    expect(screen.queryByRole('columnheader', { name: /description/i })).toBeNull();
+  });
+
+  it('drops the Source column header', async () => {
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    expect(screen.queryByRole('columnheader', { name: /^source$/i })).toBeNull();
+  });
+
+  it('orders Template Type before Report Group', async () => {
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent ?? '');
+    const templateType = headers.findIndex((h) => /template type/i.test(h));
+    const reportGroup = headers.findIndex((h) => /report group/i.test(h));
+    expect(templateType).toBeGreaterThanOrEqual(0);
+    expect(reportGroup).toBeGreaterThanOrEqual(0);
+    expect(templateType).toBeLessThan(reportGroup);
+  });
+
+  it('shows the description value inside the Name cell', async () => {
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: 'Sales Summary' });
+    const nameCell = link.closest('td');
+    expect(nameCell).toHaveTextContent('Monthly sales summary report');
+  });
+});
