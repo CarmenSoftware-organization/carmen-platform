@@ -15,7 +15,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, FileText, Download } f
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -42,16 +42,18 @@ const ReportTemplateManagement: React.FC = () => {
   const storedSearch = localStorage.getItem('search_report_templates') || '';
   const storedFilters = getStoredJSON<string[]>('filters_report_templates', []);
   const storedSourceTypes = getStoredJSON<string[]>('filters_report_templates_source_type', []);
+  const storedTemplateTypes = getStoredJSON<string[]>('filters_report_templates_template_type', []);
   const storedPage = Number(localStorage.getItem('page_report_templates')) || 1;
   const storedSort = localStorage.getItem('sort_report_templates') || 'created_at:desc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
   const [sourceTypeFilter, setSourceTypeFilter] = useState<string[]>(storedSourceTypes);
+  const [templateTypeFilter, setTemplateTypeFilter] = useState<string[]>(storedTemplateTypes);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const buildAdvance = (filters: string[], sourceTypes: string[]) => {
+  const buildAdvance = (filters: string[], sourceTypes: string[], templateTypes: string[]) => {
     const where: Record<string, unknown> = {};
     if (filters.length === 1) {
       where.is_active = filters[0] === 'true';
@@ -60,6 +62,11 @@ const ReportTemplateManagement: React.FC = () => {
       where.source_type = sourceTypes[0];
     } else if (sourceTypes.length > 1) {
       where.source_type = { in: sourceTypes };
+    }
+    if (templateTypes.length === 1) {
+      where.template_type = templateTypes[0];
+    } else if (templateTypes.length > 1) {
+      where.template_type = { in: templateTypes };
     }
     where.deleted_at = null;
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
@@ -70,7 +77,7 @@ const ReportTemplateManagement: React.FC = () => {
     perpage: Number(localStorage.getItem('perpage_report_templates')) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters, storedSourceTypes),
+    advance: buildAdvance(storedFilters, storedSourceTypes, storedTemplateTypes),
     filter: {},
   });
 
@@ -128,7 +135,7 @@ const ReportTemplateManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_report_templates', JSON.stringify(next));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, sourceTypeFilter), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(next, sourceTypeFilter, templateTypeFilter), filter: {} }));
   };
 
   const handleSourceTypeFilter = (type: string) => {
@@ -138,19 +145,31 @@ const ReportTemplateManagement: React.FC = () => {
     setSourceTypeFilter(next);
     localStorage.setItem('filters_report_templates_source_type', JSON.stringify(next));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, next, templateTypeFilter), filter: {} }));
+  };
+
+  const handleTemplateTypeFilter = (type: string) => {
+    const next = templateTypeFilter.includes(type)
+      ? templateTypeFilter.filter((s) => s !== type)
+      : [...templateTypeFilter, type];
+    setTemplateTypeFilter(next);
+    localStorage.setItem('filters_report_templates_template_type', JSON.stringify(next));
+    localStorage.setItem('page_report_templates', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, sourceTypeFilter, next), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
     setSourceTypeFilter([]);
+    setTemplateTypeFilter([]);
     localStorage.setItem('filters_report_templates', JSON.stringify([]));
     localStorage.setItem('filters_report_templates_source_type', JSON.stringify([]));
+    localStorage.setItem('filters_report_templates_template_type', JSON.stringify([]));
     localStorage.setItem('page_report_templates', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], []), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], [], []), filter: {} }));
   };
 
-  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0);
+  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0) + (templateTypeFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_report_templates', sort);
@@ -192,18 +211,30 @@ const ReportTemplateManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <Link to={`/report-templates/${row.original.id}/edit`} className="text-primary hover:underline">
-          {row.original.name}
-        </Link>
+        <div className="flex flex-col gap-0.5">
+          <Link
+            to={`/report-templates/${row.original.id}/edit`}
+            className="text-primary hover:underline whitespace-nowrap"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </Link>
+          {row.original.description && (
+            <span
+              className="text-xs text-muted-foreground truncate max-w-[320px]"
+              title={row.original.description}
+            >
+              {row.original.description}
+            </span>
+          )}
+        </div>
       ),
     },
     {
-      accessorKey: 'description',
-      header: 'Description',
+      accessorKey: 'template_type',
+      header: 'Template Type',
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm truncate max-w-[200px] block">
-          {row.original.description || '-'}
-        </span>
+        <Badge variant="outline" className="capitalize">{row.original.template_type ?? 'list'}</Badge>
       ),
     },
     {
@@ -212,29 +243,6 @@ const ReportTemplateManagement: React.FC = () => {
       cell: ({ row }) => (
         <Badge variant="outline">{row.original.report_group}</Badge>
       ),
-    },
-    {
-      accessorKey: 'source_type',
-      header: 'Source',
-      cell: ({ row }) => {
-        const r = row.original as ReportTemplate & { view_name?: string };
-        const t: string = r.source_type || (r.view_name ? 'view' : '-');
-        const name = r.source_name || r.view_name || '';
-        const variant: 'secondary' | 'default' | 'outline' =
-          t === 'function' ? 'default' : t === 'procedure' ? 'secondary' : 'outline';
-        return (
-          <div className="flex flex-col gap-0.5">
-            <Badge variant={variant} className="w-fit text-xs capitalize">
-              {t}
-            </Badge>
-            {name && (
-              <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[200px]">
-                {name}
-              </span>
-            )}
-          </div>
-        );
-      },
     },
     {
       accessorKey: 'is_standard',
@@ -409,6 +417,25 @@ const ReportTemplateManagement: React.FC = () => {
                       </div>
                     </div>
 
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Template Type</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {(['form', 'list'] as const).map((t) => (
+                          <Button
+                            key={t}
+                            variant={templateTypeFilter.includes(t) ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-xs capitalize"
+                            onClick={() => handleTemplateTypeFilter(t)}
+                          >
+                            {t}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         Clear All Filters
@@ -424,7 +451,11 @@ const ReportTemplateManagement: React.FC = () => {
                 {statusFilter.map((s) => (
                   <Badge key={`status-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
-                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleStatusFilter(s)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${s === "true" ? "Active" : "Inactive"} filter`}
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -432,7 +463,23 @@ const ReportTemplateManagement: React.FC = () => {
                 {sourceTypeFilter.map((t) => (
                   <Badge key={`source-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
                     {t}
-                    <button onClick={() => handleSourceTypeFilter(t)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleSourceTypeFilter(t)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${t} filter`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {templateTypeFilter.map((t) => (
+                  <Badge key={`template-type-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
+                    {t}
+                    <button
+                      onClick={() => handleTemplateTypeFilter(t)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${t} filter`}
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -447,21 +494,27 @@ const ReportTemplateManagement: React.FC = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
             {!error && templates.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={FileText}
-                title="No report templates yet"
-                description={searchTerm ? `No report templates matching "${searchTerm}"` : "Get started by creating your first report template."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/report-templates/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Template
-                  </Button>
-                ) : undefined}
+                emptyTitle="No report templates yet"
+                emptyDescription="Get started by creating your first report template."
+                addAction={
+                  <Can permission="report_template.create">
+                    <Button size="sm" onClick={() => navigate('/report-templates/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Template
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
                 {loading && templates.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count.
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
@@ -473,6 +526,7 @@ const ReportTemplateManagement: React.FC = () => {
                   columns={columns}
                   data={templates}
                   serverSide
+                  tableLayout="auto"
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}

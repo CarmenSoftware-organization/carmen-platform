@@ -25,6 +25,17 @@ const businessUnitService = {
     return response.data;
   },
 
+  // Guarded on-demand reveal of the full db_connection (incl. plaintext password).
+  // The BU detail/list responses redact db_connection.password, so this is the only
+  // path to the stored value; the backend gates it server-side on cluster.update
+  // (fail-closed) — the <Can> gate in DatabaseConnectionSection is defense-in-depth,
+  // not the security boundary.
+  revealDbPassword: async (id: string): Promise<Record<string, unknown>> => {
+    const response = await api.get(`/api-system/business-units/${id}/reveal-db-connection`);
+    const body = response.data?.data ?? response.data;
+    return (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  },
+
   create: async (businessUnitData: Partial<BusinessUnit>) => {
     const response = await api.post('/api-system/business-units', businessUnitData);
     return response.data;

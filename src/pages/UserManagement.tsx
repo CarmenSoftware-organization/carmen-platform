@@ -28,7 +28,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Filter, X, Building2
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -87,6 +87,7 @@ const UserManagement: React.FC = () => {
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<UserSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_users') || '';
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_users', []);
@@ -175,6 +176,7 @@ const UserManagement: React.FC = () => {
   // full-list read — only mount and population-changing mutations refresh it.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
         userService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
@@ -186,7 +188,8 @@ const UserManagement: React.FC = () => {
       const archived = deleted.paginate?.total ?? deleted.total ?? 0;
       setSummary(summarizeUsers(list, archived));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -442,7 +445,7 @@ const UserManagement: React.FC = () => {
           return (
             <Link
               to={`/users/${row.original.id}/edit`}
-              className="text-primary hover:underline block truncate"
+              className="text-primary hover:underline whitespace-nowrap"
               title={label}
             >
               {label}
@@ -611,10 +614,12 @@ const UserManagement: React.FC = () => {
           subtitle="Manage users and permissions"
           actions={
             <>
-              <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
-                {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                {syncing ? 'Fetching...' : 'Fetch Keycloak'}
-              </Button>
+              <Can permission="user.create">
+                <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
+                  {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  {syncing ? 'Fetching...' : 'Fetch Keycloak'}
+                </Button>
+              </Can>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
@@ -630,7 +635,7 @@ const UserManagement: React.FC = () => {
           }
         />
 
-        <UserDirectorySummary summary={summary} loading={summaryLoading} />
+        <UserDirectorySummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">
@@ -716,7 +721,11 @@ const UserManagement: React.FC = () => {
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
-                    <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={() => handleStatusFilter(s)}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label={`Remove ${s === "true" ? "Active" : "Inactive"} filter`}
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -724,7 +733,11 @@ const UserManagement: React.FC = () => {
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
                     Show Deleted
-                    <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
+                    <button
+                      onClick={handleShowDeletedToggle}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label="Remove Show Deleted filter"
+                    >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -738,16 +751,20 @@ const UserManagement: React.FC = () => {
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
             {!error && users.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Users}
-                title="No users yet"
-                description={searchTerm ? `No users matching "${searchTerm}"` : "Get started by creating your first user."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/users/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add User
-                  </Button>
-                ) : undefined}
+                emptyTitle="No users yet"
+                emptyDescription="Get started by creating your first user."
+                addAction={
+                  <Can permission="user.create">
+                    <Button size="sm" onClick={() => navigate('/users/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add User
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <>
@@ -783,6 +800,8 @@ const UserManagement: React.FC = () => {
                     columns={columns}
                     data={users}
                     serverSide
+                    tableLayout="auto"
+                    stickyLeftColumns={isSuperAdmin ? 4 : 3}
                     totalRows={totalRows}
                     page={paginate.page}
                     perpage={paginate.perpage}

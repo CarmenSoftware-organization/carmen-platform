@@ -15,7 +15,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Building2, Download } 
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -53,6 +53,7 @@ const BusinessUnitManagement: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [summary, setSummary] = useState<BuSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -116,6 +117,7 @@ const BusinessUnitManagement: React.FC = () => {
   // units are few enough that a single full-list read + a deleted-count read is cheap.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
         businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
@@ -127,7 +129,8 @@ const BusinessUnitManagement: React.FC = () => {
       const archived = deleted.paginate?.total ?? deleted.total ?? 0;
       setSummary(summarizeBus(list, archived));
     } catch {
-      setSummary(null); // strip falls back to its skeleton; the table still works
+      setSummary(null); // strip swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -232,8 +235,11 @@ const BusinessUnitManagement: React.FC = () => {
     {
       accessorKey: 'code',
       header: 'Code',
+      // Fixed width so the sticky offset of the 3rd frozen column (Name) is
+      // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
+      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
       cell: ({ row }) => (
-        <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline">
+        <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.code}
         </Link>
       ),
@@ -243,7 +249,11 @@ const BusinessUnitManagement: React.FC = () => {
       header: 'Name',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline">
+          <Link
+            to={`/business-units/${row.original.id}/edit`}
+            className="text-primary hover:underline whitespace-nowrap"
+            title={row.original.name}
+          >
             {row.original.name}
           </Link>
           {row.original.deleted_at && (
@@ -373,7 +383,7 @@ const BusinessUnitManagement: React.FC = () => {
           }
         />
 
-        <BuSummary summary={summary} loading={summaryLoading} />
+        <BuSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">
@@ -481,21 +491,28 @@ const BusinessUnitManagement: React.FC = () => {
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
             {!error && businessUnits.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Building2}
-                title="No business units yet"
-                description={searchTerm ? `No business units matching "${searchTerm}"` : "Get started by creating your first business unit."}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/business-units/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Business Unit
-                  </Button>
-                ) : undefined}
+                emptyTitle="No business units yet"
+                emptyDescription="Get started by creating your first business unit."
+                addAction={
+                  <Can permission="cluster.create">
+                    <Button size="sm" onClick={() => navigate('/business-units/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Business Unit
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
                 {loading && businessUnits.length === 0 ? (
-                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count
+                  // (including the conditional Deleted column when showDeleted is on).
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
@@ -507,6 +524,8 @@ const BusinessUnitManagement: React.FC = () => {
                   columns={columns}
                   data={businessUnits}
                   serverSide
+                  tableLayout="auto"
+                  stickyLeftColumns={3}
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}

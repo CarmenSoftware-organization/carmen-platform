@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Printer, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -157,8 +158,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </header>
 
+        {/* Desktop breadcrumb bar */}
+        <div className="sticky top-0 z-30 hidden h-12 items-center border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
+          <Breadcrumbs />
+        </div>
+
         {/* Main Content */}
-        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {children}
         </main>
       </div>

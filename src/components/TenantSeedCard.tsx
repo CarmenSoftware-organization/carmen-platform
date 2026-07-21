@@ -93,7 +93,7 @@ export const TenantSeedCard = ({
         }
       };
       const summary = await tenantSeedService.deployStream(buId, onEvent, Array.from(selectedKeys));
-      if (summary.created === 0) toast.info('Nothing to seed — already up to date.');
+      if (summary.created === 0) toast.info('Nothing to seed. Already up to date.');
       else toast.success(`Created ${summary.created} row(s) for ${buCode} (skipped ${summary.skipped}).`);
       await fetchStatus();
     } catch (err) {

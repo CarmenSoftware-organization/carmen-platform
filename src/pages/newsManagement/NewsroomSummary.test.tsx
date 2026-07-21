@@ -58,7 +58,7 @@ describe('timeAgo', () => {
     expect(timeAgo('2026-01-01T00:00:00Z', now)).toBe('2026-01-01');
   });
   it('handles a missing date', () => {
-    expect(timeAgo(undefined, now)).toBe('—');
+    expect(timeAgo(undefined, now)).toBe('-');
   });
 });
 

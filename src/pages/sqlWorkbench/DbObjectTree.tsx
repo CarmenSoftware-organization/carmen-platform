@@ -10,6 +10,7 @@ import {
   Database,
   Table,
 } from 'lucide-react';
+import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
 import type { DbObject, DbObjectsResponse } from '../../types';
 
@@ -82,11 +83,15 @@ export function DbObjectTree({
       </div>
       <div className="flex-1 overflow-auto py-1 text-sm">
         {isLoading ? (
-          <div className="text-muted-foreground flex items-center justify-center py-8">
+          <div
+            role="status"
+            aria-label="Loading database objects"
+            className="text-muted-foreground flex items-center justify-center py-8"
+          >
             <Loader2 className="size-4 animate-spin" />
           </div>
         ) : isError ? (
-          <div className="text-destructive px-3 py-4 text-xs">
+          <div role="alert" className="text-destructive px-3 py-4 text-xs">
             Failed to load.{" "}
             <button
               className="underline"
@@ -242,9 +247,9 @@ function ItemRow({
       {loading && <Loader2 className="size-3 animate-spin" />}
       <span className="truncate">{name}</span>
       {badge && (
-        <span className="bg-muted text-muted-foreground ml-auto rounded px-1 py-0.5 text-[9px] font-semibold">
+        <Badge variant="secondary" className="ml-auto px-1 py-0 text-[9px] font-semibold">
           {badge}
-        </span>
+        </Badge>
       )}
     </button>
   );

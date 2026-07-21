@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import applicationService from '../services/applicationService';
 import { ApplicationIdentityHero } from './applicationEdit/ApplicationIdentityHero';
 import { Button } from '../components/ui/button';
@@ -11,11 +12,13 @@ import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ChipInput } from '../components/ui/chip-input';
+import { EmptyState } from '../components/EmptyState';
+import { FetchErrorState } from '../components/FetchErrorState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, ArrowLeft, AlertTriangle, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
@@ -23,6 +26,7 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { groupApiNames, actionOf } from '../utils/apiCatalog';
 import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
+import { HIT_SLOP_44 } from '../lib/hitSlop';
 
 interface ApplicationFormData {
   name: string;
@@ -53,11 +57,19 @@ const ApplicationEdit: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [catalogGroups, setCatalogGroups] = useState<ApiCatalogGroup[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogFailed, setCatalogFailed] = useState(false);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  const [applicationMeta, setApplicationMeta] = useState<{
+    created_at?: string;
+    created_by_name?: string;
+    updated_at?: string;
+    updated_by_name?: string;
+  }>({});
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -84,10 +96,19 @@ const ApplicationEdit: React.FC = () => {
   };
 
 
-  useEffect(() => {
+  // Tracks fetch state explicitly so a genuinely-empty catalog (0 groups) can be told
+  // apart from "still loading" — length===0 alone can't distinguish the two.
+  const fetchApiCatalog = () => {
+    setCatalogLoading(true);
+    setCatalogFailed(false);
     applicationService.getApiCatalog()
       .then(({ groups }) => { setCatalogGroups(groups); })
-      .catch((err) => { setCatalogFailed(true); devLog('Failed to load api catalog:', err); });
+      .catch((err) => { setCatalogFailed(true); devLog('Failed to load api catalog:', err); })
+      .finally(() => setCatalogLoading(false));
+  };
+
+  useEffect(() => {
+    fetchApiCatalog();
   }, []);
 
   useEffect(() => {
@@ -98,9 +119,19 @@ const ApplicationEdit: React.FC = () => {
   const fetchApplication = async () => {
     try {
       setLoading(true);
+      // A prior fetch on this same mounted instance may have gated the shell on
+      // not-found (e.g. a client-side nav from a bad id to a valid one) — clear
+      // it so a successful fetch here can actually recover the shell.
+      setNotFound(false);
       const data = await applicationService.getById(id!);
       setRawResponse(data);
       const app = data.data || data;
+      // A 200 carrying no record is a not-found too — don't fall through and
+      // render the shell over blank data.
+      if (!app?.id) {
+        setNotFound(true);
+        return;
+      }
       const loaded: ApplicationFormData = {
         name: app.name || '',
         description: app.description || '',
@@ -112,8 +143,20 @@ const ApplicationEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(app));
+      setApplicationMeta({
+        created_at: app.created_at,
+        created_by_name: app.created_by_name,
+        updated_at: app.updated_at,
+        updated_by_name: app.updated_by_name,
+      });
     } catch (err: unknown) {
-      setError('Failed to load application: ' + getErrorDetail(err));
+      // A bad/deleted id gates the whole shell (see the notFound branch below);
+      // a transient failure keeps the retryable inline banner.
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError('Failed to load application: ' + getErrorDetail(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -226,28 +269,81 @@ const ApplicationEdit: React.FC = () => {
   };
 
   if (loading) {
+    // Mirrors the loaded layout — hero → two Cards side-by-side — so nothing
+    // snaps sideways when the data lands.
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading application">
+          <Skeleton className="h-4 w-24" />
+
+          {/* Hero skeleton */}
+          <Card className="overflow-hidden p-0">
+            <div className="flex flex-wrap items-start gap-4 p-5 sm:p-6">
+              <Skeleton className="size-14 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-56" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,340px)]">
+            {/* API access card skeleton */}
+            <div className="min-w-0 space-y-4 sm:space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-4 w-44 mt-1" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-9 w-full" />
+                  <Skeleton className="h-40 w-full rounded-md" />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Settings card skeleton */}
+            <div className="space-y-4 sm:space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-5 w-20" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-9 w-full" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Not-found gate: a bad/deleted id must never render the edit shell (hero,
+  // form, accordion) over blank data with just a banner on top.
+  if (notFound) {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Skeleton className="h-9 w-9 rounded-md" />
-            <div className="flex-1">
-              <Skeleton className="h-8 w-40" />
-              <Skeleton className="h-4 w-56 mt-2" />
-            </div>
-          </div>
+          <PageHeader backTo="/applications" title="Application" />
           <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48 mt-1" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-9 w-full" />
-                </div>
-              ))}
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="Application not found"
+                description="This application doesn't exist, or it may have been deleted. Check the link, or pick one from the application list."
+                action={
+                  <Button size="sm" onClick={() => navigate('/applications')}>
+                    Back to applications
+                  </Button>
+                }
+              />
             </CardContent>
           </Card>
         </div>
@@ -258,32 +354,39 @@ const ApplicationEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        <Link
-          to="/applications"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Applications
-        </Link>
+        {isNew ? (
+          <PageHeader backTo="/applications" title="Add Application" subtitle="Create a new application" />
+        ) : (
+          <>
+            <Link
+              to="/applications"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Applications
+            </Link>
 
-        <ApplicationIdentityHero
-          name={formData.name}
-          appId={isNew ? undefined : id}
-          device={formData.device}
-          isActive={formData.is_active}
-          allowAll={formData.allow_all}
-          apiNames={formData.api_names}
-          actions={
-            !isNew && !editing && (
-              <Can permission="application.update">
-                <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-              </Can>
-            )
-          }
-        />
+            <ApplicationIdentityHero
+              name={formData.name}
+              appId={id}
+              device={formData.device}
+              isActive={formData.is_active}
+              allowAll={formData.allow_all}
+              apiNames={formData.api_names}
+              meta={applicationMeta}
+              actions={
+                !editing && (
+                  <Can permission="application.update">
+                    <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                  </Can>
+                )
+              }
+            />
+          </>
+        )}
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -321,18 +424,25 @@ const ApplicationEdit: React.FC = () => {
                   {formData.allow_all ? (
                     <div className="text-warning bg-warning/10 flex items-start gap-2 rounded-md px-3 py-2.5 text-sm">
                       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                      <span>This app is not restricted to specific endpoints — it can call every API in the platform.</span>
+                      <span>This app is not restricted to specific endpoints. It can call every API in the platform.</span>
                     </div>
                   ) : editing ? (
                     <div className="space-y-2 border-t pt-4">
                       {catalogFailed ? (
-                        <ChipInput
-                          id="api_names"
-                          name="api_names"
-                          value={formData.api_names.join(',')}
-                          onChange={(v) => setFormData(prev => ({ ...prev, api_names: v ? v.split(',').map(s => s.trim()).filter(Boolean) : [] }))}
-                          placeholder="Type an api_name and press Enter"
-                        />
+                        <div className="space-y-2">
+                          <FetchErrorState
+                            message="Couldn't load the API catalog."
+                            onRetry={fetchApiCatalog}
+                            className="justify-start rounded-md border border-input p-3"
+                          />
+                          <ChipInput
+                            id="api_names"
+                            name="api_names"
+                            value={formData.api_names.join(',')}
+                            onChange={(v) => setFormData(prev => ({ ...prev, api_names: v ? v.split(',').map(s => s.trim()).filter(Boolean) : [] }))}
+                            placeholder="Type an api_name and press Enter"
+                          />
+                        </div>
                       ) : (
                         <div className="space-y-2">
                           {/* Filter input */}
@@ -358,9 +468,13 @@ const ApplicationEdit: React.FC = () => {
                               )}
                           </div>
 
-                          {catalogGroups.length === 0 ? (
-                            <div className="rounded-md border border-input p-2">
+                          {catalogLoading ? (
+                            <div className="rounded-md border border-input p-2" role="status">
                               <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
+                            </div>
+                          ) : catalogGroups.length === 0 ? (
+                            <div className="rounded-md border border-input p-2">
+                              <p className="text-sm text-muted-foreground text-center py-4">No API endpoints are defined in the catalog yet.</p>
                             </div>
                           ) : (() => {
                             const q = apiSearch.trim().toLowerCase();
@@ -411,11 +525,18 @@ const ApplicationEdit: React.FC = () => {
                                     const allSelected = selectedCount === g.api_names.length;
                                     return (
                                       <div key={g.module}>
-                                        <div className="flex items-center gap-2 px-2 py-1.5">
+                                        {/* Real height: the row itself grows to a genuine ≥44px tap
+                                            target (min-h-11 on the toggle) rather than an invisible
+                                            overlay — there's just one row per module, so the list can
+                                            afford it. The All/None button and each api_name chip stay
+                                            visually compact (h-6 / h-7) with a HIT_SLOP_44 overlay
+                                            instead, since growing every chip for real would bloat a
+                                            module with dozens of endpoints. */}
+                                        <div className="flex items-center gap-2 px-2">
                                           <button
                                             type="button"
                                             onClick={() => { if (!q) toggleModule(g.module); }}
-                                            className="flex flex-1 items-center gap-1.5 text-left text-sm font-medium"
+                                            className="flex min-h-11 flex-1 items-center gap-1.5 text-left text-sm font-medium"
                                             aria-expanded={expanded}
                                           >
                                             {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
@@ -428,7 +549,7 @@ const ApplicationEdit: React.FC = () => {
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 text-xs"
+                                            className={`h-6 text-xs ${HIT_SLOP_44}`}
                                             aria-label={allSelected ? `Deselect all ${g.module}` : `Select all ${g.module}`}
                                             onClick={() => toggleModuleSelection(g.api_names)}
                                           >
@@ -436,6 +557,15 @@ const ApplicationEdit: React.FC = () => {
                                           </Button>
                                         </div>
                                         {expanded && (
+                                          // Chips deliberately do NOT get a HIT_SLOP_44 overlay: at
+                                          // h-7 (28px) with only gap-1.5 (6px) between wrapped rows,
+                                          // a centred 44px overlay bleeds 8px past each edge — more
+                                          // than the row gap — so vertically-adjacent rows' overlays
+                                          // overlap and a tap can land on the wrong chip. On this
+                                          // permission-granting surface that's a correctness hazard,
+                                          // not just a small target, so this stays at its pre-hit-slop
+                                          // size instead of an overlay that lies about safety. See the
+                                          // wave's documented <44px deferral for this surface.
                                           <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
                                             {g.api_names.map((api) => {
                                               const selected = formData.api_names.includes(api);

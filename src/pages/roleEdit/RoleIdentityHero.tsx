@@ -14,7 +14,7 @@ const resourceOf = (key: string) => {
  */
 export function permissionSummary(permissions: string[], catalogSize: number): { text: string; full: boolean } {
   const n = permissions.length;
-  if (catalogSize > 0 && n >= catalogSize) return { text: 'Full access — every permission', full: true };
+  if (catalogSize > 0 && n >= catalogSize) return { text: 'Full access to every permission', full: true };
   if (n === 0) return { text: 'No permissions granted yet', full: false };
   const resources = new Set(permissions.map(resourceOf)).size;
   return {
@@ -48,7 +48,7 @@ export function RoleIdentityHero({ name, isActive, permissions, catalogSize, act
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
           </div>
           <div
-            className={`mt-2 flex items-center gap-1.5 text-[11.5px] ${reach.full ? 'text-warning' : 'text-muted-foreground/80'}`}
+            className={`mt-2 flex items-center gap-1.5 text-[11px] ${reach.full ? 'text-warning' : 'text-muted-foreground/80'}`}
           >
             {reach.full && <AlertTriangle className="size-3.5 shrink-0" />}
             {reach.text}

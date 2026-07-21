@@ -84,8 +84,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           'sidebar-item-transition flex items-center gap-3 rounded-lg text-sm font-medium relative group overflow-hidden',
           showLabel ? 'px-3 py-2.5' : 'justify-center px-2 py-2.5',
           active
-            ? 'bg-secondary text-foreground'
-            : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
+            ? 'bg-primary/10 text-primary'
+            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
         )}
       >
         {active && (
@@ -310,8 +310,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                         className={cn(
                           'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
                           active
-                            ? 'bg-secondary text-foreground'
-                            : 'text-muted-foreground hover:bg-primary/5 hover:text-foreground'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                         )}
                       >
                         {active && (

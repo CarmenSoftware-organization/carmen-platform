@@ -27,7 +27,6 @@ interface ClusterHeroProps {
   meta: { created_at?: string; created_by_name?: string; updated_at?: string; updated_by_name?: string };
   bu: CapacityInput;
   users: CapacityInput;
-  actions?: React.ReactNode;
 }
 
 function auditLine(verb: string, at?: string, by?: string) {
@@ -41,8 +40,14 @@ function auditLine(verb: string, at?: string, by?: string) {
   );
 }
 
-/** Read-first identity + capacity header for a cluster. */
-export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, meta, bu, users, actions }: ClusterHeroProps) {
+/**
+ * Read-first identity + capacity card for a cluster.
+ *
+ * Deliberately carries **no title and no actions**: the page's `PageHeader` owns the
+ * back button, the cluster name (the page's only `h1`) and the Edit toggle, per the
+ * A4 anatomy. This card is the identity/capacity summary that sits under it.
+ */
+export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, meta, bu, users }: ClusterHeroProps) {
   const initials = code.slice(0, 4).toUpperCase();
   const buFree = bu.cap != null ? Math.max(0, bu.cap - bu.used) : null;
   const usersFree = users.cap != null ? Math.max(0, users.cap - users.used) : null;
@@ -68,20 +73,17 @@ export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, m
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || '(unnamed cluster)'}</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-primary bg-primary/10 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">{code}</span>
             {alias && <span className="text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-xs">{alias}</span>}
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
           </div>
-          <div className="text-muted-foreground/80 mt-2 space-y-0.5 text-[11.5px] leading-relaxed">
+          <div className="text-muted-foreground mt-2 space-y-0.5 text-[11px] leading-tight">
             <div>Tenant group</div>
             {auditLine('Created', meta.created_at, meta.created_by_name)}
             {auditLine('Updated', meta.updated_at, meta.updated_by_name)}
           </div>
         </div>
-
-        {actions && <div className="shrink-0">{actions}</div>}
       </div>
 
       <div className="bg-muted/30 grid gap-6 border-t p-5 sm:grid-cols-2 sm:p-6">

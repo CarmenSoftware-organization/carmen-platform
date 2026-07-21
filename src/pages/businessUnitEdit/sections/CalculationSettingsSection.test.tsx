@@ -34,8 +34,8 @@ describe('CalculationSettingsSection currency field', () => {
     );
     const select = screen.getByLabelText('Default Currency ID') as HTMLSelectElement;
     expect(select.tagName).toBe('SELECT');
-    expect(screen.getByRole('option', { name: 'USD — US Dollar' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'THB — Thai Baht (inactive)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'USD - US Dollar' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'THB - Thai Baht (inactive)' })).toBeInTheDocument();
   });
 
   it('falls back to a text input when the list failed to load', () => {
@@ -62,7 +62,7 @@ describe('CalculationSettingsSection currency field', () => {
     );
     const select = screen.getByLabelText('Default Currency ID') as HTMLSelectElement;
     expect(select.value).toBe('legacy-id');
-    expect(screen.getByRole('option', { name: 'JPY — Yen' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'JPY - Yen' })).toBeInTheDocument();
   });
 
   it('renders the read-only detail card when not editing', () => {

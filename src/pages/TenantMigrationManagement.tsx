@@ -8,6 +8,7 @@ import businessUnitService from '../services/businessUnitService';
 import { getErrorDetail } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
@@ -26,7 +27,6 @@ import { mapWithConcurrency } from '../utils/concurrent';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FleetSync } from './tenantMigration/FleetSync';
 import { DeployConsole } from './tenantMigration/DeployConsole';
-import { cn } from '../lib/utils';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -46,6 +46,10 @@ export interface BatchProgress {
   buCode: string | null;
   log: string[];
 }
+
+// Key used in activeStreamControllersRef for the batch "Deploy all" stream (distinct from any
+// real bu.id, which is always a UUID).
+const ALL_BU_STREAM_KEY = '__all__';
 
 export const nowTime = (): string => {
   const d = new Date();
@@ -89,6 +93,23 @@ const TenantMigrationManagement: React.FC = () => {
   const [batch, setBatch] = useState<BatchProgress | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Tracks in-flight deploy stream requests so they can be aborted on unmount/navigation
+  // (bu.id -> its AbortController for a per-row Apply; ALL_BU_STREAM_KEY for Deploy all). This
+  // is NOT a user-facing Cancel: aborting only stops the browser from listening — the
+  // micro-business handler is explicitly designed to keep running `prisma migrate deploy` to
+  // completion after a client disconnect (see tenantMigrationService.ts `_streamDeploy` doc
+  // comment for the backend evidence). The controller exists purely to avoid a leaked fetch /
+  // stale state update after this page is navigated away from, and doubles as the source of
+  // truth for the re-entry guards in applyOne/deployAll below.
+  const activeStreamControllersRef = useRef<Map<string, AbortController>>(new Map());
+  useEffect(() => {
+    const controllers = activeStreamControllersRef.current;
+    return () => {
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+  }, []);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
@@ -150,6 +171,14 @@ const TenantMigrationManagement: React.FC = () => {
   }, [bus]);
 
   const applyOne = useCallback(async (bu: BusinessUnit) => {
+    // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Apply button.
+    // The button is disabled for non-super-admins today, but that's UI-layer only — fail
+    // closed here too so a future refactor that renders the button enabled can't mutate.
+    if (!isSuperAdmin) return;
+    // Re-entry guard: a ref (not rowState, which can be stale in this closure) so a second
+    // trigger for the same BU while one is already streaming is ignored rather than orphaning
+    // the first controller's map entry.
+    if (activeStreamControllersRef.current.has(bu.id)) return;
     setApplyTarget(null);
     setRowState((prev) => ({
       ...prev,
@@ -160,6 +189,8 @@ const TenantMigrationManagement: React.FC = () => {
         errorMsg: undefined,
       },
     }));
+    const controller = new AbortController();
+    activeStreamControllersRef.current.set(bu.id, controller);
     try {
       const onEvent = (e: ProgressEvent) => {
         if (e.type === 'start') {
@@ -168,24 +199,39 @@ const TenantMigrationManagement: React.FC = () => {
           setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], progress: { applied: e.index, total: e.total, current: e.name } } }));
         }
       };
-      const result = await tenantMigrationService.deployStream(bu.id, onEvent);
+      const result = await tenantMigrationService.deployStream(bu.id, onEvent, controller.signal);
       const applied = 'applied_migrations' in result ? result.applied_migrations : [];
       if (applied.length === 0) toast.info('Already up to date.');
       else toast.success(`Applied ${applied.length} migration(s) to ${bu.code}.`);
       setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined } }));
       await checkOne(bu);
     } catch (err) {
+      // Aborted on unmount — the migration itself keeps running server-side (see
+      // tenantMigrationService.ts), but this page is gone, so there's nothing left to update.
+      if (controller.signal.aborted) return;
       handleMigrationError(err);
       setRowState((prev) => ({
         ...prev,
         [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
       }));
+    } finally {
+      if (activeStreamControllersRef.current.get(bu.id) === controller) activeStreamControllersRef.current.delete(bu.id);
     }
-  }, [checkOne]);
+  }, [checkOne, isSuperAdmin]);
 
   const deployAll = useCallback(async () => {
+    // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Deploy all
+    // button. The button is disabled for non-super-admins today, but that's UI-layer only —
+    // fail closed here too so a future refactor that renders the button enabled can't mutate.
+    if (!isSuperAdmin) return;
+    // Re-entry guard: batchRunning already disables the "Deploy all" button while a batch is in
+    // flight, but this ref-backed check is the source of truth (mirrors applyOne) so a second
+    // trigger can't orphan the first controller's map entry.
+    if (activeStreamControllersRef.current.has(ALL_BU_STREAM_KEY)) return;
     setConfirmAll(false);
     setBatch({ applied: 0, total: 0, current: null, buCode: null, log: [] });
+    const controller = new AbortController();
+    activeStreamControllersRef.current.set(ALL_BU_STREAM_KEY, controller);
     try {
       const onEvent = (e: ProgressEvent) => {
         if (e.type === 'start') {
@@ -213,7 +259,7 @@ const TenantMigrationManagement: React.FC = () => {
           setBatch((b) => (b ? { ...b, log: [...b.log, e.message] } : b));
         }
       };
-      const result = await tenantMigrationService.deployAllStream(onEvent);
+      const result = await tenantMigrationService.deployAllStream(onEvent, controller.signal);
       if (result && 'succeeded' in result) {
         const s = result as BatchDeploySummary;
         const msg = `Deployed: ${s.succeeded} ok, ${s.failed} failed.`;
@@ -223,11 +269,15 @@ const TenantMigrationManagement: React.FC = () => {
         toast.success('Deploy completed.');
       }
     } catch (err) {
+      // Aborted on unmount — the BU currently mid-migration keeps running to completion
+      // server-side (see tenantMigrationService.ts); this page is gone either way.
+      if (controller.signal.aborted) return;
       handleMigrationError(err);
     } finally {
-      setBatch(null);
+      activeStreamControllersRef.current.delete(ALL_BU_STREAM_KEY);
+      if (!controller.signal.aborted) setBatch(null);
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     (async () => {
@@ -240,7 +290,7 @@ const TenantMigrationManagement: React.FC = () => {
         setBus(arr);
         setTotalRows(data.paginate?.total ?? arr.length);
         if (typeof data.paginate?.total === 'number' && data.paginate.total > arr.length) {
-          toast.warning(`Showing ${arr.length} of ${data.paginate.total} business units — increase the page size to see all.`);
+          toast.warning(`Showing ${arr.length} of ${data.paginate.total} business units. Increase the page size to see all.`);
         }
         setError('');
       } catch (err) {
@@ -286,13 +336,16 @@ const TenantMigrationManagement: React.FC = () => {
     {
       accessorKey: 'code',
       header: 'Code',
+      // Fixed width so the sticky offset of the 3rd frozen column (Name) is
+      // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
+      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
       cell: ({ row }) => (
-        <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline">
+        <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.code}
         </Link>
       ),
     },
-    { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span>{row.original.name}</span> },
+    { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span className="whitespace-nowrap">{row.original.name}</span> },
     {
       id: 'status',
       header: 'Status',
@@ -302,26 +355,34 @@ const TenantMigrationManagement: React.FC = () => {
         const rs = rowState[row.original.id];
         const st = rowStatusOf(rs);
         const pending = rs?.status?.pending.length ?? 0;
-        const dot = { up_to_date: 'bg-success', pending: 'bg-warning', error: 'bg-destructive', unknown: 'bg-muted-foreground/40' }[st];
+        // Mirrors TenantMigrationCard's variant mapping (up_to_date -> success, has_pending
+        // -> secondary) so the two surfaces render the same status consistently; error/unknown
+        // have no analog there, so destructive/outline follow the app-wide Badge convention.
+        const variant = {
+          up_to_date: 'success',
+          pending: 'secondary',
+          error: 'destructive',
+          unknown: 'outline',
+        }[st] as 'success' | 'secondary' | 'destructive' | 'outline';
         const text =
           st === 'pending' ? `${pending} behind`
           : st === 'up_to_date' ? 'In sync'
           : st === 'error' ? 'Error'
           : 'Not checked';
-        const textCls = { up_to_date: 'text-success', pending: 'text-warning', error: 'text-destructive', unknown: 'text-muted-foreground' }[st];
         return (
           <div className="space-y-1">
-            <span className={cn('inline-flex items-center gap-2 text-[13px] font-medium', textCls)}>
-              <span className={cn('size-2 shrink-0 rounded-full', dot)} />
-              {text}
-            </span>
+            <Badge variant={variant}>{text}</Badge>
             {rs?.deploying && rs.progress && (
-              <div className="break-all font-mono text-xs text-muted-foreground">
+              <div role="status" aria-live="polite" className="break-all font-mono text-xs text-muted-foreground">
                 Applying {rs.progress.applied}/{rs.progress.total}
                 {rs.progress.current ? ` · ${rs.progress.current}` : ''}
               </div>
             )}
-            {rs?.errorMsg && <div className="break-all text-xs text-destructive">{rs.errorMsg}</div>}
+            {rs?.errorMsg && (
+              <div role="alert" className="break-all text-xs text-destructive">
+                {rs.errorMsg}
+              </div>
+            )}
           </div>
         );
       },
@@ -333,7 +394,7 @@ const TenantMigrationManagement: React.FC = () => {
       meta: { cellClassName: 'text-center' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
-        return <span className="text-muted-foreground">{rs?.status ? rs.status.pending.length : '–'}</span>;
+        return <span className="text-muted-foreground">{rs?.status ? rs.status.pending.length : '-'}</span>;
       },
     },
     {
@@ -342,7 +403,7 @@ const TenantMigrationManagement: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
-        return <span className="text-xs text-muted-foreground">{rs?.lastChecked ?? '–'}</span>;
+        return <span className="text-xs text-muted-foreground">{rs?.lastChecked ?? '-'}</span>;
       },
     },
     {
@@ -424,7 +485,7 @@ const TenantMigrationManagement: React.FC = () => {
 
         {totalRows > bus.length && (
           <p className="text-warning text-xs">
-            Showing {bus.length} of {totalRows} business units — increase the page size to see all.
+            Showing {bus.length} of {totalRows} business units. Increase the page size to see all.
           </p>
         )}
 
@@ -458,11 +519,13 @@ const TenantMigrationManagement: React.FC = () => {
               />
             ) : !error ? (
               loading && bus.length === 0 ? (
-                <TableSkeleton columns={5} rows={6} />
+                <TableSkeleton columns={columns.length + 1} rows={6} />
               ) : (
                 <DataTable
                   columns={columns}
                   data={bus}
+                  tableLayout="auto"
+                  stickyLeftColumns={3}
                   globalFilter={searchTerm}
                   onGlobalFilterChange={setSearchTerm}
                   pageSize={25}

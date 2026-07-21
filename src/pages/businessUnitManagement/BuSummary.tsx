@@ -1,5 +1,6 @@
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface BuLike {
   is_active?: boolean;
@@ -45,15 +46,24 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
   );
 }
 
-export function BuSummary({ summary, loading }: { summary: BuSummaryData | null; loading: boolean }) {
+interface BuSummaryProps {
+  summary: BuSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function BuSummary({ summary, loading, error = false, onRetry = () => {} }: BuSummaryProps) {
   const total = summary?.total ?? 0;
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">Overview</div>
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Overview</div>
 
-      {loading || !summary ? (
+      {error ? (
+        <FetchErrorState message="Couldn't load the business unit summary." onRetry={onRetry} className="py-3" />
+      ) : loading || !summary ? (
         <div className="grid gap-6 sm:grid-cols-[auto_1fr]">
           <Skeleton className="h-14 w-24" />
           <Skeleton className="h-14" />

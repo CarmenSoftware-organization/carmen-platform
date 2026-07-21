@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { summarizeRoles, RolesAccessSummary } from './RolesAccessSummary';
 
@@ -80,5 +81,13 @@ describe('RolesAccessSummary', () => {
   it('invites creating roles when the registry is empty', () => {
     renderBand({ summary: { total: 0, active: 0, inactive: 0, topRoles: [], maxCount: 0 } });
     expect(screen.getByText('No roles yet.')).toBeInTheDocument();
+  });
+
+  it('shows an error state with a working retry instead of skeletoning forever', async () => {
+    const onRetry = vi.fn();
+    renderBand({ summary: null, loading: false, error: true, onRetry });
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the roles summary.");
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

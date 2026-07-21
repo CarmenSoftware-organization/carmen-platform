@@ -22,6 +22,16 @@ export type ParsedDbConnection =
 export const isSafeKey = (key: string): boolean =>
   SAFE_DB_CONNECTION_KEYS.includes(key.trim().toLowerCase());
 
+/**
+ * True when a key is (case-insensitively) "password" — the one db_connection key
+ * the backend now redacts to an empty string on every list/detail read. An empty
+ * redacted value and a genuinely-unset password are indistinguishable here, so the
+ * read-only view must render it as unavailable rather than offer a reveal toggle
+ * that would just show blank (see DbConnectionView).
+ */
+export const isPasswordKey = (key: string): boolean =>
+  key.trim().toLowerCase() === 'password';
+
 const toDisplayString = (value: unknown): string => {
   if (value === null) return 'null';
   if (typeof value === 'object') return JSON.stringify(value);

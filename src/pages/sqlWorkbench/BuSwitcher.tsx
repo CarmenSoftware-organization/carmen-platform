@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
+import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
 import type { BusinessUnit } from '../../types';
 import { buHueColor, buInitials } from '../../utils/buHue';
@@ -184,7 +185,7 @@ export function BuSwitcher({
             sections.map((section) => (
               <div key={section.key}>
                 {section.label !== null && (
-                  <div className="text-muted-foreground flex items-center gap-1.5 px-2.5 pb-1 pt-2.5 text-[10.5px] font-bold uppercase tracking-wider">
+                  <div className="text-muted-foreground flex items-center gap-1.5 px-2.5 pb-1 pt-2.5 text-[11px] font-bold uppercase tracking-wider">
                     {section.recent && <Star className="size-3 fill-[hsl(var(--warning))] text-[hsl(var(--warning))]" />}
                     {section.label}
                   </div>
@@ -223,14 +224,14 @@ export function BuSwitcher({
                         <span className="text-muted-foreground block truncate text-xs">{bu.name}</span>
                       </span>
                       {bu.cluster_name && (
-                        <span className="text-muted-foreground hidden shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10.5px] sm:inline">
+                        <span className="text-muted-foreground hidden shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
                           {bu.cluster_name}
                         </span>
                       )}
                       {isCurrent && (
-                        <span className="text-primary bg-accent shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px]">
+                        <Badge variant="success" className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono">
                           connected
-                        </span>
+                        </Badge>
                       )}
                     </button>
                   );
@@ -260,6 +261,6 @@ export function BuSwitcher({
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="bg-card rounded border px-1.5 py-0.5 font-mono text-[10.5px]">{children}</kbd>
+    <kbd className="bg-card rounded border px-1.5 py-0.5 font-mono text-[10px]">{children}</kbd>
   );
 }

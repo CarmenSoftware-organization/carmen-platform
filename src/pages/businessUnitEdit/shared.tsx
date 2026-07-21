@@ -15,20 +15,33 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
 }
 
+/**
+ * A section card that can collapse. When `forceOpen` is set the content is pinned
+ * open, so the header renders as plain, non-interactive text: no pointer cursor,
+ * no chevron, no click handler. Advertising a control that cannot do anything is
+ * worse than having no control — and every current call site pins itself open.
+ */
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, description, defaultOpen = false, forceOpen = false, children }) => {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = forceOpen || open;
+  const heading = (
+    <div>
+      <CardTitle className="text-base">{title}</CardTitle>
+      {description && <CardDescription>{description}</CardDescription>}
+    </div>
+  );
   return (
     <Card className="flex flex-col h-full">
-      <CardHeader className="cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
+      {forceOpen ? (
+        <CardHeader>{heading}</CardHeader>
+      ) : (
+        <CardHeader className="cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+          <div className="flex items-center justify-between">
+            {heading}
+            <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </div>
-          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
       {isOpen && <CardContent className="flex-1">{children}</CardContent>}
     </Card>
   );

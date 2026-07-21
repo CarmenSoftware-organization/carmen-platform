@@ -16,7 +16,7 @@ import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, C
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -49,6 +49,7 @@ const ApplicationManagement: React.FC = () => {
   const [error, setError] = useState('');
   const [summary, setSummary] = useState<ApplicationSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_applications') || '';
   const storedFilters = getStoredJSON<string[]>('filters_applications', []);
@@ -126,12 +127,14 @@ const ApplicationManagement: React.FC = () => {
   // the scope split and device mix reflect reality, not the current view.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const data = await applicationService.getAll({ perpage: -1 });
       const raw = data.data || data;
       setSummary(summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -245,44 +248,43 @@ const ApplicationManagement: React.FC = () => {
     {
       accessorKey: 'name',
       header: 'Name',
-      cell: ({ row }) => (
-        <Link to={`/applications/${row.original.id}/edit`} className="text-primary hover:underline">
-          {row.original.name}
-        </Link>
-      ),
-    },
-    {
-      id: 'app_id',
-      header: 'App ID',
-      enableSorting: false,
       cell: ({ row }) => {
         const id = row.original.id;
         const copied = copiedId === id;
         return (
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-mono text-xs text-muted-foreground truncate min-w-0" title={id}>
-              {id}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-              aria-label={copied ? 'App ID copied' : 'Copy App ID'}
-              onClick={() => handleCopyId(id)}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <Link
+              to={`/applications/${row.original.id}/edit`}
+              className="text-primary hover:underline whitespace-nowrap"
+              title={row.original.name}
             >
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-            </Button>
+              {row.original.name}
+            </Link>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-mono text-[11px] text-muted-foreground truncate min-w-0" title={id}>
+                {id}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-auto w-auto shrink-0 -m-2 p-2 text-muted-foreground hover:text-foreground"
+                aria-label={copied ? 'App ID copied' : 'Copy App ID'}
+                onClick={() => handleCopyId(id)}
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            {row.original.description && (
+              <span
+                className="text-xs text-muted-foreground truncate max-w-[320px]"
+                title={row.original.description}
+              >
+                {row.original.description}
+              </span>
+            )}
           </div>
         );
       },
-    },
-    {
-      accessorKey: 'description',
-      header: 'Description',
-      enableSorting: false,
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.description || '-'}</span>
-      ),
     },
     {
       id: 'access',
@@ -393,7 +395,7 @@ const ApplicationManagement: React.FC = () => {
           }
         />
 
-        <ApplicationRegistrySummary summary={summary} loading={summaryLoading} />
+        <ApplicationRegistrySummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">
@@ -487,21 +489,27 @@ const ApplicationManagement: React.FC = () => {
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
 
             {!error && applications.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={AppWindow}
-                title="No applications yet"
-                description={searchTerm ? `No applications matching "${searchTerm}"` : 'Get started by creating your first application.'}
-                action={!searchTerm ? (
-                  <Button size="sm" onClick={() => navigate('/applications/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Application
-                  </Button>
-                ) : undefined}
+                emptyTitle="No applications yet"
+                emptyDescription="Get started by creating your first application."
+                addAction={
+                  <Can permission="application.create">
+                    <Button size="sm" onClick={() => navigate('/applications/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Application
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
                 {loading && applications.length === 0 ? (
-                  <TableSkeleton columns={8} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count.
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                   <>
                     {loading && (
@@ -513,6 +521,7 @@ const ApplicationManagement: React.FC = () => {
                       columns={columns}
                       data={applications}
                       serverSide
+                      tableLayout="auto"
                       totalRows={totalRows}
                       page={paginate.page}
                       perpage={paginate.perpage}

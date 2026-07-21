@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
-import { PlatformAccessSummary, summarizeUserPlatform, type UserPlatformSummaryData } from "./userPlatformManagement/PlatformAccessSummary";
+import { PlatformAccessSummary, summarizeUserPlatform, type UserPlatformSummaryData, type RoleCountValue } from "./userPlatformManagement/PlatformAccessSummary";
 import userService from "../services/userService";
 import userRoleService from "../services/userRoleService";
 import { getErrorDetail } from '../utils/errorParser';
@@ -12,11 +12,12 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Filter, X, Users, Download, Loader2 } from "lucide-react";
+import { Filter, X, Users, Download, Loader2, AlertTriangle, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
-import { EmptyState } from '../components/EmptyState';
+import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -69,6 +70,7 @@ const UserPlatformManagement: React.FC = () => {
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<UserPlatformSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
 
   const storedSearch = localStorage.getItem('search_user_platform') || '';
   const storedStatusFilters = getStoredJSON<string[]>('status_filters_user_platform', []);
@@ -80,8 +82,10 @@ const UserPlatformManagement: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   // Platform-role assignment count per visible user, fetched per-row (N+1) after
-  // the page loads. undefined => still loading for that user.
-  const [rolesCount, setRolesCount] = useState<Record<string, number>>({});
+  // the page loads. undefined => still loading for that user; 'error' => the
+  // fetch for that user failed (kept distinct from a resolved count of 0 so a
+  // transient failure never reads as "no roles" on this privilege-audit page).
+  const [rolesCount, setRolesCount] = useState<Record<string, RoleCountValue>>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useGlobalShortcuts({
@@ -130,11 +134,17 @@ const UserPlatformManagement: React.FC = () => {
       // page size is small). The table renders immediately; counts fill in.
       setRolesCount({});
       void Promise.all(
-        items.map(async (u) => {
+        items.map(async (u): Promise<readonly [string, RoleCountValue]> => {
           try { return [u.id, (await userRoleService.list(u.id)).length] as const; }
-          catch { return [u.id, 0] as const; }
+          catch { return [u.id, 'error'] as const; }
         }),
-      ).then((pairs) => setRolesCount(Object.fromEntries(pairs)));
+      ).then((pairs) => {
+        setRolesCount(Object.fromEntries(pairs));
+        const failed = pairs.filter(([, count]) => count === 'error').length;
+        if (failed > 0) {
+          toast.error(`Couldn't load role counts for ${failed} user${failed === 1 ? '' : 's'}. Shown as "-" until retried.`);
+        }
+      });
     } catch (err: unknown) {
       const msg = "Failed to load users: " + getErrorDetail(err);
       setError(msg);
@@ -153,19 +163,21 @@ const UserPlatformManagement: React.FC = () => {
   // extended to every user — so the band skeletons until they resolve.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
+    setSummaryError(false);
     try {
       const data = (await userService.getAll({ perpage: -1 })) as unknown as Record<string, unknown>;
       const raw = (data.data || data) as { id: string; is_active?: boolean }[];
       const list = Array.isArray(raw) ? raw : [];
       const pairs = await Promise.all(
-        list.map(async (u) => {
+        list.map(async (u): Promise<readonly [string, RoleCountValue]> => {
           try { return [u.id, (await userRoleService.list(u.id)).length] as const; }
-          catch { return [u.id, 0] as const; }
+          catch { return [u.id, 'error'] as const; }
         }),
       );
       setSummary(summarizeUserPlatform(list, Object.fromEntries(pairs)));
     } catch {
-      setSummary(null); // band falls back to its skeleton; the table still works
+      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
@@ -241,13 +253,13 @@ const UserPlatformManagement: React.FC = () => {
         accessorKey: "username",
         header: "Username",
         cell: ({ row }) => (
-          <button
-            className="block w-full truncate text-left font-medium text-primary hover:underline"
+          <Link
+            to={`/platform/user-platform/${row.original.id}`}
+            className="font-medium text-primary hover:underline whitespace-nowrap"
             title={row.original.username || undefined}
-            onClick={() => navigate(`/platform/user-platform/${row.original.id}`)}
           >
             {row.original.username || "-"}
-          </button>
+          </Link>
         ),
       },
       {
@@ -283,6 +295,18 @@ const UserPlatformManagement: React.FC = () => {
         cell: ({ row }) => {
           const c = rolesCount[row.original.id];
           if (c === undefined) return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground mx-auto" />;
+          if (c === 'error') {
+            return (
+              <span
+                className="text-warning inline-flex items-center justify-center gap-1"
+                title="Couldn't load roles"
+                aria-label="Couldn't load roles"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                <span aria-hidden="true">-</span>
+              </span>
+            );
+          }
           return <Badge variant="secondary">{c}</Badge>;
         },
       },
@@ -317,8 +341,29 @@ const UserPlatformManagement: React.FC = () => {
           );
         },
       },
+      {
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        meta: { headerClassName: "w-20", cellClassName: "text-center p-0" },
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.username || "user"}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate(`/platform/user-platform/${row.original.id}`)} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Manage roles
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
     ],
-    [navigate, rolesCount],
+    [rolesCount, navigate],
   );
 
   return (
@@ -335,7 +380,7 @@ const UserPlatformManagement: React.FC = () => {
           }
         />
 
-        <PlatformAccessSummary summary={summary} loading={summaryLoading} />
+        <PlatformAccessSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
 
         <Card>
           <CardHeader className="space-y-3">
@@ -420,15 +465,19 @@ const UserPlatformManagement: React.FC = () => {
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
             {!error && users.length === 0 && !loading ? (
-              <EmptyState
+              <ListEmptyState
+                searchTerm={searchTerm}
+                activeFilterCount={activeFilterCount}
                 icon={Users}
-                title="No users found"
-                description={searchTerm ? `No users matching "${searchTerm}"` : "No users are available."}
+                emptyTitle="No users found"
+                emptyDescription="No users are available."
               />
             ) : !error ? (
               <div className="relative">
                 {loading && users.length === 0 ? (
-                  <TableSkeleton columns={7} rows={paginate.perpage || 5} />
+                  // +1 accounts for the `#` row-index column DataTable always prepends,
+                  // so the skeleton matches the loaded table's actual header count.
+                  <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
@@ -440,6 +489,7 @@ const UserPlatformManagement: React.FC = () => {
                   columns={columns}
                   data={users}
                   serverSide
+                  tableLayout="auto"
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}

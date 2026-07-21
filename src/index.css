@@ -3,36 +3,37 @@
 @tailwind utilities;
 
 :root {
-  --background: 226 20% 98%;
-  --foreground: 226 30% 10%;
+  --background: 40 9% 97.5%;
+  --foreground: 30 7% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 226 30% 10%;
+  --card-foreground: 30 7% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 226 30% 10%;
+  --popover-foreground: 30 7% 12%;
   --primary: 221 61% 48%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 226 15% 94%;
-  --secondary-foreground: 226 30% 15%;
-  --muted: 226 15% 95%;
-  --muted-foreground: 226 10% 46%;
-  --accent: 220 14% 96%;
-  --accent-foreground: 220 30% 15%;
-  --destructive: 0 84% 60%;
+  --secondary: 40 8% 94%;
+  --secondary-foreground: 30 10% 20%;
+  --muted: 40 8% 95.5%;
+  --muted-foreground: 33 5% 43%;
+  --accent: 40 8% 94%;
+  --accent-foreground: 30 10% 20%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border: 226 15% 90%;
-  --input: 226 15% 90%;
+  --border: 40 8% 90%;
+  --input: 40 8% 87%;
   --ring: 221 61% 48%;
-  --radius: 0.375rem;
-  --success: 142 40% 40%;
+  --radius: 0.5rem;
+  --success: 152 40% 36%;
   --success-foreground: 0 0% 100%;
-  --warning: 38 92% 45%;
+  --warning: 32 90% 44%;
   --warning-foreground: 0 0% 100%;
   --info: 221 61% 48%;
   --info-foreground: 0 0% 100%;
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 2px 8px rgba(16, 24, 40, 0.08);
-  --zebra-even: rgba(0, 0, 0, 0.015);
-  --zebra-hover: hsl(221 61% 48% / 0.05);
+  --shadow-xs: 0 1px 2px rgba(24, 20, 16, 0.04);
+  --shadow-sm: 0 1px 2px rgba(24, 20, 16, 0.05);
+  --shadow-md: 0 4px 12px rgba(24, 20, 16, 0.06);
+  --zebra-even: rgba(24, 20, 16, 0.02);
+  --zebra-hover: hsl(221 61% 48% / 0.045);
   --zebra-hover-accent: hsl(221 61% 48% / 0.5);
   /* per-BU colour identity (SQL Workbench): hue comes from the BU code, S/L tuned per theme */
   --bu-chip-s: 62%;
@@ -40,36 +41,38 @@
 }
 
 .dark {
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 222 47% 11%;
-  --card-foreground: 213 31% 91%;
-  --popover: 222 47% 11%;
-  --popover-foreground: 213 31% 91%;
-  --primary: 217 65% 55%;
+  --background: 30 6% 9%;
+  --foreground: 40 8% 90%;
+  --card: 30 6% 12%;
+  --card-foreground: 40 8% 90%;
+  --popover: 30 6% 12%;
+  --popover-foreground: 40 8% 90%;
+  --primary: 217 70% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 222 47% 15%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 222 47% 11%;
-  --muted-foreground: 215.4 16.3% 60%;
-  --accent: 220 14% 14%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62% 40%;
+  --secondary: 30 5% 17%;
+  --secondary-foreground: 40 8% 95%;
+  --muted: 30 5% 16%;
+  --muted-foreground: 35 6% 62%;
+  --accent: 30 5% 18%;
+  --accent-foreground: 40 8% 95%;
+  --destructive: 0 62% 45%;
   --destructive-foreground: 0 0% 100%;
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --ring: 217 65% 55%;
-  --success: 142 40% 45%;
+  --border: 30 5% 20%;
+  --input: 30 5% 22%;
+  --ring: 217 70% 60%;
+  --radius: 0.5rem;
+  --success: 152 45% 45%;
   --success-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 0 0% 100%;
-  --info: 217 65% 55%;
+  --warning: 38 92% 55%;
+  --warning-foreground: 20 14% 8%;
+  --info: 217 70% 60%;
   --info-foreground: 0 0% 100%;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
   --zebra-even: rgba(255, 255, 255, 0.015);
-  --zebra-hover: hsl(217 65% 55% / 0.08);
-  --zebra-hover-accent: hsl(217 65% 55% / 0.4);
+  --zebra-hover: hsl(217 70% 60% / 0.08);
+  --zebra-hover-accent: hsl(217 70% 60% / 0.4);
   /* lighter chips read better on the dark ground */
   --bu-chip-s: 58%;
   --bu-chip-l: 58%;
@@ -96,6 +99,11 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
   line-height: 1.5;
   min-height: 100dvh;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 /* Zebra striping */
@@ -143,16 +151,27 @@ body {
   background-color: hsl(var(--background));
 }
 
+/* Sticky cells overlay horizontally-scrolled content, so they must stay opaque.
+   The zebra/hover tints are translucent (e.g. --zebra-even is 2% alpha); applied
+   as background-color alone they let scrolled cells bleed through. Layer the tint
+   over an opaque base via background-image so the subtle shade is preserved. */
 .table-sticky-left tbody tr:nth-child(even) td:first-child,
 .table-sticky-left tbody tr:nth-child(even) td:nth-child(2) {
-  background-color: var(--zebra-even);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
 }
 
 .table-sticky-left tbody tr:hover td:first-child,
 .table-sticky-left tbody tr:hover td:nth-child(2) {
-  background-color: var(--zebra-hover);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
 }
 
+/* A soft edge shadow cueing that the sticky column floats above scrollable
+   content. Use a translucent shadow, NOT an opaque background fade: fading to
+   hsl(var(--background)) repaints the page colour over the neighbouring cell and
+   greys out the first character of the adjacent column (e.g. the Name link next
+   to the sticky Code column). A low-alpha shadow only tints, never erases. */
 .table-sticky-left tbody td:nth-child(2)::after {
   content: '';
   position: absolute;
@@ -160,7 +179,106 @@ body {
   right: -12px;
   width: 12px;
   height: 100%;
-  background: linear-gradient(to left, transparent, hsl(var(--background)));
+  background: linear-gradient(to left, transparent, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
+}
+
+/* Opt-in third frozen column (e.g. clusters: # + Code + Name). The frozen offsets
+   must equal the actual rendered widths of the columns to their left. Under
+   table-auto those widths vary with content and viewport, so DataTable measures
+   them and publishes --sticky-c2-left / --sticky-c3-left on the table; the
+   fallbacks only cover the first paint before the measurement runs. */
+.table-sticky-left-3 thead th:nth-child(2),
+.table-sticky-left-3 tbody td:nth-child(2) {
+  left: var(--sticky-c2-left, 40px);
+}
+
+.table-sticky-left-3 thead th:nth-child(3),
+.table-sticky-left-3 tbody td:nth-child(3) {
+  position: -webkit-sticky;
+  position: sticky;
+  left: var(--sticky-c3-left, 136px);
+  z-index: 5;
+}
+
+.table-sticky-left-3 thead th:nth-child(3) {
+  z-index: 15;
+  background-color: hsl(var(--background) / 0.95);
+}
+
+.table-sticky-left-3 tbody td:nth-child(3) {
+  background-color: hsl(var(--background));
+}
+
+.table-sticky-left-3 tbody tr:nth-child(even) td:nth-child(3) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
+}
+
+.table-sticky-left-3 tbody tr:hover td:nth-child(3) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
+}
+
+/* The edge shadow belongs on the rightmost frozen column: move it to col 3 and
+   drop it from col 2, which is now an interior frozen column. */
+.table-sticky-left-3 tbody td:nth-child(2)::after {
+  content: none;
+}
+
+.table-sticky-left-3 tbody td:nth-child(3)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(to left, transparent, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
+}
+
+/* Opt-in fourth frozen column (e.g. users: select + # + avatar + username).
+   Applied together with .table-sticky-left-3, so col 3 is already frozen here;
+   this only adds col 4 and moves the edge shadow onto it. */
+.table-sticky-left-4 thead th:nth-child(4),
+.table-sticky-left-4 tbody td:nth-child(4) {
+  position: -webkit-sticky;
+  position: sticky;
+  left: var(--sticky-c4-left, 176px);
+  z-index: 5;
+}
+
+.table-sticky-left-4 thead th:nth-child(4) {
+  z-index: 15;
+  background-color: hsl(var(--background) / 0.95);
+}
+
+.table-sticky-left-4 tbody td:nth-child(4) {
+  background-color: hsl(var(--background));
+}
+
+.table-sticky-left-4 tbody tr:nth-child(even) td:nth-child(4) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
+}
+
+.table-sticky-left-4 tbody tr:hover td:nth-child(4) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
+}
+
+.table-sticky-left-4 tbody td:nth-child(3)::after {
+  content: none;
+}
+
+.table-sticky-left-4 tbody td:nth-child(4)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(to left, transparent, rgba(0, 0, 0, 0.08));
   pointer-events: none;
 }
 
@@ -183,11 +301,13 @@ body {
 }
 
 .table-sticky-right tbody tr:nth-child(even) td:last-child {
-  background-color: var(--zebra-even);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
 }
 
 .table-sticky-right tbody tr:hover td:last-child {
-  background-color: var(--zebra-hover);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
 }
 
 .table-sticky-right tbody td:last-child::before {
@@ -197,7 +317,7 @@ body {
   left: -12px;
   width: 12px;
   height: 100%;
-  background: linear-gradient(to right, transparent, hsl(var(--background)));
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.08));
   pointer-events: none;
 }
 

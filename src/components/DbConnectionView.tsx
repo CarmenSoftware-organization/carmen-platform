@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
-import { parseDbConnection } from '../utils/dbConnection';
+import { parseDbConnection, isPasswordKey } from '../utils/dbConnection';
 
 const MASK = '••••••••';
 
@@ -11,9 +11,12 @@ interface DbConnectionViewProps {
 
 /**
  * Read-only structured view of a BU's db_connection. Sensitive values (any key
- * not in the safe allowlist) are masked with a per-field reveal toggle. Reveal
- * state is local only — it resets on unmount/navigation and is never persisted.
- * Display-only: never mutates the source value.
+ * not in the safe allowlist) are masked with a per-field reveal toggle. `password`
+ * is a special case: the backend redacts it to '' on read, so it renders as
+ * permanently hidden with no reveal control (see DatabaseConnectionSection for the
+ * guarded on-demand reveal). Reveal state for other fields is local only — it
+ * resets on unmount/navigation and is never persisted. Display-only: never
+ * mutates the source value.
  */
 export const DbConnectionView = ({ value }: DbConnectionViewProps) => {
   const parsed = parseDbConnection(value);
@@ -54,6 +57,23 @@ export const DbConnectionView = ({ value }: DbConnectionViewProps) => {
   return (
     <div className="divide-y rounded-md border border-input bg-muted/50">
       {parsed.entries.map((e) => {
+        // The backend redacts password to '' on every read, so revealing it here
+        // would just show blank — indistinguishable from "no password set". Render
+        // it as permanently hidden instead of offering a toggle that lies. The
+        // Edit-mode DatabaseConnectionSection has the real (cluster.update-gated,
+        // on-demand) reveal path for viewers who need the plaintext.
+        if (isPasswordKey(e.key)) {
+          return (
+            <div key={e.key} className="flex items-center gap-2 px-3 py-2">
+              <span className="w-32 shrink-0 break-all text-xs font-medium text-muted-foreground">
+                {e.key}
+              </span>
+              <span className="flex-1 break-all font-mono text-sm text-muted-foreground">{MASK}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">Hidden</span>
+            </div>
+          );
+        }
+
         const shown = !e.sensitive || !!revealed[e.key];
         return (
           <div key={e.key} className="flex items-center gap-2 px-3 py-2">
