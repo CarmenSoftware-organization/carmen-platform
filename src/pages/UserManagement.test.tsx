@@ -284,3 +284,30 @@ describe('UserManagement — row selection resets when the result set changes (d
     expect(screen.getByRole('checkbox', { name: /select jane/i })).not.toBeChecked();
   });
 });
+
+// Content-based layout with the identity frozen: Username single-line, and the
+// leading columns pinned. Without row-selection that's # + avatar + username (3);
+// super admins add the select column, so it's select + # + avatar + username (4).
+describe('UserManagement — table fit-content & sticky', () => {
+  it('uses table-auto, freezes three columns and a single-line Username (no selection)', async () => {
+    const { container } = renderPage();
+    await screen.findByText('jane');
+
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-auto');
+    expect(table?.className).toContain('table-sticky-left-3');
+    expect(table?.className).not.toContain('table-sticky-left-4');
+
+    const link = screen.getByRole('link', { name: 'jane' });
+    expect(link.className).toContain('whitespace-nowrap');
+    expect(link.className).not.toContain('truncate');
+  });
+
+  it('freezes a 4th column when super admins get the select column', async () => {
+    auth.isSuperAdmin = true;
+    const { container } = renderPage();
+    await screen.findByText('jane');
+
+    expect(container.querySelector('table')?.className).toContain('table-sticky-left-4');
+  });
+});

@@ -445,7 +445,7 @@ const UserManagement: React.FC = () => {
           return (
             <Link
               to={`/users/${row.original.id}/edit`}
-              className="text-primary hover:underline block truncate"
+              className="text-primary hover:underline whitespace-nowrap"
               title={label}
             >
               {label}
@@ -800,6 +800,8 @@ const UserManagement: React.FC = () => {
                     columns={columns}
                     data={users}
                     serverSide
+                    tableLayout="auto"
+                    stickyLeftColumns={isSuperAdmin ? 4 : 3}
                     totalRows={totalRows}
                     page={paginate.page}
                     perpage={paginate.perpage}

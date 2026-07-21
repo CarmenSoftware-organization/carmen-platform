@@ -237,6 +237,51 @@ body {
   pointer-events: none;
 }
 
+/* Opt-in fourth frozen column (e.g. users: select + # + avatar + username).
+   Applied together with .table-sticky-left-3, so col 3 is already frozen here;
+   this only adds col 4 and moves the edge shadow onto it. */
+.table-sticky-left-4 thead th:nth-child(4),
+.table-sticky-left-4 tbody td:nth-child(4) {
+  position: -webkit-sticky;
+  position: sticky;
+  left: var(--sticky-c4-left, 176px);
+  z-index: 5;
+}
+
+.table-sticky-left-4 thead th:nth-child(4) {
+  z-index: 15;
+  background-color: hsl(var(--background) / 0.95);
+}
+
+.table-sticky-left-4 tbody td:nth-child(4) {
+  background-color: hsl(var(--background));
+}
+
+.table-sticky-left-4 tbody tr:nth-child(even) td:nth-child(4) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
+}
+
+.table-sticky-left-4 tbody tr:hover td:nth-child(4) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
+}
+
+.table-sticky-left-4 tbody td:nth-child(3)::after {
+  content: none;
+}
+
+.table-sticky-left-4 tbody td:nth-child(4)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(to left, transparent, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
+}
+
 /* Sticky right column for actions */
 .table-sticky-right th:last-child,
 .table-sticky-right td:last-child {

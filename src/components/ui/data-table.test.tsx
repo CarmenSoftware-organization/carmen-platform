@@ -41,5 +41,13 @@ describe('DataTable — stickyLeftColumns prop', () => {
     const { container } = render(<DataTable columns={columns} data={data} stickyLeftColumns={3} />);
     const table = container.querySelector('table');
     expect(table?.className).toContain('table-sticky-left-3');
+    expect(table?.className).not.toContain('table-sticky-left-4');
+  });
+
+  it('adds both table-sticky-left-3 and -4 when stickyLeftColumns={4}', () => {
+    const { container } = render(<DataTable columns={columns} data={data} stickyLeftColumns={4} />);
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-sticky-left-3');
+    expect(table?.className).toContain('table-sticky-left-4');
   });
 });

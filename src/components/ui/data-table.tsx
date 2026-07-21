@@ -89,10 +89,11 @@ interface DataTableProps<TData> {
   // content so an unconstrained column (e.g. Name) fits its text without truncation.
   tableLayout?: 'fixed' | 'auto';
   // How many leading columns stay frozen on horizontal scroll. 2 (default) freezes
-  // the index + primary column; 3 also freezes the column after it (opt-in for
-  // tables like clusters that lead with Code then Name). The 3rd column's sticky
-  // offset assumes a fixed-width 2nd column — see `.table-sticky-left-3` in index.css.
-  stickyLeftColumns?: 2 | 3;
+  // the index + primary column; 3 or 4 also freeze the columns after it (opt-in for
+  // tables like clusters — Code then Name — or users, which prepend a select +
+  // avatar column before the username). Offsets for columns 3/4 are measured at
+  // runtime — see the useLayoutEffect below and `.table-sticky-left-{3,4}` in index.css.
+  stickyLeftColumns?: 2 | 3 | 4;
 }
 
 function DataTable<TData>({
@@ -246,21 +247,23 @@ function DataTable<TData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, enableRowSelection]);
 
-  // A 3rd frozen column needs a sticky `left` equal to the actual rendered widths
-  // of the two columns before it. Under table-auto those widths are computed by
-  // the browser and vary with content/viewport, so measure them and publish the
-  // offsets as CSS variables the `.table-sticky-left-3` rules consume.
+  // Each extra frozen column (3rd, 4th) needs a sticky `left` equal to the actual
+  // rendered widths of every column before it. Under table-auto those widths are
+  // computed by the browser and vary with content/viewport, so measure them and
+  // publish the running offsets as CSS variables the `.table-sticky-left-{3,4}`
+  // rules consume (--sticky-c2-left … --sticky-cN-left).
   React.useLayoutEffect(() => {
-    if (stickyLeftColumns !== 3) return;
+    if (stickyLeftColumns < 3) return;
     const el = tableRef.current;
     if (!el) return;
     const apply = () => {
       const cells = el.tHead?.rows[0]?.cells;
-      if (!cells || cells.length < 3) return;
-      const w0 = cells[0].getBoundingClientRect().width;
-      const w1 = cells[1].getBoundingClientRect().width;
-      el.style.setProperty('--sticky-c2-left', `${w0}px`);
-      el.style.setProperty('--sticky-c3-left', `${w0 + w1}px`);
+      if (!cells || cells.length < stickyLeftColumns) return;
+      let acc = 0;
+      for (let i = 2; i <= stickyLeftColumns; i++) {
+        acc += cells[i - 2].getBoundingClientRect().width;
+        el.style.setProperty(`--sticky-c${i}-left`, `${acc}px`);
+      }
     };
     apply();
     // jsdom (tests) and very old browsers lack ResizeObserver — the one-shot
@@ -299,7 +302,8 @@ function DataTable<TData>({
         <Table ref={tableRef} className={cn(
           'min-w-[640px] table-sticky-left table-sticky-right',
           tableLayout === 'auto' ? 'table-auto' : 'table-fixed',
-          stickyLeftColumns === 3 && 'table-sticky-left-3'
+          stickyLeftColumns >= 3 && 'table-sticky-left-3',
+          stickyLeftColumns >= 4 && 'table-sticky-left-4'
         )}>
           <TableHeader className="sticky top-0 z-10 bg-background border-b-2 border-border">
           {table.getHeaderGroups().map((headerGroup) => (
