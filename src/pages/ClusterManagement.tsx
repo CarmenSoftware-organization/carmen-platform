@@ -263,7 +263,7 @@ const ClusterManagement: React.FC = () => {
       accessorKey: 'code',
       header: 'Code',
       cell: ({ row }) => (
-        <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline">
+        <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.code}
         </Link>
       ),
@@ -273,7 +273,7 @@ const ClusterManagement: React.FC = () => {
       header: 'Name',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline">
+          <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
             {row.original.name}
           </Link>
           {row.original.deleted_at && (
@@ -554,6 +554,7 @@ const ClusterManagement: React.FC = () => {
                   columns={columns}
                   data={clusters}
                   serverSide
+                  tableLayout="auto"
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}

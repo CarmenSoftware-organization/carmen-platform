@@ -207,3 +207,28 @@ describe('ClusterManagement — Add Cluster gates (cluster.create)', () => {
     expect(screen.getAllByRole('button', { name: /add cluster/i }).length).toBeGreaterThan(0);
   });
 });
+
+// Mirrors the report-templates treatment: the list uses content-based (table-auto)
+// layout so columns fit their content, and the Code/Name links stay on one line.
+describe('ClusterManagement — table fit-content', () => {
+  it('uses content-based (table-auto) layout', async () => {
+    const { container } = renderPage();
+    await screen.findByText('Acme Hotels');
+
+    expect(container.querySelector('table')?.className).toContain('table-auto');
+  });
+
+  it('renders the Name link single-line (whitespace-nowrap)', async () => {
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: 'Acme Hotels' });
+    expect(link.className).toContain('whitespace-nowrap');
+  });
+
+  it('renders the Code link single-line (whitespace-nowrap)', async () => {
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: 'ACME' });
+    expect(link.className).toContain('whitespace-nowrap');
+  });
+});
