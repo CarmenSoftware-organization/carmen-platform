@@ -287,3 +287,51 @@ describe('ReportTemplateEdit — Template Type in Template Info', () => {
     expect(await screen.findAllByText(/^Template Type/)).toHaveLength(1);
   });
 });
+
+describe('ReportTemplateEdit — Report Group forks on Template Type', () => {
+  it('is a textbox for list and a select for form', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    expect((screen.getByLabelText(/Report Group/) as HTMLElement).tagName).toBe('INPUT');
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    const group = screen.getByLabelText(/Report Group/) as HTMLElement;
+    expect(group.tagName).toBe('SELECT');
+    expect(screen.getByRole('option', { name: 'PR' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'EOP' })).toBeInTheDocument();
+  });
+
+  it('stores the bare code when a form group is chosen', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'form');
+    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.selectOptions(screen.getByLabelText(/Report Group/), 'PO');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ template_type: 'form', report_group: 'PO' }),
+      ),
+    );
+  });
+
+  it('preserves an out-of-list report_group on an existing form record', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.getById).mockResolvedValue({
+      data: { ...fakeTemplate, template_type: 'form', report_group: 'inventory' },
+    });
+    renderAt('/report-templates/rt1/edit');
+
+    await user.click(await screen.findByRole('button', { name: /^edit$/i }));
+
+    const group = screen.getByLabelText(/Report Group/) as HTMLSelectElement;
+    expect(group.value).toBe('inventory');
+    expect(screen.getByRole('option', { name: 'inventory' })).toBeInTheDocument();
+  });
+});

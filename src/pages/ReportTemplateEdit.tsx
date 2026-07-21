@@ -34,6 +34,11 @@ const REQUIRED_FIELD_LABELS: Record<string, string> = {
   template_type: 'Template type',
 };
 
+// Report Group choices when template_type === 'form'. Stored value === the code.
+const FORM_REPORT_GROUPS = [
+  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFQ', 'EOP',
+] as const;
+
 interface SourceParamRow {
   filter: string;
   type: string;
@@ -365,6 +370,7 @@ const ReportTemplateEdit: React.FC = () => {
     );
   }
 
+  const isForm = formData.template_type === 'form';
   const dialogLines = countLines(formData.dialog);
   const contentLines = countLines(formData.content);
 
@@ -524,23 +530,56 @@ const ReportTemplateEdit: React.FC = () => {
                       <div className="space-y-2">
                         <Label htmlFor="report_group">Report Group {editing && '*'}</Label>
                         {editing ? (
-                          <>
-                            <Input
-                              type="text"
-                              id="report_group"
-                              name="report_group"
-                              value={formData.report_group}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              onFocus={handleFocus}
-                              placeholder="e.g. inventory, procurement"
-                              className={fieldErrors.report_group ? 'border-destructive' : ''}
-                              required
-                            />
-                            {fieldErrors.report_group && (
-                              <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
-                            )}
-                          </>
+                          isForm ? (
+                            <>
+                              <select
+                                id="report_group"
+                                name="report_group"
+                                value={formData.report_group}
+                                onFocus={() => setFieldErrors((prev) => ({ ...prev, report_group: '' }))}
+                                onChange={(e) => {
+                                  setFormData((prev) => ({ ...prev, report_group: e.target.value }));
+                                  setFieldErrors((prev) => ({ ...prev, report_group: '' }));
+                                  setError('');
+                                }}
+                                className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                                  fieldErrors.report_group ? 'border-destructive' : 'border-input'
+                                }`}
+                              >
+                                <option value="" disabled>Select group…</option>
+                                {formData.report_group &&
+                                  !FORM_REPORT_GROUPS.includes(
+                                    formData.report_group as typeof FORM_REPORT_GROUPS[number],
+                                  ) && (
+                                    <option value={formData.report_group}>{formData.report_group}</option>
+                                  )}
+                                {FORM_REPORT_GROUPS.map((g) => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))}
+                              </select>
+                              {fieldErrors.report_group && (
+                                <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Input
+                                type="text"
+                                id="report_group"
+                                name="report_group"
+                                value={formData.report_group}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                onFocus={handleFocus}
+                                placeholder="e.g. inventory, procurement"
+                                className={fieldErrors.report_group ? 'border-destructive' : ''}
+                                required
+                              />
+                              {fieldErrors.report_group && (
+                                <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
+                              )}
+                            </>
+                          )
                         ) : (
                           <div>
                             <Badge variant="outline">{formData.report_group || '-'}</Badge>
