@@ -249,9 +249,23 @@ const ApplicationManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <Link to={`/applications/${row.original.id}/edit`} className="text-primary hover:underline">
-          {row.original.name}
-        </Link>
+        <div className="flex flex-col gap-0.5">
+          <Link
+            to={`/applications/${row.original.id}/edit`}
+            className="text-primary hover:underline whitespace-nowrap"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </Link>
+          {row.original.description && (
+            <span
+              className="text-xs text-muted-foreground truncate max-w-[320px]"
+              title={row.original.description}
+            >
+              {row.original.description}
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -278,14 +292,6 @@ const ApplicationManagement: React.FC = () => {
           </div>
         );
       },
-    },
-    {
-      accessorKey: 'description',
-      header: 'Description',
-      enableSorting: false,
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.description || '-'}</span>
-      ),
     },
     {
       id: 'access',
@@ -522,6 +528,7 @@ const ApplicationManagement: React.FC = () => {
                       columns={columns}
                       data={applications}
                       serverSide
+                      tableLayout="auto"
                       totalRows={totalRows}
                       page={paginate.page}
                       perpage={paginate.perpage}
