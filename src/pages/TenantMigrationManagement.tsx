@@ -336,13 +336,16 @@ const TenantMigrationManagement: React.FC = () => {
     {
       accessorKey: 'code',
       header: 'Code',
+      // Fixed width so the sticky offset of the 3rd frozen column (Name) is
+      // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
+      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
       cell: ({ row }) => (
-        <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline">
+        <Link to={`/business-units/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.code}
         </Link>
       ),
     },
-    { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span>{row.original.name}</span> },
+    { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span className="whitespace-nowrap">{row.original.name}</span> },
     {
       id: 'status',
       header: 'Status',
@@ -521,6 +524,8 @@ const TenantMigrationManagement: React.FC = () => {
                 <DataTable
                   columns={columns}
                   data={bus}
+                  tableLayout="auto"
+                  stickyLeftColumns={3}
                   globalFilter={searchTerm}
                   onGlobalFilterChange={setSearchTerm}
                   pageSize={25}

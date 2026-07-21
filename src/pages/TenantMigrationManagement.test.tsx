@@ -278,3 +278,36 @@ describe('TenantMigrationManagement', () => {
     });
   });
 });
+
+// Mirrors the clusters/business-units treatment: content-based layout, single-line
+// Code + Name, and three frozen left columns (#, Code, Name).
+describe('TenantMigrationManagement — table fit-content & sticky', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({ isSuperAdmin: true } as never);
+    vi.mocked(businessUnitService.getAll).mockResolvedValue({ data: BUS } as never);
+  });
+
+  it('uses content-based (table-auto) layout and freezes three left columns', async () => {
+    const { container } = renderPage();
+    await screen.findByText('BU01');
+
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-auto');
+    expect(table?.className).toContain('table-sticky-left-3');
+  });
+
+  it('renders the Code link single-line (whitespace-nowrap)', async () => {
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: 'BU01' });
+    expect(link.className).toContain('whitespace-nowrap');
+  });
+
+  it('renders the Name single-line (whitespace-nowrap)', async () => {
+    renderPage();
+
+    const name = await screen.findByText('Hotel One');
+    expect(name.className).toContain('whitespace-nowrap');
+  });
+});
