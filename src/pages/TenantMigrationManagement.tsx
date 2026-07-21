@@ -78,6 +78,45 @@ export const withTooltip = (el: ReactElement, reason: string | null): ReactEleme
     el
   );
 
+// Icon-only row action with an always-present tooltip label (falls back to the
+// disabled reason). `aria-label` is the button's accessible name — kept equal to
+// `label` so screen readers and role-name queries still find it after the text
+// is dropped. Radix tooltips don't fire over a disabled <button>, so a focusable
+// span wraps it when the action is unavailable.
+const iconAction = ({
+  label,
+  icon,
+  onClick,
+  disabled,
+  reason,
+  variant = 'outline',
+}: {
+  label: string;
+  icon: ReactElement;
+  onClick: () => void;
+  disabled: boolean;
+  reason: string | null;
+  variant?: 'outline' | 'destructive';
+}): ReactElement => {
+  const btn = (
+    <Button variant={variant} size="icon" className="h-8 w-8" aria-label={label} onClick={onClick} disabled={disabled}>
+      {icon}
+    </Button>
+  );
+  return (
+    <Tooltip content={reason || label}>
+      {disabled ? (
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+        <span tabIndex={0} className="inline-flex">
+          {btn}
+        </span>
+      ) : (
+        btn
+      )}
+    </Tooltip>
+  );
+};
+
 const TenantMigrationManagement: React.FC = () => {
   const { isSuperAdmin } = useAuth();
   const navigate = useNavigate();
@@ -410,28 +449,31 @@ const TenantMigrationManagement: React.FC = () => {
       id: 'actions',
       header: '',
       enableSorting: false,
-      meta: { headerClassName: 'w-40', cellClassName: 'text-right p-0' },
+      meta: { headerClassName: 'w-24', cellClassName: 'text-right p-0' },
       cell: ({ row }) => {
         const bu = row.original;
         const rs = rowState[bu.id];
         const busy = !!rs?.checking || !!rs?.deploying;
+        const disabled = !!disabledReason || busy || batchRunning;
         return (
-          <div className="flex items-center justify-end gap-2">
-            {withTooltip(
-              <Button variant="outline" size="sm" onClick={() => checkOne(bu)} disabled={!!disabledReason || busy || batchRunning}>
-                {rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
-                Check
-              </Button>,
-              disabledReason,
-            )}
+          <div className="flex items-center justify-end gap-1.5">
+            {iconAction({
+              label: 'Check',
+              icon: rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />,
+              onClick: () => checkOne(bu),
+              disabled,
+              reason: disabledReason,
+              variant: 'outline',
+            })}
             {rs?.status?.has_pending &&
-              withTooltip(
-                <Button variant="destructive" size="sm" onClick={() => setApplyTarget(bu)} disabled={!!disabledReason || busy || batchRunning}>
-                  <Play className="mr-1.5 h-3.5 w-3.5" />
-                  Apply
-                </Button>,
-                disabledReason,
-              )}
+              iconAction({
+                label: 'Apply',
+                icon: <Play className="h-4 w-4" />,
+                onClick: () => setApplyTarget(bu),
+                disabled,
+                reason: disabledReason,
+                variant: 'destructive',
+              })}
           </div>
         );
       },
