@@ -262,6 +262,9 @@ const ClusterManagement: React.FC = () => {
     {
       accessorKey: 'code',
       header: 'Code',
+      // Fixed width so the sticky offset of the 3rd frozen column (Name) is
+      // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
+      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
       cell: ({ row }) => (
         <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.code}
@@ -555,6 +558,7 @@ const ClusterManagement: React.FC = () => {
                   data={clusters}
                   serverSide
                   tableLayout="auto"
+                  stickyLeftColumns={3}
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}

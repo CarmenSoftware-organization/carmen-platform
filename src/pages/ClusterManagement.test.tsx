@@ -218,6 +218,13 @@ describe('ClusterManagement — table fit-content', () => {
     expect(container.querySelector('table')?.className).toContain('table-auto');
   });
 
+  it('freezes three left columns (#, Code, Name)', async () => {
+    const { container } = renderPage();
+    await screen.findByText('Acme Hotels');
+
+    expect(container.querySelector('table')?.className).toContain('table-sticky-left-3');
+  });
+
   it('renders the Name link single-line (whitespace-nowrap)', async () => {
     renderPage();
 

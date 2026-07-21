@@ -183,6 +183,60 @@ body {
   pointer-events: none;
 }
 
+/* Opt-in third frozen column (e.g. clusters: # + Code + Name). The frozen offsets
+   must equal the actual rendered widths of the columns to their left. Under
+   table-auto those widths vary with content and viewport, so DataTable measures
+   them and publishes --sticky-c2-left / --sticky-c3-left on the table; the
+   fallbacks only cover the first paint before the measurement runs. */
+.table-sticky-left-3 thead th:nth-child(2),
+.table-sticky-left-3 tbody td:nth-child(2) {
+  left: var(--sticky-c2-left, 40px);
+}
+
+.table-sticky-left-3 thead th:nth-child(3),
+.table-sticky-left-3 tbody td:nth-child(3) {
+  position: -webkit-sticky;
+  position: sticky;
+  left: var(--sticky-c3-left, 136px);
+  z-index: 5;
+}
+
+.table-sticky-left-3 thead th:nth-child(3) {
+  z-index: 15;
+  background-color: hsl(var(--background) / 0.95);
+}
+
+.table-sticky-left-3 tbody td:nth-child(3) {
+  background-color: hsl(var(--background));
+}
+
+.table-sticky-left-3 tbody tr:nth-child(even) td:nth-child(3) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
+}
+
+.table-sticky-left-3 tbody tr:hover td:nth-child(3) {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
+}
+
+/* The edge shadow belongs on the rightmost frozen column: move it to col 3 and
+   drop it from col 2, which is now an interior frozen column. */
+.table-sticky-left-3 tbody td:nth-child(2)::after {
+  content: none;
+}
+
+.table-sticky-left-3 tbody td:nth-child(3)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(to left, transparent, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
+}
+
 /* Sticky right column for actions */
 .table-sticky-right th:last-child,
 .table-sticky-right td:last-child {

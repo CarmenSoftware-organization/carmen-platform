@@ -28,3 +28,18 @@ describe('DataTable — tableLayout prop', () => {
     expect(table?.className).not.toContain('table-fixed');
   });
 });
+
+describe('DataTable — stickyLeftColumns prop', () => {
+  it('freezes two left columns by default (no table-sticky-left-3)', () => {
+    const { container } = render(<DataTable columns={columns} data={data} />);
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-sticky-left');
+    expect(table?.className).not.toContain('table-sticky-left-3');
+  });
+
+  it('adds table-sticky-left-3 when stickyLeftColumns={3}', () => {
+    const { container } = render(<DataTable columns={columns} data={data} stickyLeftColumns={3} />);
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-sticky-left-3');
+  });
+});
