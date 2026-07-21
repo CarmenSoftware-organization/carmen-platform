@@ -264,7 +264,7 @@ const ClusterManagement: React.FC = () => {
       header: 'Code',
       // Fixed width so the sticky offset of the 3rd frozen column (Name) is
       // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
-      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
+      meta: { headerClassName: 'w-24', cellClassName: 'w-24', card: 'title' },
       cell: ({ row }) => (
         <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.code}
@@ -274,6 +274,7 @@ const ClusterManagement: React.FC = () => {
     {
       accessorKey: 'name',
       header: 'Name',
+      meta: { card: 'title' },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
@@ -290,7 +291,7 @@ const ClusterManagement: React.FC = () => {
     {
       accessorKey: 'is_active',
       header: 'Status',
-      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
+      meta: { headerClassName: 'w-32', cellClassName: 'w-32', card: 'badge' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
           {row.original.is_active ? 'Active' : 'Inactive'}
@@ -333,6 +334,7 @@ const ClusterManagement: React.FC = () => {
       accessorKey: 'updated_at',
       id: 'updated_at',
       header: 'Updated',
+      meta: { card: 'hidden' },
       cell: ({ row }) => {
         const d = row.original;
         if (d.updated_at === d.created_at) return null;
@@ -364,7 +366,7 @@ const ClusterManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
-      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0' },
+      meta: { headerClassName: 'max-w-12', cellClassName: 'text-center p-0 max-w-12' },
       enableSorting: false,
       cell: ({ row }) => (
         <DropdownMenu>
