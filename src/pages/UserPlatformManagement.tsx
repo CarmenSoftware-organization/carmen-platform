@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
 import { PlatformAccessSummary, summarizeUserPlatform, type UserPlatformSummaryData, type RoleCountValue } from "./userPlatformManagement/PlatformAccessSummary";
@@ -12,8 +12,9 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Filter, X, Users, Download, Loader2, AlertTriangle } from "lucide-react";
+import { Filter, X, Users, Download, Loader2, AlertTriangle, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ListEmptyState } from '../components/ListEmptyState';
@@ -62,6 +63,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 };
 
 const UserPlatformManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -339,8 +341,29 @@ const UserPlatformManagement: React.FC = () => {
           );
         },
       },
+      {
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        meta: { headerClassName: "w-20", cellClassName: "text-center p-0" },
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.username || "user"}`}>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate(`/platform/user-platform/${row.original.id}`)} className="cursor-pointer">
+                <Pencil className="mr-2 h-4 w-4" />
+                Manage roles
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
     ],
-    [rolesCount],
+    [rolesCount, navigate],
   );
 
   return (
