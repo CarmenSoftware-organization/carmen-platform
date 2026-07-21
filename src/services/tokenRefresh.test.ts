@@ -5,6 +5,7 @@ import {
   refreshAccessToken,
   clearSession,
   redirectToLogin,
+  handleResponseError,
 } from './tokenRefresh';
 
 vi.mock('axios', () => ({ default: { post: vi.fn() } }));
@@ -115,5 +116,93 @@ describe('redirectToLogin', () => {
   it('navigates to /login', () => {
     redirectToLogin();
     expect(window.location.href).toBe('/login');
+  });
+});
+
+// helper to fabricate an axios-style rejection
+const err = (status: number, url: string, extra: Record<string, unknown> = {}) =>
+  ({ config: { url, headers: {}, ...extra }, response: { status } } as unknown as import('axios').AxiosError);
+
+describe('handleResponseError', () => {
+  it('refreshes then retries the original request on a non-login 401', async () => {
+    localStorage.setItem('refresh_token', 'rfr-old');
+    mockAxios.post.mockResolvedValue({ data: { data: { access_token: 'fresh' } } });
+    const retry = vi.fn().mockResolvedValue({ data: 'ok' });
+
+    const result = await handleResponseError(err(401, '/api/config'), retry);
+
+    expect(result).toEqual({ data: 'ok' });
+    expect(retry).toHaveBeenCalledTimes(1);
+    const passed = retry.mock.calls[0][0] as { _retry?: boolean; headers: Record<string, string> };
+    expect(passed._retry).toBe(true);
+    expect(passed.headers.Authorization).toBe('Bearer fresh');
+  });
+
+  it('tears down the session when the refresh call fails', async () => {
+    localStorage.setItem('refresh_token', 'rfr-old');
+    localStorage.setItem('token', 'stale');
+    mockAxios.post.mockRejectedValue({ response: { status: 401 } });
+    const retry = vi.fn();
+    const error = err(401, '/api/config');
+
+    await expect(handleResponseError(error, retry)).rejects.toBe(error);
+    expect(retry).not.toHaveBeenCalled();
+    expect(localStorage.getItem('token')).toBeNull();
+    expect(window.location.href).toBe('/login');
+  });
+
+  it('tears down without a network call when no refresh token exists', async () => {
+    const retry = vi.fn();
+    const error = err(401, '/api/config');
+
+    await expect(handleResponseError(error, retry)).rejects.toBe(error);
+    expect(mockAxios.post).not.toHaveBeenCalled();
+    expect(window.location.href).toBe('/login');
+  });
+
+  it('does not retry a request that was already retried (loop guard)', async () => {
+    localStorage.setItem('refresh_token', 'rfr-old');
+    const retry = vi.fn();
+    const error = err(401, '/api/config', { _retry: true });
+
+    await expect(handleResponseError(error, retry)).rejects.toBe(error);
+    expect(mockAxios.post).not.toHaveBeenCalled();
+    expect(window.location.href).toBe('/login');
+  });
+
+  it('does not refresh on 403; it tears down (unchanged behavior)', async () => {
+    localStorage.setItem('refresh_token', 'rfr-old');
+    const retry = vi.fn();
+    const error = err(403, '/api/config');
+
+    await expect(handleResponseError(error, retry)).rejects.toBe(error);
+    expect(mockAxios.post).not.toHaveBeenCalled();
+    expect(window.location.href).toBe('/login');
+  });
+
+  it('leaves the session intact on a login-request 401', async () => {
+    localStorage.setItem('token', 'keep');
+    const retry = vi.fn();
+    const error = err(401, '/api/auth/login');
+
+    await expect(handleResponseError(error, retry)).rejects.toBe(error);
+    expect(mockAxios.post).not.toHaveBeenCalled();
+    expect(localStorage.getItem('token')).toBe('keep');
+    expect(window.location.href).toBe('');
+  });
+
+  it('refreshes only once when multiple requests 401 concurrently', async () => {
+    localStorage.setItem('refresh_token', 'rfr-old');
+    let resolvePost!: (v: unknown) => void;
+    mockAxios.post.mockReturnValue(new Promise((res) => { resolvePost = res; }));
+    const retry = vi.fn().mockResolvedValue({ data: 'ok' });
+
+    const p1 = handleResponseError(err(401, '/api/a'), retry);
+    const p2 = handleResponseError(err(401, '/api/b'), retry);
+    resolvePost({ data: { data: { access_token: 'fresh' } } });
+    await Promise.all([p1, p2]);
+
+    expect(mockAxios.post).toHaveBeenCalledTimes(1);
+    expect(retry).toHaveBeenCalledTimes(2);
   });
 });

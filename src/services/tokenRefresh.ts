@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { AxiosError, AxiosRequestConfig } from 'axios';
 
 const TOKEN_KEY = 'token';
 const REFRESH_KEY = 'refresh_token';
@@ -60,4 +61,39 @@ export function clearSession(): void {
 
 export function redirectToLogin(): void {
   window.location.href = '/login';
+}
+
+type RetryConfig = AxiosRequestConfig & { _retry?: boolean };
+
+export async function handleResponseError(
+  error: AxiosError,
+  retry: (config: AxiosRequestConfig) => Promise<unknown>,
+): Promise<unknown> {
+  const original = (error.config ?? {}) as RetryConfig;
+  const status = error.response?.status;
+  const url = original.url ?? '';
+  const isLoginRequest = url.includes('/auth/login');
+
+  if (status === 401 && !isLoginRequest && !original._retry) {
+    original._retry = true;
+    try {
+      const newToken = await refreshAccessToken();
+      original.headers = original.headers ?? {};
+      (original.headers as Record<string, unknown>).Authorization = `Bearer ${newToken}`;
+      return await retry(original);
+    } catch {
+      clearSession();
+      redirectToLogin();
+      return Promise.reject(error);
+    }
+  }
+
+  if ((status === 401 || status === 403) && !isLoginRequest) {
+    // 403, or a 401 whose retry already failed. A fresh non-login 401 always
+    // returns from the block above and never falls through here.
+    clearSession();
+    redirectToLogin();
+  }
+
+  return Promise.reject(error);
 }
