@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, History } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Skeleton } from '../../components/ui/skeleton';
+import { Badge, type BadgeProps } from '../../components/ui/badge';
+import { FetchErrorState } from '../../components/FetchErrorState';
 import { formatClock, dayGroup, relativeTime } from '../../utils/relativeTime';
 import { ACTIVITY_SOURCES, type ActivityItem, type ActivityVerb } from './activity';
 
-const VERB: Record<ActivityVerb, { text: string; dot: string }> = {
-  created: { text: 'text-success', dot: 'bg-success' },
-  updated: { text: 'text-info', dot: 'bg-info' },
-  published: { text: 'text-warning', dot: 'bg-warning' },
+const VERB: Record<ActivityVerb, { dot: string; variant: NonNullable<BadgeProps['variant']> }> = {
+  created: { dot: 'bg-success', variant: 'success' },
+  updated: { dot: 'bg-info', variant: 'info' },
+  published: { dot: 'bg-warning', variant: 'warning' },
 };
 
 interface ActivityStreamProps {
@@ -63,12 +65,15 @@ export function ActivityStream({ items, loading, error, onRetry }: ActivityStrea
       {loading ? (
         <StreamSkeleton />
       ) : error ? (
-        <div className="text-muted-foreground rounded-lg border border-dashed py-14 text-center text-sm">
-          Couldn’t load recent activity.{' '}
-          <button type="button" onClick={onRetry} className="text-primary underline underline-offset-2">
-            Try again
-          </button>
-        </div>
+        // Note for future readers: this trades exact inline text-wrap (button riding the
+        // last line with the message) for FetchErrorState's flex-wrap layout, where the
+        // button can drop to its own centered line at narrow widths. Accepted deliberately
+        // to keep a single error/retry implementation — see Task 10 report for the trade-off.
+        <FetchErrorState
+          message="Couldn’t load recent activity."
+          onRetry={onRetry}
+          className="rounded-lg border border-dashed py-14"
+        />
       ) : shown.length === 0 ? (
         <div className="text-muted-foreground flex flex-col items-center gap-2 rounded-lg border border-dashed py-14 text-center">
           <History className="text-muted-foreground/60 size-6" />
@@ -104,7 +109,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
               </div>
             )}
             <div className="grid grid-cols-[3.25rem_1.25rem_1fr] items-start">
-              <div className="text-muted-foreground pt-[11px] text-right font-mono text-[11.5px] tabular-nums">
+              <div className="text-muted-foreground pt-3 text-right font-mono text-[11px] tabular-nums">
                 {formatClock(it.at)}
               </div>
               {/* rail + dot */}
@@ -117,7 +122,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
                   )}
                   aria-hidden="true"
                 />
-                <span className={cn('relative z-[1] mt-[9px] size-2.5 rounded-full ring-2 ring-background', verb.dot)} aria-hidden="true" />
+                <span className={cn('relative z-[1] mt-2 size-2.5 rounded-full ring-2 ring-background', verb.dot)} aria-hidden="true" />
               </div>
               {/* body */}
               <Link
@@ -130,8 +135,10 @@ function Timeline({ items }: { items: ActivityItem[] }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-baseline gap-x-2">
-                    <span className={cn('text-[11px] font-bold uppercase tracking-wide', verb.text)}>{it.verb}</span>
-                    <span className="text-foreground text-[13.5px] font-semibold">
+                    <Badge variant={verb.variant} className="text-[11px] font-bold uppercase tracking-wide">
+                      {it.verb}
+                    </Badge>
+                    <span className="text-foreground text-sm font-semibold">
                       {it.name}
                       {it.code && <span className="text-muted-foreground ml-1.5 font-mono text-xs font-medium">{it.code}</span>}
                     </span>
@@ -153,7 +160,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
 
 function StreamSkeleton() {
   return (
-    <div className="space-y-2" aria-hidden="true">
+    <div className="space-y-2" role="status" aria-label="Loading activity">
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-2.5 py-2">
           <Skeleton className="size-7 rounded-lg" />

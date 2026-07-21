@@ -4,6 +4,8 @@ import type { PaginateParams, ApiListResponse } from '../types';
 
 export type ReportSourceType = "view" | "function" | "procedure";
 
+export type ReportTemplateType = 'form' | 'list';
+
 export interface ReportSourceParam {
   filter: string;
   type?: string;
@@ -19,7 +21,7 @@ export interface ReportTemplate {
   name: string;
   description?: string;
   report_group: string;
-  kind: 'report' | 'print';
+  template_type?: ReportTemplateType;
   dialog: string;
   content: string;
   is_standard: boolean;

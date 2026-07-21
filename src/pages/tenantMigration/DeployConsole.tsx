@@ -28,7 +28,14 @@ export function DeployConsole({ batch }: { batch: BatchProgress | null }) {
       </div>
 
       <div className="bg-muted h-1">
-        <div className="bg-primary h-full transition-all" style={{ width: `${pct}%` }} />
+        <div
+          role="progressbar"
+          aria-valuenow={batch.applied}
+          aria-valuemin={0}
+          aria-valuemax={batch.total}
+          className="bg-primary h-full transition-all"
+          style={{ width: `${pct}%` }}
+        />
       </div>
 
       <div className="max-h-56 overflow-auto bg-[hsl(222_44%_7%)] px-4 py-3 font-mono text-xs leading-relaxed">

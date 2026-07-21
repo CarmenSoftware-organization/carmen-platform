@@ -281,7 +281,7 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       />
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         {validation.valid ? (
-          <div className="flex items-center gap-2 text-emerald-600">
+          <div className="flex items-center gap-2 text-success">
             <Check className="h-3.5 w-3.5" />
             <span>Valid XML</span>
           </div>

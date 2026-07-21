@@ -28,6 +28,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!token) {
       // No access_token found - clear everything and redirect to login
       localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
@@ -127,6 +128,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Authenticate the session first so the permission/count requests are authorized.
       localStorage.setItem('token', token);
+      if (loginData.refresh_token) {
+        localStorage.setItem('refresh_token', loginData.refresh_token);
+      }
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       // Permission-based access gate: resolve platform permissions + user count.
@@ -136,6 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!hasAnyPermission && !isBootstrap) {
         // Not authorized for the platform admin — tear down the partial session.
         localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
         localStorage.removeItem('effectivePermissions');
         delete api.defaults.headers.common['Authorization'];
         setEffectivePermissions(null);
@@ -200,6 +205,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     localStorage.removeItem('loginResponse');
     localStorage.removeItem('effectivePermissions');

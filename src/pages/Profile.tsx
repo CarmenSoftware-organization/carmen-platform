@@ -14,10 +14,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { User as UserIcon, Mail, Lock, Save, CheckCircle2, Phone, Pencil, X, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorDetail, devLog } from '../utils/errorParser';
+import { validateField } from '../utils/validation';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { EmptyState } from '../components/EmptyState';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -60,6 +62,7 @@ const Profile: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [savedProfileData, setSavedProfileData] = useState<ProfileFieldsData>({
@@ -103,6 +106,7 @@ const Profile: React.FC = () => {
       ...savedProfileData,
     }));
     setEditingProfile(false);
+    setFieldErrors({});
     setError('');
     setSuccess('');
   };
@@ -137,6 +141,7 @@ const Profile: React.FC = () => {
         refreshUser();
       } catch (err) {
         devLog('Failed to fetch profile:', err);
+        setError('Failed to load profile: ' + getErrorDetail(err));
       } finally {
         setFetchingProfile(false);
       }
@@ -163,12 +168,20 @@ const Profile: React.FC = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+    setFieldErrors(prev => (prev[name] ? { ...prev, [name]: '' } : prev));
     setError('');
     setSuccess('');
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const fieldError = validateField(name, value);
+    setFieldErrors(prev => ({ ...prev, [name]: fieldError }));
   };
 
   const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -436,8 +449,9 @@ const Profile: React.FC = () => {
                         name="alias_name"
                         value={formData.alias_name}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         placeholder="Alias name (optional)"
-                        className="pl-9"
+                        className={`pl-9 ${fieldErrors.alias_name ? 'border-destructive' : ''}`}
                       />
                     </div>
                   ) : (
@@ -445,6 +459,9 @@ const Profile: React.FC = () => {
                       <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.alias_name || '-'}</div>
                     </div>
+                  )}
+                  {editingProfile && fieldErrors.alias_name && (
+                    <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
                   )}
                 </div>
 
@@ -520,8 +537,9 @@ const Profile: React.FC = () => {
                         type="tel"
                         value={formData.telephone}
                         onChange={handleChange}
+                        onBlur={handleBlur}
                         placeholder="Phone number (optional)"
-                        className="pl-9"
+                        className={`pl-9 ${fieldErrors.telephone ? 'border-destructive' : ''}`}
                       />
                     </div>
                   ) : (
@@ -529,6 +547,9 @@ const Profile: React.FC = () => {
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.telephone || '-'}</div>
                     </div>
+                  )}
+                  {editingProfile && fieldErrors.telephone && (
+                    <p className="text-xs text-destructive">{fieldErrors.telephone}</p>
                   )}
                 </div>
 
@@ -573,7 +594,11 @@ const Profile: React.FC = () => {
             </CardHeader>
             <CardContent>
               {businessUnits.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">No business units found.</p>
+                <EmptyState
+                  icon={Building2}
+                  title="No business units"
+                  description="You are not assigned to any business unit yet."
+                />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {businessUnits.map((bu) => (

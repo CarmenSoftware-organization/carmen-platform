@@ -1,6 +1,7 @@
-import { useState } from 'react';
 import { Card } from '../../components/ui/card';
-import { cn } from '../../lib/utils';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Copy } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
 import { InlineField, type InlineOption } from './InlineField';
@@ -12,6 +13,8 @@ import DatabaseConnectionSection from './sections/DatabaseConnectionSection';
 interface BusinessUnitDocumentProps {
   formData: BusinessUnitFormData;
   fieldErrors: Record<string, string>;
+  // Undefined when creating a new BU — there is no stored db_connection to reveal yet.
+  businessUnitId?: string;
   clusterName: string;
   logoUrl?: string;
   avatarUrl?: string;
@@ -26,6 +29,7 @@ interface BusinessUnitDocumentProps {
   onCommit: (name: string, value: string) => void;
   onToggle: (name: string, value: boolean) => void;
   onValidate: (name: string, value: string) => void;
+  onCopyHotelAddress: () => void;
   // event-based handlers for the reused complex sections
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -42,53 +46,21 @@ interface BusinessUnitDocumentProps {
   usersSlot?: React.ReactNode;
 }
 
-function HeroName({ value, disabled, onCommit }: { value: string; disabled: boolean; onCommit: (v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  if (editing) {
-    return (
-      <input
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place
-        autoFocus
-        aria-label="Business unit name"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          setEditing(false);
-          if (draft !== value) onCommit(draft);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            e.currentTarget.blur();
-          } else if (e.key === 'Escape') {
-            setDraft(value);
-            setEditing(false);
-          }
-        }}
-        className="border-primary bg-background text-foreground w-full max-w-sm rounded-md border px-2 py-0.5 text-xl font-bold tracking-tight outline-none"
-      />
-    );
-  }
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => {
-        setDraft(value);
-        setEditing(true);
-      }}
-      className="hover:bg-primary/5 -mx-1.5 rounded px-1.5 text-left text-xl font-bold tracking-tight disabled:hover:bg-transparent sm:text-2xl"
-    >
-      {value.trim() || '(unnamed business unit)'}
-    </button>
-  );
-}
-
-function Group({ label, children }: { label: string; children: React.ReactNode }) {
+function Group({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="border-t p-4 sm:px-6 sm:py-5">
-      <div className="text-muted-foreground mb-1 text-[10.5px] font-bold uppercase tracking-[0.13em]">{label}</div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
+        {action}
+      </div>
       <div>{children}</div>
     </div>
   );
@@ -98,6 +70,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
   const {
     formData: f,
     fieldErrors,
+    businessUnitId,
     clusterName,
     logoUrl,
     avatarUrl,
@@ -111,6 +84,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     onCommit,
     onToggle,
     onValidate,
+    onCopyHotelAddress,
     onChange,
     onBlur,
     onFocus,
@@ -126,13 +100,23 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     usersSlot,
   } = props;
 
-  const sectionField = { formData: f, editing: true, fieldErrors, onChange, onBlur, onFocus };
+  // `canEdit` is the one source of write access on this page. Each section already
+  // renders a read-only branch when `editing` is false, so gating here disables
+  // every control they own (DB credentials, calculation method, config rows).
+  const sectionField = { formData: f, editing: canEdit, fieldErrors, onChange, onBlur, onFocus };
   const clusterOptions: InlineOption[] = clusters.map((c) => ({ value: c.id, label: c.name }));
 
   const inline = (
     name: keyof BusinessUnitFormData,
     label: string,
-    opts?: { type?: 'text' | 'number' | 'email' | 'textarea' | 'select'; options?: InlineOption[]; mono?: boolean; validate?: boolean },
+    opts?: {
+      type?: 'text' | 'number' | 'email' | 'textarea' | 'select';
+      options?: InlineOption[];
+      mono?: boolean;
+      validate?: boolean;
+      required?: boolean;
+      maxLength?: number;
+    },
   ) => (
     <InlineField
       key={name}
@@ -142,6 +126,8 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       type={opts?.type}
       options={opts?.options}
       mono={opts?.mono}
+      required={opts?.required}
+      maxLength={opts?.maxLength}
       error={fieldErrors[name]}
       disabled={!canEdit}
       onCommit={onCommit}
@@ -171,47 +157,49 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <HeroName value={f.name} disabled={!canEdit} onCommit={(v) => onCommit('name', v)} />
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               {f.code && (
                 <span className="text-primary bg-primary/10 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">{f.code}</span>
               )}
               {clusterName && clusterName !== '-' && <span className="text-foreground/80">{clusterName}</span>}
+              {/* Status toggles: the Badge carries the status semantics, the button
+                  carries the affordance. Hit area reaches 44px via padding on the
+                  wrapping button, without growing the badge itself. */}
               <button
                 type="button"
                 disabled={!canEdit}
+                aria-pressed={f.is_active}
                 onClick={() => onToggle('is_active', !f.is_active)}
-                className="hover:bg-accent inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs disabled:hover:bg-transparent"
+                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-none focus-visible:ring-1"
               >
-                <span className={cn('size-2 rounded-full', f.is_active ? 'bg-success' : 'bg-muted-foreground/50')} />
-                {f.is_active ? 'Active' : 'Inactive'}
+                <Badge variant={f.is_active ? 'success' : 'secondary'}>{f.is_active ? 'Active' : 'Inactive'}</Badge>
               </button>
               <button
                 type="button"
                 disabled={!canEdit}
+                aria-pressed={f.is_hq}
                 onClick={() => onToggle('is_hq', !f.is_hq)}
-                className={cn(
-                  'rounded-full border px-2.5 py-0.5 text-xs',
-                  f.is_hq ? 'border-primary bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent',
-                )}
+                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-none focus-visible:ring-1"
               >
-                HQ
+                <Badge variant={f.is_hq ? 'default' : 'secondary'}>HQ</Badge>
               </button>
             </div>
           </div>
         </div>
 
         {/* inline fact groups */}
+        {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
+            validateRequired() enforces — they are the only ones marked required. */}
         <Group label="Details">
-          {inline('code', 'Code', { mono: true, validate: true })}
-          {inline('alias_name', 'Alias', { validate: true })}
-          {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions })}
+          {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
+          {inline('alias_name', 'Alias', { validate: true, maxLength: 3 })}
+          {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
           {inline('max_license_users', 'Max users', { type: 'number', mono: true, validate: true })}
-          {inline('description', 'Description', { type: 'textarea' })}
+          {inline('description', 'Description', { type: 'textarea', maxLength: 500 })}
         </Group>
 
         <Group label="Location">
-          {inline('hotel_name', 'Hotel name')}
+          {inline('hotel_name', 'Hotel name', { maxLength: 100 })}
           {inline('hotel_address_line1', 'Address line 1')}
           {inline('hotel_address_line2', 'Address line 2')}
           {inline('hotel_sub_district', 'Sub-district')}
@@ -229,8 +217,18 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           {inline('hotel_email', 'Email', { type: 'email' })}
         </Group>
 
-        <Group label="Company">
-          {inline('company_name', 'Company')}
+        <Group
+          label="Company"
+          action={
+            canEdit && (
+              <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copy from hotel address
+              </Button>
+            )
+          }
+        >
+          {inline('company_name', 'Company', { maxLength: 100 })}
           {inline('company_tel', 'Company phone', { mono: true })}
           {inline('company_email', 'Company email', { type: 'email' })}
           {inline('company_address_line1', 'Company address line 1')}
@@ -279,6 +277,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       />
       <DatabaseConnectionSection
         {...sectionField}
+        businessUnitId={businessUnitId}
         onDbFieldChange={onDbFieldChange}
         onDbExtraChange={onDbExtraChange}
         onAddDbExtraRow={onAddDbExtraRow}

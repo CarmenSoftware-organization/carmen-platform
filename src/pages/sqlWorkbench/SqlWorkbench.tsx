@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Database, Loader2, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../../components/Layout';
+import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -137,18 +138,47 @@ export default function SqlWorkbench() {
     setExecuteError(null);
   };
 
+  // Holds the in-flight Run request's AbortController so it can be aborted on unmount. This is
+  // NOT a user-facing Cancel: aborting only stops the browser from waiting on the response — the
+  // query keeps running on the tenant database until it completes or hits its own timeout (see
+  // sqlQueryService.executeSql). The controller exists purely to avoid a leaked request /
+  // state update after this page is navigated away from.
+  const runAbortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      runAbortControllerRef.current?.abort();
+    };
+  }, []);
+
+  // Re-entry guard: prevents a second run from starting while one is already in flight. The Run
+  // button is disabled via `isRunning` while running (SqlEditor.tsx), but the Mod-Enter keymap
+  // (SqlEditor.tsx runFromEditor) has no such check and calls onRun regardless — so without this
+  // guard a second runSql() call would overwrite runAbortControllerRef with a new
+  // AbortController, orphaning the first in-flight request. Aborting on unmount would then only
+  // cancel the second run, leaving the first to resolve later and call
+  // setExecuteResult/setExecuteError on an unmounted component. A ref (not `isRunning` state) is
+  // required because the keymap callback closes over a value that can be stale.
+  const runInFlightRef = useRef(false);
+
   const runSql = async (code: string, sqlToRun: string) => {
+    if (runInFlightRef.current) return; // a run is already in flight — ignore the re-entrant trigger
+    runInFlightRef.current = true;
     setIsRunning(true);
     resetResult();
+    const controller = new AbortController();
+    runAbortControllerRef.current = controller;
     try {
-      const result = await sqlQueryService.executeSql(code, sqlToRun);
+      const result = await sqlQueryService.executeSql(code, sqlToRun, controller.signal);
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale result
       setExecuteResult(result);
     } catch (e) {
+      if (controller.signal.aborted) return; // aborted on unmount — nothing left to update
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale error
       setExecuteError(e instanceof Error ? e.message : 'Failed to execute SQL');
     } finally {
-      setIsRunning(false);
+      if (runAbortControllerRef.current === controller) runAbortControllerRef.current = null;
+      if (!controller.signal.aborted) setIsRunning(false);
+      runInFlightRef.current = false;
     }
   };
 
@@ -277,55 +307,47 @@ export default function SqlWorkbench() {
 
   return (
     <Layout>
-      <div className="pb-4">
-        {/* Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Database className="size-5" />
-              <h1 className="text-lg font-semibold">SQL Workbench</h1>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              Run queries · create views, stored procedures and functions in a tenant database
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {canManage && loadedObject && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-destructive"
-                onClick={() => setDropConfirm(true)}
-                disabled={isDropping}
-              >
-                {isDropping ? (
-                  <Loader2 className="mr-1 size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-1 size-4" />
-                )}
-                Drop
-              </Button>
-            )}
-            {canManage && (
-              <Button size="sm" onClick={handleSave} disabled={isSaving || !buCode}>
-                {isSaving ? (
-                  <Loader2 className="mr-1 size-4 animate-spin" />
-                ) : (
-                  <Save className="mr-1 size-4" />
-                )}
-                Save
-              </Button>
-            )}
-          </div>
-        </div>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="SQL Workbench"
+          subtitle="Run queries · create views, stored procedures and functions in a tenant database"
+          actions={
+            <>
+              {canManage && loadedObject && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => setDropConfirm(true)}
+                  disabled={isDropping}
+                >
+                  {isDropping ? (
+                    <Loader2 className="mr-1 size-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1 size-4" />
+                  )}
+                  Drop
+                </Button>
+              )}
+              {canManage && (
+                <Button size="sm" onClick={handleSave} disabled={isSaving || !buCode}>
+                  {isSaving ? (
+                    <Loader2 className="mr-1 size-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-1 size-4" />
+                  )}
+                  Save
+                </Button>
+              )}
+            </>
+          }
+        />
 
-        <div className="mt-4">
-          <ConnectionBar
-            bu={selectedBu}
-            canWrite={canManage}
-            onSwitch={() => setSwitcherOpen(true)}
-          />
-        </div>
+        <ConnectionBar
+          bu={selectedBu}
+          canWrite={canManage}
+          onSwitch={() => setSwitcherOpen(true)}
+        />
 
         <BuSwitcher
           open={switcherOpen}
@@ -387,12 +409,12 @@ export default function SqlWorkbench() {
           <button
             type="button"
             onClick={() => setSwitcherOpen(true)}
-            className="text-muted-foreground hover:border-border/80 hover:text-foreground mt-4 flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
+            className="text-muted-foreground hover:border-border/80 hover:text-foreground flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
           >
             Select a business unit to begin.
           </button>
         ) : (
-          <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
             <aside className="rounded-lg border lg:max-h-[calc(100vh-220px)] lg:overflow-hidden">
               <DbObjectTree
                 data={dbObjects}
@@ -459,7 +481,16 @@ export default function SqlWorkbench() {
                 <SqlEditor
                   value={formSqlText}
                   onChange={setFormSqlText}
-                  onRun={handleRun}
+                  // Run executes arbitrary SQL (incl. DDL/DML) against the tenant DB, same as
+                  // Save/Drop below — gate it on the same sql_workbench.manage permission rather
+                  // than relying on the backend to reject it. The client cannot reliably tell
+                  // SELECT apart from DML/DDL (sqlValidator.ts is explicitly UI-feedback-only,
+                  // not a security boundary), so this gates the whole executor rather than
+                  // pretending to allow read-only SELECT through a client-side parser. Omitting
+                  // onRun makes SqlEditor hide the Run button entirely (mirrors Save/Drop below)
+                  // and also disables the Ctrl/⌘+Enter shortcut, since runFromEditor no-ops when
+                  // the callback ref is undefined.
+                  onRun={canManage ? handleRun : undefined}
                   isRunning={isRunning}
                   schema={dbObjects ?? undefined}
                 />

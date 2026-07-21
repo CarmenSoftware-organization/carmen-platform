@@ -91,4 +91,11 @@ describe('Badge', () => {
     rerender(<Badge variant="success">Test</Badge>);
     expect(screen.getByText('Test').className).toContain('text-success-foreground');
   });
+
+  it('renders warning and info variants with their status backgrounds', () => {
+    const { rerender } = render(<Badge variant="warning">At risk</Badge>);
+    expect(screen.getByText('At risk')).toHaveClass('bg-warning');
+    rerender(<Badge variant="info">Info</Badge>);
+    expect(screen.getByText('Info')).toHaveClass('bg-info');
+  });
 });

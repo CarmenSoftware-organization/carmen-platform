@@ -25,7 +25,7 @@ function Stat({ value, label, alert }: { value: number; label: string; alert?: b
 export function FleetCapacity({ summary, loading }: { summary: FleetSummary | null; loading: boolean }) {
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[10.5px] font-bold uppercase tracking-[0.14em]">
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">
         Fleet capacity
       </div>
 

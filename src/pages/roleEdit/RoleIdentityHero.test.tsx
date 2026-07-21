@@ -4,7 +4,7 @@ import { RoleIdentityHero, permissionSummary } from './RoleIdentityHero';
 
 describe('permissionSummary', () => {
   it('flags a role that grants the whole catalog', () => {
-    expect(permissionSummary(['a.read', 'a.write'], 2)).toEqual({ text: 'Full access — every permission', full: true });
+    expect(permissionSummary(['a.read', 'a.write'], 2)).toEqual({ text: 'Full access to every permission', full: true });
   });
 
   it('counts permissions and distinct resources for a scoped role', () => {
@@ -41,7 +41,7 @@ describe('RoleIdentityHero', () => {
 
   it('flags full access when the role grants the whole catalog', () => {
     render(<RoleIdentityHero {...base} permissions={['a', 'b']} catalogSize={2} />);
-    expect(screen.getByText('Full access — every permission')).toBeInTheDocument();
+    expect(screen.getByText('Full access to every permission')).toBeInTheDocument();
   });
 
   it('marks an inactive role', () => {

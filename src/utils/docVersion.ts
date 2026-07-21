@@ -36,6 +36,6 @@ export const isVersionConflict = (err: unknown): boolean => {
 /** Canonical conflict toast. The caller refetches the record after calling this. */
 export const notifyVersionConflict = (): void => {
   toast.error('This record was changed by someone else', {
-    description: 'Reloading the latest version — please re-apply your changes.',
+    description: 'Reloading the latest version. Please re-apply your changes.',
   });
 };

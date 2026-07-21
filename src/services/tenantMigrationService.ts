@@ -20,10 +20,27 @@ const tenantMigrationService = {
    * for the batch deploy of every BU. Uses fetch (not EventSource) so it can send
    * the bearer token + x-app-id. Rejects on a pre-stream HTTP error or a terminal
    * error event; resolves with the terminal `done` summary.
+   *
+   * `signal` only aborts the BROWSER's wait on this fetch — it does NOT stop the migration
+   * running server-side. The gateway (`tenant-migrations.controller.ts` `deployStream`) DOES
+   * watch `req.on('close')` and unsubscribes its RxJS subscription on client disconnect, and
+   * that propagates all the way to the micro-business HTTP RPC call being aborted. But the
+   * micro-business handler that actually spawns `prisma migrate deploy`
+   * (`tenant_migration.service.ts` `deployStream`, ../carmen-turborepo-backend-v2) is explicitly
+   * designed to keep running after that: "The inner runBuStream subscription is intentionally
+   * NOT torn down when the outer Observable is unsubscribed ... a client disconnect must NOT
+   * abort an in-flight migration: runBuStream runs to natural completion (or its spawnPrisma
+   * timeout)" (tenant_migration.service.ts:388-393). `deployAllStream` behaves the same way for
+   * the BU currently being migrated — cancellation only stops the batch from starting the NEXT
+   * BU (tenant_migration.service.ts:504-518), it does not interrupt the one in flight. There is
+   * no cancel/rollback endpoint for this domain today. Callers must not present `signal` as a
+   * real "Cancel" — it exists only to avoid a leaked fetch / stale state update after the page
+   * is navigated away from. See TenantMigrationManagement.tsx's abort-on-unmount usage.
    */
   _streamDeploy: async (
     buId: string,
     onEvent: (e: ProgressEvent) => void,
+    signal?: AbortSignal,
   ): Promise<DeploySummary> => {
     const base = api.defaults.baseURL ?? '';
     const res = await fetch(`${base}/api-system/tenant/migrations/${buId}/deploy/stream`, {
@@ -32,6 +49,7 @@ const tenantMigrationService = {
         Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
       },
+      signal,
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -74,16 +92,18 @@ const tenantMigrationService = {
     return summary;
   },
 
-  /** Stream a single-BU deploy as NDJSON ProgressEvents. */
+  /** Stream a single-BU deploy as NDJSON ProgressEvents. See `_streamDeploy` for what `signal` does (and does not) cancel. */
   deployStream: async (
     buId: string,
     onEvent: (e: ProgressEvent) => void,
-  ): Promise<DeploySummary> => tenantMigrationService._streamDeploy(buId, onEvent),
+    signal?: AbortSignal,
+  ): Promise<DeploySummary> => tenantMigrationService._streamDeploy(buId, onEvent, signal),
 
-  /** Stream a deploy of ALL BUs (bu_id='all') as NDJSON ProgressEvents. */
+  /** Stream a deploy of ALL BUs (bu_id='all') as NDJSON ProgressEvents. See `_streamDeploy` for what `signal` does (and does not) cancel. */
   deployAllStream: async (
     onEvent: (e: ProgressEvent) => void,
-  ): Promise<DeploySummary> => tenantMigrationService._streamDeploy('all', onEvent),
+    signal?: AbortSignal,
+  ): Promise<DeploySummary> => tenantMigrationService._streamDeploy('all', onEvent, signal),
 };
 
 export default tenantMigrationService;

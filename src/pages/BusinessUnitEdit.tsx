@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
 import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { Save, X, Loader2, ArrowLeft } from 'lucide-react';
+import { Save, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -17,8 +18,10 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
+import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
 import { initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
@@ -26,6 +29,7 @@ import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCar
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
+import { HeroName } from './businessUnitEdit/HeroName';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -61,15 +65,21 @@ const BusinessUnitEdit: React.FC = () => {
 
   // One-document surface: everything is editable in place (no read/edit toggle),
   // gated by permission. Create needs cluster.create; edit needs cluster.update.
+  // formData.cluster_id can be empty for a cluster-less BU — fall back to the
+  // UNRESOLVED_CLUSTER_ID sentinel so the check stays on checkPermission's scoped
+  // branch (fail closed) instead of falling through to its broad "any cluster"
+  // branch (fail open on cluster.update held elsewhere).
   const canEdit = isNew
     ? hasPermission('cluster.create')
-    : hasPermission('cluster.update', formData.cluster_id ? { clusterId: formData.cluster_id } : undefined);
+    : hasPermission('cluster.update', { clusterId: formData.cluster_id || UNRESOLVED_CLUSTER_ID });
 
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
 
   useGlobalShortcuts({
-    onSave: () => { if (!saving && (isNew || hasChanges)) handleSave(); },
+    // The shortcut reaches handleSave without going through the Save button, so a
+    // disabled button is no defence on its own — check canEdit here too.
+    onSave: () => { if (canEdit && !saving && (isNew || hasChanges)) handleSave(); },
     onCancel: () => { if (!isNew && hasChanges) handleCancelEdit(); },
   });
 
@@ -90,6 +100,27 @@ const BusinessUnitEdit: React.FC = () => {
   };
   const handleInlineValidate = (name: string, value: string) => {
     setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  };
+
+  // One-way copy: hotel address -> company address. Goes through the same
+  // setFormData path as every other edit, so it marks hasChanges (dirty), is
+  // included in the next Save, and is reverted by Cancel like any other field.
+  const copyHotelAddressToCompany = () => {
+    setFormData((prev) => ({
+      ...prev,
+      company_address_line1: prev.hotel_address_line1,
+      company_address_line2: prev.hotel_address_line2,
+      company_sub_district: prev.hotel_sub_district,
+      company_district: prev.hotel_district,
+      company_city: prev.hotel_city,
+      company_province: prev.hotel_province,
+      company_postal_code: prev.hotel_postal_code,
+      company_country: prev.hotel_country,
+      company_latitude: prev.hotel_latitude,
+      company_longitude: prev.hotel_longitude,
+    }));
+    setError('');
+    toast.success('Copied hotel address to company address');
   };
 
   const loadCurrencies = async (buCode: string) => {
@@ -359,6 +390,9 @@ const BusinessUnitEdit: React.FC = () => {
   };
 
   const handleSave = async () => {
+    // Final gate: every caller (button, Ctrl/Cmd+S) funnels through here, so the
+    // permission check lives here rather than only on the affordances.
+    if (!canEdit) return;
     if (!validateRequired()) return;
     setSaving(true);
     setError('');
@@ -481,13 +515,20 @@ const BusinessUnitEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        <Link
-          to="/business-units"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Business units
-        </Link>
+        {/* Shared A4 header: gives the page a real <h1>. The title stays editable
+            in place because this page has no read/edit toggle by design — it is one
+            always-editable document gated on `canEdit`. */}
+        <PageHeader
+          backTo="/business-units"
+          title={
+            <HeroName
+              value={formData.name}
+              disabled={!canEdit}
+              onCommit={(v) => handleInlineCommit('name', v)}
+            />
+          }
+          subtitle={isNew ? 'Create a new business unit' : 'Business unit details'}
+        />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -496,6 +537,7 @@ const BusinessUnitEdit: React.FC = () => {
         <BusinessUnitDocument
           formData={formData}
           fieldErrors={fieldErrors}
+          businessUnitId={id}
           clusterName={getClusterName(formData.cluster_id)}
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}
@@ -509,6 +551,7 @@ const BusinessUnitEdit: React.FC = () => {
           onCommit={handleInlineCommit}
           onToggle={handleInlineToggle}
           onValidate={handleInlineValidate}
+          onCopyHotelAddress={copyHotelAddressToCompany}
           onChange={handleChange}
           onBlur={handleBlur}
           onFocus={handleFocus}
@@ -524,7 +567,7 @@ const BusinessUnitEdit: React.FC = () => {
               <BusinessUnitBrandingCard
                 logoUrl={logoUrl}
                 avatarUrl={avatarUrl}
-                editing
+                editing={canEdit}
                 onUploadLogo={handleUploadLogo}
                 onUploadAvatar={handleUploadAvatar}
               />
@@ -549,10 +592,15 @@ const BusinessUnitEdit: React.FC = () => {
                   hasDbConnection={formData.db_connection.length > 0}
                   isSuperAdmin={isSuperAdmin}
                 />
+                <InterfaceEntitlementCard
+                  key={`interface-${id}`}
+                  buCode={formData.code}
+                  isSuperAdmin={isSuperAdmin}
+                />
               </>
             ) : null
           }
-          usersSlot={!isNew ? <BusinessUnitUsersCard users={users} /> : null}
+          usersSlot={!isNew ? <BusinessUnitUsersCard users={users} canEdit={canEdit} /> : null}
         />
       </div>
 
@@ -583,7 +631,7 @@ const BusinessUnitEdit: React.FC = () => {
               <Button
                 type="button"
                 size="sm"
-                disabled={saving || (!isNew && !hasChanges)}
+                disabled={saving || !canEdit || (!isNew && !hasChanges)}
                 onClick={handleSave}
               >
                 {saving ? (

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Newspaper, Globe, Building2, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
+import { FetchErrorState } from '../../components/FetchErrorState';
 
 interface NewsLike {
   id: string;
@@ -72,9 +73,9 @@ export function summarizeNews(list: NewsLike[]): NewsSummaryData {
 
 /** Relative "time since" for the lead story's publish date. `now` is injectable for tests. */
 export function timeAgo(iso?: string, now = Date.now()): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const then = Date.parse(iso);
-  if (Number.isNaN(then)) return '—';
+  if (Number.isNaN(then)) return '-';
   const sec = Math.floor((now - then) / 1000);
   if (sec < 60) return 'just now';
   const min = Math.floor(sec / 60);
@@ -122,10 +123,23 @@ function Reach({ buCount }: { buCount: number }) {
   );
 }
 
-export function NewsroomSummary({ summary, loading }: { summary: NewsSummaryData | null; loading: boolean }) {
+interface NewsroomSummaryProps {
+  summary: NewsSummaryData | null;
+  loading: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+}
+
+export function NewsroomSummary({ summary, loading, error = false, onRetry = () => {} }: NewsroomSummaryProps) {
   return (
     <Card className="p-4 sm:p-5">
-      {loading || !summary ? (
+      {error ? (
+        <FetchErrorState
+          message="Couldn't load the newsroom summary."
+          onRetry={onRetry}
+          className="justify-between gap-3 py-2"
+        />
+      ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-[16rem] flex-1 space-y-2">
             <Skeleton className="h-3 w-16" />
@@ -136,7 +150,7 @@ export function NewsroomSummary({ summary, loading }: { summary: NewsSummaryData
       ) : (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="min-w-[16rem] flex-1">
-            <div className="text-muted-foreground mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em]">Latest</div>
+            <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Latest</div>
             {summary.latest ? (
               <div className="flex items-start gap-3">
                 {summary.latest.imageUrl ? (

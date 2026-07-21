@@ -35,10 +35,10 @@ export function FleetSync({ total, summary, actions }: FleetSyncProps) {
       <div className="grid gap-6 sm:grid-cols-[auto_1fr_auto] sm:items-center">
         <div className="border-border sm:border-r sm:pr-6">
           <div className="font-mono text-3xl font-semibold tabular-nums tracking-tight">
-            {checked ? summary.up_to_date : '—'}
+            {checked ? summary.up_to_date : '-'}
             <span className="text-muted-foreground text-base font-medium"> / {total}</span>
           </div>
-          <div className="text-muted-foreground mt-1 text-[10.5px] font-medium uppercase tracking-[0.12em]">
+          <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.12em]">
             tenants in sync
           </div>
         </div>
@@ -73,7 +73,7 @@ export function FleetSync({ total, summary, actions }: FleetSyncProps) {
               </>
             ) : (
               <span className="text-muted-foreground text-xs">
-                Not checked yet — run <span className="text-foreground font-medium">Check all</span> to see which tenants are behind.
+                Not checked yet. Run <span className="text-foreground font-medium">Check all</span> to see which tenants are behind.
               </span>
             )}
           </div>

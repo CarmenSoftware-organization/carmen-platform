@@ -21,6 +21,7 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
       onCommit={onCommit}
       onToggle={noop}
       onValidate={onValidate}
+      onCopyHotelAddress={noop}
       onChange={noop}
       onBlur={noop}
       onFocus={noop}
@@ -116,5 +117,42 @@ describe('BusinessUnitDocument', () => {
     await user.tab();
 
     expect(onValidate).toHaveBeenCalledWith('code', 'x');
+  });
+});
+
+describe('BusinessUnitDocument — copy hotel address to company', () => {
+  it('shows a "Copy from hotel address" action on the Company group when editable, and wires it through onCopyHotelAddress', async () => {
+    const user = userEvent.setup();
+    const onCopyHotelAddress = vi.fn();
+    setup({ onCopyHotelAddress });
+
+    const button = screen.getByRole('button', { name: /copy from hotel address/i });
+    expect(button).toBeInTheDocument();
+
+    await user.click(button);
+
+    expect(onCopyHotelAddress).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the copy-from-hotel-address action when not editable', () => {
+    setup({ canEdit: false });
+
+    expect(screen.queryByRole('button', { name: /copy from hotel address/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('BusinessUnitDocument - character counters', () => {
+  it('shows a 0 / 500 counter when editing the description', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: /^set description…$/i }));
+    expect(screen.getByText('0 / 500')).toBeInTheDocument();
+  });
+
+  it('shows a 0 / 20 counter when editing the code', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.click(screen.getByRole('button', { name: /set code/i }));
+    expect(screen.getByText('0 / 20')).toBeInTheDocument();
   });
 });

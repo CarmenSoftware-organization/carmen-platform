@@ -11,6 +11,7 @@ import {
   type PaginationState,
   type Updater,
   type RowSelectionState,
+  type Table as TanstackTable,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -21,6 +22,8 @@ import {
   TableRow,
 } from './table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const PAGE_SIZES = [10, 25, 50, 100];
 
@@ -66,6 +69,8 @@ function SelectCheckbox({
   );
 }
 
+type CardRole = 'title' | 'badge' | 'hidden' | 'actions';
+
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
   data: TData[];
@@ -84,6 +89,18 @@ interface DataTableProps<TData> {
   onSelectionChange?: (rows: TData[]) => void;
   selectionResetKey?: unknown;
   getRowSelectionLabel?: (row: TData) => string;
+  // 'fixed' (default) keeps equal-width columns; 'auto' lets columns size to their
+  // content so an unconstrained column (e.g. Name) fits its text without truncation.
+  tableLayout?: 'fixed' | 'auto';
+  // How many leading columns stay frozen on horizontal scroll. 2 (default) freezes
+  // the index + primary column; 3 or 4 also freeze the columns after it (opt-in for
+  // tables like clusters — Code then Name — or users, which prepend a select +
+  // avatar column before the username). Offsets for columns 3/4 are measured at
+  // runtime — see the useLayoutEffect below and `.table-sticky-left-{3,4}` in index.css.
+  stickyLeftColumns?: 2 | 3 | 4;
+  // Below `mobileBreakpoint` the table is replaced by one card per row. Default on.
+  mobileCards?: boolean;
+  mobileBreakpoint?: string;
 }
 
 function DataTable<TData>({
@@ -104,6 +121,10 @@ function DataTable<TData>({
   onSelectionChange,
   selectionResetKey,
   getRowSelectionLabel,
+  tableLayout = 'fixed',
+  stickyLeftColumns = 2,
+  mobileCards = true,
+  mobileBreakpoint = '(min-width: 1024px)',
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>(
     defaultSort ? [defaultSort] : []
@@ -113,6 +134,10 @@ function DataTable<TData>({
     pageSize: serverSide ? perpage : defaultPageSize,
   });
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  // Tracks the selectionResetKey value THIS instance has already applied, so the
+  // reset effect below only fires on a genuine change, never on mount.
+  const lastSeenResetKey = React.useRef(selectionResetKey);
+  const tableRef = React.useRef<HTMLTableElement>(null);
 
   React.useEffect(() => {
     if (serverSide) {
@@ -210,6 +235,15 @@ function DataTable<TData>({
 
   React.useEffect(() => {
     if (selectionResetKey === undefined) return;
+    // Callers (e.g. NewsManagement) bump a single "result set changed" counter that
+    // starts incrementing from their OWN mount — often before this table ever mounts
+    // (it's commonly gated behind a loading/empty check). Without the guard below,
+    // THIS effect's first run (on mount) would treat that already-elevated starting
+    // value as "changed" and force a redundant setRowSelection({}) — which, being an
+    // unconditional overwrite rather than a functional update, can race a user's very
+    // first checkbox click (queued around the same time) and silently drop it.
+    if (lastSeenResetKey.current === selectionResetKey) return;
+    lastSeenResetKey.current = selectionResetKey;
     setRowSelection({});
   }, [selectionResetKey]);
 
@@ -221,6 +255,36 @@ function DataTable<TData>({
     // selection map changes; parent passes a stable (useCallback) handler.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, enableRowSelection]);
+
+  const isDesktop = useMediaQuery(mobileBreakpoint);
+  const showCards = mobileCards && !isDesktop;
+
+  // Each extra frozen column (3rd, 4th) needs a sticky `left` equal to the actual
+  // rendered widths of every column before it. Under table-auto those widths are
+  // computed by the browser and vary with content/viewport, so measure them and
+  // publish the running offsets as CSS variables the `.table-sticky-left-{3,4}`
+  // rules consume (--sticky-c2-left … --sticky-cN-left).
+  React.useLayoutEffect(() => {
+    if (stickyLeftColumns < 3) return;
+    const el = tableRef.current;
+    if (!el) return;
+    const apply = () => {
+      const cells = el.tHead?.rows[0]?.cells;
+      if (!cells || cells.length < stickyLeftColumns) return;
+      let acc = 0;
+      for (let i = 2; i <= stickyLeftColumns; i++) {
+        acc += cells[i - 2].getBoundingClientRect().width;
+        el.style.setProperty(`--sticky-c${i}-left`, `${acc}px`);
+      }
+    };
+    apply();
+    // jsdom (tests) and very old browsers lack ResizeObserver — the one-shot
+    // measurement above is enough there; only skip the live re-measure.
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [stickyLeftColumns, data, columns, showCards]);
 
   const totalDisplay = serverSide ? totalRows : table.getFilteredRowModel().rows.length;
   const totalPages = serverSide ? (pageCount || 1) : (table.getPageCount() || 1);
@@ -246,19 +310,30 @@ function DataTable<TData>({
 
   return (
     <div>
+      {showCards ? (
+        <MobileCardList table={table} />
+      ) : (
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Table className="min-w-[640px] table-fixed table-sticky-left table-sticky-right">
+        <Table ref={tableRef} className={cn(
+          'min-w-[640px] table-sticky-left table-sticky-right',
+          tableLayout === 'auto' ? 'table-auto' : 'table-fixed',
+          stickyLeftColumns >= 3 && 'table-sticky-left-3',
+          stickyLeftColumns >= 4 && 'table-sticky-left-4'
+        )}>
           <TableHeader className="sticky top-0 z-10 bg-background border-b-2 border-border">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className={(header.column.columnDef.meta as Record<string, string>)?.headerClassName || ''}
+                  className={cn(
+                    'text-xs font-medium uppercase tracking-wide text-muted-foreground',
+                    (header.column.columnDef.meta as Record<string, string>)?.headerClassName
+                  )}
                 >
                   {header.isPlaceholder ? null : header.column.getCanSort() ? (
                     <button
-                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-semibold"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium"
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -290,7 +365,10 @@ function DataTable<TData>({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={(cell.column.columnDef.meta as Record<string, string>)?.cellClassName || ''}
+                    className={cn(
+                      'tabular-nums',
+                      (cell.column.columnDef.meta as Record<string, string>)?.cellClassName
+                    )}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
@@ -301,6 +379,7 @@ function DataTable<TData>({
         </TableBody>
         </Table>
       </div>
+      )}
 
       {/* Pagination — sticky at bottom of viewport */}
       <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -429,6 +508,100 @@ function DataTable<TData>({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MobileCardList<TData>({ table }: { table: TanstackTable<TData> }) {
+  const rows = table.getRowModel().rows;
+  if (rows.length === 0) {
+    return <div className="py-12 text-center text-sm text-muted-foreground">No results found</div>;
+  }
+  return (
+    <div className="space-y-3 py-1">
+      {rows.map((row) => {
+        const allCells = row.getVisibleCells();
+        const titleCells: typeof allCells = [];
+        const badgeCells: typeof allCells = [];
+        const rowCells: typeof allCells = [];
+        let actionsCell: (typeof allCells)[number] | null = null;
+        let selectCell: (typeof allCells)[number] | null = null;
+
+        for (const cell of allCells) {
+          const colId = cell.column.id;
+          const role = (cell.column.columnDef.meta as { card?: CardRole } | undefined)?.card;
+          if (colId === 'rowIndex' || role === 'hidden') continue;
+          if (colId === 'select') { selectCell = cell; continue; }
+          if (colId === 'actions' || role === 'actions') { actionsCell = cell; continue; }
+          if (role === 'title') { titleCells.push(cell); continue; }
+          if (role === 'badge') { badgeCells.push(cell); continue; }
+          rowCells.push(cell);
+        }
+
+        const hasHeader = !!(selectCell || titleCells.length || badgeCells.length || actionsCell);
+
+        return (
+          <div key={row.id} className="rounded-lg border border-border bg-card p-4 text-sm shadow-[var(--shadow-xs)]">
+            {hasHeader && (
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  {selectCell && (
+                    <div className="pt-0.5">
+                      {flexRender(selectCell.column.columnDef.cell, selectCell.getContext())}
+                    </div>
+                  )}
+                  <div className="min-w-0 space-y-1">
+                    {titleCells.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-medium">
+                        {titleCells.map((cell, i) => (
+                          <React.Fragment key={cell.id}>
+                            {i > 0 && <span className="text-muted-foreground">&middot;</span>}
+                            {/* Own wrapper per title cell — keeps each value's text node isolated
+                                from its sibling separator/value so text queries can find it.
+                                <div> (not <span>) since some title cells render a block element
+                                (e.g. clusters' `name` renders a <div>). */}
+                            <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+                    {badgeCells.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {badgeCells.map((cell) => (
+                          <React.Fragment key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {actionsCell && (
+                  <div className="-mr-1 shrink-0">
+                    {flexRender(actionsCell.column.columnDef.cell, actionsCell.getContext())}
+                  </div>
+                )}
+              </div>
+            )}
+            {rowCells.length > 0 && (
+              <dl className={cn('space-y-1.5', hasHeader && 'mt-3')}>
+                {rowCells.map((cell) => {
+                  const header = cell.column.columnDef.header;
+                  const label = typeof header === 'string' ? header : null;
+                  return (
+                    <div key={cell.id} className="flex items-baseline justify-between gap-3">
+                      {label ? <dt className="shrink-0 text-muted-foreground">{label}</dt> : null}
+                      <dd className={cn('min-w-0 tabular-nums', label ? 'text-right' : 'w-full text-left')}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

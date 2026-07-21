@@ -1,6 +1,32 @@
 import type { EffectivePermissions } from '../types';
 
 /**
+ * Permission-string constants, grouped by resource. A permission key (e.g. `broadcast.send`)
+ * is otherwise a bare string literal that can drift silently when it's duplicated across
+ * multiple call sites in the same file (`hasPermission('broadcast.send')` vs
+ * `<Can permission="broadcast.send">`). Reference the constant instead of retyping the
+ * literal wherever a duplicate exists. Values MUST stay byte-identical to the backend's
+ * permission keys (see `DEV_MOCK_EFFECTIVE_PERMISSIONS` below for the full known set).
+ */
+export const PERMISSIONS = {
+  BROADCAST: {
+    SEND: 'broadcast.send',
+  },
+} as const;
+
+/**
+ * Sentinel `clusterId` for a scoped write whose target record has no resolvable cluster
+ * (e.g. a BusinessUnit row with `cluster_id` missing/undefined). Pass this instead of
+ * `undefined` to keep the check on checkPermission's *scoped* branch — platform-level grant
+ * OR this exact cluster — rather than falling through to the broad "any cluster" check meant
+ * for nav/page visibility. No real cluster id will ever equal this value, so the cluster-level
+ * OR always evaluates false, leaving only a platform-wide grant as a path to `true`. Passing
+ * `undefined` here instead would silently re-open the "any cluster" fallback (see
+ * `UserAccessTree.tsx` / `UserEdit.tsx` for the concrete regression this closes).
+ */
+export const UNRESOLVED_CLUSTER_ID = '__unresolved_cluster__';
+
+/**
  * Pure membership check (no React, no context) so it can be unit-tested when Vitest lands.
  * Rules:
  *  - platform-scoped permission applies everywhere.
