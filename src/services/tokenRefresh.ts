@@ -49,3 +49,15 @@ async function doRefresh(): Promise<string> {
   }
   return newAccess;
 }
+
+export function clearSession(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem('user');
+  localStorage.removeItem('loginResponse');
+  localStorage.removeItem('effectivePermissions');
+}
+
+export function redirectToLogin(): void {
+  window.location.href = '/login';
+}

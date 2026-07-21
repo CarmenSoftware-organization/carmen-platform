@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
-import { getRefreshToken, refreshAccessToken } from './tokenRefresh';
+import {
+  getRefreshToken,
+  refreshAccessToken,
+  clearSession,
+  redirectToLogin,
+} from './tokenRefresh';
 
 vi.mock('axios', () => ({ default: { post: vi.fn() } }));
 const mockAxios = axios as unknown as { post: ReturnType<typeof vi.fn> };
@@ -91,5 +96,24 @@ describe('getRefreshToken', () => {
 
   it('returns null when absent', () => {
     expect(getRefreshToken()).toBeNull();
+  });
+});
+
+describe('clearSession', () => {
+  it('removes every session key', () => {
+    ['token', 'refresh_token', 'user', 'loginResponse', 'effectivePermissions']
+      .forEach((k) => localStorage.setItem(k, 'v'));
+
+    clearSession();
+
+    ['token', 'refresh_token', 'user', 'loginResponse', 'effectivePermissions']
+      .forEach((k) => expect(localStorage.getItem(k)).toBeNull());
+  });
+});
+
+describe('redirectToLogin', () => {
+  it('navigates to /login', () => {
+    redirectToLogin();
+    expect(window.location.href).toBe('/login');
   });
 });
