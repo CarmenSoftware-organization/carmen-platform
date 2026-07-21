@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -69,6 +69,7 @@ const fakeTemplate = {
   allow_business_unit: [],
   deny_business_unit: [],
   is_active: true,
+  template_type: 'list',
   builder_key: 'pr-summary',
   source_type: 'function',
   source_name: 'fn_pr_report',
@@ -225,5 +226,64 @@ describe('ReportTemplateEdit — DB objects probe', () => {
     expect(reportTemplateService.listDbObjects).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('fn_pr_report')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('ReportTemplateEdit — Template Type in Template Info', () => {
+  it('renders Template Type before Name in the Template Info card (new template)', async () => {
+    renderAt('/report-templates/new');
+
+    const type = await screen.findByLabelText(/Template Type/);
+    const name = screen.getByLabelText(/^Name/);
+    // Template Type must come first in DOM order.
+    expect(type.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('defaults Template Type to empty on a new template', async () => {
+    renderAt('/report-templates/new');
+
+    const type = (await screen.findByLabelText(/Template Type/)) as HTMLSelectElement;
+    expect(type.value).toBe('');
+  });
+
+  it('blocks submit and shows an error when no type is chosen', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    // Name/Report Group carry a native HTML `required` attribute — leaving
+    // them empty would make jsdom's (and real browsers') constraint
+    // validation block requestSubmit() before handleSubmit's JS-level checks
+    // ever run. Fill them so this test isolates the new template_type check.
+    await user.type(await screen.findByLabelText(/^Name/), 'My Report');
+    await user.type(screen.getByLabelText(/Report Group/), 'inventory');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    expect(await screen.findByText('Template type is required')).toBeInTheDocument();
+    expect(reportTemplateService.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a list template with a chosen type (happy path)', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.type(screen.getByLabelText(/^Name/), 'My Report');
+    await user.type(screen.getByLabelText(/Report Group/), 'inventory');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ template_type: 'list', name: 'My Report', report_group: 'inventory' }),
+      ),
+    );
+  });
+
+  it('no longer renders a Template Type control in the Data Source card', async () => {
+    renderAt('/report-templates/new');
+
+    // Exactly one Template Type label now (in Template Info, not Data Source).
+    expect(await screen.findAllByText(/^Template Type/)).toHaveLength(1);
   });
 });
