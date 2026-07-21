@@ -31,7 +31,13 @@ import { HIT_SLOP_44 } from '../lib/hitSlop';
 const REQUIRED_FIELD_LABELS: Record<string, string> = {
   name: 'Name',
   report_group: 'Report group',
+  template_type: 'Template type',
 };
+
+// Report Group choices when template_type === 'form'. Stored value === the code.
+const FORM_REPORT_GROUPS = [
+  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFQ', 'EOP',
+] as const;
 
 interface SourceParamRow {
   filter: string;
@@ -45,7 +51,7 @@ interface ReportTemplateFormData {
   report_group: string;
   dialog: string;
   content: string;
-  template_type: 'form' | 'list';
+  template_type: '' | 'form' | 'list';
   is_standard: boolean;
   allow_business_unit: string;
   deny_business_unit: string;
@@ -69,7 +75,7 @@ const initialFormData: ReportTemplateFormData = {
   report_group: '',
   dialog: '',
   content: '',
-  template_type: 'list',
+  template_type: '',
   is_standard: true,
   allow_business_unit: '',
   deny_business_unit: '',
@@ -200,7 +206,7 @@ const ReportTemplateEdit: React.FC = () => {
         report_group: template.report_group || '',
         dialog: template.dialog || '',
         content: template.content || '',
-        template_type: (template.template_type as 'form' | 'list') ?? 'list',
+        template_type: (template.template_type as 'form' | 'list') || '',
         is_standard: template.is_standard ?? true,
         allow_business_unit: toCsv(template.allow_business_unit),
         deny_business_unit: toCsv(template.deny_business_unit),
@@ -282,6 +288,7 @@ const ReportTemplateEdit: React.FC = () => {
     setSaving(true);
     setError('');
     const errs: Record<string, string> = {};
+    if (!formData.template_type) errs.template_type = 'Template type is required';
     if (!formData.name.trim()) errs.name = 'Name is required';
     if (!formData.report_group.trim()) errs.report_group = 'Report group is required';
     if (Object.keys(errs).length > 0) {
@@ -302,6 +309,12 @@ const ReportTemplateEdit: React.FC = () => {
 
     const payload = {
       ...formData,
+      // formData.template_type is validated non-empty by the errs check above;
+      // narrow it here since ReportTemplateFormData widens it to '' | 'form' | 'list'.
+      template_type: formData.template_type as 'form' | 'list',
+      is_standard: isForm ? true : formData.is_standard,
+      allow_business_unit: isForm ? '' : formData.allow_business_unit,
+      deny_business_unit: isForm ? '' : formData.deny_business_unit,
       source_name: formData.source_name.trim() || undefined,
       source_params: { params: cleanParams },
     };
@@ -360,6 +373,7 @@ const ReportTemplateEdit: React.FC = () => {
     );
   }
 
+  const isForm = formData.template_type === 'form';
   const dialogLines = countLines(formData.dialog);
   const contentLines = countLines(formData.content);
 
@@ -404,9 +418,11 @@ const ReportTemplateEdit: React.FC = () => {
             <Badge variant={formData.is_active ? 'success' : 'secondary'}>
               {formData.is_active ? 'Active' : 'Inactive'}
             </Badge>
-            <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-              {formData.is_standard ? 'Standard' : 'Custom'}
-            </Badge>
+            {!isForm && (
+              <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+                {formData.is_standard ? 'Standard' : 'Custom'}
+              </Badge>
+            )}
             {formData.report_group && (
               <Badge variant="outline">{formData.report_group}</Badge>
             )}
@@ -437,6 +453,40 @@ const ReportTemplateEdit: React.FC = () => {
                     </div>
                   ) : (
                     <>
+                      <div className="space-y-2">
+                        <Label htmlFor="template_type">Template Type {editing && '*'}</Label>
+                        {editing ? (
+                          <>
+                            <select
+                              id="template_type"
+                              name="template_type"
+                              value={formData.template_type}
+                              onFocus={() => setFieldErrors((prev) => ({ ...prev, template_type: '' }))}
+                              onChange={(e) => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  template_type: e.target.value as '' | 'form' | 'list',
+                                }));
+                                setFieldErrors((prev) => ({ ...prev, template_type: '' }));
+                                setError('');
+                              }}
+                              className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                                fieldErrors.template_type ? 'border-destructive' : 'border-input'
+                              }`}
+                            >
+                              <option value="" disabled>Select type…</option>
+                              <option value="list">List</option>
+                              <option value="form">Form</option>
+                            </select>
+                            {fieldErrors.template_type && (
+                              <p className="text-xs text-destructive">{fieldErrors.template_type}</p>
+                            )}
+                          </>
+                        ) : (
+                          <Badge variant="outline">{formData.template_type || '-'}</Badge>
+                        )}
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="name">Name {editing && '*'}</Label>
                         {editing ? (
@@ -485,23 +535,56 @@ const ReportTemplateEdit: React.FC = () => {
                       <div className="space-y-2">
                         <Label htmlFor="report_group">Report Group {editing && '*'}</Label>
                         {editing ? (
-                          <>
-                            <Input
-                              type="text"
-                              id="report_group"
-                              name="report_group"
-                              value={formData.report_group}
-                              onChange={handleChange}
-                              onBlur={handleBlur}
-                              onFocus={handleFocus}
-                              placeholder="e.g. inventory, procurement"
-                              className={fieldErrors.report_group ? 'border-destructive' : ''}
-                              required
-                            />
-                            {fieldErrors.report_group && (
-                              <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
-                            )}
-                          </>
+                          isForm ? (
+                            <>
+                              <select
+                                id="report_group"
+                                name="report_group"
+                                value={formData.report_group}
+                                onFocus={() => setFieldErrors((prev) => ({ ...prev, report_group: '' }))}
+                                onChange={(e) => {
+                                  setFormData((prev) => ({ ...prev, report_group: e.target.value }));
+                                  setFieldErrors((prev) => ({ ...prev, report_group: '' }));
+                                  setError('');
+                                }}
+                                className={`flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+                                  fieldErrors.report_group ? 'border-destructive' : 'border-input'
+                                }`}
+                              >
+                                <option value="" disabled>Select group…</option>
+                                {formData.report_group &&
+                                  !FORM_REPORT_GROUPS.includes(
+                                    formData.report_group as typeof FORM_REPORT_GROUPS[number],
+                                  ) && (
+                                    <option value={formData.report_group}>{formData.report_group}</option>
+                                  )}
+                                {FORM_REPORT_GROUPS.map((g) => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))}
+                              </select>
+                              {fieldErrors.report_group && (
+                                <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Input
+                                type="text"
+                                id="report_group"
+                                name="report_group"
+                                value={formData.report_group}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                onFocus={handleFocus}
+                                placeholder="e.g. inventory, procurement"
+                                className={fieldErrors.report_group ? 'border-destructive' : ''}
+                                required
+                              />
+                              {fieldErrors.report_group && (
+                                <p className="text-xs text-destructive">{fieldErrors.report_group}</p>
+                              )}
+                            </>
+                          )
                         ) : (
                           <div>
                             <Badge variant="outline">{formData.report_group || '-'}</Badge>
@@ -511,17 +594,19 @@ const ReportTemplateEdit: React.FC = () => {
 
                       {editing ? (
                         <div className="grid grid-cols-2 gap-3">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              id="is_standard"
-                              name="is_standard"
-                              checked={formData.is_standard}
-                              onChange={handleChange}
-                              className="h-4 w-4 rounded border-input"
-                            />
-                            Standard
-                          </label>
+                          {!isForm && (
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                id="is_standard"
+                                name="is_standard"
+                                checked={formData.is_standard}
+                                onChange={handleChange}
+                                className="h-4 w-4 rounded border-input"
+                              />
+                              Standard
+                            </label>
+                          )}
                           <label className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                               type="checkbox"
@@ -536,14 +621,16 @@ const ReportTemplateEdit: React.FC = () => {
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Kind</Label>
-                            <div>
-                              <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                                {formData.is_standard ? 'Standard' : 'Custom'}
-                              </Badge>
+                          {!isForm && (
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Kind</Label>
+                              <div>
+                                <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+                                  {formData.is_standard ? 'Standard' : 'Custom'}
+                                </Badge>
+                              </div>
                             </div>
-                          </div>
+                          )}
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground">Status</Label>
                             <div>
@@ -576,10 +663,10 @@ const ReportTemplateEdit: React.FC = () => {
                         <ChipInput
                           id="allow_business_unit"
                           name="allow_business_unit"
-                          value={formData.allow_business_unit}
+                          value={isForm ? '' : formData.allow_business_unit}
                           onChange={handleChipChange('allow_business_unit')}
-                          placeholder="Type BU code + Enter (blank = all)"
-                          disabled={!editing}
+                          placeholder={isForm ? 'All business units (form template)' : 'Type BU code + Enter (blank = all)'}
+                          disabled={!editing || isForm}
                         />
                       </div>
                       <div className="space-y-2">
@@ -587,10 +674,10 @@ const ReportTemplateEdit: React.FC = () => {
                         <ChipInput
                           id="deny_business_unit"
                           name="deny_business_unit"
-                          value={formData.deny_business_unit}
+                          value={isForm ? '' : formData.deny_business_unit}
                           onChange={handleChipChange('deny_business_unit')}
-                          placeholder="Type BU code + Enter (blank = none)"
-                          disabled={!editing}
+                          placeholder={isForm ? '—' : 'Type BU code + Enter (blank = none)'}
+                          disabled={!editing || isForm}
                         />
                       </div>
                     </>
@@ -622,29 +709,6 @@ const ReportTemplateEdit: React.FC = () => {
                   <CardTitle className="text-base">Data Source</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="template_type">Template Type</Label>
-                    {editing ? (
-                      <select
-                        id="template_type"
-                        name="template_type"
-                        value={formData.template_type}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            template_type: e.target.value as 'form' | 'list',
-                          }))
-                        }
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option value="list">List</option>
-                        <option value="form">Form</option>
-                      </select>
-                    ) : (
-                      <Badge variant="outline">{formData.template_type}</Badge>
-                    )}
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="source_type">Source Type</Label>
                     {editing ? (
