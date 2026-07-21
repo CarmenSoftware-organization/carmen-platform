@@ -34,6 +34,15 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }));
 
+// Spy on navigation while keeping MemoryRouter/Link real — the Delete menu item lives
+// inside a Radix Portal, so its click bubbles through the React tree up to the row's
+// <tr onClick={navigate(edit)}> unless it is explicitly stopped.
+const mockNavigate = vi.hoisted(() => vi.fn());
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 vi.mock('../services/printTemplateMappingService', () => ({
   default: {
     getAll: vi.fn(),
@@ -135,6 +144,22 @@ describe('PrintTemplateMappingManagement — row action gates', () => {
 
     expect(screen.queryByRole('menuitem', { name: /edit/i })).toBeNull();
     expect(await screen.findByRole('menuitem', { name: /delete/i })).toBeInTheDocument();
+  });
+});
+
+describe('PrintTemplateMappingManagement — row Delete opens the confirm dialog', () => {
+  it('clicking Delete opens the ConfirmDialog and does NOT navigate to the edit page', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('PR Template');
+
+    await openRowMenu(user);
+    await user.click(await screen.findByRole('menuitem', { name: /delete/i }));
+
+    // The confirm dialog must appear.
+    expect(await screen.findByText('Delete Print Template Mapping')).toBeInTheDocument();
+    // The click must NOT have bubbled to the row's <tr> onClick that navigates to edit.
+    expect(mockNavigate).not.toHaveBeenCalledWith('/print-template-mapping/m1/edit');
   });
 });
 

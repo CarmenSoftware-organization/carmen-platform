@@ -306,7 +306,14 @@ const PrintTemplateMappingManagement: React.FC = () => {
                                       <MoreHorizontal className="h-3.5 w-3.5" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
+                                  <DropdownMenuContent
+                                    align="end"
+                                    // Menu items render in a Radix Portal, so their
+                                    // clicks still bubble through the React tree to the
+                                    // row's onClick (which navigates to edit). Stop it
+                                    // here so Delete opens its dialog instead of navigating.
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
                                     <Can permission="print_template_mapping.update">
                                       <DropdownMenuItem
                                         onClick={() => navigate(`/print-template-mapping/${r.id}/edit`)}
