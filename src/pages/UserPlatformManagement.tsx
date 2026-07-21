@@ -253,7 +253,7 @@ const UserPlatformManagement: React.FC = () => {
         cell: ({ row }) => (
           <Link
             to={`/platform/user-platform/${row.original.id}`}
-            className="block w-full truncate font-medium text-primary hover:underline"
+            className="font-medium text-primary hover:underline whitespace-nowrap"
             title={row.original.username || undefined}
           >
             {row.original.username || "-"}
@@ -466,6 +466,7 @@ const UserPlatformManagement: React.FC = () => {
                   columns={columns}
                   data={users}
                   serverSide
+                  tableLayout="auto"
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}
