@@ -64,6 +64,11 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   asMock(clusterService.getAll).mockResolvedValue({ data: clusters, paginate: { total: 2, page: 1, perpage: 10 } });
+  // Default every test to desktop (table). The mobile-card test below overrides
+  // this within its own body; this line resets it for the following tests.
+  vi.stubGlobal('matchMedia', (q: string) => ({
+    matches: /min-width/.test(q), media: q, addEventListener: () => {}, removeEventListener: () => {},
+  }));
 });
 
 const renderPage = () =>
@@ -237,5 +242,27 @@ describe('ClusterManagement — table fit-content', () => {
 
     const link = await screen.findByRole('link', { name: 'ACME' });
     expect(link.className).toContain('whitespace-nowrap');
+  });
+});
+
+describe('ClusterManagement — mobile card view', () => {
+  const setMobile = () =>
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: false, media: q, addEventListener: () => {}, removeEventListener: () => {},
+    }));
+
+  it('renders clusters as cards (no table) with title/badge hints applied', async () => {
+    setMobile();
+    const { container } = renderPage();
+    await screen.findByText('Acme Hotels');
+
+    // No table element in card mode.
+    expect(container.querySelector('table')).toBeNull();
+    // Status is promoted to a badge, and the row actions menu is still reachable.
+    expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /actions for acme hotels/i })).toBeInTheDocument();
+    // Code + Name are promoted to the card title, so no "Code" label row is rendered.
+    // (Without the meta.card:'title' hint they would appear as a labelled row.)
+    expect(screen.queryByText('Code')).toBeNull();
   });
 });
