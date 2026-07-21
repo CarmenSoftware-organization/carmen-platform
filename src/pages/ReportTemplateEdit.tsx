@@ -312,6 +312,7 @@ const ReportTemplateEdit: React.FC = () => {
       // formData.template_type is validated non-empty by the errs check above;
       // narrow it here since ReportTemplateFormData widens it to '' | 'form' | 'list'.
       template_type: formData.template_type as 'form' | 'list',
+      is_standard: isForm ? true : formData.is_standard,
       source_name: formData.source_name.trim() || undefined,
       source_params: { params: cleanParams },
     };
@@ -415,9 +416,11 @@ const ReportTemplateEdit: React.FC = () => {
             <Badge variant={formData.is_active ? 'success' : 'secondary'}>
               {formData.is_active ? 'Active' : 'Inactive'}
             </Badge>
-            <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-              {formData.is_standard ? 'Standard' : 'Custom'}
-            </Badge>
+            {!isForm && (
+              <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+                {formData.is_standard ? 'Standard' : 'Custom'}
+              </Badge>
+            )}
             {formData.report_group && (
               <Badge variant="outline">{formData.report_group}</Badge>
             )}
@@ -589,17 +592,19 @@ const ReportTemplateEdit: React.FC = () => {
 
                       {editing ? (
                         <div className="grid grid-cols-2 gap-3">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              id="is_standard"
-                              name="is_standard"
-                              checked={formData.is_standard}
-                              onChange={handleChange}
-                              className="h-4 w-4 rounded border-input"
-                            />
-                            Standard
-                          </label>
+                          {!isForm && (
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                id="is_standard"
+                                name="is_standard"
+                                checked={formData.is_standard}
+                                onChange={handleChange}
+                                className="h-4 w-4 rounded border-input"
+                              />
+                              Standard
+                            </label>
+                          )}
                           <label className="flex items-center gap-2 text-sm cursor-pointer">
                             <input
                               type="checkbox"
@@ -614,14 +619,16 @@ const ReportTemplateEdit: React.FC = () => {
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Kind</Label>
-                            <div>
-                              <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                                {formData.is_standard ? 'Standard' : 'Custom'}
-                              </Badge>
+                          {!isForm && (
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Kind</Label>
+                              <div>
+                                <Badge variant={formData.is_standard ? 'default' : 'outline'}>
+                                  {formData.is_standard ? 'Standard' : 'Custom'}
+                                </Badge>
+                              </div>
                             </div>
-                          </div>
+                          )}
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground">Status</Label>
                             <div>

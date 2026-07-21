@@ -335,3 +335,40 @@ describe('ReportTemplateEdit — Report Group forks on Template Type', () => {
     expect(screen.getByRole('option', { name: 'inventory' })).toBeInTheDocument();
   });
 });
+
+describe('ReportTemplateEdit — Standard hidden + forced in form mode', () => {
+  it('hides the Standard checkbox and header badge in form mode', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    expect(screen.getByLabelText('Standard')).toBeInTheDocument();
+    expect(screen.getByLabelText('Active')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    expect(screen.queryByLabelText('Standard')).toBeNull();
+    expect(screen.getByLabelText('Active')).toBeInTheDocument();
+  });
+
+  it('forces is_standard true in the form-mode payload even after unchecking it', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    // Uncheck Standard while in list mode…
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.click(screen.getByLabelText('Standard'));
+    // …then switch to form and save.
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.selectOptions(screen.getByLabelText(/Report Group/), 'PR');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ is_standard: true }),
+      ),
+    );
+  });
+});
