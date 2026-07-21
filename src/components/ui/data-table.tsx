@@ -256,6 +256,9 @@ function DataTable<TData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, enableRowSelection]);
 
+  const isDesktop = useMediaQuery(mobileBreakpoint);
+  const showCards = mobileCards && !isDesktop;
+
   // Each extra frozen column (3rd, 4th) needs a sticky `left` equal to the actual
   // rendered widths of every column before it. Under table-auto those widths are
   // computed by the browser and vary with content/viewport, so measure them and
@@ -281,10 +284,7 @@ function DataTable<TData>({
     const ro = new ResizeObserver(apply);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [stickyLeftColumns, data, columns]);
-
-  const isDesktop = useMediaQuery(mobileBreakpoint);
-  const showCards = mobileCards && !isDesktop;
+  }, [stickyLeftColumns, data, columns, showCards]);
 
   const totalDisplay = serverSide ? totalRows : table.getFilteredRowModel().rows.length;
   const totalPages = serverSide ? (pageCount || 1) : (table.getPageCount() || 1);
@@ -556,9 +556,11 @@ function MobileCardList<TData>({ table }: { table: TanstackTable<TData> }) {
                         {titleCells.map((cell, i) => (
                           <React.Fragment key={cell.id}>
                             {i > 0 && <span className="text-muted-foreground">&middot;</span>}
-                            {/* Own <span> per title cell — keeps each value's text node isolated
-                                from its sibling separator/value so text queries can find it. */}
-                            <span>{flexRender(cell.column.columnDef.cell, cell.getContext())}</span>
+                            {/* Own wrapper per title cell — keeps each value's text node isolated
+                                from its sibling separator/value so text queries can find it.
+                                <div> (not <span>) since some title cells render a block element
+                                (e.g. clusters' `name` renders a <div>). */}
+                            <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                           </React.Fragment>
                         ))}
                       </div>

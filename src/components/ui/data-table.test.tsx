@@ -111,4 +111,11 @@ describe('DataTable responsive card view', () => {
     const { container } = render(<DataTable columns={cardColumns} data={cardData} mobileCards={false} />);
     expect(container.querySelector('table')).not.toBeNull();
   });
+
+  it('shows the empty message in card mode when there are no rows', () => {
+    setViewport(false);
+    const { container } = render(<DataTable columns={columns} data={[]} />);
+    expect(container.querySelector('table')).toBeNull();
+    expect(screen.getByText(/no results found/i)).toBeInTheDocument();
+  });
 });

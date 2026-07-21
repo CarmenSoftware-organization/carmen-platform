@@ -264,5 +264,8 @@ describe('ClusterManagement — mobile card view', () => {
     // Code + Name are promoted to the card title, so no "Code" label row is rendered.
     // (Without the meta.card:'title' hint they would appear as a labelled row.)
     expect(screen.queryByText('Code')).toBeNull();
+    // name is promoted to the title line (no "Name" label row); updated_at is hidden.
+    expect(screen.queryByText('Name')).toBeNull();
+    expect(screen.queryByText('Updated')).toBeNull();
   });
 });
