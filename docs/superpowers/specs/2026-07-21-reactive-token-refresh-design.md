@@ -65,14 +65,22 @@ Holds the reusable, independently testable pieces so `api.ts` stays thin.
 
 - `getRefreshToken(): string | null` — reads `localStorage('refresh_token')`.
 - `refreshAccessToken(): Promise<string>` — **single-flight**. Exchanges the
-  refresh token for a new access token, persists both, updates the axios default
-  Authorization header, and resolves the new access token. Throws on any failure
-  (no refresh token, non-200, missing `access_token`).
+  refresh token for a new access token, persists both to `localStorage`, and
+  resolves the new access token. Throws on any failure (no refresh token,
+  non-200, missing `access_token`).
 - `clearSession(): void` — removes `token`, `refresh_token`, `user`,
-  `loginResponse`, `effectivePermissions`; deletes the axios default
-  Authorization header.
+  `loginResponse`, `effectivePermissions` from `localStorage`.
 - `redirectToLogin(): void` — thin wrapper over `window.location.href = '/login'`
   (wrapped so tests can spy).
+
+> **Implementation note (reconciled with the plan):** neither
+> `refreshAccessToken` nor `clearSession` touches the axios *default*
+> Authorization header. `tokenRefresh.ts` must not import `./api` (circular
+> import), and it doesn't need to: the axios **request** interceptor re-reads
+> `localStorage('token')` and re-attaches `Authorization` on every request
+> (including the retry), and `redirectToLogin`'s full page reload discards the
+> axios instance and all React state on teardown. The hard reload is therefore
+> load-bearing for full teardown.
 
 **Single-flight implementation:**
 

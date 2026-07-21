@@ -51,6 +51,13 @@ async function doRefresh(): Promise<string> {
   return newAccess;
 }
 
+// Clears only localStorage — NOT api.defaults headers or React auth state.
+// That is intentional and safe ONLY because teardown always pairs this with
+// redirectToLogin(), whose full page reload discards the axios instance and all
+// React state. This module must not import ./api (circular import). If
+// redirectToLogin is ever changed to a soft SPA navigation, the stale axios
+// default Authorization header and un-reset auth context become real bugs —
+// move the header/state reset into AuthContext at that point.
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
@@ -59,6 +66,7 @@ export function clearSession(): void {
   localStorage.removeItem('effectivePermissions');
 }
 
+// Hard navigation (full reload) — load-bearing for teardown; see clearSession().
 export function redirectToLogin(): void {
   window.location.href = '/login';
 }
@@ -78,6 +86,10 @@ export async function handleResponseError(
     original._retry = true;
     try {
       const newToken = await refreshAccessToken();
+      // Belt-and-suspenders: the retry (api(original)) re-runs the request
+      // interceptor, which re-attaches Authorization from localStorage('token')
+      // — refreshAccessToken already wrote the new token there. Setting it here
+      // too keeps the injected retry testable without the real interceptor.
       original.headers = original.headers ?? {};
       (original.headers as Record<string, unknown>).Authorization = `Bearer ${newToken}`;
       return await retry(original);
