@@ -196,6 +196,41 @@ describe('ReportTemplateManagement — Add Template gates (report_template.creat
 // `data-table.tsx` `selectionResetKey` reset mechanism Task 1 fixed, so no regression
 // guard test is added here (unlike NewsManagement/UserManagement).
 
+// Default sort is by name ascending (A→Z). The stored-sort preference was migrated
+// to a fresh key (`sort_report_templates_v2`) to force-reset users who had the old
+// `created_at:desc` default persisted, so the legacy `sort_report_templates` key must
+// be ignored. These fail if the default reverts to created_at or the key bump is undone.
+describe('ReportTemplateManagement — default sort by name', () => {
+  it('requests sort by name ascending on first load with no stored preference', async () => {
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    expect(reportTemplateService.getAll).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'name:asc' }),
+    );
+  });
+
+  it('ignores the stale legacy sort_report_templates key and still defaults to name:asc', async () => {
+    localStorage.setItem('sort_report_templates', 'created_at:desc');
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    expect(reportTemplateService.getAll).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'name:asc' }),
+    );
+  });
+
+  it('honours a stored v2 preference over the name:asc default', async () => {
+    localStorage.setItem('sort_report_templates_v2', 'report_group:desc');
+    renderPage();
+    await screen.findByText('Sales Summary');
+
+    expect(reportTemplateService.getAll).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'report_group:desc' }),
+    );
+  });
+});
+
 describe('ReportTemplateManagement — template_type badge', () => {
   it('renders a template_type badge for each row', async () => {
     renderPage();
