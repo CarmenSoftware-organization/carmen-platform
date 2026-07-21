@@ -233,18 +233,23 @@ const RoleManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <Link to={`/platform/roles/${row.original.id}/edit`} className="text-primary hover:underline font-medium">
-          {row.original.name}
-        </Link>
-      ),
-    },
-    {
-      accessorKey: 'description',
-      header: 'Description',
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
-          {row.original.description || '-'}
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <Link
+            to={`/platform/roles/${row.original.id}/edit`}
+            className="text-primary hover:underline font-medium whitespace-nowrap"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </Link>
+          {row.original.description && (
+            <span
+              className="text-xs text-muted-foreground truncate max-w-[320px]"
+              title={row.original.description}
+            >
+              {row.original.description}
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -528,6 +533,7 @@ const RoleManagement: React.FC = () => {
                       columns={columns}
                       data={roles}
                       serverSide
+                      tableLayout="auto"
                       totalRows={totalRows}
                       page={paginate.page}
                       perpage={paginate.perpage}

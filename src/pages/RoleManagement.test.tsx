@@ -210,3 +210,25 @@ describe('RoleManagement — Add Role gates (role.create)', () => {
 // RoleManagement.tsx). It is therefore NOT a consumer of the shared `data-table.tsx`
 // `selectionResetKey` reset mechanism Task 1 fixed, so no regression guard test is
 // added here (unlike NewsManagement/UserManagement).
+
+// The report-templates table treatment: content-based layout, single-line Name, and
+// the description folded into the Name cell instead of its own column.
+describe('RoleManagement — report-templates-style table', () => {
+  it('uses table-auto and single-lines the Name link', async () => {
+    const { container } = renderPage();
+
+    const link = await screen.findByRole('link', { name: 'Admin' });
+    expect(container.querySelector('table')?.className).toContain('table-auto');
+    expect(link.className).toContain('whitespace-nowrap');
+    expect(link.className).not.toContain('truncate');
+    expect(link.className).not.toContain('max-w-');
+  });
+
+  it('folds the description under the name and drops the Description column', async () => {
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: 'Admin' });
+    expect(link.closest('td')).toHaveTextContent('Full platform access');
+    expect(screen.queryByRole('columnheader', { name: /description/i })).toBeNull();
+  });
+});
