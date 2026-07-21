@@ -211,10 +211,10 @@ const ReportTemplateManagement: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2">
           <Link
             to={`/report-templates/${row.original.id}/edit`}
-            className="text-primary hover:underline truncate max-w-[220px]"
+            className="text-primary hover:underline whitespace-nowrap"
             title={row.original.name}
           >
             {row.original.name}
@@ -550,6 +550,7 @@ const ReportTemplateManagement: React.FC = () => {
                   columns={columns}
                   data={templates}
                   serverSide
+                  tableLayout="auto"
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}

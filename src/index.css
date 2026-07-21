@@ -151,14 +151,20 @@ body {
   background-color: hsl(var(--background));
 }
 
+/* Sticky cells overlay horizontally-scrolled content, so they must stay opaque.
+   The zebra/hover tints are translucent (e.g. --zebra-even is 2% alpha); applied
+   as background-color alone they let scrolled cells bleed through. Layer the tint
+   over an opaque base via background-image so the subtle shade is preserved. */
 .table-sticky-left tbody tr:nth-child(even) td:first-child,
 .table-sticky-left tbody tr:nth-child(even) td:nth-child(2) {
-  background-color: var(--zebra-even);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
 }
 
 .table-sticky-left tbody tr:hover td:first-child,
 .table-sticky-left tbody tr:hover td:nth-child(2) {
-  background-color: var(--zebra-hover);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
 }
 
 .table-sticky-left tbody td:nth-child(2)::after {
@@ -191,11 +197,13 @@ body {
 }
 
 .table-sticky-right tbody tr:nth-child(even) td:last-child {
-  background-color: var(--zebra-even);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
 }
 
 .table-sticky-right tbody tr:hover td:last-child {
-  background-color: var(--zebra-hover);
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
 }
 
 .table-sticky-right tbody td:last-child::before {

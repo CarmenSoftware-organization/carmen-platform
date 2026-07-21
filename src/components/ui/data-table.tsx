@@ -85,6 +85,9 @@ interface DataTableProps<TData> {
   onSelectionChange?: (rows: TData[]) => void;
   selectionResetKey?: unknown;
   getRowSelectionLabel?: (row: TData) => string;
+  // 'fixed' (default) keeps equal-width columns; 'auto' lets columns size to their
+  // content so an unconstrained column (e.g. Name) fits its text without truncation.
+  tableLayout?: 'fixed' | 'auto';
 }
 
 function DataTable<TData>({
@@ -105,6 +108,7 @@ function DataTable<TData>({
   onSelectionChange,
   selectionResetKey,
   getRowSelectionLabel,
+  tableLayout = 'fixed',
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>(
     defaultSort ? [defaultSort] : []
@@ -260,7 +264,10 @@ function DataTable<TData>({
   return (
     <div>
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <Table className="min-w-[640px] table-fixed table-sticky-left table-sticky-right">
+        <Table className={cn(
+          'min-w-[640px] table-sticky-left table-sticky-right',
+          tableLayout === 'auto' ? 'table-auto' : 'table-fixed'
+        )}>
           <TableHeader className="sticky top-0 z-10 bg-background border-b-2 border-border">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>

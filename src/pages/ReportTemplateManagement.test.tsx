@@ -204,3 +204,18 @@ describe('ReportTemplateManagement — template_type badge', () => {
     expect(await screen.findByText(/list/i)).toBeInTheDocument();
   });
 });
+
+// The Name column must fit its content on a single line with no ellipsis — the
+// page opts the shared DataTable into `table-auto` and the Name link drops
+// `truncate max-w-[220px]` for `whitespace-nowrap`. These assertions fail if the
+// truncation is reintroduced.
+describe('ReportTemplateManagement — Name column fit-content', () => {
+  it('renders the Name link single-line without truncation', async () => {
+    renderPage();
+
+    const link = await screen.findByRole('link', { name: 'Sales Summary' });
+    expect(link.className).toContain('whitespace-nowrap');
+    expect(link.className).not.toContain('truncate');
+    expect(link.className).not.toContain('max-w-');
+  });
+});
