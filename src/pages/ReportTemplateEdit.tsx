@@ -483,7 +483,7 @@ const ReportTemplateEdit: React.FC = () => {
                             )}
                           </>
                         ) : (
-                          <Badge variant="outline">{formData.template_type}</Badge>
+                          <Badge variant="outline">{formData.template_type || '-'}</Badge>
                         )}
                       </div>
 

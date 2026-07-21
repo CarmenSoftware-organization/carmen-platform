@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -285,6 +285,20 @@ describe('ReportTemplateEdit — Template Type in Template Info', () => {
 
     // Exactly one Template Type label now (in Template Info, not Data Source).
     expect(await screen.findAllByText(/^Template Type/)).toHaveLength(1);
+  });
+
+  it('shows a dash for the read-only Template Type badge on a legacy record with no type', async () => {
+    // report_group is deliberately kept non-empty so its own "-" fallback
+    // can't be mistaken for the Template Type one.
+    asMock(reportTemplateService.getById).mockResolvedValue({
+      data: { ...fakeTemplate, template_type: undefined, report_group: 'procurement' },
+    });
+    renderAt('/report-templates/rt1/edit');
+
+    // Existing record loads read-only (editing=false) — do not click Edit.
+    const label = await screen.findByText(/^Template Type/);
+    const container = label.closest('div') as HTMLElement;
+    expect(within(container).getByText('-')).toBeInTheDocument();
   });
 });
 
