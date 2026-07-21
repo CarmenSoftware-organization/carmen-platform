@@ -313,6 +313,8 @@ const ReportTemplateEdit: React.FC = () => {
       // narrow it here since ReportTemplateFormData widens it to '' | 'form' | 'list'.
       template_type: formData.template_type as 'form' | 'list',
       is_standard: isForm ? true : formData.is_standard,
+      allow_business_unit: isForm ? '' : formData.allow_business_unit,
+      deny_business_unit: isForm ? '' : formData.deny_business_unit,
       source_name: formData.source_name.trim() || undefined,
       source_params: { params: cleanParams },
     };
@@ -661,10 +663,10 @@ const ReportTemplateEdit: React.FC = () => {
                         <ChipInput
                           id="allow_business_unit"
                           name="allow_business_unit"
-                          value={formData.allow_business_unit}
+                          value={isForm ? '' : formData.allow_business_unit}
                           onChange={handleChipChange('allow_business_unit')}
-                          placeholder="Type BU code + Enter (blank = all)"
-                          disabled={!editing}
+                          placeholder={isForm ? 'All business units (form template)' : 'Type BU code + Enter (blank = all)'}
+                          disabled={!editing || isForm}
                         />
                       </div>
                       <div className="space-y-2">
@@ -672,10 +674,10 @@ const ReportTemplateEdit: React.FC = () => {
                         <ChipInput
                           id="deny_business_unit"
                           name="deny_business_unit"
-                          value={formData.deny_business_unit}
+                          value={isForm ? '' : formData.deny_business_unit}
                           onChange={handleChipChange('deny_business_unit')}
-                          placeholder="Type BU code + Enter (blank = none)"
-                          disabled={!editing}
+                          placeholder={isForm ? '—' : 'Type BU code + Enter (blank = none)'}
+                          disabled={!editing || isForm}
                         />
                       </div>
                     </>

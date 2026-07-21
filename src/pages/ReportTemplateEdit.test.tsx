@@ -372,3 +372,56 @@ describe('ReportTemplateEdit — Standard hidden + forced in form mode', () => {
     );
   });
 });
+
+describe('ReportTemplateEdit — BU Scope read-only in form mode', () => {
+  it('disables and empties the Allow/Deny inputs in form mode', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    expect(screen.getByLabelText('Allow')).toBeInTheDocument(); // textbox present in list mode
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    // Disabled ChipInput renders no <input>, so the label points at nothing.
+    expect(screen.queryByLabelText('Allow')).toBeNull();
+    expect(screen.queryByLabelText('Deny')).toBeNull();
+  });
+
+  it('clears BU scope in the form-mode payload', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    // Add an Allow chip in list mode…
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.type(screen.getByLabelText('Allow'), 'BU1{Enter}');
+    // …then switch to form and save.
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.selectOptions(screen.getByLabelText(/Report Group/), 'PR');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ allow_business_unit: '', deny_business_unit: '' }),
+      ),
+    );
+  });
+
+  it('restores BU chips when toggling form -> list (lossless)', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.type(screen.getByLabelText('Allow'), 'BU1{Enter}');
+    expect(screen.getByText('BU1')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'list');
+
+    // The chip survived the round-trip.
+    expect(screen.getByText('BU1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove BU1/i })).toBeInTheDocument();
+  });
+});
