@@ -332,10 +332,10 @@ const NewsManagement: React.FC = () => {
       accessorKey: 'title',
       header: 'Title',
       cell: ({ row }) => (
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2">
           <Link
             to={`/news/${row.original.id}/edit`}
-            className="text-primary hover:underline truncate max-w-[220px]"
+            className="text-primary hover:underline whitespace-nowrap"
             title={row.original.title || '(untitled)'}
           >
             {row.original.title || '(untitled)'}
@@ -639,6 +639,8 @@ const NewsManagement: React.FC = () => {
                       columns={columns}
                       data={newsItems}
                       serverSide
+                      tableLayout="auto"
+                      stickyLeftColumns={canSelect ? 3 : 2}
                       totalRows={totalRows}
                       page={paginate.page}
                       perpage={paginate.perpage}

@@ -472,3 +472,46 @@ describe('NewsManagement — Add News gates (news.create)', () => {
     });
   });
 });
+
+// Content-based layout with the Title single-line and frozen. News leads directly
+// with Title, so without row-selection it is column 2 (frozen by the base rule);
+// with the select column it becomes column 3 and needs the extra freeze.
+describe('NewsManagement — table fit-content & sticky', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', makeLocalStorage());
+    vi.clearAllMocks();
+    auth.hasPermission = () => true;
+    vi.mocked(newsService.getAll).mockImplementation((p) =>
+      Promise.resolve(
+        p?.perpage === -1
+          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
+          : { data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } },
+      ) as never,
+    );
+    vi.mocked(newsService.getTags).mockResolvedValue([] as never);
+  });
+
+  it('uses table-auto, freezes the Title column and single-lines it (row-selection on)', async () => {
+    const { container } = renderPage();
+    await screen.findByText('Alpha');
+
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-auto');
+    expect(table?.className).toContain('table-sticky-left-3');
+
+    const link = screen.getByRole('link', { name: 'Alpha' });
+    expect(link.className).toContain('whitespace-nowrap');
+    expect(link.className).not.toContain('truncate');
+    expect(link.className).not.toContain('max-w-');
+  });
+
+  it('needs no extra frozen column when the user cannot select rows', async () => {
+    auth.hasPermission = () => false;
+    const { container } = renderPage();
+    await screen.findByText('Alpha');
+
+    const table = container.querySelector('table');
+    expect(table?.className).toContain('table-auto');
+    expect(table?.className).not.toContain('table-sticky-left-3');
+  });
+});
