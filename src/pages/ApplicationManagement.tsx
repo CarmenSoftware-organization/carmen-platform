@@ -248,47 +248,40 @@ const ApplicationManagement: React.FC = () => {
     {
       accessorKey: 'name',
       header: 'Name',
-      cell: ({ row }) => (
-        <div className="flex flex-col gap-0.5">
-          <Link
-            to={`/applications/${row.original.id}/edit`}
-            className="text-primary hover:underline whitespace-nowrap"
-            title={row.original.name}
-          >
-            {row.original.name}
-          </Link>
-          {row.original.description && (
-            <span
-              className="text-xs text-muted-foreground truncate max-w-[320px]"
-              title={row.original.description}
-            >
-              {row.original.description}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: 'app_id',
-      header: 'App ID',
-      enableSorting: false,
       cell: ({ row }) => {
         const id = row.original.id;
         const copied = copiedId === id;
         return (
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-mono text-xs text-muted-foreground truncate min-w-0" title={id}>
-              {id}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-auto w-auto shrink-0 -m-2 p-2 text-muted-foreground hover:text-foreground"
-              aria-label={copied ? 'App ID copied' : 'Copy App ID'}
-              onClick={() => handleCopyId(id)}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <Link
+              to={`/applications/${row.original.id}/edit`}
+              className="text-primary hover:underline whitespace-nowrap"
+              title={row.original.name}
             >
-              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-            </Button>
+              {row.original.name}
+            </Link>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-mono text-[11px] text-muted-foreground truncate min-w-0" title={id}>
+                {id}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-auto w-auto shrink-0 -m-2 p-2 text-muted-foreground hover:text-foreground"
+                aria-label={copied ? 'App ID copied' : 'Copy App ID'}
+                onClick={() => handleCopyId(id)}
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+            {row.original.description && (
+              <span
+                className="text-xs text-muted-foreground truncate max-w-[320px]"
+                title={row.original.description}
+              >
+                {row.original.description}
+              </span>
+            )}
           </div>
         );
       },

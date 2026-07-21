@@ -234,11 +234,16 @@ describe('ApplicationManagement — report-templates-style table', () => {
     expect(link.className).not.toContain('max-w-');
   });
 
-  it('folds the description under the name and drops the Description column', async () => {
+  it('folds description and App ID under the name and drops both columns', async () => {
     renderPage();
 
     const link = await screen.findByRole('link', { name: 'Test App' });
-    expect(link.closest('td')).toHaveTextContent('A test application');
+    const nameCell = link.closest('td');
+    expect(nameCell).toHaveTextContent('A test application');
+    expect(nameCell).toHaveTextContent('app1');
     expect(screen.queryByRole('columnheader', { name: /description/i })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: /app id/i })).toBeNull();
+    // the Copy App ID control moves into the Name cell
+    expect(screen.getByRole('button', { name: /copy app id/i })).toBeInTheDocument();
   });
 });
