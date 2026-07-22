@@ -10,7 +10,7 @@ type AvatarProps = React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> &
 const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
   AvatarProps
->(({ className, name, ...props }, ref) => (
+>(({ className, name: _name, ...props }, ref) => (
   <AvatarPrimitive.Root
     ref={ref}
     className={cn(

@@ -34,7 +34,7 @@ describe('InlineCell', () => {
     const onCommit = vi.fn();
     render(<InlineCell value="user" display={<span>User</span>} options={opts} ariaLabel="Role" onCommit={onCommit} />);
     await userEvent.click(screen.getByRole('button', { name: /role/i }));
-    const select = screen.getByRole('combobox', { name: 'Role' });
+    screen.getByRole('combobox', { name: 'Role' });
     await userEvent.keyboard('{Escape}');
     expect(onCommit).not.toHaveBeenCalled();
     expect(screen.queryByRole('combobox')).toBeNull();
