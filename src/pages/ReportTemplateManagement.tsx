@@ -44,7 +44,9 @@ const ReportTemplateManagement: React.FC = () => {
   const storedSourceTypes = getStoredJSON<string[]>('filters_report_templates_source_type', []);
   const storedTemplateTypes = getStoredJSON<string[]>('filters_report_templates_template_type', []);
   const storedPage = Number(localStorage.getItem('page_report_templates')) || 1;
-  const storedSort = localStorage.getItem('sort_report_templates') || 'created_at:desc';
+  // Bumped from `sort_report_templates` to force-reset users who had the old
+  // `created_at:desc` default persisted; the new default is name ascending (A→Z).
+  const storedSort = localStorage.getItem('sort_report_templates_v2') || 'name:asc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
@@ -172,7 +174,7 @@ const ReportTemplateManagement: React.FC = () => {
   const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (sourceTypeFilter.length > 0 ? 1 : 0) + (templateTypeFilter.length > 0 ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
-    localStorage.setItem('sort_report_templates', sort);
+    localStorage.setItem('sort_report_templates_v2', sort);
     localStorage.setItem('page_report_templates', '1');
     setPaginate(prev => ({ ...prev, sort, page: 1 }));
   };
@@ -532,7 +534,7 @@ const ReportTemplateManagement: React.FC = () => {
                   perpage={paginate.perpage}
                   onPaginateChange={handlePaginateChange}
                   onSortChange={handleSortChange}
-                  defaultSort={{ id: 'created_at', desc: true }}
+                  defaultSort={{ id: 'name', desc: false }}
                 />
                 </>
                 )}

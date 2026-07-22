@@ -1,4 +1,5 @@
 import axios from "axios";
+import { handleResponseError } from "./tokenRefresh";
 
 const api = axios.create({
   baseURL: import.meta.env.REACT_APP_API_BASE_URL,
@@ -32,19 +33,12 @@ api.interceptors.request.use(
   },
 );
 
-// Response interceptor
+// Response interceptor - reactive token refresh on 401 (logic in tokenRefresh.ts).
+// On a non-login 401 the original request is retried transparently after refresh;
+// 403 and failed refreshes tear the session down and redirect to /login.
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const isLoginRequest = error.config?.url?.includes("/auth/login");
-    if (!isLoginRequest && (error.response?.status === 401 || error.response?.status === 403)) {
-      // Token expired, invalid, or forbidden - redirect to login
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  },
+  (error) => handleResponseError(error, (config) => api(config)),
 );
 
 export default api;

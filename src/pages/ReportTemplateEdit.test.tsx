@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -69,6 +69,7 @@ const fakeTemplate = {
   allow_business_unit: [],
   deny_business_unit: [],
   is_active: true,
+  template_type: 'list',
   builder_key: 'pr-summary',
   source_type: 'function',
   source_name: 'fn_pr_report',
@@ -225,5 +226,216 @@ describe('ReportTemplateEdit — DB objects probe', () => {
     expect(reportTemplateService.listDbObjects).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('fn_pr_report')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('ReportTemplateEdit — Template Type in Template Info', () => {
+  it('renders Template Type before Name in the Template Info card (new template)', async () => {
+    renderAt('/report-templates/new');
+
+    const type = await screen.findByLabelText(/Template Type/);
+    const name = screen.getByLabelText(/^Name/);
+    // Template Type must come first in DOM order.
+    expect(type.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('defaults Template Type to empty on a new template', async () => {
+    renderAt('/report-templates/new');
+
+    const type = (await screen.findByLabelText(/Template Type/)) as HTMLSelectElement;
+    expect(type.value).toBe('');
+  });
+
+  it('blocks submit and shows an error when no type is chosen', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    // Name/Report Group carry a native HTML `required` attribute — leaving
+    // them empty would make jsdom's (and real browsers') constraint
+    // validation block requestSubmit() before handleSubmit's JS-level checks
+    // ever run. Fill them so this test isolates the new template_type check.
+    await user.type(await screen.findByLabelText(/^Name/), 'My Report');
+    await user.type(screen.getByLabelText(/Report Group/), 'inventory');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    expect(await screen.findByText('Template type is required')).toBeInTheDocument();
+    expect(reportTemplateService.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a list template with a chosen type (happy path)', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.type(screen.getByLabelText(/^Name/), 'My Report');
+    await user.type(screen.getByLabelText(/Report Group/), 'inventory');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ template_type: 'list', name: 'My Report', report_group: 'inventory' }),
+      ),
+    );
+  });
+
+  it('no longer renders a Template Type control in the Data Source card', async () => {
+    renderAt('/report-templates/new');
+
+    // Exactly one Template Type label now (in Template Info, not Data Source).
+    expect(await screen.findAllByText(/^Template Type/)).toHaveLength(1);
+  });
+
+  it('shows a dash for the read-only Template Type badge on a legacy record with no type', async () => {
+    // report_group is deliberately kept non-empty so its own "-" fallback
+    // can't be mistaken for the Template Type one.
+    asMock(reportTemplateService.getById).mockResolvedValue({
+      data: { ...fakeTemplate, template_type: undefined, report_group: 'procurement' },
+    });
+    renderAt('/report-templates/rt1/edit');
+
+    // Existing record loads read-only (editing=false) — do not click Edit.
+    const label = await screen.findByText(/^Template Type/);
+    const container = label.closest('div') as HTMLElement;
+    expect(within(container).getByText('-')).toBeInTheDocument();
+  });
+});
+
+describe('ReportTemplateEdit — Report Group forks on Template Type', () => {
+  it('is a textbox for list and a select for form', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    expect((screen.getByLabelText(/Report Group/) as HTMLElement).tagName).toBe('INPUT');
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    const group = screen.getByLabelText(/Report Group/) as HTMLElement;
+    expect(group.tagName).toBe('SELECT');
+    expect(screen.getByRole('option', { name: 'PR' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'EOP' })).toBeInTheDocument();
+  });
+
+  it('stores the bare code when a form group is chosen', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'form');
+    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.selectOptions(screen.getByLabelText(/Report Group/), 'PO');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ template_type: 'form', report_group: 'PO' }),
+      ),
+    );
+  });
+
+  it('preserves an out-of-list report_group on an existing form record', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.getById).mockResolvedValue({
+      data: { ...fakeTemplate, template_type: 'form', report_group: 'inventory' },
+    });
+    renderAt('/report-templates/rt1/edit');
+
+    await user.click(await screen.findByRole('button', { name: /^edit$/i }));
+
+    const group = screen.getByLabelText(/Report Group/) as HTMLSelectElement;
+    expect(group.value).toBe('inventory');
+    expect(screen.getByRole('option', { name: 'inventory' })).toBeInTheDocument();
+  });
+});
+
+describe('ReportTemplateEdit — Standard hidden + forced in form mode', () => {
+  it('hides the Standard checkbox and header badge in form mode', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    expect(screen.getByLabelText('Standard')).toBeInTheDocument();
+    expect(screen.getByLabelText('Active')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    expect(screen.queryByLabelText('Standard')).toBeNull();
+    expect(screen.getByLabelText('Active')).toBeInTheDocument();
+  });
+
+  it('forces is_standard true in the form-mode payload even after unchecking it', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    // Uncheck Standard while in list mode…
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.click(screen.getByLabelText('Standard'));
+    // …then switch to form and save.
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.selectOptions(screen.getByLabelText(/Report Group/), 'PR');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ is_standard: true }),
+      ),
+    );
+  });
+});
+
+describe('ReportTemplateEdit — BU Scope read-only in form mode', () => {
+  it('disables and empties the Allow/Deny inputs in form mode', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    expect(screen.getByLabelText('Allow')).toBeInTheDocument(); // textbox present in list mode
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    // Disabled ChipInput renders no <input>, so the label points at nothing.
+    expect(screen.queryByLabelText('Allow')).toBeNull();
+    expect(screen.queryByLabelText('Deny')).toBeNull();
+  });
+
+  it('clears BU scope in the form-mode payload', async () => {
+    const user = userEvent.setup();
+    asMock(reportTemplateService.create).mockResolvedValue({ data: { id: 'new1' } });
+    asMock(reportTemplateService.getById).mockResolvedValue({ data: fakeTemplate });
+    renderAt('/report-templates/new');
+
+    // Add an Allow chip in list mode…
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.type(screen.getByLabelText('Allow'), 'BU1{Enter}');
+    // …then switch to form and save.
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    await user.type(screen.getByLabelText(/^Name/), 'Form Report');
+    await user.selectOptions(screen.getByLabelText(/Report Group/), 'PR');
+    await user.click(screen.getByRole('button', { name: /create template/i }));
+
+    await waitFor(() =>
+      expect(reportTemplateService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ allow_business_unit: '', deny_business_unit: '' }),
+      ),
+    );
+  });
+
+  it('restores BU chips when toggling form -> list (lossless)', async () => {
+    const user = userEvent.setup();
+    renderAt('/report-templates/new');
+
+    await user.selectOptions(await screen.findByLabelText(/Template Type/), 'list');
+    await user.type(screen.getByLabelText('Allow'), 'BU1{Enter}');
+    expect(screen.getByText('BU1')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'form');
+    await user.selectOptions(screen.getByLabelText(/Template Type/), 'list');
+
+    // The chip survived the round-trip.
+    expect(screen.getByText('BU1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Remove BU1/i })).toBeInTheDocument();
   });
 });

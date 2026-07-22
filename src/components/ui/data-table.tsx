@@ -11,6 +11,7 @@ import {
   type PaginationState,
   type Updater,
   type RowSelectionState,
+  type Table as TanstackTable,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -22,6 +23,7 @@ import {
 } from './table';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const PAGE_SIZES = [10, 25, 50, 100];
 
@@ -67,6 +69,8 @@ function SelectCheckbox({
   );
 }
 
+type CardRole = 'title' | 'badge' | 'hidden' | 'actions';
+
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
   data: TData[];
@@ -94,6 +98,9 @@ interface DataTableProps<TData> {
   // avatar column before the username). Offsets for columns 3/4 are measured at
   // runtime — see the useLayoutEffect below and `.table-sticky-left-{3,4}` in index.css.
   stickyLeftColumns?: 2 | 3 | 4;
+  // Below `mobileBreakpoint` the table is replaced by one card per row. Default on.
+  mobileCards?: boolean;
+  mobileBreakpoint?: string;
 }
 
 function DataTable<TData>({
@@ -116,6 +123,8 @@ function DataTable<TData>({
   getRowSelectionLabel,
   tableLayout = 'fixed',
   stickyLeftColumns = 2,
+  mobileCards = true,
+  mobileBreakpoint = '(min-width: 1024px)',
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>(
     defaultSort ? [defaultSort] : []
@@ -247,6 +256,9 @@ function DataTable<TData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowSelection, enableRowSelection]);
 
+  const isDesktop = useMediaQuery(mobileBreakpoint);
+  const showCards = mobileCards && !isDesktop;
+
   // Each extra frozen column (3rd, 4th) needs a sticky `left` equal to the actual
   // rendered widths of every column before it. Under table-auto those widths are
   // computed by the browser and vary with content/viewport, so measure them and
@@ -272,7 +284,7 @@ function DataTable<TData>({
     const ro = new ResizeObserver(apply);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [stickyLeftColumns, data, columns]);
+  }, [stickyLeftColumns, data, columns, showCards]);
 
   const totalDisplay = serverSide ? totalRows : table.getFilteredRowModel().rows.length;
   const totalPages = serverSide ? (pageCount || 1) : (table.getPageCount() || 1);
@@ -298,6 +310,9 @@ function DataTable<TData>({
 
   return (
     <div>
+      {showCards ? (
+        <MobileCardList table={table} />
+      ) : (
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         <Table ref={tableRef} className={cn(
           'min-w-[640px] table-sticky-left table-sticky-right',
@@ -364,6 +379,7 @@ function DataTable<TData>({
         </TableBody>
         </Table>
       </div>
+      )}
 
       {/* Pagination — sticky at bottom of viewport */}
       <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -492,6 +508,100 @@ function DataTable<TData>({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MobileCardList<TData>({ table }: { table: TanstackTable<TData> }) {
+  const rows = table.getRowModel().rows;
+  if (rows.length === 0) {
+    return <div className="py-12 text-center text-sm text-muted-foreground">No results found</div>;
+  }
+  return (
+    <div className="space-y-3 py-1">
+      {rows.map((row) => {
+        const allCells = row.getVisibleCells();
+        const titleCells: typeof allCells = [];
+        const badgeCells: typeof allCells = [];
+        const rowCells: typeof allCells = [];
+        let actionsCell: (typeof allCells)[number] | null = null;
+        let selectCell: (typeof allCells)[number] | null = null;
+
+        for (const cell of allCells) {
+          const colId = cell.column.id;
+          const role = (cell.column.columnDef.meta as { card?: CardRole } | undefined)?.card;
+          if (colId === 'rowIndex' || role === 'hidden') continue;
+          if (colId === 'select') { selectCell = cell; continue; }
+          if (colId === 'actions' || role === 'actions') { actionsCell = cell; continue; }
+          if (role === 'title') { titleCells.push(cell); continue; }
+          if (role === 'badge') { badgeCells.push(cell); continue; }
+          rowCells.push(cell);
+        }
+
+        const hasHeader = !!(selectCell || titleCells.length || badgeCells.length || actionsCell);
+
+        return (
+          <div key={row.id} className="rounded-lg border border-border bg-card p-4 text-sm shadow-[var(--shadow-xs)]">
+            {hasHeader && (
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  {selectCell && (
+                    <div className="pt-0.5">
+                      {flexRender(selectCell.column.columnDef.cell, selectCell.getContext())}
+                    </div>
+                  )}
+                  <div className="min-w-0 space-y-1">
+                    {titleCells.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 font-medium">
+                        {titleCells.map((cell, i) => (
+                          <React.Fragment key={cell.id}>
+                            {i > 0 && <span className="text-muted-foreground">&middot;</span>}
+                            {/* Own wrapper per title cell — keeps each value's text node isolated
+                                from its sibling separator/value so text queries can find it.
+                                <div> (not <span>) since some title cells render a block element
+                                (e.g. clusters' `name` renders a <div>). */}
+                            <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+                    {badgeCells.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {badgeCells.map((cell) => (
+                          <React.Fragment key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {actionsCell && (
+                  <div className="-mr-1 shrink-0">
+                    {flexRender(actionsCell.column.columnDef.cell, actionsCell.getContext())}
+                  </div>
+                )}
+              </div>
+            )}
+            {rowCells.length > 0 && (
+              <dl className={cn('space-y-1.5', hasHeader && 'mt-3')}>
+                {rowCells.map((cell) => {
+                  const header = cell.column.columnDef.header;
+                  const label = typeof header === 'string' ? header : null;
+                  return (
+                    <div key={cell.id} className="flex items-baseline justify-between gap-3">
+                      {label ? <dt className="shrink-0 text-muted-foreground">{label}</dt> : null}
+                      <dd className={cn('min-w-0 tabular-nums', label ? 'text-right' : 'w-full text-left')}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
