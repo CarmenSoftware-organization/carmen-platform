@@ -8,8 +8,8 @@ permissions:
   id-token: write
 
 env:
-  GCS_BUCKET: carmen-platform-web-static
-  CDN_URL_MAP: carmen-lb
+  GCS_BUCKET: ${{ vars.GCS_BUCKET }}
+  CDN_URL_MAP: ${{ vars.CDN_URL_MAP }}
 
 jobs:
   deploy:
@@ -43,8 +43,9 @@ jobs:
       - name: Authenticate to Google Cloud (Workload Identity Federation)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: projects/54906806682/locations/global/workloadIdentityPools/github-provider/providers/github-provider
-          service_account: carmen-frontend-deployer@carmen-software-poc.iam.gserviceaccount.com
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
