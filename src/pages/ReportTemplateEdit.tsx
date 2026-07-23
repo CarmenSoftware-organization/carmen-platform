@@ -36,7 +36,7 @@ const REQUIRED_FIELD_LABELS: Record<string, string> = {
 
 // Report Group choices when template_type === 'form'. Stored value === the code.
 const FORM_REPORT_GROUPS = [
-  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFP', 'EOP',
+  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'IA', 'PC', 'SC', 'RFP', 'EOP',
 ] as const;
 
 interface SourceParamRow {
@@ -53,6 +53,7 @@ interface ReportTemplateFormData {
   content: string;
   template_type: '' | 'form' | 'list';
   is_standard: boolean;
+  is_default: boolean;
   allow_business_unit: string;
   deny_business_unit: string;
   is_active: boolean;
@@ -77,6 +78,7 @@ const initialFormData: ReportTemplateFormData = {
   content: '',
   template_type: '',
   is_standard: true,
+  is_default: false,
   allow_business_unit: '',
   deny_business_unit: '',
   is_active: true,
@@ -208,6 +210,7 @@ const ReportTemplateEdit: React.FC = () => {
         content: template.content || '',
         template_type: (template.template_type as 'form' | 'list') || '',
         is_standard: template.is_standard ?? true,
+        is_default: template.is_default ?? false,
         allow_business_unit: toCsv(template.allow_business_unit),
         deny_business_unit: toCsv(template.deny_business_unit),
         is_active: template.is_active ?? true,
@@ -313,6 +316,10 @@ const ReportTemplateEdit: React.FC = () => {
       // narrow it here since ReportTemplateFormData widens it to '' | 'form' | 'list'.
       template_type: formData.template_type as 'form' | 'list',
       is_standard: isForm ? true : formData.is_standard,
+      // Meaningful only for form templates — omit for list templates so the
+      // server's "omitting on update preserves the stored value" rule applies
+      // rather than us asserting a value for a field that isn't ours to own here.
+      is_default: isForm ? formData.is_default : undefined,
       allow_business_unit: isForm ? '' : formData.allow_business_unit,
       deny_business_unit: isForm ? '' : formData.deny_business_unit,
       source_name: formData.source_name.trim() || undefined,
@@ -422,6 +429,9 @@ const ReportTemplateEdit: React.FC = () => {
               <Badge variant={formData.is_standard ? 'default' : 'outline'}>
                 {formData.is_standard ? 'Standard' : 'Custom'}
               </Badge>
+            )}
+            {isForm && formData.is_default && (
+              <Badge variant="default">Default</Badge>
             )}
             {formData.report_group && (
               <Badge variant="outline">{formData.report_group}</Badge>
@@ -593,31 +603,53 @@ const ReportTemplateEdit: React.FC = () => {
                       </div>
 
                       {editing ? (
-                        <div className="grid grid-cols-2 gap-3">
-                          {!isForm && (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-3">
+                            {!isForm && (
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  id="is_standard"
+                                  name="is_standard"
+                                  checked={formData.is_standard}
+                                  onChange={handleChange}
+                                  className="h-4 w-4 rounded border-input"
+                                />
+                                Standard
+                              </label>
+                            )}
+                            {isForm && (
+                              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  id="is_default"
+                                  name="is_default"
+                                  checked={formData.is_default}
+                                  onChange={handleChange}
+                                  className="h-4 w-4 rounded border-input"
+                                />
+                                Default for this report group
+                              </label>
+                            )}
                             <label className="flex items-center gap-2 text-sm cursor-pointer">
                               <input
                                 type="checkbox"
-                                id="is_standard"
-                                name="is_standard"
-                                checked={formData.is_standard}
+                                id="is_active"
+                                name="is_active"
+                                checked={formData.is_active}
                                 onChange={handleChange}
                                 className="h-4 w-4 rounded border-input"
                               />
-                              Standard
+                              Active
                             </label>
+                          </div>
+                          {isForm && (
+                            <p className="text-xs text-muted-foreground">
+                              Only one template per report group can be the default. If another
+                              template in this group is already marked default, saving here will
+                              fail — unset it there first.
+                            </p>
                           )}
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              id="is_active"
-                              name="is_active"
-                              checked={formData.is_active}
-                              onChange={handleChange}
-                              className="h-4 w-4 rounded border-input"
-                            />
-                            Active
-                          </label>
                         </div>
                       ) : (
                         <div className="grid grid-cols-2 gap-3">
@@ -627,6 +659,16 @@ const ReportTemplateEdit: React.FC = () => {
                               <div>
                                 <Badge variant={formData.is_standard ? 'default' : 'outline'}>
                                   {formData.is_standard ? 'Standard' : 'Custom'}
+                                </Badge>
+                              </div>
+                            </div>
+                          )}
+                          {isForm && (
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Group Default</Label>
+                              <div>
+                                <Badge variant={formData.is_default ? 'default' : 'outline'}>
+                                  {formData.is_default ? 'Default' : 'Not default'}
                                 </Badge>
                               </div>
                             </div>

@@ -243,7 +243,12 @@ const ReportTemplateManagement: React.FC = () => {
       accessorKey: 'report_group',
       header: 'Report Group',
       cell: ({ row }) => (
-        <Badge variant="outline">{row.original.report_group}</Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge variant="outline">{row.original.report_group}</Badge>
+          {row.original.template_type === 'form' && row.original.is_default && (
+            <Badge variant="default">Default</Badge>
+          )}
+        </div>
       ),
     },
     {
