@@ -25,6 +25,10 @@ export interface ReportTemplate {
   dialog: string;
   content: string;
   is_standard: boolean;
+  // Meaningful only for template_type === 'form'. At most one live form
+  // template per report_group may be true — enforced by a DB partial unique
+  // index, not the application (see ReportTemplateEdit.tsx submit payload).
+  is_default: boolean;
   allow_business_unit?: unknown;
   deny_business_unit?: unknown;
   is_active: boolean;

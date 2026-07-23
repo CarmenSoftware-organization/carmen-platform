@@ -12,7 +12,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   'tenant-migrations': 'Tenant Migrations',
   users: 'Users',
   'report-templates': 'Report Templates',
-  'print-template-mapping': 'Print Mapping',
   news: 'News',
   broadcasts: 'Broadcasts',
   applications: 'Applications',

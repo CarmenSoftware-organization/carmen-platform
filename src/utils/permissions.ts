@@ -58,7 +58,6 @@ export const DEV_MOCK_EFFECTIVE_PERMISSIONS: EffectivePermissions = {
     'user.read', 'user.create', 'user.update', 'user.delete',
     'user_platform.read', 'user_platform.manage',
     'report_template.read', 'report_template.create', 'report_template.update', 'report_template.delete',
-    'print_template_mapping.read', 'print_template_mapping.create', 'print_template_mapping.update', 'print_template_mapping.delete',
     'application.read', 'application.create', 'application.update', 'application.delete',
     'news.read', 'news.create', 'news.update', 'news.delete',
     'broadcast.read', 'broadcast.send',
