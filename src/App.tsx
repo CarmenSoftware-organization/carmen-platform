@@ -21,8 +21,6 @@ const UserManagement = lazy(() => import("./pages/UserManagement"));
 const UserEdit = lazy(() => import("./pages/UserEdit"));
 const ReportTemplateManagement = lazy(() => import("./pages/ReportTemplateManagement"));
 const ReportTemplateEdit = lazy(() => import("./pages/ReportTemplateEdit"));
-const PrintTemplateMappingManagement = lazy(() => import("./pages/PrintTemplateMappingManagement"));
-const PrintTemplateMappingEdit = lazy(() => import("./pages/PrintTemplateMappingEdit"));
 const NewsManagement = lazy(() => import("./pages/NewsManagement"));
 const NewsEdit = lazy(() => import("./pages/NewsEdit"));
 const BroadcastCompose = lazy(() => import("./pages/BroadcastCompose"));
@@ -193,30 +191,6 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="report_template.update">
                   <ReportTemplateEdit />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/print-template-mapping"
-              element={
-                <PrivateRoute requiredPermission="print_template_mapping.read">
-                  <PrintTemplateMappingManagement />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/print-template-mapping/new"
-              element={
-                <PrivateRoute requiredPermission="print_template_mapping.create">
-                  <PrintTemplateMappingEdit />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/print-template-mapping/:id/edit"
-              element={
-                <PrivateRoute requiredPermission="print_template_mapping.update">
-                  <PrintTemplateMappingEdit />
                 </PrivateRoute>
               }
             />
