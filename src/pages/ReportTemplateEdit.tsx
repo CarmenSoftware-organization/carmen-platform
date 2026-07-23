@@ -36,7 +36,7 @@ const REQUIRED_FIELD_LABELS: Record<string, string> = {
 
 // Report Group choices when template_type === 'form'. Stored value === the code.
 const FORM_REPORT_GROUPS = [
-  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFQ', 'EOP',
+  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFP', 'EOP',
 ] as const;
 
 interface SourceParamRow {

@@ -42,7 +42,7 @@ real selection.**
 **Report Group is conditional on Template Type** (confirmed with user):
 
 - `template_type === 'form'` → Report Group is a `<select>` over the fixed codes
-  `PR, PO, GRN, SR, CN, SI, SO, PC, SC, RFQ, EOP`. The **value stored is the bare
+  `PR, PO, GRN, SR, CN, SI, SO, PC, SC, RFP, EOP`. The **value stored is the bare
   code** (`report_group: 'PR'`) — options show the code, no label mapping.
 - `template_type === 'list'` or `''` → Report Group stays the current free-text
   `<Input>` (any string: `inventory`, `procurement`, …).
@@ -72,6 +72,7 @@ the user switches back, and dirty-tracking never shows a phantom change.
   **only in the save payload**.
 
 Derived decisions (surfaced to user, open to change):
+
 - **The type toggle never rewrites `formData`.** Report Group value, `is_standard`,
   and BU Scope values are all preserved in state across a `form ⇄ list` toggle;
   form-specific values (`is_standard=true`, empty scope) are applied only at save.
@@ -84,6 +85,7 @@ Derived decisions (surfaced to user, open to change):
   left-aligned. No grid restructure.
 
 Rejected alternative:
+
 - *Visual `*` only, keep `'list'` default* — the marker would imply a required
   choice the form never actually enforces. User explicitly chose real enforcement.
 - *Force/clear form-mode values in the Type `onChange`* — mutating `formData` on
@@ -129,7 +131,7 @@ const REQUIRED_FIELD_LABELS: Record<string, string> = {
 
 // Report Group choices when template_type === 'form'. Stored value === the code.
 const FORM_REPORT_GROUPS = [
-  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFQ', 'EOP',
+  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFP', 'EOP',
 ] as const;
 ```
 
@@ -257,6 +259,7 @@ the `<Input>` + inline error) with a fork on `isForm`. The read-only branch
 ```
 
 Notes:
+
 - The list/empty branch is the **current** input verbatim — no behavior change when
   not in form mode.
 - `report_group` state stays a plain `string`; only the control changes. No type

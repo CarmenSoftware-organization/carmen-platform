@@ -15,7 +15,7 @@
 - One production file only: `src/pages/ReportTemplateEdit.tsx`; its test: `src/pages/ReportTemplateEdit.test.tsx`. Do not touch `src/components/ui/*`, `reportTemplateService`, or the backend.
 - Tests: Vitest with **explicit imports** (`import { describe, it, expect, vi } from 'vitest'`) — no globals. RTL + `user-event`. Keep routing real via `MemoryRouter`; `vi.mock` the shell + service (already set up in the existing test file).
 - Run `bun run test` (one-shot) **and** `bun run build` before every commit. Build catches unused vars (TS6133) — never declare a symbol before the step that uses it.
-- `template_type` stored value on the wire is always `'form'` or `'list'` (empty is blocked at submit). Report Group form codes: `PR, PO, GRN, SR, CN, SI, SO, PC, SC, RFQ, EOP` — stored as the bare code.
+- `template_type` stored value on the wire is always `'form'` or `'list'` (empty is blocked at submit). Report Group form codes: `PR, PO, GRN, SR, CN, SI, SO, PC, SC, RFP, EOP` — stored as the bare code.
 - Commit message trailer on every commit: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
 - Branch is already `feat/report-template-type-to-info` (spec committed there).
 
@@ -29,10 +29,12 @@
 ### Task 1: Move Template Type into Template Info, make it required
 
 **Files:**
+
 - Modify: `src/pages/ReportTemplateEdit.tsx` (interface, `initialFormData`, `REQUIRED_FIELD_LABELS`, `fetchTemplate` load, Template Info render, remove from Data Source, `handleSubmit` validation)
 - Test: `src/pages/ReportTemplateEdit.test.tsx`
 
 **Interfaces:**
+
 - Consumes: existing `formData`/`fieldErrors`/`handleChange`/`handleFocus` state; existing sticky-bar `Create Template` / `Save Changes` submit button.
 - Produces: `template_type: '' | 'form' | 'list'` in `ReportTemplateFormData`; a Template Type `<select>` labeled `Template Type *` (id `template_type`) rendered before Name; the Data Source card no longer renders any Template Type control.
 
@@ -234,10 +236,12 @@ EOF
 ### Task 2: Report Group becomes a code select in form mode
 
 **Files:**
+
 - Modify: `src/pages/ReportTemplateEdit.tsx` (`FORM_REPORT_GROUPS` constant, `isForm` derive, Report Group edit branch)
 - Test: `src/pages/ReportTemplateEdit.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `formData.template_type` from Task 1; existing `handleChange`/`handleBlur`/`handleFocus`.
 - Produces: module-level `FORM_REPORT_GROUPS` tuple; render-body `const isForm = formData.template_type === 'form'` (reused by Tasks 3–4); Report Group renders a `<select id="report_group">` when `isForm`, a text `<Input id="report_group">` otherwise.
 
@@ -307,7 +311,7 @@ In `src/pages/ReportTemplateEdit.tsx`, add after `REQUIRED_FIELD_LABELS` (after 
 ```ts
 // Report Group choices when template_type === 'form'. Stored value === the code.
 const FORM_REPORT_GROUPS = [
-  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFQ', 'EOP',
+  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'PC', 'SC', 'RFP', 'EOP',
 ] as const;
 ```
 
@@ -397,7 +401,7 @@ git commit -m "$(cat <<'EOF'
 feat(report-template): Report Group becomes a code select in form mode
 
 When template_type === 'form', Report Group renders a <select> over the fixed
-document codes (PR, PO, GRN, SR, CN, SI, SO, PC, SC, RFQ, EOP), storing the bare
+document codes (PR, PO, GRN, SR, CN, SI, SO, PC, SC, RFP, EOP), storing the bare
 code; an out-of-list value is preserved as an extra option. list/empty keeps the
 free-text input.
 
@@ -411,10 +415,12 @@ EOF
 ### Task 3: Hide Standard and force it true in form mode
 
 **Files:**
+
 - Modify: `src/pages/ReportTemplateEdit.tsx` (three `!isForm` render guards + payload normalize)
 - Test: `src/pages/ReportTemplateEdit.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `isForm` from Task 2; existing `is_standard` state; existing `payload` object in `handleSubmit`.
 - Produces: header Standard badge, edit-mode Standard checkbox, and read-only Kind badge are all wrapped in `{!isForm && …}`; `payload.is_standard` is normalized to `true` when `isForm`.
 
@@ -557,10 +563,12 @@ EOF
 ### Task 4: Business Unit Scope read-only + cleared in form mode
 
 **Files:**
+
 - Modify: `src/pages/ReportTemplateEdit.tsx` (both `<ChipInput>` `value`/`placeholder`/`disabled` props + payload normalize)
 - Test: `src/pages/ReportTemplateEdit.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `isForm` from Task 2; `payload` object from Task 3.
 - Produces: Allow/Deny chip inputs disabled and masked to empty when `isForm`; `payload.allow_business_unit` / `payload.deny_business_unit` normalized to `''` when `isForm`.
 
@@ -706,6 +714,7 @@ EOF
 ## Self-Review
 
 **Spec coverage:**
+
 - §1 Type + initial state → Task 1 Step 4.
 - §2 Label registry + `FORM_REPORT_GROUPS` → Task 1 Step 5, Task 2 Step 3.
 - §3 Load fallback → Task 1 Step 6.
