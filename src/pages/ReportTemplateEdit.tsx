@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import reportTemplateService from '../services/reportTemplateService';
@@ -84,6 +84,22 @@ const initialFormData: ReportTemplateFormData = {
   source_params: [],
 };
 
+// When navigated to the "new" route with pre-fill state (from the Form Groups
+// page "+ Add"), seed the form with the given template_type / report_group.
+// Direct visits to /report-templates/new (no state) keep the plain defaults.
+function seedInitialFormData(
+  isNew: boolean,
+  state: unknown,
+): ReportTemplateFormData {
+  const st = (state ?? null) as { template_type?: 'form' | 'list'; report_group?: string } | null;
+  if (!isNew || !st) return initialFormData;
+  return {
+    ...initialFormData,
+    ...(st.template_type ? { template_type: st.template_type } : {}),
+    ...(st.report_group ? { report_group: st.report_group } : {}),
+  };
+}
+
 const fmtDateTime = (v?: string) => {
   if (!v) return '-';
   const dt = new Date(v);
@@ -96,9 +112,10 @@ const ReportTemplateEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
+  const location = useLocation();
 
-  const [formData, setFormData] = useState<ReportTemplateFormData>(initialFormData);
-  const [savedFormData, setSavedFormData] = useState<ReportTemplateFormData>(initialFormData);
+  const [formData, setFormData] = useState<ReportTemplateFormData>(() => seedInitialFormData(isNew, location.state));
+  const [savedFormData, setSavedFormData] = useState<ReportTemplateFormData>(() => seedInitialFormData(isNew, location.state));
   const [metadata, setMetadata] = useState<MetadataFields>({});
   const [loading, setLoading] = useState(!isNew);
   const [editing, setEditing] = useState(isNew);
