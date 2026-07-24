@@ -21,6 +21,7 @@ const UserManagement = lazy(() => import("./pages/UserManagement"));
 const UserEdit = lazy(() => import("./pages/UserEdit"));
 const ReportTemplateManagement = lazy(() => import("./pages/ReportTemplateManagement"));
 const ReportTemplateEdit = lazy(() => import("./pages/ReportTemplateEdit"));
+const ReportFormGroupManagement = lazy(() => import("./pages/ReportFormGroupManagement"));
 const NewsManagement = lazy(() => import("./pages/NewsManagement"));
 const NewsEdit = lazy(() => import("./pages/NewsEdit"));
 const BroadcastCompose = lazy(() => import("./pages/BroadcastCompose"));
@@ -167,6 +168,14 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="user.update">
                   <UserEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/report-form-groups"
+              element={
+                <PrivateRoute requiredPermission="report_template.read">
+                  <ReportFormGroupManagement />
                 </PrivateRoute>
               }
             />

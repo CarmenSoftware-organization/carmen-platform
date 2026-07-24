@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database } from 'lucide-react';
+import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 
@@ -56,6 +56,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/users', label: 'Users', icon: Users, permission: 'user.read', group: 'Organization' },
     // Content
     { path: '/report-templates', label: 'Report Templates', icon: FileText, permission: 'report_template.read', group: 'Content' },
+    { path: '/report-form-groups', label: 'Form Groups', icon: LayoutGrid, permission: 'report_template.read', group: 'Content' },
     { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read', group: 'Content' },
     { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send', group: 'Content' },
     // Platform

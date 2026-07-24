@@ -76,6 +76,36 @@ const reportTemplateService = {
     return response.data;
   },
 
+  /**
+   * Switch the default form template within a report_group. Enforces the
+   * "at most one default per group" invariant client-side by UNSETTING the
+   * current default before SETTING the new one — the DB partial unique index
+   * would reject two live defaults, so ordering here is load-bearing.
+   *
+   * Both writes are partial PUTs: the backend preserves fields omitted from an
+   * update payload (see ReportTemplateEdit submit comment), so sending only
+   * { is_default, doc_version } leaves the rest of each record intact.
+   */
+  setGroupDefault: async ({
+    current,
+    target,
+  }: {
+    current: { id: string; doc_version?: number } | null;
+    target: { id: string; doc_version?: number };
+  }): Promise<void> => {
+    if (current && current.id === target.id) return;
+    if (current) {
+      await api.put(`/api-system/report-templates/${current.id}`, {
+        is_default: false,
+        ...(current.doc_version != null ? { doc_version: current.doc_version } : {}),
+      });
+    }
+    await api.put(`/api-system/report-templates/${target.id}`, {
+      is_default: true,
+      ...(target.doc_version != null ? { doc_version: target.doc_version } : {}),
+    });
+  },
+
   delete: async (id: string) => {
     const response = await api.delete(`/api-system/report-templates/${id}`);
     return response.data;
