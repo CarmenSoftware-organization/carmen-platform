@@ -22,7 +22,6 @@ import { toast } from 'sonner';
 
 interface GroupView {
   code: string;
-  isLegacy: boolean;
   rows: ReportTemplate[];
 }
 
@@ -99,16 +98,15 @@ const ReportFormGroupManagement: React.FC = () => {
     }
 
     const fixedCodes = FORM_REPORT_GROUPS as readonly string[];
-    const build = (code: string, isLegacy: boolean): GroupView => ({
+    const build = (code: string): GroupView => ({
       code,
-      isLegacy,
       rows: sortRows((byGroup.get(code) ?? []).filter((t) => rowVisible(code, t))),
     });
 
     // Fixed 12 always render when there is no query; under a query, keep only
     // groups whose code matches or that still have matching rows.
     const fixed = fixedCodes
-      .map((c) => build(c, false))
+      .map((c) => build(c))
       .filter((g) => (!q ? true : g.code.toLowerCase().includes(q) || g.rows.length > 0));
 
     // Legacy groups exist only because they hold data; show them when they have
@@ -116,7 +114,7 @@ const ReportFormGroupManagement: React.FC = () => {
     const legacy = Array.from(byGroup.keys())
       .filter((c) => !fixedCodes.includes(c))
       .sort((a, b) => a.localeCompare(b))
-      .map((c) => build(c, true))
+      .map((c) => build(c))
       .filter((g) => g.rows.length > 0);
 
     return [...fixed, ...legacy];
