@@ -27,17 +27,13 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
 import { ReadOnlyField } from '../components/ReadOnlyField';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
+import { FORM_REPORT_GROUPS } from '../constants/reportGroups';
 
 const REQUIRED_FIELD_LABELS: Record<string, string> = {
   name: 'Name',
   report_group: 'Report group',
   template_type: 'Template type',
 };
-
-// Report Group choices when template_type === 'form'. Stored value === the code.
-const FORM_REPORT_GROUPS = [
-  'PR', 'PO', 'GRN', 'SR', 'CN', 'SI', 'SO', 'IA', 'PC', 'SC', 'RFP', 'EOP',
-] as const;
 
 interface SourceParamRow {
   filter: string;
