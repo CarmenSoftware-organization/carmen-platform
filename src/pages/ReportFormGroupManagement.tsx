@@ -54,15 +54,42 @@ const ReportFormGroupManagement: React.FC = () => {
   const fetchAll = useCallback(async () => {
     try {
       setLoading(true);
-      const response: any = await reportTemplateService.getAll({
-        perpage: -1,
-        sort: 'name:asc',
-        advance: JSON.stringify({ where: { template_type: 'form', deleted_at: null } }),
-      });
-      setRawResponse(response);
-      const inner = response.data?.data ?? response.data ?? response;
-      const items = Array.isArray(inner) ? inner : (inner?.data ?? []);
-      setTemplates(Array.isArray(items) ? items : []);
+      const advance = JSON.stringify({ where: { template_type: 'form', deleted_at: null } });
+      // Collect EVERY form template by paging until `paginate.total` is reached,
+      // so the grouping never operates on a silent subset. This is robust whether
+      // or not the backend honours a "fetch all" perpage sentinel and even if it
+      // caps page size below PAGE_SIZE. The common case (few form templates) is a
+      // single request; MAX_PAGES is a runaway guard.
+      const PAGE_SIZE = 500;
+      const MAX_PAGES = 50;
+      const all: ReportTemplate[] = [];
+      let firstResponse: unknown = null;
+      for (let page = 1; page <= MAX_PAGES; page++) {
+        const response: any = await reportTemplateService.getAll({
+          page,
+          perpage: PAGE_SIZE,
+          sort: 'name:asc',
+          advance,
+        });
+        if (page === 1) firstResponse = response;
+        const inner = response.data?.data ?? response.data ?? response;
+        const items = Array.isArray(inner) ? inner : (inner?.data ?? []);
+        const pageItems: ReportTemplate[] = Array.isArray(items) ? items : [];
+        all.push(...pageItems);
+        const total: number | undefined =
+          response.data?.paginate?.total ?? response.paginate?.total ?? inner?.paginate?.total;
+        // Stop on an empty page (definitely the end); else when we've reached the
+        // reported total; else, if total is unknown, when a short page implies the
+        // end. Never break early just because a full-but-capped page came back.
+        if (pageItems.length === 0) break;
+        if (total != null) {
+          if (all.length >= total) break;
+        } else if (pageItems.length < PAGE_SIZE) {
+          break;
+        }
+      }
+      setRawResponse(firstResponse);
+      setTemplates(all);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load form templates: ' + getErrorDetail(err));
