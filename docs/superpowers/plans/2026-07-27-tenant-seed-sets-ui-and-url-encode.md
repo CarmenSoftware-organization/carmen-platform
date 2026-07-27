@@ -582,12 +582,12 @@ In `apps/micro-business/src/tenant/tenant.service.spec.ts`, inside the existing
 
 If `port: 'abc'` does not type-check against the local `DatabaseConfig`, cast it at that call site (`port: 'abc' as unknown as number`) rather than widening the shared type.
 
-The four pre-existing cases in this block must keep passing untouched — their fixture values are alphanumeric, so `encodeURIComponent` is a no-op and the guards accept them.
+The pre-existing cases in this block must keep passing untouched. Note that the mysql case's `database` fixture is `'car men'` (not alphanumeric) — that was deliberately changed by a later fix precisely so it exercises encoding; the rest of the pre-existing fixture values are alphanumeric, so `encodeURIComponent` is a no-op and the guards accept them.
 
 - [ ] **Step 4: Run the scoped unit tests**
 
 Run: `cd apps/micro-business && bun run test -- src/tenant/tenant.service.spec.ts --forceExit`
-Expected: PASS — seven cases in the `getConnectionString` block.
+Expected: PASS — eight cases in the `getConnectionString` block.
 
 - [ ] **Step 5: Type-check the app**
 
