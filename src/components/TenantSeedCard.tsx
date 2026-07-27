@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react';
-import { Sprout, Loader2, RefreshCw, Play } from 'lucide-react';
+import { Sprout, Loader2, RefreshCw, Play, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -33,6 +33,7 @@ export const TenantSeedCard = ({
   const [progress, setProgress] = useState<{ done: number; total: number; current: string | null } | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   const disabledReason = !isSuperAdmin
     ? 'Super-admin required.'
@@ -63,12 +64,21 @@ export const TenantSeedCard = ({
       return next;
     });
 
+  const toggleExpanded = (key: string) =>
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   const fetchStatus = async () => {
     setLoadingStatus(true);
     try {
       const s = await tenantSeedService.getStatus(buId);
       setStatus(s);
       setSelectedKeys(new Set(s.sets.filter((x) => x.missing.length > 0).map((x) => x.key)));
+      setExpandedKeys(new Set(s.sets.filter((x) => x.missing.length > 0).map((x) => x.key)));
       const d = new Date();
       const p = (n: number) => String(n).padStart(2, '0');
       setLastChecked(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
@@ -123,7 +133,7 @@ export const TenantSeedCard = ({
           <Sprout className="h-4 w-4" /> Tenant Seed Data
         </CardTitle>
         <CardDescription>
-          Check and seed default master data (running codes) into this BU&apos;s tenant database.
+          Check and seed default master data into this BU&apos;s tenant database.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -144,33 +154,58 @@ export const TenantSeedCard = ({
           {lastChecked && <span className="text-xs text-muted-foreground">Last checked {lastChecked}</span>}
         </div>
 
-        {status && !status.all_seeded && (
+        {status && (
           <div className="space-y-2">
-            {status.sets
-              .filter((s) => s.missing.length > 0)
-              .map((s) => (
+            {status.sets.map((s) => {
+              const complete = s.missing.length === 0;
+              const expanded = expandedKeys.has(s.key);
+              return (
                 <div key={s.key} className="space-y-1">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={selectedKeys.has(s.key)}
-                      onChange={() => toggleSet(s.key)}
-                    />
-                    {s.label}{' '}
-                    <span className="font-normal text-muted-foreground">
-                      ({s.present}/{s.defined} present, {s.missing.length} missing)
-                    </span>
-                  </label>
-                  <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
-                    {s.missing.map((name) => (
-                      <li key={name} className="break-all font-mono text-xs text-muted-foreground">
-                        {name}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="flex items-center gap-2">
+                    <label className="flex flex-1 items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={selectedKeys.has(s.key)}
+                        disabled={actionsDisabled || complete}
+                        onChange={() => toggleSet(s.key)}
+                      />
+                      {s.label}{' '}
+                      <span className="font-normal text-muted-foreground">
+                        ({s.present}/{s.defined} present, {s.missing.length} missing)
+                      </span>
+                    </label>
+                    {complete ? (
+                      <Badge variant="success">Seeded</Badge>
+                    ) : (
+                      <Badge variant="secondary">{s.missing.length} missing</Badge>
+                    )}
+                    {!complete && (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 shrink-0"
+                        aria-expanded={expanded}
+                        aria-label={`${expanded ? 'Hide' : 'Show'} missing rows for ${s.label}`}
+                        onClick={() => toggleExpanded(s.key)}
+                      >
+                        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
+                  {!complete && expanded && (
+                    <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
+                      {s.missing.map((name) => (
+                        <li key={name} className="break-all font-mono text-xs text-muted-foreground">
+                          {name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              ))}
+              );
+            })}
             {withTooltip(
               <Button
                 type="button"
@@ -179,7 +214,7 @@ export const TenantSeedCard = ({
                 disabled={actionsDisabled || selectedMissing === 0}
               >
                 <Play className="mr-2 h-4 w-4" />
-                Seed {selectedMissing} row(s)
+                {selectedMissing === 0 ? 'Nothing to seed' : `Seed ${selectedMissing} row(s)`}
               </Button>,
             )}
           </div>

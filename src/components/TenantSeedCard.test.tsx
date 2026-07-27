@@ -47,7 +47,7 @@ describe('TenantSeedCard', () => {
     });
     render(<TenantSeedCard {...baseProps} />);
     await userEvent.click(screen.getByRole('button', { name: /check status/i }));
-    expect(await screen.findByText(/seeded/i)).toBeInTheDocument();
+    expect(await screen.findAllByText(/^seeded$/i)).toHaveLength(2);
     expect(screen.queryByRole('button', { name: /seed \d+ row/i })).not.toBeInTheDocument();
   });
 
@@ -87,5 +87,53 @@ describe('TenantSeedCard', () => {
   it('disables actions and shows a reason when not super-admin', () => {
     render(<TenantSeedCard {...baseProps} isSuperAdmin={false} />);
     expect(screen.getByRole('button', { name: /check status/i })).toBeDisabled();
+  });
+
+  it('renders a complete set with a Seeded badge and a disabled checkbox', async () => {
+    svc.getStatus.mockResolvedValue({
+      bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: false,
+      sets: [
+        { key: 'running-code', label: 'Running codes', defined: 14, present: 12, missing: ['PRODUCT', 'PRICE-LIST'] },
+        { key: 'vendor-business-type', label: 'Vendor business types', defined: 12, present: 12, missing: [] },
+      ],
+    });
+    render(<TenantSeedCard {...baseProps} />);
+    await userEvent.click(screen.getByRole('button', { name: /check status/i }));
+    const boxes = await screen.findAllByRole('checkbox');
+    expect(boxes).toHaveLength(2);
+    expect(boxes[0]).toBeEnabled();
+    expect(boxes[1]).toBeDisabled();
+    expect(screen.getByText(/Vendor business types/)).toBeInTheDocument();
+    // only the incomplete set contributes to the button count
+    expect(screen.getByRole('button', { name: /seed 2 row/i })).toBeEnabled();
+  });
+
+  it('keeps the seed button mounted and reads "Nothing to seed" when every set is complete', async () => {
+    svc.getStatus.mockResolvedValue({
+      bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: true,
+      sets: [
+        { key: 'running-code', label: 'Running codes', defined: 14, present: 14, missing: [] },
+        { key: 'vendor-business-type', label: 'Vendor business types', defined: 12, present: 12, missing: [] },
+      ],
+    });
+    render(<TenantSeedCard {...baseProps} />);
+    await userEvent.click(screen.getByRole('button', { name: /check status/i }));
+    expect(await screen.findByRole('button', { name: /nothing to seed/i })).toBeDisabled();
+    for (const box of screen.getAllByRole('checkbox')) expect(box).toBeDisabled();
+  });
+
+  it('collapses and re-expands the missing row list', async () => {
+    svc.getStatus.mockResolvedValue({
+      bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: false,
+      sets: [{ key: 'running-code', label: 'Running codes', defined: 14, present: 13, missing: ['PRODUCT'] }],
+    });
+    render(<TenantSeedCard {...baseProps} />);
+    await userEvent.click(screen.getByRole('button', { name: /check status/i }));
+    // sets with missing rows start expanded
+    expect(await screen.findByText('PRODUCT')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /hide missing rows for running codes/i }));
+    expect(screen.queryByText('PRODUCT')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /show missing rows for running codes/i }));
+    expect(screen.getByText('PRODUCT')).toBeInTheDocument();
   });
 });
