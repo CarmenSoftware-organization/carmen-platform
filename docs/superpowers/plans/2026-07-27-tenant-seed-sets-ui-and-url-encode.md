@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `TenantSeedCard` show every tenant seed set (fully-seeded ones visible but not selectable), and percent-encode `database` / `schema` in both tenant connection-string builders.
+**Goal:** Make `TenantSeedCard` show every tenant seed set (fully-seeded ones visible but not selectable), and percent-encode `database` / `schema` in two of the codebase's tenant connection-string builders (a fourth builder, `apply-tenant-views.ts`, shares the bug class and is deferred — see the spec's Out of scope section).
 
-**Architecture:** Three tasks across two repos. Task 1 rewrites one render block plus one state hook in a single React component. Tasks 2 and 3 fix the two connection-string builders — the CLI one in `@repo/prisma-shared-schema-tenant`, and the runtime one in `micro-business` used by the seed and migration APIs. The two authority validators live in **one** shared module inside the package, which the runtime imports; Task 2 must therefore land before Task 3.
+**Architecture:** Three tasks across two repos. Task 1 rewrites one render block plus one state hook in a single React component. Tasks 2 and 3 fix two of the codebase's connection-string builders — the CLI one in `@repo/prisma-shared-schema-tenant`, and the runtime one in `micro-business` used by the seed and migration APIs. (This is not the full inventory of connection-string builders in the codebase — see Deferred to a follow-up below.) The two authority validators live in **one** shared module inside the package, which the runtime imports; Task 2 must therefore land before Task 3.
 
 **Tech Stack:** React 19 + TypeScript (Vite), shadcn/ui + Tailwind, Vitest + React Testing Library (frontend) · NestJS + Prisma, Vitest (package) + Jest (micro-business) (backend)
 
@@ -20,7 +20,7 @@
 - **Status must use `<Badge variant="success" | "secondary">`** — never raw green Tailwind classes.
 - **Icon sizing:** `h-4 w-4` inside a button; `mr-2 h-4 w-4` when the button also has text.
 - **Do not change either backend function's error contract.** `getConnectionString` returns `undefined` on a bad record; `buildTenantUrl` throws. Callers already surface both.
-- **`host` and `port` are validated, never percent-encoded** — `encodeURIComponent` would corrupt IPv6 literals (`::1` → `%3A%3A1`).
+- **`host` and `port` are validated, never percent-encoded** — `encodeURIComponent` would destroy a bracketed IPv6 literal (`[::1]` → `%5B%3A%3A1%5D`); RFC 3986 requires an IP-literal host to be bracketed. Verified: `new URL('postgresql://u:p@::1:5432/db')` throws `ERR_INVALID_URL`, while `new URL('postgresql://u:p@[::1]:5432/db').hostname` is `'[::1]'`. A *bare* (unbracketed) IPv6 host is a pre-existing, undocumented-until-now limitation — it passes `isSafeHost` and the builder returns a value, but the caller's own `new URL(...)` then throws.
 - **JSDoc is lint-enforced in the backend** (`jsdoc/require-jsdoc`, `require-description`, `require-param`, `require-returns` are all `error`). Every new exported function needs a JSDoc block with a description, `@param` for each parameter, and `@returns`. Match the bilingual EN/TH style of the surrounding code.
 - **Backend Jest must be run scoped and in the foreground, with `--forceExit`** (the suite is known to hang on open handles otherwise).
 
@@ -314,8 +314,9 @@ Create `packages/prisma-shared-schema-tenant/src/db-connection-url.ts`:
 /**
  * Reject host values that could break out of the URI authority.
  * Hosts are validated rather than percent-encoded because encoding would
- * corrupt IPv6 literals (`::1` becomes `%3A%3A1`).
+ * destroy a bracketed IPv6 literal (`[::1]` becomes `%5B%3A%3A1%5D`).
  * ปฏิเสธค่า host ที่อาจหลุดออกจากส่วน authority ของ URI
+ * host ถูกตรวจสอบแทนการเข้ารหัส percent เพราะการเข้ารหัสจะทำลาย IPv6 literal ที่มีวงเล็บ (`[::1]` จะกลายเป็น `%5B%3A%3A1%5D`)
  * @param host - Host from db_connection / โฮสต์จาก db_connection
  * @returns True when the host is safe to interpolate / true เมื่อ host ปลอดภัยที่จะแทรกในสตริง
  */
@@ -384,10 +385,10 @@ import { describe, it, expect } from 'vitest';
 import { isSafeHost, isSafePort } from './db-connection-url';
 
 describe('isSafeHost', () => {
-  it('accepts hostnames, IPv4 and IPv6 literals', () => {
+  it('accepts hostnames, IPv4 and bracketed IPv6 literals', () => {
     expect(isSafeHost('db.example.com')).toBe(true);
     expect(isSafeHost('10.0.0.1')).toBe(true);
-    expect(isSafeHost('::1')).toBe(true);
+    expect(isSafeHost('[::1]')).toBe(true);
   });
 
   it('rejects an empty host and any authority-breaking character', () => {
@@ -634,7 +635,7 @@ Both were raised before execution and decided by the human partner; they overrid
 
 ## Deferred to a follow-up (do not implement here)
 
-Recorded so a reader does not mistake them for oversights — all three are documented in the spec's *Out of scope* section:
+Recorded so a reader does not mistake them for oversights — all are documented in the spec's *Out of scope* section:
 
 - Running the seed against DEV (backend PR #256 has not been deployed there yet). Once it is,
   the manual check from the spec applies: open a Business Unit, press **Check status**, and
@@ -643,3 +644,5 @@ Recorded so a reader does not mistake them for oversights — all three are docu
   when nothing is selectable.
 - **B2** — replacing `UNIQUE(name, deleted_at)` with a partial `UNIQUE(name) WHERE deleted_at IS NULL`. Pre-existing repo-wide pattern, needs its own migration.
 - **B3** — deduplicating `definedKeys` in `vendorBusinessTypeSeedSet`. Cosmetic; all 12 current names are unique.
+- **B4** — a fourth connection-string builder, `packages/prisma-shared-schema-platform/prisma/apply-tenant-views.ts`, was found by the final review to share B1's bug class (raw `host`/`port`/`database`, no guard, no encoding, around line 107) plus a separate SQL-identifier injection into `psql -c` (raw `schema` inside a double-quoted identifier, around line 121; a `quoteIdent` precedent exists in `apps/micro-business/src/sql-query/sql-query.service.ts`). Not touched by this branch — the bug class is not closed repo-wide.
+- The pre-existing `listActiveConnections` reporting gap in `apps/micro-business/src/authen/tenant_migration/tenant_migration.service.ts`: it silently omits any BU it cannot resolve (it already skipped BUs with no `db_connection` before this branch), while `deployAllStream` / `deployAll` / `statusAll` report `total` as the post-filter count — so a batch report can read `failed: 0` while a BU was silently skipped. This branch widens the set of inputs that reach that path but does not change the counting behavior.

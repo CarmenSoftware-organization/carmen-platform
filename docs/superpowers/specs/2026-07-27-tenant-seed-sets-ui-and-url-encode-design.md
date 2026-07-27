@@ -27,8 +27,9 @@ every complete set. A set that is fully seeded cannot be seen or reasoned about.
 behaves as a worklist ("what still needs doing") when the operator wants a control panel
 ("what sets exist, what state is each in, which do I run").
 
-**B1 — unencoded `database` and `schema` in the tenant connection string.** Both builders
-percent-encode username and password but interpolate `database` and `schema` raw:
+**B1 — unencoded `database` and `schema` in the tenant connection string.** Two of the
+codebase's connection-string builders percent-encode username and password but interpolate
+`database` and `schema` raw:
 
 - `apps/micro-business/src/tenant/tenant.service.ts:452` — the runtime path, used by the
   seed API and the migration API.
@@ -40,6 +41,12 @@ percent-encode username and password but interpolate `database` and `schema` raw
 Business Unit edit page, so the value is not guaranteed well-formed. This is a robustness
 and input-hygiene fix, not a privilege boundary — a super-admin who can edit `db_connection`
 already controls the target database.
+
+This inventory is **not exhaustive**. A fourth connection-string builder exists in the
+codebase — `packages/prisma-shared-schema-platform/prisma/apply-tenant-views.ts` — that has
+the same bug class (plus a related SQL-identifier injection issue) and is **not** touched by
+this branch. See *Out of scope* for the deferred follow-up; the bug class this branch fixes
+is not closed repo-wide.
 
 ## Design
 
@@ -113,8 +120,11 @@ Same one-line change at both call sites:
 | `packages/prisma-shared-schema-tenant/prisma/lib/tenant-connection.ts` → `buildTenantUrl` | CLI seeder | postgresql-only by construction |
 
 **`host` and `port` guards.** `host` and `port` are *not* percent-encoded:
-`encodeURIComponent` would corrupt IPv6 literals (`::1` → `%3A%3A1`). Instead both builders
-reject malformed values before interpolation:
+`encodeURIComponent` would destroy a **bracketed** IPv6 literal (`[::1]` → `%5B%3A%3A1%5D`),
+and RFC 3986 requires an IP-literal host to be bracketed. Verified empirically:
+`new URL('postgresql://u:p@::1:5432/db')` throws `ERR_INVALID_URL`, while
+`new URL('postgresql://u:p@[::1]:5432/db').hostname` parses to `'[::1]'`. Instead both
+builders reject malformed values before interpolation:
 
 - `port` must parse as a positive integer.
 - `host` must not contain any of `/ ? # @ &` — the characters that could break out of the
@@ -125,14 +135,24 @@ throw) and returns `undefined` from `getConnectionString` (consistent with its e
 unknown-provider return, which callers already surface as
 `"… has an unsupported database provider"`). Do not change either function's error shape.
 
+**Known limitation, not introduced by this branch.** A *bare* (unbracketed) IPv6 host — e.g.
+`::1` without brackets — passes `isSafeHost` (it contains none of `/ ? # @ &`), so the builder
+returns a connection-string value; the caller's own `new URL(...)` call then throws, because a
+bare IPv6 host is not a valid URI authority. This was equally true before this branch — a bare
+IPv6 host was never supported — so it is documented here as a pre-existing limitation, not a
+regression.
+
 ### 3. Tests and verification
 
 **One existing assertion breaks and must be fixed.** In
 `src/components/TenantSeedCard.test.tsx`, the `all_seeded` test asserts
 `await screen.findByText(/seeded/i)` (line 50). Once fully-seeded sets render, an `all_seeded`
 status produces two matches — the card-level `Seeded` badge (`TenantSeedCard.tsx:142`) and
-the new per-set badge — and `findByText` throws on multiple matches. Narrow the query so it
-targets one element unambiguously.
+the new per-set badge — and `findByText` throws on multiple matches. Rather than narrowing the
+query to one element, assert both: `findAllByText(/^seeded$/i)` has length 2. That fixture has
+exactly one set, so the two matches are precisely the card-level badge and that set's own row
+badge — asserting the length is more informative than picking one of the two arbitrarily, since
+it confirms both badges render as expected.
 
 Every other assertion in the file survives unchanged:
 
@@ -146,8 +166,14 @@ Every other assertion in the file survives unchanged:
   assertion is on the `deployStream` call.
 - Test 4 renders without a status at all and is untouched.
 
-Per the standing project rule, no new automated tests are written as part of this change.
-Verification is:
+**Tests are required for this change.** Before execution, the human partner ruled explicitly
+that tests are required for the behavior each task introduces, overriding the standing project
+rule that automated tests are skipped during plan execution (see the plan's Pre-flight
+rulings). Accordingly this change adds: three new tests in `TenantSeedCard.test.tsx`
+(frontend); three new cases in the existing `TenantService.getConnectionString` describe block
+in `tenant.service.spec.ts` (backend runtime); and two new backend test files,
+`db-connection-url.test.ts` and `tenant-connection.test.ts` (backend package). Verification
+is:
 
 - `bun run test` — full Vitest suite green.
 - `bun run build` — TypeScript and ESLint clean.
@@ -175,6 +201,36 @@ Reviewed and deliberately deferred:
   result with a `Set` but `definedKeys` does not, so `present = defined - missing.length`
   would drift if the seed data ever gained a duplicate `name`. All 12 current names are
   unique; cosmetic today.
+- **B4 — a fourth connection-string builder with the same bug class, plus a SQL-identifier
+  injection, in `apply-tenant-views.ts` (Repo B, not touched by this branch).** In
+  `packages/prisma-shared-schema-platform/prisma/apply-tenant-views.ts`:
+  - Around line 107, `applyToTenant` builds
+    `` postgresql://${encodeURIComponent(bu.conn.username)}@${bu.conn.host}:${bu.conn.port}/${bu.conn.database}?sslmode=require&connect_timeout=30 ``
+    with `host`, `port`, and `database` all raw — no `isSafeHost`/`isSafePort` guard, and no
+    `encodeURIComponent` on `database`. This is the same bug class as B1, a third occurrence,
+    left open.
+  - Around line 121, the same function passes `` SET search_path TO "${bu.conn.schema}"; ``
+    to `psql -c` with `schema` interpolated raw inside a double-quoted SQL identifier.
+    `execFileSync` prevents *shell* injection but not *SQL* injection into the psql session —
+    a `schema` value containing a `"` breaks out of the identifier. The same
+    operator-editable `db_connection` JSON feeds it. A `quoteIdent` helper that doubles
+    embedded quotes already exists in `apps/micro-business/src/sql-query/sql-query.service.ts`
+    and is the precedent for a future fix.
+  - **The human partner ruled: defer both to a follow-up.** This branch fixes the bug class in
+    the runtime builder (`tenant.service.ts`) and the CLI seeder builder
+    (`tenant-connection.ts`) only. The class is **not closed repo-wide** —
+    `apply-tenant-views.ts` still has both issues.
+- **Pre-existing `listActiveConnections` reporting gap, widened (not introduced) by this
+  branch.** `apps/micro-business/src/authen/tenant_migration/tenant_migration.service.ts` →
+  `listActiveConnections` silently omits any BU it cannot resolve a connection string for —
+  it already skipped BUs with no `db_connection` at all before this branch — while
+  `deployAllStream` / `deployAll` / `statusAll` report `total` as `connections.length`, the
+  *post-filter* count. So a batch report can read `failed: 0` while having silently skipped a
+  BU it never attempted. This branch widens the set of inputs that reach that silent-skip path
+  (a malformed host/port now also resolves to no connection, the same way a missing
+  `db_connection` always did), but it does not change the counting behavior. Deferred — a
+  fix would need to either report skipped BUs separately or count against the pre-filter
+  total.
 
 ## Verified as correct, no action
 

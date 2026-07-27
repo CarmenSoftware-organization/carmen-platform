@@ -104,6 +104,8 @@ describe('TenantSeedCard', () => {
     expect(boxes[0]).toBeEnabled();
     expect(boxes[1]).toBeDisabled();
     expect(screen.getByText(/Vendor business types/)).toBeInTheDocument();
+    // all_seeded is false, so only the complete set's own row badge renders "Seeded"
+    expect(screen.getByText(/^seeded$/i)).toBeInTheDocument();
     // only the incomplete set contributes to the button count
     expect(screen.getByRole('button', { name: /seed 2 row/i })).toBeEnabled();
   });
