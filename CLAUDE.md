@@ -254,7 +254,7 @@ const handleSortChange = (sort: string) => setPaginate(p => ({ ...p, sort })); /
 <Route path="/x" element={<PrivateRoute requireSuperAdmin><X /></PrivateRoute>} />
 ```
 
-After create: `navigate(\`/items/\${created.id}\`, { replace: true })`.
+After create: `navigate(\`/items/\${created.id}/edit\`, { replace: true })` — there is no bare `/items/:id` route, only `/items`, `/items/new`, and `/items/:id/edit`; navigating to the bare form falls through the catch-all to the 404 page.
 
 ## Report Template Edit Specifics
 

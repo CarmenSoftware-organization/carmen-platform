@@ -128,7 +128,7 @@ Users with any other role are rejected with "access denied".
 
 **Route guards (permission-based — Platform RBAC):**
 
-- `PrivateRoute` wraps any authenticated route. If not authenticated → redirect to `/login`. If `requiredPermission` is set and `hasPermission()` returns false → renders `<AccessDenied>`. If `requireSuperAdmin` is set and `isSuperAdmin` is false → renders `<AccessDenied>`.
+- `PrivateRoute` wraps any authenticated route. If not authenticated → redirect to `/login`. If `requiredPermission` is set and `hasPermission()` returns false → renders `<Forbidden>`. If `requireSuperAdmin` is set and `isSuperAdmin` is false → renders `<Forbidden>`.
 - `hasPermission(key)` (from `AuthContext`): resolves the user's effective platform permissions and returns `true` if `key` (`<module>.<action>`) is present — with a bootstrap exception that grants access when the total user count is ≤ 1 (first-admin escape hatch). `isSuperAdmin` reflects `is_super_admin` on the resolved permissions.
 
 See `src/components/PrivateRoute.tsx` for the route-guard usage and `src/App.tsx` for per-route role configuration.

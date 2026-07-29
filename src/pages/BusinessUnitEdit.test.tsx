@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 
 vi.mock('../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -65,9 +65,17 @@ const fakeBu = {
   is_active: true, is_hq: false, config: [], users: [],
 };
 
+// Renders the current pathname so a test can prove where a post-save navigate()
+// actually landed, without depending on what the destination route renders.
+const PathProbe: React.FC = () => {
+  const { pathname } = useLocation();
+  return <span data-testid="pathname">{pathname}</span>;
+};
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <PathProbe />
       <Routes>
         <Route path="/business-units/new" element={<BusinessUnitEdit />} />
         <Route path="/business-units/:id/edit" element={<BusinessUnitEdit />} />
@@ -149,6 +157,10 @@ describe('BusinessUnitEdit (one-document)', () => {
     expect(asMock(businessUnitService.create).mock.calls[0][0]).toMatchObject({
       code: 'BU9', name: 'New BU', cluster_id: 'c1',
     });
+    // REGRESSION (finding #1): a successful create must land on the registered
+    // `/business-units/:id/edit` route, not the unregistered `/business-units/:id`
+    // — the latter falls through App.tsx's catch-all straight to the 404 page.
+    expect(await screen.findByTestId('pathname')).toHaveTextContent('/business-units/bu9/edit');
   });
 });
 

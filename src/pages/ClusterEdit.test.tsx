@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 // Mock the shell so no AuthContext/Sidebar is needed.
 vi.mock('../components/Layout', () => ({
@@ -63,9 +63,17 @@ const fakeCluster = {
   is_active: true,
 };
 
+// Renders the current pathname so a test can prove where a post-save navigate()
+// actually landed, without depending on what the destination route renders.
+const PathProbe: React.FC = () => {
+  const { pathname } = useLocation();
+  return <span data-testid="pathname">{pathname}</span>;
+};
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      <PathProbe />
       <Routes>
         <Route path="/clusters/new" element={<ClusterEdit />} />
         <Route path="/clusters/:id/edit" element={<ClusterEdit />} />
@@ -108,6 +116,25 @@ describe('ClusterEdit (integration)', () => {
     expect(await screen.findByText('Add Cluster')).toBeInTheDocument();
     expect(clusterService.getById).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText('Cluster code')).toBeInTheDocument();
+  });
+});
+
+// REGRESSION (finding #1). A successful create must land on the registered
+// `/clusters/:id/edit` route, not the unregistered `/clusters/:id` — the latter
+// falls through App.tsx's catch-all straight to the 404 page instead of the
+// cluster the user just created.
+describe('ClusterEdit — create navigates to the new cluster\'s edit route', () => {
+  it('navigates to /clusters/:id/edit after a successful create', async () => {
+    const user = userEvent.setup();
+    asMock(clusterService.create).mockResolvedValue({ data: { id: 'c9' } });
+    asMock(clusterService.getById).mockResolvedValue({ data: { ...fakeCluster, id: 'c9' } });
+    renderAt('/clusters/new');
+
+    await user.type(await screen.findByPlaceholderText('Cluster code'), 'CLS9');
+    await user.type(screen.getByPlaceholderText('Cluster name'), 'New Cluster');
+    await user.click(screen.getByRole('button', { name: /create cluster/i }));
+
+    expect(await screen.findByTestId('pathname')).toHaveTextContent('/clusters/c9/edit');
   });
 });
 

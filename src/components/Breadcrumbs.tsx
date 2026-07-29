@@ -32,7 +32,7 @@ const labelFor = (seg: string): string =>
 
 // Section segments with no index route of their own — only child routes exist
 // (e.g. /platform/roles, /broadcasts/new). Linking to the bare segment would
-// hit the router's catch-all and bounce an authenticated admin to Landing.
+// hit the router's catch-all, which now renders the 404 page.
 const NON_NAVIGABLE = new Set(['platform', 'broadcasts']);
 
 // Segments that are opaque record ids (uuid-ish) carry no label of their own.
