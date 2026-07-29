@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
@@ -7,6 +7,8 @@ import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import Forbidden from "./pages/Forbidden";
+import NotFound from "./pages/NotFound";
 import "./App.css";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -307,7 +309,15 @@ function AppContent() {
                 </PrivateRoute>
               }
             />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route
+              path="/403"
+              element={
+                <PrivateRoute>
+                  <Forbidden />
+                </PrivateRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
           <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
