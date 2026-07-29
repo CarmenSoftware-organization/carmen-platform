@@ -521,7 +521,10 @@ import userEvent from '@testing-library/user-event';
 import { TestEmailDialog } from './TestEmailDialog';
 import emailSettingService from '../../services/emailSettingService';
 
-const toast = { success: vi.fn(), error: vi.fn() };
+// vi.hoisted is REQUIRED: vi.mock is hoisted above const declarations, so a plain
+// `const toast = {...}` throws "Cannot access 'toast' before initialization".
+// This matches the existing pattern in BroadcastCompose.test.tsx:34 and others.
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 vi.mock('../../services/emailSettingService', () => ({
   default: { sendTest: vi.fn() },
@@ -740,7 +743,10 @@ import { EmailSettingCard } from './EmailSettingCard';
 import emailSettingService from '../../services/emailSettingService';
 import type { EmailSetting } from '../../types';
 
-const toast = { success: vi.fn(), error: vi.fn() };
+// vi.hoisted is REQUIRED: vi.mock is hoisted above const declarations, so a plain
+// `const toast = {...}` throws "Cannot access 'toast' before initialization".
+// This matches the existing pattern in BroadcastCompose.test.tsx:34 and others.
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 vi.mock('../../services/emailSettingService', () => ({
   default: { create: vi.fn(), update: vi.fn(), remove: vi.fn(), sendTest: vi.fn() },
@@ -1377,17 +1383,21 @@ import EmailSettingManagement from './EmailSettingManagement';
 import emailSettingService from '../services/emailSettingService';
 import type { EmailSetting } from '../types';
 
-const toast = { success: vi.fn(), error: vi.fn() };
+// vi.hoisted is REQUIRED: vi.mock is hoisted above const declarations, so a plain
+// `const toast = {...}` throws "Cannot access 'toast' before initialization".
+// This matches the existing pattern in BroadcastCompose.test.tsx:34 and others.
+const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-const auth = {
+// vi.hoisted for the same reason as `toast` above — vi.mock is hoisted above consts.
+const auth = vi.hoisted(() => ({
   hasPermission: (() => true) as (perm: string) => boolean,
   user: { email: 'admin@carmen.io' } as { email?: string } | null,
-};
+}));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => auth }));
 
 vi.mock('../services/emailSettingService', () => ({
