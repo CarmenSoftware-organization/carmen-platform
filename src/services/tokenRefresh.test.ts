@@ -170,14 +170,21 @@ describe('handleResponseError', () => {
     expect(window.location.href).toBe('/login');
   });
 
-  it('does not refresh on 403; it tears down (unchanged behavior)', async () => {
+  it('leaves the session intact on a 403 and propagates the error', async () => {
+    localStorage.setItem('token', 'keep');
     localStorage.setItem('refresh_token', 'rfr-old');
     const retry = vi.fn();
     const error = err(403, '/api/config');
 
     await expect(handleResponseError(error, retry)).rejects.toBe(error);
     expect(mockAxios.post).not.toHaveBeenCalled();
-    expect(window.location.href).toBe('/login');
+    expect(retry).not.toHaveBeenCalled();
+    // 403 means "authenticated but not authorised" — the session is still valid,
+    // so the caller's parseApiError + toast.error handles it and any in-progress
+    // form survives.
+    expect(localStorage.getItem('token')).toBe('keep');
+    expect(localStorage.getItem('refresh_token')).toBe('rfr-old');
+    expect(window.location.href).toBe('');
   });
 
   it('leaves the session intact on a login-request 401', async () => {

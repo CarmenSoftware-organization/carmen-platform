@@ -100,9 +100,16 @@ export async function handleResponseError(
     }
   }
 
-  if ((status === 401 || status === 403) && !isLoginRequest) {
-    // 403, or a 401 whose retry already failed. A fresh non-login 401 always
-    // returns from the block above and never falls through here.
+  if (status === 401 && !isLoginRequest) {
+    // A 401 whose retry already failed, or one arriving with `_retry` set. A
+    // fresh non-login 401 always returns from the block above and never falls
+    // through here.
+    //
+    // 403 deliberately does NOT land here. It means "authenticated but not
+    // authorised" — the session is valid, so tearing it down would log the user
+    // out and discard any unsaved form state over a single authorisation
+    // boundary. It falls through to the reject below, where the caller's
+    // parseApiError + toast.error handles it.
     clearSession();
     redirectToLogin();
   }
