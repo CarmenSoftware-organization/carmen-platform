@@ -11,7 +11,7 @@ Three separate gaps in how the app reports "you can't see this":
 1. **No 403 page.** `AccessDenied` is a private component declared inline inside
    `src/components/PrivateRoute.tsx:9-37`. It cannot be reached by URL, cannot be
    linked to, and cannot be reused by anything other than the route guard.
-2. **No 404 page.** `src/App.tsx` ends with `<Route path="*" element={<Navigate to="/" replace />} />`.
+2. **No 404 page.** `src/App.tsx:310` ends with `<Route path="*" element={<Navigate to="/" replace />} />`.
    A typo in the URL silently teleports the user to the Landing page with no
    explanation — indistinguishable from a working link.
 3. **An API 403 logs the user out.** `src/services/tokenRefresh.ts:103-108` treats
@@ -55,7 +55,7 @@ the same `Forbidden` component.
 |---|---|
 | `src/components/PrivateRoute.tsx:9-37` | inline `AccessDenied`, `<Layout>`-wrapped card, single "Back to Dashboard" button |
 | `src/components/PrivateRoute.tsx:56-62` | `requiredPermission` / `requireSuperAdmin` failure → `<AccessDenied />` |
-| `src/App.tsx:308` | `<Route path="*" element={<Navigate to="/" replace />} />` |
+| `src/App.tsx:310` | `<Route path="*" element={<Navigate to="/" replace />} />` — the only use of `Navigate` in the file |
 | `src/services/tokenRefresh.ts:103-108` | `401`-after-retry **or** `403` → `clearSession()` + `redirectToLogin()` |
 | `src/services/api.ts:36-38` | interceptor comment documents the 403-tears-down behaviour |
 | `src/services/tokenRefresh.test.ts:173` | test pins the 403 teardown: `'does not refresh on 403; it tears down (unchanged behavior)'` |
