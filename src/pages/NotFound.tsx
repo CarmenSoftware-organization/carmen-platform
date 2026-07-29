@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileQuestion, Home, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, FileQuestion, LayoutDashboard } from 'lucide-react';
 import Layout from '../components/Layout';
 import { StatusPage } from '../components/StatusPage';
 import { Button } from '../components/ui/button';
@@ -8,56 +8,50 @@ import { useAuth } from '../context/AuthContext';
 import { useBackOrFallback } from '../hooks/useBackOrFallback';
 
 /**
- * 404 catch-all. Unlike the 403 page this is reachable while logged out, so the
- * app shell is conditional: Layout reads `user?.…` with optional chaining and
- * would happily render an empty sidebar and an avatar reading "User" to an
- * anonymous visitor.
+ * 404 catch-all. Always inside <Layout>.
  *
- * `loading` is gated before anything renders — otherwise the anonymous variant
- * flashes for a frame while AuthContext resolves, then swaps to the shell.
+ * An anonymous visitor never reaches this page: `AuthProvider` hard-redirects
+ * any path outside `publicPaths` (`/`, `/login`, `/changelog`) to `/login` on
+ * mount — see `src/context/AuthContext.tsx`. An earlier revision rendered a
+ * shell-less variant for logged-out users; browser verification showed that
+ * branch could never execute, so it was removed rather than left as dead code.
+ *
+ * `loading` is still gated: during the resolve-and-redirect window
+ * `isAuthenticated` is false and rendering the shell would flash an empty
+ * sidebar and an avatar reading "User" before the redirect fires.
  */
 const NotFound: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, loading } = useAuth();
-  const home = isAuthenticated ? '/dashboard' : '/';
-  // Called unconditionally — must not sit behind the `loading` return below.
-  const goBack = useBackOrFallback(home);
+  const { loading } = useAuth();
+  const goBack = useBackOrFallback('/dashboard');
 
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
 
-  const status = (
-    <StatusPage
-      icon={FileQuestion}
-      tone="neutral"
-      code="404"
-      title="Page Not Found"
-      description="The page you're looking for doesn't exist or may have been moved."
-      actions={
-        <>
-          <Button variant="outline" onClick={goBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Go Back
-          </Button>
-          <Button variant="ghost" onClick={() => navigate(home)}>
-            {isAuthenticated ? (
+  return (
+    <Layout>
+      <StatusPage
+        icon={FileQuestion}
+        tone="neutral"
+        code="404"
+        title="Page Not Found"
+        description="The page you're looking for doesn't exist or may have been moved."
+        actions={
+          <>
+            <Button variant="outline" onClick={goBack}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Go Back
+            </Button>
+            <Button variant="ghost" onClick={() => navigate('/dashboard')}>
               <LayoutDashboard className="mr-2 h-4 w-4" />
-            ) : (
-              <Home className="mr-2 h-4 w-4" />
-            )}
-            {isAuthenticated ? 'Go to Dashboard' : 'Go to Home'}
-          </Button>
-        </>
-      }
-    />
+              Go to Dashboard
+            </Button>
+          </>
+        }
+      />
+    </Layout>
   );
-
-  if (isAuthenticated) {
-    return <Layout>{status}</Layout>;
-  }
-
-  return <div className="min-h-screen flex items-center justify-center p-4">{status}</div>;
 };
 
 export default NotFound;

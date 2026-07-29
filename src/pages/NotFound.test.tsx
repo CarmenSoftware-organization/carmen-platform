@@ -14,7 +14,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const auth = vi.hoisted(() => ({ isAuthenticated: true, loading: false }));
+const auth = vi.hoisted(() => ({ loading: false }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => auth }));
 
 vi.mock('../components/Layout', () => ({
@@ -28,7 +28,6 @@ import NotFound from './NotFound';
 beforeEach(() => {
   router.navigate.mockClear();
   router.key = 'a1b2c3';
-  auth.isAuthenticated = true;
   auth.loading = false;
 });
 
@@ -40,28 +39,29 @@ describe('NotFound (404)', () => {
     renderPage();
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
-    // Without this gate the anonymous variant would flash before auth settles.
+    // Without this gate the shell flashes an empty sidebar during the window
+    // where AuthProvider is still deciding whether to redirect to /login.
     expect(screen.queryByText('404')).toBeNull();
+    expect(screen.queryByTestId('app-shell')).toBeNull();
   });
 
-  it('renders inside the app shell and offers the dashboard when authenticated', () => {
+  it('renders the status inside the app shell once auth has resolved', () => {
     renderPage();
 
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByText('404')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Page Not Found' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /go to dashboard/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /go to home/i })).toBeNull();
+    expect(screen.getByText(/doesn't exist or may have been moved/i)).toBeInTheDocument();
   });
 
-  it('renders without the app shell and offers home when logged out', () => {
-    auth.isAuthenticated = false;
+  it('offers exactly two ways out', () => {
     renderPage();
 
-    expect(screen.queryByTestId('app-shell')).toBeNull();
-    expect(screen.getByText('404')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /go to home/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /go to dashboard/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to dashboard/i })).toBeInTheDocument();
+    // The shell-less logged-out variant was removed — AuthProvider redirects an
+    // anonymous visitor to /login before this page can render.
+    expect(screen.queryByRole('button', { name: /go to home/i })).toBeNull();
   });
 
   it('"Go to Dashboard" navigates to the dashboard', async () => {
@@ -72,15 +72,6 @@ describe('NotFound (404)', () => {
     expect(router.navigate).toHaveBeenCalledWith('/dashboard');
   });
 
-  it('"Go to Home" navigates to the landing page when logged out', async () => {
-    auth.isAuthenticated = false;
-    renderPage();
-
-    await userEvent.click(screen.getByRole('button', { name: /go to home/i }));
-
-    expect(router.navigate).toHaveBeenCalledWith('/');
-  });
-
   it('"Go Back" steps back in history when there is somewhere to return to', async () => {
     renderPage();
 
@@ -89,13 +80,12 @@ describe('NotFound (404)', () => {
     expect(router.navigate).toHaveBeenCalledWith(-1);
   });
 
-  it('"Go Back" falls back to the landing page for a logged-out direct hit', async () => {
-    auth.isAuthenticated = false;
+  it('"Go Back" falls back to the dashboard on a direct hit', async () => {
     router.key = 'default';
     renderPage();
 
     await userEvent.click(screen.getByRole('button', { name: /go back/i }));
 
-    expect(router.navigate).toHaveBeenCalledWith('/', { replace: true });
+    expect(router.navigate).toHaveBeenCalledWith('/dashboard', { replace: true });
   });
 });

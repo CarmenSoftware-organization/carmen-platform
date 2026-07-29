@@ -35,7 +35,7 @@ Three separate gaps in how the app reports "you can't see this":
 | Route-guard 403 | Render in place at the original URL, **and** register a real `/403` route |
 | Back button | Two buttons — "Go Back" (history) and "Go to Dashboard" |
 | API 403 | Propagate the error; do not clear session or redirect |
-| 404 shell | `<Layout>` when authenticated; bare centered page when not |
+| 404 shell | ~~`<Layout>` when authenticated; bare centered page when not~~ → **always `<Layout>`** (see [Correction](#correction-the-anonymous-404-variant-is-unreachable)) |
 | Code structure | Shared presentational `StatusPage` + two page files + one hook |
 
 ### Why render-in-place *and* a `/403` route
@@ -142,15 +142,15 @@ route, which is itself behind `PrivateRoute`) guarantee an authenticated user.
 
 ### New: `src/pages/NotFound.tsx`
 
-Reads `{ isAuthenticated, loading }` from `AuthContext`.
+> **Corrected after browser verification — see [Correction](#correction-the-anonymous-404-variant-is-unreachable) below.** The auth-conditional shell described here was built, then removed: an anonymous visitor cannot reach this page at all.
+
+Reads `{ loading }` from `AuthContext`.
 
 - `loading` → render the same loading placeholder `PrivateRoute` uses. Without
-  this gate the anonymous variant flashes for one frame before auth resolves and
-  the page swaps to the `Layout` variant.
-- `isAuthenticated` → `<Layout>{status}</Layout>`, back-fallback `/dashboard`,
-  second button `Go to Dashboard`
-- otherwise → bare `min-h-screen flex items-center justify-center p-4` wrapper,
-  back-fallback `/`, second button `Go to Home`
+  this gate the shell flashes an empty sidebar during the window where
+  `AuthProvider` is still deciding whether to redirect to `/login`.
+- otherwise → `<Layout>{status}</Layout>`, back-fallback `/dashboard`, second
+  button `Go to Dashboard`
 
 Icon `FileQuestion`, tone `neutral`, code `404`, title `Page Not Found`,
 description `The page you're looking for doesn't exist or may have been moved.`
@@ -211,9 +211,51 @@ refresh) does.
 | Paste `/403` while logged out | `PrivateRoute` redirects to `/login` |
 | Blocked route reached by clicking a sidebar link | in-place 403; "Go Back" returns to the previous, reachable page |
 | Blocked route reached *from another blocked route* | "Go Back" lands on the second 403; pressing again continues up the history. Accepted — no loop, each press makes progress |
-| Unknown URL while auth is still resolving | loading placeholder, then the correct variant — no flash |
+| Unknown URL while auth is still resolving | loading placeholder, then the shell — no flash of an empty sidebar |
+| Unknown URL while logged out | `AuthProvider` redirects to `/login`; the 404 page never renders (see Correction) |
 | API 403 during a form save | error propagates; the page's existing `parseApiError` + `toast.error` runs; form state survives |
 | API 401 | unchanged — refresh, retry, and tear down only if the retry fails |
+
+## Correction: the anonymous 404 variant is unreachable
+
+Found during manual browser verification on 2026-07-29, after the branch was
+already built and reviewed.
+
+This spec originally called for the 404 page to render a shell-less variant with
+a "Go to Home" button for logged-out visitors, on the reasoning that `Layout`
+would otherwise show an anonymous visitor an empty sidebar and an avatar reading
+"User". That reasoning about `Layout` is correct. The premise is not: **an
+anonymous visitor never reaches the 404 page.**
+
+`src/context/AuthContext.tsx` hard-redirects on mount, before routing renders
+anything:
+
+```ts
+const publicPaths = ['/', '/login', '/changelog'];
+if (!publicPaths.includes(window.location.pathname)) {
+  window.location.href = '/login';
+}
+```
+
+Verified in the browser: logged out, `/no-such-page` lands on `/login`, not on
+the 404 page. This behaviour predates the branch — before the catch-all changed,
+an anonymous unknown URL went `* → Landing → /login` by the same mechanism — so
+it is not a regression. But it made roughly fifteen lines of `NotFound.tsx`, and
+two tests that exercised them through a mocked `useAuth`, unreachable in the
+running app.
+
+**Resolution:** the conditional was removed. `NotFound` now always renders inside
+`<Layout>` and offers "Go Back" and "Go to Dashboard". The `loading` gate stays —
+during the resolve-and-redirect window `isAuthenticated` is false, and rendering
+the shell then would flash the empty sidebar this spec set out to avoid.
+
+The alternative — adding the catch-all to `publicPaths` so logged-out visitors
+see a real 404 instead of a silent bounce to `/login` — is arguably better UX,
+but it changes authentication behaviour and was out of scope for this work.
+
+**Method note:** every task-scoped review and the whole-branch review passed this
+code. Mocking `useAuth` made the unreachable branch look reachable to every test
+and every reviewer. Only running the app found it.
 
 ## Non-goals (YAGNI)
 
@@ -230,7 +272,7 @@ refresh) does.
 |---|---|
 | `src/hooks/useBackOrFallback.test.ts` | `key === 'default'` → `navigate(fallback, { replace: true })`; any other key → `navigate(-1)` |
 | `src/pages/Forbidden.test.tsx` | renders `403` + title + description; "Go Back" invokes history back; "Go to Dashboard" navigates to `/dashboard` |
-| `src/pages/NotFound.test.tsx` | loading → placeholder, no status card; authenticated → `Layout` mock present, second button reads "Go to Dashboard"; anonymous → no `Layout`, second button reads "Go to Home" |
+| `src/pages/NotFound.test.tsx` | loading → placeholder, no status card and no shell; resolved → `Layout` mock present with the 404 card; exactly two ways out ("Go Back", "Go to Dashboard") and no "Go to Home" |
 | `src/services/tokenRefresh.test.ts` | **flip line 173**: 403 must NOT call `clearSession`/`redirectToLogin`, and must reject with the original error |
 | `src/components/PrivateRoute.test.tsx` (new) | unauthenticated → redirect to `/login`; failed `requiredPermission` → 403 content at the **original URL** (asserts the render-in-place decision); failed `requireSuperAdmin` → same; all checks passing → children render |
 | `src/pages/SuperAdminManagement.test.tsx` | **must keep passing unchanged** — it is the regression guard on the `Access Denied` title |
