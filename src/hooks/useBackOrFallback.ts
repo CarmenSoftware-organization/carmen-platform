@@ -5,8 +5,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
  * Returns the click handler for a "Go Back" button that never strands the user.
  *
  * react-router stamps `location.key === 'default'` only on the first entry of a
- * history stack — a fresh tab, a pasted URL, or a hard reload. `navigate(-1)`
- * there would leave the app entirely, so we go to `fallback` instead.
+ * history stack — a fresh tab, or a pasted/directly-entered URL. `navigate(-1)`
+ * there would leave the app entirely, so we go to `fallback` instead. (A reload
+ * of a page react-router itself navigated to keeps its real key, since
+ * `@remix-run/router` reads it back from `history.state`, which survives a
+ * reload — so `navigate(-1)` still steps back correctly in that case.)
  * `window.history.length` cannot answer this question: it counts entries from
  * other sites visited in the same tab.
  *

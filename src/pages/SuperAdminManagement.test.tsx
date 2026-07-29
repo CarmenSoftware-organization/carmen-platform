@@ -114,7 +114,7 @@ beforeEach(() => {
 // Protection is therefore entirely at the ROUTE level: `App.tsx` registers
 // `/platform/super-admins` as `<PrivateRoute requireSuperAdmin><SuperAdminManagement /></PrivateRoute>`
 // (the only place `SuperAdminManagement` is ever rendered — verified by grep), and
-// `PrivateRoute` (`src/components/PrivateRoute.tsx:60-62`) renders `<AccessDenied>` instead of
+// `PrivateRoute` (`src/components/PrivateRoute.tsx:33-35`) renders `<Forbidden>` instead of
 // `children` whenever `requireSuperAdmin && !isSuperAdmin`, so the page component never mounts
 // for a non-super-admin — its unconditionally-wired Add/Remove UI never gets an audience. The
 // sidebar nav item is also hidden for non-super-admins (`Layout.tsx:65,73`,
