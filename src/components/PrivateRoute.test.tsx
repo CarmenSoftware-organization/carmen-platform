@@ -86,6 +86,7 @@ describe('PrivateRoute', () => {
       <PrivateRoute requireSuperAdmin><div>Super admin tools</div></PrivateRoute>,
     );
 
+    expect(screen.getByText('403')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Access Denied' })).toBeInTheDocument();
     expect(screen.queryByText('Super admin tools')).toBeNull();
   });
