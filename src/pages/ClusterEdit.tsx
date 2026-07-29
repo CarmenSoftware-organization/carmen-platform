@@ -228,7 +228,7 @@ const ClusterEdit: React.FC = () => {
       const created = result.data || result;
       toast.success('Cluster created successfully');
       if (created?.id) {
-        navigate(`/clusters/${created.id}`, { replace: true });
+        navigate(`/clusters/${created.id}/edit`, { replace: true });
       } else {
         navigate('/clusters');
       }

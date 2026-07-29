@@ -418,7 +418,7 @@ const BusinessUnitEdit: React.FC = () => {
         const created = result.data || result;
         toast.success('Business unit created successfully');
         if (created?.id) {
-          navigate(`/business-units/${created.id}`, { replace: true });
+          navigate(`/business-units/${created.id}/edit`, { replace: true });
         } else {
           navigate('/business-units');
         }
