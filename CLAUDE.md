@@ -85,9 +85,11 @@ src/
     ui/            shadcn primitives — DO NOT modify without a clear reason
   pages/           Landing, Login, Dashboard, Profile,
                    <Entity>Management.tsx (list) + <Entity>Edit.tsx (CRUD)
-                   for Cluster, BusinessUnit, User, ReportTemplate, PrintTemplateMapping
+                   for Cluster, BusinessUnit, User, ReportTemplate
     businessUnitEdit/  BusinessUnitEdit.tsx decomposed — sections/, useBusinessUnitUsers
                        hook, Form/Branding/Users/Debug cards, shared.tsx, types.ts
+    emailSettings/     EmailSettingManagement.tsx decomposed — EmailSettingCard,
+                       PasswordField (คืน null ไม่ได้), TestEmailDialog
   services/        api.ts (axios + interceptors) + one <entity>Service.ts per entity
   types/index.ts   All shared TS types
   utils/           QueryParams, csvExport, validation, errorParser, xml
@@ -262,16 +264,19 @@ After create: `navigate(\`/items/\${created.id}/edit\`, { replace: true })` — 
 
 XML utils in `src/utils/xml.ts`: `formatXml`, `validateXml`, `countLines`, `byteSize`, `formatBytes`, `downloadText`. Prefer `XmlEditor`/`DialogPreview` over raw util calls.
 
-## Print Template Mapping Specifics
+## Configuration Page Pattern
 
-`src/pages/PrintTemplateMappingManagement.tsx` is a **configuration page**, not a standard Management page, and intentionally deviates from rule 13:
+บางหน้าเป็น **หน้า config ไม่ใช่หน้า Management** และจงใจไม่ทำตามกฎข้อ 13 — เมื่อชุดข้อมูล
+มีขนาดจำกัดแน่นอน (เช่นถูกจำกัดด้วย enum) DataTable + pagination + CSV export เป็นเครื่องมือ
+ผิดขนาด ให้ใช้การ์ดแทน
 
-- Data set is small (one row per `document_type` × template), so it uses a card-grouped layout (group by document type) instead of a server-side DataTable.
-- No debounced search, no Sheet filter, no CSV export — replaced by a `document_type` select + an "Active only" checkbox.
-- Backend service is filter-based (`document_type`, `active_only` query params), not paginated.
-- The companion `PrintTemplateMappingEdit.tsx` is a single-mode form (no edit/read-only toggle) — appropriate for a config row that's always editable when opened.
+ตัวอย่างที่ยังมีอยู่จริง:
+- `src/pages/ReportFormGroupManagement.tsx` — การ์ดต่อ report group
+- `src/pages/EmailSettingManagement.tsx` — การ์ดต่อ email sender purpose (สูงสุด 3 ใบตลอดกาล)
+  · หน้าถือ `editingPurpose` เพื่อให้แก้ได้ทีละใบ · การ์ดเป็นเจ้าของ form state และเรียก service เอง
 
-When adding similar small-dimension configuration pages, follow this pattern rather than rule 13.
+(`PrintTemplateMapping*` ที่เคยเป็นตัวอย่างของหัวข้อนี้ถูกลบไปแล้วพร้อมฟีเจอร์ทั้งฝั่ง frontend
+และ backend — อย่าอ้างอิงอีก)
 
 ## Application Management Specifics
 
