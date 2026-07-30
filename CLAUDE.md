@@ -305,7 +305,7 @@ Versioned entities carry a numeric `doc_version`. The backend **requires** it on
 
 **Defensive principle:** send the token only when the GET returned one — so an entity whose backend read doesn't yet expose `doc_version` is a runtime no-op (no 400 risk). Services with **custom write payloads** forward it explicitly: `applicationService.toWritePayload`, `roleService.update`, and `newsService.buildNewsFormData` (multipart appends `doc_version` as a **string** — the backend coerces it). Pass-through services (`Partial<T>`/`Record`) forward it automatically once the type carries `doc_version?: number`.
 
-Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
+Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, Email Settings. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
 
 ## Styling Reference
 

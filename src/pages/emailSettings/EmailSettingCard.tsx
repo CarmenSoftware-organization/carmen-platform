@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Save, Send, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -25,6 +25,12 @@ interface EmailSettingCardProps {
   canManage: boolean;
   isEditing: boolean;
   callerIdentity?: string;
+  /**
+   * false เมื่อหน้ามี dialog ทับอยู่เหนือการ์ดนี้ (เช่น prompt ยืนยันทิ้งการแก้ไข) —
+   * ปิดคีย์ลัดของการ์ดชั่วคราวเพื่อไม่ให้ Escape ของ dialog ไปโดน onCancel ของการ์ดด้วย
+   * ค่าเริ่มต้น true เพื่อไม่กระทบพฤติกรรมเดิมเมื่อไม่มี dialog ใดทับอยู่
+   */
+  shortcutsEnabled?: boolean;
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   /** keepEditing = true เมื่อเจอ 409 — หน้าต้อง refetch แต่ไม่ปิดโหมดแก้ */
@@ -82,6 +88,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   canManage,
   isEditing,
   callerIdentity = '',
+  shortcutsEnabled = true,
   onRequestEdit,
   onCancelEdit,
   onSaved,
@@ -93,6 +100,31 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   const [saving, setSaving] = useState(false);
   const [confirmUnset, setConfirmUnset] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
+
+  // การ์ดไม่ unmount เมื่อออกจากโหมดแก้ไข (มีแค่ isEditing เปลี่ยน) ต่างจาก PasswordField
+  // ที่ unmount ทุกครั้ง — ถ้าไม่ resync ที่นี่ draft เก่า (รวมรหัสผ่านที่พิมพ์ไว้) จะค้างอยู่ใน
+  // state ของการ์ดเงียบ ๆ แล้วถูกส่งไป backend ตอน save ครั้งถัดไปโดยที่ UI ไม่ได้บอกอะไรเลย
+  // (ดู F1/F3 ใน final-fix-report.md). จุดนี้เป็นจุด reset เดียวของการออกจากโหมดแก้ไข —
+  // ครอบคลุมทั้ง Cancel ปกติและ "ทิ้งการแก้ไข" ที่หน้าสั่งเปลี่ยน editingPurpose ตรง ๆ
+  // โดยไม่ผ่าน handleCancel ของการ์ดนี้เลย
+  //
+  // deps: จงใจใส่แค่ [isEditing] ไม่ใส่ setting ตาม exhaustive-deps — ใส่ setting ก็ปลอดภัย
+  // (guard `if (!isEditing)` กันไม่ให้ reset ระหว่างพิมพ์อยู่แล้ว แม้ reference ของ setting จะ
+  // เปลี่ยนจาก fetchAll ของการ์ดอื่น) แต่ไม่จำเป็น: การ์ดถูก key ด้วย doc_version จากหน้าแม่อยู่แล้ว
+  // (`key={purpose}-${setting?.doc_version ?? 'new'}`) ดังนั้นทุกครั้งที่ setting เปลี่ยนค่าจริง
+  // (ไม่ใช่แค่ reference ใหม่จาก array เดิม) การ์ดจะ remount ใหม่ทั้งก้อนอยู่แล้ว — effect นี้
+  // จึงไม่มีโอกาสเห็น "setting เปลี่ยนค่า" ระหว่างที่ isEditing คงที่ mount เดียวกัน การใส่ setting
+  // เพิ่มเข้ามาจะทำให้ effect รันซ้ำเมื่อ !isEditing และมีการ fetchAll ที่ไม่เปลี่ยน doc_version
+  // (เช่นการ์ดอื่นถูกบันทึก) ซึ่งไม่ทำอันตรายแต่ก็ไม่ได้แก้อะไรเพิ่ม — เลย suppress ด้วยคอมเมนต์นี้
+  // แทนการเพิ่ม dep ที่ไม่จำเป็น
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData(toForm(setting));
+      setPassword(undefined);
+      setFieldErrors({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
 
   const docVersion = useMemo(() => getDocVersion(setting), [setting]);
 
@@ -188,8 +220,15 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   // Ctrl/⌘+S และ Escape ผูกที่การ์ดที่กำลังแก้ ไม่ใช่ที่หน้า — หน้ารับประกันว่ามีการ์ดเดียว
   // ที่ isEditing ได้ในเวลาหนึ่ง ๆ คีย์ลัดจึงไม่กำกวมและไม่ต้องส่ง ref ขึ้นไปให้หน้าเรียก
   // ต้องเรียก "หลัง" ประกาศ handleSave/handleCancel เพื่อไม่ให้ชน no-use-before-define
+  //
+  // shortcutsEnabled=false เมื่อหน้ามี dialog ทับอยู่ (prompt ยืนยันทิ้งการแก้ไข) —
+  // ConfirmDialog เป็น dialog ของหน้า ไม่ใช่ของการ์ด จึงไม่ stop propagation ของ Escape
+  // ที่ useGlobalShortcuts ฟังที่ window; ถ้าไม่ปิดคีย์ลัดตรงนี้ Escape จะไปโดน onCancel
+  // ของการ์ด (handleCancel) พร้อมกับที่ปิด dialog เอง — ทำลาย draft ที่ dialog มีไว้ปกป้อง
   useGlobalShortcuts(
-    isEditing ? { onSave: () => void handleSave(), onCancel: handleCancel } : {},
+    isEditing && shortcutsEnabled
+      ? { onSave: () => void handleSave(), onCancel: handleCancel }
+      : {},
   );
 
   return (

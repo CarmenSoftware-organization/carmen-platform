@@ -190,4 +190,93 @@ describe('EmailSettingManagement', () => {
     expect(screen.getByLabelText('From name')).toHaveValue('UnsavedNoReplyEdit');
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
+
+  // F1 (final-fix-report.md) — EmailSettingCard never unmounts when the page switches
+  // editingPurpose away from it (only PasswordField does, since it's conditionally
+  // rendered inside `isEditing && canManage`). Without a reset keyed off leaving edit
+  // mode, the card's `password` state from an abandoned edit survives silently and gets
+  // written into the NEXT save's payload, even though the admin explicitly discarded it
+  // and the UI shows a fresh, untouched PasswordField. Reproduces the reviewer's exact
+  // sequence: type a password into No-reply, switch to Support confirming the discard
+  // prompt, switch back to No-reply confirming discard again, then Save without touching
+  // the password field — the payload must carry no smtp_password key at all.
+  it('F1: does not resurrect an abandoned SMTP password on the next save', async () => {
+    const user = userEvent.setup();
+    svc.getAll.mockResolvedValue({ data: [noReply, support] });
+    svc.update.mockResolvedValue({ data: { id: 's1' } });
+    renderPage();
+
+    // Edit No-reply, open the password field, type a new password — then never save it.
+    const editButtons = await screen.findAllByRole('button', { name: 'Edit' });
+    await user.click(editButtons[0]);
+    await user.click(screen.getByRole('button', { name: 'เปลี่ยนรหัสผ่าน' }));
+    await user.type(screen.getByLabelText('SMTP password'), 'abandoned-secret');
+
+    // Switch to Support, confirming the "discard unsaved edits?" prompt.
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    let dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+
+    // Switch back to No-reply, confirming discard again — matching the reviewer's repro.
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+
+    // Save without ever reopening the password field — the abandoned password must not ride along.
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(svc.update).toHaveBeenCalled());
+    expect(svc.update.mock.calls[0][1]).not.toHaveProperty('smtp_password');
+  });
+
+  // F3 (final-fix-report.md) — same root cause as F1: `formData` is seeded once by a
+  // `useState` initializer that never resyncs when the card leaves edit mode without
+  // remounting. Confirming "ทิ้งการแก้ไข" LOOKS like it discards the edit (the page moves
+  // editingPurpose away) but the typed value is still sitting in the card's state, so
+  // re-entering the same card shows the abandoned text instead of the server's value.
+  it('F3: shows the server value in From name after a discarded switch-away and back, not the abandoned typed value', async () => {
+    const user = userEvent.setup();
+    svc.getAll.mockResolvedValue({ data: [noReply, support] });
+    renderPage();
+
+    const editButtons = await screen.findAllByRole('button', { name: 'Edit' });
+    await user.click(editButtons[0]);
+    await user.clear(screen.getByLabelText('From name'));
+    await user.type(screen.getByLabelText('From name'), 'DISCARDED');
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    let dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+
+    expect(screen.getByLabelText('From name')).toHaveValue(noReply.from_name);
+  });
+
+  // F2 (final-fix-report.md) — the "discard unsaved edits?" prompt is a page-owned Radix
+  // dialog; it does not stop propagation of the window-level Escape listener that
+  // useGlobalShortcuts registers for the card underneath it. Without shortcutsEnabled
+  // gating, Escape — meant only to dismiss the prompt — also fires the card's onCancel
+  // and destroys exactly the draft the prompt exists to protect.
+  it('F2: Escape on the discard-unsaved-edits prompt does not cancel the edit underneath it', async () => {
+    const user = userEvent.setup();
+    svc.getAll.mockResolvedValue({ data: [noReply, support] });
+    renderPage();
+
+    const editButtons = await screen.findAllByRole('button', { name: 'Edit' });
+    await user.click(editButtons[0]);
+    await user.clear(screen.getByLabelText('From name'));
+    await user.type(screen.getByLabelText('From name'), 'STILL-TYPING');
+
+    // Open the discard prompt but do not confirm it.
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await screen.findByRole('dialog');
+
+    await user.keyboard('{Escape}');
+
+    // The underlying editor must still be open, with the typed value intact.
+    expect(screen.getByLabelText('From name')).toHaveValue('STILL-TYPING');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  });
 });

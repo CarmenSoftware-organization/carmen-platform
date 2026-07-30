@@ -106,6 +106,7 @@ const EmailSettingManagement: React.FC = () => {
                 setting={setting}
                 canManage={canManage}
                 isEditing={editingPurpose === meta.value}
+                shortcutsEnabled={pendingSwitch === null}
                 callerIdentity={user?.email ?? ''}
                 onRequestEdit={() => requestEdit(meta.value)}
                 onCancelEdit={() => setEditingPurpose(null)}
