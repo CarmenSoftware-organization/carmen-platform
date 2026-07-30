@@ -232,7 +232,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
           </p>
         )}
 
-        {isEditing && (
+        {isEditing && canManage && (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor={`from_email_${purpose}`}>From email</Label>

@@ -63,7 +63,11 @@ describe('EmailSettingCard', () => {
     render(<EmailSettingCard {...baseProps} setting={setting} />);
     expect(screen.getByText(/no-reply@carmen\.io/)).toBeInTheDocument();
     expect(screen.getByText('smtp.sendgrid.net:587')).toBeInTheDocument();
-    expect(screen.queryByText(/hunter2|apikey-secret/)).not.toBeInTheDocument();
+    // The fixture's smtp_password is the actual API mask ('••••••') — assert that value
+    // itself never renders as visible text, rather than matching against strings
+    // (hunter2/apikey-secret) that appear nowhere in the fixture or component and so
+    // could never make this assertion fail.
+    expect(screen.queryByText(setting.smtp_password!)).not.toBeInTheDocument();
   });
 
   it('hides every mutating control when the user lacks manage permission', () => {
@@ -72,6 +76,12 @@ describe('EmailSettingCard', () => {
     expect(screen.queryByRole('button', { name: 'ส่งเมลทดสอบ' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'ยกเลิกการตั้งค่า' })).not.toBeInTheDocument();
     expect(screen.getByText(/no-reply@carmen\.io/)).toBeInTheDocument();
+  });
+
+  it('renders neither Save nor Cancel when isEditing but the user lacks manage permission', () => {
+    render(<EmailSettingCard {...baseProps} canManage={false} isEditing setting={setting} />);
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
   });
 
   it('warns when no system sends through this purpose yet', () => {
@@ -109,6 +119,29 @@ describe('EmailSettingCard', () => {
     expect(svc.update.mock.calls[0][1]).not.toHaveProperty('smtp_password');
   });
 
+  it('sends the typed password on save when the password field was opened and filled in', async () => {
+    const user = userEvent.setup();
+    svc.update.mockResolvedValue({ data: { id: 's1' } });
+    render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
+    await user.click(screen.getByRole('button', { name: 'เปลี่ยนรหัสผ่าน' }));
+    await user.type(screen.getByLabelText('SMTP password'), 'hunter2');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(svc.update).toHaveBeenCalled());
+    expect(svc.update.mock.calls[0][1]).toMatchObject({ smtp_password: 'hunter2' });
+  });
+
+  it('omits smtp_password from the update payload when the password field was opened then left blank', async () => {
+    const user = userEvent.setup();
+    svc.update.mockResolvedValue({ data: { id: 's1' } });
+    render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
+    await user.click(screen.getByRole('button', { name: 'เปลี่ยนรหัสผ่าน' }));
+    await user.type(screen.getByLabelText('SMTP password'), 'temporary');
+    await user.clear(screen.getByLabelText('SMTP password'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(svc.update).toHaveBeenCalled());
+    expect(svc.update.mock.calls[0][1]).not.toHaveProperty('smtp_password');
+  });
+
   it('blocks saving when the from address is not a valid email', async () => {
     const user = userEvent.setup();
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
@@ -117,6 +150,18 @@ describe('EmailSettingCard', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(svc.update).not.toHaveBeenCalled();
     expect(await screen.findByText('Invalid email format')).toBeInTheDocument();
+  });
+
+  it('blocks saving when the SMTP port is out of range', async () => {
+    const user = userEvent.setup();
+    render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
+    await user.clear(screen.getByLabelText('SMTP port'));
+    await user.type(screen.getByLabelText('SMTP port'), '99999');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(svc.update).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('Port must be a whole number between 1 and 65535'),
+    ).toBeInTheDocument();
   });
 
   it('creates a new profile carrying the purpose and no doc_version', async () => {
@@ -155,6 +200,26 @@ describe('EmailSettingCard', () => {
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} onSaved={onSaved} />);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ keepEditing: true }));
+  });
+
+  it('shows the canonical version-conflict toast when the save hits a 409', async () => {
+    const user = userEvent.setup();
+    svc.update.mockRejectedValue({
+      response: { status: 409, data: { message: 'Record was modified by another request' } },
+    });
+    render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    // notifyVersionConflict() (src/utils/docVersion.ts) is the single canonical conflict
+    // toast — assert through the already-mocked `sonner` toast rather than mocking
+    // docVersion itself, matching this file's existing style of asserting on `toast`.
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'This record was changed by someone else',
+        expect.objectContaining({
+          description: 'Reloading the latest version. Please re-apply your changes.',
+        }),
+      ),
+    );
   });
 
   it('explains the env fallback before unsetting a profile', async () => {
