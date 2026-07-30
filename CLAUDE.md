@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. Read fully before changing code.
 
 ## Project Overview
 
-Frontend-only React + TypeScript admin dashboard for clusters, business units, users, report templates, and print-template mappings. Flat enterprise design (glassmorphism removed) with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
+Frontend-only React + TypeScript admin dashboard for clusters, business units, users, and report templates. Flat enterprise design (glassmorphism removed) with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
 
 - **Framework:** React 19 + TypeScript (Vite 8) — strict mode on
 - **Styling:** Tailwind 3.4 with HSL CSS custom properties
@@ -89,7 +89,7 @@ src/
     businessUnitEdit/  BusinessUnitEdit.tsx decomposed — sections/, useBusinessUnitUsers
                        hook, Form/Branding/Users/Debug cards, shared.tsx, types.ts
     emailSettings/     EmailSettingManagement.tsx decomposed — EmailSettingCard,
-                       PasswordField (คืน null ไม่ได้), TestEmailDialog
+                       PasswordField (never returns null), TestEmailDialog
   services/        api.ts (axios + interceptors) + one <entity>Service.ts per entity
   types/index.ts   All shared TS types
   utils/           QueryParams, csvExport, validation, errorParser, xml
@@ -266,17 +266,13 @@ XML utils in `src/utils/xml.ts`: `formatXml`, `validateXml`, `countLines`, `byte
 
 ## Configuration Page Pattern
 
-บางหน้าเป็น **หน้า config ไม่ใช่หน้า Management** และจงใจไม่ทำตามกฎข้อ 13 — เมื่อชุดข้อมูล
-มีขนาดจำกัดแน่นอน (เช่นถูกจำกัดด้วย enum) DataTable + pagination + CSV export เป็นเครื่องมือ
-ผิดขนาด ให้ใช้การ์ดแทน
+Some pages are **config pages, not Management pages**, and intentionally deviate from rule 13 — when the data set has a fixed, small size (e.g. bounded by an enum), a DataTable + pagination + CSV export is the wrong tool. Use cards instead.
 
-ตัวอย่างที่ยังมีอยู่จริง:
-- `src/pages/ReportFormGroupManagement.tsx` — การ์ดต่อ report group
-- `src/pages/EmailSettingManagement.tsx` — การ์ดต่อ email sender purpose (สูงสุด 3 ใบตลอดกาล)
-  · หน้าถือ `editingPurpose` เพื่อให้แก้ได้ทีละใบ · การ์ดเป็นเจ้าของ form state และเรียก service เอง
+Examples that still exist:
+- `src/pages/ReportFormGroupManagement.tsx` — one card per report group.
+- `src/pages/EmailSettingManagement.tsx` — one card per email sender purpose (capped at 3, ever). The page holds `editingPurpose` so only one card is editable at a time; each card owns its own form state and calls the service directly.
 
-(`PrintTemplateMapping*` ที่เคยเป็นตัวอย่างของหัวข้อนี้ถูกลบไปแล้วพร้อมฟีเจอร์ทั้งฝั่ง frontend
-และ backend — อย่าอ้างอิงอีก)
+(`PrintTemplateMapping*`, formerly this section's example, was deleted along with the feature on both frontend and backend — don't reference it again.)
 
 ## Application Management Specifics
 
@@ -309,7 +305,7 @@ Versioned entities carry a numeric `doc_version`. The backend **requires** it on
 
 **Defensive principle:** send the token only when the GET returned one — so an entity whose backend read doesn't yet expose `doc_version` is a runtime no-op (no 400 risk). Services with **custom write payloads** forward it explicitly: `applicationService.toWritePayload`, `roleService.update`, and `newsService.buildNewsFormData` (multipart appends `doc_version` as a **string** — the backend coerces it). Pass-through services (`Partial<T>`/`Record`) forward it automatically once the type carries `doc_version?: number`.
 
-Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, PrintTemplateMapping. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
+Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
 
 ## Styling Reference
 
