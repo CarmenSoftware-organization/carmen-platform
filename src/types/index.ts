@@ -492,3 +492,32 @@ export interface TenantCurrency {
   is_active?: boolean;
   description?: string;
 }
+
+export type EmailSenderPurpose = 'no_reply' | 'support' | 'billing';
+
+/**
+ * Platform-wide outbound email sender profile.
+ * `smtp_password` is ALWAYS the mask (`••••••`) when it comes from the API —
+ * the real value is never returned. See docs/superpowers/specs/2026-07-30-*.
+ */
+export interface EmailSetting {
+  id: string;
+  doc_version?: number;
+  purpose: EmailSenderPurpose;
+  from_email: string;
+  from_name?: string | null;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_secure: boolean;
+  smtp_username?: string | null;
+  smtp_password?: string | null;
+  is_active: boolean;
+  note?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EmailSettingTestResult {
+  sent: boolean;
+  reason?: string;
+}

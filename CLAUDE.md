@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. Read fully before changing code.
 
 ## Project Overview
 
-Frontend-only React + TypeScript admin dashboard for clusters, business units, users, report templates, and print-template mappings. Flat enterprise design (glassmorphism removed) with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
+Frontend-only React + TypeScript admin dashboard for clusters, business units, users, and report templates. Flat enterprise design (glassmorphism removed) with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
 
 - **Framework:** React 19 + TypeScript (Vite 8) — strict mode on
 - **Styling:** Tailwind 3.4 with HSL CSS custom properties
@@ -85,9 +85,11 @@ src/
     ui/            shadcn primitives — DO NOT modify without a clear reason
   pages/           Landing, Login, Dashboard, Profile,
                    <Entity>Management.tsx (list) + <Entity>Edit.tsx (CRUD)
-                   for Cluster, BusinessUnit, User, ReportTemplate, PrintTemplateMapping
+                   for Cluster, BusinessUnit, User, ReportTemplate
     businessUnitEdit/  BusinessUnitEdit.tsx decomposed — sections/, useBusinessUnitUsers
                        hook, Form/Branding/Users/Debug cards, shared.tsx, types.ts
+    emailSettings/     EmailSettingManagement.tsx decomposed — EmailSettingCard,
+                       PasswordField (never returns null), TestEmailDialog
   services/        api.ts (axios + interceptors) + one <entity>Service.ts per entity
   types/index.ts   All shared TS types
   utils/           QueryParams, csvExport, validation, errorParser, xml
@@ -262,16 +264,15 @@ After create: `navigate(\`/items/\${created.id}/edit\`, { replace: true })` — 
 
 XML utils in `src/utils/xml.ts`: `formatXml`, `validateXml`, `countLines`, `byteSize`, `formatBytes`, `downloadText`. Prefer `XmlEditor`/`DialogPreview` over raw util calls.
 
-## Print Template Mapping Specifics
+## Configuration Page Pattern
 
-`src/pages/PrintTemplateMappingManagement.tsx` is a **configuration page**, not a standard Management page, and intentionally deviates from rule 13:
+Some pages are **config pages, not Management pages**, and intentionally deviate from rule 13 — when the data set has a fixed, small size (e.g. bounded by an enum), a DataTable + pagination + CSV export is the wrong tool. Use cards instead.
 
-- Data set is small (one row per `document_type` × template), so it uses a card-grouped layout (group by document type) instead of a server-side DataTable.
-- No debounced search, no Sheet filter, no CSV export — replaced by a `document_type` select + an "Active only" checkbox.
-- Backend service is filter-based (`document_type`, `active_only` query params), not paginated.
-- The companion `PrintTemplateMappingEdit.tsx` is a single-mode form (no edit/read-only toggle) — appropriate for a config row that's always editable when opened.
+Examples that still exist:
+- `src/pages/ReportFormGroupManagement.tsx` — one card per report group.
+- `src/pages/EmailSettingManagement.tsx` — one card per email sender purpose (capped at 3, ever). The page holds `editingPurpose` so only one card is editable at a time; each card owns its own form state and calls the service directly.
 
-When adding similar small-dimension configuration pages, follow this pattern rather than rule 13.
+(`PrintTemplateMapping*`, formerly this section's example, was deleted along with the feature on both frontend and backend — don't reference it again.)
 
 ## Application Management Specifics
 
@@ -304,7 +305,7 @@ Versioned entities carry a numeric `doc_version`. The backend **requires** it on
 
 **Defensive principle:** send the token only when the GET returned one — so an entity whose backend read doesn't yet expose `doc_version` is a runtime no-op (no 400 risk). Services with **custom write payloads** forward it explicitly: `applicationService.toWritePayload`, `roleService.update`, and `newsService.buildNewsFormData` (multipart appends `doc_version` as a **string** — the backend coerces it). Pass-through services (`Partial<T>`/`Record`) forward it automatically once the type carries `doc_version?: number`.
 
-Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, PrintTemplateMapping. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
+Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, Email Settings. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
 
 ## Styling Reference
 
