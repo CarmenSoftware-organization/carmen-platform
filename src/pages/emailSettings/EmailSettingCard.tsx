@@ -108,23 +108,25 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   // ครอบคลุมทั้ง Cancel ปกติและ "ทิ้งการแก้ไข" ที่หน้าสั่งเปลี่ยน editingPurpose ตรง ๆ
   // โดยไม่ผ่าน handleCancel ของการ์ดนี้เลย
   //
-  // deps: จงใจใส่แค่ [isEditing] ไม่ใส่ setting ตาม exhaustive-deps — ใส่ setting ก็ปลอดภัย
-  // (guard `if (!isEditing)` กันไม่ให้ reset ระหว่างพิมพ์อยู่แล้ว แม้ reference ของ setting จะ
-  // เปลี่ยนจาก fetchAll ของการ์ดอื่น) แต่ไม่จำเป็น: การ์ดถูก key ด้วย doc_version จากหน้าแม่อยู่แล้ว
-  // (`key={purpose}-${setting?.doc_version ?? 'new'}`) ดังนั้นทุกครั้งที่ setting เปลี่ยนค่าจริง
-  // (ไม่ใช่แค่ reference ใหม่จาก array เดิม) การ์ดจะ remount ใหม่ทั้งก้อนอยู่แล้ว — effect นี้
-  // จึงไม่มีโอกาสเห็น "setting เปลี่ยนค่า" ระหว่างที่ isEditing คงที่ mount เดียวกัน การใส่ setting
-  // เพิ่มเข้ามาจะทำให้ effect รันซ้ำเมื่อ !isEditing และมีการ fetchAll ที่ไม่เปลี่ยน doc_version
-  // (เช่นการ์ดอื่นถูกบันทึก) ซึ่งไม่ทำอันตรายแต่ก็ไม่ได้แก้อะไรเพิ่ม — เลย suppress ด้วยคอมเมนต์นี้
-  // แทนการเพิ่ม dep ที่ไม่จำเป็น
+  // deps: [isEditing, setting] — ทั้งคู่จำเป็น ไม่ suppress exhaustive-deps
+  //
+  // isEditing คือทริกเกอร์หลัก แต่ setting ต้องอยู่ด้วยเพราะ key ที่หน้าแม่ใช้ remount การ์ด คือ
+  // `${purpose}-${setting?.doc_version ?? 'new'}` ซึ่ง **fail open**: `doc_version` เป็น optional
+  // (`doc_version?: number` ตามกฎข้อ 11) ถ้าวันหนึ่ง backend อ่านกลับมาโดยไม่มีฟิลด์นี้ key จะกลาย
+  // เป็นค่าคงที่ การ์ดจะไม่ remount แล้ว formData ที่ seed ไว้ตอน mount แรกจะค้าง — ส่วนแสดงผล
+  // แบบอ่านอย่างเดียวโชว์ค่าใหม่ (อ่าน setting ตรง ๆ) แต่ฟอร์มแก้ไขโชว์ค่าเก่า และการบันทึกจะ
+  // ทับงานของคนอื่นเงียบ ๆ
+  //
+  // การมี setting เป็น dep ปิดช่องนั้นโดยไม่พึ่งสมมติฐานเรื่อง backend ที่การ์ดตรวจเองไม่ได้
+  // ส่วน guard `if (!isEditing)` ทำให้ effect ที่รันเพิ่มตอน fetchAll ของการ์ดอื่นเป็น no-op
+  // จึงไม่ไปรบกวนคนที่กำลังพิมพ์อยู่ และไม่แตะเส้นทาง 409 ซึ่ง isEditing ยังเป็น true ตลอด
   useEffect(() => {
     if (!isEditing) {
       setFormData(toForm(setting));
       setPassword(undefined);
       setFieldErrors({});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing]);
+  }, [isEditing, setting]);
 
   const docVersion = useMemo(() => getDocVersion(setting), [setting]);
 
