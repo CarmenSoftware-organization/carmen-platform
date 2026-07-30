@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import EmailSettingManagement from './EmailSettingManagement';
@@ -30,6 +30,7 @@ vi.mock('../services/emailSettingService', () => ({
 const svc = emailSettingService as unknown as {
   getAll: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
+  remove: ReturnType<typeof vi.fn>;
 };
 
 const noReply: EmailSetting = {
@@ -38,6 +39,21 @@ const noReply: EmailSetting = {
   purpose: 'no_reply',
   from_email: 'no-reply@carmen.io',
   from_name: 'Carmen',
+  smtp_host: 'smtp.sendgrid.net',
+  smtp_port: 587,
+  smtp_secure: false,
+  smtp_username: 'apikey',
+  smtp_password: '••••••',
+  is_active: true,
+  note: null,
+};
+
+const support: EmailSetting = {
+  id: 's2',
+  doc_version: 1,
+  purpose: 'support',
+  from_email: 'support@carmen.io',
+  from_name: 'Carmen Support',
   smtp_host: 'smtp.sendgrid.net',
   smtp_port: 587,
   smtp_secure: false,
@@ -138,5 +154,40 @@ describe('EmailSettingManagement', () => {
       expect(screen.getByLabelText('From name')).toHaveValue('ServerWon'),
     );
     expect(screen.queryByDisplayValue('MINE')).not.toBeInTheDocument();
+  });
+
+  // Pins the purpose-currying fix in `handleSaved` (EmailSettingManagement.tsx). `onSaved`
+  // is the SAME callback instance handed to every card, so without currying the purpose in,
+  // the page cannot tell which card called it — an Unset on an unrelated, non-editing card
+  // would clear `editingPurpose` unconditionally and remount (and thus silently discard) a
+  // different card's in-progress edit, bypassing the "discard unsaved edits?" guard entirely.
+  // Reproduces the reviewer's exact scenario: two configured profiles, edit the first and
+  // type into it, unset the SECOND (unrelated) one and confirm, then assert the first card's
+  // typed value is still on screen and it is still in edit mode.
+  it('keeps an unrelated card\'s unsaved edit intact when a different card is unset', async () => {
+    const user = userEvent.setup();
+    svc.getAll
+      .mockResolvedValueOnce({ data: [noReply, support] })
+      .mockResolvedValueOnce({ data: [noReply] });
+    svc.remove.mockResolvedValue({});
+    renderPage();
+
+    // Edit the first card (No-reply) and type an unsaved change.
+    const editButtons = await screen.findAllByRole('button', { name: 'Edit' });
+    await user.click(editButtons[0]);
+    await user.clear(screen.getByLabelText('From name'));
+    await user.type(screen.getByLabelText('From name'), 'UnsavedNoReplyEdit');
+
+    // Unset the second, unrelated card (Support) and confirm.
+    await user.click(screen.getByRole('button', { name: 'ยกเลิกการตั้งค่า' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'ยกเลิกการตั้งค่า' }));
+
+    await waitFor(() => expect(svc.remove).toHaveBeenCalledWith('s2'));
+    await waitFor(() => expect(svc.getAll).toHaveBeenCalledTimes(2));
+
+    // The No-reply card's unsaved edit must survive, and it must still be in edit mode.
+    expect(screen.getByLabelText('From name')).toHaveValue('UnsavedNoReplyEdit');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
 });

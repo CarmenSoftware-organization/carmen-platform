@@ -58,8 +58,14 @@ const EmailSettingManagement: React.FC = () => {
     setEditingPurpose(purpose);
   };
 
-  const handleSaved = async (opts?: { keepEditing?: boolean }) => {
-    if (!opts?.keepEditing) setEditingPurpose(null);
+  // `onSaved` is shared across every card, so it must be told WHICH card fired it.
+  // A delete/save on a card that is not the one currently being edited (e.g. Unset
+  // on an unrelated profile while another is mid-edit) must never clear editingPurpose —
+  // otherwise the open card remounts (see the doc_version key above) and its unsaved
+  // typed edit is silently discarded with no confirm prompt. Refetch always happens:
+  // a mutation anywhere genuinely changes the data every card reads from.
+  const handleSaved = async (purpose: EmailSenderPurpose, opts?: { keepEditing?: boolean }) => {
+    if (!opts?.keepEditing && editingPurpose === purpose) setEditingPurpose(null);
     await fetchAll();
   };
 
@@ -103,7 +109,7 @@ const EmailSettingManagement: React.FC = () => {
                 callerIdentity={user?.email ?? ''}
                 onRequestEdit={() => requestEdit(meta.value)}
                 onCancelEdit={() => setEditingPurpose(null)}
-                onSaved={handleSaved}
+                onSaved={(opts) => handleSaved(meta.value, opts)}
               />
               );
             })}
