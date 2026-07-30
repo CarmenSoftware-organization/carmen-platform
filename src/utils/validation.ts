@@ -26,6 +26,7 @@ export const validateField = (name: string, value: string): string => {
     case 'email':
     case 'hotel_email':
     case 'company_email':
+    case 'from_email':
       return isValidEmail(value) ? '' : 'Invalid email format';
     case 'code':
       return isValidCode(value) ? '' : 'Code must be 2-20 alphanumeric characters';
