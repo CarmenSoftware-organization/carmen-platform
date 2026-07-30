@@ -78,8 +78,17 @@ describe('EmailSettingCard', () => {
     expect(screen.getByText(/no-reply@carmen\.io/)).toBeInTheDocument();
   });
 
-  it('renders neither Save nor Cancel when isEditing but the user lacks manage permission', () => {
+  it('renders no credential form body — nor Save/Cancel — when isEditing but the user lacks manage permission', () => {
     render(<EmailSettingCard {...baseProps} canManage={false} isEditing setting={setting} />);
+    // The gate under test lives at the form-body block (`isEditing && canManage`), which is
+    // a *different* condition from the one guarding the Save/Cancel buttons (`canManage`
+    // alone, already true regardless of this fix). Asserting only Save/Cancel absence would
+    // pass even if the form body were unconditionally rendered on `isEditing` — so assert the
+    // credential inputs themselves are gone, which is the thing the fix actually controls.
+    expect(screen.queryByLabelText('From email')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SMTP host')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'เปลี่ยนรหัสผ่าน' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'ตั้งรหัสผ่าน' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
   });
