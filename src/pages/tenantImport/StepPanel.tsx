@@ -70,14 +70,14 @@ export function StepPanel({
   const lookupsToCreate = preview?.lookups_to_create ?? [];
   const clearExisting = !!state.options.clear_existing;
   const clearWillSoftDelete = preview?.clear_will_soft_delete ?? 0;
-  // The backend only computes a real `clear_will_soft_delete` count when the preview request
-  // itself carried `clear_existing: true` — but this dialog is what SETS that option, so every
-  // preview available while the dialog is open (i.e. taken before the user has ever confirmed)
-  // was necessarily requested with `clear_existing: false` and comes back `0`. A `0` is
-  // therefore never trustworthy here — showing it would assert a figure we don't have. Once the
-  // backend computes the count unconditionally, a real (frequently nonzero) count will start
-  // flowing straight through this same `> 0` check with no further FE change.
-  const clearCountKnown = clearWillSoftDelete > 0;
+  const clearWillSoftDeleteRelated = preview?.clear_will_soft_delete_related ?? 0;
+  // The backend now computes `clear_will_soft_delete` (and `..._related`) unconditionally, on
+  // every preview regardless of the `clear_existing` option it was requested with — so a `0` is
+  // now a genuine "nothing to delete" rather than the old "not computed yet" signal. The only
+  // case left where the count truly isn't known is no preview at all — defensive: the checkbox's
+  // own `disabled` rule (below) keeps the dialog from opening without one in practice, but the
+  // copy still branches on it rather than assuming that invariant holds.
+  const clearCountKnown = !!preview;
   // Ticking the checkbox does NOT set `clear_existing` itself — it only opens the typed
   // confirmation dialog below. The checkbox's own `checked` stays derived from
   // `state.options.clear_existing`, so a cancelled/dismissed dialog leaves it off with no
@@ -317,14 +317,30 @@ export function StepPanel({
             <DialogTitle>Soft-delete existing rows?</DialogTitle>
             <DialogDescription>
               {clearCountKnown ? (
-                <>
-                  This soft-deletes{' '}
-                  <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong> existing
-                  rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
-                  <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>. Existing documents
-                  that reference them keep working. Type the BU code to confirm.
-                </>
+                clearWillSoftDelete === 0 ? (
+                  <>
+                    There are no active rows in{' '}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
+                    <strong className="font-semibold text-foreground">{buCode}</strong> to soft-delete right
+                    now. Type the BU code to confirm.
+                  </>
+                ) : (
+                  <>
+                    This soft-deletes{' '}
+                    <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong> existing
+                    rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
+                    <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>.
+                    {clearWillSoftDeleteRelated > 0 && (
+                      <>
+                        {' '}It also soft-deletes{' '}
+                        <strong className="font-semibold text-foreground">{clearWillSoftDeleteRelated}</strong>{' '}
+                        dependent rows in related tables.
+                      </>
+                    )}{' '}
+                    Existing documents that reference them keep working. Type the BU code to confirm.
+                  </>
+                )
               ) : (
                 <>
                   This soft-deletes every currently-active row in{' '}

@@ -297,6 +297,7 @@ export interface PreconfigPreview {
   total_rows: number;
   counts: { new: number; duplicate: number; error: number };
   clear_will_soft_delete: number;
+  clear_will_soft_delete_related: number;
   lookups_to_create: PreconfigLookupCreation[];
   rows: PreconfigPreviewRow[];
   rows_truncated: boolean;
@@ -317,7 +318,7 @@ export interface PreconfigImportSummary {
 
 export type PreconfigImportEvent =
   | { type: 'start'; step_id: string; bu_code: string; total: number }
-  | { type: 'cleared'; step_id: string; soft_deleted: number }
+  | { type: 'cleared'; step_id: string; soft_deleted: number; related_soft_deleted: number }
   | { type: 'progress'; step_id: string; index: number; total: number; inserted: number; updated: number; skipped: number; failed: number }
   | { type: 'done'; success: boolean; summary: PreconfigImportSummary }
   | { type: 'error'; message: string };
