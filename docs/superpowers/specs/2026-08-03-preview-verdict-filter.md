@@ -262,9 +262,13 @@ unchanged — the buckets were already built at this size.
 No new automated tests (standing preference: implement, type-check, commit). Existing suites
 must stay green.
 
-- backend-v2: `bun run check-types` for micro-business; existing preconfig-import jest specs green
+- backend-v2: `bun run check-types` in `apps/micro-business`, then `bun run test` there.
+  Note there are **no** preconfig-import specs in micro-business — the only preconfig specs in
+  the repo live in `backend-gateway` (`preconfig-imports.module.spec.ts`,
+  `ndjson-stream-lifecycle.spec.ts`), and the gateway is untouched here. The micro-business run
+  is a regression gate, not coverage of this change.
 - carmen-platform: `bunx tsc --noEmit`, `bun run build:dev` (eslint runs inside the build),
-  existing Vitest suite green
+  `bun run test` (Vitest). There is no test for `StepPanel` today either.
 - Manual on DEV, with a `Preconfig.xlsx` whose product sheet carries real error rows:
   1. Preview a step with a mix of all three verdicts
   2. Click `error` → only failing rows, caption reports the error count
