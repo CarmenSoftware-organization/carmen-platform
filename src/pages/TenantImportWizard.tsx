@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FileSpreadsheet, Loader2 } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
@@ -25,18 +25,30 @@ export default function TenantImportWizard() {
   const [file, setFile] = useState<File | null>(null);
   const [report, setReport] = useState<PreconfigCheckReport | null>(null);
   const [busy, setBusy] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      try {
-        const [list, catalog] = await Promise.all([
-          businessUnitService.getAll({ perpage: 200 }),
-          preconfigImportService.getSteps(),
-        ]);
-        setBusinessUnits(list.data ?? []);
-        setSteps(catalog);
-      } catch (err) {
-        toast.error(parseApiError(err).message);
+      // Independent settle: a rejected step catalog (e.g. `data_import.manage` not yet
+      // seeded in this environment) must not take the BU list down with it — the user
+      // can still pick a BU even while the catalog fetch fails.
+      const [listResult, catalogResult] = await Promise.allSettled([
+        businessUnitService.getAll({ perpage: 200 }),
+        preconfigImportService.getSteps(),
+      ]);
+
+      if (listResult.status === 'fulfilled') {
+        setBusinessUnits(listResult.value.data ?? []);
+      } else {
+        toast.error(parseApiError(listResult.reason).message);
+      }
+
+      if (catalogResult.status === 'fulfilled') {
+        setSteps(catalogResult.value);
+      } else {
+        const message = parseApiError(catalogResult.reason).message;
+        toast.error(message);
+        setCatalogError(message);
       }
     })();
   }, []);
@@ -86,7 +98,19 @@ export default function TenantImportWizard() {
 
             {screen === 'upload' && (
               <>
-                {busy ? (
+                {catalogError ? (
+                  <div
+                    className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      The import step catalog could not be loaded ({catalogError}). The wizard cannot
+                      proceed until this is fixed — this usually means the platform permission for
+                      Preconfig imports has not been granted yet.
+                    </span>
+                  </div>
+                ) : busy ? (
                   <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Checking workbook…
                   </div>
@@ -121,7 +145,7 @@ export default function TenantImportWizard() {
           <DevDebugSheet
             title="Tenant Data Import"
             endpoint="POST /api-system/tenant/preconfig-imports"
-            data={{ bu, steps, report, fileName: file?.name }}
+            data={{ bu, steps, report, fileName: file?.name, catalogError }}
           />
         )}
       </div>

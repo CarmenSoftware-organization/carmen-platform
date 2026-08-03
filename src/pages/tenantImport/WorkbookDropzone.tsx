@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -20,7 +21,10 @@ export function WorkbookDropzone({
 
   const accept = (file?: File | null) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.xlsx')) return;
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      toast.error('Only .xlsx workbooks are supported');
+      return;
+    }
     onFile(file);
   };
 
