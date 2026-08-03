@@ -192,9 +192,14 @@ export function StepPanel({
         .join(' · ');
     }
     const total = `${preview.total_rows} rows in sheet`;
-    return preview.rows_truncated
+    if (!preview.rows_truncated || preview.rows.length === 0) return total;
+    // `sampled` only exists once the backend change has shipped (see the field's own comment
+    // above). Until then `rows` is still globally capped at 200 total, not 200 per verdict, so
+    // asserting a per-verdict cap here would overstate what the table holds — the one deploy
+    // state (this frontend against today's backend) that is guaranteed to occur for a while.
+    return preview.sampled
       ? `${total} · showing ${preview.rows.length}, up to ${PREVIEW_ROWS_PER_VERDICT} per verdict`
-      : total;
+      : `${total} · showing a sample of ${preview.rows.length}`;
   }, [preview, sampled, selectedVerdicts]);
 
   return (
@@ -280,20 +285,20 @@ export function StepPanel({
                 key={v}
                 type="button"
                 aria-pressed={selected}
-                aria-label={`Filter to ${v} rows`}
+                aria-label={`${preview.counts[v]} ${v} — filter to ${v} rows`}
                 onClick={() => toggleVerdict(v)}
-                className={`rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                className={`rounded-md py-1 transition ring-offset-background hover:ring-1 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   selected ? 'ring-2 ring-ring ring-offset-1' : ''
                 }`}
               >
                 {/*
-                  Selection is a ring plus dimming of the others, never colour: the badge colour
-                  is already spoken for by the verdict itself.
+                  Selection is a ring on the button alone, never colour: the badge colour is
+                  already spoken for by the verdict itself. Deliberately not dimmed — these
+                  buttons stay interactive (not `disabled`), so WCAG 1.4.3 contrast applies to
+                  them, and dimming would also mute the whole-sheet error count precisely when a
+                  filter is active.
                 */}
-                <Badge
-                  variant={v === 'error' && preview.counts.error === 0 ? 'secondary' : VERDICT_VARIANT[v]}
-                  className={verdictFilter.size > 0 && !selected ? 'opacity-50' : ''}
-                >
+                <Badge variant={v === 'error' && preview.counts.error === 0 ? 'secondary' : VERDICT_VARIANT[v]}>
                   {preview.counts[v]} {v}
                 </Badge>
               </button>

@@ -184,7 +184,7 @@ const visibleRows = useMemo(() => {
 }, [preview, verdictFilter]);
 ```
 
-**Badges become toggles.** The three badges at lines 206-219 each get wrapped in a
+**Badges become toggles.** The three badges at lines 205-219 each get wrapped in a
 `<button type="button">` carrying `aria-pressed` and an `aria-label` of the form
 `Filter to <verdict> rows` — the badge's own text is a bare count plus the verdict word, which
 does not read as a control on its own. Multi-select: clicking toggles that verdict in the set,
@@ -195,8 +195,14 @@ Selection must not be signalled by colour alone (the badges are already colour-c
 verdict):
 
 - selected → `ring-2 ring-ring ring-offset-1` on the button
-- unselected **while any filter is active** → `opacity-50` on the badge
-- no filter active → all three render exactly as today
+- unselected, any state → no dimming; a ring is not colour, so the constraint above is
+  already satisfied by the selected ring alone. Dimming was dropped because these buttons stay
+  interactive (never `disabled`), so WCAG 1.4.3 contrast applies to them, and the dimmed state
+  also muted the whole-sheet `error` count precisely when a filter was active — undercutting the
+  §10 mitigation for "the filter could hide errors from the operator"
+- hover, any state → a restrained `hover:ring-1` affordance, so the chips read as interactive
+  next to the plain badges they replaced
+- no filter active → all three render exactly as today (plus the new hover affordance)
 
 **Columns.** `columns` keeps deriving from `preview.rows`, not `visibleRows`, so the column
 set does not shift as the operator toggles chips.
@@ -208,8 +214,15 @@ describes the old selection rule and stops being true once the slice is gone.
 | Condition | Text |
 |---|---|
 | No filter, `!rows_truncated` | `{total_rows} rows in sheet` |
-| No filter, `rows_truncated` | `{total_rows} rows in sheet · showing {rows.length}, up to 200 per verdict` |
+| No filter, `rows_truncated`, `sampled` present | `{total_rows} rows in sheet · showing {rows.length}, up to 200 per verdict` |
+| No filter, `rows_truncated`, `sampled` absent | `{total_rows} rows in sheet · showing a sample of {rows.length}` |
 | Filter active | one clause per selected verdict, joined by ` · ` |
+
+The two `rows_truncated` phrasings are selected by whether `preview.sampled` came back at all —
+not by anything about the deploy state directly. `sampled` absent means this frontend is talking
+to a backend that predates the per-verdict sampling change, where `rows` is still globally capped
+at 200 total; asserting "up to 200 per verdict" in that state would overstate what the table
+holds, so the fallback phrasing claims only what is true of a globally-capped sample.
 
 Per-verdict clause: `Showing all {n} {verdict}` when `sampled[v] === counts[v]`, otherwise
 `Showing {sampled[v]} of {counts[v]} {verdict}`.
@@ -239,7 +252,7 @@ independently:
 
 | Frontend | Backend | Behaviour |
 |---|---|---|
-| new | old | `sampled` absent → §6.2 fallback counts it from `rows`. Filtering works; `rows` is still globally capped at 200, so the `new` window stays small on large sheets. No error. |
+| new | old | `sampled` absent → §6.2 fallback counts it from `rows`. Filtering works; `rows` is still globally capped at 200, so the `new` window stays small on large sheets. This is the one deploy state guaranteed to occur before the backend ships — the unfiltered caption's "up to N per verdict" wording is conditioned on `sampled` for exactly this reason, falling back to "showing a sample of N" so it never overstates what the table holds. No error. |
 | old | new | The extra field is ignored; `rows` may hold up to 600 entries and the table simply shows more. No error. |
 | new | new | Full behaviour. |
 
