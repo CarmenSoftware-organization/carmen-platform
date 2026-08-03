@@ -26,11 +26,22 @@ const preconfigImportService = {
   getSteps: async (): Promise<PreconfigStepMeta[]> => {
     const res = await api.get(`${base}/steps`);
     const body = res.data?.data ?? res.data;
-    return body?.steps ?? [];
+    if (Array.isArray(body)) return body;
+    if (Array.isArray(body?.steps)) return body.steps;
+    return [];
   },
 
+  // The explicit multipart Content-Type is REQUIRED, not redundant: the shared `api`
+  // instance (src/services/api.ts) defaults to application/json, and axios's
+  // transformRequest will JSON-serialize a FormData body — silently dropping the File —
+  // whenever the content type is application/json. Setting multipart here makes axios
+  // pass the FormData through untouched; the browser fills in the boundary. Do not
+  // remove this even though it looks like it duplicates what the browser would do on
+  // its own — without it these uploads send no file at all.
   check: async (buId: string, file: File): Promise<PreconfigCheckReport> => {
-    const res = await api.post(`${base}/${buId}/check`, formOf(file));
+    const res = await api.post(`${base}/${buId}/check`, formOf(file), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data?.data ?? res.data;
   },
 
@@ -40,7 +51,9 @@ const preconfigImportService = {
     file: File,
     options?: PreconfigImportOptions,
   ): Promise<PreconfigPreview> => {
-    const res = await api.post(`${base}/${buId}/${stepId}/preview`, formOf(file, options));
+    const res = await api.post(`${base}/${buId}/${stepId}/preview`, formOf(file, options), {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return res.data?.data ?? res.data;
   },
 
@@ -57,6 +70,8 @@ const preconfigImportService = {
     signal?: AbortSignal,
   ): Promise<PreconfigImportSummary> => {
     const root = api.defaults.baseURL ?? '';
+    // Unlike the axios calls above, `fetch` has no default Content-Type to fight — setting
+    // one here would strip the multipart boundary, so it is deliberately omitted.
     const res = await fetch(`${root}${base}/${buId}/${stepId}/import/stream`, {
       method: 'POST',
       headers: {
@@ -86,17 +101,21 @@ const preconfigImportService = {
       if (event.type === 'done') summary = event.summary;
     };
 
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let nl: number;
-      while ((nl = buffer.indexOf('\n')) >= 0) {
-        handleLine(buffer.slice(0, nl));
-        buffer = buffer.slice(nl + 1);
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          handleLine(buffer.slice(0, nl));
+          buffer = buffer.slice(nl + 1);
+        }
       }
+      handleLine(buffer);
+    } finally {
+      reader.cancel().catch(() => {});
     }
-    handleLine(buffer);
     if (!summary) throw new Error('Import stream ended without a result');
     return summary;
   },
