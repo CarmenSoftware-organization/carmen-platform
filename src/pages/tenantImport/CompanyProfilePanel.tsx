@@ -1,20 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Loader2, RefreshCw, Save } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { cn } from '../../lib/utils';
 import businessUnitService from '../../services/businessUnitService';
 import preconfigImportService from '../../services/preconfigImportService';
 import { parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import type { BusinessUnit, PreconfigStepMeta } from '../../types';
 
-// Sheet labels that exist in "Company Profile" but map to no `BusinessUnit` column (spec
-// §8.1: Inventory Cost Type, Default Currency). The backend catalog (preconfig-catalog.ts)
-// never lists them in `step.columns`, so the preview response carries nothing to derive this
-// from — they appear in neither `values` nor `errors`. Hardcoded per the spec table; if the
-// backend ever starts reporting them, this can switch to deriving from the response instead.
-const NOT_APPLIED_LABELS = ['Inventory Cost Type', 'Default Currency'];
+// Sheet labels that exist in "Company Profile" but the backend catalog (preconfig-catalog.ts)
+// deliberately excludes from `step.columns` — never applied to `BusinessUnit`. Because they're
+// excluded from `step.columns`, the preview response carries zero signal about them (they show
+// up in neither `values` nor `errors`), so there is no API response this list can be derived
+// from — deriving it would need the full raw label list from the sheet, which no endpoint
+// exposes. Taken from the backend implementation report (§6b), which enumerates every label the
+// vertical reader extracts and explains each exclusion:
+// .superpowers/sdd/2026-08-03-preconfig-import-wizard/task-18-be-report.md
+//   - Inventory Cost Type / Default Currency: no plain BusinessUnit column (enum / FK).
+//   - BU Name: identity, like BU Code — a spreadsheet must not silently rename the BU.
+//   - Date Format, Date Time Format, Time Format, Short Time Format, Long Time Format, Time
+//     Zone: map to real columns but are owned by the BU settings page, not Company Profile.
+// If the backend catalog changes which labels it maps, this list drifts out of sync — that is
+// the same risk the backend report itself calls out, so keep it aligned with that report (or a
+// future catalog-derived source) rather than treating it as permanently fixed.
+const NOT_APPLIED_LABELS = [
+  'Inventory Cost Type',
+  'Default Currency',
+  'BU Name',
+  'Date Format',
+  'Date Time Format',
+  'Time Format',
+  'Short Time Format',
+  'Long Time Format',
+  'Time Zone',
+];
 
 interface FieldRow {
   key: string;
@@ -57,6 +78,11 @@ export function CompanyProfilePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [rows, setRows] = useState<FieldRow[]>([]);
+  // The workbook's `BU Code` value, kept separate from `rows`. The backend deliberately
+  // includes `code` in the preview `values` (spec: "match only — never written") so the panel
+  // can compare it against the selected BU and flag a mismatch — but it must never be treated
+  // as a normal diffable field or fed into `changedFields`. See IMPORTANT 1, fix round 2.
+  const [sheetCode, setSheetCode] = useState<string | undefined>();
   const [sheetErrors, setSheetErrors] = useState<Array<{ column: string; message: string }>>([]);
   const [docVersion, setDocVersion] = useState<number>();
   const [applying, setApplying] = useState(false);
@@ -79,8 +105,12 @@ export function CompanyProfilePanel({
       const record: BusinessUnit = currentRes?.data ?? currentRes;
       const recordFields = record as unknown as Record<string, unknown>;
       const sheetValues = preview.rows[0]?.values ?? {};
+      const rawSheetCode = sheetValues['code'];
       const nextRows: FieldRow[] = Object.keys(sheetValues)
-        // `id`/`code` are identifiers, not profile fields — never diffed, never written back.
+        // `id` is a plain identifier — never a diffable field. `code` is identity too, but
+        // unlike `id` it IS meaningful to show (it is how the operator confirms the workbook
+        // targets this BU) — it just never becomes a normal row here, and never feeds
+        // `changedFields`. It gets its own dedicated, read-only comparison below instead.
         .filter((key) => key !== 'id' && key !== 'code')
         .map((key) => {
           const sheetValue = String(sheetValues[key] ?? '').trim();
@@ -94,6 +124,7 @@ export function CompanyProfilePanel({
           };
         });
       setRows(nextRows);
+      setSheetCode(typeof rawSheetCode === 'string' ? rawSheetCode.trim() : undefined);
       setSheetErrors(preview.rows[0]?.errors ?? []);
       setDocVersion(getDocVersion(record));
     } catch (err) {
@@ -111,11 +142,19 @@ export function CompanyProfilePanel({
   }, [load]);
 
   const changedCount = rows.filter((r) => r.changed).length;
+  // Trimmed compare; `bu.code` is not expected to carry incidental whitespace, but `sheetCode`
+  // comes straight off a spreadsheet cell.
+  const codeMismatch = sheetCode != null && sheetCode !== '' && sheetCode !== bu.code.trim();
 
   const handleApply = useCallback(async () => {
     const changedFields: Record<string, string> = {};
     for (const r of rows) {
-      if (r.changed) changedFields[r.key] = r.sheetValue;
+      // IMPORTANT 1 (fix round 2): `code` must never be written back — it is the BU's identity,
+      // not a profile field, and the tenant database connection is resolved from it. `rows`
+      // already excludes `code`/`id` when it's built above, so this can never trigger in
+      // practice today; it stays as an unconditional second guard so a future change to that
+      // filter can't silently start writing the BU code from a workbook cell.
+      if (r.changed && r.key !== 'code' && r.key !== 'id') changedFields[r.key] = r.sheetValue;
     }
     if (Object.keys(changedFields).length === 0) return;
     setApplying(true);
@@ -167,11 +206,38 @@ export function CompanyProfilePanel({
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {!loading && !error && rows.length === 0 && (
+      {/*
+        IMPORTANT 1 (fix round 2): the BU code is the tenant's identity — it is what the
+        wizard resolved the tenant database connection from, and how operators recognise the
+        BU. A workbook whose `BU Code` cell holds a different value (a copied template, an
+        export from another property) must never silently rename this BU. `handleApply` already
+        excludes `code` unconditionally; this banner makes a mismatch impossible to miss without
+        blocking the apply — the operator may still be here on purpose (e.g. re-checking a
+        template file), so this warns rather than gates.
+      */}
+      {codeMismatch && (
+        <div
+          className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            The workbook&apos;s <strong>BU Code</strong> is{' '}
+            <strong className="font-mono">{sheetCode}</strong>, not the selected business unit&apos;s{' '}
+            <strong className="font-mono">{bu.code}</strong>. This usually means the wrong file or the
+            wrong business unit was selected. Applying will <strong>not</strong> rename anything — the BU
+            code is never written back — but every other field below would still be written onto{' '}
+            <strong>{bu.code}</strong>, not the property the workbook describes. Double-check before
+            continuing.
+          </span>
+        </div>
+      )}
+
+      {!loading && !error && rows.length === 0 && sheetCode == null && (
         <p className="text-xs text-muted-foreground">No mapped fields were returned for this sheet.</p>
       )}
 
-      {rows.length > 0 && (
+      {(rows.length > 0 || sheetCode != null) && (
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={changedCount > 0 ? 'warning' : 'secondary'}>{changedCount} changed</Badge>
@@ -194,6 +260,20 @@ export function CompanyProfilePanel({
                 </tr>
               </thead>
               <tbody>
+                {sheetCode != null && (
+                  // Read-only identity row — deliberately not a `FieldRow`: it never has a
+                  // Changed/Same verdict and can never be applied (see IMPORTANT 1 above).
+                  <tr className={cn('border-t', codeMismatch && 'bg-destructive/5')}>
+                    <td className="px-3 py-2 font-medium">BU Code</td>
+                    <td className="px-3 py-2 text-muted-foreground">{bu.code}</td>
+                    <td className="px-3 py-2">{sheetCode || '-'}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant={codeMismatch ? 'destructive' : 'secondary'}>
+                        {codeMismatch ? 'Mismatch — read-only' : 'Match — read-only'}
+                      </Badge>
+                    </td>
+                  </tr>
+                )}
                 {rows.map((r) => (
                   <tr key={r.key} className="border-t">
                     <td className="px-3 py-2">{r.label}</td>
