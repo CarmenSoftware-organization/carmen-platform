@@ -3410,8 +3410,33 @@ Add `company-profile` as the **first** catalog entry with `target: 'platform'` a
 corrected columns from spec §8.1, so it appears in `GET /steps` and in the File check report.
 Set `supportsClear: false`, `duplicateKey: ['code']`, `defaultDuplicateMode: 'upsert'`.
 
-`preview` stays available for this step — it only reads the workbook and, for a platform step,
-must skip the tenant round-trip entirely. At the top of `preview`, before `resolveConnection`:
+**This sheet is vertical.** It has no header row: column A is the field label, column B is the
+value, one field per row. `coerceRow` (which indexes a horizontal header) cannot read it. Add a
+dedicated reader to `preconfig-workbook.ts`:
+
+```ts
+/**
+ * Read a vertical key-value sheet (column A = label, column B = value) into one record.
+ * อ่านชีตแบบแนวตั้ง (คอลัมน์ A = ป้ายกำกับ, คอลัมน์ B = ค่า) เป็นเรกคอร์ดเดียว
+ * @param sheet - Parsed sheet / ชีตที่แปลงแล้ว
+ * @returns Label -> value map, labels normalized / แมปป้ายกำกับไปยังค่า
+ */
+export function readVerticalSheet(sheet: SheetTable): Map<string, string> {
+  const out = new Map<string, string>();
+  // parseWorkbook treats row 1 as headers, so the first pair lives in `headers`.
+  const pairs: Array<[string, string]> = [
+    [sheet.headers[0] ?? '', sheet.headers[1] ?? ''],
+    ...sheet.rows.map((r): [string, string] => [r[0] ?? '', r[1] ?? '']),
+  ];
+  for (const [label, value] of pairs) {
+    const key = normalizeKey(label);
+    if (key && !out.has(key)) out.set(key, value.trim());
+  }
+  return out;
+}
+```
+
+Then, at the top of `preview` before `resolveConnection`:
 
 ```ts
 if (step.target === 'platform') {
@@ -3420,25 +3445,33 @@ if (step.target === 'platform') {
   if (!sheet) {
     return Result.error(`Sheet "${step.sheetName}" not found in workbook`, ErrorCode.VALIDATION_FAILURE);
   }
-  const rows: PreviewRow[] = sheet.rows.slice(0, PREVIEW_ROW_CAP).map((raw, i) => {
-    const { values, errors } = coerceRow(step, sheet.headers, raw);
-    return { row_number: i + 2, verdict: errors.length ? 'error' : 'new', values, errors };
-  });
+  const fields = readVerticalSheet(sheet);
+  const values: Record<string, unknown> = {};
+  const errors: Array<{ column: string; message: string }> = [];
+  for (const col of step.columns) {
+    if (col.excel === null) continue;
+    const raw = fields.get(normalizeKey(col.excel)) ?? '';
+    if (raw === '') {
+      if (col.required) errors.push({ column: col.excel, message: 'Required value is empty' });
+      continue;
+    }
+    values[col.column] = raw;
+  }
   return Result.ok({
     step_id: step.id,
-    total_rows: sheet.rows.length,
-    counts: {
-      new: rows.filter((r) => r.verdict === 'new').length,
-      duplicate: 0,
-      error: rows.filter((r) => r.verdict === 'error').length,
-    },
+    total_rows: 1,
+    counts: { new: errors.length ? 0 : 1, duplicate: 0, error: errors.length ? 1 : 0 },
     clear_will_soft_delete: 0,
     lookups_to_create: [],
-    rows,
-    rows_truncated: sheet.rows.length > PREVIEW_ROW_CAP,
+    rows: [{ row_number: 1, verdict: errors.length ? 'error' : 'new', values, errors }],
+    rows_truncated: false,
   });
 }
 ```
+
+Labels that exist in the sheet but map to no `BusinessUnit` column (`Inventory Cost Type`,
+`Default Currency`) are deliberately absent from `step.columns` — the frontend shows them as
+"not applied" from its own label list, not from this payload.
 
 `importStream` **must refuse** it — the write happens client-side through
 `businessUnitService`. At the top of the `run()` body, right after `getStep`:
@@ -3505,9 +3538,28 @@ git commit -m "feat(preconfig-import): add Company Profile diff step"
 - [ ] **Step 1: Full-workbook run on a disposable DEV BU**
 
 Run every step in catalog order against a freshly seeded BU using `Preconfig.xlsx`. Record
-inserted/skipped/failed per step. Expected orders of magnitude: Unit 34, Tax Profile 2,
-Delivery Point 1, Department 55, Store Location 40, Item Group ~134 across the three
-category steps, Product 2,589, Vendor 998.
+inserted/skipped/failed per step. Expected **data-row** counts, verified against the sample
+file (blank spacer rows excluded — see the note below):
+
+| Sheet | Data rows |
+|-------|-----------|
+| Company Profile | 14 (vertical key-value pairs, not a table) |
+| Currency | 1 |
+| Unit | 34 |
+| Tax Profile | 2 |
+| Delivery Point | 1 |
+| Department | 55 |
+| Store Location | 40 |
+| Item Group | 64 (feeds three steps: category, subcategory, item group) |
+| Product list | 2,589 |
+| Vendor | 845 |
+
+Inserted counts will be **lower** than the row count wherever a sheet repeats values — the
+Item Group sheet's 64 rows collapse to far fewer distinct categories and subcategories.
+
+Note: `Item Group` and `Vendor` contain style-only blank rows (70 and 153 respectively) that
+`parseWorkbook` filters out. Counting `<row>` elements instead of non-blank rows yields the
+misleading figures 134 and 998 — do not "fix" the parser to match those.
 
 - [ ] **Step 2: Re-run the whole catalog**
 

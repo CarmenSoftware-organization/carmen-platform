@@ -348,11 +348,18 @@ Related: `tb_vendor_contact` (`payee` → `name`, `telephone` → `phone`, `emai
 (`address_type = 'contact_address'`, `data` JSONB from `address_line1`, `address_line2`,
 `city`, `province`, `postal_code`, `country`, condition `address_line1`).
 
-**`company-profile` → `tb_business_unit`** (platform, decision #3). The prototype's mapping is
-**stale** and must be rewritten — `hotel_address` and `hotel_zip_code` no longer exist after
-the 2026-07-09 address restructure:
+**`company-profile` → `tb_business_unit`** (platform, decision #3).
 
-| Excel | Current column |
+**This sheet is not a table.** Unlike the other nine, it has no header row: column A holds the
+field label and column B holds the value, one field per row (14 rows in the sample). The
+generic `parseWorkbook` + `coerceRow` path — which assumes row 1 is a header — cannot read it.
+Task 18 must add a separate vertical read path that indexes rows by their column-A label; the
+"Excel" column below is that **label**, not a header name.
+
+The prototype's mapping is also **stale** and must be rewritten — `hotel_address` and
+`hotel_zip_code` no longer exist after the 2026-07-09 address restructure:
+
+| Excel label (column A) | Current column |
 |-------|----------------|
 | `BU Code` | `code` (match only — never written) |
 | `Hotel Name` | `hotel_name` |
@@ -368,6 +375,7 @@ the 2026-07-09 address restructure:
 | `Tax ID (*Mandatory*)` | `tax_no` |
 | `Branch No (*Mandatory*)` | `branch_no` |
 | `Inventory Cost Type (*Mandatory*)` | *(not on `BusinessUnit`; shown in the diff as "not applied")* |
+| `Default Currency` | *(not on `BusinessUnit`; shown in the diff as "not applied")* |
 
 ## 9. Permission and security
 
@@ -427,6 +435,12 @@ overlay when refreshing a loaded preview, `EmptyState` when the sheet has zero d
    soft-delete (decision #6).
 4. Lookup auto-creation runs before the sheet that owns that master data may have been
    imported — now surfaced through `lookups_to_create` (decision #13).
+5. `Item Group` and `Vendor` carry style-only blank rows (70 and 153 in the sample) between
+   groups. The parser must skip them, otherwise every one becomes a "Required value is empty"
+   failure. Counting raw `<row>` elements instead of non-blank rows gives the misleading
+   figures 134 and 998.
+6. `Company Profile` is a vertical key-value sheet with no header row, so it needs its own
+   read path (§8.1).
 
 ## 12. Rollout
 
