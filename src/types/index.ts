@@ -247,6 +247,87 @@ export type SeedProgressEvent =
   | { type: 'done'; success: boolean; summary: SeedDeploySummary }
   | { type: 'error'; message: string };
 
+export type PreconfigDuplicateMode = 'skip' | 'upsert' | 'error';
+
+export interface PreconfigStepMeta {
+  id: string;
+  sheet_name: string;
+  table_name: string;
+  display_name: string;
+  description: string;
+  target: 'tenant' | 'platform';
+  required_columns: string[];
+  optional_columns: string[];
+  duplicate_key: string[];
+  default_duplicate_mode: PreconfigDuplicateMode;
+  supports_clear: boolean;
+  creates_lookups: string[];
+}
+
+export interface PreconfigCheckStep {
+  step_id: string;
+  sheet_present: boolean;
+  row_count: number;
+  missing_required_columns: string[];
+  missing_optional_columns: string[];
+  status: 'ready' | 'sheet_missing' | 'columns_missing';
+}
+
+export interface PreconfigCheckReport {
+  file_name: string;
+  sheets_found: string[];
+  steps: PreconfigCheckStep[];
+}
+
+export interface PreconfigPreviewRow {
+  row_number: number;
+  verdict: 'new' | 'duplicate' | 'error';
+  values: Record<string, unknown>;
+  errors: Array<{ column: string; message: string }>;
+}
+
+export interface PreconfigLookupCreation {
+  table: string;
+  column: string;
+  values: string[];
+}
+
+export interface PreconfigPreview {
+  step_id: string;
+  total_rows: number;
+  counts: { new: number; duplicate: number; error: number };
+  clear_will_soft_delete: number;
+  lookups_to_create: PreconfigLookupCreation[];
+  rows: PreconfigPreviewRow[];
+  rows_truncated: boolean;
+}
+
+export interface PreconfigImportSummary {
+  step_id: string;
+  bu_id: string;
+  bu_code: string;
+  total: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  lookups_created: number;
+  errors: Array<{ row_number: number; message: string }>;
+}
+
+export type PreconfigImportEvent =
+  | { type: 'start'; step_id: string; bu_code: string; total: number }
+  | { type: 'cleared'; step_id: string; soft_deleted: number }
+  | { type: 'progress'; step_id: string; index: number; total: number; inserted: number; updated: number; skipped: number; failed: number }
+  | { type: 'done'; success: boolean; summary: PreconfigImportSummary }
+  | { type: 'error'; message: string };
+
+export interface PreconfigImportOptions {
+  duplicate_mode?: PreconfigDuplicateMode;
+  clear_existing?: boolean;
+  accept_lookup_creation?: boolean;
+}
+
 export interface UserInfo {
   firstname?: string;
   middlename?: string;
