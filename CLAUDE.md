@@ -274,6 +274,16 @@ Examples that still exist:
 
 (`PrintTemplateMapping*`, formerly this section's example, was deleted along with the feature on both frontend and backend — don't reference it again.)
 
+## Tenant Data Import (Preconfig Wizard)
+
+`src/pages/TenantImportWizard.tsx` + `src/pages/tenantImport/` — a wizard page, not a
+Management page: pick a BU (shared `BuSwitcher`), upload `Preconfig.xlsx`, review the File
+check report, then run one step at a time. The workbook is re-attached to every request
+(the backend keeps no upload session), and all mapping lives in micro-business
+(`preconfig-import/preconfig-catalog.ts`) — the client only sends `step_id` + options.
+Progress arrives as NDJSON via `preconfigImportService.importStream`. Gated on
+`data_import.manage`. Spec: `docs/superpowers/specs/2026-08-03-preconfig-import-wizard.md`.
+
 ## Application Management Specifics
 
 `Application*` pages follow the standard two-page pattern (copied from Cluster), but the
