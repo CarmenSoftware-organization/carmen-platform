@@ -37,6 +37,12 @@ export default function TenantImportWizard() {
   const [states, setStates] = useState<Record<string, StepState>>({});
   const [activeId, setActiveId] = useState<string>('');
   const abortRef = useRef<AbortController | null>(null);
+  // Bumped on every reset path (new file, choose-another-file, BU switch) and whenever a
+  // step's options change. Any async write (`patchIfCurrent`) captured against an earlier
+  // generation becomes a no-op once this moves on — closes the window where a preview/import
+  // response that was already in flight lands after the state it belongs to has been reset
+  // or superseded, resurrecting stale data (see IMPORTANT 1, fix round 1).
+  const runIdRef = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -73,7 +79,10 @@ export default function TenantImportWizard() {
         setFile(picked);
         setReport(result);
         // A freshly-checked workbook starts every step over — any preview/summary from a
-        // previously loaded file must not leak into this run.
+        // previously loaded file must not leak into this run, and any import stream left
+        // running from the previous file must not keep writing into it either.
+        abortRef.current?.abort();
+        runIdRef.current += 1;
         setStates({});
         setActiveId('');
         setScreen('check');
@@ -100,20 +109,34 @@ export default function TenantImportWizard() {
     });
   }, []);
 
+  // Every write that happens after an `await` must check it is still writing into the
+  // generation it started in — otherwise a preview/import response for a step that has
+  // since been reset (new file, new BU) or superseded (options changed under it) can land
+  // and resurrect state nobody is looking at anymore.
+  const patchIfCurrent = useCallback(
+    (gen: number, id: string, next: Partial<StepState>) => {
+      if (gen === runIdRef.current) patch(id, next);
+    },
+    [patch],
+  );
+
   const runPreview = useCallback(
     async (id: string) => {
       if (!bu || !file) return;
+      const gen = runIdRef.current;
       patch(id, { status: 'previewing', error: undefined });
       try {
         const result = await preconfigImportService.preview(bu.id, id, file, states[id]?.options ?? {});
-        patch(id, { status: 'previewed', preview: result, rowCount: result.total_rows });
+        patchIfCurrent(gen, id, { status: 'previewed', preview: result, rowCount: result.total_rows });
       } catch (err) {
         const message = parseApiError(err).message;
-        patch(id, { status: 'error', error: message });
-        toast.error(message);
+        patchIfCurrent(gen, id, { status: 'error', error: message });
+        // Only surface the toast if this response still belongs to the current generation —
+        // otherwise it reports a failure for a step/file/BU the user has already moved on from.
+        if (gen === runIdRef.current) toast.error(message);
       }
     },
-    [bu, file, patch, states],
+    [bu, file, patch, patchIfCurrent, states],
   );
 
   const runImport = useCallback(
@@ -129,10 +152,11 @@ export default function TenantImportWizard() {
       }
       if (states[id]?.status === 'importing') return;
 
+      const gen = runIdRef.current;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      patch(id, { status: 'importing', error: undefined, progress: undefined });
+      patch(id, { status: 'importing', error: undefined, progress: undefined, everImported: true });
       try {
         const summary = await preconfigImportService.importStream(
           bu.id,
@@ -140,20 +164,30 @@ export default function TenantImportWizard() {
           file,
           states[id]?.options ?? {},
           (event) => {
-            if (event.type === 'start') patch(id, { progress: { index: 0, total: event.total } });
-            if (event.type === 'progress') patch(id, { progress: { index: event.index, total: event.total } });
+            if (event.type === 'start') patchIfCurrent(gen, id, { progress: { index: 0, total: event.total } });
+            if (event.type === 'progress') {
+              patchIfCurrent(gen, id, { progress: { index: event.index, total: event.total } });
+            }
           },
           controller.signal,
         );
-        patch(id, { status: summary.failed > 0 ? 'error' : 'completed', summary });
-        toast.success(`${id}: ${summary.inserted} inserted, ${summary.skipped} skipped`);
+        patchIfCurrent(gen, id, { status: summary.failed > 0 ? 'error' : 'completed', summary });
+        if (gen === runIdRef.current) {
+          toast.success(`${id}: ${summary.inserted} inserted, ${summary.skipped} skipped`);
+        }
       } catch (err) {
+        // An abort fired by our own reset paths (unmount, BU switch, new upload) is not a
+        // failure the user caused — surfacing it as a red toast (often on whatever page they
+        // have since navigated to) would be actively misleading, and there is no state left
+        // to patch it into anyway. Swallow it silently rather than reporting it as an error.
+        const aborted = controller.signal.aborted || (err as { name?: string })?.name === 'AbortError';
+        if (aborted) return;
         const message = parseApiError(err).message;
-        patch(id, { status: 'error', error: message });
-        toast.error(message);
+        patchIfCurrent(gen, id, { status: 'error', error: message });
+        if (gen === runIdRef.current) toast.error(message);
       }
     },
-    [bu, file, patch, states],
+    [bu, file, patch, patchIfCurrent, states],
   );
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -161,15 +195,19 @@ export default function TenantImportWizard() {
     if (screen === 'steps' && !activeId && readySteps.length > 0) setActiveId(readySteps[0].id);
   }, [screen, activeId, readySteps]);
 
-  // A run is "in progress" once a file is loaded and at least one step has been touched
-  // but not every touched step has finished.
+  // A run is "in progress" once a file is loaded and at least one step has actually started
+  // importing (not merely previewed — previewing writes nothing, so there is nothing to lose)
+  // and that step hasn't reached a terminal state yet.
   const runInProgress = useMemo(() => {
-    const touched = Object.values(states);
-    if (!file || touched.length === 0) return false;
-    return touched.some((s) => s.status !== 'completed' && s.status !== 'skipped');
+    if (!file) return false;
+    const importTouched = Object.values(states).filter((s) => s.everImported);
+    if (importTouched.length === 0) return false;
+    return importTouched.some((s) => s.status !== 'completed' && s.status !== 'skipped');
   }, [file, states]);
 
   useUnsavedChanges(runInProgress);
+
+  const anyImporting = useMemo(() => Object.values(states).some((s) => s.status === 'importing'), [states]);
 
   return (
     <Layout>
@@ -226,6 +264,8 @@ export default function TenantImportWizard() {
                 steps={steps}
                 onContinue={() => setScreen('steps')}
                 onReset={() => {
+                  abortRef.current?.abort();
+                  runIdRef.current += 1;
                   setFile(null);
                   setReport(null);
                   setStates({});
@@ -244,7 +284,13 @@ export default function TenantImportWizard() {
                     state={states[activeId] ?? { status: 'pending', options: {} }}
                     onPreview={() => runPreview(activeId)}
                     onImport={() => runImport(activeId)}
-                    onOptionsChange={(options) => patch(activeId, { options, preview: undefined, status: 'pending' })}
+                    onOptionsChange={(options) => {
+                      // Options changing means any preview already computed (or in flight)
+                      // for the OLD options no longer describes what an import would do —
+                      // bump the generation so a late-arriving response can't resurrect it.
+                      runIdRef.current += 1;
+                      patch(activeId, { options, preview: undefined, status: 'pending' });
+                    }}
                   />
                 </div>
 
@@ -258,13 +304,22 @@ export default function TenantImportWizard() {
                         .filter((s) => states[s.id]?.summary)
                         .map((s) => {
                           const sum = states[s.id].summary as PreconfigImportSummary;
+                          const stepStatus = states[s.id]?.status;
                           return (
                             <li key={s.id} className="flex flex-wrap items-center gap-2">
                               <span className="min-w-40">{s.display_name}</span>
                               <span className="tabular-nums text-muted-foreground">
                                 +{sum.inserted} · ~{sum.updated} · skip {sum.skipped} · fail {sum.failed}
                               </span>
-                              <Button variant="ghost" size="sm" onClick={() => runImport(s.id)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => runImport(s.id)}
+                                disabled={anyImporting}
+                              >
+                                {stepStatus === 'importing' && (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
                                 Re-run
                               </Button>
                             </li>
@@ -295,6 +350,7 @@ export default function TenantImportWizard() {
         onSelect={(code) => {
           const picked = businessUnits.find((b) => b.code === code) ?? null;
           abortRef.current?.abort();
+          runIdRef.current += 1;
           setBu(picked);
           setBuOpen(false);
           setFile(null);

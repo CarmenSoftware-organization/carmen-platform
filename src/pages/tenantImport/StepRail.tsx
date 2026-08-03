@@ -54,6 +54,7 @@ export function StepRail({
               <button
                 type="button"
                 onClick={() => onSelect(s.id)}
+                aria-current={s.id === activeId ? 'step' : undefined}
                 className={cn(
                   'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm',
                   s.id === activeId ? 'bg-accent font-medium' : 'hover:bg-muted',

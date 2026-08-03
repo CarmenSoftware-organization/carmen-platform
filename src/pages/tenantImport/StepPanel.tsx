@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -17,6 +18,12 @@ export interface StepState {
   progress?: { index: number; total: number };
   options: PreconfigImportOptions;
   error?: string;
+  // True once this step has actually started an import (as opposed to only having been
+  // previewed). Distinguishes an `error`/`completed` status reached via a real import — which
+  // may have written data and is worth warning about on navigation — from the same status
+  // reached via a preview failure, which wrote nothing. Set once by `runImport` and never
+  // cleared, since it records history, not current state.
+  everImported?: boolean;
 }
 
 const MODES: PreconfigDuplicateMode[] = ['skip', 'upsert', 'error'];
@@ -45,6 +52,25 @@ export function StepPanel({
 }) {
   const preview = state.preview;
   const running = state.status === 'importing';
+  const previewing = state.status === 'previewing';
+
+  // Union of value keys across every returned row, in first-seen order — a key present on a
+  // later row but absent from row 0 (e.g. an optional column left blank on the first row)
+  // must still get a column instead of silently disappearing.
+  const columns = useMemo(() => {
+    if (!preview) return [];
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const row of preview.rows) {
+      for (const key of Object.keys(row.values)) {
+        if (!seen.has(key)) {
+          seen.add(key);
+          ordered.push(key);
+        }
+      }
+    }
+    return ordered;
+  }, [preview]);
 
   return (
     <div className="min-w-0 flex-1 space-y-4">
@@ -80,7 +106,7 @@ export function StepPanel({
             onChange={(e) =>
               onOptionsChange({ ...state.options, duplicate_mode: e.target.value as PreconfigDuplicateMode })
             }
-            disabled={running}
+            disabled={running || previewing}
           >
             {MODES.map((m) => (
               <option key={m} value={m}>{MODE_LABEL[m]}</option>
@@ -101,14 +127,21 @@ export function StepPanel({
           </Badge>
           <span className="text-xs text-muted-foreground">
             {preview.total_rows} rows in sheet
-            {preview.rows_truncated && ` · showing the first ${preview.rows.length}`}
+            {preview.rows_truncated && preview.rows.length > 0 && ` · showing the first ${preview.rows.length}`}
           </span>
         </div>
       )}
 
       {state.progress && (
         <div className="space-y-1">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={state.progress.total}
+            aria-valuenow={state.progress.index}
+            aria-label={`Import progress for ${step.display_name}`}
+            className="h-2 w-full overflow-hidden rounded-full bg-muted"
+          >
             <div
               className="h-full bg-primary transition-all"
               style={{ width: `${Math.round((state.progress.index / Math.max(state.progress.total, 1)) * 100)}%` }}
@@ -126,7 +159,7 @@ export function StepPanel({
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">Row</th>
-                {Object.keys(preview.rows[0].values).map((c) => (
+                {columns.map((c) => (
                   <th key={c} className="px-3 py-2 text-left font-medium">{c}</th>
                 ))}
                 <th className="px-3 py-2 text-left font-medium">Verdict</th>
@@ -136,7 +169,7 @@ export function StepPanel({
               {preview.rows.map((r) => (
                 <tr key={r.row_number} className="border-t">
                   <td className="px-3 py-2 tabular-nums text-muted-foreground">{r.row_number}</td>
-                  {Object.keys(preview.rows[0].values).map((c) => (
+                  {columns.map((c) => (
                     <td key={c} className="px-3 py-2">{String(r.values[c] ?? '')}</td>
                   ))}
                   <td className="px-3 py-2">
@@ -152,6 +185,14 @@ export function StepPanel({
             </tbody>
           </table>
         </div>
+      )}
+
+      {preview && preview.rows.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          {preview.total_rows > 0
+            ? `No preview rows were returned for the ${preview.total_rows} row${preview.total_rows === 1 ? '' : 's'} in this sheet.`
+            : 'This sheet has no data rows.'}
+        </p>
       )}
 
       {state.summary && (
