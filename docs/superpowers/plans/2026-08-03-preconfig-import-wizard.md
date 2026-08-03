@@ -1010,6 +1010,16 @@ git commit -m "feat(preconfig-import): add check, preview, and streaming import 
 The gateway cannot send a `Buffer` over JSON-RPC, so the file crosses the boundary as a
 base64 string and is re-materialised here.
 
+> **Envelope contract (corrected after review).** The code block below returns a flat
+> `{ status, data }`, which is **wrong** — it does not match this app's standard and the
+> gateway in Task 6 branches on `res.response?.status`, so a flat envelope makes every
+> success look like a failure. The delivered controller instead extends
+> `BaseMicroserviceController` and returns `this.handleResult(result)`, exactly like
+> `apps/micro-business/src/authen/tenant_seed/tenant_seed.controller.ts`, producing
+> `{ data, response: { status, message, timestamp } }`. Streaming handlers still return the
+> raw Observable. Each file-taking handler also guards a missing `file_base64` rather than
+> letting `Buffer.from(undefined, …)` throw. Read the current controller before changing it.
+
 - [ ] **Step 1: Write the controller**
 
 ```ts
@@ -2802,6 +2812,19 @@ EOF
 # Phase 2 — Full catalog
 
 Start only after Phase 1 is verified on DEV (Task 7 step 4 and Task 12 step 5 both green).
+
+> **Note for Tasks 13 and 15 (both edit `preconfig-import.service.ts`).** After its review,
+> Task 4's service was hardened beyond the code printed above. Do not regress these when you
+> modify the import loop:
+> - every `$transaction` passes `{ timeout: 35000, maxWait: 8000 }`
+> - the `clear_existing` soft-delete runs *inside* the first batch transaction
+> - a batch that throws is retried row-by-row in per-row transactions, so one bad row cannot
+>   abort the other 199 (counters are snapshotted and restored before the retry pass)
+> - `upsert` bumps `doc_version`; `progress` is emitted every 50 rows and at each batch end
+> - `preview` classifies against an empty existing-map when `clear_existing` is set
+> - the audit row is written on completion, cancellation, and error, carrying an `outcome` field
+>
+> Read the current file before editing — it is the contract, not the snippet in Task 4.
 
 ### Task 13: Lookup resolution
 
