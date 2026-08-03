@@ -167,7 +167,12 @@ export function StepPanel({
             type="checkbox"
             className="h-4 w-4 accent-primary"
             checked={clearExisting}
-            disabled={running || previewing || !preview}
+            // `!preview` only blocks turning the option ON — once `clear_existing` is already
+            // true, unticking is the de-escalating action and must always stay available, even
+            // if a later, unrelated options change (e.g. duplicate mode) invalidated the
+            // preview out from under it. Otherwise the user gets stuck with the option on with
+            // no way to turn it off short of running another preview.
+            disabled={running || previewing || (!preview && !clearExisting)}
             onChange={(e) => {
               if (e.target.checked) {
                 setClearTypedCode('');
@@ -178,7 +183,7 @@ export function StepPanel({
             }}
           />
           Soft-delete existing rows first
-          {!preview && (
+          {!preview && !clearExisting && (
             <span className="text-xs text-muted-foreground">(run a preview first)</span>
           )}
         </label>
