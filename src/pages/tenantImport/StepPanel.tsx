@@ -211,7 +211,9 @@ export function StepPanel({
           </Badge>
           <span className="text-xs text-muted-foreground">
             {preview.total_rows} rows in sheet
-            {preview.rows_truncated && preview.rows.length > 0 && ` · showing the first ${preview.rows.length}`}
+            {preview.rows_truncated &&
+              preview.rows.length > 0 &&
+              ` · showing a sample of ${preview.rows.length}, problem rows first`}
           </span>
         </div>
       )}
