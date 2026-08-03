@@ -21,6 +21,7 @@ import { WorkbookDropzone } from './tenantImport/WorkbookDropzone';
 import { FileCheckPanel } from './tenantImport/FileCheckPanel';
 import { StepRail } from './tenantImport/StepRail';
 import { StepPanel, type StepState } from './tenantImport/StepPanel';
+import { CompanyProfilePanel } from './tenantImport/CompanyProfilePanel';
 
 type Screen = 'pick-bu' | 'upload' | 'check' | 'steps';
 
@@ -133,6 +134,8 @@ export default function TenantImportWizard() {
     return steps.filter((s) => ok.has(s.id));
   }, [report, steps]);
 
+  const activeStep = useMemo(() => readySteps.find((s) => s.id === activeId), [readySteps, activeId]);
+
   const patch = useCallback((id: string, next: Partial<StepState>) => {
     setStates((prev) => {
       const current: StepState = prev[id] ?? { status: 'pending', options: {} };
@@ -201,7 +204,15 @@ export default function TenantImportWizard() {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      patch(id, { status: 'importing', error: undefined, progress: undefined, everImported: true });
+      patch(id, {
+        status: 'importing',
+        error: undefined,
+        progress: undefined,
+        everImported: true,
+        // A re-run that doesn't clear anything must not keep showing the previous run's
+        // cleared count.
+        cleared: undefined,
+      });
       try {
         const summary = await preconfigImportService.importStream(
           bu.id,
@@ -210,6 +221,11 @@ export default function TenantImportWizard() {
           states[id]?.options ?? {},
           (event) => {
             if (event.type === 'start') patchIfCurrent(gen, id, { progress: { index: 0, total: event.total } });
+            if (event.type === 'cleared') {
+              patchIfCurrent(gen, id, {
+                cleared: { softDeleted: event.soft_deleted, relatedSoftDeleted: event.related_soft_deleted },
+              });
+            }
             if (event.type === 'progress') {
               patchIfCurrent(gen, id, { progress: { index: event.index, total: event.total } });
             }
@@ -320,33 +336,41 @@ export default function TenantImportWizard() {
               />
             )}
 
-            {screen === 'steps' && readySteps.length > 0 && activeId && (
+            {screen === 'steps' && readySteps.length > 0 && activeId && activeStep && bu && file && (
               <div className="space-y-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
                   <StepRail steps={readySteps} states={states} activeId={activeId} onSelect={setActiveId} />
-                  <StepPanel
-                    step={readySteps.find((s) => s.id === activeId) as PreconfigStepMeta}
-                    state={states[activeId] ?? { status: 'pending', options: {} }}
-                    buCode={bu?.code ?? ''}
-                    onPreview={() => runPreview(activeId)}
-                    onImport={() => runImport(activeId)}
-                    onOptionsChange={(options) => {
-                      // Options changing means any preview already computed (or in flight)
-                      // for the OLD options no longer describes what an import would do —
-                      // bump THIS step's generation so a late-arriving response can't
-                      // resurrect it. Scoped to `activeId` so a different step that happens
-                      // to be importing right now keeps its own in-flight writes.
-                      bumpStep(activeId);
-                      patch(activeId, { options, preview: undefined, status: 'pending' });
-                    }}
-                    onAcceptLookups={(options) => {
-                      // Deliberately NOT onOptionsChange: accepting the pending lookup
-                      // creations describes the preview already on screen, it doesn't
-                      // invalidate it. No generation bump, no preview/status reset — just
-                      // the options patch, so the list the checkbox refers to stays visible.
-                      patch(activeId, { options });
-                    }}
-                  />
+                  {activeStep.target === 'platform' ? (
+                    // Company Profile writes the platform business-unit record, not the
+                    // tenant database — it has no preview/import options, no NDJSON run, and
+                    // never touches `states[activeStep.id]`, so it renders its own diff panel
+                    // instead of the tenant-import StepPanel.
+                    <CompanyProfilePanel step={activeStep} bu={bu} file={file} />
+                  ) : (
+                    <StepPanel
+                      step={activeStep}
+                      state={states[activeId] ?? { status: 'pending', options: {} }}
+                      buCode={bu.code}
+                      onPreview={() => runPreview(activeId)}
+                      onImport={() => runImport(activeId)}
+                      onOptionsChange={(options) => {
+                        // Options changing means any preview already computed (or in flight)
+                        // for the OLD options no longer describes what an import would do —
+                        // bump THIS step's generation so a late-arriving response can't
+                        // resurrect it. Scoped to `activeId` so a different step that happens
+                        // to be importing right now keeps its own in-flight writes.
+                        bumpStep(activeId);
+                        patch(activeId, { options, preview: undefined, status: 'pending' });
+                      }}
+                      onAcceptLookups={(options) => {
+                        // Deliberately NOT onOptionsChange: accepting the pending lookup
+                        // creations describes the preview already on screen, it doesn't
+                        // invalidate it. No generation bump, no preview/status reset — just
+                        // the options patch, so the list the checkbox refers to stays visible.
+                        patch(activeId, { options });
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="rounded-md border p-3 text-sm">

@@ -33,6 +33,11 @@ export interface StepState {
   // reached via a preview failure, which wrote nothing. Set once by `runImport` and never
   // cleared, since it records history, not current state.
   everImported?: boolean;
+  // Row counts from the NDJSON `cleared` event — how many rows `clear_existing` actually
+  // soft-deleted (plus dependent rows). Reset to undefined at the start of every import run
+  // so a stale count from a previous run (e.g. one that didn't clear) can't linger; set again
+  // only if this run's `cleared` event arrives.
+  cleared?: { softDeleted: number; relatedSoftDeleted: number };
 }
 
 const MODES: PreconfigDuplicateMode[] = ['skip', 'upsert', 'error'];
@@ -298,6 +303,13 @@ export function StepPanel({
           Imported {state.summary.inserted} · updated {state.summary.updated} · skipped{' '}
           {state.summary.skipped} · failed {state.summary.failed}
           {state.summary.lookups_created > 0 && <> · created {state.summary.lookups_created} lookups</>}
+          {state.cleared && (
+            <>
+              {' '}
+              · cleared {state.cleared.softDeleted}
+              {state.cleared.relatedSoftDeleted > 0 && ` (+${state.cleared.relatedSoftDeleted} related)`}
+            </>
+          )}
         </p>
       )}
 
