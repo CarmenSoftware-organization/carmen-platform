@@ -159,6 +159,7 @@ verdicts without writing anything.
     "total_rows": 1,
     "counts": { "new": 1, "duplicate": 0, "error": 0 },
     "clear_will_soft_delete": 0,                 // rows currently active in the target table
+    "clear_will_soft_delete_related": 0,         // dependent rows a clear would also soft-delete
     "lookups_to_create": [                       // decision #13
       { "table": "tb_delivery_point", "column": "name", "values": ["Kitchen", "Bar"] }
     ],
@@ -183,7 +184,7 @@ Same fields as `/preview`. One JSON object per line:
 
 ```jsonc
 { "type": "start",    "step_id": "currency", "bu_code": "ZEBRA", "total": 1 }
-{ "type": "cleared",  "step_id": "currency", "soft_deleted": 4 }
+{ "type": "cleared",  "step_id": "currency", "soft_deleted": 4, "related_soft_deleted": 0 }
 { "type": "progress", "step_id": "currency", "index": 1, "total": 1,
   "inserted": 1, "updated": 0, "skipped": 0, "failed": 0 }
 { "type": "done",     "success": true,
@@ -250,9 +251,15 @@ A lookup resolves an Excel value to a foreign id by querying the lookup table
 ### 7.5 Related inserts
 
 After a parent row is inserted, dependent rows are written in the same batch transaction using
-the parent's id. Sources: `excel`, `lookup`, `static`, `parent_id`, `jsonb` (merges several
-Excel columns into one JSONB column). A related insert is skipped when its `condition`
-columns are all empty.
+the parent's id. Sources: `excel`, `lookup`, `static`. A related insert is skipped when its
+`condition` columns are all empty.
+
+> The `jsonb` and `parent_id` sources from the original design were removed: `tb_vendor_address`
+> turned out to be fully typed rather than a JSON blob, leaving `jsonb` with no consumer, and
+> `parent_id` was a no-op because the parent key is set from the insert's own `parentColumn`.
+> Related rows are built **before** the parent is written (they are pure values), so a bad child
+> fails the whole row without a half-written parent, without a throw, and without collapsing the
+> 200-row batch into row-by-row replay.
 
 Related inserts are **not** re-run for rows that were skipped as duplicates. In `upsert` mode,
 existing related rows for that parent are soft-deleted and re-created, so conversions do not
@@ -289,7 +296,7 @@ database; step 1 targets the platform database.
 | 9 | `product-subcategory` | Item Group | `tb_product_sub_category` | `code`,`name` / skip | `tb_product_category.code` | — |
 | 10 | `item-group` | Item Group | `tb_product_item_group` | `code`,`name`,`product_subcategory_id` / skip | `tb_product_sub_category.code` | — |
 | 11 | `product` | Product list | `tb_product` | `code` / skip | `tb_unit.name`, `tb_product_item_group.code`, `tb_tax_profile.name` | `tb_unit_conversion` ×2 (order unit, recipe unit) |
-| 12 | `vendor` | Vendor | `tb_vendor` | `code` / skip | `tb_tax_profile.name` | `tb_vendor_contact`, `tb_vendor_address` (JSONB) |
+| 12 | `vendor` | Vendor | `tb_vendor` | `code` / skip | `tb_tax_profile.name` | `tb_vendor_contact`, `tb_vendor_address` (typed columns) |
 
 ### 8.1 Column mappings
 
