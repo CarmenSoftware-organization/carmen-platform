@@ -22,7 +22,7 @@ import { SqlEditor } from './SqlEditor';
 import { ResultPanel } from './ResultPanel';
 import { DbObjectTree } from './DbObjectTree';
 import { ConnectionBar } from './ConnectionBar';
-import { BuSwitcher } from './BuSwitcher';
+import { BuSwitcher } from '../../components/BuSwitcher';
 
 const QUERY_TYPES = [
   { value: 'view', label: 'View' },

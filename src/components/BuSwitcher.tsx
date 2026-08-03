@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Star } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../../components/ui/dialog';
-import { Badge } from '../../components/ui/badge';
-import { cn } from '../../lib/utils';
-import type { BusinessUnit } from '../../types';
-import { buHueColor, buInitials } from '../../utils/buHue';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
+import { Badge } from './ui/badge';
+import { cn } from '../lib/utils';
+import type { BusinessUnit } from '../types';
+import { buHueColor, buInitials } from '../utils/buHue';
 
 const RECENT_KEY = 'sqlwb_recent_bus';
 const RECENT_MAX = 5;

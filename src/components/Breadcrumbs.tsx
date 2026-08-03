@@ -10,6 +10,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   clusters: 'Clusters',
   'business-units': 'Business Units',
   'tenant-migrations': 'Tenant Migrations',
+  'tenant-imports': 'Data Import',
   users: 'Users',
   'report-templates': 'Report Templates',
   news: 'News',

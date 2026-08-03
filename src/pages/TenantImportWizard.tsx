@@ -1,0 +1,444 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { BuSwitcher } from '../components/BuSwitcher';
+import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import businessUnitService from '../services/businessUnitService';
+import preconfigImportService from '../services/preconfigImportService';
+import { parseApiError } from '../utils/errorParser';
+import type {
+  BusinessUnit,
+  PreconfigCheckReport,
+  PreconfigImportSummary,
+  PreconfigStepMeta,
+} from '../types';
+import { WorkbookDropzone } from './tenantImport/WorkbookDropzone';
+import { FileCheckPanel } from './tenantImport/FileCheckPanel';
+import { StepRail } from './tenantImport/StepRail';
+import { StepPanel, type StepState } from './tenantImport/StepPanel';
+import { CompanyProfilePanel } from './tenantImport/CompanyProfilePanel';
+
+type Screen = 'pick-bu' | 'upload' | 'check' | 'steps';
+
+export default function TenantImportWizard() {
+  const [screen, setScreen] = useState<Screen>('pick-bu');
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [buOpen, setBuOpen] = useState(false);
+  const [bu, setBu] = useState<BusinessUnit | null>(null);
+  const [steps, setSteps] = useState<PreconfigStepMeta[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [report, setReport] = useState<PreconfigCheckReport | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [states, setStates] = useState<Record<string, StepState>>({});
+  const [activeId, setActiveId] = useState<string>('');
+  const abortRef = useRef<AbortController | null>(null);
+  // Generation token PER STEP id. Any async write (`patchIfCurrent`) captured against an
+  // earlier generation becomes a no-op once that step's generation moves on — closes the
+  // window where a preview/import response that was already in flight lands after the state
+  // it belongs to has been reset or superseded, resurrecting stale data.
+  //
+  // Deliberately per-step, not page-wide: changing step B's options while step A is mid-import
+  // must not invalidate A's in-flight writes, or A's progress/summary/toast are all silently
+  // dropped and A is stuck `importing` forever (blocking Re-run and the navigation guard) even
+  // though the server finished and wrote rows (see IMPORTANT 1, fix round 2).
+  //
+  // Tokens are minted from one page-wide monotonic counter, so a token is unique across the
+  // whole page and is never reused. That makes the whole-page reset paths (new file, "choose
+  // another file", BU switch) a single `runIdsRef.current = {}`: every step mints a fresh token
+  // on next read, and no already-captured token can ever match one of them again.
+  const genCounterRef = useRef(0);
+  const runIdsRef = useRef<Record<string, number>>({});
+
+  // Current generation of one step, minted on first use.
+  const genOf = useCallback((id: string) => {
+    const existing = runIdsRef.current[id];
+    if (existing !== undefined) return existing;
+    genCounterRef.current += 1;
+    runIdsRef.current[id] = genCounterRef.current;
+    return genCounterRef.current;
+  }, []);
+
+  // Invalidate everything in flight for ONE step (its options changed under it).
+  const bumpStep = useCallback((id: string) => {
+    genCounterRef.current += 1;
+    runIdsRef.current[id] = genCounterRef.current;
+  }, []);
+
+  // Invalidate every step at once (new file, "choose another file", BU switch). Swapping the
+  // map wholesale is safe because tokens are globally unique — see the note above.
+  const resetGenerations = useCallback(() => {
+    runIdsRef.current = {};
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      // Independent settle: a rejected step catalog (e.g. `data_import.manage` not yet
+      // seeded in this environment) must not take the BU list down with it — the user
+      // can still pick a BU even while the catalog fetch fails.
+      const [listResult, catalogResult] = await Promise.allSettled([
+        businessUnitService.getAll({ perpage: 200 }),
+        preconfigImportService.getSteps(),
+      ]);
+
+      if (listResult.status === 'fulfilled') {
+        setBusinessUnits(listResult.value.data ?? []);
+      } else {
+        toast.error(parseApiError(listResult.reason).message);
+      }
+
+      if (catalogResult.status === 'fulfilled') {
+        setSteps(catalogResult.value);
+      } else {
+        const message = parseApiError(catalogResult.reason).message;
+        toast.error(message);
+        setCatalogError(message);
+      }
+    })();
+  }, []);
+
+  const handleFile = useCallback(
+    async (picked: File) => {
+      if (!bu) return;
+      setBusy(true);
+      try {
+        const result = await preconfigImportService.check(bu.id, picked);
+        setFile(picked);
+        setReport(result);
+        // A freshly-checked workbook starts every step over — any preview/summary from a
+        // previously loaded file must not leak into this run, and any import stream left
+        // running from the previous file must not keep writing into it either.
+        abortRef.current?.abort();
+        resetGenerations();
+        setStates({});
+        setActiveId('');
+        setScreen('check');
+      } catch (err) {
+        toast.error(parseApiError(err).message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [bu, resetGenerations],
+  );
+
+  // Only steps whose sheet is usable enter the rail.
+  const readySteps = useMemo(() => {
+    if (!report) return [];
+    const ok = new Set(report.steps.filter((s) => s.status === 'ready').map((s) => s.step_id));
+    return steps.filter((s) => ok.has(s.id));
+  }, [report, steps]);
+
+  const activeStep = useMemo(() => readySteps.find((s) => s.id === activeId), [readySteps, activeId]);
+
+  const patch = useCallback((id: string, next: Partial<StepState>) => {
+    setStates((prev) => {
+      const current: StepState = prev[id] ?? { status: 'pending', options: {} };
+      return { ...prev, [id]: { ...current, ...next } };
+    });
+  }, []);
+
+  // Every write that happens after an `await` must check it is still writing into the
+  // generation THAT STEP started in — otherwise a preview/import response for a step that has
+  // since been reset (new file, new BU) or superseded (its own options changed under it) can
+  // land and resurrect state nobody is looking at anymore.
+  const patchIfCurrent = useCallback(
+    (gen: number, id: string, next: Partial<StepState>) => {
+      if (gen === genOf(id)) patch(id, next);
+    },
+    [patch, genOf],
+  );
+
+  const runPreview = useCallback(
+    async (id: string) => {
+      if (!bu || !file) return;
+      const gen = genOf(id);
+      // Snapshot the options this preview request was made with. Safe to reuse after the
+      // await: if the user changes options in the meantime, onOptionsChange bumps this
+      // step's generation, and patchIfCurrent below becomes a no-op — so this snapshot is
+      // never applied on top of options the user has since moved away from.
+      const options = states[id]?.options ?? {};
+      patch(id, { status: 'previewing', error: undefined });
+      try {
+        const result = await preconfigImportService.preview(bu.id, id, file, options);
+        // A fresh preview may list a different set of pending lookup creations (or none at
+        // all) — any earlier acceptance no longer describes what THIS preview would create,
+        // so it resets to unticked rather than silently carrying over.
+        patchIfCurrent(gen, id, {
+          status: 'previewed',
+          preview: result,
+          rowCount: result.total_rows,
+          options: { ...options, accept_lookup_creation: false },
+        });
+      } catch (err) {
+        const message = parseApiError(err).message;
+        patchIfCurrent(gen, id, { status: 'error', error: message });
+        // Only surface the toast if this response still belongs to the step's current
+        // generation — otherwise it reports a failure for a step/file/BU the user has
+        // already moved on from.
+        if (gen === genOf(id)) toast.error(message);
+      }
+    },
+    [bu, file, genOf, patch, patchIfCurrent, states],
+  );
+
+  const runImport = useCallback(
+    async (id: string) => {
+      if (!bu || !file) return;
+      // Only one step may stream an import at a time — starting a second one here would
+      // interleave two NDJSON responses onto the same `states` map and abort the first
+      // reader mid-stream. Block instead of silently cancelling the other step's run.
+      const anotherRunning = Object.entries(states).some(([sid, s]) => sid !== id && s.status === 'importing');
+      if (anotherRunning) {
+        toast.error('Another step is still importing — wait for it to finish before starting this one.');
+        return;
+      }
+      if (states[id]?.status === 'importing') return;
+
+      const gen = genOf(id);
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      patch(id, {
+        status: 'importing',
+        error: undefined,
+        progress: undefined,
+        everImported: true,
+        // A re-run that doesn't clear anything must not keep showing the previous run's
+        // cleared count.
+        cleared: undefined,
+      });
+      try {
+        const summary = await preconfigImportService.importStream(
+          bu.id,
+          id,
+          file,
+          states[id]?.options ?? {},
+          (event) => {
+            if (event.type === 'start') patchIfCurrent(gen, id, { progress: { index: 0, total: event.total } });
+            if (event.type === 'cleared') {
+              patchIfCurrent(gen, id, {
+                cleared: { softDeleted: event.soft_deleted, relatedSoftDeleted: event.related_soft_deleted },
+              });
+            }
+            if (event.type === 'progress') {
+              patchIfCurrent(gen, id, { progress: { index: event.index, total: event.total } });
+            }
+          },
+          controller.signal,
+        );
+        patchIfCurrent(gen, id, { status: summary.failed > 0 ? 'error' : 'completed', summary });
+        if (gen === genOf(id)) {
+          toast.success(`${id}: ${summary.inserted} inserted, ${summary.skipped} skipped`);
+        }
+      } catch (err) {
+        // An abort fired by our own reset paths (unmount, BU switch, new upload) is not a
+        // failure the user caused — surfacing it as a red toast (often on whatever page they
+        // have since navigated to) would be actively misleading, and there is no state left
+        // to patch it into anyway. Swallow it silently rather than reporting it as an error.
+        const aborted = controller.signal.aborted || (err as { name?: string })?.name === 'AbortError';
+        if (aborted) return;
+        const message = parseApiError(err).message;
+        patchIfCurrent(gen, id, { status: 'error', error: message });
+        if (gen === genOf(id)) toast.error(message);
+      }
+    },
+    [bu, file, genOf, patch, patchIfCurrent, states],
+  );
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    if (screen === 'steps' && !activeId && readySteps.length > 0) setActiveId(readySteps[0].id);
+  }, [screen, activeId, readySteps]);
+
+  // A run is "in progress" once a file is loaded and at least one step has actually started
+  // importing (not merely previewed — previewing writes nothing, so there is nothing to lose)
+  // and that step hasn't reached a terminal state yet.
+  const runInProgress = useMemo(() => {
+    if (!file) return false;
+    const importTouched = Object.values(states).filter((s) => s.everImported);
+    if (importTouched.length === 0) return false;
+    return importTouched.some((s) => s.status !== 'completed' && s.status !== 'skipped');
+  }, [file, states]);
+
+  useUnsavedChanges(runInProgress);
+
+  const anyImporting = useMemo(() => Object.values(states).some((s) => s.status === 'importing'), [states]);
+
+  return (
+    <Layout>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Tenant Data Import"
+          subtitle="Load Preconfig.xlsx master data into a business unit's database"
+          actions={
+            <Button variant="outline" onClick={() => setBuOpen(true)}>
+              {bu ? `BU: ${bu.code}` : 'Select business unit'}
+            </Button>
+          }
+        />
+
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            {screen === 'pick-bu' && (
+              <div className="flex flex-col items-center gap-3 py-10 text-center">
+                <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Pick the business unit that will receive the data.
+                </p>
+                <Button onClick={() => setBuOpen(true)}>Select business unit</Button>
+              </div>
+            )}
+
+            {screen === 'upload' && (
+              <>
+                {catalogError ? (
+                  <div
+                    className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      The import step catalog could not be loaded ({catalogError}). The wizard cannot
+                      proceed until this is fixed — this usually means the platform permission for
+                      Preconfig imports has not been granted yet.
+                    </span>
+                  </div>
+                ) : busy ? (
+                  <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Checking workbook…
+                  </div>
+                ) : (
+                  <WorkbookDropzone onFile={handleFile} />
+                )}
+              </>
+            )}
+
+            {screen === 'check' && report && (
+              <FileCheckPanel
+                report={report}
+                steps={steps}
+                onContinue={() => setScreen('steps')}
+                onReset={() => {
+                  abortRef.current?.abort();
+                  resetGenerations();
+                  setFile(null);
+                  setReport(null);
+                  setStates({});
+                  setActiveId('');
+                  setScreen('upload');
+                }}
+              />
+            )}
+
+            {screen === 'steps' && readySteps.length > 0 && activeId && activeStep && bu && file && (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+                  <StepRail steps={readySteps} states={states} activeId={activeId} onSelect={setActiveId} />
+                  {activeStep.target === 'platform' ? (
+                    // Company Profile writes the platform business-unit record, not the
+                    // tenant database — it has no preview/import options, no NDJSON run, and
+                    // never touches `states[activeStep.id]`, so it renders its own diff panel
+                    // instead of the tenant-import StepPanel.
+                    <CompanyProfilePanel step={activeStep} bu={bu} file={file} />
+                  ) : (
+                    <StepPanel
+                      step={activeStep}
+                      state={states[activeId] ?? { status: 'pending', options: {} }}
+                      buCode={bu.code}
+                      onPreview={() => runPreview(activeId)}
+                      onImport={() => runImport(activeId)}
+                      onOptionsChange={(options) => {
+                        // Options changing means any preview already computed (or in flight)
+                        // for the OLD options no longer describes what an import would do —
+                        // bump THIS step's generation so a late-arriving response can't
+                        // resurrect it. Scoped to `activeId` so a different step that happens
+                        // to be importing right now keeps its own in-flight writes.
+                        bumpStep(activeId);
+                        patch(activeId, { options, preview: undefined, status: 'pending' });
+                      }}
+                      onAcceptLookups={(options) => {
+                        // Deliberately NOT onOptionsChange: accepting the pending lookup
+                        // creations describes the preview already on screen, it doesn't
+                        // invalidate it. No generation bump, no preview/status reset — just
+                        // the options patch, so the list the checkbox refers to stays visible.
+                        patch(activeId, { options });
+                      }}
+                    />
+                  )}
+                </div>
+
+                <div className="rounded-md border p-3 text-sm">
+                  <p className="mb-2 font-medium">Run summary</p>
+                  {readySteps.filter((s) => states[s.id]?.summary).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No step has been imported yet.</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {readySteps
+                        .filter((s) => states[s.id]?.summary)
+                        .map((s) => {
+                          const sum = states[s.id].summary as PreconfigImportSummary;
+                          const stepStatus = states[s.id]?.status;
+                          return (
+                            <li key={s.id} className="flex flex-wrap items-center gap-2">
+                              <span className="min-w-40">{s.display_name}</span>
+                              <span className="tabular-nums text-muted-foreground">
+                                +{sum.inserted} · ~{sum.updated} · skip {sum.skipped} · fail {sum.failed}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => runImport(s.id)}
+                                disabled={anyImporting}
+                              >
+                                {stepStatus === 'importing' && (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Re-run
+                              </Button>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {process.env.NODE_ENV === 'development' && (
+          <DevDebugSheet
+            title="Tenant Data Import"
+            endpoint="POST /api-system/tenant/preconfig-imports"
+            data={{ bu, steps, report, fileName: file?.name, catalogError, states, activeId }}
+          />
+        )}
+      </div>
+
+      <BuSwitcher
+        open={buOpen}
+        onOpenChange={setBuOpen}
+        businessUnits={businessUnits}
+        currentCode={bu?.code ?? ''}
+        onSelect={(code) => {
+          const picked = businessUnits.find((b) => b.code === code) ?? null;
+          abortRef.current?.abort();
+          resetGenerations();
+          setBu(picked);
+          setBuOpen(false);
+          setFile(null);
+          setReport(null);
+          setStates({});
+          setActiveId('');
+          setScreen(picked ? 'upload' : 'pick-bu');
+        }}
+      />
+    </Layout>
+  );
+}
