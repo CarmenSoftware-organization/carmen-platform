@@ -287,7 +287,7 @@ database; step 1 targets the platform database.
 | 7 | `location` | Store Location | `tb_location` | `code` / skip | `tb_delivery_point.name` (**create if missing**) | — |
 | 8 | `product-category` | Item Group | `tb_product_category` | `code`,`name` / skip | — | — |
 | 9 | `product-subcategory` | Item Group | `tb_product_sub_category` | `code`,`name` / skip | `tb_product_category.code` | — |
-| 10 | `item-group` | Item Group | `tb_product_item_group` | `code`,`name` / skip | `tb_product_sub_category.code` | — |
+| 10 | `item-group` | Item Group | `tb_product_item_group` | `code`,`name`,`product_subcategory_id` / skip | `tb_product_sub_category.code` | — |
 | 11 | `product` | Product list | `tb_product` | `code` / skip | `tb_unit.name`, `tb_product_item_group.code`, `tb_tax_profile.name` | `tb_unit_conversion` ×2 (order unit, recipe unit) |
 | 12 | `vendor` | Vendor | `tb_vendor` | `code` / skip | `tb_tax_profile.name` | `tb_vendor_contact`, `tb_vendor_address` (JSONB) |
 
@@ -441,6 +441,12 @@ overlay when refreshing a loaded preview, `EmptyState` when the sheet has zero d
    figures 134 and 998.
 6. `Company Profile` is a vertical key-value sheet with no header row, so it needs its own
    read path (§8.1).
+7. The prototype keyed item groups on `code` + `name`, but the database's business key is
+   `[code, name, product_subcategory_id, deleted_at]`. A customer numbering item groups
+   per-subcategory (`01` under both `DRY FOOD` and `BEVERAGE`) would have the second row
+   skipped as a duplicate, and the later `product` step — which resolves item groups by
+   `code` — would bind those products to the wrong group. The catalog keys on
+   `product_subcategory_id` as well; §8 records the corrected key.
 
 ## 12. Rollout
 
