@@ -361,10 +361,24 @@ Related: `tb_vendor_contact` (`payee` → `name`, `telephone` → `phone`, `emai
 **`company-profile` → `tb_business_unit`** (platform, decision #3).
 
 **This sheet is not a table.** Unlike the other nine, it has no header row: column A holds the
-field label and column B holds the value, one field per row (14 rows in the sample). The
-generic `parseWorkbook` + `coerceRow` path — which assumes row 1 is a header — cannot read it.
-Task 18 must add a separate vertical read path that indexes rows by their column-A label; the
-"Excel" column below is that **label**, not a header name.
+field label and column B holds the value, one field per row. The generic `parseWorkbook` +
+`coerceRow` path — which assumes row 1 is a header — cannot read it, so it has its own
+`readVerticalSheet` path that indexes rows by their column-A label; the "Excel" column below is
+that **label**, not a header name.
+
+> **The labels below are stale — read the catalog, not this table.** `Preconfig.xlsx` was
+> re-saved on 2026-08-03 and this sheet now carries **38** label/value pairs using
+> post-address-restructure names (`Hotel Address line1`, `Hotel Address line2`,
+> `Hotel Postal Code`, `Company Tel` with a single space, plus date/time-format settings). The
+> delivered catalog entry declares the file's ACTUAL labels; declaring the ones below verbatim
+> would silently read nothing for four fields. Only the vertical layout is supported — the six
+> other sample workbooks carry a horizontal version of this sheet and are legacy
+> (user ruling, 2026-08-03); no layout detection exists.
+>
+> `code` appears in the preview payload so the check report and the diff can compare it, but it
+> is **never written back** — writing it would rename the business unit, which is the key the
+> tenant database is resolved from. The frontend shows it read-only and warns when the
+> workbook's code disagrees with the selected BU.
 
 The prototype's mapping is also **stale** and must be rewritten — `hotel_address` and
 `hotel_zip_code` no longer exist after the 2026-07-09 address restructure:
