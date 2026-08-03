@@ -1278,6 +1278,20 @@ export class PreconfigImportsService {
 Upload limits and the NDJSON writer come from the spec §6 and §9. The stream block is the
 same shape as `TenantSeedsController.deployStream` — read that file before writing this one.
 
+> **Authorization (corrected after review — the snippet below is WRONG).** The code block puts
+> `@RequirePlatformPermission('data_import.manage')` at **class** level. That silently disables
+> the check: `PlatformPermissionGuard` reads the metadata with
+> `reflector.get(PLATFORM_PERMISSION_KEY, context.getHandler())` — handler scope only — and
+> returns `true` when it finds nothing. Class-level placement leaves all four routes open to any
+> authenticated user. The decorator must sit on **each handler**, as it does in every other
+> gateway controller (`config_sql-query.controller.ts:71`,
+> `platform_email-settings.controller.ts:56`). The class-level `@UseGuards(...)` is correct.
+>
+> Two more hardening items the delivered controller carries beyond the snippet: the size limit
+> is passed to the interceptor (`FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES, files: 1 } })`)
+> so multer rejects while streaming rather than after buffering, and `parseOptions` rejects any
+> parsed value that is not a plain object and whitelists the three known keys.
+
 ```ts
 import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
