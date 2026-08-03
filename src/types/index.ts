@@ -301,6 +301,12 @@ export interface PreconfigPreview {
   lookups_to_create: PreconfigLookupCreation[];
   rows: PreconfigPreviewRow[];
   rows_truncated: boolean;
+  /**
+   * How many rows of each verdict are in `rows` — `counts` is the whole sheet. Optional so this
+   * app still type-checks when deployed ahead of the backend that added it; StepPanel counts the
+   * rows itself when it is absent.
+   */
+  sampled?: { new: number; duplicate: number; error: number };
 }
 
 export interface PreconfigImportSummary {

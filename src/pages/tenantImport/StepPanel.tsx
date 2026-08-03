@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -16,6 +16,7 @@ import type {
   PreconfigImportOptions,
   PreconfigImportSummary,
   PreconfigPreview,
+  PreconfigPreviewRow,
   PreconfigStepMeta,
 } from '../../types';
 
@@ -47,6 +48,16 @@ const MODE_LABEL: Record<PreconfigDuplicateMode, string> = {
   error: 'Report duplicates as errors',
 };
 const VERDICT_VARIANT = { new: 'success', duplicate: 'secondary', error: 'destructive' } as const;
+
+type Verdict = PreconfigPreviewRow['verdict'];
+
+/** Badge/filter order — matches the order the counts were rendered in before filtering existed. */
+const VERDICTS: Verdict[] = ['new', 'duplicate', 'error'];
+
+// Mirrors PREVIEW_ROW_CAP in the backend's preconfig-types.ts: the per-verdict cap on how many
+// rows a preview returns. Used only to make the caption sentence concrete — no behaviour here
+// depends on it being in sync, and `sampled` carries the real numbers.
+const PREVIEW_ROWS_PER_VERDICT = 200;
 
 /**
  * Right-hand pane for one wizard step: options, preview verdicts, run controls, summary.
@@ -128,6 +139,64 @@ export function StepPanel({
     return ordered;
   }, [preview]);
 
+  // Empty set means "show everything" — there is no separate "all" sentinel to keep in sync
+  // with the three chips.
+  const [verdictFilter, setVerdictFilter] = useState<Set<Verdict>>(() => new Set());
+
+  // A fresh preview replaces the object, so re-previewing this step drops the filter with it —
+  // otherwise a filter chosen against the old rows silently applies to new ones. Switching to a
+  // different step is covered by the `key` on <StepPanel> in TenantImportWizard.
+  useEffect(() => {
+    setVerdictFilter(new Set());
+  }, [preview]);
+
+  const toggleVerdict = (v: Verdict) =>
+    setVerdictFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(v)) next.delete(v);
+      else next.add(v);
+      return next;
+    });
+
+  // `counts` is whole-sheet; this is how much of each verdict the returned sample actually holds.
+  // A backend that predates the `sampled` field gets it counted from the rows themselves, so this
+  // app can deploy ahead of the backend without the caption claiming more than it shows.
+  const sampled = useMemo(() => {
+    if (!preview) return { new: 0, duplicate: 0, error: 0 };
+    if (preview.sampled) return preview.sampled;
+    const acc = { new: 0, duplicate: 0, error: 0 };
+    for (const r of preview.rows) acc[r.verdict] += 1;
+    return acc;
+  }, [preview]);
+
+  const visibleRows = useMemo(() => {
+    if (!preview) return [];
+    if (verdictFilter.size === 0) return preview.rows;
+    return preview.rows.filter((r) => verdictFilter.has(r.verdict));
+  }, [preview, verdictFilter]);
+
+  const selectedVerdicts = useMemo(() => VERDICTS.filter((v) => verdictFilter.has(v)), [verdictFilter]);
+
+  // The only place that states how much of each verdict the table actually holds. Without it the
+  // badge numbers read as a promise the table cannot keep: they count the whole sheet, the table
+  // holds a capped sample.
+  const captionText = useMemo(() => {
+    if (!preview) return '';
+    if (selectedVerdicts.length > 0) {
+      return selectedVerdicts
+        .map((v) =>
+          sampled[v] === preview.counts[v]
+            ? `Showing all ${preview.counts[v]} ${v}`
+            : `Showing ${sampled[v]} of ${preview.counts[v]} ${v}`,
+        )
+        .join(' · ');
+    }
+    const total = `${preview.total_rows} rows in sheet`;
+    return preview.rows_truncated
+      ? `${total} · showing ${preview.rows.length}, up to ${PREVIEW_ROWS_PER_VERDICT} per verdict`
+      : total;
+  }, [preview, sampled, selectedVerdicts]);
+
   return (
     <div className="min-w-0 flex-1 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -204,17 +273,33 @@ export function StepPanel({
 
       {preview && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge variant="success">{preview.counts.new} new</Badge>
-          <Badge variant="secondary">{preview.counts.duplicate} duplicate</Badge>
-          <Badge variant={preview.counts.error > 0 ? 'destructive' : 'secondary'}>
-            {preview.counts.error} error
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {preview.total_rows} rows in sheet
-            {preview.rows_truncated &&
-              preview.rows.length > 0 &&
-              ` · showing a sample of ${preview.rows.length}, problem rows first`}
-          </span>
+          {VERDICTS.map((v) => {
+            const selected = verdictFilter.has(v);
+            return (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={selected}
+                aria-label={`Filter to ${v} rows`}
+                onClick={() => toggleVerdict(v)}
+                className={`rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  selected ? 'ring-2 ring-ring ring-offset-1' : ''
+                }`}
+              >
+                {/*
+                  Selection is a ring plus dimming of the others, never colour: the badge colour
+                  is already spoken for by the verdict itself.
+                */}
+                <Badge
+                  variant={v === 'error' && preview.counts.error === 0 ? 'secondary' : VERDICT_VARIANT[v]}
+                  className={verdictFilter.size > 0 && !selected ? 'opacity-50' : ''}
+                >
+                  {preview.counts[v]} {v}
+                </Badge>
+              </button>
+            );
+          })}
+          <span className="text-xs text-muted-foreground">{captionText}</span>
         </div>
       )}
 
@@ -266,7 +351,7 @@ export function StepPanel({
         </div>
       )}
 
-      {preview && preview.rows.length > 0 && (
+      {visibleRows.length > 0 && (
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
@@ -279,7 +364,7 @@ export function StepPanel({
               </tr>
             </thead>
             <tbody>
-              {preview.rows.map((r) => (
+              {visibleRows.map((r) => (
                 <tr key={r.row_number} className="border-t">
                   <td className="px-3 py-2 tabular-nums text-muted-foreground">{r.row_number}</td>
                   {columns.map((c) => (
@@ -298,6 +383,12 @@ export function StepPanel({
             </tbody>
           </table>
         </div>
+      )}
+
+      {preview && preview.rows.length > 0 && visibleRows.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No {selectedVerdicts.join(' or ')} rows in this preview.
+        </p>
       )}
 
       {preview && preview.rows.length === 0 && (
