@@ -155,10 +155,23 @@ export default function TenantImportWizard() {
     async (id: string) => {
       if (!bu || !file) return;
       const gen = genOf(id);
+      // Snapshot the options this preview request was made with. Safe to reuse after the
+      // await: if the user changes options in the meantime, onOptionsChange bumps this
+      // step's generation, and patchIfCurrent below becomes a no-op — so this snapshot is
+      // never applied on top of options the user has since moved away from.
+      const options = states[id]?.options ?? {};
       patch(id, { status: 'previewing', error: undefined });
       try {
-        const result = await preconfigImportService.preview(bu.id, id, file, states[id]?.options ?? {});
-        patchIfCurrent(gen, id, { status: 'previewed', preview: result, rowCount: result.total_rows });
+        const result = await preconfigImportService.preview(bu.id, id, file, options);
+        // A fresh preview may list a different set of pending lookup creations (or none at
+        // all) — any earlier acceptance no longer describes what THIS preview would create,
+        // so it resets to unticked rather than silently carrying over.
+        patchIfCurrent(gen, id, {
+          status: 'previewed',
+          preview: result,
+          rowCount: result.total_rows,
+          options: { ...options, accept_lookup_creation: false },
+        });
       } catch (err) {
         const message = parseApiError(err).message;
         patchIfCurrent(gen, id, { status: 'error', error: message });
@@ -324,6 +337,13 @@ export default function TenantImportWizard() {
                       // to be importing right now keeps its own in-flight writes.
                       bumpStep(activeId);
                       patch(activeId, { options, preview: undefined, status: 'pending' });
+                    }}
+                    onAcceptLookups={(options) => {
+                      // Deliberately NOT onOptionsChange: accepting the pending lookup
+                      // creations describes the preview already on screen, it doesn't
+                      // invalidate it. No generation bump, no preview/status reset — just
+                      // the options patch, so the list the checkbox refers to stays visible.
+                      patch(activeId, { options });
                     }}
                   />
                 </div>

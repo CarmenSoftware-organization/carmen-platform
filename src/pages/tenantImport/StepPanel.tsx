@@ -43,16 +43,25 @@ export function StepPanel({
   onPreview,
   onImport,
   onOptionsChange,
+  onAcceptLookups,
 }: {
   step: PreconfigStepMeta;
   state: StepState;
   onPreview: () => void;
   onImport: () => void;
   onOptionsChange: (next: PreconfigImportOptions) => void;
+  onAcceptLookups: (next: PreconfigImportOptions) => void;
 }) {
   const preview = state.preview;
   const running = state.status === 'importing';
   const previewing = state.status === 'previewing';
+  const lookupsToCreate = preview?.lookups_to_create ?? [];
+  const lookupValueCount = useMemo(
+    () => lookupsToCreate.reduce((sum, entry) => sum + entry.values.length, 0),
+    [lookupsToCreate],
+  );
+  const lookupsAccepted = !!state.options.accept_lookup_creation;
+  const importBlockedByLookups = lookupsToCreate.length > 0 && !lookupsAccepted;
 
   // Union of value keys across every returned row, in first-seen order — a key present on a
   // later row but absent from row 0 (e.g. an optional column left blank on the first row)
@@ -90,7 +99,7 @@ export function StepPanel({
             )}
             Preview
           </Button>
-          <Button onClick={onImport} disabled={!preview || running}>
+          <Button onClick={onImport} disabled={!preview || running || importBlockedByLookups}>
             {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
             {running ? 'Importing…' : 'Import'}
           </Button>
@@ -153,6 +162,33 @@ export function StepPanel({
         </div>
       )}
 
+      {lookupsToCreate.length > 0 && (
+        <div className="space-y-3 rounded-md border border-warning/50 bg-warning/5 p-3 text-sm">
+          <p className="font-medium">New reference data will be created</p>
+          <ul className="space-y-1 text-xs text-muted-foreground">
+            {lookupsToCreate.map((entry) => (
+              <li key={`${entry.table}.${entry.column}`} className="break-words">
+                <span className="font-mono text-foreground">
+                  {entry.table}.{entry.column}
+                </span>
+                : {entry.values.join(', ')}
+              </li>
+            ))}
+          </ul>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={lookupsAccepted}
+              onChange={(e) =>
+                onAcceptLookups({ ...state.options, accept_lookup_creation: e.target.checked })
+              }
+            />
+            Create these {lookupValueCount} values
+          </label>
+        </div>
+      )}
+
       {preview && preview.rows.length > 0 && (
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">
@@ -199,6 +235,7 @@ export function StepPanel({
         <p className="text-sm">
           Imported {state.summary.inserted} · updated {state.summary.updated} · skipped{' '}
           {state.summary.skipped} · failed {state.summary.failed}
+          {state.summary.lookups_created > 0 && <> · created {state.summary.lookups_created} lookups</>}
         </p>
       )}
 
