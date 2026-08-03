@@ -1871,8 +1871,20 @@ const preconfigImportService = {
 export default preconfigImportService;
 ```
 
-Note: do **not** set `Content-Type` on either the axios or fetch calls — the browser must add
-the multipart boundary itself.
+> **Content-Type (corrected after review — the note below is WRONG for axios).**
+> `src/services/api.ts` gives the shared axios instance a default `Content-Type: application/json`,
+> and axios's `transformRequest` JSON-serializes a FormData body — silently dropping the File —
+> whenever the content type is JSON. So `check` and `preview` MUST pass
+> `headers: { 'Content-Type': 'multipart/form-data' }`, exactly as `newsService.ts` and
+> `businessUnitService.ts` already do (both carry comments explaining why it is not redundant).
+> Only the `fetch` call in `importStream` sets nothing — `fetch` has no default to override, and
+> setting it there would strip the boundary.
+>
+> The delivered service also wraps its read loop in `try { … } finally { reader.cancel() }`
+> (mirroring `tenantSeedService.deployStream`) and unwraps `getSteps` tolerantly.
+
+~~Note: do **not** set `Content-Type` on either the axios or fetch calls — the browser must add
+the multipart boundary itself.~~
 
 - [ ] **Step 3: Type-check**
 
