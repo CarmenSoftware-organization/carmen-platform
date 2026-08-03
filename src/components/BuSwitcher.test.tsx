@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BuSwitcher } from './BuSwitcher';
-import type { BusinessUnit } from '../../types';
+import type { BusinessUnit } from '../types';
 
 // Radix Dialog relies on pointer-capture / scroll APIs jsdom doesn't implement.
 beforeAll(() => {
