@@ -1,7 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog';
 import type {
   PreconfigDuplicateMode,
   PreconfigImportOptions,
@@ -40,6 +49,7 @@ const VERDICT_VARIANT = { new: 'success', duplicate: 'secondary', error: 'destru
 export function StepPanel({
   step,
   state,
+  buCode,
   onPreview,
   onImport,
   onOptionsChange,
@@ -47,6 +57,8 @@ export function StepPanel({
 }: {
   step: PreconfigStepMeta;
   state: StepState;
+  /** BU code the wizard is importing into — typed by the user to confirm clear-existing. */
+  buCode: string;
   onPreview: () => void;
   onImport: () => void;
   onOptionsChange: (next: PreconfigImportOptions) => void;
@@ -56,6 +68,20 @@ export function StepPanel({
   const running = state.status === 'importing';
   const previewing = state.status === 'previewing';
   const lookupsToCreate = preview?.lookups_to_create ?? [];
+  const clearExisting = !!state.options.clear_existing;
+  const clearWillSoftDelete = preview?.clear_will_soft_delete ?? 0;
+  // Ticking the checkbox does NOT set `clear_existing` itself — it only opens the typed
+  // confirmation dialog below. The checkbox's own `checked` stays derived from
+  // `state.options.clear_existing`, so a cancelled/dismissed dialog leaves it off with no
+  // extra state to reconcile.
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearTypedCode, setClearTypedCode] = useState('');
+  const clearCodeMatches = buCode.length > 0 && clearTypedCode.trim() === buCode;
+
+  const closeClearDialog = () => {
+    setClearDialogOpen(false);
+    setClearTypedCode('');
+  };
   const lookupValueCount = useMemo(
     () => lookupsToCreate.reduce((sum, entry) => sum + entry.values.length, 0),
     [lookupsToCreate],
@@ -126,6 +152,26 @@ export function StepPanel({
           Key: {step.duplicate_key.join(' + ')}
         </span>
       </div>
+
+      {step.supports_clear && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-primary"
+            checked={clearExisting}
+            disabled={running || previewing}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setClearTypedCode('');
+                setClearDialogOpen(true);
+              } else {
+                onOptionsChange({ ...state.options, clear_existing: false });
+              }
+            }}
+          />
+          Soft-delete existing rows first
+        </label>
+      )}
 
       {preview && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -240,6 +286,58 @@ export function StepPanel({
       )}
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+
+      {/*
+        Not <ConfirmDialog> (components/ui/confirm-dialog.tsx): its `description` prop is a
+        plain string with no children slot, and its Confirm button has no external `disabled`
+        control — it cannot host a gating <Input>. Composed here from the same underlying
+        `Dialog` primitives ConfirmDialog itself wraps (see e.g. ClusterEdit.tsx's Add User
+        dialog for the same pattern elsewhere in this codebase), matching its title/description/
+        footer conventions so it reads as the same family of dialog.
+      */}
+      <Dialog open={clearDialogOpen} onOpenChange={(open) => { if (!open) closeClearDialog(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Soft-delete existing rows?</DialogTitle>
+            <DialogDescription>
+              This soft-deletes <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong>{' '}
+              existing rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
+              <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>. Existing documents that
+              reference them keep working. Type the BU code to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="clear-existing-bu-code" className="text-sm font-medium">
+              BU code
+            </label>
+            <Input
+              id="clear-existing-bu-code"
+              value={clearTypedCode}
+              onChange={(e) => setClearTypedCode(e.target.value)}
+              placeholder={buCode}
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={closeClearDialog}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!clearCodeMatches}
+              onClick={() => {
+                onOptionsChange({ ...state.options, clear_existing: true });
+                closeClearDialog();
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

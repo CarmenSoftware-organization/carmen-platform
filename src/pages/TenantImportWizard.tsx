@@ -327,6 +327,7 @@ export default function TenantImportWizard() {
                   <StepPanel
                     step={readySteps.find((s) => s.id === activeId) as PreconfigStepMeta}
                     state={states[activeId] ?? { status: 'pending', options: {} }}
+                    buCode={bu?.code ?? ''}
                     onPreview={() => runPreview(activeId)}
                     onImport={() => runImport(activeId)}
                     onOptionsChange={(options) => {
