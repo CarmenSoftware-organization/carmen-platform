@@ -334,19 +334,29 @@ lookups `Inventory Unit` → `inventory_unit_id`, `Item Group` → `product_item
 (non-null column with `""` default) and `Tax profile` into `tax_profile_name`.
 
 Related `tb_unit_conversion` rows, each written only when both of its condition columns
-have values:
+have values. `from_unit_name` and `to_unit_name` are **NOT NULL** and must be written from the
+sheet text alongside the resolved ids:
 
-| unit_type | from_unit | from_qty | to_unit | to_qty |
-|-----------|-----------|----------|---------|--------|
+| unit_type | from_unit (+ name) | from_qty | to_unit (+ name) | to_qty |
+|-----------|--------------------|----------|------------------|--------|
 | `order_unit` | lookup `Order unit` | `1` | lookup `Inventory Unit` | `Order Conv. Rate` |
-| `recipe_unit` | lookup `Inventory Unit` | `1` | lookup `Recipe unit` | `Recipe Conv. Rate` |
+| `ingredient_unit` | lookup `Inventory Unit` | `1` | lookup `Recipe unit` | `Recipe Conv. Rate` |
+
+> **Corrected against the live schema.** `enum_unit_type` contains only `order_unit` and
+> `ingredient_unit` — there is no `recipe_unit` member, so the recipe conversion is stored as
+> `ingredient_unit`. `tb_product.inventory_unit_id` is NOT NULL, so the Inventory Unit lookup is
+> `required`.
 
 **`vendor` → `tb_vendor`**: `code` → `code`, `name` → `name`, `active` → `is_active`,
 `TaxProfileCode` → `tax_profile_name` + lookup → `tax_profile_id`.
 Related: `tb_vendor_contact` (`payee` → `name`, `telephone` → `phone`, `email` → `email`,
-`is_primary = true`, condition `payee`) and `tb_vendor_address`
-(`address_type = 'contact_address'`, `data` JSONB from `address_line1`, `address_line2`,
-`city`, `province`, `postal_code`, `country`, condition `address_line1`).
+`is_primary = true`, condition `payee`) and `tb_vendor_address` (`address_type` enum
+`enum_vendor_address_type`, condition `address_line1`).
+
+> **Corrected against the live schema.** `tb_vendor_address` has **no `data` JSONB column** — it
+> is fully typed (`address_line1`, `address_line2`, `sub_district`, `district`, `city`,
+> `province`, `postal_code`, `country`, …) and those columns match the Vendor sheet headers
+> one-to-one. Map them as typed columns; do not assemble a JSON blob.
 
 **`company-profile` → `tb_business_unit`** (platform, decision #3).
 
@@ -441,7 +451,14 @@ overlay when refreshing a loaded preview, `EmptyState` when the sheet has zero d
    figures 134 and 998.
 6. `Company Profile` is a vertical key-value sheet with no header row, so it needs its own
    read path (§8.1).
-7. The prototype keyed item groups on `code` + `name`, but the database's business key is
+7. Four mappings in §8.1 were transcribed from the prototype and contradicted the live schema —
+   each would have broken its step outright: `recipe_unit` is not a member of `enum_unit_type`
+   (use `ingredient_unit`); `tb_vendor_address` has no `data` JSONB column and is fully typed;
+   `tb_unit_conversion.from_unit_name` / `to_unit_name` are NOT NULL and were absent from the
+   mapping entirely; `tb_product.inventory_unit_id` is NOT NULL so its lookup must be `required`.
+   All four are corrected above. **Verify every column against `schema.prisma` before trusting a
+   mapping in this document.**
+8. The prototype keyed item groups on `code` + `name`, but the database's business key is
    `[code, name, product_subcategory_id, deleted_at]`. A customer numbering item groups
    per-subcategory (`01` under both `DRY FOOD` and `BEVERAGE`) would have the second row
    skipped as a duplicate, and the later `product` step — which resolves item groups by
