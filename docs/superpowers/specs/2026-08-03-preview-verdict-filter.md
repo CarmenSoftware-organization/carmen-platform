@@ -186,8 +186,7 @@ const visibleRows = useMemo(() => {
 
 **Badges become toggles.** The three badges at lines 205-219 each get wrapped in a
 `<button type="button">` carrying `aria-pressed` and an `aria-label` of the form
-`Filter to <verdict> rows` — the badge's own text is a bare count plus the verdict word, which
-does not read as a control on its own. Multi-select: clicking toggles that verdict in the set,
+`<count> <verdict> — filter to <verdict> rows` — the count must lead because on a `<button>` an `aria-label` overrides the badge's own text and screen-reader users would otherwise never hear the count; the badge's own text is a bare count plus the verdict word, which does not read as a control on its own. Multi-select: clicking toggles that verdict in the set,
 so `error` + `duplicate` together — "rows this run will not insert" — is one click away. The
 badge `variant` mapping is unchanged.
 
