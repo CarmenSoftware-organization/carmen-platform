@@ -70,6 +70,14 @@ export function StepPanel({
   const lookupsToCreate = preview?.lookups_to_create ?? [];
   const clearExisting = !!state.options.clear_existing;
   const clearWillSoftDelete = preview?.clear_will_soft_delete ?? 0;
+  // The backend only computes a real `clear_will_soft_delete` count when the preview request
+  // itself carried `clear_existing: true` — but this dialog is what SETS that option, so every
+  // preview available while the dialog is open (i.e. taken before the user has ever confirmed)
+  // was necessarily requested with `clear_existing: false` and comes back `0`. A `0` is
+  // therefore never trustworthy here — showing it would assert a figure we don't have. Once the
+  // backend computes the count unconditionally, a real (frequently nonzero) count will start
+  // flowing straight through this same `> 0` check with no further FE change.
+  const clearCountKnown = clearWillSoftDelete > 0;
   // Ticking the checkbox does NOT set `clear_existing` itself — it only opens the typed
   // confirmation dialog below. The checkbox's own `checked` stays derived from
   // `state.options.clear_existing`, so a cancelled/dismissed dialog leaves it off with no
@@ -159,7 +167,7 @@ export function StepPanel({
             type="checkbox"
             className="h-4 w-4 accent-primary"
             checked={clearExisting}
-            disabled={running || previewing}
+            disabled={running || previewing || !preview}
             onChange={(e) => {
               if (e.target.checked) {
                 setClearTypedCode('');
@@ -170,6 +178,9 @@ export function StepPanel({
             }}
           />
           Soft-delete existing rows first
+          {!preview && (
+            <span className="text-xs text-muted-foreground">(run a preview first)</span>
+          )}
         </label>
       )}
 
@@ -300,11 +311,24 @@ export function StepPanel({
           <DialogHeader>
             <DialogTitle>Soft-delete existing rows?</DialogTitle>
             <DialogDescription>
-              This soft-deletes <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong>{' '}
-              existing rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
-              <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
-              <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>. Existing documents that
-              reference them keep working. Type the BU code to confirm.
+              {clearCountKnown ? (
+                <>
+                  This soft-deletes{' '}
+                  <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong> existing
+                  rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
+                  <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>. Existing documents
+                  that reference them keep working. Type the BU code to confirm.
+                </>
+              ) : (
+                <>
+                  This soft-deletes every currently-active row in{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
+                  <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>. Existing documents
+                  that reference them keep working. Type the BU code to confirm.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
