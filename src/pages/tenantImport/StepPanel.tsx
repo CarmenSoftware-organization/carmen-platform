@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -72,7 +72,11 @@ export function StepPanel({
   const preview = state.preview;
   const running = state.status === 'importing';
   const previewing = state.status === 'previewing';
-  const lookupsToCreate = preview?.lookups_to_create ?? [];
+  // Wrapped in its own useMemo (rather than a plain `??` fallback) so its identity is stable
+  // across renders when `preview` hasn't changed — otherwise the `[]` fallback is a fresh
+  // array every render, which would make `lookupValueCount`'s useMemo below recompute on
+  // every render regardless of whether the lookups actually changed.
+  const lookupsToCreate = useMemo(() => preview?.lookups_to_create ?? [], [preview]);
   const clearExisting = !!state.options.clear_existing;
   const clearWillSoftDelete = preview?.clear_will_soft_delete ?? 0;
   const clearWillSoftDeleteRelated = preview?.clear_will_soft_delete_related ?? 0;
@@ -90,6 +94,10 @@ export function StepPanel({
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearTypedCode, setClearTypedCode] = useState('');
   const clearCodeMatches = buCode.length > 0 && clearTypedCode.trim() === buCode;
+  // Radix focuses the dialog's own content container on open by default; `onOpenAutoFocus`
+  // below redirects that initial focus to the BU-code input instead (same UX as `autoFocus`,
+  // without triggering jsx-a11y/no-autofocus).
+  const clearCodeInputRef = useRef<HTMLInputElement>(null);
 
   const closeClearDialog = () => {
     setClearDialogOpen(false);
@@ -324,7 +332,13 @@ export function StepPanel({
         footer conventions so it reads as the same family of dialog.
       */}
       <Dialog open={clearDialogOpen} onOpenChange={(open) => { if (!open) closeClearDialog(); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            clearCodeInputRef.current?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Soft-delete existing rows?</DialogTitle>
             <DialogDescription>
@@ -369,12 +383,12 @@ export function StepPanel({
               BU code
             </label>
             <Input
+              ref={clearCodeInputRef}
               id="clear-existing-bu-code"
               value={clearTypedCode}
               onChange={(e) => setClearTypedCode(e.target.value)}
               placeholder={buCode}
               autoComplete="off"
-              autoFocus
             />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
