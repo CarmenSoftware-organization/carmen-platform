@@ -348,6 +348,11 @@ export default function TenantImportWizard() {
                     <CompanyProfilePanel step={activeStep} bu={bu} file={file} />
                   ) : (
                     <StepPanel
+                      // Remount per step. Without a key React reuses one instance across step
+                      // switches and its local state survives — today that leaves the clear-
+                      // existing dialog open (still holding the typed BU code) pointing at a
+                      // different table, and it would carry a verdict filter across steps too.
+                      key={activeId}
                       step={activeStep}
                       state={states[activeId] ?? { status: 'pending', options: {} }}
                       buCode={bu.code}
