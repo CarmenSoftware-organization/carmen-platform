@@ -792,7 +792,7 @@ the spec requires."
 - Create: `scripts/lib/preconfig-mock/products.mjs`
 
 **Interfaces:**
-- Consumes: `Rng` (Task 1), `ITEM_GROUPS` / `itemGroupsByCategory` (Task 3), `BASES` / `VARIANTS` / `SIZES` / `UNIT_HINTS` (Task 4), `UNIT_CODES` / `TAX_PROFILE_NAMES` (Task 2)
+- Consumes: `Rng` (Task 1), `itemGroupsByCategory` (Task 3), `BASES` / `VARIANTS` / `SIZES` / `UNIT_HINTS` (Task 4), `UNIT_CODES` (Task 2)
 - Produces: `buildProductSheet(rng, { total = 2589 }): { name: 'Product list', rows }`
 
 - [ ] **Step 1: Create the product generator**
@@ -800,7 +800,7 @@ the spec requires."
 Create `scripts/lib/preconfig-mock/products.mjs`:
 
 ```js
-import { ITEM_GROUPS, itemGroupsByCategory } from './catalog.mjs';
+import { itemGroupsByCategory } from './catalog.mjs';
 import { BASES, VARIANTS, SIZES, UNIT_HINTS } from './product-words.mjs';
 import { UNIT_CODES } from './reference.mjs';
 
@@ -826,27 +826,96 @@ const COST_BAND = {
 };
 
 /**
+ * Category codes in the fixed, deterministic order used throughout this file. Never derive
+ * an iteration order from `Object.keys(CATEGORY_QUOTA)` — its keys are integer-like strings,
+ * so the JS spec reorders them ascending numerically regardless of the object literal's
+ * declaration order, which would silently break any logic that assumes "largest first".
+ * ลำดับรหัสหมวดตายตัว ห้ามใช้ Object.keys กับอ็อบเจกต์ที่คีย์เป็นตัวเลข เพราะ JS จะเรียงจากน้อยไปมากเสมอ
+ */
+const CATEGORY_CODES = ['1', '2', '3', '4', '5', '6'];
+
+/**
+ * The same codes ordered by CATEGORY_QUOTA size, descending. Used to decide which category
+ * absorbs a scaling correction first — the largest takes it, cascading to the next-largest
+ * once a category runs out of headroom against its own floor or ceiling.
+ * รหัสหมวดเรียงตามโควตาจากมากไปน้อย ใช้ตัดสินว่าหมวดใดรับส่วนต่างก่อน
+ */
+const CATEGORY_CODES_BY_QUOTA_DESC = [...CATEGORY_CODES].sort(
+  (a, b) => CATEGORY_QUOTA[b] - CATEGORY_QUOTA[a],
+);
+
+/**
  * Scale the source distribution to an arbitrary total.
+ *
+ * Each category is first rounded to the nearest proportional share of `total`, clamped to
+ * that category's own valid range: at least one product per item group (its floor) and at
+ * most MAX_PER_ITEM_GROUP per item group (its ceiling). Independent rounding rarely lands
+ * exactly on `total`, so the leftover difference is then spread across categories —
+ * largest-quota first, cascading to the next-largest whenever a category runs out of
+ * headroom — until the quotas sum to exactly `total`. The floor/ceiling bound checks below
+ * guarantee this cascade always has enough combined headroom to succeed; the only way to
+ * fail is for `total` itself to sit outside every category's combined floor/ceiling.
+ * ปรับสัดส่วนต้นฉบับให้ตรงกับจำนวนที่ต้องการ โดยปัดเศษแต่ละหมวดแล้วไล่กระจายส่วนต่างจากหมวดใหญ่ไปเล็ก
+ * จนกว่าผลรวมจะตรงกับจำนวนที่ต้องการพอดี จะล้มเหลวก็ต่อเมื่อ total อยู่นอกช่วงที่เป็นไปได้จริงเท่านั้น
+ *
  * @param {number} total - Requested product count / จำนวนสินค้าที่ต้องการ
  * @returns {Record<string, number>} Quota per category code / โควตาต่อรหัสหมวด
  */
 function scaleQuotas(total) {
   if (total === BASE_TOTAL) return { ...CATEGORY_QUOTA };
-  const codes = Object.keys(CATEGORY_QUOTA);
+
+  const floors = {};
+  const ceilings = {};
+  let floorSum = 0;
+  let ceilSum = 0;
+  for (const c of CATEGORY_CODES) {
+    const groups = itemGroupsByCategory(c).length;
+    floors[c] = groups;
+    ceilings[c] = groups * MAX_PER_ITEM_GROUP;
+    floorSum += floors[c];
+    ceilSum += ceilings[c];
+  }
+
+  if (total < floorSum) {
+    throw new Error(
+      `--products ${total} is below the minimum of ${floorSum} (one product per item group)`,
+    );
+  }
+  if (total > ceilSum) {
+    throw new Error(
+      `--products ${total} is above the maximum of ${ceilSum} ` +
+      `(${MAX_PER_ITEM_GROUP} products per item group)`,
+    );
+  }
+
   const out = {};
   let assigned = 0;
-  for (const c of codes) {
-    // Every category keeps at least one product per item group, or weightedSplit throws.
-    const floor = itemGroupsByCategory(c).length;
-    out[c] = Math.max(floor, Math.round((CATEGORY_QUOTA[c] / BASE_TOTAL) * total));
+  for (const c of CATEGORY_CODES) {
+    const proportional = Math.round((CATEGORY_QUOTA[c] / BASE_TOTAL) * total);
+    out[c] = Math.min(ceilings[c], Math.max(floors[c], proportional));
     assigned += out[c];
   }
-  // Largest category absorbs the rounding difference.
-  const largest = codes.reduce((a, b) => (out[a] >= out[b] ? a : b));
-  out[largest] += total - assigned;
-  if (out[largest] < itemGroupsByCategory(largest).length) {
-    throw new Error(`--products ${total} is too small to give every item group one product`);
+
+  // Spread the rounding difference across categories, largest quota first, spilling to the
+  // next-largest whenever the current one runs out of headroom. The bound checks above
+  // guarantee enough combined headroom exists, so this always converges to diff === 0.
+  let diff = total - assigned;
+  if (diff < 0) {
+    for (const c of CATEGORY_CODES_BY_QUOTA_DESC) {
+      if (diff === 0) break;
+      const take = Math.min(out[c] - floors[c], -diff);
+      out[c] -= take;
+      diff += take;
+    }
+  } else if (diff > 0) {
+    for (const c of CATEGORY_CODES_BY_QUOTA_DESC) {
+      if (diff === 0) break;
+      const give = Math.min(ceilings[c] - out[c], diff);
+      out[c] += give;
+      diff -= give;
+    }
   }
+
   return out;
 }
 
@@ -877,7 +946,7 @@ export function buildProductSheet(rng, { total = BASE_TOTAL } = {}) {
 
   // Category order is fixed so the sheet is stable across runs, independent of object
   // key order. / กำหนดลำดับหมวดไว้ตายตัวเพื่อให้ผลลัพธ์คงที่
-  for (const categoryCode of ['1', '2', '3', '4', '5', '6']) {
+  for (const categoryCode of CATEGORY_CODES) {
     const groups = itemGroupsByCategory(categoryCode);
     const counts = rng.weightedSplit(quotas[categoryCode], groups.length, MAX_PER_ITEM_GROUP);
     const [lo, hi] = COST_BAND[categoryCode];
@@ -905,11 +974,20 @@ export function buildProductSheet(rng, { total = BASE_TOTAL } = {}) {
       chosen.forEach(([base, variant, size], i) => {
         const inventoryUnit = rng.chance(0.85) ? hints[0] : rng.pick(hints);
         const bulk = rng.chance(0.2);
-        const orderUnit = bulk ? rng.pick(BULK_UNITS) : inventoryUnit;
-        const orderRate = bulk ? rng.pick([6, 12, 24]) : 1;
+        // Exclude the inventory unit from the draw pool so "bulk" never lands on the same
+        // unit as inventory — that would import as a literal `1 X = N X` conversion. Filter
+        // first rather than resample-in-a-loop so this can never spin even if a pool shrinks
+        // to a single element; an emptied pool just falls back to "no bulk unit this row".
+        // กรองหน่วยนับสินค้าคงคลังออกจากพูลก่อนสุ่ม กันไม่ให้ได้หน่วยเดียวกันทั้งสองฝั่ง
+        const bulkPool = BULK_UNITS.filter((u) => u !== inventoryUnit);
+        const useBulk = bulk && bulkPool.length > 0;
+        const orderUnit = useBulk ? rng.pick(bulkPool) : inventoryUnit;
+        const orderRate = useBulk ? rng.pick([6, 12, 24]) : 1;
         const hasRecipe = rng.chance(0.1);
-        const recipeUnit = hasRecipe ? rng.pick(UNIT_CODES) : '';
-        const recipeRate = hasRecipe ? rng.pick([0.5, 1, 2, 5]) : '';
+        const recipePool = UNIT_CODES.filter((u) => u !== inventoryUnit);
+        const useRecipe = hasRecipe && recipePool.length > 0;
+        const recipeUnit = useRecipe ? rng.pick(recipePool) : '';
+        const recipeRate = useRecipe ? rng.pick([0.5, 1, 2, 5]) : '';
         const standardCost = Number((lo + rng.next() * (hi - lo)).toFixed(2));
         const lastCost = Number((standardCost * (0.85 + rng.next() * 0.3)).toFixed(2));
         const deviates = rng.chance(0.15);
@@ -1528,11 +1606,20 @@ Create `scripts/generate-preconfig-mock.mjs`:
  *
  * Spec: docs/superpowers/specs/2026-08-04-preconfig-mock-data-design.md
  */
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { createRng } from './lib/preconfig-mock/rng.mjs';
 import { buildSheets, writeWorkbook } from './lib/preconfig-mock/workbook.mjs';
+import { selfCheck } from './lib/preconfig-mock/self-check.mjs';
+
+// Resolve the repo root from this file's own location — not from process.cwd() — so the
+// default --out path lands in the right place no matter where the script is invoked from.
+// An explicit --out is still honoured relative to cwd, as given.
+// ใช้ตำแหน่งไฟล์นี้เป็นฐาน ไม่ใช่ cwd เพื่อให้ค่าเริ่มต้นของ --out ถูกต้องไม่ว่าจะรันจากที่ใด
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const DEFAULTS = {
-  out: 'sample_data/Preconfig-mock.xlsx',
+  out: join(root, 'sample_data/Preconfig-mock.xlsx'),
   seed: 20260804,
   buCode: 'MOCK1',
   products: 2589,
@@ -1566,6 +1653,16 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const rng = createRng(opts.seed);
   const sheets = buildSheets(rng, opts);
+
+  // Nothing reaches disk until the structure holds. A workbook that fails here would
+  // fail in the wizard's File check or, worse, import silently wrong data.
+  // ไม่มีอะไรถูกเขียนลงดิสก์จนกว่าโครงสร้างจะถูกต้อง
+  const failures = selfCheck(sheets);
+  if (failures.length > 0) {
+    console.error(`self-check failed with ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  - ${f}`);
+    process.exit(1);
+  }
 
   await writeWorkbook(sheets, opts.out);
 

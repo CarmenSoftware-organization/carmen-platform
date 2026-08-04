@@ -1,4 +1,4 @@
-import { ITEM_GROUPS, itemGroupsByCategory } from './catalog.mjs';
+import { itemGroupsByCategory } from './catalog.mjs';
 import { BASES, VARIANTS, SIZES, UNIT_HINTS } from './product-words.mjs';
 import { UNIT_CODES } from './reference.mjs';
 
@@ -144,7 +144,7 @@ export function buildProductSheet(rng, { total = BASE_TOTAL } = {}) {
 
   // Category order is fixed so the sheet is stable across runs, independent of object
   // key order. / กำหนดลำดับหมวดไว้ตายตัวเพื่อให้ผลลัพธ์คงที่
-  for (const categoryCode of ['1', '2', '3', '4', '5', '6']) {
+  for (const categoryCode of CATEGORY_CODES) {
     const groups = itemGroupsByCategory(categoryCode);
     const counts = rng.weightedSplit(quotas[categoryCode], groups.length, MAX_PER_ITEM_GROUP);
     const [lo, hi] = COST_BAND[categoryCode];
@@ -172,11 +172,20 @@ export function buildProductSheet(rng, { total = BASE_TOTAL } = {}) {
       chosen.forEach(([base, variant, size], i) => {
         const inventoryUnit = rng.chance(0.85) ? hints[0] : rng.pick(hints);
         const bulk = rng.chance(0.2);
-        const orderUnit = bulk ? rng.pick(BULK_UNITS) : inventoryUnit;
-        const orderRate = bulk ? rng.pick([6, 12, 24]) : 1;
+        // Exclude the inventory unit from the draw pool so "bulk" never lands on the same
+        // unit as inventory — that would import as a literal `1 X = N X` conversion. Filter
+        // first rather than resample-in-a-loop so this can never spin even if a pool shrinks
+        // to a single element; an emptied pool just falls back to "no bulk unit this row".
+        // กรองหน่วยนับสินค้าคงคลังออกจากพูลก่อนสุ่ม กันไม่ให้ได้หน่วยเดียวกันทั้งสองฝั่ง
+        const bulkPool = BULK_UNITS.filter((u) => u !== inventoryUnit);
+        const useBulk = bulk && bulkPool.length > 0;
+        const orderUnit = useBulk ? rng.pick(bulkPool) : inventoryUnit;
+        const orderRate = useBulk ? rng.pick([6, 12, 24]) : 1;
         const hasRecipe = rng.chance(0.1);
-        const recipeUnit = hasRecipe ? rng.pick(UNIT_CODES) : '';
-        const recipeRate = hasRecipe ? rng.pick([0.5, 1, 2, 5]) : '';
+        const recipePool = UNIT_CODES.filter((u) => u !== inventoryUnit);
+        const useRecipe = hasRecipe && recipePool.length > 0;
+        const recipeUnit = useRecipe ? rng.pick(recipePool) : '';
+        const recipeRate = useRecipe ? rng.pick([0.5, 1, 2, 5]) : '';
         const standardCost = Number((lo + rng.next() * (hi - lo)).toFixed(2));
         const lastCost = Number((standardCost * (0.85 + rng.next() * 0.3)).toFixed(2));
         const deviates = rng.chance(0.15);

@@ -10,12 +10,20 @@
  *
  * Spec: docs/superpowers/specs/2026-08-04-preconfig-mock-data-design.md
  */
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { createRng } from './lib/preconfig-mock/rng.mjs';
 import { buildSheets, writeWorkbook } from './lib/preconfig-mock/workbook.mjs';
 import { selfCheck } from './lib/preconfig-mock/self-check.mjs';
 
+// Resolve the repo root from this file's own location — not from process.cwd() — so the
+// default --out path lands in the right place no matter where the script is invoked from.
+// An explicit --out is still honoured relative to cwd, as given.
+// ใช้ตำแหน่งไฟล์นี้เป็นฐาน ไม่ใช่ cwd เพื่อให้ค่าเริ่มต้นของ --out ถูกต้องไม่ว่าจะรันจากที่ใด
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
 const DEFAULTS = {
-  out: 'sample_data/Preconfig-mock.xlsx',
+  out: join(root, 'sample_data/Preconfig-mock.xlsx'),
   seed: 20260804,
   buCode: 'MOCK1',
   products: 2589,

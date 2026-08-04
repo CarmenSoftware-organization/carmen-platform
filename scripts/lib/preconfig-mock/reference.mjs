@@ -160,9 +160,6 @@ const UNIT_ROWS = [
 /** Unit codes only, for the product generator to draw inventory / order units from. */
 export const UNIT_CODES = UNIT_ROWS.map(([code]) => code);
 
-/** The two tax profile names, referenced by Product list and Vendor lookups. */
-export const TAX_PROFILE_NAMES = ['None', 'Vat 7%'];
-
 /** The single delivery point every store location must reference. */
 export const DELIVERY_POINT_CODE = 'MAIN';
 
