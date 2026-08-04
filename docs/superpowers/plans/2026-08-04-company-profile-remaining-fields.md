@@ -34,11 +34,12 @@
 | `preconfig-workbook.ts` | Workbook parsing + cell coercion | Enforce `allowedValues` inside `coerceValue` |
 | `preconfig-catalog.ts` | The fixed step catalog | Add 8 columns to `company-profile`; rewrite the exclusion comment |
 
-**`carmen-platform/src/pages/tenantImport/`**
+**`carmen-platform/`**
 
 | File | Responsibility | Change |
 |---|---|---|
-| `CompanyProfilePanel.tsx` | Diff + apply UI for the platform-target step | Fetch tenant currencies, model the virtual currency row and its three unresolvable states, guard the virtual key out of the payload, write the resolved UUID, re-check the enum, shrink `NOT_APPLIED_LABELS` |
+| `src/pages/tenantImport/CompanyProfilePanel.tsx` | Diff + apply UI for the platform-target step | Fetch tenant currencies, model the virtual currency row and its three unresolvable states, guard the virtual key out of the payload, write the resolved UUID, re-check the enum, shrink `NOT_APPLIED_LABELS` |
+| `scripts/lib/preconfig-mock/property.mjs` | Sample-workbook generator | Comment only — Task 2 falsifies its claim that these labels are deliberately unmapped (Task 4 Step 0) |
 
 No new files. `CompanyProfilePanel.tsx` is 317 lines and grows to roughly 400 — well inside the ~600-line ceiling this repo sets for page files, so no split.
 
@@ -541,10 +542,34 @@ the button live on a call that does nothing."
 
 **Files:**
 - Modify: `src/pages/tenantImport/CompanyProfilePanel.tsx`
+- Modify: `scripts/lib/preconfig-mock/property.mjs:70-72`
 
 **Interfaces:**
 - Consumes: `FieldRow.currency` and `CURRENCY_CODE_KEY` from Task 3.
 - Produces: nothing further.
+
+- [ ] **Step 0: Correct the now-stale comment in the mock generator**
+
+Task 2 mapped these labels, so the comment in `scripts/lib/preconfig-mock/property.mjs` that
+declares them unmapped is now false. It currently reads:
+
+```js
+      // Present in the sheet but deliberately unmapped by the catalog (calculation_method
+      // is an enum, default_currency_id a foreign key). The wizard listing them as
+      // "not applied" is correct. / มีในชีตแต่แคตตาล็อกไม่แมปโดยตั้งใจ
+```
+
+Replace those three lines with:
+
+```js
+      // All eight are mapped by the catalog and applied by the wizard. `Default Currency`
+      // travels as the virtual column `default_currency_code` and is resolved against the
+      // tenant currency list client-side, so it only applies once the Currency step has run.
+      // ทั้งแปดรายการถูกแมปและนำไปใช้แล้ว สกุลเงินตั้งต้นต้องรันขั้นตอน Currency ก่อนจึงจะแปลงค่าได้
+```
+
+Change only the comment. The eight data rows below it stay exactly as they are — the sample
+workbook is committed and regenerating it is not part of this plan.
 
 - [ ] **Step 1: Add the enum constant**
 
@@ -603,7 +628,7 @@ Expected: build succeeds.
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/pages/tenantImport/CompanyProfilePanel.tsx
+git add src/pages/tenantImport/CompanyProfilePanel.tsx scripts/lib/preconfig-mock/property.mjs
 git commit -m "feat(company-profile): apply the resolved default currency
 
 Writes the tenant currency UUID under default_currency_id, and re-checks
