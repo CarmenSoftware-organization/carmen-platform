@@ -202,7 +202,7 @@ export function CompanyProfilePanel({
     } finally {
       if (token === loadTokenRef.current) setLoading(false);
     }
-  }, [bu.id, step.id, file]);
+  }, [bu.id, bu.code, step.id, file]);
 
   useEffect(() => {
     load();
