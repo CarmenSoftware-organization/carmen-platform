@@ -256,6 +256,12 @@ export function CompanyProfilePanel({
   // Folding them into "same" would let the panel claim everything matches while a row below
   // says otherwise. / แถวที่แปลงรหัสไม่ได้ไม่ใช่ทั้ง "เปลี่ยน" และ "เหมือนเดิม"
   const unresolvedCount = rows.filter((r) => r.currency && r.currency.state !== 'resolved').length;
+  // Only `pending` gates Apply — it is transient and always terminates (the fetch is
+  // .catch-wrapped), so blocking briefly prevents a partial apply that silently drops the
+  // currency. `unreachable` and `not_found` are terminal and must NOT block: the operator
+  // still needs to apply the seven fields that never touch the tenant database.
+  // เฉพาะสถานะกำลังแปลงค่าเท่านั้นที่ระงับปุ่ม เพราะเป็นสถานะชั่วคราวและจบเสมอ
+  const currencyPending = rows.some((r) => r.currency?.state === 'pending');
   // Trimmed compare; `bu.code` is not expected to carry incidental whitespace, but `sheetCode`
   // comes straight off a spreadsheet cell.
   const codeMismatch = sheetCode != null && sheetCode !== '' && sheetCode !== bu.code.trim();
@@ -324,7 +330,7 @@ export function CompanyProfilePanel({
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Refresh
           </Button>
-          <Button onClick={handleApply} disabled={loading || applying || changedCount === 0}>
+          <Button onClick={handleApply} disabled={loading || applying || currencyPending || changedCount === 0}>
             {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {applying ? 'Applying…' : 'Apply to BU'}
           </Button>
