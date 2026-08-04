@@ -38,6 +38,7 @@ const CALCULATION_METHODS = ['average', 'fifo'];
  */
 type CurrencyState =
   | { state: 'resolved'; resolvedId: string }
+  | { state: 'pending' }
   | { state: 'unreachable' }
   | { state: 'not_found' };
 
@@ -57,6 +58,23 @@ function humanizeColumn(column: string): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * The Default Currency row before the tenant currency list has arrived. Resolving the code
+ * needs the tenant database, which nothing else on this panel touches, so the row is shown
+ * pending rather than holding up the seven fields that do not depend on it.
+ * แถวสกุลเงินก่อนที่รายการสกุลเงินจะมาถึง เพื่อไม่ให้ถ่วงฟิลด์อื่นที่ไม่ต้องใช้ฐานข้อมูลผู้เช่า
+ */
+function pendingCurrencyRow(sheetValue: string): FieldRow {
+  return {
+    key: CURRENCY_CODE_KEY,
+    label: 'Default Currency',
+    buValue: '',
+    sheetValue,
+    changed: false,
+    currency: { state: 'pending' },
+  };
 }
 
 /**
@@ -96,6 +114,13 @@ function currencyRow(
 
 /** Status cell for one diff row. / ช่องสถานะของหนึ่งแถว */
 function renderStatus(r: FieldRow) {
+  if (r.currency?.state === 'pending') {
+    return (
+      <Badge variant="outline" title="Reading the tenant database to resolve this currency code.">
+        Resolving…
+      </Badge>
+    );
+  }
   if (r.currency?.state === 'unreachable') {
     return (
       <Badge
@@ -159,14 +184,9 @@ export function CompanyProfilePanel({
     setLoading(true);
     setError(undefined);
     try {
-      const [preview, currentRes, currencies] = await Promise.all([
+      const [preview, currentRes] = await Promise.all([
         preconfigImportService.preview(bu.id, step.id, file),
         businessUnitService.getById(bu.id),
-        // The only tenant-database read this panel makes. A platform-target preview
-        // deliberately works for a BU with no provisioned database (see previewVerticalStep),
-        // so a failure here must degrade the Default Currency row alone, never the panel.
-        // การอ่านจากฐานข้อมูลผู้เช่าเพียงจุดเดียว หากล้มเหลวต้องกระทบเฉพาะแถวสกุลเงิน
-        currencyService.getForBu(bu.code).catch(() => null),
       ]);
       if (token !== loadTokenRef.current) return;
       const record: BusinessUnit = currentRes?.data ?? currentRes;
@@ -182,10 +202,11 @@ export function CompanyProfilePanel({
         .map((key): FieldRow => {
           const sheetValue = String(sheetValues[key] ?? '').trim();
           // The virtual currency column is the one key whose sheet value is not comparable to
-          // the record field of the same name — there is no such field.
+          // the record field of the same name — there is no such field. Resolution happens
+          // after this pass, once the tenant currency list has arrived (see below).
           // คอลัมน์สกุลเงินเสมือนเทียบกับฟิลด์ชื่อเดียวกันในเรกคอร์ดไม่ได้ เพราะไม่มีฟิลด์นั้น
           if (key === CURRENCY_CODE_KEY) {
-            return currencyRow(sheetValue, record.default_currency_id, currencies);
+            return pendingCurrencyRow(sheetValue);
           }
           const buValue = String(recordFields[key] ?? '').trim();
           return {
@@ -200,6 +221,22 @@ export function CompanyProfilePanel({
       setSheetCode(typeof rawSheetCode === 'string' ? rawSheetCode.trim() : undefined);
       setSheetErrors(preview.rows[0]?.errors ?? []);
       setDocVersion(getDocVersion(record));
+      // Everything except the currency row is on screen now, so release the loading state
+      // before the tenant read rather than after it. The `finally` below becomes a no-op.
+      // ปลดสถานะกำลังโหลดก่อนอ่านฐานข้อมูลผู้เช่า เพราะส่วนที่เหลือแสดงผลได้แล้ว
+      setLoading(false);
+      // Resolving the code needs the TENANT database. A rejection was already tolerated; doing
+      // it here means a merely SLOW tenant no longer holds the rest of the panel hostage.
+      // การแปลงรหัสต้องอ่านจากฐานข้อมูลผู้เช่า จึงย้ายมาทำหลังจากแสดงผลแล้ว
+      const currencies = await currencyService.getForBu(bu.code).catch(() => null);
+      if (token !== loadTokenRef.current) return;
+      setRows((prev) =>
+        prev.map((r) =>
+          r.key === CURRENCY_CODE_KEY
+            ? currencyRow(r.sheetValue, record.default_currency_id, currencies)
+            : r,
+        ),
+      );
     } catch (err) {
       if (token !== loadTokenRef.current) return;
       const message = parseApiError(err).message;
@@ -215,6 +252,10 @@ export function CompanyProfilePanel({
   }, [load]);
 
   const changedCount = rows.filter((r) => r.changed).length;
+  // Rows whose currency never resolved are neither "changed" nor "same" — they are unknown.
+  // Folding them into "same" would let the panel claim everything matches while a row below
+  // says otherwise. / แถวที่แปลงรหัสไม่ได้ไม่ใช่ทั้ง "เปลี่ยน" และ "เหมือนเดิม"
+  const unresolvedCount = rows.filter((r) => r.currency && r.currency.state !== 'resolved').length;
   // Trimmed compare; `bu.code` is not expected to carry incidental whitespace, but `sheetCode`
   // comes straight off a spreadsheet cell.
   const codeMismatch = sheetCode != null && sheetCode !== '' && sheetCode !== bu.code.trim();
@@ -333,8 +374,11 @@ export function CompanyProfilePanel({
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={changedCount > 0 ? 'warning' : 'secondary'}>{changedCount} changed</Badge>
-            <Badge variant="secondary">{rows.length - changedCount} same</Badge>
-            {changedCount === 0 && (
+            <Badge variant="secondary">{rows.length - changedCount - unresolvedCount} same</Badge>
+            {unresolvedCount > 0 && (
+              <Badge variant="outline">{unresolvedCount} unresolved</Badge>
+            )}
+            {changedCount === 0 && unresolvedCount === 0 && (
               <span className="text-xs text-muted-foreground">
                 Every field already matches — nothing to apply.
               </span>
@@ -392,7 +436,7 @@ export function CompanyProfilePanel({
 
       {sheetErrors.length > 0 && (
         <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
-          <p className="font-medium">The workbook is missing required values</p>
+          <p className="font-medium">The workbook has values this step cannot use</p>
           <ul className="mt-1 space-y-0.5 text-xs">
             {sheetErrors.map((e) => (
               <li key={e.column}>
