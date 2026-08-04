@@ -284,6 +284,12 @@ check report, then run one step at a time. The workbook is re-attached to every 
 Progress arrives as NDJSON via `preconfigImportService.importStream`. Gated on
 `data_import.manage`. Spec: `docs/superpowers/specs/2026-08-03-preconfig-import-wizard.md`.
 
+A committed, data-safe sample workbook lives at `sample_data/Preconfig-mock.xlsx` —
+regenerate it with `bun run generate:mock-preconfig` (generator in
+`scripts/lib/preconfig-mock/`, spec at
+`docs/superpowers/specs/2026-08-04-preconfig-mock-data-design.md`). The real customer
+workbook `sample_data/Preconfig.xlsx` is **gitignored and must never be committed**.
+
 ## Application Management Specifics
 
 `Application*` pages follow the standard two-page pattern (copied from Cluster), but the
