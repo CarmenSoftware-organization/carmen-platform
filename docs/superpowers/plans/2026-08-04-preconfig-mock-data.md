@@ -1742,6 +1742,21 @@ const cell = (row, idx) => String((row ?? [])[idx] ?? '');
  */
 export function selfCheck(sheets) {
   const fail = [];
+
+  // 0. Every array entry must be a real { name, rows: [...] } sheet object before anything
+  //    indexes into it — a missing/malformed entry (e.g. { name: 'Vendor' } with no `rows`
+  //    key, or a null placeholder) would otherwise throw deep inside a later check instead
+  //    of being reported like every other structural problem here.
+  //    ทุกชีตต้องมีโครงสร้างถูกต้องก่อนตรวจอย่างอื่น มิฉะนั้นจะโยน error แทนที่จะรายงานปัญหา
+  for (const [i, s] of sheets.entries()) {
+    if (s === null || typeof s !== 'object' || typeof s.name !== 'string') {
+      fail.push(`sheets[${i}]: not a valid { name, rows } sheet object`);
+    } else if (!Array.isArray(s.rows)) {
+      fail.push(`${s.name}: rows is missing or not an array`);
+    }
+  }
+  if (fail.length > 0) return fail;
+
   const by = new Map(sheets.map((s) => [s.name, s]));
 
   // 1. Sheets present, in order.
@@ -1863,19 +1878,29 @@ export function selfCheck(sheets) {
     itemGroupRows.map((r) => `${cell(r, 4)}|${cell(r, 5)}|${cell(r, 2)}`));
 
   // A subcategory code must belong to exactly one category, and an item group code to
-  // exactly one subcategory — the catalog resolves both by code alone.
-  // รหัสหมวดย่อยต้องอยู่ใต้หมวดเดียว และรหัสกลุ่มสินค้าต้องอยู่ใต้หมวดย่อยเดียว
+  // exactly one subcategory — the catalog resolves both by code alone. Compared normalized
+  // (both the map key and the compared value), exactly like unique() and
+  // functionalDependency() above — a raw comparison here would both miss a real conflict
+  // (a subcategory code differing only by trailing whitespace, placed under a second
+  // category) and invent a bogus one (a whitespace-only category difference). The raw,
+  // quoted values are still what gets reported so the whitespace itself is visible.
+  // รหัสหมวดย่อยต้องอยู่ใต้หมวดเดียว และรหัสกลุ่มสินค้าต้องอยู่ใต้หมวดย่อยเดียว เทียบแบบ normalize
   const subToCat = new Map(), groupToSub = new Map();
   for (const r of itemGroupRows) {
     const cat = cell(r, 0), sub = cell(r, 2), group = cell(r, 4);
-    if (subToCat.has(sub) && subToCat.get(sub) !== cat) {
-      fail.push(`subcategory ${sub} appears under categories ${subToCat.get(sub)} and ${cat}`);
+    const subKey = normalizeKey(sub), catKey = normalizeKey(cat), groupKey = normalizeKey(group);
+
+    const priorCat = subToCat.get(subKey);
+    if (priorCat && priorCat.norm !== catKey) {
+      fail.push(`subcategory "${sub}" appears under categories "${priorCat.raw}" and "${cat}"`);
     }
-    subToCat.set(sub, cat);
-    if (groupToSub.has(group) && groupToSub.get(group) !== sub) {
-      fail.push(`item group ${group} appears under subcategories ${groupToSub.get(group)} and ${sub}`);
+    subToCat.set(subKey, { norm: catKey, raw: cat });
+
+    const priorSub = groupToSub.get(groupKey);
+    if (priorSub && priorSub.norm !== subKey) {
+      fail.push(`item group "${group}" appears under subcategories "${priorSub.raw}" and "${sub}"`);
     }
-    groupToSub.set(group, sub);
+    groupToSub.set(groupKey, { norm: subKey, raw: sub });
   }
 
   // 5. Required columns are never empty. Indexes are the `required: true` entries of
