@@ -5,37 +5,42 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import businessUnitService from '../../services/businessUnitService';
+import currencyService from '../../services/currencyService';
 import preconfigImportService from '../../services/preconfigImportService';
 import { parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
-import type { BusinessUnit, PreconfigStepMeta } from '../../types';
+import type { BusinessUnit, PreconfigStepMeta, TenantCurrency } from '../../types';
 
-// Sheet labels that exist in "Company Profile" but the backend catalog (preconfig-catalog.ts)
-// deliberately excludes from `step.columns` — never applied to `BusinessUnit`. Because they're
-// excluded from `step.columns`, the preview response carries zero signal about them (they show
-// up in neither `values` nor `errors`), so there is no API response this list can be derived
-// from — deriving it would need the full raw label list from the sheet, which no endpoint
-// exposes. Taken from the backend implementation report (§6b), which enumerates every label the
-// vertical reader extracts and explains each exclusion:
-// .superpowers/sdd/2026-08-03-preconfig-import-wizard/task-18-be-report.md
-//   - Inventory Cost Type / Default Currency: no plain BusinessUnit column (enum / FK).
-//   - BU Name: identity, like BU Code — a spreadsheet must not silently rename the BU.
-//   - Date Format, Date Time Format, Time Format, Short Time Format, Long Time Format, Time
-//     Zone: map to real columns but are owned by the BU settings page, not Company Profile.
-// If the backend catalog changes which labels it maps, this list drifts out of sync — that is
-// the same risk the backend report itself calls out, so keep it aligned with that report (or a
-// future catalog-derived source) rather than treating it as permanently fixed.
-const NOT_APPLIED_LABELS = [
-  'Inventory Cost Type',
-  'Default Currency',
-  'BU Name',
-  'Date Format',
-  'Date Time Format',
-  'Time Format',
-  'Short Time Format',
-  'Long Time Format',
-  'Time Zone',
-];
+// The one "Company Profile" label the backend catalog (preconfig-catalog.ts) still excludes
+// from `step.columns`, so the preview response carries no signal about it — it appears in
+// neither `values` nor `errors`, and no endpoint exposes the sheet's raw label list to derive
+// it from. `BU Name` is identity, like `BU Code`: a spreadsheet must not silently rename a
+// business unit. Keep this aligned with the catalog — if the catalog starts mapping a label
+// listed here, this list is what goes stale.
+// ป้ายกำกับเดียวที่แคตตาล็อกยังไม่แมป เพราะชื่อหน่วยธุรกิจเป็นข้อมูลระบุตัวตน
+const NOT_APPLIED_LABELS = ['BU Name'];
+
+// The catalog's virtual column for `Default Currency`. There is no such column on
+// tb_business_unit: the sheet holds a currency CODE, the record stores a UUID, and tb_currency
+// lives in the tenant database. This key must never reach the business-unit API.
+// คอลัมน์เสมือนของสกุลเงินตั้งต้น ต้องไม่ถูกส่งไปยัง API ของหน่วยธุรกิจ
+const CURRENCY_CODE_KEY = 'default_currency_code';
+
+// enum_calculation_method's two members, mirroring the catalog's `allowedValues`. The backend
+// already rejects anything else into `sheetErrors`; this exists because the write path for this
+// step is the client, so the client is the last place able to stop a bad value.
+// สมาชิกสองค่าของ enum ฝั่งเซิร์ฟเวอร์ตรวจแล้ว แต่ไคลเอนต์เป็นผู้เขียนข้อมูล จึงต้องตรวจซ้ำ
+const CALCULATION_METHODS = ['average', 'fifo'];
+
+/**
+ * Why the virtual Default Currency row can or cannot be written. `undefined` on every
+ * ordinary row. / สาเหตุที่แถวสกุลเงินเสมือนเขียนได้หรือไม่ได้
+ */
+type CurrencyState =
+  | { state: 'resolved'; resolvedId: string }
+  | { state: 'pending' }
+  | { state: 'unreachable' }
+  | { state: 'not_found' };
 
 interface FieldRow {
   key: string;
@@ -43,6 +48,7 @@ interface FieldRow {
   buValue: string;
   sheetValue: string;
   changed: boolean;
+  currency?: CurrencyState;
 }
 
 /** `hotel_address_line1` -> `Hotel Address Line1` */
@@ -52,6 +58,87 @@ function humanizeColumn(column: string): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * The Default Currency row before the tenant currency list has arrived. Resolving the code
+ * needs the tenant database, which nothing else on this panel touches, so the row is shown
+ * pending rather than holding up the seven fields that do not depend on it.
+ * แถวสกุลเงินก่อนที่รายการสกุลเงินจะมาถึง เพื่อไม่ให้ถ่วงฟิลด์อื่นที่ไม่ต้องใช้ฐานข้อมูลผู้เช่า
+ */
+function pendingCurrencyRow(sheetValue: string): FieldRow {
+  return {
+    key: CURRENCY_CODE_KEY,
+    label: 'Default Currency',
+    buValue: '',
+    sheetValue,
+    changed: false,
+    currency: { state: 'pending' },
+  };
+}
+
+/**
+ * Build the virtual Default Currency row. The sheet carries a code; the record stores a UUID,
+ * so the row is applicable only when the code resolves against the tenant currency list.
+ *
+ * An unresolvable row reports `changed: false` — NOT merely "excluded from the payload".
+ * `changedCount` is what enables the Apply button while `handleApply` returns early on an empty
+ * payload, so `changed: true` here would leave the button live on a call that does nothing.
+ * แถวที่แปลงรหัสไม่ได้ต้องรายงานว่าไม่มีการเปลี่ยนแปลง มิฉะนั้นปุ่มจะกดได้แต่ไม่เกิดอะไรขึ้น
+ *
+ * @param sheetValue - Currency code from the workbook / รหัสสกุลเงินจากไฟล์
+ * @param currentId - The BU's saved default_currency_id / ค่าที่บันทึกไว้ของหน่วยธุรกิจ
+ * @param currencies - Tenant currency list, or null when it could not be fetched / รายการสกุลเงิน
+ */
+function currencyRow(
+  sheetValue: string,
+  currentId: string | undefined,
+  currencies: TenantCurrency[] | null,
+): FieldRow {
+  const base = { key: CURRENCY_CODE_KEY, label: 'Default Currency', sheetValue };
+  if (!currencies) {
+    return { ...base, buValue: '', changed: false, currency: { state: 'unreachable' } };
+  }
+  const buValue = currencies.find((c) => c.id === currentId)?.code ?? '';
+  const match = currencies.find((c) => c.code.toUpperCase() === sheetValue.toUpperCase());
+  if (!match) {
+    return { ...base, buValue, changed: false, currency: { state: 'not_found' } };
+  }
+  return {
+    ...base,
+    buValue,
+    changed: match.id !== currentId,
+    currency: { state: 'resolved', resolvedId: match.id },
+  };
+}
+
+/** Status cell for one diff row. / ช่องสถานะของหนึ่งแถว */
+function renderStatus(r: FieldRow) {
+  if (r.currency?.state === 'pending') {
+    return (
+      <Badge variant="outline" title="Reading the tenant database to resolve this currency code.">
+        Resolving…
+      </Badge>
+    );
+  }
+  if (r.currency?.state === 'unreachable') {
+    return (
+      <Badge
+        variant="outline"
+        title="The tenant database could not be reached, so this currency code cannot be resolved to an id."
+      >
+        Cannot resolve
+      </Badge>
+    );
+  }
+  if (r.currency?.state === 'not_found') {
+    return (
+      <Badge variant="outline" title="Run the Currency step first, then press Refresh.">
+        Not found — run Currency first
+      </Badge>
+    );
+  }
+  return <Badge variant={r.changed ? 'warning' : 'secondary'}>{r.changed ? 'Changed' : 'Same'}</Badge>;
 }
 
 /**
@@ -112,8 +199,15 @@ export function CompanyProfilePanel({
         // targets this BU) — it just never becomes a normal row here, and never feeds
         // `changedFields`. It gets its own dedicated, read-only comparison below instead.
         .filter((key) => key !== 'id' && key !== 'code')
-        .map((key) => {
+        .map((key): FieldRow => {
           const sheetValue = String(sheetValues[key] ?? '').trim();
+          // The virtual currency column is the one key whose sheet value is not comparable to
+          // the record field of the same name — there is no such field. Resolution happens
+          // after this pass, once the tenant currency list has arrived (see below).
+          // คอลัมน์สกุลเงินเสมือนเทียบกับฟิลด์ชื่อเดียวกันในเรกคอร์ดไม่ได้ เพราะไม่มีฟิลด์นั้น
+          if (key === CURRENCY_CODE_KEY) {
+            return pendingCurrencyRow(sheetValue);
+          }
           const buValue = String(recordFields[key] ?? '').trim();
           return {
             key,
@@ -127,6 +221,22 @@ export function CompanyProfilePanel({
       setSheetCode(typeof rawSheetCode === 'string' ? rawSheetCode.trim() : undefined);
       setSheetErrors(preview.rows[0]?.errors ?? []);
       setDocVersion(getDocVersion(record));
+      // Everything except the currency row is on screen now, so release the loading state
+      // before the tenant read rather than after it. The `finally` below becomes a no-op.
+      // ปลดสถานะกำลังโหลดก่อนอ่านฐานข้อมูลผู้เช่า เพราะส่วนที่เหลือแสดงผลได้แล้ว
+      setLoading(false);
+      // Resolving the code needs the TENANT database. A rejection was already tolerated; doing
+      // it here means a merely SLOW tenant no longer holds the rest of the panel hostage.
+      // การแปลงรหัสต้องอ่านจากฐานข้อมูลผู้เช่า จึงย้ายมาทำหลังจากแสดงผลแล้ว
+      const currencies = await currencyService.getForBu(bu.code).catch(() => null);
+      if (token !== loadTokenRef.current) return;
+      setRows((prev) =>
+        prev.map((r) =>
+          r.key === CURRENCY_CODE_KEY
+            ? currencyRow(r.sheetValue, record.default_currency_id, currencies)
+            : r,
+        ),
+      );
     } catch (err) {
       if (token !== loadTokenRef.current) return;
       const message = parseApiError(err).message;
@@ -135,13 +245,23 @@ export function CompanyProfilePanel({
     } finally {
       if (token === loadTokenRef.current) setLoading(false);
     }
-  }, [bu.id, step.id, file]);
+  }, [bu.id, bu.code, step.id, file]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const changedCount = rows.filter((r) => r.changed).length;
+  // Rows whose currency never resolved are neither "changed" nor "same" — they are unknown.
+  // Folding them into "same" would let the panel claim everything matches while a row below
+  // says otherwise. / แถวที่แปลงรหัสไม่ได้ไม่ใช่ทั้ง "เปลี่ยน" และ "เหมือนเดิม"
+  const unresolvedCount = rows.filter((r) => r.currency && r.currency.state !== 'resolved').length;
+  // Only `pending` gates Apply — it is transient and always terminates (the fetch is
+  // .catch-wrapped), so blocking briefly prevents a partial apply that silently drops the
+  // currency. `unreachable` and `not_found` are terminal and must NOT block: the operator
+  // still needs to apply the seven fields that never touch the tenant database.
+  // เฉพาะสถานะกำลังแปลงค่าเท่านั้นที่ระงับปุ่ม เพราะเป็นสถานะชั่วคราวและจบเสมอ
+  const currencyPending = rows.some((r) => r.currency?.state === 'pending');
   // Trimmed compare; `bu.code` is not expected to carry incidental whitespace, but `sheetCode`
   // comes straight off a spreadsheet cell.
   const codeMismatch = sheetCode != null && sheetCode !== '' && sheetCode !== bu.code.trim();
@@ -151,10 +271,29 @@ export function CompanyProfilePanel({
     for (const r of rows) {
       // IMPORTANT 1 (fix round 2): `code` must never be written back — it is the BU's identity,
       // not a profile field, and the tenant database connection is resolved from it. `rows`
-      // already excludes `code`/`id` when it's built above, so this can never trigger in
-      // practice today; it stays as an unconditional second guard so a future change to that
+      // already excludes `code`/`id` when it's built above, so those can never trigger in
+      // practice today; they stay as an unconditional second guard so a future change to that
       // filter can't silently start writing the BU code from a workbook cell.
-      if (r.changed && r.key !== 'code' && r.key !== 'id') changedFields[r.key] = r.sheetValue;
+      //
+      // `default_currency_code` is dropped for a different reason: it is a VIRTUAL catalog
+      // column with no field behind it, so sending it would hand the business-unit API an
+      // unknown key. Its resolved id is added separately below.
+      // คีย์สกุลเงินเสมือนถูกตัดออกเพราะไม่มีคอลัมน์รองรับ ค่า id ที่แปลงแล้วถูกเพิ่มแยกด้านล่าง
+      if (r.changed && r.key !== 'code' && r.key !== 'id' && r.key !== CURRENCY_CODE_KEY) {
+        changedFields[r.key] = r.sheetValue;
+      }
+      // The virtual currency row writes its resolved UUID under the REAL column name. Only a
+      // `resolved` row can reach here with `changed: true` — currencyRow reports `false` for
+      // both unresolvable states — so no extra state check is needed beyond narrowing the union.
+      // แถวสกุลเงินเสมือนเขียน UUID ที่แปลงแล้วลงในชื่อคอลัมน์จริง
+      if (r.changed && r.key === CURRENCY_CODE_KEY && r.currency?.state === 'resolved') {
+        changedFields.default_currency_id = r.currency.resolvedId;
+      }
+    }
+    const method = changedFields.calculation_method;
+    if (method && !CALCULATION_METHODS.includes(method.toLowerCase())) {
+      toast.error(`Inventory Cost Type must be one of: ${CALCULATION_METHODS.join(', ')}`);
+      return;
     }
     if (Object.keys(changedFields).length === 0) return;
     setApplying(true);
@@ -191,7 +330,7 @@ export function CompanyProfilePanel({
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Refresh
           </Button>
-          <Button onClick={handleApply} disabled={loading || applying || changedCount === 0}>
+          <Button onClick={handleApply} disabled={loading || applying || currencyPending || changedCount === 0}>
             {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {applying ? 'Applying…' : 'Apply to BU'}
           </Button>
@@ -241,8 +380,11 @@ export function CompanyProfilePanel({
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={changedCount > 0 ? 'warning' : 'secondary'}>{changedCount} changed</Badge>
-            <Badge variant="secondary">{rows.length - changedCount} same</Badge>
-            {changedCount === 0 && (
+            <Badge variant="secondary">{rows.length - changedCount - unresolvedCount} same</Badge>
+            {unresolvedCount > 0 && (
+              <Badge variant="outline">{unresolvedCount} unresolved</Badge>
+            )}
+            {changedCount === 0 && unresolvedCount === 0 && (
               <span className="text-xs text-muted-foreground">
                 Every field already matches — nothing to apply.
               </span>
@@ -279,9 +421,7 @@ export function CompanyProfilePanel({
                     <td className="px-3 py-2">{r.label}</td>
                     <td className="px-3 py-2 text-muted-foreground">{r.buValue || '-'}</td>
                     <td className="px-3 py-2">{r.sheetValue || '-'}</td>
-                    <td className="px-3 py-2">
-                      <Badge variant={r.changed ? 'warning' : 'secondary'}>{r.changed ? 'Changed' : 'Same'}</Badge>
-                    </td>
+                    <td className="px-3 py-2">{renderStatus(r)}</td>
                   </tr>
                 ))}
                 {NOT_APPLIED_LABELS.map((label) => (
@@ -302,7 +442,7 @@ export function CompanyProfilePanel({
 
       {sheetErrors.length > 0 && (
         <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
-          <p className="font-medium">The workbook is missing required values</p>
+          <p className="font-medium">The workbook has values this step cannot use</p>
           <ul className="mt-1 space-y-0.5 text-xs">
             {sheetErrors.map((e) => (
               <li key={e.column}>
