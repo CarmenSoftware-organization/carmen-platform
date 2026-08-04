@@ -463,17 +463,35 @@ and the offending value.
    - `Item Group.Category Code` ⊆ its own category set
 4. Every step's `duplicateKey` is unique across rows — including the three-part
    `['code', 'name', 'product_subcategory_id']` key of `item-group`, and the globally unique
-   subcategory and item-group codes required by §7.4.
-5. No `required` column is empty on any row.
-6. `config_lookup` column C holds exactly 498 timezone entries.
-7. `Company Profile` row 1 is `BU Code` (the vertical reader depends on it).
+   subcategory and item-group codes required by §7.4. Comparisons are **normalized**
+   (collapse whitespace, trim, lowercase) before checking for duplicates, matching
+   `preconfig-import.service.ts`'s own key construction
+   (`step.duplicateKey.map((c) => normalizeKey(...)).join(KEY_DELIMITER)`) — a raw
+   comparison would be looser than the importer and miss real duplicates such as `"BAG"`
+   beside `"bag"`. The raw (non-normalized) value is still what gets reported.
+5. Every code in the `Item Group` sheet carries the same name everywhere it appears — a
+   **functional-dependency** check at all three tree levels (category, subcategory, item
+   group). The sheet is denormalized (a category code legitimately repeats across every
+   item group under it), so uniqueness of the code alone is not the invariant; what must
+   never vary is the code → name mapping, compared normalized as in point 4.
+6. No `required` column is empty on any row.
+7. `config_lookup` column C holds exactly 498 timezone entries.
+8. `Company Profile` row 1 is `BU Code` (the vertical reader depends on it), and all 38 rows'
+   column-A labels match the expected list in order — a relabeled row elsewhere in the sheet
+   passes every other check but would fail the wizard's File check.
+9. Row counts guard against an empty or truncated sheet, which every per-row check above
+   would otherwise report as clean: exact counts for sheets whose size is fixed by the
+   design (`Currency`, `Unit`, `Tax Profile`, `Item Group`, `Delivery Point`,
+   `Store Location`, `Department`, and — since they have no header row — `Company Profile`
+   at 38 and `config_lookup` at 498), and a minimum floor for the two sheets the CLI
+   parameterises (`Product list` at 64, one per item group at minimum; `Vendor` at 1).
 
 ## 9. Risks and limitations
 
 | Risk | Assessment |
 |---|---|
 | The mock lacks styles, Excel Tables and autofilters | No impact — see §5. |
-| The 498-entry timezone list must be transcribed accurately | Extracted from the source workbook once via a scratchpad script; check 6 of §8.2 guards the count on every run. |
+| The 498-entry timezone list must be transcribed accurately | Extracted from the source workbook once via a scratchpad script; checks 7 and 9 of §8.2 guard the count on every run. |
 | `sample_data/Preconfig.xlsx` may already be somewhere it shouldn't | It has never been committed (`?? sample_data/` at the time of writing). Adding the `.gitignore` line is sufficient; no history rewrite is required. Verify with `git log --all -- sample_data/` before merging. |
 | `exceljs` version drift between this repo and the backend | Pinned `^4.4.0` on both sides; a major-version bump on either side should be checked against §8.2. |
 
