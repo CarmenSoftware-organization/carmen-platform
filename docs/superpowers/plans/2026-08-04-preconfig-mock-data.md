@@ -1034,14 +1034,17 @@ node --check scripts/lib/preconfig-mock/products.mjs && node --input-type=module
 import { createRng } from './scripts/lib/preconfig-mock/rng.mjs';
 import { buildProductSheet } from './scripts/lib/preconfig-mock/products.mjs';
 import { ITEM_GROUPS } from './scripts/lib/preconfig-mock/catalog.mjs';
-import { UNIT_CODES, TAX_PROFILE_NAMES } from './scripts/lib/preconfig-mock/reference.mjs';
+import { UNIT_CODES, buildTaxProfileSheet } from './scripts/lib/preconfig-mock/reference.mjs';
 const s = buildProductSheet(createRng(20260804));
 const data = s.rows.slice(1);
 if (data.length !== 2589) throw new Error('rows: ' + data.length);
 const codes = data.map(r => r[0]);
 if (new Set(codes).size !== codes.length) throw new Error('duplicate product codes');
 const groups = new Set(ITEM_GROUPS.map(g => g.code));
-const units = new Set(UNIT_CODES), taxes = new Set(TAX_PROFILE_NAMES);
+// Derive valid tax-profile names from the Tax Profile sheet itself, not a re-exported
+// constant — matches how the shipped self-check avoids importing builders' own data back
+// as its own oracle.
+const units = new Set(UNIT_CODES), taxes = new Set(buildTaxProfileSheet().rows.slice(1).map(r => r[0]));
 for (const r of data) {
   if (!groups.has(r[6])) throw new Error('unknown item group ' + r[6]);
   if (!units.has(r[7])) throw new Error('unknown inventory unit ' + r[7]);
@@ -1049,6 +1052,8 @@ for (const r of data) {
   if (r[10] !== '' && !units.has(r[10])) throw new Error('unknown recipe unit ' + r[10]);
   if (!taxes.has(r[12])) throw new Error('unknown tax profile ' + r[12]);
   if ((r[10] === '') !== (r[11] === '')) throw new Error('recipe unit/rate not paired');
+  if (r[8] === r[7] && r[9] !== 1) throw new Error('order unit equals inventory unit but rate != 1: ' + r[0]);
+  if (r[10] !== '' && r[10] === r[7]) throw new Error('recipe unit equals inventory unit: ' + r[0]);
 }
 const withRecipe = data.filter(r => r[10] !== '').length;
 const withBarcode = data.filter(r => r[3] !== '').length;
@@ -1297,7 +1302,7 @@ other value would silently invent master data."
 - Create: `scripts/lib/preconfig-mock/vendors.mjs`
 
 **Interfaces:**
-- Consumes: `Rng` (Task 1), `TAX_PROFILE_NAMES` (Task 2)
+- Consumes: `Rng` (Task 1)
 - Produces: `buildVendorSheet(rng, { total = 999 }): { name: 'Vendor', rows }`
 
 - [ ] **Step 1: Create the vendor generator**
@@ -1475,13 +1480,16 @@ Run:
 node --check scripts/lib/preconfig-mock/vendors.mjs && node --input-type=module -e "
 import { createRng } from './scripts/lib/preconfig-mock/rng.mjs';
 import { buildVendorSheet } from './scripts/lib/preconfig-mock/vendors.mjs';
-import { TAX_PROFILE_NAMES } from './scripts/lib/preconfig-mock/reference.mjs';
+import { buildTaxProfileSheet } from './scripts/lib/preconfig-mock/reference.mjs';
 const s = buildVendorSheet(createRng(20260804));
 const data = s.rows.slice(1);
 if (data.length !== 999) throw new Error('rows: ' + data.length);
 if (new Set(data.map(r => r[0])).size !== 999) throw new Error('duplicate vendor codes');
 if (new Set(data.map(r => r[1])).size !== 999) throw new Error('duplicate vendor names');
-const taxes = new Set(TAX_PROFILE_NAMES);
+// Derive valid tax-profile names from the Tax Profile sheet itself, not a re-exported
+// constant — matches how the shipped self-check avoids importing builders' own data back
+// as its own oracle.
+const taxes = new Set(buildTaxProfileSheet().rows.slice(1).map(r => r[0]));
 for (const r of data) {
   if (r[16] !== '' && !taxes.has(r[16])) throw new Error('unknown tax profile ' + r[16]);
   if (r[12] !== '' && !r[12].endsWith('@example.com')) throw new Error('non-example email ' + r[12]);
