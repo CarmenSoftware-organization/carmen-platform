@@ -18,7 +18,7 @@ company names, street addresses, phone numbers and tax IDs.
 (both MD5 `7dbfabc15562bd6d4d4b13679c232297` as of 2026-08-04). It is a "mock" in filename
 only. Neither file is covered by `.gitignore`.
 
-The Preconfig Import Wizard (`/tenant-import`) needs a workbook that can be committed,
+The Preconfig Import Wizard (`/tenant-imports`) needs a workbook that can be committed,
 shared with implementation staff, used in demos, and attached to bug reports — without
 distributing customer data.
 

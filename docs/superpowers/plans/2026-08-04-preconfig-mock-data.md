@@ -2285,7 +2285,10 @@ bun run dev:dev
 
 Then in the browser:
 
-1. Go to `/tenant-import`, pick any business unit, upload `sample_data/Preconfig-mock.xlsx`.
+1. Go to `/tenant-imports` (plural), pick any business unit, upload
+   `sample_data/Preconfig-mock.xlsx`. Note the steps run in dependency order — previewing
+   `Products` before `Item Groups` has been imported into that tenant reports a lookup
+   failure per row, which is correct behaviour, not a defect in the workbook.
 2. **File check** must report **zero missing sheets and zero missing columns**.
 3. Open the **Company Profile** step: the red `BU Code` mismatch banner must appear
    (the workbook says `MOCK1`, the selected BU says something else). This is expected and
