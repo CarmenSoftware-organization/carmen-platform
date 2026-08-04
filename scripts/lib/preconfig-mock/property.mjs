@@ -67,9 +67,10 @@ export function buildCompanyProfileSheet({ buCode }) {
       // ต้องเป็นข้อความ ไม่ใช่ตัวเลข มิฉะนั้นเลข 0 นำหน้าจะหายไปเหมือนต้นฉบับ
       ['Tax ID (*Mandatory*)', '0105566000006'],
       ['Branch No (*Mandatory*)', '00000'],
-      // Present in the sheet but deliberately unmapped by the catalog (calculation_method
-      // is an enum, default_currency_id a foreign key). The wizard listing them as
-      // "not applied" is correct. / มีในชีตแต่แคตตาล็อกไม่แมปโดยตั้งใจ
+      // All eight are mapped by the catalog and applied by the wizard. `Default Currency`
+      // travels as the virtual column `default_currency_code` and is resolved against the
+      // tenant currency list client-side, so it only applies once the Currency step has run.
+      // ทั้งแปดรายการถูกแมปและนำไปใช้แล้ว สกุลเงินตั้งต้นต้องรันขั้นตอน Currency ก่อนจึงจะแปลงค่าได้
       ['Inventory Cost Type (*Mandatory*)', 'average'],
       ['Default Currency', 'THB'],
       ['date format', 'yyyy-MM-dd'],
