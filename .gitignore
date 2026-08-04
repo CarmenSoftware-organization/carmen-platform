@@ -155,3 +155,7 @@ build/
 .env.production.local
 .vercel
 .superpowers/
+
+# Real customer preconfiguration workbook — never commit. Regenerate the mock with
+# `bun run generate:mock-preconfig`; sample_data/Preconfig-mock.xlsx IS committed.
+sample_data/Preconfig.xlsx
