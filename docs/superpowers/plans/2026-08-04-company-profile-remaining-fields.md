@@ -13,8 +13,10 @@
 ## Global Constraints
 
 - **No automated tests.** Per the working preferences in effect for this repo, do not write `*.test.ts` / `*.spec.ts` files and do not add test steps. Static checks (type-check, lint) are **not** tests and must still run. Manual browser verification is **not** skipped — it is Task 5.
-- **Two repos.** Backend work is in `../carmen-turborepo-backend-v2`; frontend work is in `carmen-platform`. Commit separately in each; never stage across repos.
-- **Frontend branch:** `feature/company-profile-remaining-fields` (already created and holding the spec commit). Create a matching branch in the backend repo.
+- **Two repos.** Commit separately in each; never stage across repos.
+  - **Backend:** `/Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile` — a **git worktree** already created off `main` on branch `feature/company-profile-remaining-fields`, with dependencies installed. Do **not** use `../carmen-turborepo-backend-v2`: that checkout holds unrelated in-progress auth work on a different branch.
+  - **Frontend:** `/Users/samutpra/GitHub/carmensoftware-organize/carmen-platform` on branch `feature/company-profile-remaining-fields` (already holds the spec and plan commits).
+- **Do not stage `sample_data/Preconfig-mock.xlsx`.** It carries an unrelated pre-existing local modification. Stage only the files each task names.
 - **Excel labels are matched through `normalizeKey`** = `v.replace(/\s+/g, ' ').trim().toLowerCase()` (`preconfig-workbook.ts:23-25`). It lowercases and collapses whitespace but **strips nothing else** — a `(*Mandatory*)` suffix must be declared verbatim.
 - **Never modify `src/components/ui/`** primitives.
 - **Comments in this codebase are bilingual** — an English comment followed by a Thai line. Match that; every code block below already does.
@@ -24,7 +26,7 @@
 
 ## File Structure
 
-**`../carmen-turborepo-backend-v2/apps/micro-business/src/preconfig-import/`**
+**`<backend worktree>/apps/micro-business/src/preconfig-import/`**
 
 | File | Responsibility | Change |
 |---|---|---|
@@ -46,22 +48,18 @@ No new files. `CompanyProfilePanel.tsx` is 317 lines and grows to roughly 400 �
 
 Pure type + coercion plumbing. Nothing declares `allowedValues` yet, so behavior is unchanged after this task — that is intentional and makes the change reviewable on its own.
 
+All paths below are relative to the backend worktree
+`/Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile`.
+
 **Files:**
-- Modify: `../carmen-turborepo-backend-v2/apps/micro-business/src/preconfig-import/preconfig-types.ts:5-13`
-- Modify: `../carmen-turborepo-backend-v2/apps/micro-business/src/preconfig-import/preconfig-workbook.ts:269-303`
+- Modify: `apps/micro-business/src/preconfig-import/preconfig-types.ts:5-13`
+- Modify: `apps/micro-business/src/preconfig-import/preconfig-workbook.ts:269-303`
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces: `ColumnMap.allowedValues?: string[]` — an optional allowlist honored by `coerceValue(col: ColumnMap, raw: string): { value?: unknown; error?: string }`. Task 2 declares it on one column.
 
-- [ ] **Step 1: Create the backend branch**
-
-```bash
-cd ../carmen-turborepo-backend-v2
-git checkout -b feature/company-profile-remaining-fields
-```
-
-- [ ] **Step 2: Add `allowedValues` to `ColumnMap`**
+- [ ] **Step 1: Add `allowedValues` to `ColumnMap`**
 
 In `preconfig-types.ts`, the interface currently reads:
 
@@ -92,7 +90,7 @@ Insert the new member between `maxLength` and `defaultValue`:
   defaultValue?: string | number | boolean;
 ```
 
-- [ ] **Step 3: Enforce it in `coerceValue`**
+- [ ] **Step 2: Enforce it in `coerceValue`**
 
 In `preconfig-workbook.ts`, `coerceValue` currently runs the `maxLength` check and falls straight into the `switch`:
 
@@ -125,18 +123,18 @@ Insert the allowlist check between them:
 
 Placement matters: it sits **after** the empty-cell branch (lines 273-277) so an absent optional label still yields `{}` rather than an allowlist error, and **before** the `switch` because a value drawn from a fixed set of strings needs no further coercion.
 
-- [ ] **Step 4: Type-check**
+- [ ] **Step 3: Type-check**
 
 ```bash
-cd ../carmen-turborepo-backend-v2/apps/micro-business && bun run check-types
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile/apps/micro-business && bun run check-types
 ```
 
 Expected: exits 0, no output. If it reports errors in files you did not touch, they are pre-existing — note them and continue.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-cd ../carmen-turborepo-backend-v2
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile
 git add apps/micro-business/src/preconfig-import/preconfig-types.ts \
         apps/micro-business/src/preconfig-import/preconfig-workbook.ts
 git commit -m "feat(preconfig-import): allow a column to declare a value allowlist
@@ -153,8 +151,11 @@ hand-typed 'Average' normalizes to the enum member 'average'."
 
 ### Task 2: Eight catalog columns (backend)
 
+All paths below are relative to the backend worktree
+`/Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile`.
+
 **Files:**
-- Modify: `../carmen-turborepo-backend-v2/apps/micro-business/src/preconfig-import/preconfig-catalog.ts:64-72`
+- Modify: `apps/micro-business/src/preconfig-import/preconfig-catalog.ts:64-72`
 
 **Interfaces:**
 - Consumes: `ColumnMap.allowedValues` from Task 1.
@@ -223,7 +224,7 @@ None of the eight carries `required: true` — Global Constraints and decision #
 - [ ] **Step 2: Type-check**
 
 ```bash
-cd ../carmen-turborepo-backend-v2/apps/micro-business && bun run check-types
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile/apps/micro-business && bun run check-types
 ```
 
 Expected: exits 0.
@@ -231,7 +232,7 @@ Expected: exits 0.
 - [ ] **Step 3: Commit**
 
 ```bash
-cd ../carmen-turborepo-backend-v2
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2-company-profile
 git add apps/micro-business/src/preconfig-import/preconfig-catalog.ts
 git commit -m "feat(preconfig-import): map the 8 unmapped Company Profile fields
 
