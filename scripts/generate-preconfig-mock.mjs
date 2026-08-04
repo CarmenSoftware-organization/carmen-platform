@@ -12,6 +12,7 @@
  */
 import { createRng } from './lib/preconfig-mock/rng.mjs';
 import { buildSheets, writeWorkbook } from './lib/preconfig-mock/workbook.mjs';
+import { selfCheck } from './lib/preconfig-mock/self-check.mjs';
 
 const DEFAULTS = {
   out: 'sample_data/Preconfig-mock.xlsx',
@@ -48,6 +49,16 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const rng = createRng(opts.seed);
   const sheets = buildSheets(rng, opts);
+
+  // Nothing reaches disk until the structure holds. A workbook that fails here would
+  // fail in the wizard's File check or, worse, import silently wrong data.
+  // ไม่มีอะไรถูกเขียนลงดิสก์จนกว่าโครงสร้างจะถูกต้อง
+  const failures = selfCheck(sheets);
+  if (failures.length > 0) {
+    console.error(`self-check failed with ${failures.length} problem(s):`);
+    for (const f of failures) console.error(`  - ${f}`);
+    process.exit(1);
+  }
 
   await writeWorkbook(sheets, opts.out);
 
