@@ -172,7 +172,7 @@ The list is extracted from the source workbook once during implementation and pa
 | 26 | `Company Latitude` | `13.7220` |
 | 27 | `Company Longitude` | `100.5140` |
 | 28 | `Company Postal Code` | `10500` |
-| 29 | `Tax ID (*Mandatory*)` | `0105566000001` — **written as a string cell** |
+| 29 | `Tax ID (*Mandatory*)` | `0105566000006` — **written as a string cell** |
 | 30 | `Branch No (*Mandatory*)` | `00000` — **written as a string cell** |
 | 31 | `Inventory Cost Type (*Mandatory*)` | `average` |
 | 32 | `Default Currency` | `THB` |

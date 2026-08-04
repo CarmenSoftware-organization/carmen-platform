@@ -1082,7 +1082,7 @@ export function buildCompanyProfileSheet({ buCode }) {
       // Strings, not numbers: the source workbook stored the tax ID numerically and lost
       // its leading zero, so only 12 digits reached the importer.
       // ต้องเป็นข้อความ ไม่ใช่ตัวเลข มิฉะนั้นเลข 0 นำหน้าจะหายไปเหมือนต้นฉบับ
-      ['Tax ID (*Mandatory*)', '0105566000001'],
+      ['Tax ID (*Mandatory*)', '0105566000006'],
       ['Branch No (*Mandatory*)', '00000'],
       // Present in the sheet but deliberately unmapped by the catalog (calculation_method
       // is an enum, default_currency_id a foreign key). The wizard listing them as
@@ -1629,7 +1629,7 @@ console.log('round-trip OK — tax id survives as', taxVal);
 "
 ```
 
-Expected: `round-trip OK — tax id survives as 0105566000001`.
+Expected: `round-trip OK — tax id survives as 0105566000006`.
 
 - [ ] **Step 5: Commit (script only — the .xlsx lands in Task 10)**
 
