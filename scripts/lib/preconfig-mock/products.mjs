@@ -24,27 +24,96 @@ const COST_BAND = {
 };
 
 /**
+ * Category codes in the fixed, deterministic order used throughout this file. Never derive
+ * an iteration order from `Object.keys(CATEGORY_QUOTA)` — its keys are integer-like strings,
+ * so the JS spec reorders them ascending numerically regardless of the object literal's
+ * declaration order, which would silently break any logic that assumes "largest first".
+ * ลำดับรหัสหมวดตายตัว ห้ามใช้ Object.keys กับอ็อบเจกต์ที่คีย์เป็นตัวเลข เพราะ JS จะเรียงจากน้อยไปมากเสมอ
+ */
+const CATEGORY_CODES = ['1', '2', '3', '4', '5', '6'];
+
+/**
+ * The same codes ordered by CATEGORY_QUOTA size, descending. Used to decide which category
+ * absorbs a scaling correction first — the largest takes it, cascading to the next-largest
+ * once a category runs out of headroom against its own floor or ceiling.
+ * รหัสหมวดเรียงตามโควตาจากมากไปน้อย ใช้ตัดสินว่าหมวดใดรับส่วนต่างก่อน
+ */
+const CATEGORY_CODES_BY_QUOTA_DESC = [...CATEGORY_CODES].sort(
+  (a, b) => CATEGORY_QUOTA[b] - CATEGORY_QUOTA[a],
+);
+
+/**
  * Scale the source distribution to an arbitrary total.
+ *
+ * Each category is first rounded to the nearest proportional share of `total`, clamped to
+ * that category's own valid range: at least one product per item group (its floor) and at
+ * most MAX_PER_ITEM_GROUP per item group (its ceiling). Independent rounding rarely lands
+ * exactly on `total`, so the leftover difference is then spread across categories —
+ * largest-quota first, cascading to the next-largest whenever a category runs out of
+ * headroom — until the quotas sum to exactly `total`. The floor/ceiling bound checks below
+ * guarantee this cascade always has enough combined headroom to succeed; the only way to
+ * fail is for `total` itself to sit outside every category's combined floor/ceiling.
+ * ปรับสัดส่วนต้นฉบับให้ตรงกับจำนวนที่ต้องการ โดยปัดเศษแต่ละหมวดแล้วไล่กระจายส่วนต่างจากหมวดใหญ่ไปเล็ก
+ * จนกว่าผลรวมจะตรงกับจำนวนที่ต้องการพอดี จะล้มเหลวก็ต่อเมื่อ total อยู่นอกช่วงที่เป็นไปได้จริงเท่านั้น
+ *
  * @param {number} total - Requested product count / จำนวนสินค้าที่ต้องการ
  * @returns {Record<string, number>} Quota per category code / โควตาต่อรหัสหมวด
  */
 function scaleQuotas(total) {
   if (total === BASE_TOTAL) return { ...CATEGORY_QUOTA };
-  const codes = Object.keys(CATEGORY_QUOTA);
+
+  const floors = {};
+  const ceilings = {};
+  let floorSum = 0;
+  let ceilSum = 0;
+  for (const c of CATEGORY_CODES) {
+    const groups = itemGroupsByCategory(c).length;
+    floors[c] = groups;
+    ceilings[c] = groups * MAX_PER_ITEM_GROUP;
+    floorSum += floors[c];
+    ceilSum += ceilings[c];
+  }
+
+  if (total < floorSum) {
+    throw new Error(
+      `--products ${total} is below the minimum of ${floorSum} (one product per item group)`,
+    );
+  }
+  if (total > ceilSum) {
+    throw new Error(
+      `--products ${total} is above the maximum of ${ceilSum} ` +
+      `(${MAX_PER_ITEM_GROUP} products per item group)`,
+    );
+  }
+
   const out = {};
   let assigned = 0;
-  for (const c of codes) {
-    // Every category keeps at least one product per item group, or weightedSplit throws.
-    const floor = itemGroupsByCategory(c).length;
-    out[c] = Math.max(floor, Math.round((CATEGORY_QUOTA[c] / BASE_TOTAL) * total));
+  for (const c of CATEGORY_CODES) {
+    const proportional = Math.round((CATEGORY_QUOTA[c] / BASE_TOTAL) * total);
+    out[c] = Math.min(ceilings[c], Math.max(floors[c], proportional));
     assigned += out[c];
   }
-  // Largest category absorbs the rounding difference.
-  const largest = codes.reduce((a, b) => (out[a] >= out[b] ? a : b));
-  out[largest] += total - assigned;
-  if (out[largest] < itemGroupsByCategory(largest).length) {
-    throw new Error(`--products ${total} is too small to give every item group one product`);
+
+  // Spread the rounding difference across categories, largest quota first, spilling to the
+  // next-largest whenever the current one runs out of headroom. The bound checks above
+  // guarantee enough combined headroom exists, so this always converges to diff === 0.
+  let diff = total - assigned;
+  if (diff < 0) {
+    for (const c of CATEGORY_CODES_BY_QUOTA_DESC) {
+      if (diff === 0) break;
+      const take = Math.min(out[c] - floors[c], -diff);
+      out[c] -= take;
+      diff += take;
+    }
+  } else if (diff > 0) {
+    for (const c of CATEGORY_CODES_BY_QUOTA_DESC) {
+      if (diff === 0) break;
+      const give = Math.min(ceilings[c] - out[c], diff);
+      out[c] += give;
+      diff -= give;
+    }
   }
+
   return out;
 }
 
