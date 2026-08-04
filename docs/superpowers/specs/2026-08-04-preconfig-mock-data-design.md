@@ -55,6 +55,8 @@ Verified against `carmen-turborepo-backend-v2/apps/micro-business/src/preconfig-
 - Every cell is `.trim()`-ed; formulas resolve to their cached result.
 - Rows where every cell is empty are skipped (they are treated as visual spacers).
 - Header matching uses `normalizeKey()` — collapse whitespace runs, trim, lowercase.
+- **Lookup values use the same `normalizeKey()`**, so cross-sheet references are matched
+  case- and whitespace-insensitively (`preconfig-lookup.ts`).
 - `Company Profile` is read by `readVerticalSheet()`: column A = label, column B = value,
   and **the first pair lands in `headers`, not `rows`** — so row 1 must be `BU Code`.
 
@@ -328,7 +330,7 @@ going to the largest category.
 | `Inventory Unit` | Chosen from the 34 frozen `Unit` codes, weighted to suit the item group (SEAFOOD → `KG`, BEVERAGE → `BTL`, SOE → `PCS`). |
 | `Order unit` + `Order Conv. Rate` | 80%: same as `Inventory Unit`, rate `1`. 20%: a larger unit (`BOX`, `CARTON`, `PACK`) with rate `6`, `12` or `24`. |
 | `Recipe unit` + `Recipe Conv. Rate` | Filled on ~10% of rows (both columns together, or both empty). |
-| `Tax profile` | `None` or `Vat 7%` — exact-case match against the `Tax Profile` sheet. |
+| `Tax profile` | `None` or `Vat 7%`, spelled consistently. |
 | `Standard cost` / `LastCost` | Plausible per-category amounts; `LastCost` within ±15% of `Standard cost`. |
 | `(%) Qty Deviation` / `(%) Price Deviation` | `0` on most rows, `5` or `10` on a minority. |
 | `Recipe ingrediant` | `0` on every row. |
@@ -338,9 +340,12 @@ Filling `Recipe unit` on ~10% of rows is deliberate: the product step's second
 recipe columns carry a value**, and both are empty on all 2,589 source rows — so that code
 path has never been exercised by the sample file.
 
-`Tax profile` values must be exact-case. The source has one row spelled `none` against 2,588
-spelled `None`; because the lookup matches `tb_tax_profile.name` literally, that row cannot
-resolve. The generator does not reproduce that defect.
+Lookup values are matched **case-insensitively** — `resolveLookups()` normalises both sides
+through `normalizeKey()` (trim, collapse whitespace runs, lowercase), the same function that
+matches headers. So the source file's single `none` against 2,588 `None` does resolve, and
+`Main` in `Store Location` resolves against `MAIN` in `Delivery Point`. The generator still
+spells every lookup value consistently, and the self-check compares them
+case-insensitively — matching the importer rather than being stricter than it.
 
 ### 7.6 `Department` — 55 data rows
 
