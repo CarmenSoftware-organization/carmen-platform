@@ -40,14 +40,17 @@ type TextFieldName = Exclude<
 >;
 
 /**
- * A cluster administrator's reach into one business unit — a narrowed Edit page (see
+ * A cluster administrator's reach into one business unit — a narrowed Edit-only page (see
  * ClusterProfile.tsx for the canonical orchestration this mirrors, and BusinessUnitEdit.tsx +
  * businessUnitEdit/sections/ for the full platform-admin form this is scoped down from).
+ * There is no create path here: `buId` is always present (the route only matches
+ * `/cluster-admin/:clusterId/business-units/:buId/edit`), and creating a BU consumes
+ * `max_license_bu`, which is a platform decision — see the 2026-08-05 cluster-admin-layout
+ * spec's B5 and the 2026-08-06 addendum removing BU create from this view.
  *
  * Three things are deliberately absent:
  * - The DB-connection section: `GET .../reveal-db-connection` is gated on a platform
- *   permission and 403s here; `db_connection` is optional on create, so the page never
- *   reads or writes it.
+ *   permission and 403s here, so the page never reads or writes `db_connection`.
  * - `max_license_users`: a platform decision, consistent with licensing being read-only
  *   on the cluster page.
  * - The BU-users card: membership is managed on the Users page, not here.
@@ -55,7 +58,6 @@ type TextFieldName = Exclude<
 const BusinessUnitForm: React.FC = () => {
   const { clusterId, buId } = useParams<{ clusterId: string; buId: string }>();
   const navigate = useNavigate();
-  const isNew = !buId;
 
   const [formData, setFormData] = useState<BusinessUnitFormData>({ ...initialFormData, cluster_id: clusterId ?? '' });
   const [savedFormData, setSavedFormData] = useState<BusinessUnitFormData>({ ...initialFormData, cluster_id: clusterId ?? '' });
@@ -67,8 +69,8 @@ const BusinessUnitForm: React.FC = () => {
   const [currenciesLoading, setCurrenciesLoading] = useState(false);
   const [currenciesFailed, setCurrenciesFailed] = useState(false);
   const [currenciesLoadedFor, setCurrenciesLoadedFor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!isNew);
-  const [editing, setEditing] = useState(isNew);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [accessLost, setAccessLost] = useState(false);
@@ -79,12 +81,12 @@ const BusinessUnitForm: React.FC = () => {
   useUnsavedChanges(hasChanges);
 
   useGlobalShortcuts({
-    onSave: () => { if (!saving && (isNew || hasChanges)) void handleSave(); },
+    onSave: () => { if (!saving && hasChanges) void handleSave(); },
     onCancel: () => { if (editing) handleCancel(); },
   });
 
   useEffect(() => {
-    if (!isNew) fetchBusinessUnit();
+    fetchBusinessUnit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buId]);
 
@@ -103,17 +105,15 @@ const BusinessUnitForm: React.FC = () => {
     }
   };
 
-  // Load the tenant currency list once the existing BU's code is known, same gate as
-  // BusinessUnitEdit.tsx. A brand-new BU has no code yet (isNew), so this never fires on
-  // create — CalculationSettingsSection falls back to a plain text input for
-  // default_currency_id until the record exists and a code has been assigned.
+  // Load the tenant currency list once the BU's code is known, same gate as
+  // BusinessUnitEdit.tsx.
   useEffect(() => {
     const buCode = formData.code;
-    if (!isNew && buCode && currenciesLoadedFor !== buCode && !currenciesLoading) {
+    if (buCode && currenciesLoadedFor !== buCode && !currenciesLoading) {
       loadCurrencies(buCode);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.code, isNew]);
+  }, [formData.code]);
 
   const toJsonString = (val: unknown, fallback: string): string => {
     if (val === null || val === undefined) return fallback;
@@ -287,13 +287,8 @@ const BusinessUnitForm: React.FC = () => {
     setEditing(true);
   };
 
-  // For an existing record, discard edits and drop back to view mode. For a new
-  // record there is nothing saved to fall back to, so Cancel leaves the page.
+  // Discard edits and drop back to view mode.
   const handleCancel = () => {
-    if (isNew) {
-      navigate(`/cluster-admin/${clusterId}/business-units`);
-      return;
-    }
     setFormData(savedFormData);
     setFieldErrors({});
     setError('');
@@ -316,9 +311,9 @@ const BusinessUnitForm: React.FC = () => {
     return true;
   };
 
-  // cluster_id, max_license_users, and db_connection are never sourced from formData:
-  // the first comes from the URL only (see handleSave), the other two are platform-only
-  // concerns this page does not expose.
+  // cluster_id, max_license_users, and db_connection are never sent to the backend:
+  // the first is immutable on update (the record's cluster is fixed), the other two are
+  // platform-only concerns this page does not expose.
   const buildPayload = (data: BusinessUnitFormData): Record<string, unknown> => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
@@ -351,29 +346,20 @@ const BusinessUnitForm: React.FC = () => {
     setSaving(true);
     try {
       const payload = buildPayload(formData);
-      if (isNew) {
-        // cluster_id comes from the URL, never from form state — a crafted form value
-        // must not be able to target a different cluster.
-        const result = await businessUnitService.create({ ...payload, cluster_id: clusterId });
-        const created = result.data || result;
-        toast.success('Business unit created successfully');
-        navigate(`/cluster-admin/${clusterId}/business-units/${created.id}/edit`, { replace: true });
-      } else {
-        await businessUnitService.update(buId!, {
-          ...payload,
-          ...(docVersion != null ? { doc_version: docVersion } : {}),
-        });
-        toast.success('Changes saved successfully');
-        setEditing(false);
-        await fetchBusinessUnit();
-      }
+      await businessUnitService.update(buId!, {
+        ...payload,
+        ...(docVersion != null ? { doc_version: docVersion } : {}),
+      });
+      toast.success('Changes saved successfully');
+      setEditing(false);
+      await fetchBusinessUnit();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict();
         await fetchBusinessUnit();
       } else {
         const { message, fields } = parseApiError(err);
-        toast.error(isNew ? 'Failed to create business unit' : 'Failed to update business unit', { description: message });
+        toast.error('Failed to update business unit', { description: message });
         if (fields) setFieldErrors(fields);
       }
     } finally {
@@ -504,8 +490,8 @@ const BusinessUnitForm: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           backTo={`/cluster-admin/${clusterId}/business-units`}
-          title={formData.name || (isNew ? 'New Business Unit' : '(unnamed business unit)')}
-          subtitle={isNew ? 'Create a new business unit in this cluster' : "Manage this business unit's details"}
+          title={formData.name || '(unnamed business unit)'}
+          subtitle="Manage this business unit's details"
           actions={
             editing ? (
               <div className="flex items-center gap-2">
@@ -515,7 +501,7 @@ const BusinessUnitForm: React.FC = () => {
                 </Button>
                 <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : isNew ? 'Create Business Unit' : 'Save Changes'}
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             ) : (
@@ -646,15 +632,13 @@ const BusinessUnitForm: React.FC = () => {
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
         />
-        {!isNew && (
-          <BusinessUnitBrandingCard
-            logoUrl={logoUrl}
-            avatarUrl={avatarUrl}
-            editing={editing}
-            onUploadLogo={handleUploadLogo}
-            onUploadAvatar={handleUploadAvatar}
-          />
-        )}
+        <BusinessUnitBrandingCard
+          logoUrl={logoUrl}
+          avatarUrl={avatarUrl}
+          editing={editing}
+          onUploadLogo={handleUploadLogo}
+          onUploadAvatar={handleUploadAvatar}
+        />
           </>
         ))}
       </div>

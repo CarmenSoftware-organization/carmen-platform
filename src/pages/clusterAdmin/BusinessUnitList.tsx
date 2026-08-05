@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Filter, X, Building2, Download } from 'lucide-react';
+import { Filter, X, Building2, Download } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import ClusterAccessLost from './ClusterAccessLost';
 import { PageHeader } from '../../components/PageHeader';
@@ -42,7 +42,6 @@ const fmt = (v?: string) => {
  * page in the established pattern (see ClusterManagement.tsx), narrowed by cluster.
  */
 const BusinessUnitList: React.FC = () => {
-  const navigate = useNavigate();
   const { clusterId } = useParams<{ clusterId: string }>();
 
   const [items, setItems] = useState<BusinessUnit[]>([]);
@@ -232,17 +231,10 @@ const BusinessUnitList: React.FC = () => {
           title="Business Units"
           subtitle="Manage the business units in this cluster"
           actions={
-            <>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-              <Button onClick={() => navigate(`/cluster-admin/${clusterId}/business-units/new`)}>
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Add Business Unit</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
           }
         />
 
@@ -361,13 +353,7 @@ const BusinessUnitList: React.FC = () => {
                   activeFilterCount={activeFilterCount}
                   icon={Building2}
                   emptyTitle="No business units yet"
-                  emptyDescription="Get started by creating the first business unit in this cluster."
-                  addAction={
-                    <Button size="sm" onClick={() => navigate(`/cluster-admin/${clusterId}/business-units/new`)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Business Unit
-                    </Button>
-                  }
+                  emptyDescription="Business units are created by a platform administrator. Once one is added to this cluster, it will appear here."
                 />
               ) : (
                 <DataTable
