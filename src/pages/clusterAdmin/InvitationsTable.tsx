@@ -37,6 +37,8 @@ const statusVariant = (
       return 'warning';
     case 'revoked':
       return 'destructive';
+    case 'declined':
+      return 'secondary';
     case 'expired':
       return 'secondary';
     default:
@@ -52,9 +54,14 @@ interface InvitationsTableProps {
 }
 
 /**
- * Pending-invitation table for the cluster-admin Users page. Resend and revoke only make
- * sense while an invitation is still pending — an accepted, expired, or revoked invitation is
- * a read-only history row, so both actions are disabled once `status` leaves `pending`.
+ * Pending-invitation table for the cluster-admin Users page. Resend and revoke are gated on
+ * the *terminal* states (`accepted` / `declined` / `revoked`), not on `status === 'pending'`.
+ * That's deliberate: the list's `status` is the backend's *display* status, and a stored-
+ * `pending` row past its expiry is presented as `expired` — a value the enum
+ * (`enum_user_invitation_status`) doesn't contain. Those rows are still `pending` in the
+ * database, and the server accepts both actions on them; resending a lapsed invitation is the
+ * main reason an admin opens this table, so gating on the working state instead of the
+ * terminal ones would block exactly that.
  */
 const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitations, loading, onChanged }) => {
   const [revokeTarget, setRevokeTarget] = useState<ClusterInvitation | null>(null);
@@ -137,7 +144,14 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
       meta: { headerClassName: 'w-10', cellClassName: 'w-10', card: 'actions' },
       cell: ({ row }) => {
         const invitation = row.original;
-        const isPending = (invitation.status ?? '').toLowerCase() === 'pending';
+        // The list's `status` is the backend's *display* status: a stored-`pending` row past
+        // its expiry is presented as `expired`, a value the enum does not contain. Those rows
+        // are still `pending` in the database, and the server accepts both resend and revoke
+        // on them — which is precisely when an admin wants to resend. Gate on the terminal
+        // states instead of the working one.
+        const isActionable = !['accepted', 'declined', 'revoked'].includes(
+          (invitation.status ?? '').toLowerCase(),
+        );
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -147,7 +161,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                disabled={!isPending}
+                disabled={!isActionable}
                 onClick={() => void handleResend(invitation)}
                 className="cursor-pointer"
               >
@@ -155,7 +169,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
                 Resend
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!isPending}
+                disabled={!isActionable}
                 onClick={() => setRevokeTarget(invitation)}
                 className="cursor-pointer text-destructive focus:text-destructive"
               >
