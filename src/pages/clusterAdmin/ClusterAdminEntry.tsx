@@ -3,7 +3,7 @@ import { Network } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Layout from '../../components/Layout';
 import { EmptyState } from '../../components/EmptyState';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardHeader, CardTitle } from '../../components/ui/card';
 
 /**
  * Entry point for the cluster-administration space. One administered cluster goes straight in;
@@ -57,9 +57,6 @@ const ClusterAdminEntry = () => {
                 <CardHeader className="pb-2">
                   <CardTitle className="truncate text-base">{c.name}</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="font-mono text-xs text-muted-foreground">{c.code}</p>
-                </CardContent>
               </Card>
             ))}
           </div>

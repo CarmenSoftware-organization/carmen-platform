@@ -14,6 +14,18 @@ export interface DetailsSectionProps {
    * Defaults to canEdit so existing call sites are unchanged.
    */
   canEditPlatformFields?: boolean;
+  /**
+   * Code is the cluster's system/API identifier — unlike the platform-only fields above,
+   * the backend does not strip it from a membership admin's update (it stays fully
+   * writable server-side), so hiding it here is a pure front-end decision, not a mirror of
+   * a server-side restriction. The cluster-admin page (ClusterProfile.tsx) has no
+   * operational reason to show a cluster admin its own cluster's system identifier, so it
+   * opts out. Unlike `canEditPlatformFields`, which still renders its fields (disabled),
+   * this removes the field from the render tree entirely — there is no "disabled but
+   * visible" state for an identifier the admin should not be looking at at all. Defaults
+   * to true so every existing call site is unchanged.
+   */
+  showCode?: boolean;
   onCommit: (name: string, value: string) => void;
   onValidate: (name: string, value: string) => void;
 }
@@ -28,6 +40,7 @@ export function DetailsSection({
   fieldErrors,
   canEdit,
   canEditPlatformFields = canEdit,
+  showCode = true,
   onCommit,
   onValidate,
 }: DetailsSectionProps) {
@@ -35,17 +48,19 @@ export function DetailsSection({
   const platformFieldsDisabled = !canEditPlatformFields;
   return (
     <div className="divide-y">
-      <InlineField
-        name="code"
-        label="Code"
-        value={formData.code}
-        mono
-        required
-        disabled={disabled}
-        error={fieldErrors.code}
-        onCommit={onCommit}
-        onValidate={onValidate}
-      />
+      {showCode && (
+        <InlineField
+          name="code"
+          label="Code"
+          value={formData.code}
+          mono
+          required
+          disabled={disabled}
+          error={fieldErrors.code}
+          onCommit={onCommit}
+          onValidate={onValidate}
+        />
+      )}
       <InlineField
         name="name"
         label="Name"

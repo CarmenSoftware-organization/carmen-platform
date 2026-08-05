@@ -158,7 +158,6 @@ const BusinessUnitList: React.FC = () => {
 
   const handleExport = () => {
     const csv = generateCSV(items, [
-      { key: 'code', label: 'Code' },
       { key: 'name', label: 'Name' },
       { key: 'is_hq', label: 'HQ' },
       { key: 'is_active', label: 'Status' },
@@ -169,19 +168,6 @@ const BusinessUnitList: React.FC = () => {
   };
 
   const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
-    {
-      accessorKey: 'code',
-      header: 'Code',
-      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
-      cell: ({ row }) => (
-        <Link
-          to={`/cluster-admin/${clusterId}/business-units/${row.original.id}/edit`}
-          className="text-primary hover:underline whitespace-nowrap"
-        >
-          {row.original.code}
-        </Link>
-      ),
-    },
     {
       accessorKey: 'name',
       header: 'Name',

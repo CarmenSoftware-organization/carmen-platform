@@ -255,6 +255,7 @@ const ClusterProfile: React.FC = () => {
                     fieldErrors={fieldErrors}
                     canEdit={editing}
                     canEditPlatformFields={false}
+                    showCode={false}
                     onCommit={handleCommit}
                     onValidate={handleValidate}
                   />

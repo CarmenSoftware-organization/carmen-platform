@@ -30,13 +30,15 @@ import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCa
 import type { BusinessUnitConfig, TenantCurrency } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
-// Booleans (is_hq/is_active), arrays (db_connection/config), and the two fields this
-// narrowed page never exposes (cluster_id comes from the URL only; max_license_users is
-// a platform decision) are excluded so the compiler — not just convention — stops any of
+// Booleans (is_hq/is_active), arrays (db_connection/config), and the fields this narrowed
+// page never exposes (cluster_id comes from the URL only; max_license_users is a platform
+// decision; code is a system identifier this view no longer surfaces — it still loads from
+// the API and still ships in the save payload, see fetchBusinessUnit/buildPayload below,
+// it just never renders) are excluded so the compiler — not just convention — stops any of
 // them from being wired into a text input here.
 type TextFieldName = Exclude<
   keyof BusinessUnitFormData,
-  'is_hq' | 'is_active' | 'db_connection' | 'config' | 'cluster_id' | 'max_license_users'
+  'is_hq' | 'is_active' | 'db_connection' | 'config' | 'cluster_id' | 'max_license_users' | 'code'
 >;
 
 /**
@@ -297,6 +299,14 @@ const BusinessUnitForm: React.FC = () => {
 
   // Backend requires code + name; cluster_id is guaranteed by the route guard, not a
   // form field, so it needs no client-side check here.
+  //
+  // The code check below is kept even though this page no longer renders a Code field —
+  // formData.code is populated only from the API response now, never by a user, so in
+  // practice this branch is unreachable today. It stays as a defensive guard rather than
+  // being deleted: buildPayload() below drops any '' value from the save payload, so a
+  // blank code (a malformed load, or a future change to fetchBusinessUnit) would otherwise
+  // omit a backend-required field from update() silently and surface as an opaque 400
+  // instead of this page's normal inline-validation toast.
   const validateRequired = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.code.trim()) errs.code = 'Code is required';
@@ -526,7 +536,6 @@ const BusinessUnitForm: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('code', 'Code', { mono: true, required: true })}
               {textField('name', 'Name', { required: true })}
               {textField('alias_name', 'Alias', { mono: true })}
             </div>
