@@ -33,13 +33,38 @@ bun run build:dev           # build with DEV env (.env.dev, --mode dev)
 bun run build:uat           # build with UAT env (.env.uat, --mode uat)
 bun run build:prod          # build with prod env (.env.prod, --mode prod) — placeholder: points at DEV
 bun run preview             # serve the production build locally on :3304 (--mode prod → .env.prod)
+bun run build:bump          # cut a release: guards → prompt → gates → commit + annotated tag (never pushes)
+bun run changelog           # regenerate CHANGELOG.md from src/data/changelog.json without bumping
+bun run typecheck           # tsc --noEmit
+bun run lint                # eslint over src/
 bun run test                # unit + component tests (Vitest, jsdom) — one-shot
 bun run test:watch          # Vitest watch mode
 bun run test:cov            # Vitest with v8 coverage
 bun run test:scripts        # node --test for build scripts (scripts/lib/*.test.mjs)
 ```
 
-No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pass `CI=true` to treat warnings as errors.
+`vite-plugin-checker` runs both tsc and `eslint "./src/**/*.{ts,tsx}"` during `start`/`build`; `bun run typecheck` and `bun run lint` run the same two checks standalone, which is how `build:bump` gates a release. Pass `CI=true` to treat warnings as errors.
+
+## Releases
+
+`bun run build:bump` (`scripts/release.mjs`) cuts a release **locally** — it never pushes.
+Run it on `main` or on a `chore/release-*` branch with a clean tree that is not behind its
+upstream. It checks that `src/data/changelog.json` has a non-empty `unreleased` buffer and
+that `package.json.version` still matches `versions[0].version`, prompts for
+patch/minor/major (pass the level as an argument to skip the prompt), gates on `typecheck`
++ `lint` + `test`, then writes `package.json`, `src/data/changelog.json`, and
+`CHANGELOG.md`, commits them as `chore(release): vX.Y.Z`, and creates the annotated tag
+`vX.Y.Z`.
+
+The version the app displays comes from `src/data/changelog.json` → `versions[0].version`
+(`src/components/VersionBadge.tsx`), **not** from `package.json` — `package.json.version`
+is a mirror the script keeps in sync.
+
+Push with `git push origin HEAD && git push origin vX.Y.Z`. If the release was cut on a
+`chore/release-*` branch, **merge that PR with a merge commit, not a squash** — a squash
+rewrites the release commit and the tag would point at an object outside `main`'s history.
+
+Spec: `docs/superpowers/specs/2026-08-05-build-bump-release-script-design.md`.
 
 ## Environment
 
