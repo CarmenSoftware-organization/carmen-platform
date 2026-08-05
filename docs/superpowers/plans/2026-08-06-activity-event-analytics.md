@@ -1383,7 +1383,7 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
   customRange, presetRange, rangeSpanDays, todayInTz,
-  MAX_RANGE_DAYS, RANGE_PRESETS, type DateRange,
+  ANALYTICS_TZ, MAX_RANGE_DAYS, RANGE_PRESETS, type DateRange,
 } from '../../utils/analyticsRange';
 
 interface DateRangeFilterProps {
@@ -1480,7 +1480,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
  */
 function describeRange(range: DateRange): string {
   const opts: Intl.DateTimeFormatOptions = {
-    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok',
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: ANALYTICS_TZ,
   };
   const start = new Date(range.from);
   const lastDay = new Date(new Date(range.to).getTime() - 1);
