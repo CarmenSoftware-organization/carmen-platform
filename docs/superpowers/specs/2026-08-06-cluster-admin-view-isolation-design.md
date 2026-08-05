@@ -7,8 +7,7 @@
 **Touches:** `src/utils/permissions.ts`, `src/context/AuthContext.tsx`,
 `src/components/PrivateRoute.tsx`, `src/components/AuthedRoute.tsx` (new),
 `src/components/Layout.tsx`, `src/components/HeaderUserMenu.tsx`, `src/pages/Profile.tsx`,
-`src/pages/Forbidden.tsx`, `src/pages/NotFound.tsx`, `src/pages/Login.tsx`,
-`src/pages/Landing.tsx`, `src/App.tsx`, `src/types/index.ts`
+`src/pages/Forbidden.tsx`, `src/pages/NotFound.tsx`, `src/App.tsx`, `src/types/index.ts`
 
 ---
 
@@ -23,7 +22,7 @@ Verified in code on 2026-08-06:
 
 | Location | What happens today |
 |---|---|
-| `Login.tsx:56`, `Login.tsx:96`, `Landing.tsx:60` | always `navigate('/dashboard', { replace: true })` — authority is never consulted, so a membership-only admin lands on the platform Dashboard |
+| `Login.tsx:56`, `Login.tsx:96`, `Landing.tsx:60` | always `navigate('/dashboard', { replace: true })` — authority is never consulted, so a membership-only admin lands on the platform Dashboard. Fixed downstream by §4.1, not here — see §6.3 for why these three lines stay untouched |
 | `App.tsx:73` `/dashboard` | bare `<PrivateRoute>` — no permission, no gate at all |
 | `App.tsx:329` `/profile` | bare `<PrivateRoute>`, and `Profile.tsx:285` / `Profile.tsx:359` hardcode `<Layout>` — the platform shell, with no route back to `/cluster-admin` |
 | `platformNav.ts:8` | the Dashboard nav item carries **no `permission`**, so it renders for everyone — a membership-only admin's sidebar is one link to a page they cannot use |
@@ -228,12 +227,23 @@ destination.
 `Forbidden.tsx:9-17`'s header comment claims the shell is unconditional because both entry paths
 guarantee an authenticated user. That stays true — only the destination changes, not the shell.
 
-### 6.3 Entry points
+### 6.3 Entry points stay as they are
 
-`Login.tsx:56`, `Login.tsx:96`, and `Landing.tsx:60` route to the same computed `home`.
+`Login.tsx:56`, `Login.tsx:96`, and `Landing.tsx:60` keep navigating to `/dashboard`. An earlier
+draft of this spec had them compute `home` too; that is wrong, and the reason is worth recording.
 
-§4.1 would redirect these users anyway, so this is not what makes the boundary hold — it removes
-a redundant history entry and the frame of platform chrome before the redirect fires.
+`Login.tsx:96` runs in the same tick as the `login()` that just resolved. The `hasPlatformAuthority`
+this component closed over is the *pre-login* value — `false` for everyone, since
+`effectivePermissions` was null a moment ago — so a platform admin would be sent to
+`/cluster-admin`. `Landing.tsx:60` has a milder version of the same hole: a session restored with
+no cached `effectivePermissions` reads `false` while the fetch is still in flight.
+
+§4.1 has no such problem because it is the only place that *waits*: it holds the loader until
+`adminScope` resolves and re-renders when the permissions land, so it decides once, on complete
+data. Adding a second decision point upstream can only be wrong more often than it is right.
+
+The cost is one extra `<Navigate replace>` — invisible, and `replace` leaves no history entry.
+`<Dashboard>` never mounts, so the unscoped list requests it would fire are not issued either.
 
 ---
 
@@ -243,7 +253,7 @@ a redundant history entry and the frame of platform chrome before the redirect f
 - `AuthContext.applyEffectivePermissions` (`AuthContext.tsx:71-82`) loses the `isDev` branch and
   becomes a plain setter: store the value, or clear the key when null.
 - `isDev` stays imported — `AuthContext.tsx:213` still uses it for verbose login errors.
-- Five test files mention the constant **in comments only**
+- Four test files mention the constant **in comments only**
   (`ApplicationManagement.test.tsx:37,112`, `ReportTemplateManagement.test.tsx:37,100`,
   `RoleManagement.test.tsx:39,110`, `UserManagement.test.tsx:95`) — no imports, no behavioural
   coupling. Update the comments to describe the permission set directly.
@@ -273,8 +283,21 @@ Per the working preference in `~/.claude/CLAUDE.md` the implementation plan carr
 test-authoring steps. Static checks and manual verification still apply.
 
 **Static:** `bun run typecheck`, `bun run lint`, `bun run test` — the existing suite must stay
-green. `PrivateRoute`, `Layout`, `Breadcrumbs`, and `AuthContext` all have co-located tests that
-will catch a regression.
+green.
+
+Three existing specs mock `useAuth` with a partial object and will need their fixture widened,
+because a field this spec adds reads back as `undefined` (falsy) from those mocks:
+
+| Spec | Why it breaks | Fixture change |
+|---|---|---|
+| `PrivateRoute.test.tsx:6-11` | `hasPlatformAuthority` undefined enters the new branch | add `hasPlatformAuthority: true` |
+| `NotFound.test.tsx:17` | asserts `navigate('/dashboard')` at `:72` and `:89` | add `hasPlatformAuthority: true` |
+| `Forbidden.test.tsx` | mocks **no** AuthContext at all — `Forbidden` gains a `useAuth()` call and would throw "useAuth must be used within an AuthProvider" | add the `vi.mock('../context/AuthContext', …)` block, matching `NotFound.test.tsx:17-18` |
+
+`Login.test.tsx` and `Landing.test.tsx` are untouched — §6.3 leaves both pages alone.
+
+These are fixture repairs to keep the suite green, not new test coverage. The redirect itself is
+covered by the browser checks below.
 
 **Browser, signed in as a membership-only cluster admin (no platform role row):**
 
