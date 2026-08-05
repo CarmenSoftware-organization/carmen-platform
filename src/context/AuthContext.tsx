@@ -88,9 +88,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * Resolve which clusters this user administers.
    *
-   * Deliberately has no dev-mock fallback, unlike fetchEffectivePermissions. A mock here would
-   * hand every dev session admin rights over every cluster and hide exactly the scoping bugs
-   * this value exists to surface. A failed fetch means "administers nothing".
+   * No dev-mock fallback — a mock here would hand every dev session admin rights over every
+   * cluster and hide exactly the scoping bugs this value exists to surface. A failed fetch means
+   * "administers nothing".
    */
   const fetchAdminScope = async (): Promise<AdminScope | null> => {
     try {
