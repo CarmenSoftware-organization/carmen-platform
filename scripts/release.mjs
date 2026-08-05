@@ -18,6 +18,11 @@ import {
 
 const LEVELS = ['patch', 'minor', 'major'];
 
+// Compared against when the current branch has no @{upstream} — a branch made with
+// `git switch -c chore/release-x` never has one, and that is the documented release
+// workflow. A remote-tracking ref, so reading it still never runs `git fetch`.
+const FALLBACK_REMOTE_REF = 'refs/remotes/origin/main';
+
 // Resolved from this file, not from process.cwd(), so the script works from anywhere.
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGE_JSON = join(root, 'package.json');
@@ -40,9 +45,10 @@ function git(...args) {
 
 /**
  * git() variant that returns null instead of exiting. Needed for checks that can
- * fail legitimately — @{upstream} when no upstream is configured — where that
- * failure must not abort. stderr is suppressed because this path prints its own
- * message and git's raw error would only be noise.
+ * fail legitimately — @{upstream} when no upstream is configured, or origin/main
+ * when there is no remote — where that failure must not abort. stderr is
+ * suppressed because these paths print their own message and git's raw error
+ * would only be noise.
  */
 function tryGit(...args) {
   try {
@@ -102,6 +108,7 @@ function previewVersions(current) {
   }
 }
 
+/** Returns the branch name so the success block can vary the push order by it. */
 function assertBranchAndTree() {
   const branch = git('branch', '--show-current');
   if (branch !== 'main' && !branch.startsWith('chore/release-')) {
@@ -116,25 +123,47 @@ function assertBranchAndTree() {
     process.exit(1);
   }
   console.log('▸ working tree .... clean ✓');
+
+  return branch;
+}
+
+/**
+ * Picks the ref this branch must not be behind. @{upstream} when configured;
+ * otherwise origin/main, because the prescribed workflow (`git switch -c
+ * chore/release-x`) produces a branch with no upstream, and skipping the check
+ * there would leave the guard inert on the primary release path. Both are
+ * remote-tracking refs read as-is — never `git fetch`. Returns null only when
+ * neither resolves (no remote at all), which is a genuine skip.
+ */
+function resolveCompareRef() {
+  const upstream = tryGit('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}');
+  if (upstream !== null) return { rev: '@{upstream}', label: upstream, fallback: false };
+
+  if (tryGit('rev-parse', '--verify', '--quiet', FALLBACK_REMOTE_REF) === null) return null;
+  return { rev: FALLBACK_REMOTE_REF, label: 'origin/main', fallback: true };
 }
 
 /**
  * Uses only already-fetched remote-tracking refs — never runs git fetch. Being
- * ahead of upstream is normal. Being behind means the tag would land on a commit
+ * ahead of the ref is normal. Being behind means the tag would land on a commit
  * that git push rejects as non-fast-forward, and the intuitive fix
  * (git pull --rebase) moves the release commit out from under its own tag.
  */
 function assertUpToDate() {
-  const upstream = tryGit('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}');
-  if (upstream === null) {
+  const compare = resolveCompareRef();
+  if (compare === null) {
     console.log('▸ upstream ........ skip (ไม่มี upstream) ✓');
     return;
   }
-  const behind = Number(git('rev-list', '--count', 'HEAD..@{upstream}'));
+
+  const behind = Number(git('rev-list', '--count', `HEAD..${compare.rev}`));
   if (behind !== 0) {
-    fail(`local อยู่หลัง ${upstream} ${behind} commit — git pull ก่อนรันซ้ำ`);
+    const hint = compare.fallback ? `git merge ${compare.label}` : 'git pull';
+    fail(`local อยู่หลัง ${compare.label} ${behind} commit — ${hint} ก่อนรันซ้ำ`);
   }
-  console.log(`▸ upstream ........ up to date (${upstream}) ✓`);
+
+  const via = compare.fallback ? `${compare.label}, fallback ไม่มี upstream` : compare.label;
+  console.log(`▸ upstream ........ up to date (${via}) ✓`);
 }
 
 /** Runs before the prompt: an empty buffer means the answer would be wasted. */
@@ -254,25 +283,42 @@ function buildRelease(changelog, pkg, level, today) {
   };
 }
 
+/**
+ * A failure part-way through leaves some files rewritten and the rest stale — and
+ * the version-drift guard cannot detect it, because package.json and changelog.json
+ * are written first and stay consistent with each other. So the only safe recovery
+ * is to restore all three, and the operator has to be told that explicitly.
+ */
 function writeRelease(files) {
-  for (const [path, body] of files) writeFileSync(path, body);
+  try {
+    for (const [path, body] of files) writeFileSync(path, body);
+  } catch (err) {
+    console.error(`✗ เขียนไฟล์ release ไม่สำเร็จ: ${err.message}`);
+    console.error('  บางไฟล์อาจถูกเขียนไปแล้ว — กู้คืนทั้งสามไฟล์ก่อนรันซ้ำ:');
+    console.error(`    git restore ${RELEASE_FILES.join(' ')}`);
+    process.exit(1);
+  }
 }
 
-/** Explicit pathspecs — never `git add -A`, the release commit is exactly 3 files. */
+/**
+ * `git commit --only -- <pathspecs>` commits exactly these three files and leaves
+ * anything else in the index untouched. A bare `git commit` would sweep in whatever
+ * the operator staged while the gates were running — the clean-tree guard only closes
+ * that window up to guard time, not through the prompt and the three gates.
+ * `--only` also takes the paths straight from the working tree, so no `git add` first.
+ */
 function commitAndTag(version) {
   const tag = `v${version}`;
 
-  const add = spawnSync('git', ['add', '--', ...RELEASE_FILES], { cwd: root, stdio: 'inherit' });
-  if (add.status !== 0) fail('git add ล้มเหลว — ตรวจ git status');
-
-  const commit = spawnSync('git', ['commit', '-m', `chore(release): ${tag}`], {
-    cwd: root,
-    stdio: 'inherit',
-  });
+  const commit = spawnSync(
+    'git',
+    ['commit', '--only', '-m', `chore(release): ${tag}`, '--', ...RELEASE_FILES],
+    { cwd: root, stdio: 'inherit' },
+  );
   if (commit.status !== 0) {
-    console.error('✗ git commit ล้มเหลว — ไฟล์ต่อไปนี้ถูกเขียนและ stage ไว้แล้ว:');
+    console.error('✗ git commit ล้มเหลว — ไฟล์ต่อไปนี้ถูกเขียนไว้แล้ว แต่ยังไม่ได้ commit:');
     for (const file of RELEASE_FILES) console.error(`    ${file}`);
-    console.error(`  กู้คืนด้วย: git restore --staged --worktree ${RELEASE_FILES.join(' ')}`);
+    console.error(`  กู้คืนด้วย: git restore ${RELEASE_FILES.join(' ')}`);
     process.exit(commit.status ?? 1);
   }
 
@@ -286,10 +332,30 @@ function commitAndTag(version) {
   return tag;
 }
 
+/**
+ * On main the tag rides along with the commit it names, so pushing both at once is
+ * safe. On chore/release-* the commit still has to survive a PR merge first: this
+ * repo allows squash merges, and a squash rewrites the release commit, stranding an
+ * already-pushed tag on an object that never reaches main.
+ */
+function printNextSteps(branch, tag) {
+  console.log('');
+  if (branch === 'main') {
+    console.log(`→ ขั้นต่อไป: git push origin HEAD && git push origin ${tag}`);
+    return;
+  }
+  console.log('→ ขั้นต่อไป (ปล่อยจาก chore/release-* — push tag เป็นขั้นสุดท้าย):');
+  console.log('    1) git push origin HEAD');
+  console.log('    2) เปิด PR');
+  console.log('    3) merge PR ด้วย merge commit');
+  console.log(`    4) git push origin ${tag}`);
+  console.log('  ⚠ ห้าม squash merge — squash เขียน commit ใหม่ ทำให้ tag ชี้ commit ที่ไม่อยู่ใน main');
+}
+
 async function main() {
   const { changelog, pkg, current } = readState();
   const preview = previewVersions(current);
-  assertBranchAndTree();
+  const branch = assertBranchAndTree();
   assertUpToDate();
   assertReleasable(changelog);
 
@@ -314,8 +380,17 @@ async function main() {
   console.log(`  commit  chore(release): ${tag}`);
   console.log(`  tag     ${tag} (annotated)`);
   console.log(`  files   ${RELEASE_FILES.join(', ')}`);
-  console.log('');
-  console.log(`→ ขั้นต่อไป: git push origin HEAD && git push origin ${tag}`);
+  printNextSteps(branch, tag);
 }
 
-await main();
+// Every expected failure exits through fail() or its own message. This catches the
+// rest — a readline stream error inside promptLevel, say — so an operator sees what
+// to check instead of an unhandled rejection.
+try {
+  await main();
+} catch (err) {
+  console.error(`✗ release ล้มเหลวโดยไม่คาดคิด: ${err?.message ?? err}`);
+  console.error('  ตรวจด้วย git status --short — ถ้าไฟล์ release ถูกแก้ไปแล้ว กู้คืนด้วย:');
+  console.error(`    git restore ${RELEASE_FILES.join(' ')}`);
+  process.exit(1);
+}
