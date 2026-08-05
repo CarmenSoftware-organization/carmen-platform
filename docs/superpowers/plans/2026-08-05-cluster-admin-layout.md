@@ -1633,3 +1633,50 @@ Compare `window.innerWidth` against `window.outerWidth`.
 
 Report: the typecheck/lint result, the test count, and each browser step as pass or fail with
 what was observed. Do not claim completion for any step that was not actually run.
+
+---
+
+## Before merge / before deploy
+
+Written after execution. Everything here came out of review, not the original plan.
+
+### 1. The backend must land first
+
+`../carmen-turborepo-backend-v2` branch `feature/cluster-admin-authz-and-scope` is complete and
+reviewed but **not merged and not deployed**. Until it is live on DEV, `GET /api-system/me/admin-clusters`
+does not exist and the two cluster routes still carry their old platform-permission guards — so
+this branch's Task 11 browser steps (spec §8, steps 4-11) have **never been run**. They are owed.
+That backend plan carries its own Deploy Runbook; read it too.
+
+### 2. One finding closed by reasoning, not by observation
+
+`InviteUserDialog`'s 409 discriminator distinguishes `INVITATION_ALREADY_MEMBER` from
+`INVITATION_ALREADY_PENDING` using `data?.code ?? data?.error?.code` OR'd with a message regex.
+That shape was derived from the backend source and from this repo's own scar tissue in
+`src/utils/docVersion.ts:26-34`, where the gateway was found to remap error `code` and a message
+check became load-bearing. It has **not** been checked against a live 409. Do that during browser
+verification: invite an address that already has a pending invitation and confirm the admin lands
+on the **Invitations** tab, not on an empty Members search.
+
+### 3. A backend gap this branch worked around rather than fixed
+
+`GET /api-system/user/clusters/:cluster_id` hard-filters `is_active: true` and does not return the
+field (`micro-cluster/src/cluster/cluster/cluster.service.ts:694-709`). The members table therefore
+has **no Status column and no activate/deactivate action** — deactivating would make the row vanish
+from a list that cannot show inactive members, with no way back. If cluster admins need to suspend
+a member rather than remove them, the endpoint must return `is_active` and accept a filter first.
+
+### 4. Known cosmetic residue
+
+- While the mobile navigation Sheet is open, two `ClusterSwitcher` instances are mounted — the
+  pre-existing `display:none` one in the breadcrumb bar and the live one in the drawer. Reviewed
+  and judged harmless: the hidden copy is unfocusable, excluded from the accessibility tree, and
+  its only side effect is a duplicate idempotent GET that fires solely for admins of more than
+  100 clusters. Worth revisiting if `ClusterSwitcher` ever gains real side effects.
+- `BusinessUnitForm.tsx` is 649 lines, ~8% over this repo's Edit-page guidance. Reviewed and
+  judged acceptable: orchestration and markup are cleanly separated and the heavy sections are
+  already reused from `businessUnitEdit/sections/`. The seam, if it grows, is
+  `src/pages/clusterAdmin/businessUnitForm/sections/`.
+- List-view `localStorage` keys are not scoped per cluster. The sharpest edge is `page_`:
+  switching to a cluster with fewer pages restores the old page number, the server returns an
+  empty page, and the empty state offers no pagination control to escape.
