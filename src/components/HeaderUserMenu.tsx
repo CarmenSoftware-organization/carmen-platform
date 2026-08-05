@@ -39,7 +39,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
         <Button
           variant="ghost"
           size="icon"
-          className={cn('rounded-full', compact && 'h-10 w-10')}
+          className={cn('rounded-full', compact && 'h-11 w-11')}
           aria-label={`User menu — ${userInfo.displayName}`}
         >
           <Avatar className={compact ? 'h-8 w-8' : 'h-7 w-7'}>
