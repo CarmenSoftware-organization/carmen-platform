@@ -45,6 +45,10 @@ beforeEach(() => {
   auth.loading = false;
   auth.isSuperAdmin = false;
   auth.hasPermission = vi.fn(() => true);
+  auth.hasPlatformAuthority = true;
+  auth.hasClusterAdminScope = false;
+  auth.adminScope = { all: false, clusters: [] };
+  auth.effectivePermissions = { is_super_admin: false, platform: [], clusters: {} };
 });
 
 describe('PrivateRoute', () => {

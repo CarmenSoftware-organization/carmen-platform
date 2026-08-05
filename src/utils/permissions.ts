@@ -60,5 +60,5 @@ export function checkPermission(
  */
 export function checkPlatformAuthority(eff: EffectivePermissions | null | undefined): boolean {
   if (!eff) return false;
-  return eff.is_super_admin || eff.platform.length > 0 || Object.keys(eff.clusters ?? {}).length > 0;
+  return eff.is_super_admin || (eff.platform?.length ?? 0) > 0 || Object.keys(eff.clusters ?? {}).length > 0;
 }

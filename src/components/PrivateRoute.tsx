@@ -60,9 +60,12 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
     if (hasClusterAdminScope) {
       return <Navigate to="/cluster-admin" replace />;
     }
-    // Neither authority. Normally unreachable — the login gate refuses this user — but a stale
-    // localStorage session can produce it, and three routes carry no permission to fall through to.
-    return <Forbidden />;
+    // Neither authority. Deliberately falls through rather than returning <Forbidden /> here:
+    // `hasPlatformAuthority` also reads false while `userCount` is still in flight — it is never
+    // cached, so every cold reload passes through that state — and returning here would 403 a
+    // bootstrap administrator on the page they exist to set up, permanently if that one request
+    // fails. Falling through reproduces the pre-guard behaviour for a state the login gate
+    // already refuses to create.
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {

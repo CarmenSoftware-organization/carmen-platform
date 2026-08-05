@@ -19,8 +19,12 @@ import { useBackOrFallback } from '../hooks/useBackOrFallback';
  */
 const Forbidden: React.FC = () => {
   const navigate = useNavigate();
-  const { hasPlatformAuthority } = useAuth();
-  const home = hasPlatformAuthority ? '/dashboard' : '/cluster-admin';
+  const { hasPlatformAuthority, hasClusterAdminScope } = useAuth();
+  // Only a user who is *confined* to the cluster-admin space goes there. A user with neither
+  // authority would land on the picker's "No clusters to administer" empty state — a second dead
+  // end — and can reach the dashboard.
+  const isClusterAdminOnly = !hasPlatformAuthority && hasClusterAdminScope;
+  const home = isClusterAdminOnly ? '/cluster-admin' : '/dashboard';
   const goBack = useBackOrFallback(home);
 
   return (
@@ -38,10 +42,10 @@ const Forbidden: React.FC = () => {
               Go Back
             </Button>
             <Button variant="ghost" onClick={() => navigate(home)}>
-              {hasPlatformAuthority
-                ? <LayoutDashboard className="mr-2 h-4 w-4" />
-                : <Network className="mr-2 h-4 w-4" />}
-              {hasPlatformAuthority ? 'Go to Dashboard' : 'Go to Cluster Admin'}
+              {isClusterAdminOnly
+                ? <Network className="mr-2 h-4 w-4" />
+                : <LayoutDashboard className="mr-2 h-4 w-4" />}
+              {isClusterAdminOnly ? 'Go to Cluster Admin' : 'Go to Dashboard'}
             </Button>
           </>
         }
