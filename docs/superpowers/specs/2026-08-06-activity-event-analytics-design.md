@@ -128,7 +128,7 @@ platform-analytics/
   "daily":        [{ "day": "2026-08-01", "clicks": 402, "page_views": 118,
                      "sessions": 24, "users": 11 }],
   "top_pages":    [{ "page_path": "/procurement/purchase-request",
-                     "clicks": 3120, "sessions": 210, "users": 30 }],
+                     "events": 3120, "sessions": 210, "users": 30 }],
   "top_elements": [{ "element_id": "pr.submit", "element_text": "ส่งอนุมัติ",
                      "page_path": "/procurement/purchase-request", "clicks": 1204 }]
 }
@@ -138,6 +138,8 @@ platform-analytics/
   (`event_type` มีแค่ 2 ค่า); `sessions` / `users` เป็น `COUNT(DISTINCT ...)` ของทั้งช่วง
   ไม่ใช่ผลรวมรายวัน — ค่ารวมจึงน้อยกว่าผลบวกคอลัมน์ในกราฟเสมอ ซึ่งถูกต้อง
 - `top_pages` / `top_elements` จำกัด **10 อันดับ** ต่อชุด
+- `top_pages` จัดอันดับด้วย `events` (event ทั้งหมดบนหน้านั้น) และแสดง `events` เป็นความยาวแท่ง —
+  ไม่ใช้ `clicks` เพราะถ้าผู้ใช้กรอง `event_type = page_view` แท่งจะเป็น 0 ทุกอันขณะที่ลำดับยังเรียงอยู่
 - `top_elements` **จัดอันดับด้วย `element_id`** ไม่ใช่ `element_text` — เพราะ `element_text`
   derive มาจาก text บนปุ่มซึ่งเปลี่ยนตาม locale ผู้ใช้ (spec Phase 1 เตือนไว้);
   `element_text` ที่ส่งกลับคือค่าที่พบบ่อยที่สุดของ `element_id` นั้น ใช้เป็นคำอธิบายรอง
