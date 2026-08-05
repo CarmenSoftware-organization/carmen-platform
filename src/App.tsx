@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
+import ClusterAdminRoute from "./components/ClusterAdminRoute";
 import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
 import Landing from "./pages/Landing";
@@ -38,6 +39,11 @@ const UserPlatformManagement = lazy(() => import("./pages/UserPlatformManagement
 const UserPlatformEdit = lazy(() => import("./pages/UserPlatformEdit"));
 const SqlWorkbench = lazy(() => import("./pages/sqlWorkbench/SqlWorkbench"));
 const EmailSettingManagement = lazy(() => import("./pages/EmailSettingManagement"));
+const ClusterAdminEntry = lazy(() => import("./pages/clusterAdmin/ClusterAdminEntry"));
+const ClusterProfile = lazy(() => import("./pages/clusterAdmin/ClusterProfile"));
+const ClusterAdminBusinessUnitList = lazy(() => import("./pages/clusterAdmin/BusinessUnitList"));
+const ClusterAdminBusinessUnitForm = lazy(() => import("./pages/clusterAdmin/BusinessUnitForm"));
+const ClusterAdminUsers = lazy(() => import("./pages/clusterAdmin/ClusterUsers"));
 
 const RouteLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -334,6 +340,30 @@ function AppContent() {
                   <Forbidden />
                 </PrivateRoute>
               }
+            />
+            <Route
+              path="/cluster-admin"
+              element={<PrivateRoute><ClusterAdminEntry /></PrivateRoute>}
+            />
+            <Route
+              path="/cluster-admin/:clusterId/cluster"
+              element={<ClusterAdminRoute><ClusterProfile /></ClusterAdminRoute>}
+            />
+            <Route
+              path="/cluster-admin/:clusterId/business-units"
+              element={<ClusterAdminRoute><ClusterAdminBusinessUnitList /></ClusterAdminRoute>}
+            />
+            <Route
+              path="/cluster-admin/:clusterId/business-units/new"
+              element={<ClusterAdminRoute><ClusterAdminBusinessUnitForm /></ClusterAdminRoute>}
+            />
+            <Route
+              path="/cluster-admin/:clusterId/business-units/:buId/edit"
+              element={<ClusterAdminRoute><ClusterAdminBusinessUnitForm /></ClusterAdminRoute>}
+            />
+            <Route
+              path="/cluster-admin/:clusterId/users"
+              element={<ClusterAdminRoute><ClusterAdminUsers /></ClusterAdminRoute>}
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
