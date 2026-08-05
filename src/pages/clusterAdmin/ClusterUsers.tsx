@@ -5,6 +5,8 @@ import { UserPlus } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import ClusterAccessLost from './ClusterAccessLost';
 import MembersTable from './MembersTable';
+import InvitationsTable from './InvitationsTable';
+import InviteUserDialog from './InviteUserDialog';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
@@ -12,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { SearchInput } from '../../components/SearchInput';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import clusterService from '../../services/clusterService';
+import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
-import type { ClusterUser } from '../../types';
+import type { ClusterInvitation, ClusterUser } from '../../types';
 
 /**
  * Cluster membership + invitations, scoped to a single administered cluster (the URL's
@@ -29,6 +32,10 @@ const ClusterUsers: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [accessLost, setAccessLost] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [invitations, setInvitations] = useState<ClusterInvitation[]>([]);
+  const [invitationsLoading, setInvitationsLoading] = useState(true);
+  const [rawInvitationsResponse, setRawInvitationsResponse] = useState<unknown>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     if (!clusterId) return;
@@ -38,6 +45,7 @@ const ClusterUsers: React.FC = () => {
       setRawResponse(data);
       const items = data.data || data;
       setMembers(Array.isArray(items) ? items : []);
+      setAccessLost(false);
     } catch (err: unknown) {
       // A 403 here means the admin membership was revoked while this page was open — the guard
       // decided once, at mount. An empty member list would read as "this cluster has no members".
@@ -54,9 +62,38 @@ const ClusterUsers: React.FC = () => {
     }
   }, [clusterId]);
 
+  const fetchInvitations = useCallback(async () => {
+    if (!clusterId) return;
+    setInvitationsLoading(true);
+    try {
+      const data = await clusterAdminService.listInvitations(clusterId, { perpage: 100 });
+      setRawInvitationsResponse(data);
+      const items = data.data || data;
+      setInvitations(Array.isArray(items) ? items : []);
+    } catch (err: unknown) {
+      // Same access guard as members (see above) — the members fetch already surfaces
+      // ClusterAccessLost for a 403, so this stays silent instead of piling on a second toast.
+      if ((err as { response?: { status?: number } })?.response?.status === 403) {
+        setInvitations([]);
+        return;
+      }
+      const { message } = parseApiError(err);
+      toast.error('Failed to load invitations', { description: message });
+      setInvitations([]);
+    } finally {
+      setInvitationsLoading(false);
+    }
+  }, [clusterId]);
+
   useEffect(() => {
     fetchMembers();
-  }, [fetchMembers]);
+    fetchInvitations();
+  }, [fetchMembers, fetchInvitations]);
+
+  const handleAlreadyMember = (email: string) => {
+    setTab('members');
+    setMemberSearch(email);
+  };
 
   return (
     <ClusterAdminLayout>
@@ -65,7 +102,7 @@ const ClusterUsers: React.FC = () => {
           title="Users"
           subtitle="Manage members and pending invitations for this cluster"
           actions={
-            <Button size="sm" onClick={() => { /* Task 9 wires this to the invite dialog */ }}>
+            <Button size="sm" onClick={() => setInviteOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
               Invite user
             </Button>
@@ -78,7 +115,7 @@ const ClusterUsers: React.FC = () => {
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'invitations')}>
             <TabsList>
               <TabsTrigger value="members">Members ({members.length})</TabsTrigger>
-              <TabsTrigger value="invitations">Invitations (0)</TabsTrigger>
+              <TabsTrigger value="invitations">Invitations ({invitations.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="members">
@@ -93,7 +130,6 @@ const ClusterUsers: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <MembersTable
-                    clusterId={clusterId ?? ''}
                     members={members}
                     loading={loading}
                     searchTerm={memberSearch}
@@ -105,8 +141,13 @@ const ClusterUsers: React.FC = () => {
 
             <TabsContent value="invitations">
               <Card>
-                <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                  Invitations coming soon.
+                <CardContent>
+                  <InvitationsTable
+                    clusterId={clusterId ?? ''}
+                    invitations={invitations}
+                    loading={invitationsLoading}
+                    onChanged={fetchInvitations}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -114,7 +155,21 @@ const ClusterUsers: React.FC = () => {
         )}
       </div>
 
-      <DevDebugSheet title="Cluster Members" endpoint={`GET /api-system/user/clusters/${clusterId}`} data={rawResponse} />
+      <InviteUserDialog
+        clusterId={clusterId ?? ''}
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        onInvited={fetchInvitations}
+        onAlreadyMember={handleAlreadyMember}
+      />
+
+      <DevDebugSheet
+        title="Cluster Users"
+        tabs={[
+          { key: 'members', label: 'Members', endpoint: `GET /api-system/user/clusters/${clusterId}`, data: rawResponse },
+          { key: 'invitations', label: 'Invitations', endpoint: `GET /api-system/clusters/${clusterId}/invitations`, data: rawInvitationsResponse },
+        ]}
+      />
     </ClusterAdminLayout>
   );
 };

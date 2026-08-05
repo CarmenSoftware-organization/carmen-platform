@@ -28,7 +28,6 @@ function displayName(member: ClusterUser): string {
 }
 
 interface MembersTableProps {
-  clusterId: string;
   members: ClusterUser[];
   loading: boolean;
   /** Narrows the already-loaded rows. Task 9 sets this when a duplicate invitation is rejected. */
@@ -37,10 +36,9 @@ interface MembersTableProps {
 }
 
 /**
- * Cluster membership table for the cluster-admin Users page. `clusterId` isn't needed for the
- * writes below — the membership row id (`member.id`) already scopes `updateClusterUser` /
- * `deleteClusterUser` to the right record — it's accepted for parity with the parent's fetch
- * scope and any future per-cluster links.
+ * Cluster membership table for the cluster-admin Users page. No `clusterId` prop — the
+ * membership row id (`member.id`) already scopes `updateClusterUser` / `deleteClusterUser` to
+ * the right record, so the writes below never need it.
  */
 const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTerm, onChanged }) => {
   const [removeTarget, setRemoveTarget] = useState<ClusterUser | null>(null);
@@ -110,7 +108,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
       meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
       cell: ({ row }) => (
         <Badge variant="outline" className="text-xs capitalize">
-          {row.original.role || 'user'}
+          {row.original.role ?? 'user'}
         </Badge>
       ),
     },
