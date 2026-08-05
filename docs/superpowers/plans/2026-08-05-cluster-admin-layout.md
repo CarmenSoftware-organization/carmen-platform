@@ -226,9 +226,11 @@ const clusterAdminService = {
 export default clusterAdminService;
 ```
 
-> `getMyAdminClusters` unwraps tolerantly (`response.data?.data ?? response.data`) because the
-> gateway's `Result.ok` envelope wraps the payload, but not every platform route does — the
-> application api-catalog route is a documented exception. Being tolerant costs one `??`.
+> `getMyAdminClusters` reads `response.data` directly — **no** `?? response.data.data` fallback.
+> This route's payload is the envelope: `data`, `paginate`, and `summary` are its top-level keys.
+> The `Array.isArray` guard is the only defence needed. (An earlier draft of this plan described
+> a tolerant double-unwrap copied from `applicationService`; that pattern does not apply here and
+> would read the wrong object.)
 
 - [ ] **Step 3: Type-check and lint**
 
