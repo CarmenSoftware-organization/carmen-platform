@@ -324,7 +324,7 @@ const BusinessUnitList: React.FC = () => {
                     data={items}
                     serverSide
                     tableLayout="auto"
-                    stickyLeftColumns={3}
+                    stickyLeftColumns={2}
                     totalRows={totalRows}
                     page={paginate.page}
                     perpage={paginate.perpage}
@@ -347,7 +347,7 @@ const BusinessUnitList: React.FC = () => {
                   data={items}
                   serverSide
                   tableLayout="auto"
-                  stickyLeftColumns={3}
+                  stickyLeftColumns={2}
                   totalRows={totalRows}
                   page={paginate.page}
                   perpage={paginate.perpage}
