@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Skeleton } from '../../components/ui/skeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import businessUnitService from '../../services/businessUnitService';
+import currencyService from '../../services/currencyService';
 import { validateField } from '../../utils/validation';
 import { getErrorDetail, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
@@ -25,12 +26,17 @@ import CalculationSettingsSection from '../businessUnitEdit/sections/Calculation
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
-import type { BusinessUnitConfig } from '../../types';
+import type { BusinessUnitConfig, TenantCurrency } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
-// Booleans (is_hq/is_active) and arrays (db_connection/config) render through their
-// own dedicated markup instead.
-type TextFieldName = Exclude<keyof BusinessUnitFormData, 'is_hq' | 'is_active' | 'db_connection' | 'config'>;
+// Booleans (is_hq/is_active), arrays (db_connection/config), and the two fields this
+// narrowed page never exposes (cluster_id comes from the URL only; max_license_users is
+// a platform decision) are excluded so the compiler — not just convention — stops any of
+// them from being wired into a text input here.
+type TextFieldName = Exclude<
+  keyof BusinessUnitFormData,
+  'is_hq' | 'is_active' | 'db_connection' | 'config' | 'cluster_id' | 'max_license_users'
+>;
 
 /**
  * A cluster administrator's reach into one business unit — a narrowed Edit page (see
@@ -56,6 +62,10 @@ const BusinessUnitForm: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
+  const [currencies, setCurrencies] = useState<TenantCurrency[] | null>(null);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [currenciesFailed, setCurrenciesFailed] = useState(false);
+  const [currenciesLoadedFor, setCurrenciesLoadedFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(!isNew);
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
@@ -75,6 +85,33 @@ const BusinessUnitForm: React.FC = () => {
     if (!isNew) fetchBusinessUnit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [buId]);
+
+  const loadCurrencies = async (buCode: string) => {
+    setCurrenciesLoading(true);
+    setCurrenciesFailed(false);
+    try {
+      const list = await currencyService.getForBu(buCode);
+      setCurrencies(list);
+      setCurrenciesLoadedFor(buCode);
+    } catch (err) {
+      setCurrenciesFailed(true);
+      if (process.env.NODE_ENV === 'development') console.error('loadCurrencies', err);
+    } finally {
+      setCurrenciesLoading(false);
+    }
+  };
+
+  // Load the tenant currency list once the existing BU's code is known, same gate as
+  // BusinessUnitEdit.tsx. A brand-new BU has no code yet (isNew), so this never fires on
+  // create — CalculationSettingsSection falls back to a plain text input for
+  // default_currency_id until the record exists and a code has been assigned.
+  useEffect(() => {
+    const buCode = formData.code;
+    if (!isNew && buCode && currenciesLoadedFor !== buCode && !currenciesLoading) {
+      loadCurrencies(buCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.code, isNew]);
 
   const toJsonString = (val: unknown, fallback: string): string => {
     if (val === null || val === undefined) return fallback;
@@ -577,9 +614,9 @@ const BusinessUnitForm: React.FC = () => {
           {...sectionField}
           defaultCurrency={defaultCurrency}
           getCalculationMethodLabel={getCalculationMethodLabel}
-          currencies={null}
-          currenciesLoading={false}
-          currenciesFailed={false}
+          currencies={currencies}
+          currenciesLoading={currenciesLoading}
+          currenciesFailed={currenciesFailed}
         />
         <NumberFormatsSection {...sectionField} />
         <ConfigurationSection
