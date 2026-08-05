@@ -34,6 +34,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
     hasPlatformAuthority,
     hasClusterAdminScope,
     adminScope,
+    effectivePermissions,
   } = useAuth();
 
   if (loading) {
@@ -44,7 +45,13 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
     return <Navigate to="/login" replace />;
   }
 
-  if (!hasPlatformAuthority) {
+  // `hasPlatformAuthority` reads false both for a user who genuinely has none and for a session
+  // whose permissions have not resolved — or whose fetch failed, which nulls the value and drops
+  // its cache. Only the first is a boundary decision. Requiring a resolved payload keeps a
+  // transient fetch failure from ejecting a platform admin into the cluster-admin space for the
+  // rest of the session, with no way back: the degraded session falls through to the checks below
+  // instead, which is exactly how it behaved before this guard existed.
+  if (effectivePermissions !== null && !hasPlatformAuthority) {
     // Still resolving. Rendering the page for even one frame mounts it — for /dashboard that
     // means a burst of platform-wide list requests that all 403.
     if (adminScope === null) {
@@ -54,7 +61,8 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
       return <Navigate to="/cluster-admin" replace />;
     }
     // Neither authority. Normally unreachable — the login gate refuses this user — but a stale
-    // localStorage session can produce it. Fall through to <Forbidden /> below.
+    // localStorage session can produce it, and three routes carry no permission to fall through to.
+    return <Forbidden />;
   }
 
   if (requiredPermission && !hasPermission(requiredPermission)) {
