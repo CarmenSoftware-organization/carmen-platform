@@ -46,10 +46,16 @@ describe('Changelog', () => {
     const user = userEvent.setup();
     renderChangelog();
     const box = screen.getByRole('searchbox');
-    // "Broadcast" only occurs inside a v0.1.0 changelog entry — not in any version
+    // "Broadcast" only occurs inside one version's entries — not in any version
     // number or category name — so a match here proves entry text is searched.
+    // Resolve that version by content, not by index: every release prepends an
+    // entry, which shifts a hardcoded index onto the wrong version.
+    const match = changelogData.versions.find((v) =>
+      JSON.stringify(v.changes).toLowerCase().includes('broadcast')
+    );
+    if (!match) throw new Error('changelog.json no longer contains a "broadcast" entry');
     await user.type(box, 'broadcast');
-    expect(await screen.findByText(`v${changelogData.versions[1].version}`)).toBeInTheDocument();
+    expect(await screen.findByText(`v${match.version}`)).toBeInTheDocument();
     expect(screen.queryByText(`v${changelogData.versions[0].version}`)).not.toBeInTheDocument();
   });
 
