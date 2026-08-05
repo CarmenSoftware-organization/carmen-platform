@@ -111,8 +111,19 @@ Answers "which clusters do I administer" in one small call.
 
 ```
 GET /api-system/me/admin-clusters?search=&page=&perpage=
-→ { all: boolean, data: [{ id, name, code, is_active }], paginate: { total, page, perpage } }
+→ { data: [{ id, name, code, is_active }],
+    paginate: { total, page, perpage, pages },
+    summary: { all: boolean } }
 ```
+
+**Why `all` sits inside `summary`.** Corrected 2026-08-05 during implementation, after a review
+traced the response through the gateway. `BaseHttpController.respond` always calls
+`StdResponse.fromResult`, which duck-types a paginated payload as
+`'paginate' in value && 'data' in value && Array.isArray(value.data)` and then rebuilds the body
+from `data` and `paginate` alone — **silently dropping every other top-level key**. A flat
+`{ all, data, paginate }` matches that test on every call, so `all` never reached the client.
+`summary` is the one extra key the envelope explicitly preserves, so it is the channel that
+works without modifying a serializer every gateway controller shares.
 
 - Backed directly by `ClusterAdminAuthzService.adminClusterScope(user_id)`.
 - `all: true` for platform super admins — `data` then carries a searchable page of all
@@ -335,8 +346,16 @@ Edit-page pattern. **Reuses `src/pages/clusterEdit/sections/DetailsSection.tsx` 
 Dropped: the BU section, the Users section, the Delete action.
 
 One targeted change to `DetailsSection`: a new optional `canEditLicensing?: boolean`
-(defaulting to `canEdit`) so the licensing fields render read-only for a cluster admin,
+(defaulting to `canEdit`) so the licensing field renders read-only for a cluster admin,
 matching what B5 strips server-side. A control the server will ignore must not look editable.
+
+**Which field, exactly.** Only `max_license_bu`. Corrected 2026-08-05 during backend
+implementation: `max_license_users` is a **business-unit** column
+(`schema.prisma:133`), not a cluster one — the cluster-level number is
+`total_max_license_users`, a computed `groupBy` aggregate that is already read-only. The
+frontend's cluster form matches that reality and renders only `max_license_bu`
+(`DetailsSection.tsx:60`). B5's strip list names `max_license_users` too, which is inert
+but harmless as defence in depth.
 
 `doc_version` is threaded per **CLAUDE.md rule 17** — dedicated `docVersion` state, never in
 `formData`, sent only when the GET returned one, `409` → `notifyVersionConflict()` + refetch.

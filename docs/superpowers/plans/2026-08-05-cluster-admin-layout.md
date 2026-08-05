@@ -173,9 +173,12 @@ const clusterAdminService = {
       paginate.advance,
     );
     const response = await api.get(`/api-system/me/admin-clusters?${q.toQueryString()}`);
-    const body = response.data?.data ?? response.data;
+    const body = response.data;
     return {
-      all: body?.all === true,
+      // `all` travels inside `summary`, not at the top level: the gateway's response envelope
+      // rebuilds any `{ data, paginate }`-shaped payload from those two keys alone and drops
+      // every other top-level field. `summary` is the one extra key it preserves.
+      all: body?.summary?.all === true,
       clusters: Array.isArray(body?.data) ? body.data : [],
     };
   },
@@ -947,9 +950,13 @@ export function DetailsSection({
   const licensingDisabled = !canEditLicensing;
 ```
 
-Then change the `disabled={disabled}` prop to `disabled={licensingDisabled}` on the
-`max_license_bu` and `max_license_users` `InlineField`s only. Leave every other field on
-`disabled`.
+Then change `disabled={disabled}` to `disabled={licensingDisabled}` on the **`max_license_bu`**
+`InlineField` only (`DetailsSection.tsx:60`). Leave every other field on `disabled`.
+
+There is no `max_license_users` field on this form and there should not be one:
+`max_license_users` is a **business-unit** column, and the cluster-level figure is
+`total_max_license_users`, a computed aggregate that is already read-only. An earlier draft of
+this plan named both fields; only the first exists.
 
 - [ ] **Step 2: Write the page**
 
