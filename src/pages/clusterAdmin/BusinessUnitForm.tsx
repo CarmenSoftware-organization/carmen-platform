@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Pencil, Save, X, Loader2, Copy } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
+import ClusterAccessLost from './ClusterAccessLost';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -70,6 +71,7 @@ const BusinessUnitForm: React.FC = () => {
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [accessLost, setAccessLost] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
@@ -126,6 +128,15 @@ const BusinessUnitForm: React.FC = () => {
       const data = await businessUnitService.getById(buId!);
       setRawResponse(data);
       const bu = data.data || data;
+      // A stale bookmark or hand-edited URL can name the wrong cluster for this BU
+      // (/cluster-admin/<A>/business-units/<B's BU>/edit). Every piece of chrome — sidebar,
+      // ClusterSwitcher label, breadcrumbs — keys off the URL's :clusterId, not the loaded
+      // record, so leaving the URL as-is renders this BU under the wrong cluster's shell.
+      // Correct the URL in place; the rest of this function still runs so the page has data
+      // to show immediately instead of sitting on a stale loading state.
+      if (bu.cluster_id && bu.cluster_id !== clusterId) {
+        navigate(`/cluster-admin/${bu.cluster_id}/business-units/${buId}/edit`, { replace: true });
+      }
       const defaultFormat = '{"locales":"th-TH","minimumIntegerDigits":2}';
       const loaded: BusinessUnitFormData = {
         ...initialFormData,
@@ -186,7 +197,15 @@ const BusinessUnitForm: React.FC = () => {
       setLogoUrl(bu.logo?.url || '');
       setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
+      setAccessLost(false);
     } catch (err: unknown) {
+      // A 403 here means the admin membership was revoked while this page was open. Same guard
+      // as BusinessUnitList.tsx / ClusterUsers.tsx.
+      if ((err as { response?: { status?: number } })?.response?.status === 403) {
+        setError('');
+        setAccessLost(true);
+        return;
+      }
       setError('Failed to load business unit: ' + getErrorDetail(err));
     } finally {
       setLoading(false);
@@ -512,6 +531,8 @@ const BusinessUnitForm: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
+        {!error && (accessLost ? <ClusterAccessLost /> : (
+          <>
         <Card>
           <CardHeader>
             <CardTitle>Details</CardTitle>
@@ -634,6 +655,8 @@ const BusinessUnitForm: React.FC = () => {
             onUploadAvatar={handleUploadAvatar}
           />
         )}
+          </>
+        ))}
       </div>
 
       <DevDebugSheet

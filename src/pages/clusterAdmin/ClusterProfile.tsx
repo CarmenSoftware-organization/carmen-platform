@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Pencil, Save, X, Loader2 } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
+import ClusterAccessLost from './ClusterAccessLost';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -22,8 +23,10 @@ import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
  * A cluster administrator's own reach into their cluster's identity and branding — a narrowed
  * Edit page (see ClusterEdit.tsx for the canonical orchestration this mirrors). No business-unit
  * section, no users section, no delete: those live on their own cluster-admin pages/routes.
- * Licensing (`max_license_bu`) is a platform decision, so it renders read-only even in edit mode
- * (`canEditLicensing={false}`) — the backend strips it from a membership admin's update anyway.
+ * Licensing (`max_license_bu`) and `is_active` are platform decisions, so both render read-only
+ * even in edit mode (`canEditPlatformFields={false}`) — the backend strips `max_license_bu`,
+ * `max_license_users`, `is_active`, and `info` from a membership admin's cluster update
+ * silently (no error, just a discarded write).
  */
 const ClusterProfile: React.FC = () => {
   const { clusterId } = useParams<{ clusterId: string }>();
@@ -43,6 +46,7 @@ const ClusterProfile: React.FC = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [accessLost, setAccessLost] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
@@ -73,7 +77,16 @@ const ClusterProfile: React.FC = () => {
       setDocVersion(getDocVersion(cluster));
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
+      setAccessLost(false);
     } catch (err: unknown) {
+      // A 403 here means the admin membership was revoked while this page was open — this is
+      // the /cluster-admin landing page, so both the entry redirect and every switcher
+      // selection land here. Same guard as BusinessUnitList.tsx / ClusterUsers.tsx.
+      if ((err as { response?: { status?: number } })?.response?.status === 403) {
+        setError('');
+        setAccessLost(true);
+        return;
+      }
       setError('Failed to load cluster: ' + getErrorDetail(err));
     } finally {
       setLoading(false);
@@ -226,38 +239,46 @@ const ClusterProfile: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Cluster details</CardTitle>
-            <CardDescription>Identity for this cluster</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DetailsSection
-              formData={formData}
-              fieldErrors={fieldErrors}
-              canEdit={editing}
-              canEditLicensing={false}
-              onCommit={handleCommit}
-              onValidate={handleValidate}
-            />
-          </CardContent>
-        </Card>
+        {!error && (
+          accessLost ? (
+            <ClusterAccessLost />
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cluster details</CardTitle>
+                  <CardDescription>Identity for this cluster</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DetailsSection
+                    formData={formData}
+                    fieldErrors={fieldErrors}
+                    canEdit={editing}
+                    canEditPlatformFields={false}
+                    onCommit={handleCommit}
+                    onValidate={handleValidate}
+                  />
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Branding</CardTitle>
-            <CardDescription>Logo and avatar shown across the platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BrandingSection
-              logoUrl={logoUrl}
-              avatarUrl={avatarUrl}
-              canEdit={editing}
-              onUploadLogo={handleUploadLogo}
-              onUploadAvatar={handleUploadAvatar}
-            />
-          </CardContent>
-        </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Branding</CardTitle>
+                  <CardDescription>Logo and avatar shown across the platform</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BrandingSection
+                    logoUrl={logoUrl}
+                    avatarUrl={avatarUrl}
+                    canEdit={editing}
+                    onUploadLogo={handleUploadLogo}
+                    onUploadAvatar={handleUploadAvatar}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          )
+        )}
       </div>
 
       <DevDebugSheet

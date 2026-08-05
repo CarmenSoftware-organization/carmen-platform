@@ -39,6 +39,14 @@ interface MembersTableProps {
  * Cluster membership table for the cluster-admin Users page. No `clusterId` prop — the
  * membership row id (`member.id`) already scopes `updateClusterUser` / `deleteClusterUser` to
  * the right record, so the writes below never need it.
+ *
+ * No Status column and no Activate/Deactivate action, deliberately: `GET
+ * /api-system/user/clusters/:clusterId` (`cluster.service.ts` on the backend) hard-filters to
+ * `is_active: true` and never selects the column, so `member.is_active` is always `undefined`
+ * here — a Status column could only ever render one value, and every row would show
+ * "Inactive" with an "Activate" action that no-ops. Deactivating would be worse: the row would
+ * vanish from a list that cannot show inactive members, leaving no way to reactivate from this
+ * page. Do not re-add either without the backend first returning `is_active` from this endpoint.
  */
 const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTerm, onChanged }) => {
   const [removeTarget, setRemoveTarget] = useState<ClusterUser | null>(null);
@@ -62,17 +70,6 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
     } catch (err: unknown) {
       const { message } = parseApiError(err);
       toast.error('Failed to update role', { description: message });
-    }
-  }, [onChanged]);
-
-  const handleToggleActive = useCallback(async (member: ClusterUser) => {
-    try {
-      await clusterService.updateClusterUser(member.id, { is_active: !member.is_active });
-      toast.success(member.is_active ? 'Member deactivated' : 'Member activated');
-      onChanged();
-    } catch (err: unknown) {
-      const { message } = parseApiError(err);
-      toast.error('Failed to update member', { description: message });
     }
   }, [onChanged]);
 
@@ -113,16 +110,6 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
       ),
     },
     {
-      accessorKey: 'is_active',
-      header: 'Status',
-      meta: { headerClassName: 'w-28', cellClassName: 'w-28', card: 'badge' },
-      cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
       id: 'actions',
       header: '',
       enableSorting: false,
@@ -147,9 +134,6 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
                   Make {r}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuItem onClick={() => void handleToggleActive(member)} className="cursor-pointer">
-                {member.is_active ? 'Deactivate' : 'Activate'}
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setRemoveTarget(member)}
@@ -163,7 +147,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
         );
       },
     },
-  ], [handleRoleChange, handleToggleActive]);
+  ], [handleRoleChange]);
 
   if (loading && members.length === 0) {
     // +1 accounts for the `#` row-index column DataTable always prepends.

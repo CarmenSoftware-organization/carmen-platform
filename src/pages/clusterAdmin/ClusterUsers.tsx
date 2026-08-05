@@ -95,6 +95,12 @@ const ClusterUsers: React.FC = () => {
     setMemberSearch(email);
   };
 
+  // InvitationsTable has no search box, so there's nothing to seed with the email — the tab
+  // switch alone is the fix (the toast in InviteUserDialog already names the address).
+  const handleAlreadyPending = (_email: string) => {
+    setTab('invitations');
+  };
+
   return (
     <ClusterAdminLayout>
       <div className="space-y-6 sm:space-y-8">
@@ -161,6 +167,7 @@ const ClusterUsers: React.FC = () => {
         onOpenChange={setInviteOpen}
         onInvited={fetchInvitations}
         onAlreadyMember={handleAlreadyMember}
+        onAlreadyPending={handleAlreadyPending}
       />
 
       <DevDebugSheet

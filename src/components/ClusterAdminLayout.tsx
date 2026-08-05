@@ -16,7 +16,11 @@ const ClusterAdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   return (
-    <Layout navItems={navItems} headerSlot={<ClusterSwitcher currentClusterId={clusterId ?? ''} />}>
+    <Layout
+      navItems={navItems}
+      headerSlot={<ClusterSwitcher currentClusterId={clusterId ?? ''} />}
+      brandTo={`/cluster-admin/${clusterId ?? ''}/cluster`}
+    >
       {children}
     </Layout>
   );

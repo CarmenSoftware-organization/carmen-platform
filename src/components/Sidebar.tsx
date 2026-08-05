@@ -22,6 +22,14 @@ interface SidebarProps {
   navItems: NavItem[];
   isMobileOpen: boolean;
   onMobileOpenChange: (open: boolean) => void;
+  /** Where the brand mark navigates to. Defaults to the platform dashboard. */
+  brandTo?: string;
+  /**
+   * Rendered at the top of the mobile navigation Sheet, above the nav items (e.g. the
+   * cluster-admin ClusterSwitcher). The desktop header bar renders the same node separately
+   * (see Layout.tsx) — that copy is `hidden md:flex`, so it never overlaps with this one.
+   */
+  headerSlot?: React.ReactNode;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -30,6 +38,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   navItems,
   isMobileOpen,
   onMobileOpenChange,
+  brandTo = '/dashboard',
+  headerSlot,
 }) => {
   const location = useLocation();
 
@@ -86,7 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           'flex h-16 items-center border-b border-border shrink-0',
           isCollapsed ? 'justify-center px-2' : 'px-4'
         )}>
-          <Link to="/dashboard" className="flex items-center gap-3 group">
+          <Link to={brandTo} className="flex items-center gap-3 group">
             <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
               <span className="text-white font-bold text-lg">C</span>
             </div>
@@ -165,6 +175,11 @@ const Sidebar: React.FC<SidebarProps> = ({
             </SheetTitle>
             <SheetDescription className="sr-only">Main navigation</SheetDescription>
           </SheetHeader>
+          {headerSlot && (
+            <div className="border-b border-border px-4 py-3">
+              {headerSlot}
+            </div>
+          )}
           <nav className="py-2 px-2">
             {navGroups.map((g, gi) => (
               <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>

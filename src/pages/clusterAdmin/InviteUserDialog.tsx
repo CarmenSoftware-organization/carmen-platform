@@ -38,13 +38,16 @@ interface InviteUserDialogProps {
   onInvited: () => void;
   /** Called with the email when the backend reports it already has membership (409). */
   onAlreadyMember: (email: string) => void;
+  /** Called with the email when the backend reports an invitation is already pending (409). */
+  onAlreadyPending: (email: string) => void;
 }
 
 /**
  * Invite-a-user dialog for the cluster-admin Users page. Loads the cluster's business units
  * (same `cluster_id` advance filter as BusinessUnitList) for the per-BU role + default picker,
  * then posts the invitation. See D7 in the task brief for why 409 hands control back to the
- * Members tab instead of just showing an error.
+ * Members or Invitations tab instead of just showing an error — which tab depends on which of
+ * the two reachable 409s came back (see the catch block below).
  */
 const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
   clusterId,
@@ -52,6 +55,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
   onOpenChange,
   onInvited,
   onAlreadyMember,
+  onAlreadyPending,
 }) => {
   const [email, setEmail] = useState('');
   const [clusterRole, setClusterRole] = useState<'admin' | 'user'>('user');
@@ -143,12 +147,37 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
       const status = (err as { response?: { status?: number } })?.response?.status;
       const { message, fields } = parseApiError(err);
       if (status === 409) {
-        // The address is already a member, so the answer is on the Members tab, not here.
-        toast.error('Already a member', {
-          description: `${email} already has membership in this cluster.`,
-        });
-        onOpenChange(false);
-        onAlreadyMember(email);
+        // The backend has two distinct 409s reachable from this endpoint: INVITATION_ALREADY_MEMBER
+        // and INVITATION_ALREADY_PENDING (see user-invitation.service.ts createInvitation —
+        // INVITATION_NOT_PENDING is only reachable from revoke/resend, never from here). Both are
+        // raised via `Result.errorFromCatalog`, so unlike the OptimisticLockError case documented in
+        // src/utils/docVersion.ts (a generically-caught Prisma exception whose catalog code never
+        // survives), the gateway's exception filter recovers the specific catalog code from the RPC
+        // error's `app_code` and threads it through as `error.code` — the shape is checked at both
+        // the top level and nested under `error` since the two documented gateway response shapes in
+        // this codebase disagree on which one is used. The catalog's own English message is checked
+        // too, as a second, independent line of defense — mirroring isVersionConflict's code-OR-message
+        // pattern — so this branch stays correct even if the code doesn't come through as expected.
+        const data = (err as { response?: { data?: { code?: string; error?: { code?: string } } } })
+          ?.response?.data;
+        const code = data?.code ?? data?.error?.code;
+        const isAlreadyPending =
+          code === 'INVITATION_ALREADY_PENDING' || /already pending|no longer pending/i.test(message);
+        if (isAlreadyPending) {
+          // A pending invitation already exists — the answer is on the Invitations tab, not here.
+          toast.error('Invitation already pending', {
+            description: `An invitation to ${email} is already outstanding for this cluster.`,
+          });
+          onOpenChange(false);
+          onAlreadyPending(email);
+        } else {
+          // The address is already a member, so the answer is on the Members tab, not here.
+          toast.error('Already a member', {
+            description: `${email} already has membership in this cluster.`,
+          });
+          onOpenChange(false);
+          onAlreadyMember(email);
+        }
       } else if (status === 429) {
         toast.error('Rate limited', {
           description: 'Invitation rate limit reached. Please try again later.',

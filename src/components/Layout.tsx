@@ -16,11 +16,24 @@ interface LayoutProps {
   children: React.ReactNode;
   /** Omit to render the platform navigation. */
   navItems?: NavItem[];
-  /** Rendered at the left of the desktop header bar, before the account controls. */
+  /**
+   * Rendered at the left of the desktop header bar, before the account controls. Also threaded
+   * to `Sidebar`, which renders the same node again at the top of the mobile navigation Sheet —
+   * the desktop bar is `hidden md:flex`, so on a narrow viewport this would otherwise be
+   * reachable nowhere (e.g. the cluster-admin ClusterSwitcher, the only way back to the
+   * cluster picker on mobile).
+   */
   headerSlot?: React.ReactNode;
+  /**
+   * Where the brand mark (sidebar logo + mobile header logo) navigates to. Defaults to the
+   * platform dashboard. `ClusterAdminLayout` overrides this — the platform dashboard fires
+   * unscoped list queries that all 403 for a membership-only cluster admin, so the most
+   * prominent element in the chrome must not route there from inside `/cluster-admin`.
+   */
+  brandTo?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot }) => {
+const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo = '/dashboard' }) => {
   const { user, logout, hasPermission, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -113,6 +126,8 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
         navItems={navItems}
         isMobileOpen={isMobileOpen}
         onMobileOpenChange={setIsMobileOpen}
+        brandTo={brandTo}
+        headerSlot={headerSlot}
       />
 
       {/* Main Content Area */}
@@ -132,7 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to="/dashboard" className="flex items-center gap-3 group">
+              <Link to={brandTo} className="flex items-center gap-3 group">
                 <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-shadow">
                   <span className="text-white font-bold text-base">C</span>
                 </div>
