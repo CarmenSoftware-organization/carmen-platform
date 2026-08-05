@@ -185,6 +185,15 @@ No behaviour change — nothing consumes the new booleans yet."
 `PrivateRoute` becomes the platform-view guard. `/cluster-admin` needs a guard that checks
 authentication only, or the new redirect points at itself and loops forever.
 
+> **AMENDED DURING EXECUTION — the guard in Step 2 is not the one that shipped.** Two reviews found
+> concrete failures in it. The block gained an `effectivePermissions !== null` precondition (a
+> transient permission-fetch failure would otherwise eject a platform admin into the cluster-admin
+> space for the rest of the session, with no way back), and its neither-authority case is a
+> deliberate fall-through rather than a `<Forbidden />` (returning there 403'd the bootstrap role on
+> every cold reload, because `userCount` is the guard's other input and is never cached). Read
+> **spec §4.1** for the guard that shipped and the reasoning behind all three not-yet-resolved
+> conditions. Step 2's code block is kept as the instruction the implementer was actually given.
+
 **Files:**
 - Create: `src/components/AuthedRoute.tsx`
 - Modify: `src/components/PrivateRoute.tsx:18-38`
@@ -453,6 +462,14 @@ Two things still hand this user a link they cannot follow: the Dashboard nav ite
 no permission and so renders for everybody, and the hardcoded `/dashboard` recovery on the 403
 and 404 pages.
 
+> **AMENDED DURING EXECUTION.** The whole-branch review found a third: `Layout`'s `brandTo` still
+> defaulted to `/dashboard`, so the most prominent element in the chrome pointed at a page the
+> guard bounces a cluster admin out of — it now defaults from `hasPlatformAuthority` beside the nav
+> fallback. The `home` derivation in Steps 2 and 3 also gained a second condition: `!hasPlatformAuthority
+> && hasClusterAdminScope`, so only a user *confined* to the cluster-admin space is sent there. With
+> Task 2's fall-through restored, a user with neither authority can reach `/dashboard` again, and
+> sending them to the picker's "No clusters to administer" empty state would be a second dead end.
+
 **Files:**
 - Modify: `src/components/Layout.tsx:36` (destructure) and `:76` (nav fallback)
 - Modify: `src/pages/Forbidden.tsx:1-45`
@@ -685,8 +702,10 @@ through the spec's §9 list. The checks that matter most, in order:
 1. Sign in as a membership-only cluster admin (no platform role row). Login lands on
    `/cluster-admin`, not `/dashboard`.
 2. Type `/dashboard`, `/clusters`, `/users`, `/profile`, and `/403` in turn. Each replaces with
-   `/cluster-admin`. **Watch the network tab** — no platform-wide list request should be issued;
-   if you see one, `<Dashboard>` mounted before the guard ran.
+   `/cluster-admin`. **Watch the network tab** — no *page-driven* list request should be issued;
+   if you see one, `<Dashboard>` mounted before the guard ran. `GET /api-system/users` is **not**
+   one: typing a URL reloads the app, and `AuthContext`'s mount effect fires `fetchUserCount()`
+   unconditionally for every restored session, which predates this branch.
 3. The user menu shows no "Platform Admin view" item.
 4. User menu → Profile lands on `/cluster-admin/:clusterId/profile`, with the three-item cluster
    sidebar and the breadcrumb `Cluster Admin › Profile`. Change the password from there.

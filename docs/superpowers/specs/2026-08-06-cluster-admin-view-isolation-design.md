@@ -102,24 +102,48 @@ Then replace the duplicates:
 if (loading) return <div className="loading">Loading...</div>;
 if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-// A user whose only authority is a cluster-admin membership has nothing to do in the platform
-// view: every list here is platform-wide and refuses them server-side. Sending them to a page
-// they can use beats a 403 whose only recovery button leads to another 403.
-if (!hasPlatformAuthority) {
+if (effectivePermissions !== null && !hasPlatformAuthority) {
   if (adminScope === null) return <div className="loading">Loading...</div>;
   if (hasClusterAdminScope) return <Navigate to="/cluster-admin" replace />;
-  // Neither authority — fall through to the checks below, which render <Forbidden />.
-  // Normally unreachable (the login gate refuses it) but a stale localStorage session can.
+  // Neither authority — falls through, deliberately. See below.
 }
 
 if (requiredPermission && !hasPermission(requiredPermission)) return <Forbidden />;
 if (requireSuperAdmin && !isSuperAdmin) return <Forbidden />;
 ```
 
-The `adminScope === null` branch matters: the scope is fetched separately from the permissions
-and may still be in flight. Without it a membership-only admin renders the platform page for one
-frame — and `<Dashboard>` mounting means a burst of unscoped list requests that all 403. Note it
-only blocks users who lack platform authority; everyone else never waits on `adminScope`.
+A user whose only authority is a cluster-admin membership has nothing to do in the platform view:
+every list here is platform-wide and refuses them server-side. Sending them to a page they can use
+beats a 403 whose only recovery button leads to another 403.
+
+**Three of the conditions above are about *not knowing yet*, and each was corrected during
+implementation after a review traced a concrete failure. The pattern behind all three:
+`hasPlatformAuthority` reads `false` for a user who has none AND for a session that has not
+resolved. Only the first is a boundary decision.**
+
+- **`effectivePermissions !== null` gates the whole block.** Without it, a platform admin who is
+  also a cluster admin hits a transient `fetchEffectivePermissions` failure — which nulls the value
+  *and deletes its cache* (`AuthContext.tsx`) — and is redirected into the cluster-admin space with
+  `replace`, where nothing sends them back and the "Platform Admin view" menu item is hidden for the
+  same reason. A degraded session falls through instead, exactly as it behaved before this guard.
+  Verified against the backend on 2026-08-06: `GET /api/user/permission/platform` carries only
+  `KeycloakGuard` and returns `200 {platform: [], clusters: {}, is_super_admin: false}` for a user
+  with zero platform role rows, so a membership-only cluster admin's payload is a **non-null empty
+  object** and the boundary does fire for them. That is load-bearing — were the endpoint to 403
+  instead, this precondition would silently disable the whole feature.
+- **`adminScope === null` holds a loader.** The scope is fetched separately from the permissions and
+  may still be in flight. Without it a membership-only admin renders the platform page for one frame,
+  and `<Dashboard>` mounting means a burst of platform-wide list requests that all 403. It blocks
+  only users who lack platform authority; everyone else never waits on `adminScope`.
+- **The neither-authority case falls through rather than returning `<Forbidden />`.** An
+  implementation that returned there regressed the bootstrap role: `userCount` is the guard's other
+  input and is **never cached in `localStorage`**, so on every cold reload it is `null` while its
+  fetch is in flight — and `AuthContext` calls `setLoading(false)` before that resolves. The first
+  administrator of a fresh install would have been 403'd on `/dashboard`, the page they exist to set
+  up, and permanently so if that one request failed (`fetchUserCount`'s catch never sets the value).
+  Falling through reproduces the pre-guard behaviour for a state the login gate already refuses to
+  create. It does not weaken the boundary: a membership-only cluster admin has
+  `hasClusterAdminScope === true` and is redirected by the branch above, never reaching that line.
 
 ### 4.2 Three guards, one job each
 
@@ -303,7 +327,10 @@ covered by the browser checks below.
 
 1. Login lands on `/cluster-admin` — not `/dashboard`, and with no platform frame in between.
 2. Typing `/dashboard`, `/clusters`, `/users`, `/profile`, or `/403` each replaces with
-   `/cluster-admin`; no unscoped list request is issued (check the network tab, not just the page).
+   `/cluster-admin`. In the network tab, no **page-driven** list request is issued — the guard
+   returns before `<Dashboard>` mounts. Do not read `GET /api-system/users` as a failure: typing a
+   URL reloads the app, and `AuthContext`'s mount effect fires `fetchUserCount()` unconditionally
+   for every restored session. That call predates this branch and the login gate depends on it.
 3. The user menu shows **no** "Platform Admin view" item.
 4. User menu → Profile lands on `/cluster-admin/:clusterId/profile` with the three-item cluster
    sidebar and the breadcrumb `Cluster Admin › Profile`.
