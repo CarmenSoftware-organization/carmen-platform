@@ -185,9 +185,15 @@ documented in that file. Inheriting it here would make the union unconditionally
 for exactly the users this feature exists to scope, defeating the change.
 
 **Consequence, accepted:** a user with neither a platform-role row nor an admin membership
-now sees zero business units where they previously saw all of them. DEV is migrated and
-seeded (31 permissions, 5 roles), so this group should be empty; §7 lists the pre-deploy
-check that confirms it.
+now sees zero business units where they previously saw all of them.
+
+**Measured on DEV 2026-08-06 — this affects nobody, for a reason the spec did not anticipate.**
+That group is 34 of 40 users, but every one of them is already refused at the admin app's login
+gate, which passes only on `is_super_admin || platform.length > 0 || clusters non-empty` — all
+three derived solely from `tb_platform_super_admin` and `tb_user_tb_platform_role`. Exactly
+three users can sign in at all. The 34 have no business-unit list to lose because they cannot
+open the page. The pre-deploy check in the backend plan's Task 7 counts the wrong population;
+its runbook entry now says so.
 
 `getBusinessUnitById` (`business-unit.service.ts:464`) is identity-free today too. It takes a
 BU id rather than a cluster id, so it resolves the owning cluster with
