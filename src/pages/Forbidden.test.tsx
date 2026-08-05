@@ -14,6 +14,9 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+const auth = vi.hoisted(() => ({ hasPlatformAuthority: true }));
+vi.mock('../context/AuthContext', () => ({ useAuth: () => auth }));
+
 // Layout pulls in AuthContext, the sidebar and localStorage; the 403 page only
 // needs to prove it renders *inside* the shell.
 vi.mock('../components/Layout', () => ({

@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, ShieldX } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Network, ShieldX } from 'lucide-react';
 import Layout from '../components/Layout';
 import { StatusPage } from '../components/StatusPage';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
 import { useBackOrFallback } from '../hooks/useBackOrFallback';
 
 /**
@@ -18,7 +19,9 @@ import { useBackOrFallback } from '../hooks/useBackOrFallback';
  */
 const Forbidden: React.FC = () => {
   const navigate = useNavigate();
-  const goBack = useBackOrFallback('/dashboard');
+  const { hasPlatformAuthority } = useAuth();
+  const home = hasPlatformAuthority ? '/dashboard' : '/cluster-admin';
+  const goBack = useBackOrFallback(home);
 
   return (
     <Layout>
@@ -34,9 +37,11 @@ const Forbidden: React.FC = () => {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Go to Dashboard
+            <Button variant="ghost" onClick={() => navigate(home)}>
+              {hasPlatformAuthority
+                ? <LayoutDashboard className="mr-2 h-4 w-4" />
+                : <Network className="mr-2 h-4 w-4" />}
+              {hasPlatformAuthority ? 'Go to Dashboard' : 'Go to Cluster Admin'}
             </Button>
           </>
         }

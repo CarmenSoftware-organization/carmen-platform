@@ -34,7 +34,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo = '/dashboard' }) => {
-  const { user, logout, hasPermission, isSuperAdmin } = useAuth();
+  const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -73,7 +73,11 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
     });
   };
 
-  const navItems = navItemsProp ?? buildPlatformNav({ hasPermission, isSuperAdmin });
+  // `platformNav`'s Dashboard entry carries no `permission`, so it renders for everyone —
+  // including a membership-only cluster admin, whose sidebar would be a single link to a page
+  // PrivateRoute bounces them out of. Deciding here rather than in each page means no future
+  // page can forget. An explicit navItems prop still wins, so ClusterAdminLayout is unaffected.
+  const navItems = navItemsProp ?? (hasPlatformAuthority ? buildPlatformNav({ hasPermission, isSuperAdmin }) : []);
 
   const getFullName = (): string => {
     const info = user?.user_info;
