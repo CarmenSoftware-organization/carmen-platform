@@ -15,14 +15,14 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { THEME_OPTIONS } from './ThemeToggle';
 import { CURRENT_VERSION } from './VersionBadge';
 
-export interface UserInfo {
+interface HeaderUserInfo {
   initials: string;
   displayName: string;
   email: string;
 }
 
 interface HeaderUserMenuProps {
-  userInfo: UserInfo;
+  userInfo: HeaderUserInfo;
   onLogout: () => void;
   /** Mobile placement: the header has no room for separate theme and version
    *  controls, so they fold into this dropdown instead. */
@@ -82,7 +82,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/changelog" className="font-mono text-xs">
+              <Link to="/changelog" className="font-mono text-[11px]">
                 v{CURRENT_VERSION}
               </Link>
             </DropdownMenuItem>
