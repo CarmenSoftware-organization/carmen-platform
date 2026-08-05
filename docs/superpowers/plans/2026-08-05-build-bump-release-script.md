@@ -977,6 +977,8 @@ Expected: both `build:bump` invocations stop at `✗ build:bump ต้องร�
 
 - [ ] **Step 6: Verify the real script against a real release branch, without releasing**
 
+**Run this after Step 7, not before.** `assertBranchAndTree()` requires `git status --porcelain` to be empty, with no carve-out for the release files, and switching branches carries uncommitted changes along — so with Steps 1-4 still uncommitted the dry run stops at the dirty-tree guard instead of the empty-`unreleased` guard below. Stashing is not the fix: `git stash` would restore `bump-version.mjs` and the old three-line `build:bump`, so the dry run would exercise the *old* command surface. Commit first, then dry-run.
+
 ```bash
 cd "$REPO"
 git switch -q -c chore/release-dryrun
