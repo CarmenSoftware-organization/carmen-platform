@@ -34,8 +34,8 @@ vi.mock('../components/Layout', () => ({
 // application.delete. `Can` (the REAL component, not mocked here) reads this via
 // useAuth() — mocking `Can` itself to always render its children would make every
 // permission assertion below vacuous, exactly the defect this effort exists to close.
-// `application.*` is platform-scoped (DEV_MOCK_EFFECTIVE_PERMISSIONS.platform,
-// utils/permissions.ts:48) and none of the four `<Can>` call sites in
+// `application.*` is a platform-scoped permission (never granted per-cluster),
+// and none of the four `<Can>` call sites in
 // ApplicationManagement.tsx pass a `clusterId` prop, so (like UserManagement/
 // RoleManagement) there is no scoped-gate discrimination to prove here; ordinary
 // permission-grant/revoke discrimination is what's tested below.
@@ -108,9 +108,8 @@ const renderPage = () =>
 // Application" button (application.create), the empty-state "Add Application" button
 // (application.create — added by Wave 1), the row Edit menu item (application.update) and
 // the row Delete menu item (application.delete). All four are platform-scoped (no
-// `clusterId` prop passed to `<Can>` anywhere on this page — `application.*` only ever
-// appears in DEV_MOCK_EFFECTIVE_PERMISSIONS.platform, never per-cluster). These tests must
-// FAIL if a gate is deleted.
+// `clusterId` prop passed to `<Can>` anywhere on this page — `application.*` is always
+// platform-scoped, never per-cluster). These tests must FAIL if a gate is deleted.
 //
 // The "App ID" column's copy-to-clipboard button (`handleCopyId` -> `navigator.clipboard
 // .writeText`) is NOT a mutating control — it never calls `applicationService` and writes

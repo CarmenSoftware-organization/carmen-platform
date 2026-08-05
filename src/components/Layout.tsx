@@ -25,16 +25,18 @@ interface LayoutProps {
    */
   headerSlot?: React.ReactNode;
   /**
-   * Where the brand mark (sidebar logo + mobile header logo) navigates to. Defaults to the
-   * platform dashboard. `ClusterAdminLayout` overrides this — the platform dashboard fires
-   * unscoped list queries that all 403 for a membership-only cluster admin, so the most
-   * prominent element in the chrome must not route there from inside `/cluster-admin`.
+   * Where the brand mark (sidebar logo + mobile header logo) navigates to. When omitted, defaults
+   * to `/dashboard` for a user with platform authority and `/cluster-admin` otherwise — see the
+   * `brandDestination` fallback below. `ClusterAdminLayout` overrides this explicitly — the
+   * platform dashboard fires unscoped list queries that all 403 for a membership-only cluster
+   * admin, so the most prominent element in the chrome must not route there from inside
+   * `/cluster-admin`.
    */
   brandTo?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo = '/dashboard' }) => {
-  const { user, logout, hasPermission, isSuperAdmin } = useAuth();
+const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo }) => {
+  const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -73,7 +75,15 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
     });
   };
 
-  const navItems = navItemsProp ?? buildPlatformNav({ hasPermission, isSuperAdmin });
+  // `platformNav`'s Dashboard entry carries no `permission`, so it renders for everyone —
+  // including a membership-only cluster admin, whose sidebar would be a single link to a page
+  // PrivateRoute bounces them out of. Deciding here rather than in each page means no future
+  // page can forget. An explicit navItems prop still wins, so ClusterAdminLayout is unaffected.
+  const navItems = navItemsProp ?? (hasPlatformAuthority ? buildPlatformNav({ hasPermission, isSuperAdmin }) : []);
+
+  // Same reasoning as the nav fallback: the brand mark is the most prominent element in the
+  // chrome, and /dashboard is a page PrivateRoute bounces a membership-only cluster admin out of.
+  const brandDestination = brandTo ?? (hasPlatformAuthority ? '/dashboard' : '/cluster-admin');
 
   const getFullName = (): string => {
     const info = user?.user_info;
@@ -126,7 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
         navItems={navItems}
         isMobileOpen={isMobileOpen}
         onMobileOpenChange={setIsMobileOpen}
-        brandTo={brandTo}
+        brandTo={brandDestination}
         headerSlot={headerSlot}
       />
 
@@ -147,7 +157,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to={brandTo} className="flex items-center gap-3 group">
+              <Link to={brandDestination} className="flex items-center gap-3 group">
                 <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-shadow">
                   <span className="text-white font-bold text-base">C</span>
                 </div>

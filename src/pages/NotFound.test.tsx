@@ -14,7 +14,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const auth = vi.hoisted(() => ({ loading: false }));
+const auth = vi.hoisted(() => ({ loading: false, hasPlatformAuthority: true }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => auth }));
 
 vi.mock('../components/Layout', () => ({

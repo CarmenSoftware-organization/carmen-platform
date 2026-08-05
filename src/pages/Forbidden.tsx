@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LayoutDashboard, ShieldX } from 'lucide-react';
+import { ArrowLeft, LayoutDashboard, Network, ShieldX } from 'lucide-react';
 import Layout from '../components/Layout';
 import { StatusPage } from '../components/StatusPage';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../context/AuthContext';
 import { useBackOrFallback } from '../hooks/useBackOrFallback';
 
 /**
@@ -18,7 +19,13 @@ import { useBackOrFallback } from '../hooks/useBackOrFallback';
  */
 const Forbidden: React.FC = () => {
   const navigate = useNavigate();
-  const goBack = useBackOrFallback('/dashboard');
+  const { hasPlatformAuthority, hasClusterAdminScope } = useAuth();
+  // Only a user who is *confined* to the cluster-admin space goes there. A user with neither
+  // authority would land on the picker's "No clusters to administer" empty state — a second dead
+  // end — and can reach the dashboard.
+  const isClusterAdminOnly = !hasPlatformAuthority && hasClusterAdminScope;
+  const home = isClusterAdminOnly ? '/cluster-admin' : '/dashboard';
+  const goBack = useBackOrFallback(home);
 
   return (
     <Layout>
@@ -34,9 +41,11 @@ const Forbidden: React.FC = () => {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/dashboard')}>
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Go to Dashboard
+            <Button variant="ghost" onClick={() => navigate(home)}>
+              {isClusterAdminOnly
+                ? <Network className="mr-2 h-4 w-4" />
+                : <LayoutDashboard className="mr-2 h-4 w-4" />}
+              {isClusterAdminOnly ? 'Go to Cluster Admin' : 'Go to Dashboard'}
             </Button>
           </>
         }

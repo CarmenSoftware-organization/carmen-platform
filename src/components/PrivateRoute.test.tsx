@@ -8,6 +8,10 @@ const auth = vi.hoisted(() => ({
   loading: false,
   isSuperAdmin: false,
   hasPermission: vi.fn((_perm: string) => true),
+  hasPlatformAuthority: true,
+  hasClusterAdminScope: false,
+  adminScope: { all: false, clusters: [] },
+  effectivePermissions: { is_super_admin: false, platform: [], clusters: {} },
 }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => auth }));
 
@@ -41,6 +45,10 @@ beforeEach(() => {
   auth.loading = false;
   auth.isSuperAdmin = false;
   auth.hasPermission = vi.fn(() => true);
+  auth.hasPlatformAuthority = true;
+  auth.hasClusterAdminScope = false;
+  auth.adminScope = { all: false, clusters: [] };
+  auth.effectivePermissions = { is_super_admin: false, platform: [], clusters: {} };
 });
 
 describe('PrivateRoute', () => {

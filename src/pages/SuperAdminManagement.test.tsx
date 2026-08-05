@@ -32,12 +32,18 @@ vi.mock('../components/Layout', () => ({
 // Mutable auth. Unlike UserManagement/ClusterEdit etc., `SuperAdminManagement` itself never
 // reads `useAuth()` — there is no `<Can>` and no `isSuperAdmin` check anywhere in the page
 // source (verified by reading the file). `isSuperAdmin`/`isAuthenticated`/`loading` here exist
-// only to drive `PrivateRoute`, which is what this test actually exercises.
+// only to drive `PrivateRoute`, which is what this test actually exercises. `hasPlatformAuthority`
+// is fixed `true` (never toggled) so PrivateRoute's platform-authority boundary is a no-op here —
+// this suite is about the `requireSuperAdmin` branch below it, not the boundary above it.
 const auth = vi.hoisted(() => ({
   isAuthenticated: true,
   loading: false,
   isSuperAdmin: false,
   hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
+  hasPlatformAuthority: true,
+  hasClusterAdminScope: false,
+  adminScope: { all: false, clusters: [] as { id: string }[] },
+  effectivePermissions: { is_super_admin: false, platform: [] as string[], clusters: {} as Record<string, string[]> },
 }));
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => auth,

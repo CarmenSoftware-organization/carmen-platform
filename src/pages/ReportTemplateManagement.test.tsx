@@ -33,11 +33,11 @@ vi.mock('../components/Layout', () => ({
 // Mutable auth so a test can revoke report_template.create / update / delete. `Can`
 // (the REAL component, not mocked here) reads this via useAuth() — mocking `Can` itself
 // to always render its children would make every permission assertion below vacuous,
-// exactly the defect this effort exists to close. report_template.* is platform-scoped
-// (DEV_MOCK_EFFECTIVE_PERMISSIONS.platform, utils/permissions.ts:46) and none of the
-// four `<Can>` call sites in ReportTemplateManagement.tsx pass a `clusterId` prop, so
-// (like UserManagement) there is no scoped-gate discrimination to prove here; ordinary
-// permission-grant/revoke discrimination is what's tested below.
+// exactly the defect this effort exists to close. report_template.* is a platform-scoped
+// permission (never granted per-cluster), and none of the four `<Can>` call sites in
+// ReportTemplateManagement.tsx pass a `clusterId` prop, so (like UserManagement) there
+// is no scoped-gate discrimination to prove here; ordinary permission-grant/revoke
+// discrimination is what's tested below.
 const auth = vi.hoisted(() => ({
   isSuperAdmin: false,
   hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
@@ -96,9 +96,8 @@ const renderPage = () =>
 // (report_template.update), the row Delete (report_template.delete), the header
 // Add Template (report_template.create) and the empty-state Add Template
 // (report_template.create). All four are platform-scoped (no `clusterId` prop passed
-// to `<Can>` anywhere on this page — `report_template.*` only ever appears in
-// DEV_MOCK_EFFECTIVE_PERMISSIONS.platform, never per-cluster). These tests must FAIL
-// if a gate is deleted.
+// to `<Can>` anywhere on this page — `report_template.*` is always platform-scoped,
+// never per-cluster). These tests must FAIL if a gate is deleted.
 describe('ReportTemplateManagement — row action gates (report_template.update / report_template.delete)', () => {
   const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) =>
     user.click(screen.getByRole('button', { name: /actions for sales summary/i }));

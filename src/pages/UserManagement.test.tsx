@@ -91,10 +91,10 @@ beforeEach(() => {
 // SECURITY. Five `<Can>` gates guard this page's write surfaces: the header Add User
 // (user.create), the empty-state Add User (user.create), the row Edit (user.update),
 // row Delete (user.delete) and row Hard Delete (user.delete). All five are platform-
-// scoped (no `clusterId` prop passed to `<Can>` anywhere on this page — `user.*` only
-// ever appears in `DEV_MOCK_EFFECTIVE_PERMISSIONS.platform`, never per-cluster), so
-// unlike ClusterEdit/ClusterManagement there is no scoped-gate discrimination to prove
-// here; ordinary permission-grant/revoke discrimination is what's tested below.
+// scoped (no `clusterId` prop passed to `<Can>` anywhere on this page — `user.*` is
+// always platform-scoped, never per-cluster), so unlike ClusterEdit/ClusterManagement
+// there is no scoped-gate discrimination to prove here; ordinary permission-grant/revoke
+// discrimination is what's tested below.
 describe('UserManagement — Add User gates (user.create)', () => {
   it('hides the header Add User button without user.create', async () => {
     auth.hasPermission = () => false;

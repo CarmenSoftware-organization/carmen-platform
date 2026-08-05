@@ -6,7 +6,7 @@ import type { EffectivePermissions } from '../types';
  * multiple call sites in the same file (`hasPermission('broadcast.send')` vs
  * `<Can permission="broadcast.send">`). Reference the constant instead of retyping the
  * literal wherever a duplicate exists. Values MUST stay byte-identical to the backend's
- * permission keys (see `DEV_MOCK_EFFECTIVE_PERMISSIONS` below for the full known set).
+ * permission keys.
  */
 export const PERMISSIONS = {
   BROADCAST: {
@@ -48,26 +48,17 @@ export function checkPermission(
 }
 
 /**
- * Dev-only fallback used when the backend response lacks effective_permissions
- * (e.g. building Phase 2–4 UI before roles are assigned). Grants every platform
- * action for the platform-management resources. Never used in production.
+ * Does this user have any business in the platform-administration view?
+ *
+ * True for a super admin, for any platform-wide grant, and for any cluster-scoped grant — the
+ * same line the login gate has always drawn. Deliberately NOT true for a user whose only
+ * authority is a `tb_cluster_user.role = 'admin'` membership: every list in the platform view is
+ * platform-wide, and the server refuses them.
+ *
+ * The bootstrap escape hatch (userCount <= 1) is applied by the caller in AuthContext, not here,
+ * so this stays a pure function of the permission payload.
  */
-export const DEV_MOCK_EFFECTIVE_PERMISSIONS: EffectivePermissions = {
-  platform: [
-    'cluster.read', 'cluster.create', 'cluster.update', 'cluster.delete',
-    'user.read', 'user.create', 'user.update', 'user.delete',
-    'user_platform.read', 'user_platform.manage',
-    'report_template.read', 'report_template.create', 'report_template.update', 'report_template.delete',
-    'application.read', 'application.create', 'application.update', 'application.delete',
-    'news.read', 'news.create', 'news.update', 'news.delete',
-    'broadcast.read', 'broadcast.send',
-    'role.read', 'role.create', 'role.update', 'role.delete',
-    'sql_workbench.read', 'sql_workbench.manage',
-    'email_setting.read', 'email_setting.manage',
-    'data_import.manage',
-  ],
-  clusters: {},
-  // Keep false so dev exercises the normal permission path (the explicit platform list
-  // above already grants everything needed; we don't want the bypass to mask bugs).
-  is_super_admin: false,
-};
+export function checkPlatformAuthority(eff: EffectivePermissions | null | undefined): boolean {
+  if (!eff) return false;
+  return eff.is_super_admin || (eff.platform?.length ?? 0) > 0 || Object.keys(eff.clusters ?? {}).length > 0;
+}
