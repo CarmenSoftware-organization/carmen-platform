@@ -54,6 +54,8 @@
     "build:uat": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode uat",
     "build:prod": "REACT_APP_BUILD_DATE=$(date '+%Y-%m-%d %H:%M:%S') vite build --mode prod",
     "preview": "vite preview --mode prod",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"./src/**/*.{ts,tsx}\"",
     "changelog": "node scripts/generate-changelog.mjs",
     "generate:mock-preconfig": "node scripts/generate-preconfig-mock.mjs",
     "build:bump": "node scripts/bump-version.mjs && node scripts/generate-changelog.mjs && npm run build",
