@@ -26,8 +26,16 @@
 
 The expression `is_super_admin || platform.length > 0 || Object.keys(clusters).length > 0` is
 already written twice. Name it once, and expose it (plus the cluster-admin scope test) from
-`AuthContext` so the guards in later tasks have a single source. Behaviour is unchanged after
-this task — nothing consumes the new values yet.
+`AuthContext` so the guards in later tasks have a single source.
+
+**One behaviour does change, deliberately.** `HeaderUserMenu`'s old local `canPlatformAdmin` did
+not include the bootstrap escape hatch; `hasPlatformAuthority` does. So a bootstrap user (0–1
+users on the install, no permission rows yet) sitting in `/cluster-admin` now sees the "Platform
+Admin view" item where before it was hidden. That is a fix, not a regression: `hasPermission`
+(`AuthContext.tsx:262`) already lets that user into every platform page, so the hidden menu item
+was the thing that disagreed with reality. Task 2 also requires the hatch here — without it the
+first administrator of a fresh install is redirected out of the view they exist to set up.
+Ruled accepted by the human partner on 2026-08-06 after the Task 1 review raised it.
 
 **Files:**
 - Modify: `src/utils/permissions.ts` (add an exported function after `checkPermission`, which ends at line 48)
