@@ -1462,17 +1462,34 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
           </>
         )}
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      <p className="sr-only" aria-live="polite">{error}</p>
-      <span className="hidden">{value.from}</span>
+      <p className={`text-xs ${error ? 'text-destructive' : 'text-muted-foreground'}`} aria-live="polite">
+        {error || `กำลังดู ${describeRange(value)}`}
+      </p>
     </div>
   );
 };
 ```
 
-**หมายเหตุสำหรับผู้ทำ:** `<span className="hidden">{value.from}</span>` มีไว้เพื่อให้ prop `value`
-ถูกใช้จริง ถ้า lint ยังบ่นว่า `value` ไม่ถูกใช้ ให้เอา span ออกแล้วเปลี่ยน prop เป็น
-`defaultValue` ที่ไม่ต้องอ่าน — อย่าใส่ `eslint-disable`
+โดย `describeRange` เป็น helper ระดับไฟล์ วางไว้เหนือ component:
+
+```tsx
+/**
+ * อธิบายช่วงที่กำลังใช้อยู่เป็นข้อความไทย — ขอบบนเป็น exclusive จึงถอยหนึ่งวันก่อนแสดง
+ * ทำหน้าที่สองอย่าง: บอกผู้ใช้ว่ากำลังดูช่วงไหนจริง ๆ (preset ไม่ได้บอก) และเป็นที่ที่ prop
+ * `value` ถูกใช้ ทำให้ component เป็น controlled จริงไม่ใช่แค่รับค่ามาทิ้ง
+ */
+function describeRange(range: DateRange): string {
+  const opts: Intl.DateTimeFormatOptions = {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok',
+  };
+  const start = new Date(range.from);
+  const lastDay = new Date(new Date(range.to).getTime() - 1);
+  // 'th-TH' เพียว ๆ จะให้ปี พ.ศ. (ปฏิทินพุทธเป็นค่าเริ่มต้นของ locale นี้) ซึ่งขัดกับที่อื่นทั้งแอป
+  // ที่แสดง ค.ศ. — บังคับปฏิทินเกรกอเรียนด้วย -u-ca-gregory
+  const f = new Intl.DateTimeFormat('th-TH-u-ca-gregory', opts);
+  return `${f.format(start)} – ${f.format(lastDay)}`;
+}
+```
 
 - [ ] **Step 2: Type-check + lint**
 
