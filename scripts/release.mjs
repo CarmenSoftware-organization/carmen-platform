@@ -4,6 +4,7 @@
 // Spec: docs/superpowers/specs/2026-08-05-build-bump-release-script-design.md
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { CATEGORY_ORDER, hasChanges, nextVersion } from './lib/changelog-format.mjs';
@@ -141,16 +142,77 @@ function assertReleasable(changelog) {
   console.log(`▸ unreleased ...... ${count} รายการ ✓`);
 }
 
-// Placeholder tail: Tasks 3-5 replace this with the prompt, the gates, and the write.
+function parseLevelArg() {
+  const arg = process.argv[2];
+  if (arg === undefined) return null;
+  if (!LEVELS.includes(arg)) fail('ระดับต้องเป็น patch|minor|major');
+  return arg;
+}
+
+/**
+ * Async-iterates readline rather than calling rl.question() per attempt: with
+ * piped stdin readline buffers every line at once, and a line emitted while no
+ * question() is pending is dropped — so "bad input then good input" would lose
+ * the retry and exit without bumping. Iterating queues them, and exhausting the
+ * iterator is EOF (Ctrl-D), which needs no separate close handler.
+ * A Map, not an object literal, so inherited keys like "constructor" miss.
+ */
+async function promptLevel(current, preview) {
+  console.log('');
+  console.log(`  current: ${current}`);
+  console.log('  ? เลือกระดับ bump');
+  console.log(`    1) patch  → ${preview.patch}`);
+  console.log(`    2) minor  → ${preview.minor}`);
+  console.log(`    3) major  → ${preview.major}`);
+  console.log('    q) ยกเลิก (หรือกด Enter)');
+
+  const answers = new Map([
+    ['1', 'patch'],
+    ['2', 'minor'],
+    ['3', 'major'],
+    ['patch', 'patch'],
+    ['minor', 'minor'],
+    ['major', 'major'],
+  ]);
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    process.stdout.write('  > ');
+    for await (const line of rl) {
+      const input = line.trim().toLowerCase();
+      if (input === 'q' || input === '') return null;
+      const level = answers.get(input);
+      if (level) return level;
+      console.log('  ✗ เลือก 1, 2, 3 หรือ q');
+      process.stdout.write('  > ');
+    }
+    return null;
+  } finally {
+    rl.close();
+  }
+}
+
+/** Only the chosen version: an existing v0.2.1 must not block a minor to v0.3.0. */
+function assertTagFree(version) {
+  if (git('tag', '--list', `v${version}`) !== '') fail(`tag v${version} มีอยู่แล้ว`);
+}
+
 async function main() {
   const { changelog, current } = readState();
-  previewVersions(current);
+  const preview = previewVersions(current);
   assertBranchAndTree();
   assertUpToDate();
   assertReleasable(changelog);
 
+  const level = parseLevelArg() ?? (await promptLevel(current, preview));
+  if (level === null) {
+    console.log('ยกเลิก — ไม่มีอะไรเปลี่ยน');
+    return;
+  }
   console.log('');
-  console.log('(guards ผ่านหมด — เฟสถัดไปยังไม่ได้ทำ)');
+  assertTagFree(preview[level]);
+
+  console.log(`(เลือก ${level} → ${preview[level]} — เฟสถัดไปยังไม่ได้ทำ)`);
 }
 
 await main();
