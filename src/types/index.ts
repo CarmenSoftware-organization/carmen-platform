@@ -382,6 +382,49 @@ export interface ClusterUser {
   updated_at?: string;
 }
 
+/** A cluster the signed-in user administers, as returned by GET /api-system/me/admin-clusters. */
+export interface AdminCluster {
+  id: string;
+  name: string;
+  code: string;
+  is_active?: boolean;
+}
+
+/**
+ * The caller's cluster-admin reach. Mirrors the backend's adminClusterScope: `all` is true
+ * only for platform super admins, for whom `clusters` is a searchable page rather than the
+ * complete set. For everyone else `clusters` is the whole truth.
+ */
+export interface AdminScope {
+  all: boolean;
+  clusters: AdminCluster[];
+}
+
+/** One business unit an invitation grants access to, and the role granted there on accept. */
+export interface InvitationBusinessUnit {
+  business_unit_id: string;
+  role: string;              // enum_user_business_unit_role
+  is_default?: boolean;
+}
+
+/** Request body for POST /api-system/clusters/:cluster_id/invitations. */
+export interface InvitationCreatePayload {
+  email: string;
+  cluster_role: string;      // enum_cluster_user_role
+  business_units: InvitationBusinessUnit[];
+}
+
+/** An issued invitation, with the status the backend computes from its expiry and acceptance. */
+export interface ClusterInvitation {
+  id: string;
+  email: string;
+  cluster_role?: string;
+  status?: string;
+  expires_at?: string;
+  created_at?: string;
+  business_units?: InvitationBusinessUnit[];
+}
+
 export type Scope = { type: 'platform' } | { type: 'cluster'; cluster_id: string };
 
 export interface EffectivePermissions {
