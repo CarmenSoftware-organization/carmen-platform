@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
+import AuthedRoute from "./components/AuthedRoute";
 import ClusterAdminRoute from "./components/ClusterAdminRoute";
 import { Toaster } from "sonner";
 import { KeyboardShortcutsHelp } from "./components/KeyboardShortcuts";
@@ -343,7 +344,7 @@ function AppContent() {
             />
             <Route
               path="/cluster-admin"
-              element={<PrivateRoute><ClusterAdminEntry /></PrivateRoute>}
+              element={<AuthedRoute><ClusterAdminEntry /></AuthedRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/cluster"

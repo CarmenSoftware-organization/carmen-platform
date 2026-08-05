@@ -8,6 +8,7 @@ const auth = vi.hoisted(() => ({
   loading: false,
   isSuperAdmin: false,
   hasPermission: vi.fn((_perm: string) => true),
+  hasPlatformAuthority: true,
 }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => auth }));
 
