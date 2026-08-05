@@ -98,6 +98,7 @@ const BusinessUnitList: React.FC = () => {
       setAccessLost(false);
     } catch (err: unknown) {
       if ((err as { response?: { status?: number } })?.response?.status === 403) {
+        setError('');
         setAccessLost(true);
         return;
       }
