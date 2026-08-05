@@ -4,7 +4,7 @@ import userService from '../services/userService';
 import permissionService from '../services/permissionService';
 import clusterAdminService from '../services/clusterAdminService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions, AdminScope } from '../types';
-import { checkPermission, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
+import { checkPermission, checkPlatformAuthority, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -167,7 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         fetchUserCount(),
         fetchAdminScope(),
       ]);
-      const hasAnyPermission = !!eff && (eff.is_super_admin || eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
+      const hasAnyPermission = checkPlatformAuthority(eff);
       // A cluster-admin membership is authority in its own right — it is what gates every
       // invitation and membership route on the server. Without this clause a user whose only
       // authority is that membership cannot enter the app at all.
@@ -257,6 +257,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isSuperAdmin = !!effectivePermissions?.is_super_admin;
 
+  // The bootstrap escape hatch belongs here rather than in checkPlatformAuthority: the very
+  // first administrator of a fresh install has no permission rows yet, and hasPermission
+  // (below) already treats that state as full access. The two must agree, or the first admin
+  // is bounced out of the view they exist to set up.
+  const hasPlatformAuthority =
+    (userCount !== null && userCount <= 1) || checkPlatformAuthority(effectivePermissions);
+
+  const hasClusterAdminScope =
+    !!adminScope && (adminScope.all || adminScope.clusters.length > 0);
+
   const hasPermission = (key: string, opts?: { clusterId?: string }): boolean => {
     // Bootstrap escape hatch: 0–1 users => allow everything.
     if (userCount !== null && userCount <= 1) return true;
@@ -280,6 +290,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isSuperAdmin,
     adminScope,
     isClusterAdminOf,
+    hasPlatformAuthority,
+    hasClusterAdminScope,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

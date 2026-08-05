@@ -34,18 +34,9 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useDarkMode();
-  const { adminScope, effectivePermissions, isSuperAdmin } = useAuth();
+  const { hasPlatformAuthority, hasClusterAdminScope } = useAuth();
 
   const inClusterAdmin = location.pathname.startsWith('/cluster-admin');
-  const canClusterAdmin = !!adminScope && (adminScope.all || adminScope.clusters.length > 0);
-  // Match checkPermission's bare (no clusterId) rule — and the login gate at
-  // AuthContext.tsx's hasAnyPermission — rather than only the platform-scoped slice: a user
-  // with cluster-scoped platform permissions (no platform-wide grant) still sees platform nav
-  // items everywhere else in the app, so this item must not be the one place that disagrees.
-  const canPlatformAdmin =
-    isSuperAdmin ||
-    (effectivePermissions?.platform.length ?? 0) > 0 ||
-    Object.keys(effectivePermissions?.clusters ?? {}).length > 0;
 
   return (
     <DropdownMenu>
@@ -74,13 +65,13 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
 
         <DropdownMenuSeparator />
 
-        {inClusterAdmin && canPlatformAdmin && (
+        {inClusterAdmin && hasPlatformAuthority && (
           <DropdownMenuItem onSelect={() => navigate('/dashboard')}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
             <span>Platform Admin view</span>
           </DropdownMenuItem>
         )}
-        {!inClusterAdmin && canClusterAdmin && (
+        {!inClusterAdmin && hasClusterAdminScope && (
           <DropdownMenuItem onSelect={() => navigate('/cluster-admin')}>
             <Network className="mr-2 h-4 w-4" />
             <span>Cluster Admin view</span>

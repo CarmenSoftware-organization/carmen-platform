@@ -483,6 +483,10 @@ export interface AuthContextValue {
   isSuperAdmin: boolean;
   adminScope: AdminScope | null;
   isClusterAdminOf: (clusterId: string) => boolean;
+  /** May this user use the platform-administration view at all? See checkPlatformAuthority. */
+  hasPlatformAuthority: boolean;
+  /** Does this user administer at least one cluster (or all of them)? */
+  hasClusterAdminScope: boolean;
 }
 
 export interface LoginCredentials {
