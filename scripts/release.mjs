@@ -3,11 +3,18 @@
 // an annotated tag. Never pushes, never fetches.
 // Spec: docs/superpowers/specs/2026-08-05-build-bump-release-script-design.md
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { CATEGORY_ORDER, hasChanges, nextVersion } from './lib/changelog-format.mjs';
+import {
+  CATEGORY_ORDER,
+  hasChanges,
+  nextVersion,
+  promoteUnreleased,
+  renderMarkdown,
+  validateChangelog,
+} from './lib/changelog-format.mjs';
 
 const LEVELS = ['patch', 'minor', 'major'];
 
@@ -214,8 +221,73 @@ function gate(script, label) {
   console.log(label);
 }
 
+/**
+ * Computes every byte that will be written, and validates the promoted document,
+ * before anything touches the disk — so a rejected changelog cannot leave one of
+ * the three files rewritten and the other two stale.
+ */
+function buildRelease(changelog, pkg, level, today) {
+  let promoted;
+  try {
+    promoted = promoteUnreleased(changelog, level, today);
+  } catch (err) {
+    return fail(err.message);
+  }
+
+  const errors = validateChangelog(promoted);
+  if (errors.length) {
+    console.error('✗ changelog.json หลัง promote ไม่ผ่าน validate:');
+    for (const message of errors) console.error(`  - ${message}`);
+    process.exit(1);
+  }
+
+  const version = promoted.versions[0].version;
+  pkg.version = version;
+
+  return {
+    version,
+    files: [
+      [PACKAGE_JSON, `${JSON.stringify(pkg, null, 2)}\n`],
+      [CHANGELOG_JSON, `${JSON.stringify(promoted, null, 2)}\n`],
+      [CHANGELOG_MD, renderMarkdown(promoted)],
+    ],
+  };
+}
+
+function writeRelease(files) {
+  for (const [path, body] of files) writeFileSync(path, body);
+}
+
+/** Explicit pathspecs — never `git add -A`, the release commit is exactly 3 files. */
+function commitAndTag(version) {
+  const tag = `v${version}`;
+
+  const add = spawnSync('git', ['add', '--', ...RELEASE_FILES], { cwd: root, stdio: 'inherit' });
+  if (add.status !== 0) fail('git add ล้มเหลว — ตรวจ git status');
+
+  const commit = spawnSync('git', ['commit', '-m', `chore(release): ${tag}`], {
+    cwd: root,
+    stdio: 'inherit',
+  });
+  if (commit.status !== 0) {
+    console.error('✗ git commit ล้มเหลว — ไฟล์ต่อไปนี้ถูกเขียนและ stage ไว้แล้ว:');
+    for (const file of RELEASE_FILES) console.error(`    ${file}`);
+    console.error(`  กู้คืนด้วย: git restore --staged --worktree ${RELEASE_FILES.join(' ')}`);
+    process.exit(commit.status ?? 1);
+  }
+
+  const tagged = spawnSync('git', ['tag', '-a', tag, '-m', tag], { cwd: root, stdio: 'inherit' });
+  if (tagged.status !== 0) {
+    console.error(`✗ commit ${tag} สร้างแล้ว แต่สร้าง tag ไม่สำเร็จ`);
+    console.error(`  สร้าง tag เองด้วย: git tag -a ${tag} -m "${tag}"`);
+    process.exit(tagged.status ?? 1);
+  }
+
+  return tag;
+}
+
 async function main() {
-  const { changelog, current } = readState();
+  const { changelog, pkg, current } = readState();
   const preview = previewVersions(current);
   assertBranchAndTree();
   assertUpToDate();
@@ -233,7 +305,17 @@ async function main() {
   gate('lint', '▸ lint ............ ✓');
   gate('test', '▸ test ............ ✓');
 
-  console.log(`(gates ผ่านหมด — ${level} → ${preview[level]} — เฟสถัดไปยังไม่ได้ทำ)`);
+  const today = new Date().toISOString().slice(0, 10);
+  const { version, files } = buildRelease(changelog, pkg, level, today);
+  writeRelease(files);
+  const tag = commitAndTag(version);
+
+  console.log(`✓ ${tag}`);
+  console.log(`  commit  chore(release): ${tag}`);
+  console.log(`  tag     ${tag} (annotated)`);
+  console.log(`  files   ${RELEASE_FILES.join(', ')}`);
+  console.log('');
+  console.log(`→ ขั้นต่อไป: git push origin HEAD && git push origin ${tag}`);
 }
 
 await main();
