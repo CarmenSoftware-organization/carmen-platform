@@ -204,19 +204,33 @@ project owner — see `infra/gcp/README.md`):
   this repo + a deployer service account, so CI authenticates keyless (no
   stored GCP credentials)
 
-**Pipeline** (`.github/workflows/deploy-gcp.yml`, push to `main` or manual
-`workflow_dispatch`):
-1. `bun install --frozen-lockfile` → `bun run build` (`CI=true`, `REACT_APP_*` env from GitHub Variables)
-2. Authenticate to GCP via WIF (`google-github-actions/auth`)
-3. `gcloud storage rsync -r -d build gs://<GCS_BUCKET>`
-4. Set cache headers: `index.html` → `no-cache, max-age=0`; `assets/**` → `public, max-age=31536000, immutable`
-5. Invalidate the Cloud CDN cache for `/index.html` and `/`
+**Pipeline** (`.github/workflows/deploy-gcs.yml`). Its **only** trigger is
+`workflow_dispatch` — nothing deploys automatically, not even a push to
+`main`; someone runs the workflow by hand:
+1. `bun install --frozen-lockfile`
+2. Write `.env.prod` from repo Variables — `REACT_APP_*` is baked into the
+   bundle at build time (there is no runtime `config.json`), and `.env.prod`
+   is gitignored, so the workflow writes it rather than reading a committed file
+3. Authenticate to GCP via WIF (`google-github-actions/auth`), then `setup-gcloud`
+4. `scripts/deploy-gcs.sh <GCS_BUCKET> <CDN_URL_MAP>`, which does the rest:
+   - `bun run build:prod` (`vite build --mode prod`, which loads `.env.prod` — **not** `.env.production`)
+   - `gcloud storage rsync build gs://<GCS_BUCKET> --recursive --delete-unmatched-destination-objects`, excluding `index.html`
+   - `assets/**` → `public,max-age=31536000,immutable` (filenames are content-hashed)
+   - `index.html` uploaded separately with `no-cache`, so a deploy takes effect immediately
+   - invalidate the Cloud CDN cache for `/index.html` — only when a URL map was passed
 
-**GitHub Variables read by the workflow:**
-`REACT_APP_API_BASE_URL`, `REACT_APP_API_APP_ID`, `REACT_APP_ENV`,
-`GCP_PROJECT_ID`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOY_SA`,
-`GCS_BUCKET`, `GCP_URL_MAP` — populate from `terraform output` after the
-`infra/gcp` apply.
+**GitHub Actions Variables** (Settings → Secrets and variables → Actions →
+Variables): `REACT_APP_API_BASE_URL`, `REACT_APP_API_APP_ID`, `GCS_BUCKET`,
+`CDN_URL_MAP`. `REACT_APP_ENV` is **not** read — the workflow hardcodes
+`production`.
+
+**GitHub Actions Secrets:** `GCP_PROJECT_ID`,
+`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT` — populate from
+`terraform output` after the `infra/gcp` apply.
+
+The other workflow, `.github/workflows/verify.yml`, runs `bun run build`
+(ESLint + tsc + Vite) on PRs to `main`/`DEV`/`UAT` and on pushes to every
+branch *except* those three. It does **not** run `bun run test`.
 
 **Temporary host:** the managed SSL cert targets `<lb-ip-dashed>.sslip.io`
 (derived from the reserved static IP), so HTTPS works immediately without a

@@ -33,13 +33,47 @@ bun run build:dev           # build with DEV env (.env.dev, --mode dev)
 bun run build:uat           # build with UAT env (.env.uat, --mode uat)
 bun run build:prod          # build with prod env (.env.prod, --mode prod) — placeholder: points at DEV
 bun run preview             # serve the production build locally on :3304 (--mode prod → .env.prod)
+bun run build:bump          # cut a release: guards → prompt → gates → commit + annotated tag (never pushes)
+bun run changelog           # regenerate CHANGELOG.md from src/data/changelog.json without bumping
+bun run typecheck           # tsc --noEmit
+bun run lint                # eslint over src/
 bun run test                # unit + component tests (Vitest, jsdom) — one-shot
 bun run test:watch          # Vitest watch mode
 bun run test:cov            # Vitest with v8 coverage
 bun run test:scripts        # node --test for build scripts (scripts/lib/*.test.mjs)
 ```
 
-No separate lint command — vite-plugin-eslint runs during `start`/`build`. Pass `CI=true` to treat warnings as errors.
+`vite-plugin-checker` runs both tsc and `eslint "./src/**/*.{ts,tsx}"` during `start`/`build`; `bun run typecheck` and `bun run lint` run the same two checks standalone, which is how `build:bump` gates a release. Pass `CI=true` to treat warnings as errors.
+
+## Releases
+
+`bun run build:bump` (`scripts/release.mjs`) cuts a release **locally** — it never pushes
+and never fetches. Guards run in this order, all before anything is written:
+
+1. **version drift** — `package.json.version` must still equal `src/data/changelog.json` → `versions[0].version`
+2. **branch** — `main` or `chore/release-*`
+3. **working tree** — clean
+4. **not behind** `@{upstream}`; a branch with no upstream (every fresh `chore/release-*`) falls back to the remote-tracking ref `origin/main`. Skipped only when neither resolves.
+5. **`unreleased` non-empty**
+
+Then it prompts for patch/minor/major (pass the level as an argument to skip the prompt),
+checks the target **tag `vX.Y.Z` does not already exist**, gates on `typecheck` + `lint` +
+`test`, and only then writes `package.json`, `src/data/changelog.json`, and `CHANGELOG.md`,
+commits exactly those three with `git commit --only` (anything else you staged stays
+staged) as `chore(release): vX.Y.Z`, and creates the annotated tag `vX.Y.Z`.
+
+The version the app displays comes from `src/data/changelog.json` → `versions[0].version`
+(`src/components/VersionBadge.tsx`), **not** from `package.json` — `package.json.version`
+is a mirror the script keeps in sync.
+
+**Push the tag last.** Cut on `main`: `git push origin HEAD && git push origin vX.Y.Z`.
+Cut on a `chore/release-*` branch: `git push origin HEAD` → open the PR → **merge it with a
+merge commit, not a squash** → *then* `git push origin vX.Y.Z`. A squash rewrites the
+release commit, so a tag pushed before the merge points at an object outside `main`'s
+history — and once pushed it can only be fixed by deleting the remote tag and re-tagging.
+The script prints whichever order applies.
+
+Spec: `docs/superpowers/specs/2026-08-05-build-bump-release-script-design.md`.
 
 ## Environment
 
@@ -58,7 +92,7 @@ Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagg
 
 ## Deployment
 
-Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`). `.github/workflows/deploy-gcp.yml` builds on push to `main` and deploys keyless via Workload Identity Federation (`gcloud storage rsync` + CDN cache invalidation). Vercel (`vercel.json`) is retained in parallel.
+Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`). `.github/workflows/deploy-gcs.yml` builds from source and deploys keyless via Workload Identity Federation (`gcloud storage rsync` + CDN cache invalidation) — its **only** trigger is `workflow_dispatch`, so **nothing deploys automatically**, not even a push to `main`; someone runs it by hand. The other workflow, `.github/workflows/verify.yml`, runs `bun run build` (ESLint + tsc + Vite) on PRs to `main`/`DEV`/`UAT` and on pushes to every branch *except* those three — it does **not** run `bun run test`. So a push to `main` triggers nothing at all. Vercel (`vercel.json`) is retained in parallel.
 
 ## Unit & Component Tests
 

@@ -57,10 +57,11 @@ bun start                     # dev server at http://localhost:3304
 ## Deployment
 
 Static SPA hosted on GCP: a Cloud Storage bucket behind a global external
-HTTPS load balancer with Cloud CDN. GitHub Actions builds and uploads on push
-to `main` (`.github/workflows/deploy-gcp.yml`), authenticating keyless via
-Workload Identity Federation. Infrastructure is Terraform in `infra/gcp/`.
-Vercel is also available in parallel (`vercel.json`). See
+HTTPS load balancer with Cloud CDN. `.github/workflows/deploy-gcs.yml` builds
+and uploads, authenticating keyless via Workload Identity Federation — but its
+only trigger is `workflow_dispatch`, so **nothing deploys automatically, not
+even a push to `main`**; someone runs it by hand. Infrastructure is Terraform
+in `infra/gcp/`. Vercel is also available in parallel (`vercel.json`). See
 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#deployment-gcp).
 
 ---
