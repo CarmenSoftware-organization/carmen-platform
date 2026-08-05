@@ -611,6 +611,10 @@ const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
 
   const local = adminScope?.clusters ?? [];
   const current = local.find((c) => c.id === currentClusterId);
+  // For a super admin, `local` is only the first page — the cluster they are actually
+  // administering may not be in it, and the header would then read "Select cluster" while
+  // they are inside a cluster. Resolve that one name separately when it is missing.
+  const [resolvedName, setResolvedName] = useState<string | null>(null);
 
   // Super admins hold only a page of clusters locally, so their search must reach the server.
   useEffect(() => {
@@ -639,7 +643,9 @@ const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
   return (
     <>
       <Button variant="ghost" size="sm" className="gap-2" onClick={() => setOpen(true)}>
-        <span className="max-w-[16rem] truncate">{current?.name ?? 'Select cluster'}</span>
+        <span className="max-w-[16rem] truncate">
+          {current?.name ?? resolvedName ?? 'Select cluster'}
+        </span>
         <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
       </Button>
 
