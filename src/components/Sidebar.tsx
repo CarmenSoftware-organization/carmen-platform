@@ -1,17 +1,8 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { PanelLeft, PanelLeftClose, LogOut, User, Sun, Moon, Monitor, type LucideIcon } from 'lucide-react';
-import { useDarkMode } from '../hooks/useDarkMode';
+import { PanelLeft, PanelLeftClose, type LucideIcon } from 'lucide-react';
 import { Button } from './ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from './ui/dropdown-menu';
-import { Avatar, AvatarFallback } from './ui/avatar';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
@@ -25,21 +16,12 @@ export interface NavItem {
   group?: string;
 }
 
-interface UserInfo {
-  initials: string;
-  displayName: string;
-  email: string;
-  role?: string;
-}
-
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
   navItems: NavItem[];
   isMobileOpen: boolean;
   onMobileOpenChange: (open: boolean) => void;
-  userInfo: UserInfo;
-  onLogout: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -48,15 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   navItems,
   isMobileOpen,
   onMobileOpenChange,
-  userInfo,
-  onLogout,
 }) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { theme, setTheme } = useDarkMode();
-
-  const themeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor;
-  const themeLabel = theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System';
 
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -96,50 +71,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       </Link>
     );
   };
-
-  const UserMenu: React.FC<{ collapsed?: boolean }> = ({ collapsed = false }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn(
-            'w-full justify-start h-auto p-0',
-            collapsed && 'justify-center'
-          )}
-        >
-          <span className="relative shrink-0">
-            <Avatar className={cn('shrink-0', collapsed ? 'h-7 w-7' : 'h-8 w-8')}>
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-                {userInfo.initials}
-              </AvatarFallback>
-            </Avatar>
-            {userInfo.role && (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-success ring-2 ring-background" />
-            )}
-          </span>
-          {!collapsed && (
-            <div className="flex-1 min-w-0 text-left ml-3">
-              <div className="text-sm font-medium truncate">{userInfo.displayName}</div>
-              {userInfo.email && (
-                <div className="text-xs text-muted-foreground truncate">{userInfo.email}</div>
-              )}
-            </div>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56">
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onLogout} className="text-destructive">
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 
   return (
     <>
@@ -194,83 +125,27 @@ const Sidebar: React.FC<SidebarProps> = ({
           ))}
         </nav>
 
-        {/* Bottom: User Profile + Toggle */}
-        <div className="shrink-0 border-t border-border p-2 space-y-1">
-          {isCollapsed ? (
-            <div className="flex justify-center pb-1">
-              <Tooltip content="View changelog" side="right">
-                <div>v0.1.1</div>
-              </Tooltip>
-            </div>
-          ) : (
-            <div className="flex justify-start px-1 pb-1">
-              <span className="text-xs text-muted-foreground">v0.1.1</span>
-            </div>
-          )}
-          {isCollapsed ? (
-            <Tooltip content={userInfo.displayName} side="right">
-              <div>
-                <UserMenu collapsed />
-              </div>
-            </Tooltip>
-          ) : (
-            <UserMenu />
-          )}
-          <Separator className="!my-1.5" />
-          <div className={cn('flex gap-1', isCollapsed ? 'flex-col' : 'flex-row')}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    'flex-1 sidebar-item-transition',
-                    isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
-                  )}
-                  aria-label="Switch theme"
-                >
-                  {React.createElement(themeIcon, { className: 'h-4 w-4' })}
-                  {!isCollapsed && <span className="ml-2 text-sm">{themeLabel}</span>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setTheme('light')}>
-                  <Sun className="mr-2 h-4 w-4" />
-                  <span>Light</span>
-                  {theme === 'light' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme('dark')}>
-                  <Moon className="mr-2 h-4 w-4" />
-                  <span>Dark</span>
-                  {theme === 'dark' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme('system')}>
-                  <Monitor className="mr-2 h-4 w-4" />
-                  <span>System</span>
-                  {theme === 'system' && <span className="ml-auto text-xs text-muted-foreground">&#10003;</span>}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggle}
-              className={cn(
-                'flex-1 sidebar-item-transition',
-                isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
-              )}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {isCollapsed ? (
-                <PanelLeft className="h-4 w-4" />
-              ) : (
-                <>
-                  <PanelLeftClose className="mr-2 h-4 w-4" />
-                  <span className="text-sm">Collapse</span>
-                </>
-              )}
-            </Button>
-          </div>
+        {/* Bottom: Collapse toggle */}
+        <div className="shrink-0 border-t border-border p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggle}
+            className={cn(
+              'w-full sidebar-item-transition',
+              isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
+            )}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <PanelLeft className="h-4 w-4" />
+            ) : (
+              <>
+                <PanelLeftClose className="mr-2 h-4 w-4" />
+                <span className="text-sm">Collapse</span>
+              </>
+            )}
+          </Button>
         </div>
       </aside>
 
