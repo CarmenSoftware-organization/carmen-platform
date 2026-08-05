@@ -2,7 +2,7 @@
 // syncs package.json and CHANGELOG.md, then records all three as one commit plus
 // an annotated tag. Never pushes, never fetches.
 // Spec: docs/superpowers/specs/2026-08-05-build-bump-release-script-design.md
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
@@ -197,6 +197,23 @@ function assertTagFree(version) {
   if (git('tag', '--list', `v${version}`) !== '') fail(`tag v${version} มีอยู่แล้ว`);
 }
 
+/**
+ * npm rather than bun: the current build:bump already shells out to `npm run`,
+ * and npm ships with node, so this behaves identically whether the operator
+ * typed `bun run build:bump` or `npm run build:bump` — no runtime detection.
+ * --silent suppresses npm's own echo of the command line.
+ * Output is inherited, never captured: a failing typecheck must show its file.
+ */
+function gate(script, label) {
+  const result = spawnSync('npm', ['run', '--silent', script], { cwd: root, stdio: 'inherit' });
+  if (result.error) fail(`รัน npm run ${script} ไม่ได้: ${result.error.message}`);
+  if (result.status !== 0) {
+    console.error(`✗ ${script} ไม่ผ่าน`);
+    process.exit(result.status ?? 1);
+  }
+  console.log(label);
+}
+
 async function main() {
   const { changelog, current } = readState();
   const preview = previewVersions(current);
@@ -212,7 +229,11 @@ async function main() {
   console.log('');
   assertTagFree(preview[level]);
 
-  console.log(`(เลือก ${level} → ${preview[level]} — เฟสถัดไปยังไม่ได้ทำ)`);
+  gate('typecheck', '▸ typecheck ....... ✓');
+  gate('lint', '▸ lint ............ ✓');
+  gate('test', '▸ test ............ ✓');
+
+  console.log(`(gates ผ่านหมด — ${level} → ${preview[level]} — เฟสถัดไปยังไม่ได้ทำ)`);
 }
 
 await main();
