@@ -12,7 +12,19 @@ export const ANALYTICS_TZ = 'Asia/Bangkok';
 /** ต้องตรงกับ MAX_RANGE_DAYS ฝั่ง backend — เกินกว่านี้ backend ตอบ 400 */
 export const MAX_RANGE_DAYS = 90;
 
-/** ออฟเซ็ตคงที่ของไทย (ไม่มี DST) เป็นมิลลิวินาที */
+/**
+ * ออฟเซ็ตคงที่ของไทย (ไม่มี DST) เป็นมิลลิวินาที
+ *
+ * เป็นค่าคงที่ที่ hardcode ไว้แทน `ANALYTICS_TZ` — ทั้งสองตัวต้อง sync กันเสมอ
+ * ถ้าแก้ `ANALYTICS_TZ` ต้องแก้ค่านี้ด้วย (ไม่มีการคำนวณเชื่อมกันอัตโนมัติ)
+ *
+ * This is a hardcoded mirror of `ANALYTICS_TZ` — the two must be changed in
+ * lockstep; nothing derives one from the other. A literal offset is used
+ * instead of resolving it from `ANALYTICS_TZ` via `Intl` because Bangkok has
+ * been UTC+7 with no DST since 1920 — a fixed offset is correct for every
+ * date this app will ever compute, and far simpler than round-tripping
+ * through `Intl.DateTimeFormat`/`formatToParts` on every boundary call.
+ */
 const TZ_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 export interface DateRange {
