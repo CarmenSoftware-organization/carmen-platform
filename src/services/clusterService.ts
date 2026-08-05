@@ -45,6 +45,20 @@ const clusterService = {
     return response.data;
   },
 
+  // `id` is the tb_cluster_user membership row id (ClusterUser.id), NOT the user's id.
+  updateClusterUser: async (
+    id: string,
+    data: { role?: string; is_active?: boolean },
+  ) => {
+    const response = await api.put(`/api-system/user/clusters/${id}`, data);
+    return response.data;
+  },
+
+  deleteClusterUser: async (id: string) => {
+    const response = await api.delete(`/api-system/user/clusters/${id}`);
+    return response.data;
+  },
+
   // Dedicated logo/avatar upload endpoints (multipart). Return { file_token, url, expires_at }.
   // The multipart Content-Type header is required so axios doesn't JSON-serialize the FormData.
   uploadLogo: async (id: string, file: File) => {

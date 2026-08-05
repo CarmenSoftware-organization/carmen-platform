@@ -21,6 +21,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'super-admins': 'Super Admins',
   'user-platform': 'User Platform',
   'sql-workbench': 'SQL Workbench',
+  'cluster-admin': 'Cluster Admin',
   profile: 'Profile',
   changelog: 'Changelog',
   new: 'New',
@@ -34,7 +35,7 @@ const labelFor = (seg: string): string =>
 // Section segments with no index route of their own — only child routes exist
 // (e.g. /platform/roles, /broadcasts/new). Linking to the bare segment would
 // hit the router's catch-all, which now renders the 404 page.
-const NON_NAVIGABLE = new Set(['platform', 'broadcasts']);
+const NON_NAVIGABLE = new Set(['platform', 'broadcasts', 'cluster-admin']);
 
 // Segments that are opaque record ids (uuid-ish) carry no label of their own.
 const isIdSegment = (seg: string): boolean =>
@@ -45,12 +46,19 @@ export function crumbsFromPath(pathname: string): Crumb[] {
   if (segs.length === 0 || (segs.length === 1 && segs[0] === 'dashboard')) {
     return [];
   }
-  const meaningful = segs.filter((s) => !isIdSegment(s));
-  return meaningful.map((seg, i) => {
+  // Keep each surviving segment's index into the *original* (unstripped) path. Dropping id
+  // segments only changes which segments get a crumb/label — an ancestor's `to` must still be
+  // built from the real URL, ids included, or a route with an id in the middle (e.g.
+  // /cluster-admin/:clusterId/business-units/new) reconstructs a `to` with the id missing,
+  // which matches no route.
+  const meaningful = segs
+    .map((seg, index) => ({ seg, index }))
+    .filter(({ seg }) => !isIdSegment(seg));
+  return meaningful.map(({ seg, index }, i) => {
     const isLast = i === meaningful.length - 1;
     if (isLast) return { label: labelFor(seg) };
     if (NON_NAVIGABLE.has(seg)) return { label: labelFor(seg) };
-    return { label: labelFor(seg), to: `/${meaningful.slice(0, i + 1).join('/')}` };
+    return { label: labelFor(seg), to: `/${segs.slice(0, index + 1).join('/')}` };
   });
 }
 

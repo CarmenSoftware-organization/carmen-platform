@@ -3,19 +3,37 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
-import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import HeaderUserMenu from './HeaderUserMenu';
 import ThemeToggle from './ThemeToggle';
 import VersionBadge from './VersionBadge';
+import { buildPlatformNav } from './nav/platformNav';
 
 interface LayoutProps {
   children: React.ReactNode;
+  /** Omit to render the platform navigation. */
+  navItems?: NavItem[];
+  /**
+   * Rendered at the left of the desktop header bar, before the account controls. Also threaded
+   * to `Sidebar`, which renders the same node again at the top of the mobile navigation Sheet —
+   * the desktop bar is `hidden md:flex`, so on a narrow viewport this would otherwise be
+   * reachable nowhere (e.g. the cluster-admin ClusterSwitcher, the only way back to the
+   * cluster picker on mobile).
+   */
+  headerSlot?: React.ReactNode;
+  /**
+   * Where the brand mark (sidebar logo + mobile header logo) navigates to. Defaults to the
+   * platform dashboard. `ClusterAdminLayout` overrides this — the platform dashboard fires
+   * unscoped list queries that all 403 for a membership-only cluster admin, so the most
+   * prominent element in the chrome must not route there from inside `/cluster-admin`.
+   */
+  brandTo?: string;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo = '/dashboard' }) => {
   const { user, logout, hasPermission, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,33 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     });
   };
 
-  const allNavItems: NavItem[] = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    // Organization
-    { path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read', group: 'Organization' },
-    { path: '/business-units', label: 'Business Units', icon: Building2, permission: 'cluster.read', group: 'Organization' },
-    { path: '/tenant-migrations', label: 'Tenant Migrations', icon: DatabaseZap, permission: 'cluster.read', group: 'Organization' },
-    { path: '/tenant-imports', label: 'Data Import', icon: FileSpreadsheet, permission: 'data_import.manage', group: 'Organization' },
-    { path: '/users', label: 'Users', icon: Users, permission: 'user.read', group: 'Organization' },
-    // Content
-    { path: '/report-templates', label: 'Report Templates', icon: FileText, permission: 'report_template.read', group: 'Content' },
-    { path: '/report-form-groups', label: 'Form Groups', icon: LayoutGrid, permission: 'report_template.read', group: 'Content' },
-    { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read', group: 'Content' },
-    { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send', group: 'Content' },
-    // Platform
-    { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read', group: 'Platform' },
-    { path: '/platform/email-settings', label: 'Email Settings', icon: Mail, permission: 'email_setting.read', group: 'Platform' },
-    { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
-    { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
-    { path: '/platform/user-platform', label: 'User Platform', icon: UserCog, permission: 'user_platform.read', group: 'Platform' },
-    { path: '/sql-workbench', label: 'SQL Workbench', icon: Database, permission: 'sql_workbench.read', group: 'Platform' },
-  ];
-
-  const navItems = allNavItems.filter(
-    (item) =>
-      (!item.permission || hasPermission(item.permission)) &&
-      (!item.superAdminOnly || isSuperAdmin),
-  );
+  const navItems = navItemsProp ?? buildPlatformNav({ hasPermission, isSuperAdmin });
 
   const getFullName = (): string => {
     const info = user?.user_info;
@@ -134,6 +126,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         navItems={navItems}
         isMobileOpen={isMobileOpen}
         onMobileOpenChange={setIsMobileOpen}
+        brandTo={brandTo}
+        headerSlot={headerSlot}
       />
 
       {/* Main Content Area */}
@@ -153,7 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to="/dashboard" className="flex items-center gap-3 group">
+              <Link to={brandTo} className="flex items-center gap-3 group">
                 <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-shadow">
                   <span className="text-white font-bold text-base">C</span>
                 </div>
@@ -173,6 +167,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Desktop breadcrumb bar + account controls */}
         <div className="sticky top-0 z-30 hidden h-12 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
           <Breadcrumbs />
+          {headerSlot}
           {isDesktop && (
             <div className="ml-auto flex items-center gap-2">
               <VersionBadge />
