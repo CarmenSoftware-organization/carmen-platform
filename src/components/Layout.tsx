@@ -6,6 +6,10 @@ import { Button } from './ui/button';
 import { LayoutDashboard, Network, Building2, Users, FileText, Menu, Newspaper, Megaphone, AppWindow, ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
+import { useMediaQuery } from '../hooks/useMediaQuery';
+import HeaderUserMenu from './HeaderUserMenu';
+import ThemeToggle from './ThemeToggle';
+import VersionBadge from './VersionBadge';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +19,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, hasPermission, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Must match the `md:` breakpoint on the two header elements below — only one
+  // HeaderUserMenu may be mounted, or the accessible name is duplicated.
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     try {
@@ -115,7 +123,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     initials: getUserInitials(),
     displayName: getFullName() || user?.name || user?.email || 'User',
     email: user?.email || '',
-    role: user?.role,
   };
 
   return (
@@ -127,8 +134,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         navItems={navItems}
         isMobileOpen={isMobileOpen}
         onMobileOpenChange={setIsMobileOpen}
-        userInfo={userInfo}
-        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -156,13 +161,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   Carmen Platform
                 </h1>
               </Link>
+              {!isDesktop && (
+                <div className="ml-auto">
+                  <HeaderUserMenu compact userInfo={userInfo} onLogout={handleLogout} />
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        {/* Desktop breadcrumb bar */}
-        <div className="sticky top-0 z-30 hidden h-12 items-center border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
+        {/* Desktop breadcrumb bar + account controls */}
+        <div className="sticky top-0 z-30 hidden h-12 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
           <Breadcrumbs />
+          {isDesktop && (
+            <div className="ml-auto flex items-center gap-2">
+              <VersionBadge />
+              <ThemeToggle />
+              <HeaderUserMenu userInfo={userInfo} onLogout={handleLogout} />
+            </div>
+          )}
         </div>
 
         {/* Main Content */}
