@@ -21,6 +21,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'super-admins': 'Super Admins',
   'user-platform': 'User Platform',
   'sql-workbench': 'SQL Workbench',
+  'cluster-admin': 'Cluster Admin',
   profile: 'Profile',
   changelog: 'Changelog',
   new: 'New',
@@ -34,7 +35,7 @@ const labelFor = (seg: string): string =>
 // Section segments with no index route of their own — only child routes exist
 // (e.g. /platform/roles, /broadcasts/new). Linking to the bare segment would
 // hit the router's catch-all, which now renders the 404 page.
-const NON_NAVIGABLE = new Set(['platform', 'broadcasts']);
+const NON_NAVIGABLE = new Set(['platform', 'broadcasts', 'cluster-admin']);
 
 // Segments that are opaque record ids (uuid-ish) carry no label of their own.
 const isIdSegment = (seg: string): boolean =>

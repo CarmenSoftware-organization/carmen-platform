@@ -1,7 +1,8 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { LogOut, User } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -31,7 +32,13 @@ interface HeaderUserMenuProps {
 
 const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, setTheme } = useDarkMode();
+  const { adminScope, effectivePermissions, isSuperAdmin } = useAuth();
+
+  const inClusterAdmin = location.pathname.startsWith('/cluster-admin');
+  const canClusterAdmin = !!adminScope && (adminScope.all || adminScope.clusters.length > 0);
+  const canPlatformAdmin = isSuperAdmin || (effectivePermissions?.platform.length ?? 0) > 0;
 
   return (
     <DropdownMenu>
@@ -59,6 +66,19 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
         </DropdownMenuLabel>
 
         <DropdownMenuSeparator />
+
+        {inClusterAdmin && canPlatformAdmin && (
+          <DropdownMenuItem onSelect={() => navigate('/dashboard')}>
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            <span>Platform Admin view</span>
+          </DropdownMenuItem>
+        )}
+        {!inClusterAdmin && canClusterAdmin && (
+          <DropdownMenuItem onSelect={() => navigate('/cluster-admin')}>
+            <Network className="mr-2 h-4 w-4" />
+            <span>Cluster Admin view</span>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuItem onClick={() => navigate('/profile')}>
           <User className="mr-2 h-4 w-4" />
