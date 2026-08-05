@@ -5,6 +5,11 @@ export interface DetailsSectionProps {
   formData: ClusterFormData;
   fieldErrors: Record<string, string>;
   canEdit: boolean;
+  /**
+   * Licensing fields are a platform decision — the server strips them from a membership
+   * admin's update. Defaults to canEdit so existing call sites are unchanged.
+   */
+  canEditLicensing?: boolean;
   onCommit: (name: string, value: string) => void;
   onValidate: (name: string, value: string) => void;
 }
@@ -18,10 +23,12 @@ export function DetailsSection({
   formData,
   fieldErrors,
   canEdit,
+  canEditLicensing = canEdit,
   onCommit,
   onValidate,
 }: DetailsSectionProps) {
   const disabled = !canEdit;
+  const licensingDisabled = !canEditLicensing;
   return (
     <div className="divide-y">
       <InlineField
@@ -62,7 +69,7 @@ export function DetailsSection({
         value={formData.max_license_bu}
         type="number"
         mono
-        disabled={disabled}
+        disabled={licensingDisabled}
         placeholder="Unlimited"
         error={fieldErrors.max_license_bu}
         onCommit={onCommit}
