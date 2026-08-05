@@ -971,7 +971,11 @@ this plan named both fields; only the first exists.
 Base it on `src/pages/ClusterEdit.tsx` — the same load/save/edit-toggle orchestration, minus the
 business-unit section, the users section, and the delete action. Required state, per the Edit
 page pattern: `formData`, `savedFormData`, `fieldErrors`, `loading`, `editing`, `saving`,
-`error`, `rawResponse`, `copied`, and a dedicated `docVersion`.
+`rawResponse`, and a dedicated `docVersion`.
+
+> No page-level `copied` state. `DevDebugSheet` owns copy/tab state internally and self-gates
+> on `import.meta.env.DEV` — `ClusterEdit.tsx` and `UserEdit.tsx` hold none, and neither should
+> these pages. (An earlier draft of this plan listed it; verified stale 2026-08-05.)
 
 The three things that differ from `ClusterEdit.tsx`, spelled out:
 
@@ -1057,7 +1061,7 @@ entity. Everything **rule 13** requires must be present: 400ms debounced search,
 active-filter badges, server-side `DataTable`, CSV export, dev-only debug Sheet, `Ctrl/⌘+K`.
 
 Required state shape: `items`, `totalRows`, `loading`, `error`, `searchTerm`, `statusFilter`,
-`showFilters`, `rawResponse`, `copied`, `paginate`.
+`showFilters`, `rawResponse`, `paginate`. **No page-level `copied`** — `DevDebugSheet` owns it.
 
 The cluster filter, which is what differs from `ClusterManagement.tsx`:
 
@@ -1158,7 +1162,7 @@ components, with three removals:
 
 Required state: `buId` and `clusterId` from `useParams`, `isNew = !buId`, `formData`,
 `savedFormData`, `fieldErrors`, `loading`, `editing` (new ⇒ `true`; existing ⇒ `false` until
-Edit), `saving`, `error`, `rawResponse`, `copied`, `docVersion`.
+Edit), `saving`, `error`, `rawResponse`, `docVersion`. **No page-level `copied`** — `DevDebugSheet` owns it.
 
 `cluster_id` comes from the URL and is never a form field:
 
