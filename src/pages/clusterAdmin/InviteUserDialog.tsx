@@ -260,8 +260,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
                           onChange={() => toggleBu(bu.id)}
                           className="h-4 w-4 rounded border-input"
                         />
-                        <span className="font-medium">{bu.code}</span>
-                        <span className="text-muted-foreground">{bu.name}</span>
+                        <span className="font-medium">{bu.name}</span>
                       </label>
                       {entry && (
                         <div className="ml-6 flex flex-wrap items-center gap-3">

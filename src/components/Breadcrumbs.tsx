@@ -49,8 +49,8 @@ export function crumbsFromPath(pathname: string): Crumb[] {
   // Keep each surviving segment's index into the *original* (unstripped) path. Dropping id
   // segments only changes which segments get a crumb/label — an ancestor's `to` must still be
   // built from the real URL, ids included, or a route with an id in the middle (e.g.
-  // /cluster-admin/:clusterId/business-units/new) reconstructs a `to` with the id missing,
-  // which matches no route.
+  // /cluster-admin/:clusterId/business-units/:buId/edit) reconstructs a `to` with the ids
+  // missing, which matches no route.
   const meaningful = segs
     .map((seg, index) => ({ seg, index }))
     .filter(({ seg }) => !isIdSegment(seg));

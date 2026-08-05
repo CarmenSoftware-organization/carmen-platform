@@ -355,10 +355,6 @@ function AppContent() {
               element={<ClusterAdminRoute><ClusterAdminBusinessUnitList /></ClusterAdminRoute>}
             />
             <Route
-              path="/cluster-admin/:clusterId/business-units/new"
-              element={<ClusterAdminRoute><ClusterAdminBusinessUnitForm /></ClusterAdminRoute>}
-            />
-            <Route
               path="/cluster-admin/:clusterId/business-units/:buId/edit"
               element={<ClusterAdminRoute><ClusterAdminBusinessUnitForm /></ClusterAdminRoute>}
             />

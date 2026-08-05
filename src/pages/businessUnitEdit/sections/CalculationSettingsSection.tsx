@@ -12,6 +12,27 @@ interface CalculationSettingsSectionProps extends SectionFieldProps {
   currencies?: TenantCurrency[] | null;
   currenciesLoading?: boolean;
   currenciesFailed?: boolean;
+  /**
+   * Default Currency is set from the tenant's currency catalog, a platform-managed list
+   * this component fetches through `currencies`/`currenciesLoading`/`currenciesFailed`. A
+   * cluster administrator has no reach into that catalog (no endpoint scoped to a cluster
+   * admin's session exposes it), so the cluster-admin business-unit page never loads those
+   * props and cannot offer a working editable control here — showing one would present a
+   * field that silently can't do anything useful. The read-only "Default Currency" detail
+   * card below is unaffected by this flag; it renders from `defaultCurrency`, which the
+   * cluster-admin page does load directly off the business-unit record. Defaults to true
+   * so every existing call site is unchanged.
+   */
+  showCurrencyField?: boolean;
+  /**
+   * Calculation method drives inventory costing math that is already in effect for a
+   * business unit — changing it after the fact is a platform-level decision, not a
+   * cluster-admin one, so the cluster-admin page opts to always show it read-only
+   * regardless of its own `editing` state. Combined with `editing` (see below) rather than
+   * replacing it, so this flag only ever narrows what platform admins already get; it can
+   * never widen it. Defaults to true so every existing call site is unchanged.
+   */
+  canEditCalculationMethod?: boolean;
 }
 
 const currencyLabel = (c: TenantCurrency) =>
@@ -26,6 +47,8 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
   currencies,
   currenciesLoading = false,
   currenciesFailed = false,
+  showCurrencyField = true,
+  canEditCalculationMethod = true,
 }) => {
   const useDropdown = editing && !currenciesFailed && Array.isArray(currencies);
   const currentId = formData.default_currency_id;
@@ -84,7 +107,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
             <Label htmlFor="calculation_method">Calculation Method</Label>
-            {editing ? (
+            {editing && canEditCalculationMethod ? (
               <select
                 id="calculation_method"
                 name="calculation_method"
@@ -100,10 +123,12 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
               <ReadOnlyText value={getCalculationMethodLabel(formData.calculation_method)} />
             )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="default_currency_id">Default Currency ID</Label>
-            {renderCurrencyField()}
-          </div>
+          {showCurrencyField && (
+            <div className="space-y-2">
+              <Label htmlFor="default_currency_id">Default Currency ID</Label>
+              {renderCurrencyField()}
+            </div>
+          )}
         </div>
         {!editing && defaultCurrency && (
           <div className="rounded-md border p-4 space-y-3">

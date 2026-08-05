@@ -245,13 +245,23 @@ instead of the cluster list, and deletion of a cluster or a BU stays platform-on
 /cluster-admin                                        → picker, or redirect when exactly one
 /cluster-admin/:clusterId/cluster                     → cluster profile (edit)
 /cluster-admin/:clusterId/business-units              → BU list
-/cluster-admin/:clusterId/business-units/new          → BU create
 /cluster-admin/:clusterId/business-units/:buId/edit   → BU edit
 /cluster-admin/:clusterId/users                       → members + invitations (tabs)
 ```
 
 `/cluster-admin` resolves as: `all === true` or more than one cluster → picker page;
 exactly one → `<Navigate replace>` into it; none → `<Forbidden />`.
+
+**Addendum, 2026-08-06: BU create removed from this view.** The route table above
+originally also carried `/cluster-admin/:clusterId/business-units/new → BU create`.
+Creating a business unit consumes `max_license_bu`, which §3's B5 already treats as a
+platform decision — a membership admin's cluster write has the licensing fields stripped
+for exactly that reason (§3 B5). Letting the same admin create BUs contradicted that
+decision, so the create route, its "Add Business Unit" entry points on the BU list, and the
+create branch of the BU form were removed. The backend gate on `POST /api-system/business-units`
+was tightened in the same change (`carmen-turborepo-backend-v2`, parallel PR) so a stray
+client request now 403s instead of silently creating a BU no cluster-admin UI could have
+produced anyway. Editing an existing BU is unaffected.
 
 Pages are lazy-loaded through the existing `Suspense` in `App.tsx`.
 
@@ -379,17 +389,22 @@ clusters must see only the one named in the URL, which is narrower than their sc
 Columns: name, code, `is_hq`, `is_active` (as `<Badge variant="success" | "secondary">`),
 `created_at`. `meta.card` hints for the sub-`lg` card layout.
 
-### 5.3 `/cluster-admin/:clusterId/business-units/[new | :buId/edit]`
+### 5.3 `/cluster-admin/:clusterId/business-units/:buId/edit`
 
-Edit-page pattern, derived from `BusinessUnitEdit.tsx` with these removals:
+Edit-**only** page, derived from `BusinessUnitEdit.tsx` with these removals:
 
 - the DB-connection section entirely — `GET .../reveal-db-connection` is gated on
-  `RequirePlatformPermission('cluster.update')` and would 403. `db_connection` is optional in
-  `BusinessUnitCreateSchema`, so creation works without it.
+  `RequirePlatformPermission('cluster.update')` and would 403.
 - `max_license_users` — a platform decision, and B5 strips its cluster-level sibling.
 - the BU-users card — membership is managed on the Users page.
 
 `cluster_id` is fixed from `useParams`, never a form field.
+
+**Addendum, 2026-08-06: create removed.** This section originally described a shared
+create/edit page at `[new | :buId/edit]`, and the create path additionally noted that
+`db_connection` is optional in `BusinessUnitCreateSchema` so creation worked without it.
+That path is gone — see the §4.1 addendum for why (BU creation consumes `max_license_bu`,
+a platform decision per B5) — so `buId` is now always present and the page is edit-only.
 
 ### 5.4 `/cluster-admin/:clusterId/users` — members and invitations
 
