@@ -853,7 +853,9 @@ git status --short
 rm .git/hooks/pre-commit
 ```
 
-Expected: `✗ git commit ล้มเหลว …` listing the three files and the `git restore --staged --worktree package.json src/data/changelog.json CHANGELOG.md` command, `exit=9`, and `git status --short` showing those three files staged — which is exactly what the message claims. Then confirm the printed recovery command actually cleans up:
+Expected: `✗ git commit ล้มเหลว …` listing the three files and the `git restore --staged --worktree package.json src/data/changelog.json CHANGELOG.md` command, `exit=1`, and `git status --short` showing those three files staged — which is exactly what the message claims.
+
+`exit=1`, not `exit=9`: git does not propagate a pre-commit hook's exit code. Hooks exiting 2, 9 and 42 were all observed to make `git commit` itself exit `1` on git 2.50.1, so `process.exit(commit.status ?? 1)` forwarding `1` is correct behaviour, not a flattened code. Task 4's `exit=3` case is different and still holds — there the gate's own process exits 3 and `npm run` passes it through. Then confirm the printed recovery command actually cleans up:
 
 ```bash
 cd "$SCRATCH/release-sandbox"
