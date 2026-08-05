@@ -4,7 +4,7 @@ import userService from '../services/userService';
 import permissionService from '../services/permissionService';
 import clusterAdminService from '../services/clusterAdminService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions, AdminScope } from '../types';
-import { checkPermission, checkPlatformAuthority, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
+import { checkPermission, checkPlatformAuthority } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -69,12 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const applyEffectivePermissions = (eff?: EffectivePermissions | null): EffectivePermissions | null => {
-    let value: EffectivePermissions | null = eff ?? null;
-    // Dev-only fallback: grant the mock when the backend returns no permissions —
-    // but NOT for a real super-admin (preserve their is_super_admin flag).
-    if ((!value || (!value.is_super_admin && value.platform.length === 0 && Object.keys(value.clusters).length === 0)) && isDev) {
-      value = DEV_MOCK_EFFECTIVE_PERMISSIONS;
-    }
+    const value: EffectivePermissions | null = eff ?? null;
     setEffectivePermissions(value);
     if (value) localStorage.setItem('effectivePermissions', JSON.stringify(value));
     else localStorage.removeItem('effectivePermissions');
@@ -86,7 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const eff = await permissionService.getMyPlatformPermissions();
       return applyEffectivePermissions(eff);
     } catch {
-      return applyEffectivePermissions(null); // dev-mock fallback applies in dev; null in prod
+      return applyEffectivePermissions(null); // no permissions resolved
     }
   };
 

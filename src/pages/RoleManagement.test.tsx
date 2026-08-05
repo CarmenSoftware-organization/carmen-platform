@@ -35,9 +35,9 @@ vi.mock('../components/Layout', () => ({
 // to always render its children would make every permission assertion below vacuous,
 // exactly the defect this effort exists to close. This is the *platform roles* page
 // (`/platform/roles`, backed by the `platform_role` service via `roleService` ->
-// `/api-system/platform/roles`) — NOT application roles. `role.*` is platform-scoped
-// (DEV_MOCK_EFFECTIVE_PERMISSIONS.platform, utils/permissions.ts:51) and none of the
-// four `<Can>` call sites in RoleManagement.tsx pass a `clusterId` prop, so (like
+// `/api-system/platform/roles`) — NOT application roles. `role.*` is a platform-scoped
+// permission (never granted per-cluster), and none of the four `<Can>` call sites in
+// RoleManagement.tsx pass a `clusterId` prop, so (like
 // UserManagement/ReportTemplateManagement) there is no scoped-gate discrimination to
 // prove here; ordinary permission-grant/revoke discrimination is what's tested below.
 const auth = vi.hoisted(() => ({
@@ -106,9 +106,8 @@ const renderPage = () =>
 // SECURITY. Four `<Can>` gates guard this page's write surfaces: the row Edit
 // (role.update), the row Delete (role.delete), the header Add Role (role.create) and
 // the empty-state Add Role (role.create). All four are platform-scoped (no `clusterId`
-// prop passed to `<Can>` anywhere on this page — `role.*` only ever appears in
-// DEV_MOCK_EFFECTIVE_PERMISSIONS.platform, never per-cluster). These tests must FAIL if
-// a gate is deleted.
+// prop passed to `<Can>` anywhere on this page — `role.*` is always platform-scoped,
+// never per-cluster). These tests must FAIL if a gate is deleted.
 describe('RoleManagement — row action gates (role.update / role.delete)', () => {
   const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) =>
     user.click(screen.getByRole('button', { name: /actions for admin/i }));
