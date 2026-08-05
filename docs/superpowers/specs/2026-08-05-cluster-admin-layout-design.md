@@ -439,6 +439,16 @@ safe: neither tab can read the other's selection because no shared selection exi
   app's port 3304. The accept flow (`GET /api/invitations/mine`, `GET /api/invitations/:token`,
   `POST /api/invitations/:token/accept`, `POST .../decline`) belongs to whichever app that URL
   points at. This spec only issues and manages invitations.
+- **Moving `INVITATION_BASE_URL` (and `INVITATION_EXPIRY_DAYS`) out of env into a
+  platform-level settings page.** Deferred to its own spec, decided 2026-08-05. Both are read
+  from `envConfig` in `micro-cluster/src/cluster/user-invitation/user-invitation.service.ts`
+  (lines 231 and 236) and work as they are, so nothing here is blocked. There is no
+  platform-wide settings table in `CARMEN_SYSTEM` today — the whole `tb_*` list holds none —
+  and `app-config` (`/api/config/:bu_code/app-config`) is per-business-unit and lives in the
+  tenant schema, so it is the wrong home for a single platform value. The follow-up spec
+  should copy the `tb_email_sender_profile` pattern: a platform table in `CARMEN_SYSTEM`, an
+  `/api-system/platform/…` surface, its own permission pair, and a config-page-pattern admin
+  screen.
 - **Creating or deleting clusters**, deleting business units, licensing changes, tenant
   migrations, data import, and everything in the Content and Platform nav groups.
 - **Reworking `checkPermission`'s any-cluster fallback** (`src/utils/permissions.ts:47`). It
