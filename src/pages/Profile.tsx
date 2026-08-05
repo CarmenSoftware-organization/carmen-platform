@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import Layout from '../components/Layout';
+import ClusterAdminLayout from '../components/ClusterAdminLayout';
 import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -44,6 +46,11 @@ interface ProfileFieldsData {
 
 const Profile: React.FC = () => {
   const { user, refreshUser } = useAuth();
+  // Rendered at two routes: /profile in the platform view, and
+  // /cluster-admin/:clusterId/profile inside the cluster-admin view. The param is the only
+  // difference — the page's content and data source are identical — so the shell follows it.
+  const { clusterId } = useParams<{ clusterId: string }>();
+  const Shell = clusterId ? ClusterAdminLayout : Layout;
   const [profile, setProfile] = useState<User | null>(user);
   const [formData, setFormData] = useState<ProfileFormData>({
     alias_name: '',
@@ -282,7 +289,7 @@ const Profile: React.FC = () => {
 
   if (fetchingProfile) {
     return (
-      <Layout>
+      <Shell>
         <div className="space-y-4 sm:space-y-6">
           <PageHeader title="Profile" subtitle="Manage your account settings and preferences" />
           <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
@@ -351,12 +358,12 @@ const Profile: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-      </Layout>
+      </Shell>
     );
   }
 
   return (
-    <Layout>
+    <Shell>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader title="Profile" subtitle="Manage your account settings and preferences" />
 
@@ -701,7 +708,7 @@ const Profile: React.FC = () => {
 
         <DevDebugSheet title="API Response" endpoint="GET /api/user/profile" data={rawResponse} />
       </div>
-    </Layout>
+    </Shell>
   );
 };
 

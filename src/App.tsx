@@ -366,6 +366,10 @@ function AppContent() {
               path="/cluster-admin/:clusterId/users"
               element={<ClusterAdminRoute><ClusterAdminUsers /></ClusterAdminRoute>}
             />
+            <Route
+              path="/cluster-admin/:clusterId/profile"
+              element={<ClusterAdminRoute><Profile /></ClusterAdminRoute>}
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>

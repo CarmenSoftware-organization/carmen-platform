@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
@@ -34,9 +34,20 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useDarkMode();
-  const { hasPlatformAuthority, hasClusterAdminScope } = useAuth();
+  const { hasPlatformAuthority, hasClusterAdminScope, adminScope } = useAuth();
+  const { clusterId } = useParams<{ clusterId: string }>();
 
   const inClusterAdmin = location.pathname.startsWith('/cluster-admin');
+
+  // A clusterId in the URL wins outright, whatever the user's platform authority: a super admin
+  // who has switched into the cluster-admin view is *in* it, and opening Profile must not
+  // silently eject them into the platform shell — that is what the "Platform Admin view" item
+  // above is for. On the picker page (/cluster-admin, no param) a membership-only admin falls
+  // back to their first cluster; the choice is arbitrary and harmless, since Profile's content
+  // is identical under every cluster and only the sidebar differs.
+  const fallbackClusterId = hasPlatformAuthority ? undefined : adminScope?.clusters[0]?.id;
+  const profileClusterId = clusterId ?? fallbackClusterId;
+  const profileTo = profileClusterId ? `/cluster-admin/${profileClusterId}/profile` : '/profile';
 
   return (
     <DropdownMenu>
@@ -78,7 +89,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
+        <DropdownMenuItem onClick={() => navigate(profileTo)}>
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
