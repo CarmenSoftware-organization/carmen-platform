@@ -481,6 +481,8 @@ export interface AuthContextValue {
   effectivePermissions: EffectivePermissions | null;
   hasPermission: (key: string, opts?: { clusterId?: string }) => boolean;
   isSuperAdmin: boolean;
+  adminScope: AdminScope | null;
+  isClusterAdminOf: (clusterId: string) => boolean;
 }
 
 export interface LoginCredentials {

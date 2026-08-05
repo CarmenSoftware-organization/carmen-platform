@@ -2,7 +2,8 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import api from '../services/api';
 import userService from '../services/userService';
 import permissionService from '../services/permissionService';
-import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions } from '../types';
+import clusterAdminService from '../services/clusterAdminService';
+import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions, AdminScope } from '../types';
 import { checkPermission, DEV_MOCK_EFFECTIVE_PERMISSIONS } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
 
@@ -20,6 +21,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [effectivePermissions, setEffectivePermissions] = useState<EffectivePermissions | null>(null);
+  const [adminScope, setAdminScope] = useState<AdminScope | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -52,9 +54,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (storedEffectivePermissions) {
         setEffectivePermissions(JSON.parse(storedEffectivePermissions));
       }
+      const storedAdminScope = localStorage.getItem('adminScope');
+      if (storedAdminScope) {
+        setAdminScope(JSON.parse(storedAdminScope));
+      }
       // Fetch fresh profile to get firstname/middlename/lastname
       fetchProfile();
       fetchEffectivePermissions();
+      fetchAdminScope();
       fetchUserCount();
     }
     setLoading(false);
@@ -80,6 +87,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return applyEffectivePermissions(eff);
     } catch {
       return applyEffectivePermissions(null); // dev-mock fallback applies in dev; null in prod
+    }
+  };
+
+  /**
+   * Resolve which clusters this user administers.
+   *
+   * Deliberately has no dev-mock fallback, unlike fetchEffectivePermissions. A mock here would
+   * hand every dev session admin rights over every cluster and hide exactly the scoping bugs
+   * this value exists to surface. A failed fetch means "administers nothing".
+   */
+  const fetchAdminScope = async (): Promise<AdminScope | null> => {
+    try {
+      const scope = await clusterAdminService.getMyAdminClusters({ page: 1, perpage: 100 });
+      setAdminScope(scope);
+      localStorage.setItem('adminScope', JSON.stringify(scope));
+      return scope;
+    } catch {
+      const empty: AdminScope = { all: false, clusters: [] };
+      setAdminScope(empty);
+      localStorage.removeItem('adminScope');
+      return empty;
     }
   };
 
@@ -133,17 +161,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-      // Permission-based access gate: resolve platform permissions + user count.
-      const [eff, count] = await Promise.all([fetchEffectivePermissions(), fetchUserCount()]);
+      // Permission-based access gate: resolve platform permissions + user count + admin scope.
+      const [eff, count, scope] = await Promise.all([
+        fetchEffectivePermissions(),
+        fetchUserCount(),
+        fetchAdminScope(),
+      ]);
       const hasAnyPermission = !!eff && (eff.is_super_admin || eff.platform.length > 0 || Object.keys(eff.clusters).length > 0);
+      // A cluster-admin membership is authority in its own right — it is what gates every
+      // invitation and membership route on the server. Without this clause a user whose only
+      // authority is that membership cannot enter the app at all.
+      const hasClusterAdmin = !!scope && (scope.all || scope.clusters.length > 0);
       const isBootstrap = count !== null && count <= 1; // first-admin escape hatch
-      if (!hasAnyPermission && !isBootstrap) {
+      if (!hasAnyPermission && !hasClusterAdmin && !isBootstrap) {
         // Not authorized for the platform admin — tear down the partial session.
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('effectivePermissions');
+        localStorage.removeItem('adminScope');
         delete api.defaults.headers.common['Authorization'];
         setEffectivePermissions(null);
+        setAdminScope(null);
         return {
           success: false,
           error: 'Access Denied. You are not authorized to access this platform.',
@@ -209,10 +247,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('loginResponse');
     localStorage.removeItem('effectivePermissions');
+    localStorage.removeItem('adminScope');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
     setLoginResponse(null);
     setEffectivePermissions(null);
+    setAdminScope(null);
   };
 
   const isSuperAdmin = !!effectivePermissions?.is_super_admin;
@@ -222,6 +262,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (userCount !== null && userCount <= 1) return true;
     return checkPermission(effectivePermissions, key, opts);
   };
+
+  const isClusterAdminOf = (clusterId: string): boolean =>
+    !!adminScope && (adminScope.all || adminScope.clusters.some((c) => c.id === clusterId));
 
   const value: AuthContextValue = {
     user,
@@ -235,6 +278,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     effectivePermissions,
     hasPermission,
     isSuperAdmin,
+    adminScope,
+    isClusterAdminOf,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
