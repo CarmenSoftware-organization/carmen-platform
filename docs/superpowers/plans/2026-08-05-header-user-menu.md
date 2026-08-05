@@ -18,7 +18,7 @@
 - **Verification per task is `bun run build` then `bun run test`.** `bun run build` is the only thing that runs eslint in this repo, so it is the lint gate as well as the type gate.
 - The breakpoint literal is **`768px`**, matching Tailwind's `md:` used on both header elements in `Layout.tsx`.
 - Exactly **one** `HeaderUserMenu` may be mounted at a time — a second one in the DOM duplicates the accessible name and breaks the E2E avatar locator.
-- The mobile avatar trigger must be **≥44px** (`h-10 w-10`).
+- The mobile avatar trigger must be **≥44px** (`h-11 w-11` — Tailwind's `h-10` is 40px, not 44px).
 - After this work the sidebar footer holds **only** the Collapse button.
 - `Layout.tsx` and `Sidebar.tsx` are already-written files with an established style: named `React.FC` / arrow components, `cn()` for class merging, no `React` import unless `React.*` is referenced. Match it.
 
@@ -219,7 +219,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
         <Button
           variant="ghost"
           size="icon"
-          className={cn('rounded-full', compact && 'h-10 w-10')}
+          className={cn('rounded-full', compact && 'h-11 w-11')}
           aria-label={`User menu — ${userInfo.displayName}`}
         >
           <Avatar className={compact ? 'h-8 w-8' : 'h-7 w-7'}>

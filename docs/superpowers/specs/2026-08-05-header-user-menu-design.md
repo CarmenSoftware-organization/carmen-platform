@@ -115,7 +115,7 @@ interface HeaderUserMenuProps {
 ```
 
 **Trigger:** ghost icon button wrapping `<Avatar>` with the initials fallback.
-`h-9 w-9` normally, `h-10 w-10` when `compact` (≥44px touch target).
+`h-9 w-9` normally, `h-11 w-11` when `compact` (≥44px touch target — Tailwind's `h-10` is 40px).
 `aria-label={\`User menu — ${userInfo.displayName}\`}` — required, since the trigger has no
 visible text in either mode.
 
