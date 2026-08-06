@@ -123,18 +123,26 @@ Query parameters follow the repo convention (`page`, `perpage`, `search`, `sort`
 ```
 
 **Why `audit.created` and not `granted_at` / `granted_by_name`.** The route carries
-`@EnrichAuditUsers({ paths: ['data.roles'] })`. That interceptor **deletes** the raw
+`@EnrichAuditUsers({ paths: ['roles'] })`. That interceptor **deletes** the raw
 `created_at` / `created_by_id` off each nested role and replaces them with
 `audit.created = { at, id, name }` (`audit-shape.ts:84`). Emitting domain-named fields
 would mean bypassing the shared enricher and hand-rolling a user lookup, so the service
 selects the raw columns and lets the interceptor do its job.
 
-The path is `data.roles`, **not** `roles`: a paginated route's envelope is
-`{ data: [...], paginate }`, which is why every other paginated route in the gateway passes
-`paths: ['data']` (e.g. `period-end.controller.ts:74`). `collectAt` walks arrays
-automatically, so `data.roles` resolves to every `payload.data[*].roles[*]`. Passing
-`paths` also **replaces** the default `['']`, so the user-level object is not enriched —
-`last_granted_at` is a plain computed field and stays as written.
+The path is `roles`, **not** `data.roles` — corrected 2026-08-06 after the Task 4 review
+traced it. It is tempting to reason from the wire envelope (`{ data: [...], paginate }`)
+and reach for `data.roles`, but enrichment does not see that envelope.
+`StdResponse.fromResult` (`std-response.ts:112-118`) detects a `{data, paginate}`-shaped
+Result and calls `successPaginated(value.data, value.paginate)`, hoisting `paginate` to its
+own field and leaving `stdResponse.data` as the **bare users array**. `respond()`
+(`base-http-controller.ts:46-49`) then hands that bare array to the enricher, so
+`data.roles` looks for `user['data']['roles']` and collects zero targets — no error, just
+no grantor names, ever. `roles` resolves correctly because `collectAt` walks arrays
+automatically. The `paths: ['data']` seen on other paginated routes is not a counterexample:
+those return a Result that is not `{data, paginate}`-shaped, so no hoist happens.
+
+Passing `paths` also **replaces** the default `['']`, so the user-level object is not
+enriched — `last_granted_at` is a plain computed field and stays as written.
 
 The second role above shows an assignment created before change 3 ships: `audit.created`
 has `at` but no `name`, because `created_by_id` was NULL. The UI renders that as `—`, never

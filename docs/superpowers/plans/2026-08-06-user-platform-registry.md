@@ -464,7 +464,7 @@ Add this method to the same class:
                 cluster_name: clusterName.get(a.cluster_id) ?? null,
               }
             : { type: 'platform' as const },
-          // Raw audit columns — the gateway's @EnrichAuditUsers({ paths: ['data.roles'] })
+          // Raw audit columns — the gateway's @EnrichAuditUsers({ paths: ['roles'] })
           // deletes these and replaces them with `audit.created`.
           created_at: a.created_at,
           created_by_id: a.created_by_id,
@@ -887,7 +887,7 @@ existing `@Get(':user_id/roles')` so a literal path is never shadowed by the par
   @Get()
   @UseGuards(new AppIdGuard('user-platform.list'), PlatformPermissionGuard)
   @RequirePlatformPermission('user_platform.read')
-  @EnrichAuditUsers({ paths: ['data.roles'] })
+  @EnrichAuditUsers({ paths: ['roles'] })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'List users holding platform roles',
