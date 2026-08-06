@@ -29,6 +29,10 @@
   --warning-foreground: 0 0% 100%;
   --info: 221 61% 48%;
   --info-foreground: 0 0% 100%;
+  /* usage analytics chart series — kept distinct from --primary/--info (which are
+     identical) and from --success/--warning (which carry status meaning) */
+  --chart-1: 221 61% 48%;
+  --chart-2: 32 85% 45%;
   --shadow-xs: 0 1px 2px rgba(24, 20, 16, 0.04);
   --shadow-sm: 0 1px 2px rgba(24, 20, 16, 0.05);
   --shadow-md: 0 4px 12px rgba(24, 20, 16, 0.06);
@@ -67,6 +71,8 @@
   --warning-foreground: 20 14% 8%;
   --info: 217 70% 60%;
   --info-foreground: 0 0% 100%;
+  --chart-1: 217 70% 60%;
+  --chart-2: 36 88% 58%;
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);

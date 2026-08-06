@@ -658,3 +658,78 @@ export interface EmailSettingTestResult {
   sent: boolean;
   reason?: string;
 }
+
+// ==================== Usage Analytics (tb_activity_event) ====================
+
+export interface AnalyticsSummary {
+  events: number;
+  clicks: number;
+  page_views: number;
+  sessions: number;
+  users: number;
+}
+
+export interface AnalyticsDaily {
+  /** 'YYYY-MM-DD' ตาม Asia/Bangkok — backend เป็นผู้ตัดขอบวัน */
+  day: string;
+  clicks: number;
+  page_views: number;
+  sessions: number;
+  users: number;
+}
+
+export interface AnalyticsTopPage {
+  page_path: string;
+  events: number;
+  sessions: number;
+  users: number;
+}
+
+export interface AnalyticsTopElement {
+  element_id: string;
+  element_text?: string | null;
+  page_path?: string | null;
+  clicks: number;
+}
+
+export interface AnalyticsOverview {
+  summary: AnalyticsSummary;
+  daily: AnalyticsDaily[];
+  top_pages: AnalyticsTopPage[];
+  top_elements: AnalyticsTopElement[];
+}
+
+export interface ActivityEvent {
+  id: string;
+  event_id: string;
+  session_id: string;
+  user_id: string;
+  user_name?: string | null;
+  user_email?: string | null;
+  bu_code?: string | null;
+  app_id?: string | null;
+  app_name?: string | null;
+  domain?: string | null;
+  user_agent?: string | null;
+  event_type: string;
+  page_path: string;
+  element_id?: string | null;
+  element_text?: string | null;
+  props?: unknown;
+  client_ts: string;
+  server_ts: string;
+}
+
+/** ตัวกรองที่ใช้ร่วมทั้งหน้า dashboard และหน้า raw explorer */
+export interface AnalyticsFilterParams {
+  /** ISO 8601 UTC */
+  from: string;
+  /** ISO 8601 UTC */
+  to: string;
+  bu_code?: string;
+  app_id?: string;
+  event_type?: string;
+  user_id?: string;
+  session_id?: string;
+  page_path?: string;
+}

@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet,
+  BarChart3, MousePointerClick,
 } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 
@@ -17,6 +18,10 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/report-form-groups', label: 'Form Groups', icon: LayoutGrid, permission: 'report_template.read', group: 'Content' },
   { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read', group: 'Content' },
   { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send', group: 'Content' },
+  // Analytics — must stay contiguous: Sidebar groups by consecutive runs of the same
+  // `group` label, so splitting these two would render two separate "Analytics" headings.
+  { path: '/analytics', label: 'Usage Analytics', icon: BarChart3, permission: 'activity_event.read', group: 'Analytics' },
+  { path: '/activity-events', label: 'Activity Events', icon: MousePointerClick, permission: 'activity_event.detail', group: 'Analytics' },
   // Platform
   { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read', group: 'Platform' },
   { path: '/platform/email-settings', label: 'Email Settings', icon: Mail, permission: 'email_setting.read', group: 'Platform' },
