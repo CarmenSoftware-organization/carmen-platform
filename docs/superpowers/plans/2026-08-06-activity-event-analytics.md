@@ -1511,9 +1511,27 @@ git commit -m "feat(analytics): เพิ่มตัวเลือกช่ว
 
 **Files:**
 - Modify: `package.json` (+ `recharts`)
+- Modify: `src/index.css` (+ `--chart-1` / `--chart-2` in both the light and dark blocks)
 - Create: `src/pages/usageAnalytics/StatCards.tsx`
 - Create: `src/pages/usageAnalytics/TopList.tsx`
 - Create: `src/pages/usageAnalytics/UsageChart.tsx`
+
+**⚠️ Series colours — do not use `--primary` + `--info`.** Those two tokens hold
+*identical* values in both themes (`221 61% 48%` light, `217 70% 60%` dark), so the two
+chart series would render indistinguishable. The status tokens are also wrong here:
+`--success` / `--warning` carry semantic meaning and would drift if someone re-tunes them.
+Add two dedicated chart tokens instead — the shadcn convention — and use only those:
+
+```css
+/* :root (light) */
+--chart-1: 221 61% 48%;   /* blue — matches --primary so the chart sits in the palette */
+--chart-2: 32 85% 45%;    /* amber — blue/amber stays distinguishable under deuteranopia
+                             and protanopia, unlike a blue/green pair */
+
+/* .dark */
+--chart-1: 217 70% 60%;
+--chart-2: 36 88% 58%;
+```
 
 **Interfaces:**
 - Consumes: `AnalyticsSummary`, `AnalyticsDaily` จาก Task 8
@@ -1676,12 +1694,12 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => (
           <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
             <defs>
               <linearGradient id="fillSessions" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.02} />
               </linearGradient>
               <linearGradient id="fillUsers" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--info))" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="hsl(var(--info))" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -1697,9 +1715,9 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => (
             />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Area type="monotone" dataKey="sessions" name="Sessions"
-                  stroke="hsl(var(--primary))" fill="url(#fillSessions)" strokeWidth={2} />
+                  stroke="hsl(var(--chart-1))" fill="url(#fillSessions)" strokeWidth={2} />
             <Area type="monotone" dataKey="users" name="Active users"
-                  stroke="hsl(var(--info))" fill="url(#fillUsers)" strokeWidth={2} />
+                  stroke="hsl(var(--chart-2))" fill="url(#fillUsers)" strokeWidth={2} />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -1708,8 +1726,9 @@ export const UsageChart: React.FC<UsageChartProps> = ({ data }) => (
 );
 ```
 
-**หมายเหตุสำหรับผู้ทำ:** ตรวจใน `src/index.css` ว่ามี custom property ชื่อ `--info` จริง
-ถ้าไม่มีให้ใช้ `--success` หรือ `--warning` ที่มีอยู่แทน — **อย่าใส่สี hex ตรง ๆ**
+**หมายเหตุสำหรับผู้ทำ:** `--chart-1` / `--chart-2` ต้องถูกเพิ่มเข้า `src/index.css` ก่อน
+(ทั้งบล็อก `:root` และ `.dark`) — **อย่าใส่สี hex ตรง ๆ และอย่าย้อนกลับไปใช้ `--info`
+ซึ่งมีค่าเท่ากับ `--primary`**
 
 - [ ] **Step 5: Type-check + lint**
 
