@@ -80,7 +80,15 @@ const SuperAdminManagement: React.FC = () => {
     try {
       setLoading(true);
       const saData = await superAdminService.list();
-      setRows(extractArray<SuperAdmin>(saData));
+      // The gateway's @EnrichAuditUsers() moves the timestamp into `audit.created.at`;
+      // flatten it back to `created_at` here (tolerate the older flat shape too) — the
+      // same pattern as BusinessUnitManagement/RoleManagement — so both the Added column
+      // and the CSV export (which both read `created_at`) get a real value.
+      const items = extractArray<SuperAdmin>(saData).map((item) => ({
+        ...item,
+        created_at: item.created_at ?? item.audit?.created?.at,
+      }));
+      setRows(items);
       setRawResponse(saData);
       setError('');
     } catch (err: unknown) {

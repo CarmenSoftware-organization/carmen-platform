@@ -568,6 +568,7 @@ export interface SuperAdmin {
   is_active?: boolean;
   email?: string | null;
   name?: string | null;
+  audit?: Audit; // gateway's @EnrichAuditUsers() nests created_at here as audit.created.at
 }
 
 export interface UserOption {
