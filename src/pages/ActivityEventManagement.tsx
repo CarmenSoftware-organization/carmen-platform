@@ -31,15 +31,24 @@ const fmt = (v?: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
+/** สตริงนี้แปลงเป็นวันที่ได้จริงหรือไม่ — ใช้กรอง query param ก่อนเอาไปใช้เป็นช่วงวัน */
+const isParsableDate = (v: string | null): v is string =>
+  !!v && !Number.isNaN(new Date(v).getTime());
+
 const ActivityEventManagement: React.FC = () => {
   const [searchParams] = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ค่าเริ่มต้นอ่านจาก query param ที่หน้า /analytics ส่งมาตอน drill-down
+  //
+  // query param เชื่อถือไม่ได้ (ผู้ใช้แก้ URL เองได้ / bookmark เก่าเพี้ยน) จึงต้อง validate
+  // ก่อนรับมาเป็นช่วงวัน — ถ้ารับสตริงอะไรก็ได้ที่ไม่ว่าง DateRangeFilter จะเรียก
+  // ymdInTz() → new Date(NaN).toISOString() ตั้งแต่ตอน render แล้ว throw RangeError
+  // ซึ่งทำให้ทั้งแอปกลายเป็นจอขาว เพราะแอปนี้ไม่มี error boundary ให้กู้คืน
   const [range, setRange] = useState<DateRange>(() => {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
-    return from && to ? { from, to } : presetRange(7);
+    return isParsableDate(from) && isParsableDate(to) ? { from, to } : presetRange(7);
   });
   const [pagePath, setPagePath] = useState(searchParams.get('page_path') || '');
   const [sessionId, setSessionId] = useState('');
