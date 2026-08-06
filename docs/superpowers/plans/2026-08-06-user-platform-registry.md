@@ -10,10 +10,12 @@
 
 ## Global Constraints
 
-- **Two repos.** Backend is `/Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2`; frontend is `/Users/samutpra/GitHub/carmensoftware-organize/carmen-platform`. Tasks 1–5 are backend, 6–11 are frontend.
+- **Three repos.** Backend is `/Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2` (tasks 1–5); frontend is `/Users/samutpra/GitHub/carmensoftware-organize/carmen-platform` (tasks 6–11); the Playwright E2E suite is the standalone sibling `/Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e` (task 12).
 - **Backend ships and deploys to DEV first.** The frontend branch must not merge until `GET /api-system/platform/users` answers on DEV, or the page 404s.
-- **Branch name in both repos:** `feature/user-platform-registry`. Never commit to `main`.
-- **No new test files.** Per the user's standing preference, do not create `*.test.ts(x)` or `*.spec.ts`. Existing suites must stay green, so tasks that break an existing test include a step to update it. Static checks (`typecheck`, `lint`, `build`) are not tests — always run them.
+- **Branch name in all three repos:** `feature/user-platform-registry`. Never commit to `main` — the E2E repo in particular sits on `main` by default, and a subagent that is not told the branch name will commit straight to it.
+- **Write tests, TDD.** The user ruled on 2026-08-06 that this plan gets tests on both sides, explicitly overriding their standing "skip tests during plan execution" default. So: write the failing test first, watch it fail, implement, watch it pass, commit. New `*.spec.ts` (backend) and `*.test.ts(x)` (frontend) files are expected where no suite covers the new code. Existing suites must also stay green. Static checks (`typecheck`, `lint`, `build`) are not tests — run them too.
+  - **Frontend test conventions:** co-locate beside source; explicit `import { describe, it, expect, vi } from 'vitest'` (no globals); assert behavior and roles, never snapshots. Pure functions → unit test. Components → React Testing Library. Pages → `vi.mock` the shell (`Layout`, `Can`) and services, keep routing real via `MemoryRouter`. Do not touch `tsconfig.json` or `vite.config.ts` for test setup.
+  - **Backend test conventions:** co-locate `*.spec.ts` beside source, matching the existing `user_platform_role.service.spec.ts` style (mocked `PRISMA_SYSTEM`, no live DB).
 - **Backend jest must run in the foreground, scoped to whole spec files.** `bunx jest <file> -t "<name>"` hangs for 10+ minutes in this repo (it filters after transforming). Never use `-t`.
 - **Naming:** SQL and JSON are `snake_case`; Kotlin/TS code is `camelCase`. Multi-word `@QueryValue`-equivalent query params are read as `snake_case` strings.
 - **All timestamps are UTC** (`TIMESTAMPTZ` → `Instant`/`Date` → ISO 8601 with `Z`). Never format for display on the server.
@@ -200,7 +202,11 @@ add the new fields to the expectation — for example:
     });
 ```
 
-Do not add new test cases — only adjust existing expectations to the new shape.
+Then **add** cases covering the new behavior this task introduces: `assign` writes
+`created_by_id` from `actorUserId`, `remove` writes `deleted_by_id`, and
+`createAuditContext` prefers `actor_user_id` over `user_id` (the regression that made every
+grant look self-granted). Follow the existing file's style — mocked `PRISMA_SYSTEM`, no
+live DB.
 
 - [ ] **Step 5: Verify**
 
@@ -513,7 +519,27 @@ another paginated micro-business controller reads them (e.g.
 `grep -rn "handlePaginatedResult" apps/micro-business/src/authen | head -3`) and follow
 that same access pattern rather than widening the shared interface.
 
-- [ ] **Step 4: Verify it compiles and the existing suites still pass**
+- [ ] **Step 4: Write the spec for `listPlatformUsers`, watch it fail, then confirm it passes**
+
+Write these cases into `user_platform_role.service.spec.ts`, following the file's existing
+style (mocked `PRISMA_SYSTEM`, no live DB). Write them **before** pasting in the
+implementation from Steps 1–2 and run them once to watch them fail — a test that has never
+failed has not been shown to test anything.
+
+Cover:
+- returns `{ paginate: { total: 0, page, perpage, pages: 0 }, data: [] }` and makes no
+  further queries when `groupBy` returns no holders
+- excludes users with no live assignment (the whole point of the endpoint)
+- `advance` of `{"where":{"cluster_id":null}}` filters to platform-wide assignments —
+  assert `groupBy` was called with `cluster_id: null`, not with the key absent
+- `advance` of `{"where":{"platform_role_id":{"in":["r1"]}}}` narrows which users are
+  returned but the returned rows still carry **all** of each user's roles
+- a malformed `advance` string filters nothing instead of throwing
+- default sort is `last_granted_at` descending; `username:asc` sorts by username
+- `total` counts every matching holder, not just the current page's rows
+- each role carries raw `created_at` / `created_by_id` (the gateway's enricher needs them)
+
+- [ ] **Step 5: Verify it compiles and the existing suites still pass**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
@@ -523,7 +549,7 @@ bunx jest apps/micro-business/src/authen/user_platform_role/
 
 Expected: no type errors; both existing suites pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add apps/micro-business/src/authen/user_platform_role/
@@ -670,7 +696,22 @@ interface AssignBulkInput {
   }
 ```
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 3: Write the spec for `assignBulk`, watch it fail, then confirm it passes**
+
+Add to `user_platform_role.service.spec.ts`, written before the implementation and run once
+to watch it fail. Cover:
+- empty `role_ids` returns `USER_PLATFORM_ROLE_ROLE_NOT_FOUND` and writes nothing
+- a role id that does not exist (or is soft-deleted) returns
+  `USER_PLATFORM_ROLE_ROLE_NOT_FOUND` naming the missing ids, and `createMany` is never called
+- a role already assigned **at that scope** returns `USER_PLATFORM_ROLE_ASSIGNMENT_EXISTS`
+  naming the role, and `createMany` is never called — this is the all-or-nothing guarantee
+  the dialog depends on
+- the same role already assigned at a *different* scope does **not** block the write
+- duplicate ids within one request are collapsed before writing
+- on success, `createMany` receives one row per role with `created_by_id` set to the actor
+  and `cluster_id` null for platform scope
+
+- [ ] **Step 4: Verify**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
@@ -678,9 +719,9 @@ bunx tsc --noEmit -p apps/micro-business/tsconfig.json
 bunx jest apps/micro-business/src/authen/user_platform_role/
 ```
 
-Expected: no type errors; existing suites pass.
+Expected: no type errors; every suite passes.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add apps/micro-business/src/authen/user_platform_role/
@@ -1263,7 +1304,9 @@ Read `PlatformAccessSummary.test.tsx`. It tests `summarizeUserPlatform`, which n
 exists. Rewrite its assertions against `summarizeRegistry` with the new shape — for
 example, a row holding one platform role and one cluster role counts once in
 `platformWide`, contributes 2 to `assignments`, and 0 to `clusterOnly`. Keep the same
-number of test cases; do not add new ones.
+number of existing cases and add cases for the new fields: `platformWide`, `clusterOnly`,
+`assignments`, and `inactive`, plus the case where `total` (registry-wide) differs from
+`rows.length` (this page).
 
 - [ ] **Step 3: Verify**
 
@@ -1369,16 +1412,24 @@ export function RoleChips({ roles }: { roles: PlatformUserRoleAssignment[] }) {
 }
 ```
 
-- [ ] **Step 2: Verify**
+- [ ] **Step 2: Write `roleChips.test.tsx`, watch it fail, then confirm it passes**
+
+Cover: `hasPlatformWide` is true when any assignment is platform-wide and false for a
+cluster-only holder; `RoleChips` renders one group per scope with Platform first and
+clusters alphabetical after it; a cluster with no resolved `cluster_name` falls back to its
+id rather than rendering blank; an empty roles array renders `-`.
+
+- [ ] **Step 3: Verify**
 
 ```bash
 bun run typecheck && bun run lint
+bun run test -- src/pages/userPlatformManagement/roleChips.test.tsx
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/pages/userPlatformManagement/roleChips.tsx
+git add src/pages/userPlatformManagement/roleChips.tsx src/pages/userPlatformManagement/roleChips.test.tsx
 git commit -m "feat(user-platform): scope rail + role chips จัดกลุ่มตามขอบเขต
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
@@ -1610,16 +1661,31 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
 };
 ```
 
-- [ ] **Step 2: Verify**
+- [ ] **Step 2: Write `GrantAccessDialog.test.tsx`, watch it fail, then confirm it passes**
+
+React Testing Library + `@testing-library/user-event`, explicit `vitest` imports, no
+snapshots. `vi.mock` `userPlatformService`, `roleService`, `clusterService`, and
+`../../components/UserPicker` (stub it as a button that calls `onChange` with a fixed
+`UserOption`). Cover:
+- submitting with no user selected shows an error and never calls `assignBulk`
+- submitting with a user but no role selected shows an error and never calls `assignBulk`
+- choosing "A specific cluster" without picking one blocks submission
+- a successful grant calls `assignBulk` with every checked role id and the shared scope,
+  then calls `onGranted`
+- a 409 leaves the dialog open, marks the conflicting role "Already granted", and does not
+  call `onGranted` — nothing was written, so nothing should look written
+
+- [ ] **Step 3: Verify**
 
 ```bash
 bun run typecheck && bun run lint
+bun run test -- src/pages/userPlatformManagement/GrantAccessDialog.test.tsx
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src/pages/userPlatformManagement/GrantAccessDialog.tsx
+git add src/pages/userPlatformManagement/GrantAccessDialog.tsx src/pages/userPlatformManagement/GrantAccessDialog.test.tsx
 git commit -m "feat(user-platform): dialog ให้สิทธิ์ — คน + หลาย role + scope เดียว
 
 Escape guard ใช้ ref เพราะ callback ของ Radix อ่าน closure เก่าได้ใน React 19
@@ -1872,7 +1938,9 @@ with the confirm dialog:
   }
 ```
 
-Subtitle becomes `"Users holding platform roles"`.
+Subtitle becomes `"Users holding platform roles"`. Keep the search placeholder exactly
+`"Search users..."` — it is still accurate and the E2E page object matches on it, so
+changing it would break Task 12 for no gain.
 
 **Export** — one row per assignment, since a spreadsheet cannot filter a cell holding
 several roles:
@@ -1938,7 +2006,11 @@ Read `src/pages/UserPlatformManagement.test.tsx` (398 lines). It mocks `userServ
 to the new service and the `PlatformUserRow` shape, keeping the same set of behaviors under
 test (renders rows, links to the detail page, search debounce, filter badges, CSV filename,
 empty state). Follow the existing file's approach: `vi.mock` the shell (`Layout`, `Can`) and
-the services, keep routing real via `MemoryRouter`. Do not add new test cases.
+the services, keep routing real via `MemoryRouter`. Add cases for what this task
+introduces: the scope rail distinguishes platform-wide from cluster-only holders, the
+role/scope filters serialize into `advance` (including `cluster_id: null` for
+platform-wide), the CSV exports one row per assignment, and `Revoke all` confirms before
+calling remove.
 
 - [ ] **Step 4: Verify the whole suite**
 
@@ -2018,3 +2090,159 @@ and `PlatformUserScope` are used identically wherever they appear.
 `perpage`, `search`, `sort`, `advance`, or `actor_user_id`. Task 1 Step 3 and Task 2 Step 3
 each say to check and follow the existing pattern rather than assuming, because widening a
 shared interface affects every micro-business controller.
+
+---
+
+# E2E — `carmen-platform-e2e`
+
+### Task 12: Update and extend the Playwright suite
+
+**Blocked until the backend is on DEV and Task 10 is merged**, same as Task 11 — these
+tests drive the real page over HTTP.
+
+**Files:**
+- Modify: `pages/UserPlatformManagementPage.ts`
+- Modify: `tests/user-platform/user-platform-list.spec.ts`
+- Read (may need small edits): `pages/UserPlatformEditPage.ts`, `tests/user-platform/user-platform-config.spec.ts`
+- Create: `tests/user-platform/user-platform-grant.spec.ts`
+
+**Interfaces:**
+- Consumes: the rebuilt page from Task 10 and the endpoints from Task 4.
+
+- [ ] **Step 1: Branch, in the E2E repo specifically**
+
+```bash
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e
+git checkout main && git pull
+git checkout -b feature/user-platform-registry
+```
+
+This repo defaults to `main`. Do not skip this step.
+
+- [ ] **Step 2: Establish what the page actually renders before changing selectors**
+
+Run the frontend and open the page rather than trusting the existing page object's
+comments — several are now stale, and one may always have been wrong:
+
+```bash
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e
+bun run test:headed -- tests/user-platform/user-platform-list.spec.ts
+```
+
+Record, from the real DOM:
+- whether the username cell is an `<a>` or a `<button>`. The page object's doc comment
+  claims "a BUTTON in the Username cell (not an `<a>`)" and `openUser` clicks
+  `row.locator('button').first()`, but the page source used a `<Link>` both before and
+  after the redesign. If it is an `<a>`, that `button` locator now resolves to the row's
+  `⋮` actions trigger — fix `openUser` and `openFirstNonLoginUser` to click the link.
+- whether the E2E login user (`TEST_CREDENTIALS.email`) holds a platform role, and so
+  appears in the registry at all.
+
+- [ ] **Step 3: Update the page object to the registry**
+
+In `pages/UserPlatformManagementPage.ts`:
+
+- `apiPath` → `'/api-system/platform/users'`. The inherited `waitForTableData` waits on
+  this request; leaving `/api-system/user` means it waits for a call the page no longer
+  makes and times out.
+- `emptyStateText` → `'No one holds platform roles'`
+- Keep `searchPlaceholder: 'Search users'` — Task 10 pins that placeholder.
+- `addLabel` → `'Grant access'`, and **delete** the doc-comment paragraph asserting the
+  page has no Add button. It has one now, and the inherited `clickAdd` is the right way to
+  open the grant dialog.
+- Rewrite the class doc comment to describe a privilege registry listing only holders,
+  not a directory of every user.
+- Add a getter for the grant dialog and one for the summary band's inactive warning:
+
+```ts
+  /** The Grant access dialog, open after clickAdd(). */
+  get grantDialog() {
+    return this.page.getByRole('dialog', { name: 'Grant platform access' });
+  }
+
+  /** Summary-band warning button; absent when no inactive holder holds access. */
+  get inactiveWarning() {
+    return this.page.getByRole('button', { name: /inactive holder/i });
+  }
+```
+
+- [ ] **Step 4: Fix the existing list spec**
+
+`tests/user-platform/user-platform-list.spec.ts` case `TC-UP-010001` asserts row count > 0
+and that no Add button exists. Both are now wrong:
+
+- The registry lists only privilege holders. Do **not** assert a non-empty table
+  unconditionally — that couples the suite to whoever happens to hold a role on the target
+  environment. Assert instead that the page reached a settled state: either the table has
+  rows **or** the empty state is visible. Use `.first()` on the `or()` locator, per this
+  repo's selector-ambiguity convention.
+- Replace the "no Add button by design" assertion with its opposite: the Grant access
+  button is visible. Update that case's `expected` annotation text to match — a stale
+  annotation is worse than none, because the CSV export presents it as the spec.
+- Keep the search / filter / export assertions.
+
+For `TC-UP-010002` (row click opens the per-user config page), the fallback
+`openUser('test@test.com')` assumed every user was listed. If Step 2 showed the login user
+is not a holder, that fallback now fails. Change it to `test.skip()` with an explicit
+message when `openFirstNonLoginUser()` returns null — skipping with a stated reason is
+honest; clicking a row that may not exist is a flake.
+
+Then read `tests/user-platform/user-platform-config.spec.ts` and
+`pages/UserPlatformEditPage.ts`. The per-user page is unchanged apart from one confirm
+sentence, so these likely pass untouched — but if that spec reaches the config page by way
+of the list, it inherits the same "user may not be listed" problem. Fix it the same way if
+so; leave it alone if not.
+
+- [ ] **Step 5: Add the grant-flow spec**
+
+Create `tests/user-platform/user-platform-grant.spec.ts` following this repo's structure:
+`test.describe`, a page object in `beforeEach`, and the full `annotation` block
+(`caseId`, `priority`, `testType`, `precondition`, one `step` per action, `expected`) that
+every other spec in this suite carries — the run's CSV export is generated from those
+annotations, so a spec without them is invisible in the report. Use the next free
+`TC-UP-01xxxx` ids after the existing ones.
+
+Cover, read-only first:
+
+1. **Grant dialog opens and validates** (P1, Smoke) — `clickAdd()`, assert the dialog is
+   visible with its user picker, role list, and scope select; submit with nothing filled;
+   assert an error toast and that the dialog stays open. Writes nothing, so it is safe on
+   any environment.
+2. **Scope select reveals the cluster picker** (P2, Functional) — choose "A specific
+   cluster"; assert the cluster select appears; choose "Platform-wide"; assert it
+   disappears.
+3. **Registry excludes non-holders** (P1, Functional) — every visible row shows at least
+   one role chip. This is the redesign's whole premise, and it is checkable without
+   writing anything.
+
+Do **not** write a test that grants a real role to the E2E login user. That account's
+platform roles power the entire suite; the existing page object comments say so
+explicitly. If a write-path test is wanted later it needs its own disposable user and a
+guaranteed cleanup, which is its own piece of work — note that in the spec file as a
+comment rather than improvising it here.
+
+- [ ] **Step 6: Verify**
+
+```bash
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform-e2e
+bun run typecheck
+bun run test -- tests/user-platform/
+```
+
+Use `bun run test`, never `bun test` — the latter invokes Bun's own runner, which shadows
+the script and fails on Playwright's `test.use()`. Report the actual pass/fail counts. If a
+test fails because the DEV data has no privilege holders, say so plainly rather than
+loosening the assertion until it passes.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add pages/UserPlatformManagementPage.ts tests/user-platform/
+git commit -m "test(user-platform): ปรับ E2E ให้ตรงกับทะเบียนผู้ถือสิทธิ์
+
+หน้าเปลี่ยนจากไดเรกทอรีผู้ใช้เป็นทะเบียนผู้ถือสิทธิ์ — apiPath, empty state
+และข้อความยืนยันว่า 'ไม่มีปุ่ม Add' ใช้ไม่ได้อีก และการยืนยันว่าตารางต้องไม่ว่าง
+ก็ผูกกับว่าใครบังเอิญถือ role อยู่บน environment นั้น
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
