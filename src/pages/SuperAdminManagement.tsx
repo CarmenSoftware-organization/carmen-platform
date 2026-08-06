@@ -108,7 +108,13 @@ const SuperAdminManagement: React.FC = () => {
     );
   }, [rows, searchTerm]);
 
-  const openAddDialog = () => setShowAddDialog(true);
+  const openAddDialog = () => {
+    // Reset the Escape guard on open, not only on close: the dialog is controlled, so
+    // closing it from code never fires Radix's onOpenChange, and a stale `true` here
+    // would make a reopened dialog ignore Escape entirely.
+    setPickerOpen(false);
+    setShowAddDialog(true);
+  };
 
   const handleAdd = async () => {
     if (!selectedUser) return;
@@ -118,6 +124,7 @@ const SuperAdminManagement: React.FC = () => {
       toast.success('Super admin added successfully');
       setSelectedUser(null);
       setShowAddDialog(false);
+      setPickerOpen(false);
       await fetchData();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
