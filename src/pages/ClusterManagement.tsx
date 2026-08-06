@@ -20,6 +20,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { BrandMark } from '../components/BrandMark';
 import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import { summarizeFleet, type FleetSummary } from '../utils/capacity';
@@ -277,6 +278,11 @@ const ClusterManagement: React.FC = () => {
       meta: { card: 'title' },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
+          <BrandMark
+            src={row.original.avatar?.url}
+            name={row.original.name}
+            code={row.original.code}
+          />
           <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
             {row.original.name}
           </Link>

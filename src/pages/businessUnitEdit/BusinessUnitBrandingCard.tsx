@@ -6,11 +6,15 @@ interface BusinessUnitBrandingCardProps {
   logoUrl: string;
   avatarUrl: string;
   editing: boolean;
+  /** Business-unit name — initials source for the avatar when no image is set. */
+  name?: string;
+  /** Business-unit code — preferred over the name for initials. */
+  code?: string;
   onUploadLogo: (f: File) => Promise<void>;
   onUploadAvatar: (f: File) => Promise<void>;
 }
 
-const BusinessUnitBrandingCard: React.FC<BusinessUnitBrandingCardProps> = ({ logoUrl, avatarUrl, editing, onUploadLogo, onUploadAvatar }) => (
+const BusinessUnitBrandingCard: React.FC<BusinessUnitBrandingCardProps> = ({ logoUrl, avatarUrl, editing, name, code, onUploadLogo, onUploadAvatar }) => (
   <Card>
     <CardHeader>
       <CardTitle className="text-base">Branding</CardTitle>
@@ -29,6 +33,8 @@ const BusinessUnitBrandingCard: React.FC<BusinessUnitBrandingCardProps> = ({ log
         value={avatarUrl}
         disabled={!editing}
         shape="square"
+        fallbackName={name}
+        fallbackCode={code}
         onUpload={onUploadAvatar}
       />
     </CardContent>

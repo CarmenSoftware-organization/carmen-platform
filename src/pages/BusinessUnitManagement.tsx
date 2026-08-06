@@ -20,6 +20,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { BrandMark } from '../components/BrandMark';
 import { BuSummary, summarizeBus, type BuSummaryData } from './businessUnitManagement/BuSummary';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -249,6 +250,11 @@ const BusinessUnitManagement: React.FC = () => {
       header: 'Name',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
+          <BrandMark
+            src={row.original.avatar?.url}
+            name={row.original.name}
+            code={row.original.code}
+          />
           <Link
             to={`/business-units/${row.original.id}/edit`}
             className="text-primary hover:underline whitespace-nowrap"

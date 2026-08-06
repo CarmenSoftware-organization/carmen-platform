@@ -568,6 +568,8 @@ const BusinessUnitEdit: React.FC = () => {
                 logoUrl={logoUrl}
                 avatarUrl={avatarUrl}
                 editing={canEdit}
+                name={formData.name}
+                code={formData.code}
                 onUploadLogo={handleUploadLogo}
                 onUploadAvatar={handleUploadAvatar}
               />

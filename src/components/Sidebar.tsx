@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { PanelLeft, PanelLeftClose, type LucideIcon } from 'lucide-react';
 import { Button } from './ui/button';
+import { BrandMark } from './BrandMark';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
@@ -16,6 +17,17 @@ export interface NavItem {
   group?: string;
 }
 
+/** Who the application shell is currently representing — the product, or one administered cluster. */
+export interface BrandIdentity {
+  name: string;
+  /** Initials source for the mark when no image resolves. */
+  code?: string;
+  /** Presigned branding image; falls back to the initials when absent or expired. */
+  logoUrl?: string;
+}
+
+export const PRODUCT_BRAND: BrandIdentity = { name: 'Carmen Platform', code: 'C' };
+
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
@@ -24,6 +36,12 @@ interface SidebarProps {
   onMobileOpenChange: (open: boolean) => void;
   /** Where the brand mark navigates to. Defaults to the platform dashboard. */
   brandTo?: string;
+  /**
+   * Whose identity the shell wears. Defaults to the product. `ClusterAdminLayout` passes the
+   * administered cluster instead: mark *and* name switch together, because a cluster logo
+   * labelled "Carmen Platform" would name one thing and picture another.
+   */
+  brand?: BrandIdentity;
   /**
    * Rendered at the top of the mobile navigation Sheet, above the nav items (e.g. the
    * cluster-admin ClusterSwitcher). The desktop header bar renders the same node separately
@@ -39,6 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onMobileOpenChange,
   brandTo = '/dashboard',
+  brand = PRODUCT_BRAND,
   headerSlot,
 }) => {
   const location = useLocation();
@@ -96,13 +115,18 @@ const Sidebar: React.FC<SidebarProps> = ({
           'flex h-16 items-center border-b border-border shrink-0',
           isCollapsed ? 'justify-center px-2' : 'px-4'
         )}>
-          <Link to={brandTo} className="flex items-center gap-3 group">
-            <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
-              <span className="text-white font-bold text-lg">C</span>
-            </div>
+          <Link to={brandTo} className="flex items-center gap-3 group min-w-0" aria-label={brand.name}>
+            <BrandMark
+              name={brand.name}
+              code={brand.code}
+              src={brand.logoUrl}
+              tone="primary"
+              size="md"
+              className="shadow-sm transition-transform duration-300 group-hover:scale-105"
+            />
             {!isCollapsed && (
-              <h1 className="text-xl font-bold text-foreground truncate">
-                Carmen Platform
+              <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
+                {brand.name}
               </h1>
             )}
           </Link>
@@ -164,12 +188,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="h-16 flex-row items-center border-b border-border px-4 space-y-0">
             <SheetTitle asChild>
-              <div className="flex items-center gap-3 group">
-                <div className="h-9 w-9 shrink-0 rounded-xl bg-primary flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
-                  <span className="text-white font-bold text-lg">C</span>
-                </div>
-                <span className="text-xl font-bold text-foreground">
-                  Carmen Platform
+              <div className="flex min-w-0 items-center gap-3 group">
+                <BrandMark
+                  name={brand.name}
+                  code={brand.code}
+                  src={brand.logoUrl}
+                  tone="primary"
+                  size="md"
+                  className="shadow-sm transition-transform duration-300 group-hover:scale-105"
+                />
+                <span className="truncate text-xl font-bold text-foreground">
+                  {brand.name}
                 </span>
               </div>
             </SheetTitle>
