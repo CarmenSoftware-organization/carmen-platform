@@ -59,7 +59,12 @@ const SuperAdminManagement: React.FC = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   // The picker's dropdown owns Escape while it is open; without this guard Radix would
   // dismiss the whole dialog (capture-phase document listener) and discard what was typed.
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // A ref, not state: Radix's DismissableLayer invokes onEscapeKeyDown through a callback
+  // that (empirically, verified via console instrumentation) does not always see this
+  // component's latest render — a `useState` value read inside that closure can be stale.
+  // A ref sidesteps that entirely: `.current` is dereferenced live at call time regardless
+  // of which render's closure Radix happens to invoke, so it can never be stale.
+  const pickerOpenRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearchChange = (value: string) => {
@@ -112,7 +117,7 @@ const SuperAdminManagement: React.FC = () => {
     // Reset the Escape guard on open, not only on close: the dialog is controlled, so
     // closing it from code never fires Radix's onOpenChange, and a stale `true` here
     // would make a reopened dialog ignore Escape entirely.
-    setPickerOpen(false);
+    pickerOpenRef.current = false;
     setShowAddDialog(true);
   };
 
@@ -124,7 +129,7 @@ const SuperAdminManagement: React.FC = () => {
       toast.success('Super admin added successfully');
       setSelectedUser(null);
       setShowAddDialog(false);
-      setPickerOpen(false);
+      pickerOpenRef.current = false;
       await fetchData();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
@@ -341,7 +346,7 @@ const SuperAdminManagement: React.FC = () => {
           setShowAddDialog(open);
           if (!open) {
             setSelectedUser(null);
-            setPickerOpen(false);
+            pickerOpenRef.current = false;
           }
         }}
       >
@@ -350,7 +355,7 @@ const SuperAdminManagement: React.FC = () => {
           onEscapeKeyDown={(e) => {
             // The picker's dropdown owns Escape while it is open; without this guard
             // Radix would dismiss the whole dialog and discard what was typed.
-            if (pickerOpen) e.preventDefault();
+            if (pickerOpenRef.current) e.preventDefault();
           }}
         >
           <DialogHeader>
@@ -368,7 +373,9 @@ const SuperAdminManagement: React.FC = () => {
               disabledLabel="Already super admin"
               placeholder="Search users by name or email"
               disabled={adding}
-              onDropdownOpenChange={setPickerOpen}
+              onDropdownOpenChange={(v) => {
+                pickerOpenRef.current = v;
+              }}
             />
           </div>
           <DialogFooter>
@@ -378,7 +385,7 @@ const SuperAdminManagement: React.FC = () => {
               onClick={() => {
                 setShowAddDialog(false);
                 setSelectedUser(null);
-                setPickerOpen(false);
+                pickerOpenRef.current = false;
               }}
               disabled={adding}
             >
