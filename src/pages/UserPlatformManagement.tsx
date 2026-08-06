@@ -3,48 +3,36 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
-import { PlatformAccessSummary, summarizeUserPlatform, type UserPlatformSummaryData, type RoleCountValue } from "./userPlatformManagement/PlatformAccessSummary";
-import userService from "../services/userService";
+import { PlatformAccessSummary } from "./userPlatformManagement/PlatformAccessSummary";
+import { ScopeRail, RoleChips, hasPlatformWide } from "./userPlatformManagement/roleChips";
+import { GrantAccessDialog } from "./userPlatformManagement/GrantAccessDialog";
+import userPlatformService from "../services/userPlatformService";
 import userRoleService from "../services/userRoleService";
-import { getErrorDetail } from '../utils/errorParser';
+import roleService from "../services/roleService";
+import clusterService from "../services/clusterService";
+import { parseApiError } from '../utils/errorParser';
 
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
+import { Label } from "../components/ui/label";
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { DataTable } from "../components/ui/data-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "../components/ui/sheet";
-import { Filter, X, Users, Download, Loader2, AlertTriangle, MoreHorizontal, Pencil } from "lucide-react";
+import { ConfirmDialog } from "../components/ui/confirm-dialog";
+import { Filter, X, Users, Download, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import type { PaginateParams } from "../types";
+import Can from '../components/Can';
+import type { PaginateParams, PlatformUserRow, PlatformUserRegistrySummary } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
-interface UserRecord {
-  id: string;
-  is_active: boolean;
-  username?: string;
-  name?: string;
-  firstname?: string;
-  middlename?: string;
-  lastname?: string;
-  email?: string;
-  created_at?: string;
-  created_by_name?: string;
-  updated_at?: string;
-  updated_by_name?: string;
-}
-
-const getNameDisplay = (record: UserRecord): string => {
-  if (record.firstname || record.middlename || record.lastname) {
-    return [record.firstname, record.middlename, record.lastname].filter(Boolean).join(" ");
-  }
-  return record.name || "-";
-};
+const selectClassName =
+  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
 const fmtDateTime = (v?: string) => {
   if (!v) return '-';
@@ -64,128 +52,113 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const UserPlatformManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserRecord[]>([]);
+
+  const [rows, setRows] = useState<PlatformUserRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
+  // Registry-wide aggregate from the endpoint's `summary` block. Stays `null` until the
+  // backend for this change deploys — see PlatformAccessSummary for why the breakdown and
+  // inactive warning render an explicit "unavailable" state (never a page-derived guess)
+  // in that case. `totalRows` is passed alongside as `fallbackHolderTotal` so the headline
+  // count still renders — `paginate.total` and `summary.holders` are the same number by
+  // contract, so that's not a page-derived stitch, just a second source for one field.
+  const [summary, setSummary] = useState<PlatformUserRegistrySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [summary, setSummary] = useState<UserPlatformSummaryData | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [summaryError, setSummaryError] = useState(false);
-
-  const storedSearch = localStorage.getItem('search_user_platform') || '';
-  const storedStatusFilters = getStoredJSON<string[]>('status_filters_user_platform', []);
-  const storedPage = Number(localStorage.getItem('page_user_platform')) || 1;
-  const storedSort = localStorage.getItem('sort_user_platform') || '';
-
-  const [searchTerm, setSearchTerm] = useState(storedSearch);
-  const [statusFilter, setStatusFilter] = useState<string[]>(storedStatusFilters);
-  const [showFilters, setShowFilters] = useState(false);
+  const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  // Platform-role assignment count per visible user, fetched per-row (N+1) after
-  // the page loads. undefined => still loading for that user; 'error' => the
-  // fetch for that user failed (kept distinct from a resolved count of 0 so a
-  // transient failure never reads as "no roles" on this privilege-audit page).
-  const [rolesCount, setRolesCount] = useState<Record<string, RoleCountValue>>({});
+  const [showGrant, setShowGrant] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<PlatformUserRow | null>(null);
+
+  const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('search_user_platform') || '');
+  const [roleFilter, setRoleFilter] = useState<string[]>(() => getStoredJSON<string[]>('role_filters_user_platform', []));
+  const [scopeFilter, setScopeFilter] = useState<string>(() => localStorage.getItem('scope_filter_user_platform') || '');
+  const [statusFilter, setStatusFilter] = useState<string[]>(() => getStoredJSON<string[]>('status_filters_user_platform', []));
+  const [showFilters, setShowFilters] = useState(false);
+
+  const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
+  const [clusterOptions, setClusterOptions] = useState<{ id: string; name: string }[]>([]);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useGlobalShortcuts({
     onSearch: () => searchInputRef.current?.focus(),
   });
 
-  const buildInitialAdvance = () => {
+  // `cluster_id: null` is deliberate — it is how the endpoint selects platform-wide
+  // assignments. Do not let an `if (scope)` truthiness guard drop it.
+  const buildAdvance = (roles: string[], scope: string, statuses: string[]) => {
     const where: Record<string, unknown> = {};
-    if (storedStatusFilters.length === 1) where.is_active = storedStatusFilters[0] === "true";
-    return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
+    if (roles.length > 0) where.platform_role_id = { in: roles };
+    if (scope === 'platform') where.cluster_id = null;
+    else if (scope) where.cluster_id = { in: [scope] };
+    if (statuses.length === 1) where.is_active = statuses[0] === 'true';
+    return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
   };
+
+  const storedPage = Number(localStorage.getItem('page_user_platform')) || 1;
+  const storedSort = localStorage.getItem('sort_user_platform') || '';
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
-    perpage: Number(localStorage.getItem("perpage_user_platform")) || 10,
-    search: storedSearch,
+    perpage: Number(localStorage.getItem('perpage_user_platform')) || 10,
+    search: searchTerm,
     sort: storedSort,
-    advance: buildInitialAdvance(),
+    advance: buildAdvance(roleFilter, scopeFilter, statusFilter),
     filter: {},
   });
 
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchUsers = useCallback(async (params: PaginateParams) => {
+  // Registry endpoint returns roles inline and `paginate.total` for the headline —
+  // exactly one request per load. No per-row role-count loop, no perpage:-1 sweep.
+  const fetchRows = useCallback(async (params: PaginateParams) => {
     try {
       setLoading(true);
-      const data = (await userService.getAll(params)) as unknown as Record<string, unknown>;
+      const data = await userPlatformService.getAll(params);
       setRawResponse(data);
-      const raw = (data.data || data) as Record<string, unknown>[];
-      // Timestamps may arrive flat (created_at) or nested under `audit`; tolerate both.
-      const items: UserRecord[] = (Array.isArray(raw) ? raw : []).map((item) => {
-        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }).audit;
-        return {
-          ...(item as unknown as UserRecord),
-          created_at: (item.created_at as string | undefined) ?? audit?.created?.at,
-          created_by_name: (item.created_by_name as string | undefined) ?? audit?.created?.name,
-          updated_at: (item.updated_at as string | undefined) ?? audit?.updated?.at,
-          updated_by_name: (item.updated_by_name as string | undefined) ?? audit?.updated?.name,
-        };
-      });
-      setUsers(items);
-      const pag = data.paginate as Record<string, number> | undefined;
-      setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
-      setError("");
-      // Fetch platform-role assignment counts per row in the background (N+1;
-      // page size is small). The table renders immediately; counts fill in.
-      setRolesCount({});
-      void Promise.all(
-        items.map(async (u): Promise<readonly [string, RoleCountValue]> => {
-          try { return [u.id, (await userRoleService.list(u.id)).length] as const; }
-          catch { return [u.id, 'error'] as const; }
-        }),
-      ).then((pairs) => {
-        setRolesCount(Object.fromEntries(pairs));
-        const failed = pairs.filter(([, count]) => count === 'error').length;
-        if (failed > 0) {
-          toast.error(`Couldn't load role counts for ${failed} user${failed === 1 ? '' : 's'}. Shown as "-" until retried.`);
-        }
-      });
+      const items = Array.isArray(data?.data) ? data.data : [];
+      setRows(items);
+      setTotalRows(data?.paginate?.total ?? items.length);
+      setSummary(data?.summary ?? null);
+      setError('');
     } catch (err: unknown) {
-      const msg = "Failed to load users: " + getErrorDetail(err);
-      setError(msg);
-      toast.error(msg);
+      const { message } = parseApiError(err);
+      setError(message);
+      setRows([]);
+      setTotalRows(0);
+      setSummary(null);
+      toast.error('Failed to load platform users', { description: message });
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchUsers(paginate);
-  }, [fetchUsers, paginate]);
+    fetchRows(paginate);
+  }, [fetchRows, paginate]);
 
-  // Governance band: roll up the whole set (ignoring filters). Platform-role
-  // counts are an N+1 read per user — the same call the table already makes,
-  // extended to every user — so the band skeletons until they resolve.
-  const loadSummary = useCallback(async () => {
-    setSummaryLoading(true);
-    setSummaryError(false);
-    try {
-      const data = (await userService.getAll({ perpage: -1 })) as unknown as Record<string, unknown>;
-      const raw = (data.data || data) as { id: string; is_active?: boolean }[];
-      const list = Array.isArray(raw) ? raw : [];
-      const pairs = await Promise.all(
-        list.map(async (u): Promise<readonly [string, RoleCountValue]> => {
-          try { return [u.id, (await userRoleService.list(u.id)).length] as const; }
-          catch { return [u.id, 'error'] as const; }
-        }),
-      );
-      setSummary(summarizeUserPlatform(list, Object.fromEntries(pairs)));
-    } catch {
-      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
-      setSummaryError(true);
-    } finally {
-      setSummaryLoading(false);
-    }
-  }, []);
-
+  // Role/cluster names for the filter Sheet and the active-filter chips. Best-effort:
+  // if either fails, filtering still works by id — only the display name is missing.
   useEffect(() => {
-    loadSummary();
-  }, [loadSummary]);
+    (async () => {
+      try {
+        const r = await roleService.getAll({ perpage: 200, sort: 'name:asc' });
+        const items = r.data || r;
+        setRoleOptions(
+          (Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({
+            id: x.id, name: x.name,
+          })),
+        );
+      } catch { /* filter buttons fall back to raw ids */ }
+      try {
+        const c = await clusterService.getAll({ perpage: 200, sort: 'name:asc' });
+        const items = c.data || c;
+        setClusterOptions(
+          (Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({
+            id: x.id, name: x.name,
+          })),
+        );
+      } catch { /* same */ }
+    })();
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -198,15 +171,32 @@ const UserPlatformManagement: React.FC = () => {
   };
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
-    localStorage.setItem("perpage_user_platform", String(perpage));
+    localStorage.setItem('perpage_user_platform', String(perpage));
     localStorage.setItem('page_user_platform', String(page));
     setPaginate((prev) => ({ ...prev, page, perpage }));
   };
 
-  const buildAdvance = (statuses: string[]) => {
-    const where: Record<string, unknown> = {};
-    if (statuses.length === 1) where.is_active = statuses[0] === "true";
-    return Object.keys(where).length > 0 ? JSON.stringify({ where }) : "";
+  const handleSortChange = (sort: string) => {
+    localStorage.setItem('sort_user_platform', sort);
+    localStorage.setItem('page_user_platform', '1');
+    setPaginate((prev) => ({ ...prev, sort, page: 1 }));
+  };
+
+  const handleRoleFilter = (roleId: string) => {
+    const next = roleFilter.includes(roleId)
+      ? roleFilter.filter((r) => r !== roleId)
+      : [...roleFilter, roleId];
+    setRoleFilter(next);
+    localStorage.setItem('role_filters_user_platform', JSON.stringify(next));
+    localStorage.setItem('page_user_platform', '1');
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next, scopeFilter, statusFilter), filter: {} }));
+  };
+
+  const handleScopeFilter = (scope: string) => {
+    setScopeFilter(scope);
+    localStorage.setItem('scope_filter_user_platform', scope);
+    localStorage.setItem('page_user_platform', '1');
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, scope, statusFilter), filter: {} }));
   };
 
   const handleStatusFilter = (status: string) => {
@@ -216,171 +206,205 @@ const UserPlatformManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('status_filters_user_platform', JSON.stringify(next));
     localStorage.setItem('page_user_platform', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(next), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, scopeFilter, next), filter: {} }));
   };
 
-  const handleClearAllFilters = () => {
+  const handleClearRoleFilter = () => {
+    setRoleFilter([]);
+    localStorage.setItem('role_filters_user_platform', JSON.stringify([]));
+    localStorage.setItem('page_user_platform', '1');
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], scopeFilter, statusFilter), filter: {} }));
+  };
+
+  const handleClearStatusFilter = () => {
     setStatusFilter([]);
     localStorage.setItem('status_filters_user_platform', JSON.stringify([]));
     localStorage.setItem('page_user_platform', '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([]), filter: {} }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(roleFilter, scopeFilter, []), filter: {} }));
   };
 
-  const handleClearStatusFilter = handleClearAllFilters;
-
-  const activeFilterCount = statusFilter.length > 0 ? 1 : 0;
-
-  const handleSortChange = (sort: string) => {
-    localStorage.setItem('sort_user_platform', sort);
+  const handleClearAllFilters = () => {
+    setRoleFilter([]);
+    setScopeFilter('');
+    setStatusFilter([]);
+    localStorage.setItem('role_filters_user_platform', JSON.stringify([]));
+    localStorage.setItem('scope_filter_user_platform', '');
+    localStorage.setItem('status_filters_user_platform', JSON.stringify([]));
     localStorage.setItem('page_user_platform', '1');
-    setPaginate((prev) => ({ ...prev, sort, page: 1 }));
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance([], '', []), filter: {} }));
   };
 
+  const activeFilterCount =
+    (roleFilter.length > 0 ? 1 : 0) + (scopeFilter ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0);
+
+  // No bulk-revoke route on the backend — a sequential loop over userRoleService.remove
+  // that reports honestly which roles failed rather than claiming a blanket success.
+  const handleRevokeAll = async () => {
+    if (!revokeTarget) return;
+    const failed: string[] = [];
+    for (const role of revokeTarget.roles) {
+      try {
+        await userRoleService.remove(revokeTarget.user_id, role.id);
+      } catch {
+        failed.push(role.role_name || role.role_id);
+      }
+    }
+    if (failed.length === 0) toast.success('Access revoked');
+    else toast.error(`Could not revoke: ${failed.join(', ')}`);
+    setRevokeTarget(null);
+    fetchRows(paginate);
+  };
+
+  // One row per assignment — a spreadsheet cell can't filter on several roles at once.
   const handleExport = () => {
-    const csv = generateCSV(users, [
+    const flat = rows.flatMap((r) =>
+      r.roles.map((role) => ({
+        username: r.username ?? '',
+        email: r.email ?? '',
+        is_active: r.is_active ? 'Active' : 'Inactive',
+        role: role.role_name ?? role.role_id,
+        scope: role.scope.type === 'platform'
+          ? 'Platform'
+          : (role.scope.cluster_name || role.scope.cluster_id),
+        granted_at: role.audit?.created?.at ?? '',
+        granted_by: role.audit?.created?.name ?? '',
+      })),
+    );
+    const csv = generateCSV(flat, [
       { key: 'username', label: 'Username' },
-      { key: 'name', label: 'Name' },
       { key: 'email', label: 'Email' },
       { key: 'is_active', label: 'Status' },
+      { key: 'role', label: 'Role' },
+      { key: 'scope', label: 'Scope' },
+      { key: 'granted_at', label: 'Granted at' },
+      { key: 'granted_by', label: 'Granted by' },
     ]);
     downloadCSV(csv, `user-platform-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
   };
 
-  const columns = useMemo<ColumnDef<UserRecord, unknown>[]>(
-    () => [
-      {
-        accessorKey: "username",
-        header: "Username",
-        cell: ({ row }) => (
-          <Link
-            to={`/platform/user-platform/${row.original.id}`}
-            className="font-medium text-primary hover:underline whitespace-nowrap"
-            title={row.original.username || undefined}
-          >
-            {row.original.username || "-"}
-          </Link>
-        ),
-      },
-      {
-        accessorKey: "name",
-        header: "Name",
-        cell: ({ row }) => {
-          const name = getNameDisplay(row.original);
-          return <div className="truncate" title={name}>{name}</div>;
-        },
-      },
-      {
-        accessorKey: "email",
-        header: "Email",
-        cell: ({ row }) => (
-          <div className="truncate" title={row.original.email || undefined}>{row.original.email || "-"}</div>
-        ),
-      },
-      {
-        accessorKey: "is_active",
-        header: "Status",
-        meta: { headerClassName: "w-28" },
-        cell: ({ row }) => (
-          <Badge variant={row.original.is_active ? "success" : "secondary"}>
-            {row.original.is_active ? "Active" : "Inactive"}
-          </Badge>
-        ),
-      },
-      {
-        id: "roles_count",
-        header: "Roles",
-        enableSorting: false,
-        meta: { headerClassName: 'w-20', cellClassName: 'text-center' },
-        cell: ({ row }) => {
-          const c = rolesCount[row.original.id];
-          if (c === undefined) return <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground mx-auto" />;
-          if (c === 'error') {
-            return (
-              <span
-                className="text-warning inline-flex items-center justify-center gap-1"
-                title="Couldn't load roles"
-                aria-label="Couldn't load roles"
+  const columns = useMemo<ColumnDef<PlatformUserRow, unknown>[]>(() => [
+    {
+      accessorKey: 'username',
+      header: 'User',
+      meta: { card: 'title' },
+      cell: ({ row }) => {
+        const r = row.original;
+        const name = [r.firstname, r.lastname].filter(Boolean).join(' ');
+        return (
+          <div className="flex items-stretch gap-3">
+            <ScopeRail platformWide={hasPlatformWide(r.roles)} />
+            <div className="min-w-0">
+              <Link
+                to={`/platform/user-platform/${r.user_id}`}
+                className="font-medium text-primary hover:underline"
               >
-                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-                <span aria-hidden="true">-</span>
-              </span>
-            );
-          }
-          return <Badge variant="secondary">{c}</Badge>;
-        },
-      },
-      {
-        accessorKey: "created_at",
-        id: "created_at",
-        header: "Created",
-        meta: { headerClassName: "w-40" },
-        cell: ({ row }) => {
-          const d = row.original;
-          return (
-            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-              <div>{fmtDateTime(d.created_at)}</div>
-              {d.created_by_name && <div>{d.created_by_name}</div>}
+                {name || r.username || '-'}
+              </Link>
+              {!r.is_active && (
+                <Badge variant="secondary" className="ml-2 text-xs">Inactive</Badge>
+              )}
+              <div className="text-muted-foreground truncate text-xs">{r.email || '-'}</div>
             </div>
-          );
-        },
+          </div>
+        );
       },
-      {
-        accessorKey: "updated_at",
-        id: "updated_at",
-        header: "Updated",
-        meta: { headerClassName: "w-40" },
-        cell: ({ row }) => {
-          const d = row.original;
-          if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
-          return (
-            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-              <div>{fmtDateTime(d.updated_at)}</div>
-              {d.updated_by_name && <div>{d.updated_by_name}</div>}
-            </div>
-          );
-        },
+    },
+    {
+      id: 'roles',
+      header: 'Roles & scope',
+      enableSorting: false,
+      cell: ({ row }) => <RoleChips roles={row.original.roles} />,
+    },
+    {
+      accessorKey: 'last_granted_at',
+      id: 'last_granted_at',
+      header: 'Granted',
+      meta: { headerClassName: 'w-44' },
+      cell: ({ row }) => {
+        const roles = row.original.roles;
+        // The grantor shown belongs to the most recent grant, which is the one the
+        // "Granted" date refers to. Per-role attribution lives on the detail page.
+        const newest = roles.reduce<typeof roles[number] | undefined>((acc, r) => {
+          const at = r.audit?.created?.at;
+          if (!at) return acc;
+          return !acc?.audit?.created?.at || at > acc.audit.created.at ? r : acc;
+        }, undefined);
+        const by = newest?.audit?.created?.name;
+        return (
+          <div className="text-muted-foreground space-y-0.5 text-[11px] leading-tight">
+            <div>{fmtDateTime(row.original.last_granted_at ?? undefined)}</div>
+            <div>{by ? `by ${by}` : 'by —'}</div>
+          </div>
+        );
       },
-      {
-        id: "actions",
-        header: "",
-        enableSorting: false,
-        meta: { headerClassName: "w-20", cellClassName: "text-center p-0" },
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.username || "user"}`}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate(`/platform/user-platform/${row.original.id}`)} className="cursor-pointer">
-                <Pencil className="mr-2 h-4 w-4" />
-                Manage roles
+    },
+    {
+      id: 'actions',
+      header: '',
+      enableSorting: false,
+      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0', card: 'actions' },
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              aria-label={`Actions for ${row.original.username || 'user'}`}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => navigate(`/platform/user-platform/${row.original.user_id}`)}
+              className="cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Manage roles
+            </DropdownMenuItem>
+            <Can permission="user_platform.manage">
+              <DropdownMenuItem
+                onClick={() => setRevokeTarget(row.original)}
+                className="cursor-pointer text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Revoke all access
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-      },
-    ],
-    [rolesCount, navigate],
-  );
+            </Can>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ], [navigate]);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="User Platform"
-          subtitle="Assign platform roles and scope to users"
+          subtitle="Users holding platform roles"
           actions={
-            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || rows.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              <Can permission="user_platform.manage">
+                <Button size="sm" onClick={() => setShowGrant(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Grant access
+                </Button>
+              </Can>
+            </div>
           }
         />
 
-        <PlatformAccessSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
+        <PlatformAccessSummary
+          summary={summary}
+          fallbackHolderTotal={totalRows}
+          loading={loading}
+          error={!!error}
+          onRetry={() => fetchRows(paginate)}
+          onShowInactive={() => handleStatusFilter('false')}
+        />
 
         <Card>
           <CardHeader className="space-y-3">
@@ -407,7 +431,7 @@ const UserPlatformManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter users by status</SheetDescription>
+                    <SheetDescription>Filter holders by role, scope and status</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
@@ -436,6 +460,47 @@ const UserPlatformManagement: React.FC = () => {
                         </Button>
                       </div>
                     </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Role</span>
+                        {roleFilter.length > 0 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearRoleFilter}>Clear</Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {roleOptions.length === 0 ? (
+                          <p className="text-muted-foreground text-xs">No platform roles available.</p>
+                        ) : roleOptions.map((role) => (
+                          <Button
+                            key={role.id}
+                            variant={roleFilter.includes(role.id) ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleRoleFilter(role.id)}
+                          >
+                            {role.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label htmlFor="scope_filter">Scope</Label>
+                      <select
+                        id="scope_filter"
+                        value={scopeFilter}
+                        onChange={(e) => handleScopeFilter(e.target.value)}
+                        className={selectClassName}
+                      >
+                        <option value="">Any scope</option>
+                        <option value="platform">Platform-wide</option>
+                        {clusterOptions.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
                         Clear All Filters
@@ -448,6 +513,22 @@ const UserPlatformManagement: React.FC = () => {
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Filters:</span>
+                {roleFilter.map((id) => (
+                  <Badge key={`role-${id}`} variant="secondary" className="text-xs gap-1 pr-1">
+                    {roleOptions.find((r) => r.id === id)?.name || id}
+                    <button onClick={() => handleRoleFilter(id)} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {scopeFilter && (
+                  <Badge variant="secondary" className="text-xs gap-1 pr-1">
+                    {scopeFilter === 'platform' ? 'Platform-wide' : (clusterOptions.find((c) => c.id === scopeFilter)?.name || scopeFilter)}
+                    <button onClick={() => handleScopeFilter('')} className="ml-0.5 hover:text-foreground">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
@@ -464,30 +545,38 @@ const UserPlatformManagement: React.FC = () => {
           </CardHeader>
           <CardContent>
             {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
-            {!error && users.length === 0 && !loading ? (
+            {!error && rows.length === 0 && !loading ? (
               <ListEmptyState
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Users}
-                emptyTitle="No users found"
-                emptyDescription="No users are available."
+                emptyTitle="No one holds platform roles yet"
+                emptyDescription="Grant access to give someone a platform role."
+                addAction={
+                  <Can permission="user_platform.manage">
+                    <Button size="sm" onClick={() => setShowGrant(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Grant access
+                    </Button>
+                  </Can>
+                }
               />
             ) : !error ? (
               <div className="relative">
-                {loading && users.length === 0 ? (
+                {loading && rows.length === 0 ? (
                   // +1 accounts for the `#` row-index column DataTable always prepends,
                   // so the skeleton matches the loaded table's actual header count.
                   <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading platform users">
                     <div className="text-muted-foreground">Loading...</div>
                   </div>
                 )}
                 <DataTable
                   columns={columns}
-                  data={users}
+                  data={rows}
                   serverSide
                   tableLayout="auto"
                   totalRows={totalRows}
@@ -504,7 +593,23 @@ const UserPlatformManagement: React.FC = () => {
         </Card>
       </div>
 
-      <DevDebugSheet title="API Response" endpoint="GET /api-system/user" data={rawResponse} />
+      <GrantAccessDialog open={showGrant} onOpenChange={setShowGrant} onGranted={() => fetchRows(paginate)} />
+
+      <ConfirmDialog
+        open={!!revokeTarget}
+        onOpenChange={(open) => { if (!open) setRevokeTarget(null); }}
+        title="Revoke all platform access"
+        description={
+          revokeTarget
+            ? `Remove all ${revokeTarget.roles.length} role assignment${revokeTarget.roles.length === 1 ? '' : 's'} from ${revokeTarget.username || revokeTarget.email}? They will no longer appear in this registry.`
+            : ''
+        }
+        confirmText="Revoke all"
+        confirmVariant="destructive"
+        onConfirm={handleRevokeAll}
+      />
+
+      <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/users" data={rawResponse} />
     </Layout>
   );
 };

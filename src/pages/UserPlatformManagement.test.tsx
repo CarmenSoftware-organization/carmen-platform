@@ -1,8 +1,9 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import type { PlatformUserRow, PlatformUserRoleAssignment } from '../types';
 
 beforeAll(() => {
   if (!Element.prototype.hasPointerCapture) Element.prototype.hasPointerCapture = () => false;
@@ -12,7 +13,7 @@ beforeAll(() => {
 });
 
 // Node 26 exposes bare `localStorage` as undefined; this page seeds search,
-// status filters, page, sort and perpage from it on the very first render.
+// role/scope/status filters, page, sort and perpage from it on the very first render.
 const makeLocalStorage = () => {
   const store: Record<string, string> = {};
   return {
@@ -35,6 +36,16 @@ vi.mock('../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+// `Can` (the REAL component, not mocked) reads permission through useAuth(). Default
+// grants everything so Grant access / Revoke all render; individual tests may narrow it.
+const auth = vi.hoisted(() => ({
+  isSuperAdmin: false,
+  hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
+}));
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => auth,
+}));
+
 const toast = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
@@ -49,32 +60,75 @@ vi.mock('react-router-dom', async (importOriginal) => ({
   useNavigate: () => navigate,
 }));
 
-vi.mock('../services/userService', () => ({ default: { getAll: vi.fn() } }));
-vi.mock('../services/userRoleService', () => ({ default: { list: vi.fn() } }));
+vi.mock('../services/userPlatformService', () => ({
+  default: { getAll: vi.fn(), assignBulk: vi.fn() },
+}));
+vi.mock('../services/userRoleService', () => ({
+  default: { remove: vi.fn(), list: vi.fn(), add: vi.fn() },
+}));
+vi.mock('../services/roleService', () => ({ default: { getAll: vi.fn() } }));
+vi.mock('../services/clusterService', () => ({ default: { getAll: vi.fn() } }));
 
 // Real CSV generation writes through an anchor + object URL jsdom does not
-// implement; the page's contract here is "builds a row per visible user".
+// implement; the page's contract here is "one row per role assignment".
 const csv = vi.hoisted(() => ({ generateCSV: vi.fn(() => 'csv-body'), downloadCSV: vi.fn() }));
 vi.mock('../utils/csvExport', () => csv);
 
 import UserPlatformManagement from './UserPlatformManagement';
-import { summarizeUserPlatform } from './userPlatformManagement/PlatformAccessSummary';
-import userService from '../services/userService';
+import userPlatformService from '../services/userPlatformService';
 import userRoleService from '../services/userRoleService';
+import roleService from '../services/roleService';
+import clusterService from '../services/clusterService';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
-const user1 = {
-  id: 'u1',
+const platformRole: PlatformUserRoleAssignment = {
+  id: 'ra-1',
+  role_id: 'role-1',
+  role_name: 'Support Admin',
+  scope: { type: 'platform' },
+  audit: { created: { at: '2026-08-01T10:00:00Z', name: 'Alice' } },
+};
+
+const clusterRole: PlatformUserRoleAssignment = {
+  id: 'ra-2',
+  role_id: 'role-2',
+  role_name: 'Cluster Admin',
+  scope: { type: 'cluster', cluster_id: 'cluster-1', cluster_name: 'Acme' },
+  audit: { created: { at: '2026-07-15T09:00:00Z', name: 'Bob' } },
+};
+
+// jane holds a platform-wide role and has a full name — the "User" column prefers
+// firstname+lastname over username. bob holds only a cluster-scoped role and has no
+// name on file, so the column falls back to username.
+const jane: PlatformUserRow = {
+  user_id: 'u1',
   username: 'jane',
   email: 'jane@example.com',
   is_active: true,
   firstname: 'Jane',
   lastname: 'Doe',
+  roles: [platformRole],
+  last_granted_at: '2026-08-01T10:00:00Z',
 };
-const user2 = { id: 'u2', username: 'bob', email: 'bob@example.com', is_active: false, name: 'Bob' };
 
-const listResponse = { data: [user1], paginate: { total: 1, page: 1, perpage: 10 } };
+const bob: PlatformUserRow = {
+  user_id: 'u2',
+  username: 'bob',
+  email: 'bob@example.com',
+  is_active: false,
+  roles: [clusterRole],
+  last_granted_at: '2026-07-15T09:00:00Z',
+};
+
+const listResponse = { data: [jane], paginate: { total: 1, page: 1, perpage: 10 } };
+const roleOptionsResponse = {
+  data: [
+    { id: 'role-1', name: 'Support Admin' },
+    { id: 'role-2', name: 'Cluster Admin' },
+  ],
+};
+const clusterOptionsResponse = { data: [{ id: 'cluster-1', name: 'Acme' }] };
 
 const renderPage = () =>
   render(
@@ -86,205 +140,183 @@ const renderPage = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('localStorage', makeLocalStorage());
-  asMock(userService.getAll).mockResolvedValue(listResponse);
-  asMock(userRoleService.list).mockResolvedValue([]);
+  auth.isSuperAdmin = false;
+  auth.hasPermission = () => true;
+  asMock(userPlatformService.getAll).mockResolvedValue(listResponse);
+  asMock(userRoleService.remove).mockResolvedValue({});
+  asMock(roleService.getAll).mockResolvedValue(roleOptionsResponse);
+  asMock(clusterService.getAll).mockResolvedValue(clusterOptionsResponse);
 });
 
-// The role-count column is the reason this page exists: it is a privilege audit.
-// A failed fetch must never be displayed as "0 roles" — that would report an
-// admin as harmless. These tests pin the three-way distinction.
-describe('UserPlatformManagement — the role-count column is tri-state', () => {
-  it('shows a spinner, not a zero, while a row\'s role count is still in flight', async () => {
-    asMock(userRoleService.list).mockReturnValue(new Promise(() => {})); // never settles
-    const { container } = renderPage();
-
-    await screen.findByText('jane@example.com');
-
-    expect(container.querySelectorAll('.animate-spin').length).toBeGreaterThan(0);
-    expect(screen.queryByLabelText("Couldn't load roles")).toBeNull();
-  });
-
-  it('renders the resolved count as a badge', async () => {
-    asMock(userRoleService.list).mockResolvedValue([{ id: 'r1' }, { id: 'r2' }]);
-    renderPage();
-
-    await screen.findByText('jane@example.com');
-
-    await waitFor(() => expect(screen.getAllByText('2').length).toBeGreaterThan(0));
-    expect(screen.queryByLabelText("Couldn't load roles")).toBeNull();
-  });
-
-  it('marks a failed row as unknown rather than zero', async () => {
-    asMock(userRoleService.list).mockRejectedValue(new Error('offline'));
-    renderPage();
-
-    await screen.findByText('jane@example.com');
-
-    expect(await screen.findByLabelText("Couldn't load roles")).toBeInTheDocument();
-  });
-
-  it('warns once, with a count, when role fetches fail', async () => {
-    asMock(userService.getAll).mockResolvedValue({
-      data: [user1, user2],
+describe('UserPlatformManagement — registry list', () => {
+  it('renders a row per holder with a link into role management', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [jane, bob],
       paginate: { total: 2, page: 1, perpage: 10 },
     });
-    asMock(userRoleService.list).mockRejectedValue(new Error('offline'));
     renderPage();
 
+    const janeLink = await screen.findByRole('link', { name: 'Jane Doe' });
+    expect(janeLink).toHaveAttribute('href', '/platform/user-platform/u1');
+
+    const bobLink = screen.getByRole('link', { name: 'bob' });
+    expect(bobLink).toHaveAttribute('href', '/platform/user-platform/u2');
+  });
+
+  // The registry endpoint returns roles inline and paginate.total for the headline —
+  // exactly one request per load. This is the whole point of the rebuild: pin it so a
+  // future change can't silently reintroduce a per-row or perpage:-1 sweep.
+  it('fetches the registry in exactly one request per load', async () => {
+    renderPage();
     await screen.findByText('jane@example.com');
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        expect.stringContaining("Couldn't load role counts for 2 users"),
-      ),
-    );
+    expect(userPlatformService.getAll).toHaveBeenCalledTimes(1);
   });
 
-  it('pluralises the failure warning for a single user', async () => {
-    asMock(userRoleService.list).mockRejectedValue(new Error('offline'));
-    renderPage();
-
-    await screen.findByText('jane@example.com');
-
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(
-        expect.stringContaining("Couldn't load role counts for 1 user."),
-      ),
-    );
-  });
-});
-
-// summarizeUserPlatform is the governance roll-up behind the header band. It is
-// pure, so the counting rules are pinned directly.
-describe('summarizeUserPlatform — governance roll-up', () => {
-  it('splits users by status and by whether they hold any platform role', () => {
-    const result = summarizeUserPlatform(
-      [
-        { id: 'a', is_active: true },
-        { id: 'b', is_active: true },
-        { id: 'c', is_active: false },
-      ],
-      { a: 2, b: 0, c: 1 },
-    );
-
-    expect(result).toEqual({
-      total: 3,
-      active: 2,
-      inactive: 1,
-      privileged: 2,
-      unprivileged: 1,
-      unknown: 0,
-      assignments: 3,
+  it('renders the scope rail differently for a platform-wide holder than a cluster-only holder', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [jane, bob],
+      paginate: { total: 2, page: 1, perpage: 10 },
     });
-  });
-
-  it('quarantines failed lookups as unknown instead of counting them as unprivileged', () => {
-    const result = summarizeUserPlatform(
-      [
-        { id: 'a', is_active: true },
-        { id: 'b', is_active: true },
-      ],
-      { a: 3, b: 'error' },
-    );
-
-    expect(result.privileged).toBe(1);
-    expect(result.unknown).toBe(1);
-    expect(result.unprivileged).toBe(0);
-    // The failed user contributes no assignments — an unknown count is not zero.
-    expect(result.assignments).toBe(3);
-  });
-
-  it('treats a user missing from the map as having no roles', () => {
-    const result = summarizeUserPlatform([{ id: 'a', is_active: true }], {});
-
-    expect(result).toMatchObject({ privileged: 0, unprivileged: 1, unknown: 0, assignments: 0 });
-  });
-
-  it('returns an all-zero roll-up for an empty estate', () => {
-    expect(summarizeUserPlatform([], {})).toEqual({
-      total: 0,
-      active: 0,
-      inactive: 0,
-      privileged: 0,
-      unprivileged: 0,
-      unknown: 0,
-      assignments: 0,
-    });
-  });
-});
-
-describe('UserPlatformManagement — summary band', () => {
-  it('rolls up the whole estate, ignoring the table\'s pagination', async () => {
-    // The band asks for every user (perpage: -1) while the table asks for a page.
     renderPage();
 
-    await waitFor(() =>
-      expect(asMock(userService.getAll).mock.calls.some((c) => c[0]?.perpage === -1)).toBe(true),
-    );
-  });
+    const janeLink = await screen.findByRole('link', { name: 'Jane Doe' });
+    const janeRail = janeLink.closest('.flex.items-stretch')?.querySelector('[aria-hidden="true"]');
+    expect(janeRail?.className).toContain('bg-primary');
 
-  it('offers a retry when the roll-up fails, leaving the table usable', async () => {
-    asMock(userService.getAll).mockImplementation((params: { perpage?: number }) =>
-      params?.perpage === -1 ? Promise.reject(new Error('nope')) : Promise.resolve(listResponse),
-    );
-    renderPage();
-
-    expect(
-      await screen.findByText("Couldn't load the platform access summary."),
-    ).toBeInTheDocument();
-    // The table is independent of the band and still rendered its row.
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
-  });
-
-  it('retries the roll-up on demand', async () => {
-    asMock(userService.getAll).mockImplementation((params: { perpage?: number }) =>
-      params?.perpage === -1 ? Promise.reject(new Error('nope')) : Promise.resolve(listResponse),
-    );
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByText("Couldn't load the platform access summary.");
-
-    asMock(userService.getAll).mockResolvedValue(listResponse);
-    await user.click(screen.getByRole('button', { name: /retry|try again/i }));
-
-    await waitFor(() =>
-      expect(screen.queryByText("Couldn't load the platform access summary.")).toBeNull(),
-    );
-  });
-});
-
-describe('UserPlatformManagement — list, search and filters', () => {
-  it('renders a row per user with a link into role management', async () => {
-    renderPage();
-
-    const link = await screen.findByRole('link', { name: 'jane' });
-    expect(link).toHaveAttribute('href', '/platform/user-platform/u1');
-    expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    const bobLink = screen.getByRole('link', { name: 'bob' });
+    const bobRail = bobLink.closest('.flex.items-stretch')?.querySelector('[aria-hidden="true"]');
+    expect(bobRail?.className).not.toContain('bg-primary');
+    expect(bobRail?.className).toContain('border-border');
   });
 
   it('debounces the search before refetching, and persists the term', async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('jane@example.com');
-    asMock(userService.getAll).mockClear();
+    asMock(userPlatformService.getAll).mockClear();
 
     await user.type(screen.getByPlaceholderText('Search users...'), 'bob');
 
     // Not yet — the page waits 400ms after the last keystroke.
     expect(
-      asMock(userService.getAll).mock.calls.filter((c) => c[0]?.search === 'bob'),
+      asMock(userPlatformService.getAll).mock.calls.filter((c) => c[0]?.search === 'bob'),
     ).toHaveLength(0);
 
     await waitFor(
       () =>
         expect(
-          asMock(userService.getAll).mock.calls.some((c) => c[0]?.search === 'bob'),
+          asMock(userPlatformService.getAll).mock.calls.some((c) => c[0]?.search === 'bob'),
         ).toBe(true),
       { timeout: 2000 },
     );
     expect(localStorage.getItem('search_user_platform')).toBe('bob');
   });
 
+  it('persists perpage and page per-entity when pagination changes', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [jane],
+      paginate: { total: 40, page: 1, perpage: 10 },
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    // DataTable renders a desktop and a mobile pagination bar; jsdom applies no
+    // CSS, so both are present. Either drives the same handler.
+    await user.click(screen.getAllByRole('button', { name: 'Next page' })[0]);
+
+    await waitFor(() => expect(localStorage.getItem('page_user_platform')).toBe('2'));
+  });
+
+  it('surfaces a list failure as an alert and a toast', async () => {
+    asMock(userPlatformService.getAll).mockRejectedValue(new Error('down'));
+    renderPage();
+
+    // The summary band fails alongside the table here, so both alert regions are live;
+    // assert on the table's specifically.
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('alert').some((el) => /down/i.test(el.textContent ?? '')),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Failed to load platform users',
+        expect.objectContaining({ description: 'down' }),
+      ),
+    );
+  });
+});
+
+describe('UserPlatformManagement — registry-wide summary band', () => {
+  // This is the integration point for the bug the whole task exists to fix: the band
+  // must read `summary` off the response, not derive anything from the loaded `rows`.
+  // jane (the only loaded row here) is active — a page-derived breakdown would report
+  // zero inactive holders and hide exactly the finding an access review is looking for.
+  it('renders the inactive warning from the response summary even though every loaded row is active', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [jane],
+      paginate: { total: 25, page: 1, perpage: 10 },
+      summary: { holders: 25, platform_wide: 9, cluster_only: 16, assignments: 41, inactive: 3 },
+    });
+    renderPage();
+
+    await screen.findByText('jane@example.com');
+    expect(
+      await screen.findByRole('button', { name: /3 inactive holders still hold access/ }),
+    ).toBeInTheDocument();
+    // Scoped to the summary band itself — the table's own pagination footer ("Showing
+    // 1-1 of 25") also contains "25", so an unscoped query would be ambiguous.
+    const band = screen.getByText('holders').closest('[class*="rounded-lg"]') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(within(band).getByText('9')).toBeInTheDocument();
+    expect(within(band).getByText('16')).toBeInTheDocument();
+    expect(within(band).getByText('41')).toBeInTheDocument();
+  });
+
+  // Every request against today's backend omits `summary` (it ships in a later deploy).
+  // The breakdown and inactive warning must say so rather than showing zeros, which would
+  // read as "no inactive holders" — a false negative in exactly the direction this page
+  // must not get wrong. The headline count is not subject to that risk (`paginate.total`
+  // is the same registry-wide number `summary.holders` would have carried), so it must
+  // keep rendering rather than disappearing behind the same "unavailable" wording — an
+  // empty-list admin would otherwise have no way to see the holder count at all, since
+  // the DataTable that normally carries it in its footer doesn't render when there are no
+  // rows.
+  it('shows the headline holder count but marks the breakdown unavailable when the response omits summary', async () => {
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    // `listResponse` (the default mock) has `paginate.total: 1` and no `summary` — scope
+    // to the band via its singular "holder" label, since a bare "1" is ambiguous with the
+    // table's own "Showing 1-1 of 1" pagination footer.
+    const band = (await screen.findByText('holder')).closest('[class*="rounded-lg"]') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(within(band).getByText('1')).toBeInTheDocument();
+    expect(within(band).getByText(/scope breakdown isn.t available yet/i)).toBeInTheDocument();
+    expect(within(band).queryByText('Platform-wide')).not.toBeInTheDocument();
+    expect(within(band).queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+  });
+
+  // The literal defect this fix closes: with an empty result set, the DataTable (and its
+  // pagination footer, the only other place the holder count appeared) doesn't render at
+  // all — so before this fix the count existed nowhere on the page.
+  it('still shows the headline holder count when the filtered list is empty and summary is absent', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [],
+      paginate: { total: 0, page: 1, perpage: 10 },
+    });
+    renderPage();
+
+    const band = (await screen.findByText('holders')).closest('[class*="rounded-lg"]') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(within(band).getByText('0')).toBeInTheDocument();
+    expect(within(band).getByText(/scope breakdown isn.t available yet/i)).toBeInTheDocument();
+  });
+});
+
+describe('UserPlatformManagement — role/scope/status filters', () => {
   it('translates a single status filter into an advance where-clause and resets to page 1', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -294,7 +326,7 @@ describe('UserPlatformManagement — list, search and filters', () => {
     await user.click(await screen.findByRole('button', { name: 'Inactive' }));
 
     await waitFor(() => {
-      const call = asMock(userService.getAll).mock.calls.at(-1)?.[0];
+      const call = asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0];
       expect(JSON.parse(call.advance)).toEqual({ where: { is_active: false } });
       expect(call.page).toBe(1);
     });
@@ -314,71 +346,132 @@ describe('UserPlatformManagement — list, search and filters', () => {
     await user.click(screen.getByRole('button', { name: 'Inactive' }));
 
     await waitFor(() =>
-      expect(asMock(userService.getAll).mock.calls.at(-1)?.[0].advance).toBe(''),
+      expect(asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0].advance).toBe(''),
     );
   });
 
-  it('distinguishes "no users yet" from "nothing matched your search"', async () => {
-    asMock(userService.getAll).mockResolvedValue({
+  it('serializes a role filter into platform_role_id.in', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.click(await screen.findByRole('button', { name: 'Support Admin' }));
+
+    await waitFor(() => {
+      const call = asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0];
+      expect(JSON.parse(call.advance)).toEqual({ where: { platform_role_id: { in: ['role-1'] } } });
+    });
+  });
+
+  // The endpoint selects platform-wide grants via a literal `cluster_id: null` — a naive
+  // `if (scope)` truthiness guard would silently drop it since `scope` here is a non-empty
+  // string ('platform'), so this pins the value survives JSON serialization intact.
+  it('serializes platform-wide scope as cluster_id: null, not dropped', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.selectOptions(await screen.findByLabelText('Scope'), 'platform');
+
+    await waitFor(() => {
+      const call = asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0];
+      const parsed = JSON.parse(call.advance);
+      expect(parsed.where).toHaveProperty('cluster_id', null);
+    });
+  });
+
+  it('serializes a specific cluster scope into cluster_id.in', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.selectOptions(await screen.findByLabelText('Scope'), 'cluster-1');
+
+    await waitFor(() => {
+      const call = asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0];
+      expect(JSON.parse(call.advance)).toEqual({ where: { cluster_id: { in: ['cluster-1'] } } });
+    });
+  });
+
+  it('combines role, scope and status filters into one advance where-clause', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.click(await screen.findByRole('button', { name: 'Support Admin' }));
+    await user.selectOptions(screen.getByLabelText('Scope'), 'platform');
+    await user.click(screen.getByRole('button', { name: 'Active' }));
+
+    await waitFor(() => {
+      const call = asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0];
+      expect(JSON.parse(call.advance)).toEqual({
+        where: { platform_role_id: { in: ['role-1'] }, cluster_id: null, is_active: true },
+      });
+    });
+  });
+
+  it('shows a removable filter badge and clears the filter on click', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.click(await screen.findByRole('button', { name: 'Inactive' }));
+    // The chip row lives outside the Sheet, in the main page — Radix marks
+    // everything outside an open Sheet/Dialog aria-hidden, so close it first.
+    await user.keyboard('{Escape}');
+
+    const chipRow = (await screen.findByText('Filters:')).closest('div') as HTMLElement;
+    expect(within(chipRow).getByText('Inactive')).toBeInTheDocument();
+
+    asMock(userPlatformService.getAll).mockClear();
+    // First button in the chip row is the badge's own remove (X) control.
+    await user.click(within(chipRow).getAllByRole('button')[0]);
+
+    await waitFor(() =>
+      expect(asMock(userPlatformService.getAll).mock.calls.at(-1)?.[0].advance).toBe(''),
+    );
+  });
+});
+
+describe('UserPlatformManagement — empty state', () => {
+  it('distinguishes "no one holds roles yet" from "nothing matched your search"', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
       data: [],
       paginate: { total: 0, page: 1, perpage: 10 },
     });
     renderPage();
 
-    expect(await screen.findByText('No users found')).toBeInTheDocument();
+    expect(await screen.findByText('No one holds platform roles yet')).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.type(screen.getByPlaceholderText('Search users...'), 'zzz');
 
     expect(await screen.findByText('No matches found')).toBeInTheDocument();
   });
-
-  it('surfaces a list failure as an alert and a toast', async () => {
-    asMock(userService.getAll).mockRejectedValue(new Error('down'));
-    renderPage();
-
-    // The band fails alongside the table here, so both alert regions are live;
-    // assert on the table's specifically.
-    await waitFor(() =>
-      expect(
-        screen.getAllByRole('alert').some((el) => /failed to load users/i.test(el.textContent ?? '')),
-      ).toBe(true),
-    );
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load users')),
-    );
-  });
-
-  it('persists perpage and page per-entity when pagination changes', async () => {
-    asMock(userService.getAll).mockResolvedValue({
-      data: [user1],
-      paginate: { total: 40, page: 1, perpage: 10 },
-    });
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByText('jane@example.com');
-
-    // DataTable renders a desktop and a mobile pagination bar; jsdom applies no
-    // CSS, so both are present. Either drives the same handler.
-    await user.click(screen.getAllByRole('button', { name: 'Next page' })[0]);
-
-    await waitFor(() => expect(localStorage.getItem('page_user_platform')).toBe('2'));
-  });
 });
 
 describe('UserPlatformManagement — CSV export', () => {
   it('is disabled while there is nothing to export', async () => {
-    asMock(userService.getAll).mockResolvedValue({
+    asMock(userPlatformService.getAll).mockResolvedValue({
       data: [],
       paginate: { total: 0, page: 1, perpage: 10 },
     });
     renderPage();
 
-    await screen.findByText('No users found');
+    await screen.findByText('No one holds platform roles yet');
     expect(screen.getByRole('button', { name: /export/i })).toBeDisabled();
   });
 
-  it('exports the visible users with a dated filename', async () => {
+  it('exports one row per role assignment, not per user', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [{ ...jane, roles: [platformRole, clusterRole] }],
+      paginate: { total: 1, page: 1, perpage: 10 },
+    });
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('jane@example.com');
@@ -386,13 +479,108 @@ describe('UserPlatformManagement — CSV export', () => {
     await user.click(screen.getByRole('button', { name: /export/i }));
 
     expect(csv.generateCSV).toHaveBeenCalledWith(
-      [expect.objectContaining({ id: 'u1' })],
-      expect.arrayContaining([expect.objectContaining({ key: 'username' })]),
+      [
+        expect.objectContaining({ username: 'jane', role: 'Support Admin', scope: 'Platform' }),
+        expect.objectContaining({ username: 'jane', role: 'Cluster Admin', scope: 'Acme' }),
+      ],
+      expect.arrayContaining([expect.objectContaining({ key: 'role' })]),
     );
     expect(csv.downloadCSV).toHaveBeenCalledWith(
       'csv-body',
       expect.stringMatching(/^user-platform-\d{4}-\d{2}-\d{2}\.csv$/),
     );
     expect(toast.success).toHaveBeenCalledWith('Data exported successfully');
+  });
+});
+
+describe('UserPlatformManagement — revoke all access', () => {
+  const openRevokeConfirm = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /actions for jane/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /revoke all access/i }));
+  };
+
+  it('requires confirmation before revoking, then removes each role assignment', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [{ ...jane, roles: [platformRole, clusterRole] }],
+      paginate: { total: 1, page: 1, perpage: 10 },
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await openRevokeConfirm(user);
+
+    expect(await screen.findByText(/remove all 2 role assignments from jane\?/i)).toBeInTheDocument();
+    expect(userRoleService.remove).not.toHaveBeenCalled();
+
+    asMock(userPlatformService.getAll).mockClear();
+    await user.click(screen.getByRole('button', { name: 'Revoke all' }));
+
+    await waitFor(() => {
+      expect(userRoleService.remove).toHaveBeenCalledWith('u1', 'ra-1');
+      expect(userRoleService.remove).toHaveBeenCalledWith('u1', 'ra-2');
+    });
+    expect(toast.success).toHaveBeenCalledWith('Access revoked');
+    // A fully-revoked holder must drop out of the registry, so the page refetches.
+    await waitFor(() => expect(userPlatformService.getAll).toHaveBeenCalled());
+  });
+
+  // There is no bulk-remove route on the backend — this is a sequential loop, and it
+  // must report honestly which roles failed rather than claiming a blanket success.
+  it('reports which roles failed rather than claiming a blanket success', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [{ ...jane, roles: [platformRole, clusterRole] }],
+      paginate: { total: 1, page: 1, perpage: 10 },
+    });
+    asMock(userRoleService.remove).mockImplementation((_userId: string, assignmentId: string) =>
+      assignmentId === 'ra-2' ? Promise.reject(new Error('locked')) : Promise.resolve({}),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    await openRevokeConfirm(user);
+    await user.click(screen.getByRole('button', { name: 'Revoke all' }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Cluster Admin')),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+});
+
+// SECURITY. Two <Can permission="user_platform.manage"> gates guard this page's write
+// surfaces: the header Grant access button and the row menu's Revoke all access item.
+// `Can` is the REAL component here (not mocked) — mocking it away would make these tests
+// vacuous, which is exactly the pattern that let ~8 permission holes (2 of them P0) through
+// in an earlier review wave on this codebase. Mirrors ClusterManagement.test.tsx.
+describe('UserPlatformManagement — permission gates (user_platform.manage)', () => {
+  it('hides Grant access and Revoke all access without user_platform.manage', async () => {
+    auth.hasPermission = () => false;
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    expect(screen.queryByRole('button', { name: /grant access/i })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /actions for jane/i }));
+    // Manage roles is ungated — only Revoke all access depends on the permission.
+    expect(await screen.findByRole('menuitem', { name: /manage roles/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /revoke all access/i })).toBeNull();
+  });
+
+  // Discriminating control: grants only the exact permission string this page checks, so a
+  // gate that lost its `permission` prop (and fell back to "always visible") or checked the
+  // wrong string would still fail this test, not just a blanket `() => true`.
+  it('shows Grant access and Revoke all access with user_platform.manage (discriminating control)', async () => {
+    auth.hasPermission = (perm) => perm === 'user_platform.manage';
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    expect(screen.getByRole('button', { name: /grant access/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /actions for jane/i }));
+    expect(await screen.findByRole('menuitem', { name: /revoke all access/i })).toBeInTheDocument();
   });
 });
