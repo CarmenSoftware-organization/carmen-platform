@@ -153,6 +153,52 @@ recorded anyone" are different facts.
 
 The frontend types `Audit` / `AuditEntry` already exist (`src/types/index.ts:501-512`).
 
+### 1b. Registry-wide aggregate (added 2026-08-06 after final review)
+
+The response carries a `summary` block describing the **whole registry**, not the current
+page:
+
+```jsonc
+{
+  "data": [ /* … one page of holders … */ ],
+  "paginate": { "total": 25, "page": 1, "perpage": 10 },
+  "summary": {
+    "holders": 25,
+    "platform_wide": 9,
+    "cluster_only": 16,
+    "assignments": 41,
+    "inactive": 3
+  }
+}
+```
+
+**Why this exists.** The first cut computed the band's breakdown from the loaded rows. That
+made the inactive-holder warning a **false negative**: with 25 holders at 10 per page and
+the sole inactive holder sorted onto page 3, page 1 renders no warning at all. An admin
+opening the page to run an access review sees a clean band and moves on — the exact
+opposite of question 3 ("which inactive users still hold privilege?"), which is one of the
+four questions this page exists to answer. A page-local count is not merely imprecise here;
+it is silently wrong in the direction that hides the finding.
+
+Computing only `inactive` registry-wide would leave the band mixing two scopes and still
+needing an "on this page" qualifier on the rest. All five are therefore registry-wide, and
+the band needs no qualifier at all.
+
+**Filters apply.** `summary` describes the set matching the current `advance` filter and
+`search`, not the entire table — otherwise the numbers would contradict a filtered list
+sitting directly beneath them. With no filters, that set is the whole registry.
+
+**Cost.** Step 1's `groupBy` already yields every matching holder id. The aggregate adds
+three cheap reads against that id set: a `count` of inactive users, a `groupBy` on
+assignments where `cluster_id` is null (giving the platform-wide holder set, from which
+`cluster_only` is the remainder), and a `count` of live assignments. `holders` is the same
+number as `paginate.total`; it is repeated inside `summary` so the frontend reads one
+coherent block rather than stitching two sources together.
+
+**Frontend consequence.** `summarizeRegistry(rows, total)` is replaced by consuming
+`summary` directly. The band stops deriving anything from `rows`, so `PlatformAccessSummary`
+no longer needs the page-scoped qualifier that the interim fix added.
+
 **Implementation in `micro-business`** (`authen/user_platform_role/`). There is no FK
 between `tb_user_tb_platform_role` and `tb_user` (project rule: no foreign keys), so this
 is a four-step read, not a join:
