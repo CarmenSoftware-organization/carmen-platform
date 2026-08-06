@@ -249,6 +249,46 @@ describe('UserPlatformManagement — registry list', () => {
   });
 });
 
+describe('UserPlatformManagement — registry-wide summary band', () => {
+  // This is the integration point for the bug the whole task exists to fix: the band
+  // must read `summary` off the response, not derive anything from the loaded `rows`.
+  // jane (the only loaded row here) is active — a page-derived breakdown would report
+  // zero inactive holders and hide exactly the finding an access review is looking for.
+  it('renders the inactive warning from the response summary even though every loaded row is active', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [jane],
+      paginate: { total: 25, page: 1, perpage: 10 },
+      summary: { holders: 25, platform_wide: 9, cluster_only: 16, assignments: 41, inactive: 3 },
+    });
+    renderPage();
+
+    await screen.findByText('jane@example.com');
+    expect(
+      await screen.findByRole('button', { name: /3 inactive holders still hold access/ }),
+    ).toBeInTheDocument();
+    // Scoped to the summary band itself — the table's own pagination footer ("Showing
+    // 1-1 of 25") also contains "25", so an unscoped query would be ambiguous.
+    const band = screen.getByText('holders').closest('[class*="rounded-lg"]') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(within(band).getByText('9')).toBeInTheDocument();
+    expect(within(band).getByText('16')).toBeInTheDocument();
+    expect(within(band).getByText('41')).toBeInTheDocument();
+  });
+
+  // Every request against today's backend omits `summary` (it ships in a later deploy).
+  // The band must say so rather than showing a breakdown of zeros, which would read as
+  // "no inactive holders" — a false negative in exactly the direction this page must not
+  // get wrong.
+  it('shows the summary as unavailable when the response omits it', async () => {
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    expect(await screen.findByText(/registry summary isn.t available yet/i)).toBeInTheDocument();
+    expect(screen.queryByText('Platform-wide')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('UserPlatformManagement — role/scope/status filters', () => {
   it('translates a single status filter into an advance where-clause and resets to page 1', async () => {
     const user = userEvent.setup();

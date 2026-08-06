@@ -2,16 +2,20 @@ import api from './api';
 import QueryParams from '../utils/QueryParams';
 import type {
   PaginateParams,
-  PlatformUserRow,
   PlatformUserScope,
-  ApiListResponse,
+  PlatformUsersResponse,
 } from '../types';
 
 const defaultSearchFields = ['username', 'email'];
 
 const userPlatformService = {
-  /** Users holding at least one platform role. Users with none are excluded server-side. */
-  getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<PlatformUserRow>> => {
+  /**
+   * Users holding at least one platform role. Users with none are excluded server-side.
+   * The response's `summary` block is the registry-wide aggregate (see
+   * `PlatformUserRegistrySummary`) and is optional — it is absent until the backend
+   * deploys the change that adds it, so callers must not assume its presence.
+   */
+  getAll: async (paginate: PaginateParams = {}): Promise<PlatformUsersResponse> => {
     const q = new QueryParams(
       paginate.page,
       paginate.perpage,

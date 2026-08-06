@@ -60,6 +60,23 @@ describe('userPlatformService', () => {
       expect(url).toContain('sort=username%3Aasc');
     });
 
+    it('surfaces the registry-wide summary block untouched, alongside data and paginate', async () => {
+      const envelope = {
+        data: [],
+        paginate: { total: 25, page: 1, perpage: 10 },
+        summary: { holders: 25, platform_wide: 9, cluster_only: 16, assignments: 41, inactive: 3 },
+      };
+      mockApi.get.mockResolvedValue({ data: envelope });
+      const result = await userPlatformService.getAll();
+      expect(result.summary).toEqual(envelope.summary);
+    });
+
+    it('leaves `summary` undefined when the backend response omits it (pre-deploy shape)', async () => {
+      mockApi.get.mockResolvedValue({ data: { data: [], paginate: { total: 0, page: 1, perpage: 10 } } });
+      const result = await userPlatformService.getAll();
+      expect(result.summary).toBeUndefined();
+    });
+
     it('returns the envelope (data + paginate) unwrapped from the axios response', async () => {
       const rows: PlatformUserRow[] = [
         {

@@ -486,6 +486,32 @@ export interface PlatformUserRow {
   last_granted_at?: string | null;
 }
 
+/**
+ * Registry-wide aggregate for `GET /api-system/platform/users`: describes every holder
+ * matching the current `advance` filter + `search`, not just the loaded page — so it stays
+ * correct however pagination sorts the results (e.g. the one inactive holder landing on
+ * page 3 must not make page 1 look clean). `holders` duplicates `paginate.total`
+ * deliberately, per the design doc, so the summary band reads one coherent block instead
+ * of stitching two response fields together.
+ *
+ * Optional on `PlatformUsersResponse` because it ships in a later backend deploy than this
+ * frontend change — every request made against the current backend omits it, and callers
+ * must render an explicit "unavailable" state rather than defaulting fields to 0, which
+ * would misreport (e.g.) inactive holders as zero.
+ */
+export interface PlatformUserRegistrySummary {
+  holders: number;
+  platform_wide: number;
+  cluster_only: number;
+  assignments: number;
+  inactive: number;
+}
+
+/** Response shape for `GET /api-system/platform/users` — `ApiListResponse` plus the registry-wide `summary` block (see `PlatformUserRegistrySummary`). */
+export interface PlatformUsersResponse extends ApiListResponse<PlatformUserRow> {
+  summary?: PlatformUserRegistrySummary;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;

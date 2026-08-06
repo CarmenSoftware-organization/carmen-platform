@@ -1,109 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { summarizeRegistry, PlatformAccessSummary, type RegistrySummary } from './PlatformAccessSummary';
-import type { PlatformUserRow, PlatformUserRoleAssignment } from '../../types';
+import { PlatformAccessSummary } from './PlatformAccessSummary';
+import type { PlatformUserRegistrySummary } from '../../types';
 
-const platformRole = (overrides: Partial<PlatformUserRoleAssignment> = {}): PlatformUserRoleAssignment => ({
-  id: 'assign-1',
-  role_id: 'role-1',
-  role_name: 'Platform Admin',
-  scope: { type: 'platform' },
+const summary = (overrides: Partial<PlatformUserRegistrySummary> = {}): PlatformUserRegistrySummary => ({
+  holders: 137,
+  platform_wide: 6,
+  cluster_only: 14,
+  assignments: 28,
+  inactive: 0,
   ...overrides,
-});
-
-const clusterRole = (overrides: Partial<PlatformUserRoleAssignment> = {}): PlatformUserRoleAssignment => ({
-  id: 'assign-2',
-  role_id: 'role-2',
-  role_name: 'Cluster Admin',
-  scope: { type: 'cluster', cluster_id: 'cluster-1', cluster_name: 'Cluster One' },
-  ...overrides,
-});
-
-const row = (overrides: Partial<PlatformUserRow> = {}): PlatformUserRow => ({
-  user_id: 'user-1',
-  username: 'jdoe',
-  is_active: true,
-  roles: [platformRole()],
-  ...overrides,
-});
-
-describe('summarizeRegistry', () => {
-  it('takes holders from the registry-wide total, not from the loaded page', () => {
-    const rows = [row({ user_id: 'a' }), row({ user_id: 'b' })];
-    const s = summarizeRegistry(rows, 137);
-    expect(s.holders).toBe(137);
-    expect(rows.length).toBe(2);
-    expect(s.holders).not.toBe(rows.length);
-  });
-
-  it('counts a holder with a platform-wide role once in platformWide, even alongside a cluster role, and sums both into assignments', () => {
-    const rows = [row({ roles: [platformRole(), clusterRole()] })];
-    const s = summarizeRegistry(rows, 1);
-    expect(s.platformWide).toBe(1);
-    expect(s.clusterOnly).toBe(0);
-    expect(s.assignments).toBe(2);
-  });
-
-  it('counts a holder whose roles are all cluster-scoped as clusterOnly, not platformWide', () => {
-    const rows = [
-      row({
-        user_id: 'a',
-        roles: [clusterRole({ id: 'r1' }), clusterRole({ id: 'r2', scope: { type: 'cluster', cluster_id: 'cluster-2' } })],
-      }),
-    ];
-    const s = summarizeRegistry(rows, 1);
-    expect(s.clusterOnly).toBe(1);
-    expect(s.platformWide).toBe(0);
-    expect(s.assignments).toBe(2);
-  });
-
-  it('sums assignments across every holder on the page', () => {
-    const rows = [
-      row({ user_id: 'a', roles: [platformRole()] }),
-      row({ user_id: 'b', roles: [clusterRole(), clusterRole({ id: 'r2' })] }),
-      row({ user_id: 'c', roles: [platformRole(), clusterRole()] }),
-    ];
-    const s = summarizeRegistry(rows, 3);
-    expect(s.assignments).toBe(5); // 1 (a) + 2 (b) + 2 (c)
-  });
-
-  it('counts inactive holders separately, without excluding them from the scope breakdown', () => {
-    const rows = [
-      row({ user_id: 'a', is_active: false, roles: [platformRole()] }),
-      row({ user_id: 'b', is_active: true, roles: [clusterRole()] }),
-    ];
-    const s = summarizeRegistry(rows, 2);
-    expect(s.inactive).toBe(1);
-    expect(s.platformWide).toBe(1); // the inactive holder still counts toward scope
-    expect(s.clusterOnly).toBe(1);
-  });
-
-  it('counts a holder with no roles toward neither platformWide nor clusterOnly', () => {
-    const rows = [row({ roles: [] })];
-    const s = summarizeRegistry(rows, 1);
-    expect(s.platformWide).toBe(0);
-    expect(s.clusterOnly).toBe(0);
-    expect(s.assignments).toBe(0);
-  });
-
-  it('returns an all-zero breakdown for an empty page, while still reporting the registry-wide total', () => {
-    const s = summarizeRegistry([], 0);
-    expect(s).toEqual({ holders: 0, platformWide: 0, clusterOnly: 0, assignments: 0, inactive: 0 });
-  });
 });
 
 describe('PlatformAccessSummary', () => {
-  const summary: RegistrySummary = {
-    holders: 137,
-    platformWide: 6,
-    clusterOnly: 14,
-    assignments: 28,
-    inactive: 0,
-  };
-
-  it('renders the registry-wide holder count as the headline, distinct from the page-scoped breakdown', () => {
-    render(<PlatformAccessSummary summary={summary} loading={false} />);
+  it('renders the registry-wide aggregate straight from `summary`, with no page-scoped qualifier', () => {
+    render(<PlatformAccessSummary summary={summary()} loading={false} />);
     expect(screen.getByText('137')).toBeInTheDocument();
     expect(screen.getByText('holders')).toBeInTheDocument();
     expect(screen.getByText('Platform-wide')).toBeInTheDocument();
@@ -113,23 +25,13 @@ describe('PlatformAccessSummary', () => {
     expect(screen.getByText('Assignments')).toBeInTheDocument();
     expect(screen.getByText('28')).toBeInTheDocument();
 
-    // The breakdown must be visibly marked as page-scoped, not just internally
-    // computed that way — a reader who never opens the source has no other way to
-    // know "28 assignments" describes the loaded page rather than the registry.
-    const pageCaption = screen.getByText(/this page/i);
-    expect(pageCaption).toBeInTheDocument();
-    // The caption must sit with the breakdown it describes, not float free elsewhere
-    // in the card — otherwise it labels nothing in particular.
-    const breakdownGroup = screen.getByText('Platform-wide').closest('dl');
-    expect(breakdownGroup).not.toBeNull();
-    expect(breakdownGroup?.parentElement).toContainElement(pageCaption);
-    // The headline holder count must sit outside that page-scoped group — it is the
-    // one number in the band that is NOT page-scoped.
-    expect(breakdownGroup?.parentElement).not.toContainElement(screen.getByText('137'));
+    // The interim "This page only" caption (added while the breakdown really was
+    // page-derived) must be gone now that the whole band is registry-wide.
+    expect(screen.queryByText(/this page/i)).not.toBeInTheDocument();
   });
 
   it('singularizes the headline label for exactly one holder', () => {
-    render(<PlatformAccessSummary summary={{ ...summary, holders: 1 }} loading={false} />);
+    render(<PlatformAccessSummary summary={summary({ holders: 1 })} loading={false} />);
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('holder')).toBeInTheDocument();
     expect(screen.queryByText('holders')).not.toBeInTheDocument();
@@ -152,7 +54,7 @@ describe('PlatformAccessSummary', () => {
     const onShowInactive = vi.fn();
     render(
       <PlatformAccessSummary
-        summary={{ ...summary, inactive: 3 }}
+        summary={summary({ inactive: 3 })}
         loading={false}
         onShowInactive={onShowInactive}
       />,
@@ -165,12 +67,34 @@ describe('PlatformAccessSummary', () => {
   });
 
   it('singularizes "holder" in the inactive warning for exactly one inactive holder', () => {
-    render(<PlatformAccessSummary summary={{ ...summary, inactive: 1 }} loading={false} />);
+    render(<PlatformAccessSummary summary={summary({ inactive: 1 })} loading={false} />);
     expect(screen.getByRole('button', { name: /1 inactive holder still hold access/ })).toBeInTheDocument();
   });
 
   it('omits the inactive warning entirely when there are no inactive holders', () => {
-    render(<PlatformAccessSummary summary={{ ...summary, inactive: 0 }} loading={false} />);
+    render(<PlatformAccessSummary summary={summary({ inactive: 0 })} loading={false} />);
+    expect(screen.queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+  });
+
+  it('surfaces the inactive warning from the registry-wide aggregate even when every loaded row is active — the false negative this change fixes', () => {
+    // Regression guard for the bug this task exists to fix: with pagination, the sole
+    // inactive holder can sort onto a page the admin never opens. The band must warn
+    // from `summary.inactive` alone — it renders with no knowledge of any table rows at
+    // all, so it cannot silently agree with a clean-looking page 1.
+    render(<PlatformAccessSummary summary={summary({ inactive: 3 })} loading={false} />);
+    expect(
+      screen.getByRole('button', { name: /3 inactive holders still hold access/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders an explicit "unavailable" state when `summary` is absent, instead of defaulting counts to zero', () => {
+    // Every request hits this path until the backend for this change deploys. Showing
+    // "0 inactive holders" here would misreport the registry as clean — the one finding
+    // this page exists to surface — so the band must say the data is unavailable rather
+    // than fabricate zeros.
+    render(<PlatformAccessSummary summary={null} loading={false} />);
+    expect(screen.getByText(/registry summary isn.t available yet/i)).toBeInTheDocument();
+    expect(screen.queryByText('Platform-wide')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
   });
 });

@@ -3,7 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
-import { PlatformAccessSummary, summarizeRegistry } from "./userPlatformManagement/PlatformAccessSummary";
+import { PlatformAccessSummary } from "./userPlatformManagement/PlatformAccessSummary";
 import { ScopeRail, RoleChips, hasPlatformWide } from "./userPlatformManagement/roleChips";
 import { GrantAccessDialog } from "./userPlatformManagement/GrantAccessDialog";
 import userPlatformService from "../services/userPlatformService";
@@ -28,7 +28,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
-import type { PaginateParams, PlatformUserRow } from "../types";
+import type { PaginateParams, PlatformUserRow, PlatformUserRegistrySummary } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const selectClassName =
@@ -55,6 +55,10 @@ const UserPlatformManagement: React.FC = () => {
 
   const [rows, setRows] = useState<PlatformUserRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
+  // Registry-wide aggregate from the endpoint's `summary` block. Stays `null` until the
+  // backend for this change deploys — see PlatformAccessSummary for why the band renders
+  // an explicit "unavailable" state rather than a page-derived fallback in that case.
+  const [summary, setSummary] = useState<PlatformUserRegistrySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
@@ -110,12 +114,14 @@ const UserPlatformManagement: React.FC = () => {
       const items = Array.isArray(data?.data) ? data.data : [];
       setRows(items);
       setTotalRows(data?.paginate?.total ?? items.length);
+      setSummary(data?.summary ?? null);
       setError('');
     } catch (err: unknown) {
       const { message } = parseApiError(err);
       setError(message);
       setRows([]);
       setTotalRows(0);
+      setSummary(null);
       toast.error('Failed to load platform users', { description: message });
     } finally {
       setLoading(false);
@@ -150,8 +156,6 @@ const UserPlatformManagement: React.FC = () => {
       } catch { /* same */ }
     })();
   }, []);
-
-  const summary = useMemo(() => summarizeRegistry(rows, totalRows), [rows, totalRows]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
