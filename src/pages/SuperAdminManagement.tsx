@@ -147,6 +147,9 @@ const SuperAdminManagement: React.FC = () => {
       // server, and refetching after it would throw away nothing but cost a request.
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
+        // The selection is provably stale too — someone else already granted it.
+        // Clear it so Add stays disabled instead of reproducing the identical 409.
+        setSelectedUser(null);
         await fetchData();
       }
     } finally {
@@ -379,7 +382,8 @@ const SuperAdminManagement: React.FC = () => {
               onChange={setSelectedUser}
               disabledIds={superAdminUserIds}
               disabledLabel="Already super admin"
-              placeholder="Search users by name or email"
+              placeholder="Search users by username or email"
+              ariaLabel="Select user to add as super admin"
               disabled={adding}
               onDropdownOpenChange={(v) => {
                 pickerOpenRef.current = v;

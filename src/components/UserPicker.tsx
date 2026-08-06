@@ -15,6 +15,8 @@ interface UserPickerProps {
   disabled?: boolean;
   error?: boolean;
   id?: string;
+  /** Accessible name for the input — pass this whenever there is no visible `<label>`. */
+  ariaLabel?: string;
   /** Notifies the parent when the results dropdown opens or closes, so a surrounding Dialog can keep Escape from closing it while the dropdown is open. */
   onDropdownOpenChange?: (open: boolean) => void;
 }
@@ -31,10 +33,11 @@ export const UserPicker: React.FC<UserPickerProps> = ({
   onChange,
   disabledIds,
   disabledLabel = 'Unavailable',
-  placeholder = 'Search users by name or email',
+  placeholder = 'Search users by username or email',
   disabled = false,
   error = false,
   id,
+  ariaLabel,
   onDropdownOpenChange,
 }) => {
   const [query, setQuery] = useState('');
@@ -66,6 +69,25 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     return () => document.removeEventListener('mousedown', handler);
   }, [open, changeOpen]);
 
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Only closes the dropdown. Keeping a surrounding Dialog open is NOT possible
+      // from here — Radix dismisses on a capture-phase document listener that runs
+      // before this handler. The Dialog guards itself via onEscapeKeyDown; see the
+      // consumer in SuperAdminManagement.tsx.
+      //
+      // A document-level listener (not the input's onKeyDown) so Escape still closes
+      // the dropdown when focus has moved to a result button — Tab from the input is
+      // the only way to reach a result (there is no arrow-key navigation), and the
+      // input-level handler never sees a keydown fired on a different element.
+      changeOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, changeOpen]);
+
   const selectUser = (u: UserOption) => {
     onChange(u);
     setQuery('');
@@ -76,16 +98,6 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     onChange(null);
     setQuery('');
     inputRef.current?.focus();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape' && open) {
-      // Only closes the dropdown. Keeping a surrounding Dialog open is NOT possible
-      // from here — Radix dismisses on a capture-phase document listener that runs
-      // before this handler. The Dialog guards itself via onEscapeKeyDown; see the
-      // consumer in SuperAdminManagement.tsx.
-      changeOpen(false);
-    }
   };
 
   if (value) {
@@ -138,8 +150,8 @@ export const UserPicker: React.FC<UserPickerProps> = ({
             changeOpen(true);
           }}
           onFocus={() => changeOpen(true)}
-          onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label={ariaLabel}
           className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
         />
       </div>
