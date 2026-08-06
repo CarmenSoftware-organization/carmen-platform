@@ -315,7 +315,7 @@ const UserPlatformEdit: React.FC = () => {
               open={!!deleteRoleAssignment}
               onOpenChange={(open) => { if (!open) setDeleteRoleAssignment(null); }}
               title="Remove role"
-              description={`Are you sure you want to remove the role "${deleteRoleAssignment?.role_name || deleteRoleAssignment?.role_id}" from this user?`}
+              description={`Are you sure you want to remove the role "${deleteRoleAssignment?.role_name || deleteRoleAssignment?.role_id}" from this user?${roleAssignments.length === 1 ? ' This is their last platform role — they will no longer appear in the User Platform registry.' : ''}`}
               confirmText="Remove"
               confirmVariant="destructive"
               onConfirm={handleRemoveRole}
