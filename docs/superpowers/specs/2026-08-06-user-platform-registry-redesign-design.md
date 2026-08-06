@@ -111,12 +111,10 @@ Query parameters follow the repo convention (`page`, `perpage`, `search`, `sort`
     "roles": [
       { "id": "assignment-uuid", "role_id": "uuid", "role_name": "platform_admin",
         "scope": { "type": "platform" },
-        "granted_at": "2026-08-01T09:12:00Z",
-        "granted_by_name": "นภา สุขใจ" },
+        "audit": { "created": { "at": "2026-08-01T09:12:00Z", "id": "uuid", "name": "นภา สุขใจ" } } },
       { "id": "assignment-uuid-2", "role_id": "uuid", "role_name": "cluster_ops",
         "scope": { "type": "cluster", "cluster_id": "uuid", "cluster_name": "Thailand" },
-        "granted_at": "2026-08-03T14:20:00Z",
-        "granted_by_name": null }
+        "audit": { "created": { "at": "2026-08-03T14:20:00Z" } } }
     ],
     "last_granted_at": "2026-08-03T14:20:00Z"
   }],
@@ -124,8 +122,28 @@ Query parameters follow the repo convention (`page`, `perpage`, `search`, `sort`
 }
 ```
 
-`granted_by_name` is `null` for every assignment created before change 3 ships. The UI
-renders that as `—`, never as a guess.
+**Why `audit.created` and not `granted_at` / `granted_by_name`.** The route carries
+`@EnrichAuditUsers({ paths: ['data.roles'] })`. That interceptor **deletes** the raw
+`created_at` / `created_by_id` off each nested role and replaces them with
+`audit.created = { at, id, name }` (`audit-shape.ts:84`). Emitting domain-named fields
+would mean bypassing the shared enricher and hand-rolling a user lookup, so the service
+selects the raw columns and lets the interceptor do its job.
+
+The path is `data.roles`, **not** `roles`: a paginated route's envelope is
+`{ data: [...], paginate }`, which is why every other paginated route in the gateway passes
+`paths: ['data']` (e.g. `period-end.controller.ts:74`). `collectAt` walks arrays
+automatically, so `data.roles` resolves to every `payload.data[*].roles[*]`. Passing
+`paths` also **replaces** the default `['']`, so the user-level object is not enriched —
+`last_granted_at` is a plain computed field and stays as written.
+
+The second role above shows an assignment created before change 3 ships: `audit.created`
+has `at` but no `name`, because `created_by_id` was NULL. The UI renders that as `—`, never
+as a guess. Note that when `created_by_id` is set but the user cannot be resolved, the
+enricher writes the literal `"Unknown"` — the UI must show that verbatim rather than
+mapping it back to `—`, since "we recorded someone we can no longer identify" and "we never
+recorded anyone" are different facts.
+
+The frontend types `Audit` / `AuditEntry` already exist (`src/types/index.ts:501-512`).
 
 **Implementation in `micro-business`** (`authen/user_platform_role/`). There is no FK
 between `tb_user_tb_platform_role` and `tb_user` (project rule: no foreign keys), so this
