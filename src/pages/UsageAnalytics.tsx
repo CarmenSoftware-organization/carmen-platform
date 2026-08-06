@@ -75,6 +75,7 @@ const UsageAnalytics: React.FC = () => {
     } catch (err) {
       const parsed = parseApiError(err);
       setError(parsed.message);
+      setOverview(null);
       toast.error(parsed.message);
     } finally {
       setLoading(false);
@@ -203,13 +204,21 @@ const UsageAnalytics: React.FC = () => {
             {loading ? <Skeleton className="h-[340px] w-full" /> : <UsageChart data={overview?.daily || []} />}
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <Can
-                permission="activity_event.detail"
-                fallback={<TopList title="Top pages" items={topPageItems} emptyLabel="ไม่มีข้อมูล" />}
-              >
-                <TopList title="Top pages" items={topPageItems} emptyLabel="ไม่มีข้อมูล" onSelect={goToEvents} />
-              </Can>
-              <TopList title="Top elements" items={topElementItems} emptyLabel="ไม่มีข้อมูล" />
+              {loading ? (
+                <Skeleton className="h-[420px] w-full" />
+              ) : (
+                <Can
+                  permission="activity_event.detail"
+                  fallback={<TopList title="Top pages" items={topPageItems} emptyLabel="ไม่มีข้อมูล" />}
+                >
+                  <TopList title="Top pages" items={topPageItems} emptyLabel="ไม่มีข้อมูล" onSelect={goToEvents} />
+                </Can>
+              )}
+              {loading ? (
+                <Skeleton className="h-[420px] w-full" />
+              ) : (
+                <TopList title="Top elements" items={topElementItems} emptyLabel="ไม่มีข้อมูล" />
+              )}
             </div>
           </>
         )}
