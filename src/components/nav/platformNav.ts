@@ -18,14 +18,16 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/report-form-groups', label: 'Form Groups', icon: LayoutGrid, permission: 'report_template.read', group: 'Content' },
   { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read', group: 'Content' },
   { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send', group: 'Content' },
+  // Analytics — must stay contiguous: Sidebar groups by consecutive runs of the same
+  // `group` label, so splitting these two would render two separate "Analytics" headings.
+  { path: '/analytics', label: 'Usage Analytics', icon: BarChart3, permission: 'activity_event.read', group: 'Analytics' },
+  { path: '/activity-events', label: 'Activity Events', icon: MousePointerClick, permission: 'activity_event.detail', group: 'Analytics' },
   // Platform
   { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read', group: 'Platform' },
   { path: '/platform/email-settings', label: 'Email Settings', icon: Mail, permission: 'email_setting.read', group: 'Platform' },
   { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
   { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
   { path: '/platform/user-platform', label: 'User Platform', icon: UserCog, permission: 'user_platform.read', group: 'Platform' },
-  { path: '/analytics', label: 'Usage Analytics', icon: BarChart3, permission: 'activity_event.read', group: 'Platform' },
-  { path: '/activity-events', label: 'Activity Events', icon: MousePointerClick, permission: 'activity_event.detail', group: 'Platform' },
   { path: '/sql-workbench', label: 'SQL Workbench', icon: Database, permission: 'sql_workbench.read', group: 'Platform' },
 ];
 
