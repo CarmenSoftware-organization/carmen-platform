@@ -17,6 +17,7 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { DateRangeFilter } from '../components/analytics/DateRangeFilter';
 import { EventDetailSheet } from './activityEvents/EventDetailSheet';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import analyticsService from '../services/analyticsService';
 import { presetRange, type DateRange } from '../utils/analyticsRange';
 import { parseApiError } from '../utils/errorParser';
@@ -46,7 +47,6 @@ const ActivityEventManagement: React.FC = () => {
   const [buCode, setBuCode] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const [events, setEvents] = useState<ActivityEvent[]>([]);
@@ -62,16 +62,24 @@ const ActivityEventManagement: React.FC = () => {
     sort: 'server_ts:desc',
   }));
 
-  // Debounce ค่าค้นหา 400ms แล้วค่อย reset ไปหน้า 1 พร้อมกันในรอบเดียว — ถ้า reset
-  // ทันทีทุก keystroke (แยกจากตัวนี้) จะสร้าง paginate object ใหม่ทุกครั้ง ทำให้
-  // fetchEvents ยิง request ซ้ำก่อนค่า debouncedSearch จะอัปเดตจริง
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-      setPaginate((p) => (p.page === 1 ? p : { ...p, page: 1 }));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [searchTerm]);
+  // Guard คงอ้างอิงเดิมไว้ถ้า page เป็น 1 อยู่แล้ว เพื่อไม่สร้าง paginate object ใหม่
+  // โดยไม่จำเป็น (ป้องกัน fetchEvents ยิงซ้ำเปล่าประโยชน์เมื่อไม่มีอะไรเปลี่ยนจริง)
+  const resetPage = useCallback(() => {
+    setPaginate((p) => (p.page === 1 ? p : { ...p, page: 1 }));
+  }, []);
+
+  // ค่าตัวกรองข้อความทั้งสี่ (ค้นหา / page path / session id / bu code) debounce 400ms
+  // ก่อนถูกใช้จริงใน fetchEvents — พิมพ์แต่ละตัวอักษรจะอัปเดตแค่ state ดิบ (ผูกกับ
+  // <Input>) ไม่แตะ paginate เลย ส่วน onSettle (=resetPage) รีเซ็ตหน้ากลับไป 1 "ในจังหวะ
+  // เดียวกัน" กับตอนที่ค่า debounce นิ่งจริง — ถ้าแยกเป็น useEffect ต่างหากที่คอย watch
+  // ค่า debounced แทน จะกลายเป็นสอง render (ค่ากรองใหม่ + page เก่าค้าง แล้วค่อยแก้ page
+  // ในรอบถัดไป) ซึ่งจะยิง fetch ทิ้งหนึ่งครั้งด้วย state ที่ไม่ตรงกันก่อนรอบที่ถูกต้อง —
+  // ปุ่ม clear/"ดู session นี้ทั้งหมด" ใช้ flush* (ไม่ผ่าน onSettle) แล้วเรียก resetPage()
+  // เองในตัว handler แทน เพราะเป็นการกระทำครั้งเดียวที่ไม่ต้องรอ debounce อยู่แล้ว
+  const [debouncedSearch] = useDebouncedValue(searchTerm, 400, resetPage);
+  const [debouncedPagePath, flushPagePath] = useDebouncedValue(pagePath, 400, resetPage);
+  const [debouncedSessionId, flushSessionId] = useDebouncedValue(sessionId, 400, resetPage);
+  const [debouncedBuCode, flushBuCode] = useDebouncedValue(buCode, 400, resetPage);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
@@ -86,10 +94,10 @@ const ActivityEventManagement: React.FC = () => {
         perpage: paginate.perpage,
         sort: paginate.sort,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        ...(pagePath ? { page_path: pagePath } : {}),
-        ...(sessionId ? { session_id: sessionId } : {}),
+        ...(debouncedPagePath ? { page_path: debouncedPagePath } : {}),
+        ...(debouncedSessionId ? { session_id: debouncedSessionId } : {}),
         ...(eventType ? { event_type: eventType } : {}),
-        ...(buCode ? { bu_code: buCode } : {}),
+        ...(debouncedBuCode ? { bu_code: debouncedBuCode } : {}),
       });
       setRawResponse(response);
       setEvents(response.data || []);
@@ -103,7 +111,7 @@ const ActivityEventManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [range.from, range.to, paginate, debouncedSearch, pagePath, sessionId, eventType, buCode]);
+  }, [range.from, range.to, paginate, debouncedSearch, debouncedPagePath, debouncedSessionId, eventType, debouncedBuCode]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -194,10 +202,10 @@ const ActivityEventManagement: React.FC = () => {
   };
 
   const activeFilters = [
-    pagePath && { label: `หน้า: ${pagePath}`, clear: () => setPagePath('') },
-    sessionId && { label: `session: ${sessionId.slice(0, 8)}…`, clear: () => setSessionId('') },
-    eventType && { label: `ชนิด: ${eventType}`, clear: () => setEventType('') },
-    buCode && { label: `BU: ${buCode}`, clear: () => setBuCode('') },
+    pagePath && { label: `หน้า: ${pagePath}`, clear: () => { setPagePath(''); flushPagePath(''); resetPage(); } },
+    sessionId && { label: `session: ${sessionId.slice(0, 8)}…`, clear: () => { setSessionId(''); flushSessionId(''); resetPage(); } },
+    eventType && { label: `ชนิด: ${eventType}`, clear: () => { setEventType(''); resetPage(); } },
+    buCode && { label: `BU: ${buCode}`, clear: () => { setBuCode(''); flushBuCode(''); resetPage(); } },
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
@@ -230,7 +238,7 @@ const ActivityEventManagement: React.FC = () => {
                 />
               </div>
 
-              <DateRangeFilter value={range} onChange={(r) => { setRange(r); setPaginate((p) => ({ ...p, page: 1 })); }} />
+              <DateRangeFilter value={range} onChange={(r) => { setRange(r); resetPage(); }} />
 
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
@@ -244,7 +252,7 @@ const ActivityEventManagement: React.FC = () => {
                   <div className="mt-4 space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="f-type">ชนิด event</Label>
-                      <Select value={eventType || 'all'} onValueChange={(v) => setEventType(v === 'all' ? '' : v)}>
+                      <Select value={eventType || 'all'} onValueChange={(v) => { setEventType(v === 'all' ? '' : v); resetPage(); }}>
                         <SelectTrigger id="f-type"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">ทั้งหมด</SelectItem>
@@ -295,7 +303,7 @@ const ActivityEventManagement: React.FC = () => {
           <CardContent className="relative p-0 sm:p-4">
             {loading && events.length === 0 ? (
               <TableSkeleton columns={8} rows={8} />
-            ) : !loading && events.length === 0 ? (
+            ) : !loading && !error && events.length === 0 ? (
               <EmptyState
                 icon={MousePointerClick}
                 title="ไม่พบ event"
@@ -330,9 +338,11 @@ const ActivityEventManagement: React.FC = () => {
         onClose={() => setSelected(null)}
         onViewSession={(sid) => {
           setSelected(null);
-          setSessionId(sid);
           setPagePath('');
-          setPaginate((p) => ({ ...p, page: 1 }));
+          flushPagePath('');
+          setSessionId(sid);
+          flushSessionId(sid);
+          resetPage();
         }}
       />
 
