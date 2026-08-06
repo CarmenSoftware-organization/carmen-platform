@@ -23,7 +23,9 @@ const analyticsService = {
     const response = await api.get(
       `/api-system/platform/analytics/overview?${toQuery({ ...params })}`,
     );
-    return response.data;
+    // unwrap แบบยอมรับได้ทั้งสองรูปเหมือน getter ตัวเดียวอื่น ๆ ใน repo — backend ตอนนี้
+    // ห่อด้วย { data } เสมอ แต่ถ้าวันหนึ่งตอบ object เปล่า ๆ มา หน้าจะพังเงียบ ๆ
+    return { data: response.data?.data ?? response.data };
   },
 
   getEvents: async (

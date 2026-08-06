@@ -57,6 +57,14 @@ function ymdPairOf(range: DateRange): { fromYmd: string; toYmd: string } {
  * โหมดกำหนดเองจะไม่เรียก onChange จนกว่าจะกรอกครบสองช่องและช่วงไม่เกินเพดาน
  * เพื่อไม่ให้ยิง request ที่ backend ตอบ 400 อยู่แล้ว
  *
+ * **คืนค่าเป็น fragment ไม่ใช่ div เดียว** — ตัวมันเองไม่มีกล่องครอบ ทุกกลุ่มจึงเป็น flex item
+ * ของแถวตัวกรองที่หน้าเรียกใช้โดยตรง (ทั้งสองหน้าเป็น `flex flex-wrap items-end gap-3`)
+ * ถ้าห่อไว้ในกล่องเดียวแบบเดิม กล่องนั้นจะสูงถึงบรรทัดคำอธิบายด้านล่าง พอ `items-end`
+ * จัดชิดขอบล่าง Select ในกล่องจะลอยสูงกว่า control อื่น ๆ ในแถวเดียวกันราวความสูงของ
+ * คำอธิบาย — คำอธิบายจึงถูกดันไปบรรทัดของตัวเองด้วย `order-last basis-full` แทน
+ * (`order-last` จำเป็น เพราะถ้าไม่มี `basis-full` จะตัดแถวตรงกลาง ดัน control ที่อยู่หลัง
+ * component นี้ตกไปอีกบรรทัด)
+ *
  * preset / fromYmd / toYmd เริ่มต้นจาก `value` เสมอ (lazy init) ไม่ใช่ค่าคงที่ตายตัว —
  * หน้าที่ seed ค่าเริ่มต้นจาก query param (เช่นตอน drill-down จาก /analytics มายัง
  * /activity-events) จะได้แสดงตัวเลือกที่ตรงกับ filter จริงตั้งแต่ render แรก แทนที่จะ
@@ -102,46 +110,48 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="range-preset">ช่วงวัน</Label>
-          <Select value={preset} onValueChange={handlePreset}>
-            <SelectTrigger id="range-preset" className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RANGE_PRESETS.map((p) => (
-                <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {preset === 'custom' && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="range-from">ตั้งแต่</Label>
-              <Input
-                id="range-from" type="date" max={todayInTz()} value={fromYmd}
-                onChange={(e) => handleCustom(e.target.value, toYmd)}
-                className={error ? 'border-destructive' : ''}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="range-to">ถึง</Label>
-              <Input
-                id="range-to" type="date" max={todayInTz()} value={toYmd}
-                onChange={(e) => handleCustom(fromYmd, e.target.value)}
-                className={error ? 'border-destructive' : ''}
-              />
-            </div>
-          </>
-        )}
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="range-preset">ช่วงวัน</Label>
+        <Select value={preset} onValueChange={handlePreset}>
+          <SelectTrigger id="range-preset" className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RANGE_PRESETS.map((p) => (
+              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      <p className={`text-xs ${error ? 'text-destructive' : 'text-muted-foreground'}`} aria-live="polite">
+
+      {preset === 'custom' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="range-from">ตั้งแต่</Label>
+            <Input
+              id="range-from" type="date" max={todayInTz()} value={fromYmd}
+              onChange={(e) => handleCustom(e.target.value, toYmd)}
+              className={error ? 'border-destructive' : ''}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="range-to">ถึง</Label>
+            <Input
+              id="range-to" type="date" max={todayInTz()} value={toYmd}
+              onChange={(e) => handleCustom(fromYmd, e.target.value)}
+              className={error ? 'border-destructive' : ''}
+            />
+          </div>
+        </>
+      )}
+
+      <p
+        className={`order-last basis-full text-xs ${error ? 'text-destructive' : 'text-muted-foreground'}`}
+        aria-live="polite"
+      >
         {error || `กำลังดู ${describeRange(value)}`}
       </p>
-    </div>
+    </>
   );
 };
