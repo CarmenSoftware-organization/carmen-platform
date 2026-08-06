@@ -614,6 +614,8 @@ const BusinessUnitForm: React.FC = () => {
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}
           editing={editing}
+          name={formData.name}
+          code={formData.code}
           onUploadLogo={handleUploadLogo}
           onUploadAvatar={handleUploadAvatar}
         />

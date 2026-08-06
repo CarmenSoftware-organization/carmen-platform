@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import clusterAdminService from '../services/clusterAdminService';
 import clusterService from '../services/clusterService';
 import { Button } from './ui/button';
+import { BrandMark } from './BrandMark';
+import { cn } from '../lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import type { AdminCluster } from '../types';
@@ -79,12 +81,24 @@ const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
     );
   }, [adminScope?.all, remote, local, term]);
 
+  const currentName = current?.name ?? fetchedName ?? null;
+
   if (!adminScope || (!adminScope.all && adminScope.clusters.length <= 1)) return null;
 
   return (
     <>
-      <Button variant="ghost" size="sm" className="gap-2" onClick={() => setOpen(true)}>
-        <span className="max-w-[16rem] truncate">{current?.name ?? fetchedName ?? 'Select cluster'}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn('gap-2', currentName && 'px-2')}
+        onClick={() => setOpen(true)}
+      >
+        {/* Only marks a cluster we can actually name — a lone "?" tile next to "Select cluster"
+         *  would be an identity for nothing. */}
+        {currentName && (
+          <BrandMark name={currentName} code={current?.code} src={current?.avatar?.url} />
+        )}
+        <span className="max-w-[16rem] truncate">{currentName ?? 'Select cluster'}</span>
         <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
       </Button>
 
@@ -119,7 +133,10 @@ const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
                 }}
                 className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
               >
-                <span className="truncate">{c.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <BrandMark name={c.name} code={c.code} src={c.avatar?.url} />
+                  <span className="truncate">{c.name}</span>
+                </span>
                 <span className="ml-3 shrink-0 font-mono text-xs text-muted-foreground">{c.code}</span>
               </button>
             ))}

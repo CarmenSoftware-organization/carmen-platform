@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { BrandMark } from './BrandMark';
 import { Button } from './ui/button';
 import { Menu } from 'lucide-react';
-import Sidebar, { type NavItem } from './Sidebar';
+import Sidebar, { PRODUCT_BRAND, type BrandIdentity, type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import HeaderUserMenu from './HeaderUserMenu';
@@ -33,9 +34,14 @@ interface LayoutProps {
    * `/cluster-admin`.
    */
   brandTo?: string;
+  /**
+   * Whose identity the shell wears — the product by default. `ClusterAdminLayout` passes the
+   * administered cluster, so the chrome reads as that tenant's console while you are inside it.
+   */
+  brand?: BrandIdentity;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo }) => {
+const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo, brand = PRODUCT_BRAND }) => {
   const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -137,6 +143,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
         isMobileOpen={isMobileOpen}
         onMobileOpenChange={setIsMobileOpen}
         brandTo={brandDestination}
+        brand={brand}
         headerSlot={headerSlot}
       />
 
@@ -157,12 +164,17 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to={brandDestination} className="flex items-center gap-3 group">
-                <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-sm transition-shadow">
-                  <span className="text-white font-bold text-base">C</span>
-                </div>
-                <h1 className="text-lg font-bold text-foreground hidden sm:block">
-                  Carmen Platform
+              <Link to={brandDestination} className="flex min-w-0 items-center gap-3 group">
+                <BrandMark
+                  name={brand.name}
+                  code={brand.code}
+                  src={brand.logoUrl}
+                  tone="primary"
+                  size="sm"
+                  className="shadow-sm"
+                />
+                <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
+                  {brand.name}
                 </h1>
               </Link>
               {!isDesktop && (

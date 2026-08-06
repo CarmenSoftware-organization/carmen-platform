@@ -388,6 +388,8 @@ export interface AdminCluster {
   name: string;
   code: string;
   is_active?: boolean;
+  /** Resolved presigned square avatar — absent until the gateway can reach the file service. */
+  avatar?: PresignedImage | null;
 }
 
 /**

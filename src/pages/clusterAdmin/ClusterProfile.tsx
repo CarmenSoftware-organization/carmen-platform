@@ -272,6 +272,8 @@ const ClusterProfile: React.FC = () => {
                     logoUrl={logoUrl}
                     avatarUrl={avatarUrl}
                     canEdit={editing}
+                    name={formData.name}
+                    code={formData.code}
                     onUploadLogo={handleUploadLogo}
                     onUploadAvatar={handleUploadAvatar}
                   />

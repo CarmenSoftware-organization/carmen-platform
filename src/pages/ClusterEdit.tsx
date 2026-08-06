@@ -549,6 +549,8 @@ const ClusterEdit: React.FC = () => {
                         logoUrl={logoUrl}
                         avatarUrl={avatarUrl}
                         canEdit={canEdit}
+                        name={formData.name}
+                        code={formData.code}
                         onUploadLogo={handleUploadLogo}
                         onUploadAvatar={handleUploadAvatar}
                       />
