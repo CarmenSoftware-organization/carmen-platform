@@ -115,9 +115,20 @@ platform-analytics/
 |---|---|---|
 | `from` | ✅ | ISO 8601 UTC |
 | `to` | ✅ | ISO 8601 UTC — ช่วง `to - from` ต้อง ≤ 90 วัน ไม่งั้น **400** |
-| `bu_code` | – | |
+| `filter_bu_code` | – | กรองตาม BU — **ห้ามใช้ชื่อ `bu_code`** ดูกล่องเตือนใต้ตาราง |
 | `app_id` | – | UUID |
 | `event_type` | – | `click` \| `page_view` |
+
+> **ทำไมถึงชื่อ `filter_bu_code` ไม่ใช่ `bu_code`**
+> `KeycloakGuard` ครอบทั้ง controller และแตกสาขาตาม *การมีอยู่* ของ `request.query.bu_code`
+> (`apps/backend-gateway/src/auth/guards/keycloak.guard.ts:55`) แล้วบังคับว่าผู้เรียกต้องเป็น
+> สมาชิกของ BU นั้น ไม่งั้นโยน `UnauthorizedException`
+> ผลคือถ้าใช้ชื่อ `bu_code` จะได้ **401** ทันทีสำหรับผู้ที่ไม่ได้เป็นสมาชิก BU นั้น — รวมถึง
+> `support_manager` ซึ่งเป็น role ที่ branch นี้เพิ่งให้สิทธิ์ `activity_event.read` — และรหัสที่
+> ไม่ตรงกับ BU จริงจะ 401 กับ **ทุกคน** แม้แต่ super-admin
+> guard เทียบ key แบบตรงตัว ชื่อใหม่จึงต้องไม่เท่ากับ `bu_code` เป๊ะ ๆ
+> เปลี่ยนเฉพาะ **ชื่อบน wire** เท่านั้น — field ภายใน (`IAnalyticsQuery`, `IAnalyticsFilter`,
+> `IEventListFilter`) และคอลัมน์ SQL ยังเป็น `bu_code` ตามเดิม
 
 **Response** (ผ่าน `{ data }` envelope ตาม `ApiStdResponse` ปกติ)
 
@@ -155,7 +166,8 @@ platform-analytics/
 ```
 
 **Query:** `page`, `perpage` (≤ 100), `sort`, `search` + `from`, `to` (บังคับ, ≤ 90 วัน),
-`bu_code?`, `app_id?`, `event_type?`, `user_id?`, `session_id?`, `page_path?`
+`filter_bu_code?` (**ไม่ใช่ `bu_code`** — เหตุผลเดียวกับ §1.1), `app_id?`, `event_type?`,
+`user_id?`, `session_id?`, `page_path?`
 
 `search` ค้นแบบ ILIKE บน `page_path`, `element_id`, `element_text`
 `sort` รองรับ `server_ts:asc|desc` (ค่าเริ่มต้น `server_ts:desc`)
@@ -368,7 +380,7 @@ const analyticsService = {
 |---|---|---|
 | R1 | `PlatformPermissionGuard` ทำ gateway **crash ตอน boot** ถ้า module ใหม่ไม่ register `BUSINESS_SERVICE` + `PlatformPermissionService` — unit test จับไม่ได้ (เคยเกิดจริงใน PR #239) | copy provider block จาก `platform_email-settings.module.ts` ทั้งก้อน แล้ว**สตาร์ท gateway จริงในเครื่อง**เป็น manual verification |
 | R2 | **DEV อาจไม่มีข้อมูลเลย** — carmen-platform ไม่ยิง event และไม่ยืนยันว่า inventory frontend บน DEV มี `lib/analytics.ts` แล้ว | **เช็คก่อนเริ่มเขียนโค้ด:** `SELECT count(*), max(server_ts) FROM tb_activity_event` บน DEV — ถ้าว่าง ต้องเข้าไปคลิกในแอป inventory บน DEV สร้างข้อมูลก่อน ไม่งั้น verify ไม่ได้ |
-| R3 | `AppIdGuard` บล็อก endpoint ใหม่เพราะยังไม่อยู่ใน api catalog | regenerate catalog + ตรวจ application record ของ carmen-platform (§1.5) |
+| R3 | `AppIdGuard` บล็อก endpoint ใหม่เพราะยังไม่อยู่ใน application record — และตอบ **401 ไม่ใช่ 403** จึงถูกอ่านผิดเป็นปัญหา token | regenerate catalog **แล้วต้องติ๊กเลือกใน application record ของ carmen-platform ด้วย** (§1.5 + ขั้นที่ 3 ของลำดับ deploy) |
 | R4 | สิทธิ์ยังไม่ถูก seed → nav ไม่โผล่ทั้งที่โค้ดถูก | รัน `seed.platform-permission` + `seed.platform-role-permission` บน DEV **ก่อน** deploy frontend |
 | R5 | บน DEV มีแค่ 3 จาก 40 คนที่ login carmen-platform ได้ | ทดสอบด้วยบัญชีที่เข้าได้จริง และตรวจ path 403 ด้วยบัญชีที่ไม่มีสิทธิ์ |
 | R6 | `bunx jest <file> -t "<name>"` ค้าง 10 นาที+ ใน backend-v2 | รันทั้ง spec file ไม่ใช้ `-t` |
@@ -390,12 +402,53 @@ const analyticsService = {
 
 ## ลำดับ deploy
 
+ลำดับนี้ **สำคัญจริง** ไม่ใช่แค่แนะนำ — แต่ละขั้นมีวิธีพังเฉพาะตัวถ้าข้ามหรือสลับ
+และขั้นที่ 2/3 เป็น **งาน manual ที่ไม่มีโค้ดใน branch นี้** ไม่มีอะไรทำให้อัตโนมัติ
+
 ```
-1. BE merge → seed platform permission + role links บน DEV
-2. regenerate app api catalog → ตรวจ application record ของ carmen-platform
-3. deploy gateway + micro-business ไป DEV
-4. ยืนยันว่ามีข้อมูลใน tb_activity_event จริง (R2)
-5. FE merge → กด workflow_dispatch deploy-gcs.yml เอง
+1. BE merge
+2. รัน permission seed บน DEV (ตามลำดับ)
+3. เพิ่ม api_name ใหม่เข้า application record ของ carmen-platform
+4. deploy micro-business ก่อน  →  แล้วค่อย deploy gateway
+5. ยืนยันว่ามีข้อมูลใน tb_activity_event จริง (R2)
+6. FE merge → กด workflow_dispatch deploy-gcs.yml เอง
 ```
+
+### ขั้นที่ 2 — permission seed (ต้องรันก่อน deploy frontend)
+
+รันสองไฟล์ **ตามลำดับนี้**:
+
+1. `seed.platform-permission.ts` — สร้าง `activity_event.read` / `activity_event.detail`
+2. `seed.platform-role-permission.ts` — ผูกสิทธิ์เข้ากับ role
+
+ทั้งคู่เป็น **additive + idempotent** ไม่มีการเพิกถอนสิทธิ์เดิม จึงไม่มีช่วงที่ผู้ใช้เสียสิทธิ์
+ระหว่างรัน (no revocation window) รันซ้ำได้ปลอดภัย
+
+**ถ้าไม่รัน:** ทุกคนยกเว้น super-admin จะได้ **403** และ nav item จะไม่โผล่ทั้งที่โค้ดถูกต้อง
+
+### ขั้นที่ 3 — application record (จุดที่พลาดง่ายที่สุด)
+
+ต้องเพิ่ม `analytics.overview` และ `analytics.events` เข้า **application record ของ
+carmen-platform** (หรือเปิด `allow_all`)
+
+> **regenerate catalog ไม่ได้ให้สิทธิ์อะไรเลย**
+> `bun run scripts/generate-app-api-catalog/run.ts` แค่ทำให้ api_name ใหม่ **เลือกได้** ใน UI
+> เท่านั้น การจะให้แอปเรียก endpoint ได้จริงต้องไปติ๊กเลือกใน application record อีกที
+
+> **กับดัก 401 ไม่ใช่ 403**
+> `AppIdGuard` โยน `UnauthorizedException` = **401** เมื่อแอปไม่อยู่ใน allowlist
+> (`apps/backend-gateway/src/common/guard/app-id.guard.ts:81`) — **ไม่ใช่ 403**
+> แต่ Swagger ของ endpoint ทั้งสองอธิบาย 403 ไว้สำหรับ "ไม่มีสิทธิ์" เท่านั้น
+> ดังนั้นถ้าลืมขั้นนี้ อาการที่เห็นคือ **401** ซึ่งหน้าตาเหมือน token หมดอายุ
+> คนแก้จะไปไล่หาปัญหา auth/Keycloak แทนที่จะมาดู application record
+> (branch นี้เพิ่มบรรทัด `@ApiResponse({ status: 401 })` ที่ระบุกรณีนี้ไว้ใน Swagger แล้ว)
+
+### ขั้นที่ 4 — micro-business ก่อน gateway
+
+**ห้าม deploy gateway ก่อน micro-business**
+
+ถ้า gateway ขึ้นก่อน จะไม่มี handler ของ `activity-events.overview` ฝั่ง micro-business
+แล้ว `platform-analytics.service.ts` อ่าน `response.response.status` โดยไม่มี try/catch
+→ TypeError → **500** แทนที่จะเป็น error ที่อ่านรู้เรื่อง
 
 Deploy frontend ก่อน backend จะทำให้หน้าขึ้นแต่ยิง 404/403 — ต้องเรียงตามนี้
