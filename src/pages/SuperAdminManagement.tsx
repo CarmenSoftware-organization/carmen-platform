@@ -3,7 +3,6 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import superAdminService from '../services/superAdminService';
-import userService from '../services/userService';
 import { parseApiError } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { Button } from '../components/ui/button';
@@ -12,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { UserPicker } from '../components/UserPicker';
 import { ShieldAlert, Trash2, Plus, Loader2, MoreHorizontal, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
@@ -20,15 +19,9 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { ListEmptyState } from '../components/ListEmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import type { User } from '../types';
+import { cn } from '../lib/utils';
+import type { SuperAdmin, UserOption } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
-
-interface SuperAdminRow {
-  id: string;
-  user_id: string;
-  created_at?: string;
-  is_active?: boolean;
-}
 
 const fmt = (v?: string) => {
   if (!v) return '-';
@@ -36,6 +29,13 @@ const fmt = (v?: string) => {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
+
+// The name to show for a row. Falls back to email, then to nothing at all —
+// deliberately NOT to a phrase like "Unknown user": when the frontend is deployed
+// ahead of the backend that joins these fields, every row would read as though its
+// user had been deleted. An em dash states only what is true (no name here); the
+// user_id underneath still identifies the row so it can always be removed.
+const rowLabel = (r: SuperAdmin): string => r.name?.trim() || r.email?.trim() || '';
 
 // Descend through nested `{ data: ... }` envelopes until the array is found.
 // The super-admins endpoint nests deeper than the usual one-level convention.
@@ -48,16 +48,23 @@ const extractArray = <T,>(body: unknown): T[] => {
 };
 
 const SuperAdminManagement: React.FC = () => {
-  const [rows, setRows] = useState<SuperAdminRow[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [rows, setRows] = useState<SuperAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [adding, setAdding] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('search_super_admins') || '');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  // The picker's dropdown owns Escape while it is open; without this guard Radix would
+  // dismiss the whole dialog (capture-phase document listener) and discard what was typed.
+  // A ref, not state: Radix's DismissableLayer invokes onEscapeKeyDown through a callback
+  // that (empirically, verified via console instrumentation) does not always see this
+  // component's latest render — a `useState` value read inside that closure can be stale.
+  // A ref sidesteps that entirely: `.current` is dereferenced live at call time regardless
+  // of which render's closure Radix happens to invoke, so it can never be stale.
+  const pickerOpenRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearchChange = (value: string) => {
@@ -72,16 +79,17 @@ const SuperAdminManagement: React.FC = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [saData, usersData] = await Promise.all([
-        superAdminService.list(),
-        userService.getAll({ perpage: 200, sort: 'created_at:desc' }),
-      ]);
-      setRows(extractArray<SuperAdminRow>(saData));
+      const saData = await superAdminService.list();
+      // The gateway's @EnrichAuditUsers() moves the timestamp into `audit.created.at`;
+      // flatten it back to `created_at` here (tolerate the older flat shape too) — the
+      // same pattern as BusinessUnitManagement/RoleManagement — so both the Added column
+      // and the CSV export (which both read `created_at`) get a real value.
+      const items = extractArray<SuperAdmin>(saData).map((item) => ({
+        ...item,
+        created_at: item.created_at ?? item.audit?.created?.at,
+      }));
+      setRows(items);
       setRawResponse(saData);
-
-      const userItems: User[] = (usersData.data || usersData) as User[];
-      setUsers(Array.isArray(userItems) ? userItems : []);
-
       setError('');
     } catch (err: unknown) {
       const parsed = parseApiError(err);
@@ -96,51 +104,54 @@ const SuperAdminManagement: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  // Build a map of user_id -> display label for resolving names
-  const userMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const u of users) {
-      const parts = [u.firstname, u.middlename, u.lastname].filter(Boolean);
-      const fullName = parts.join(' ');
-      m[u.id] = fullName || u.email || u.name || u.id;
-    }
-    return m;
-  }, [users]);
-
-  // Users not already super-admins
+  // Users already holding the privilege — the picker greys them out instead of
+  // letting someone submit a request the backend would reject with 409.
   const superAdminUserIds = useMemo(
     () => new Set(rows.map((r) => r.user_id)),
     [rows],
   );
-  const availableUsers = useMemo(
-    () => users.filter((u) => !superAdminUserIds.has(u.id)),
-    [users, superAdminUserIds],
-  );
-
-  const resolveUser = useCallback((user_id: string): string => userMap[user_id] || user_id, [userMap]);
 
   const filteredRows = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return rows;
-    return rows.filter(
-      (r) => resolveUser(r.user_id).toLowerCase().includes(term) || r.user_id.toLowerCase().includes(term),
+    return rows.filter((r) =>
+      [r.name, r.email, r.user_id].some((field) =>
+        (field || '').toLowerCase().includes(term),
+      ),
     );
-  }, [rows, searchTerm, resolveUser]);
+  }, [rows, searchTerm]);
 
-  const openAddDialog = () => setShowAddDialog(true);
+  const openAddDialog = () => {
+    // Reset the Escape guard on open, not only on close: the dialog is controlled, so
+    // closing it from code never fires Radix's onOpenChange, and a stale `true` here
+    // would make a reopened dialog ignore Escape entirely.
+    pickerOpenRef.current = false;
+    setShowAddDialog(true);
+  };
 
   const handleAdd = async () => {
-    if (!selectedUserId) return;
+    if (!selectedUser) return;
     try {
       setAdding(true);
-      await superAdminService.add(selectedUserId);
+      await superAdminService.add(selectedUser.id);
       toast.success('Super admin added successfully');
-      setSelectedUserId('');
+      setSelectedUser(null);
       setShowAddDialog(false);
+      pickerOpenRef.current = false;
       await fetchData();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
       toast.error('Failed to add super admin', { description: parsed.message });
+      // Refetch on 409 only. A 409 here means someone else granted it first, so the
+      // table on screen is provably stale. Any other failure changed nothing on the
+      // server, and refetching after it would throw away nothing but cost a request.
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        // The selection is provably stale too — someone else already granted it.
+        // Clear it so Add stays disabled instead of reproducing the identical 409.
+        setSelectedUser(null);
+        await fetchData();
+      }
     } finally {
       setAdding(false);
     }
@@ -161,13 +172,15 @@ const SuperAdminManagement: React.FC = () => {
 
   const handleExport = () => {
     const data = rows.map((r) => ({
-      user: resolveUser(r.user_id),
+      user: rowLabel(r),
+      email: r.email || '',
       user_id: r.user_id,
       status: r.is_active !== false ? 'Active' : 'Inactive',
       added: fmt(r.created_at),
     }));
     const csv = generateCSV(data, [
       { key: 'user', label: 'User' },
+      { key: 'email', label: 'Email' },
       { key: 'user_id', label: 'User ID' },
       { key: 'status', label: 'Status' },
       { key: 'added', label: 'Added' },
@@ -176,14 +189,31 @@ const SuperAdminManagement: React.FC = () => {
     toast.success('Data exported successfully');
   };
 
-  const columns = useMemo<ColumnDef<SuperAdminRow, unknown>[]>(() => [
+  const columns = useMemo<ColumnDef<SuperAdmin, unknown>[]>(() => [
     {
       id: 'user',
       header: 'User',
+      cell: ({ row }) => {
+        const label = rowLabel(row.original);
+        return (
+          <div className="min-w-0">
+            <div className={cn('text-sm font-medium truncate', !label && 'text-muted-foreground')}>
+              {label || '—'}
+            </div>
+            <div className="font-mono text-[11px] text-muted-foreground truncate">
+              {row.original.user_id}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'email',
+      accessorKey: 'email',
+      header: 'Email',
       cell: ({ row }) => (
-        <div className="min-w-0">
-          <div className="text-sm font-medium truncate">{resolveUser(row.original.user_id)}</div>
-          <div className="font-mono text-[11px] text-muted-foreground truncate">{row.original.user_id}</div>
+        <div className="min-w-0 truncate text-sm">
+          {row.original.email || <span className="text-muted-foreground">—</span>}
         </div>
       ),
     },
@@ -220,7 +250,7 @@ const SuperAdminManagement: React.FC = () => {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              aria-label={`Actions for ${resolveUser(row.original.user_id)}`}
+              aria-label={`Actions for ${rowLabel(row.original) || row.original.user_id}`}
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -237,7 +267,7 @@ const SuperAdminManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [resolveUser]);
+  ], []);
 
   return (
     <Layout>
@@ -325,10 +355,20 @@ const SuperAdminManagement: React.FC = () => {
         open={showAddDialog}
         onOpenChange={(open) => {
           setShowAddDialog(open);
-          if (!open) setSelectedUserId('');
+          if (!open) {
+            setSelectedUser(null);
+            pickerOpenRef.current = false;
+          }
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          onEscapeKeyDown={(e) => {
+            // The picker's dropdown owns Escape while it is open; without this guard
+            // Radix would dismiss the whole dialog and discard what was typed.
+            if (pickerOpenRef.current) e.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Add Super Admin</DialogTitle>
             <DialogDescription>
@@ -336,34 +376,34 @@ const SuperAdminManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <Select value={selectedUserId} onValueChange={setSelectedUserId} disabled={loading || adding}>
-              <SelectTrigger aria-label="Select user to add as super admin">
-                <SelectValue placeholder="Select a user..." />
-              </SelectTrigger>
-              <SelectContent>
-                {availableUsers.map((u) => {
-                  const parts = [u.firstname, u.middlename, u.lastname].filter(Boolean);
-                  const fullName = parts.join(' ');
-                  const label = fullName ? `${fullName} (${u.email || u.id})` : (u.email || u.name || u.id);
-                  return (
-                    <SelectItem key={u.id} value={u.id}>
-                      {label}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+            <UserPicker
+              id="super-admin-user"
+              value={selectedUser}
+              onChange={setSelectedUser}
+              disabledIds={superAdminUserIds}
+              disabledLabel="Already super admin"
+              placeholder="Search users by username or email"
+              ariaLabel="Select user to add as super admin"
+              disabled={adding}
+              onDropdownOpenChange={(v) => {
+                pickerOpenRef.current = v;
+              }}
+            />
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setShowAddDialog(false); setSelectedUserId(''); }}
+              onClick={() => {
+                setShowAddDialog(false);
+                setSelectedUser(null);
+                pickerOpenRef.current = false;
+              }}
               disabled={adding}
             >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleAdd} disabled={adding || !selectedUserId}>
+            <Button size="sm" onClick={handleAdd} disabled={adding || !selectedUser}>
               {adding ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

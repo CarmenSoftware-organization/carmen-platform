@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
-import userService from '../services/userService';
-import { parseApiError } from '../utils/errorParser';
-import type { User, UserOption } from '../types';
+import { useUserSearch } from '../hooks/useUserSearch';
+import type { UserOption } from '../types';
 
 interface UserMultiSelectProps {
   value: UserOption[];
@@ -14,14 +13,6 @@ interface UserMultiSelectProps {
   error?: boolean;
   id?: string;
 }
-
-const DEBOUNCE_MS = 400;
-const PAGE_SIZE = 20;
-
-const displayName = (u: User): string => {
-  const parts = [u.firstname, u.middlename, u.lastname].filter(Boolean);
-  return parts.length ? parts.join(' ') : (u.name || u.email || u.id);
-};
 
 export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
   value,
@@ -33,45 +24,12 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const [results, setResults] = useState<UserOption[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchError, setSearchError] = useState<string>('');
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { results, loading, error: searchError } = useUserSearch(query, open);
 
   const selectedIds = new Set(value.map((u) => u.id));
-
-  const runSearch = useCallback(async (q: string) => {
-    setLoading(true);
-    setSearchError('');
-    try {
-      const response = await userService.getAll({ page: 1, perpage: PAGE_SIZE, search: q });
-      const list = (response.data || []) as User[];
-      const mapped: UserOption[] = list.map((u) => ({
-        id: u.id,
-        name: displayName(u),
-        email: u.email,
-      }));
-      setResults(mapped);
-    } catch (err) {
-      setResults([]);
-      setSearchError(parseApiError(err).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      void runSearch(query);
-    }, DEBOUNCE_MS);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query, open, runSearch]);
 
   useEffect(() => {
     if (!open) return;

@@ -551,6 +551,26 @@ export interface BroadcastBuPayload {
   scheduled_at?: string; // ISO date-time
 }
 
+/**
+ * A row of the platform super-admin allowlist as returned by
+ * GET /api-system/platform/super-admins.
+ *
+ * `email` and `name` are joined server-side. They are optional because a
+ * frontend deployed ahead of its backend still has to render the table — and
+ * they can be empty/null for a real reason too: the user record behind
+ * `user_id` may no longer exist. `user_id` is therefore the only field that
+ * always identifies the row.
+ */
+export interface SuperAdmin {
+  id: string;
+  user_id: string;
+  created_at?: string;
+  is_active?: boolean;
+  email?: string | null;
+  name?: string | null;
+  audit?: Audit; // gateway's @EnrichAuditUsers() nests created_at here as audit.created.at
+}
+
 export interface UserOption {
   id: string;
   name: string;
