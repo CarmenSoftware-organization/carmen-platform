@@ -3,7 +3,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
-  customRange, presetRange, rangeSpanDays, todayInTz,
+  customRange, presetRange, rangeSpanDays, todayInTz, ymdInTz,
   ANALYTICS_TZ, MAX_RANGE_DAYS, RANGE_PRESETS, type DateRange,
 } from '../../utils/analyticsRange';
 
@@ -29,22 +29,61 @@ function describeRange(range: DateRange): string {
   return `${f.format(start)} – ${f.format(lastDay)}`;
 }
 
+/** หา preset ที่ตรงกับ range ที่ให้มา เทียบกับ 7/30/90 วันล่าสุด — ถ้าไม่ตรงเลยถือว่าเป็นกำหนดเอง */
+function presetOf(range: DateRange): string {
+  const match = RANGE_PRESETS.find((p) => {
+    if (p.value === 'custom') return false;
+    const candidate = presetRange(Number(p.value));
+    return candidate.from === range.from && candidate.to === range.to;
+  });
+  return match ? match.value : 'custom';
+}
+
+/**
+ * แปลง range เป็นคู่ 'YYYY-MM-DD' สำหรับ prefill ช่องกำหนดเอง
+ * ขอบบนของ range เป็น exclusive จึงถอยหนึ่งมิลลิวินาทีก่อนแปลง เพื่อให้ toYmd
+ * เป็นวันสุดท้ายที่ถูกรวมจริง ไม่ใช่วันถัดไป
+ */
+function ymdPairOf(range: DateRange): { fromYmd: string; toYmd: string } {
+  return {
+    fromYmd: ymdInTz(range.from),
+    toYmd: ymdInTz(new Date(new Date(range.to).getTime() - 1).toISOString()),
+  };
+}
+
 /**
  * ตัวเลือกช่วงวันสำหรับหน้า analytics — preset สี่แบบ + โหมดกำหนดเอง
  *
  * โหมดกำหนดเองจะไม่เรียก onChange จนกว่าจะกรอกครบสองช่องและช่วงไม่เกินเพดาน
  * เพื่อไม่ให้ยิง request ที่ backend ตอบ 400 อยู่แล้ว
+ *
+ * preset / fromYmd / toYmd เริ่มต้นจาก `value` เสมอ (lazy init) ไม่ใช่ค่าคงที่ตายตัว —
+ * หน้าที่ seed ค่าเริ่มต้นจาก query param (เช่นตอน drill-down จาก /analytics มายัง
+ * /activity-events) จะได้แสดงตัวเลือกที่ตรงกับ filter จริงตั้งแต่ render แรก แทนที่จะ
+ * ค้างที่ preset เริ่มต้นทั้งที่ filter ที่ใช้จริงไม่ตรงกัน — จงใจไม่ใช้ useEffect ผูกกับ
+ * `value` เพราะ parent จะอัปเดต value กลับมาจาก onChange ของ component นี้เอง การ sync
+ * ซ้ำจะไปเขียนทับค่าที่ผู้ใช้กำลังพิมพ์ค้างอยู่ในโหมดกำหนดเอง
  */
 export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChange }) => {
-  const [preset, setPreset] = useState<string>('7');
-  const [fromYmd, setFromYmd] = useState('');
-  const [toYmd, setToYmd] = useState('');
+  const [preset, setPreset] = useState<string>(() => presetOf(value));
+  const [fromYmd, setFromYmd] = useState<string>(() => ymdPairOf(value).fromYmd);
+  const [toYmd, setToYmd] = useState<string>(() => ymdPairOf(value).toYmd);
   const [error, setError] = useState('');
 
   const handlePreset = (next: string) => {
     setPreset(next);
     setError('');
-    if (next !== 'custom') onChange(presetRange(Number(next)));
+    if (next === 'custom') {
+      const pair = ymdPairOf(value);
+      setFromYmd(pair.fromYmd);
+      setToYmd(pair.toYmd);
+      return;
+    }
+    const range = presetRange(Number(next));
+    const pair = ymdPairOf(range);
+    setFromYmd(pair.fromYmd);
+    setToYmd(pair.toYmd);
+    onChange(range);
   };
 
   const handleCustom = (nextFrom: string, nextTo: string) => {

@@ -46,6 +46,11 @@ export function todayInTz(): string {
   return new Date(Date.now() + TZ_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+/** วันที่แบบ 'YYYY-MM-DD' ตามเวลาไทย ของ instant ที่ให้มา */
+export function ymdInTz(iso: string): string {
+  return new Date(new Date(iso).getTime() + TZ_OFFSET_MS).toISOString().slice(0, 10);
+}
+
 /** แปลง 'YYYY-MM-DD' (เที่ยงคืนเวลาไทย) เป็น Date ที่เป็น instant UTC */
 function tzMidnightToUtc(ymd: string): Date {
   return new Date(new Date(`${ymd}T00:00:00.000Z`).getTime() - TZ_OFFSET_MS);
