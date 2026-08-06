@@ -659,6 +659,31 @@ export interface EmailSettingTestResult {
   reason?: string;
 }
 
+// ==================== Platform Config (tb_platform_config) ====================
+
+/**
+ * ค่า config ของคีย์ `invitation` — ใช้ประกอบลิงก์คำเชิญและกำหนดอายุคำเชิญ
+ * backend ตรวจค่านี้ด้วย Zod ก่อนบันทึกเสมอ FE ตรวจซ้ำเพื่อ UX เท่านั้น
+ */
+export interface InvitationConfig {
+  base_url: string;
+  expiry_days: number;
+}
+
+/**
+ * หนึ่งรายการจาก /api-system/platform/configs
+ * `id` เป็น null เมื่อยังไม่เคยบันทึกคีย์นี้ และ backend กำลังคืนค่าเริ่มต้นในตัวมาแทน
+ */
+export interface PlatformConfig {
+  id: string | null;
+  key: string;
+  value: Record<string, unknown>;
+  created_at?: string | null;
+  created_by_id?: string | null;
+  updated_at?: string | null;
+  updated_by_id?: string | null;
+}
+
 // ==================== Usage Analytics (tb_activity_event) ====================
 
 export interface AnalyticsSummary {
