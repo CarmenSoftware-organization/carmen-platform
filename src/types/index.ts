@@ -459,6 +459,33 @@ export interface UserRoleAssignment {
   scope: Scope;
 }
 
+/** Scope of a platform-role assignment as returned by the registry endpoint, with the cluster's display name resolved server-side. */
+export type PlatformUserScope =
+  | { type: 'platform' }
+  | { type: 'cluster'; cluster_id: string; cluster_name?: string | null };
+
+export interface PlatformUserRoleAssignment {
+  id: string;
+  role_id: string;
+  role_name?: string | null;
+  scope: PlatformUserScope;
+  // The gateway's @EnrichAuditUsers rewrites created_at/created_by_id into this shape.
+  // `audit.created.name` is absent when the grant predates actor recording, and is the
+  // literal "Unknown" when an id was recorded but no longer resolves to a user.
+  audit?: Audit;
+}
+
+export interface PlatformUserRow {
+  user_id: string;
+  username?: string;
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+  is_active: boolean;
+  roles: PlatformUserRoleAssignment[];
+  last_granted_at?: string | null;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;
