@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Network, User } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { useAuth } from '../context/AuthContext';
@@ -54,8 +54,8 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className={cn('rounded-full', compact && 'h-11 w-11')}
+          size={compact ? 'icon' : 'default'}
+          className={cn('rounded-full', compact ? 'h-11 w-11' : 'h-9 gap-2 px-2')}
           aria-label={`User menu — ${userInfo.displayName}`}
         >
           <Avatar className={compact ? 'h-8 w-8' : 'h-7 w-7'}>
@@ -63,6 +63,20 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
               {userInfo.initials}
             </AvatarFallback>
           </Avatar>
+          {/* The name is quieter than the breadcrumb's active crumb (font-normal vs
+           *  font-medium) on purpose: it is fixed for the whole session, so it should
+           *  read as ambient context rather than compete with "where am I". */}
+          {!compact && (
+            <>
+              <span
+                className="max-w-[7rem] truncate font-normal lg:max-w-[12rem]"
+                title={userInfo.displayName}
+              >
+                {userInfo.displayName}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            </>
+          )}
         </Button>
       </DropdownMenuTrigger>
 
