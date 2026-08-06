@@ -39,6 +39,7 @@ const SuperAdminManagement = lazy(() => import("./pages/SuperAdminManagement"));
 const UserPlatformManagement = lazy(() => import("./pages/UserPlatformManagement"));
 const UserPlatformEdit = lazy(() => import("./pages/UserPlatformEdit"));
 const SqlWorkbench = lazy(() => import("./pages/sqlWorkbench/SqlWorkbench"));
+const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const EmailSettingManagement = lazy(() => import("./pages/EmailSettingManagement"));
 const ClusterAdminEntry = lazy(() => import("./pages/clusterAdmin/ClusterAdminEntry"));
 const ClusterProfile = lazy(() => import("./pages/clusterAdmin/ClusterProfile"));
@@ -315,6 +316,14 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="sql_workbench.read">
                   <SqlWorkbench />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <PrivateRoute requiredPermission="activity_event.read">
+                  <UsageAnalytics />
                 </PrivateRoute>
               }
             />
