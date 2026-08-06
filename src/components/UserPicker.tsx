@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Search, X, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useUserSearch } from '../hooks/useUserSearch';
@@ -15,6 +15,8 @@ interface UserPickerProps {
   disabled?: boolean;
   error?: boolean;
   id?: string;
+  /** Notifies the parent when the results dropdown opens or closes, so a surrounding Dialog can keep Escape from closing it while the dropdown is open. */
+  onDropdownOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -33,11 +35,20 @@ export const UserPicker: React.FC<UserPickerProps> = ({
   disabled = false,
   error = false,
   id,
+  onDropdownOpenChange,
 }) => {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const changeOpen = useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      onDropdownOpenChange?.(next);
+    },
+    [onDropdownOpenChange],
+  );
 
   const { results, loading, error: searchError } = useUserSearch(
     query,
@@ -48,17 +59,17 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     if (!open) return;
     const handler = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        changeOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  }, [open, changeOpen]);
 
   const selectUser = (u: UserOption) => {
     onChange(u);
     setQuery('');
-    setOpen(false);
+    changeOpen(false);
   };
 
   const clearSelection = () => {
@@ -69,11 +80,11 @@ export const UserPicker: React.FC<UserPickerProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape' && open) {
-      // Close the dropdown without letting the event reach a surrounding Dialog,
-      // which would otherwise close the whole dialog on the same keystroke.
-      e.preventDefault();
-      e.stopPropagation();
-      setOpen(false);
+      // Only closes the dropdown. Keeping a surrounding Dialog open is NOT possible
+      // from here — Radix dismisses on a capture-phase document listener that runs
+      // before this handler. The Dialog guards itself via onEscapeKeyDown; see the
+      // consumer in SuperAdminManagement.tsx.
+      changeOpen(false);
     }
   };
 
@@ -124,9 +135,9 @@ export const UserPicker: React.FC<UserPickerProps> = ({
           disabled={disabled}
           onChange={(e) => {
             setQuery(e.target.value);
-            setOpen(true);
+            changeOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => changeOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
