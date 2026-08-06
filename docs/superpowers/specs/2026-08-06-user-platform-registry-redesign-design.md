@@ -184,9 +184,18 @@ Computing only `inactive` registry-wide would leave the band mixing two scopes a
 needing an "on this page" qualifier on the rest. All five are therefore registry-wide, and
 the band needs no qualifier at all.
 
-**Filters apply.** `summary` describes the set matching the current `advance` filter and
-`search`, not the entire table — otherwise the numbers would contradict a filtered list
-sitting directly beneath them. With no filters, that set is the whole registry.
+**Filters apply, at two levels — this was ambiguous as first written and is pinned here.**
+
+The *holder set* is the one matching the current `advance` filter and `search` — the same
+set that produces `paginate.total` — so `holders` and `inactive` always agree with the
+filtered list beneath the band. With no filters, that set is the whole registry.
+
+Within that set, `platform_wide`, `cluster_only`, and `assignments` count each holder's
+**full** live assignments rather than only the ones matching an active `platform_role_id` /
+`cluster_id` filter. That matches what the rows actually render: the row list deliberately
+shows every role a holder has, because hiding their other privileges on an audit page would
+understate what they can do. Narrowing these three would produce a band reading
+"11 assignments" above rows displaying 41 role chips.
 
 **Cost.** Step 1's `groupBy` already yields every matching holder id. The aggregate adds
 three cheap reads against that id set: a `count` of inactive users, a `groupBy` on
