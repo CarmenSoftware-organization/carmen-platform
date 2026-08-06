@@ -481,3 +481,39 @@ describe('UserPlatformManagement — revoke all access', () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 });
+
+// SECURITY. Two <Can permission="user_platform.manage"> gates guard this page's write
+// surfaces: the header Grant access button and the row menu's Revoke all access item.
+// `Can` is the REAL component here (not mocked) — mocking it away would make these tests
+// vacuous, which is exactly the pattern that let ~8 permission holes (2 of them P0) through
+// in an earlier review wave on this codebase. Mirrors ClusterManagement.test.tsx.
+describe('UserPlatformManagement — permission gates (user_platform.manage)', () => {
+  it('hides Grant access and Revoke all access without user_platform.manage', async () => {
+    auth.hasPermission = () => false;
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    expect(screen.queryByRole('button', { name: /grant access/i })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /actions for jane/i }));
+    // Manage roles is ungated — only Revoke all access depends on the permission.
+    expect(await screen.findByRole('menuitem', { name: /manage roles/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /revoke all access/i })).toBeNull();
+  });
+
+  // Discriminating control: grants only the exact permission string this page checks, so a
+  // gate that lost its `permission` prop (and fell back to "always visible") or checked the
+  // wrong string would still fail this test, not just a blanket `() => true`.
+  it('shows Grant access and Revoke all access with user_platform.manage (discriminating control)', async () => {
+    auth.hasPermission = (perm) => perm === 'user_platform.manage';
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('jane@example.com');
+
+    expect(screen.getByRole('button', { name: /grant access/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /actions for jane/i }));
+    expect(await screen.findByRole('menuitem', { name: /revoke all access/i })).toBeInTheDocument();
+  });
+});
