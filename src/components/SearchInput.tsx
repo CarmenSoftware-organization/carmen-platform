@@ -9,11 +9,14 @@ export const SearchInput = forwardRef<HTMLInputElement, {
   onClear?: () => void;
   placeholder?: string;
   className?: string;
-}>(function SearchInput({ value, onValueChange, onClear, placeholder = 'Search…', className }, ref) {
+  /** ผูกกับ <Label htmlFor> ได้ในหน้าที่ช่องค้นหามี label กำกับ (หน้าอื่นใช้แค่ placeholder) */
+  id?: string;
+}>(function SearchInput({ value, onValueChange, onClear, placeholder = 'Search…', className, id }, ref) {
   return (
     <div className={cn('relative', className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
+        id={id}
         ref={ref}
         value={value}
         onChange={(e) => onValueChange(e.target.value)}

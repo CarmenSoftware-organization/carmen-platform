@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, Eye, MousePointerClick, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Download, Eye, MousePointerClick, SlidersHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
 import { Button } from '../components/ui/button';
@@ -9,15 +9,17 @@ import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '../components/ui/sheet';
 import { DataTable } from '../components/ui/data-table';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { EmptyState } from '../components/EmptyState';
+import { SearchInput } from '../components/SearchInput';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { DateRangeFilter } from '../components/analytics/DateRangeFilter';
 import { EventDetailSheet } from './activityEvents/EventDetailSheet';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { optionLabel, useAnalyticsFilterOptions } from '../hooks/useAnalyticsFilterOptions';
 import analyticsService from '../services/analyticsService';
 import { presetRange, type DateRange } from '../utils/analyticsRange';
 import { parseApiError } from '../utils/errorParser';
@@ -50,13 +52,19 @@ const ActivityEventManagement: React.FC = () => {
     const to = searchParams.get('to');
     return isParsableDate(from) && isParsableDate(to) ? { from, to } : presetRange(7);
   });
+  // ตัวกรองที่ /analytics ส่งต่อมาตอน drill-down ต้องรับให้ครบ ไม่งั้นหน้านี้จะแสดง
+  // ผลกว้างกว่าตัวเลขที่ผู้ใช้เพิ่งคลิกมาโดยไม่มีอะไรบอก
   const [pagePath, setPagePath] = useState(searchParams.get('page_path') || '');
   const [sessionId, setSessionId] = useState('');
-  const [eventType, setEventType] = useState('');
-  const [buCode, setBuCode] = useState('');
+  const [userId, setUserId] = useState('');
+  const [eventType, setEventType] = useState(searchParams.get('event_type') || '');
+  const [buCode, setBuCode] = useState(searchParams.get('bu_code') || '');
+  const [appId, setAppId] = useState(searchParams.get('app_id') || '');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  const { buOptions, appOptions } = useAnalyticsFilterOptions();
 
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -70,6 +78,7 @@ const ActivityEventManagement: React.FC = () => {
     perpage: Number(localStorage.getItem('perpage_activity_events')) || 25,
     sort: 'server_ts:desc',
   }));
+  const [sortResetKey, setSortResetKey] = useState(0);
 
   // Guard คงอ้างอิงเดิมไว้ถ้า page เป็น 1 อยู่แล้ว เพื่อไม่สร้าง paginate object ใหม่
   // โดยไม่จำเป็น (ป้องกัน fetchEvents ยิงซ้ำเปล่าประโยชน์เมื่อไม่มีอะไรเปลี่ยนจริง)
@@ -77,7 +86,7 @@ const ActivityEventManagement: React.FC = () => {
     setPaginate((p) => (p.page === 1 ? p : { ...p, page: 1 }));
   }, []);
 
-  // ค่าตัวกรองข้อความทั้งสี่ (ค้นหา / page path / session id / bu code) debounce 400ms
+  // ค่าตัวกรองข้อความทั้งสี่ (ค้นหา / page path / session id / user id) debounce 400ms
   // ก่อนถูกใช้จริงใน fetchEvents — พิมพ์แต่ละตัวอักษรจะอัปเดตแค่ state ดิบ (ผูกกับ
   // <Input>) ไม่แตะ paginate เลย ส่วน onSettle (=resetPage) รีเซ็ตหน้ากลับไป 1 "ในจังหวะ
   // เดียวกัน" กับตอนที่ค่า debounce นิ่งจริง — ถ้าแยกเป็น useEffect ต่างหากที่คอย watch
@@ -85,10 +94,10 @@ const ActivityEventManagement: React.FC = () => {
   // ในรอบถัดไป) ซึ่งจะยิง fetch ทิ้งหนึ่งครั้งด้วย state ที่ไม่ตรงกันก่อนรอบที่ถูกต้อง —
   // ปุ่ม clear/"ดู session นี้ทั้งหมด" ใช้ flush* (ไม่ผ่าน onSettle) แล้วเรียก resetPage()
   // เองในตัว handler แทน เพราะเป็นการกระทำครั้งเดียวที่ไม่ต้องรอ debounce อยู่แล้ว
-  const [debouncedSearch] = useDebouncedValue(searchTerm, 400, resetPage);
+  const [debouncedSearch, flushSearch] = useDebouncedValue(searchTerm, 400, resetPage);
   const [debouncedPagePath, flushPagePath] = useDebouncedValue(pagePath, 400, resetPage);
   const [debouncedSessionId, flushSessionId] = useDebouncedValue(sessionId, 400, resetPage);
-  const [debouncedBuCode, flushBuCode] = useDebouncedValue(buCode, 400, resetPage);
+  const [debouncedUserId, flushUserId] = useDebouncedValue(userId, 400, resetPage);
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
@@ -105,8 +114,10 @@ const ActivityEventManagement: React.FC = () => {
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(debouncedPagePath ? { page_path: debouncedPagePath } : {}),
         ...(debouncedSessionId ? { session_id: debouncedSessionId } : {}),
+        ...(debouncedUserId ? { user_id: debouncedUserId } : {}),
         ...(eventType ? { event_type: eventType } : {}),
-        ...(debouncedBuCode ? { bu_code: debouncedBuCode } : {}),
+        ...(buCode ? { bu_code: buCode } : {}),
+        ...(appId ? { app_id: appId } : {}),
       });
       setRawResponse(response);
       setEvents(response.data || []);
@@ -120,7 +131,8 @@ const ActivityEventManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [range.from, range.to, paginate, debouncedSearch, debouncedPagePath, debouncedSessionId, eventType, debouncedBuCode]);
+  }, [range.from, range.to, paginate, debouncedSearch, debouncedPagePath, debouncedSessionId,
+    debouncedUserId, eventType, buCode, appId]);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
@@ -137,7 +149,11 @@ const ActivityEventManagement: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate text-sm">{row.original.user_name || row.original.user_id.slice(0, 8)}</p>
+          {/* user_id ประกาศเป็น non-optional แต่ถ้า backend ส่ง null มาจริง .slice() จะ throw
+              อยู่ใน cell ของตาราง ซึ่งพังทั้งหน้า — กันไว้ด้วย fallback แทนที่จะเชื่อ type */}
+          <p className="truncate text-sm">
+            {row.original.user_name || row.original.user_id?.slice(0, 8) || '-'}
+          </p>
           {row.original.user_email && (
             <p className="truncate text-[11px] text-muted-foreground">{row.original.user_email}</p>
           )}
@@ -194,6 +210,18 @@ const ActivityEventManagement: React.FC = () => {
     setPaginate((prev) => ({ ...prev, page, perpage }));
   };
 
+  /**
+   * DataTable เก็บ sorting state ไว้ภายในและไม่รับค่าแบบ controlled — พอผู้ใช้กดหัวคอลัมน์
+   * วนจนถึงสถานะ "ไม่เรียง" มันจะส่ง '' กลับมาแล้วเอาลูกศรออก แต่ฝั่ง server ไม่มีสถานะนั้น
+   * (ค่าที่ไม่อยู่ใน whitelist ตกไปใช้ server_ts:desc เสมอ) หัวตารางจึงจะไม่มีลูกศรทั้งที่
+   * ข้อมูลยังเรียงตามเวลาอยู่ — bump key เพื่อ remount DataTable ให้ sorting ภายในกลับไป
+   * เท่ากับ defaultSort ตัวบ่งชี้กับข้อมูลจริงจะได้ตรงกัน
+   */
+  const handleSortChange = (sort: string) => {
+    if (!sort) setSortResetKey((k) => k + 1);
+    setPaginate((p) => ({ ...p, sort: sort || 'server_ts:desc', page: 1 }));
+  };
+
   const handleExport = () => {
     if (events.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
     const csv = generateCSV(events, [
@@ -211,10 +239,13 @@ const ActivityEventManagement: React.FC = () => {
   };
 
   const activeFilters = [
+    searchTerm && { label: `ค้นหา: ${searchTerm}`, clear: () => { setSearchTerm(''); flushSearch(''); resetPage(); } },
     pagePath && { label: `หน้า: ${pagePath}`, clear: () => { setPagePath(''); flushPagePath(''); resetPage(); } },
     sessionId && { label: `session: ${sessionId.slice(0, 8)}…`, clear: () => { setSessionId(''); flushSessionId(''); resetPage(); } },
+    userId && { label: `ผู้ใช้: ${userId.slice(0, 8)}…`, clear: () => { setUserId(''); flushUserId(''); resetPage(); } },
     eventType && { label: `ชนิด: ${eventType}`, clear: () => { setEventType(''); resetPage(); } },
-    buCode && { label: `BU: ${buCode}`, clear: () => { setBuCode(''); flushBuCode(''); resetPage(); } },
+    buCode && { label: `BU: ${optionLabel(buOptions, buCode)}`, clear: () => { setBuCode(''); resetPage(); } },
+    appId && { label: `App: ${optionLabel(appOptions, appId)}`, clear: () => { setAppId(''); resetPage(); } },
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
@@ -236,14 +267,15 @@ const ActivityEventManagement: React.FC = () => {
         <Card>
           <CardContent className="space-y-4 p-4">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="relative min-w-[220px] flex-1 space-y-2">
+              <div className="min-w-[220px] flex-1 space-y-2">
                 <Label htmlFor="event-search">ค้นหา</Label>
-                <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="event-search" ref={searchInputRef} className="pl-9"
-                  placeholder="page path / element id / element text"
+                <SearchInput
+                  id="event-search"
+                  ref={searchInputRef}
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onValueChange={setSearchTerm}
+                  onClear={() => { setSearchTerm(''); flushSearch(''); resetPage(); }}
+                  placeholder="page path / element id / element text"
                 />
               </div>
 
@@ -257,7 +289,12 @@ const ActivityEventManagement: React.FC = () => {
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="w-full sm:max-w-md">
-                  <SheetHeader><SheetTitle>ตัวกรอง</SheetTitle></SheetHeader>
+                  <SheetHeader>
+                    <SheetTitle>ตัวกรอง</SheetTitle>
+                    <SheetDescription>
+                      กรอง event ตาม BU, application, ชนิด, ผู้ใช้, หน้า และ session
+                    </SheetDescription>
+                  </SheetHeader>
                   <div className="mt-4 space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="f-type">ชนิด event</Label>
@@ -270,9 +307,35 @@ const ActivityEventManagement: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* เลือกจากรายการ ไม่ใช่พิมพ์เอง — code ที่พิมพ์ผิดหนึ่งตัวให้ผลเป็น
+                        "ไม่พบ event" โดยไม่มีอะไรบอกว่าพิมพ์ผิด และหน้า /analytics
+                        ก็ใช้ <Select> ชุดเดียวกันนี้อยู่แล้ว */}
                     <div className="space-y-2">
-                      <Label htmlFor="f-bu">Business Unit (code)</Label>
-                      <Input id="f-bu" value={buCode} onChange={(e) => setBuCode(e.target.value)} placeholder="BU-001" />
+                      <Label htmlFor="f-bu">Business Unit</Label>
+                      <Select value={buCode || 'all'} onValueChange={(v) => { setBuCode(v === 'all' ? '' : v); resetPage(); }}>
+                        <SelectTrigger id="f-bu"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">ทั้งหมด</SelectItem>
+                          {buOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="f-app">Application</Label>
+                      <Select value={appId || 'all'} onValueChange={(v) => { setAppId(v === 'all' ? '' : v); resetPage(); }}>
+                        <SelectTrigger id="f-app"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">ทั้งหมด</SelectItem>
+                          {appOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="f-user">ผู้ใช้ (User ID)</Label>
+                      <Input
+                        id="f-user" value={userId} onChange={(e) => setUserId(e.target.value)}
+                        placeholder="UUID ของผู้ใช้"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="f-page">Page path</Label>
@@ -311,7 +374,7 @@ const ActivityEventManagement: React.FC = () => {
         <Card>
           <CardContent className="relative p-0 sm:p-4">
             {loading && events.length === 0 ? (
-              <TableSkeleton columns={8} rows={8} />
+              <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
             ) : !loading && !error && events.length === 0 ? (
               <EmptyState
                 icon={MousePointerClick}
@@ -326,6 +389,7 @@ const ActivityEventManagement: React.FC = () => {
                   </div>
                 )}
                 <DataTable
+                  key={sortResetKey}
                   columns={columns}
                   data={events}
                   serverSide
@@ -334,7 +398,7 @@ const ActivityEventManagement: React.FC = () => {
                   perpage={paginate.perpage}
                   defaultSort={{ id: 'server_ts', desc: true }}
                   onPaginateChange={handlePaginateChange}
-                  onSortChange={(sort) => setPaginate((p) => ({ ...p, sort: sort || 'server_ts:desc', page: 1 }))}
+                  onSortChange={handleSortChange}
                 />
               </>
             )}

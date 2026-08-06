@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '../../components/ui/sheet';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { JsonViewer } from '../../components/ui/json-viewer';
@@ -30,6 +30,7 @@ export const EventDetailSheet: React.FC<EventDetailSheetProps> = ({ event, onClo
     <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
       <SheetHeader>
         <SheetTitle>รายละเอียด Event</SheetTitle>
+        <SheetDescription>ข้อมูลทุกฟิลด์ของ event ที่เลือก รวม props และ user agent</SheetDescription>
       </SheetHeader>
 
       {event && (
