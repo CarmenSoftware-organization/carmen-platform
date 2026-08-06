@@ -56,8 +56,11 @@ const UserPlatformManagement: React.FC = () => {
   const [rows, setRows] = useState<PlatformUserRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   // Registry-wide aggregate from the endpoint's `summary` block. Stays `null` until the
-  // backend for this change deploys — see PlatformAccessSummary for why the band renders
-  // an explicit "unavailable" state rather than a page-derived fallback in that case.
+  // backend for this change deploys — see PlatformAccessSummary for why the breakdown and
+  // inactive warning render an explicit "unavailable" state (never a page-derived guess)
+  // in that case. `totalRows` is passed alongside as `fallbackHolderTotal` so the headline
+  // count still renders — `paginate.total` and `summary.holders` are the same number by
+  // contract, so that's not a page-derived stitch, just a second source for one field.
   const [summary, setSummary] = useState<PlatformUserRegistrySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -396,6 +399,7 @@ const UserPlatformManagement: React.FC = () => {
 
         <PlatformAccessSummary
           summary={summary}
+          fallbackHolderTotal={totalRows}
           loading={loading}
           error={!!error}
           onRetry={() => fetchRows(paginate)}

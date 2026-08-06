@@ -87,14 +87,57 @@ describe('PlatformAccessSummary', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders an explicit "unavailable" state when `summary` is absent, instead of defaulting counts to zero', () => {
+  it('renders an explicit "unavailable" state when `summary` is absent and no fallback total is known, instead of defaulting counts to zero', () => {
     // Every request hits this path until the backend for this change deploys. Showing
     // "0 inactive holders" here would misreport the registry as clean — the one finding
     // this page exists to surface — so the band must say the data is unavailable rather
-    // than fabricate zeros.
+    // than fabricate zeros. This is the fully-unknown case (no `fallbackHolderTotal`
+    // either) — e.g. before the first successful fetch resolves.
     render(<PlatformAccessSummary summary={null} loading={false} />);
     expect(screen.getByText(/registry summary isn.t available yet/i)).toBeInTheDocument();
     expect(screen.queryByText('Platform-wide')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+  });
+
+  it('still renders the headline holder count from `fallbackHolderTotal` when `summary` is absent, marking only the breakdown unavailable', () => {
+    // `paginate.total` (passed through as `fallbackHolderTotal`) and `summary.holders`
+    // describe the same registry-wide count by contract, so the headline can render from
+    // either without becoming a page-derived guess. Only the scope breakdown and the
+    // inactive warning depend on fields that exist nowhere outside `summary`.
+    render(<PlatformAccessSummary summary={null} fallbackHolderTotal={42} loading={false} />);
+    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText('holders')).toBeInTheDocument();
+    expect(screen.getByText(/scope breakdown isn.t available yet/i)).toBeInTheDocument();
+
+    // The breakdown itself must not appear — there is no `summary.platform_wide` /
+    // `cluster_only` / `assignments` to source it from.
+    expect(screen.queryByText('Platform-wide')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cluster-scoped')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assignments')).not.toBeInTheDocument();
+
+    // No inactive warning either — a suppressed warning is honest; a fabricated "0
+    // inactive" would misreport the registry as clean, the one failure mode this whole
+    // band exists to prevent.
+    expect(screen.queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/inactive/i)).not.toBeInTheDocument();
+  });
+
+  it('singularizes the fallback headline label for exactly one holder', () => {
+    render(<PlatformAccessSummary summary={null} fallbackHolderTotal={1} loading={false} />);
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('holder')).toBeInTheDocument();
+    expect(screen.queryByText('holders')).not.toBeInTheDocument();
+  });
+
+  it('renders the headline from `fallbackHolderTotal` even when it is zero, rather than treating zero as "unset"', () => {
+    // `0 != null` — a registry with no matching holders is a known fact, not a missing
+    // one, so it must not fall through to the fully-unavailable branch (which would be
+    // misleading in the opposite direction: it would look like the count itself is
+    // unknown, when it is in fact known to be zero).
+    render(<PlatformAccessSummary summary={null} fallbackHolderTotal={0} loading={false} />);
+    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('holders')).toBeInTheDocument();
+    expect(screen.getByText(/scope breakdown isn.t available yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/registry summary isn.t available yet/i)).not.toBeInTheDocument();
   });
 });

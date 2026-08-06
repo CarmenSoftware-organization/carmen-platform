@@ -276,16 +276,43 @@ describe('UserPlatformManagement — registry-wide summary band', () => {
   });
 
   // Every request against today's backend omits `summary` (it ships in a later deploy).
-  // The band must say so rather than showing a breakdown of zeros, which would read as
-  // "no inactive holders" — a false negative in exactly the direction this page must not
-  // get wrong.
-  it('shows the summary as unavailable when the response omits it', async () => {
+  // The breakdown and inactive warning must say so rather than showing zeros, which would
+  // read as "no inactive holders" — a false negative in exactly the direction this page
+  // must not get wrong. The headline count is not subject to that risk (`paginate.total`
+  // is the same registry-wide number `summary.holders` would have carried), so it must
+  // keep rendering rather than disappearing behind the same "unavailable" wording — an
+  // empty-list admin would otherwise have no way to see the holder count at all, since
+  // the DataTable that normally carries it in its footer doesn't render when there are no
+  // rows.
+  it('shows the headline holder count but marks the breakdown unavailable when the response omits summary', async () => {
     renderPage();
     await screen.findByText('jane@example.com');
 
-    expect(await screen.findByText(/registry summary isn.t available yet/i)).toBeInTheDocument();
-    expect(screen.queryByText('Platform-wide')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+    // `listResponse` (the default mock) has `paginate.total: 1` and no `summary` — scope
+    // to the band via its singular "holder" label, since a bare "1" is ambiguous with the
+    // table's own "Showing 1-1 of 1" pagination footer.
+    const band = (await screen.findByText('holder')).closest('[class*="rounded-lg"]') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(within(band).getByText('1')).toBeInTheDocument();
+    expect(within(band).getByText(/scope breakdown isn.t available yet/i)).toBeInTheDocument();
+    expect(within(band).queryByText('Platform-wide')).not.toBeInTheDocument();
+    expect(within(band).queryByRole('button', { name: /inactive/ })).not.toBeInTheDocument();
+  });
+
+  // The literal defect this fix closes: with an empty result set, the DataTable (and its
+  // pagination footer, the only other place the holder count appeared) doesn't render at
+  // all — so before this fix the count existed nowhere on the page.
+  it('still shows the headline holder count when the filtered list is empty and summary is absent', async () => {
+    asMock(userPlatformService.getAll).mockResolvedValue({
+      data: [],
+      paginate: { total: 0, page: 1, perpage: 10 },
+    });
+    renderPage();
+
+    const band = (await screen.findByText('holders')).closest('[class*="rounded-lg"]') as HTMLElement;
+    expect(band).not.toBeNull();
+    expect(within(band).getByText('0')).toBeInTheDocument();
+    expect(within(band).getByText(/scope breakdown isn.t available yet/i)).toBeInTheDocument();
   });
 });
 
