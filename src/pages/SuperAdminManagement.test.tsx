@@ -69,7 +69,7 @@ import userService from '../services/userService';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
-const sampleSuperAdminRow = { id: 'sa1', user_id: 'u1', created_at: '2026-01-01T00:00:00Z', is_active: true };
+const sampleSuperAdminRow = { id: 'sa1', user_id: 'u1', created_at: '2026-01-01T00:00:00Z', is_active: true, email: 'jane@example.com', name: 'Jane Doe' };
 const sampleUser = { id: 'u1', email: 'jane@example.com', firstname: 'Jane', lastname: 'Doe' };
 
 const superAdminListResponse = { data: [sampleSuperAdminRow] };
