@@ -34,3 +34,33 @@ jobs:
           REACT_APP_API_BASE_URL: https://placeholder.invalid
           REACT_APP_API_APP_ID: ci-placeholder
         run: bun run build
+
+  # Mirrors how Vercel builds (npm + .npmrc legacy-peer-deps=true). bun and npm
+  # hoist node_modules differently, so a peer dependency that is only present in
+  # the bun tree by accident builds fine above and still fails on Vercel — that
+  # is exactly how recharts' `react-is` peer slipped through twice. `npm ci` also
+  # refuses to run when package-lock.json has drifted from package.json, which
+  # keeps the second lockfile honest.
+  verify-npm:
+    name: verify (npm clean install)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies (fails on package-lock.json drift)
+        run: npm ci
+
+      - name: Build (ESLint + TypeScript + Vite)
+        env:
+          CI: 'true'
+          REACT_APP_API_BASE_URL: https://placeholder.invalid
+          REACT_APP_API_APP_ID: ci-placeholder
+        run: npm run build
