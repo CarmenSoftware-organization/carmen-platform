@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet,
-  BarChart3, MousePointerClick,
+  BarChart3, MousePointerClick, Settings,
 } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 
@@ -25,6 +25,7 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Platform
   { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read', group: 'Platform' },
   { path: '/platform/email-settings', label: 'Email Settings', icon: Mail, permission: 'email_setting.read', group: 'Platform' },
+  { path: '/platform/configs', label: 'Platform Config', icon: Settings, permission: 'platform_config.read', group: 'Platform' },
   { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
   { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
   { path: '/platform/user-platform', label: 'User Platform', icon: UserCog, permission: 'user_platform.read', group: 'Platform' },

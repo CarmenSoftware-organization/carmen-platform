@@ -42,6 +42,7 @@ const SqlWorkbench = lazy(() => import("./pages/sqlWorkbench/SqlWorkbench"));
 const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const ActivityEventManagement = lazy(() => import("./pages/ActivityEventManagement"));
 const EmailSettingManagement = lazy(() => import("./pages/EmailSettingManagement"));
+const PlatformConfigManagement = lazy(() => import("./pages/PlatformConfigManagement"));
 const ClusterAdminEntry = lazy(() => import("./pages/clusterAdmin/ClusterAdminEntry"));
 const ClusterProfile = lazy(() => import("./pages/clusterAdmin/ClusterProfile"));
 const ClusterAdminBusinessUnitList = lazy(() => import("./pages/clusterAdmin/BusinessUnitList"));
@@ -341,6 +342,14 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="email_setting.read">
                   <EmailSettingManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/configs"
+              element={
+                <PrivateRoute requiredPermission="platform_config.read">
+                  <PlatformConfigManagement />
                 </PrivateRoute>
               }
             />
