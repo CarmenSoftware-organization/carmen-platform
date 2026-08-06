@@ -16,7 +16,12 @@ const FIELDS: { key: keyof AnalyticsSummary; label: string }[] = [
   { key: 'users', label: 'Active users' },
 ];
 
-/** การ์ดตัวเลขสรุปห้าใบบนสุดของหน้า Usage Analytics */
+/**
+ * การ์ดตัวเลขสรุปห้าใบบนสุดของหน้า Usage Analytics
+ *
+ * ไม่มี `summary` (โหลดไม่สำเร็จ) ≠ ค่าเป็นศูนย์ — แสดงขีดแทน ไม่งั้นหน้าจอจะขึ้นเลข 0
+ * ห้าใบที่ดูเหมือนตัวเลขที่วัดมาได้จริง ทั้งที่ยังไม่รู้ค่าอะไรเลย
+ */
 export const StatCards: React.FC<StatCardsProps> = ({ summary, loading }) => (
   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
     {FIELDS.map((f) => (
@@ -27,7 +32,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ summary, loading }) => (
             <Skeleton className="mt-2 h-7 w-20" />
           ) : (
             <p className="mt-1 text-2xl font-bold tabular-nums">
-              {(summary?.[f.key] ?? 0).toLocaleString()}
+              {summary ? summary[f.key].toLocaleString() : '—'}
             </p>
           )}
         </CardContent>

@@ -16,14 +16,11 @@ import { StatCards } from './usageAnalytics/StatCards';
 import { TopList } from './usageAnalytics/TopList';
 import { UsageChart } from './usageAnalytics/UsageChart';
 import analyticsService from '../services/analyticsService';
-import businessUnitService from '../services/businessUnitService';
-import applicationService from '../services/applicationService';
-import { presetRange, type DateRange } from '../utils/analyticsRange';
+import { useAnalyticsFilterOptions } from '../hooks/useAnalyticsFilterOptions';
+import { presetRange, ymdInTz, type DateRange } from '../utils/analyticsRange';
 import { parseApiError } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import type { AnalyticsOverview } from '../types';
-
-interface Option { value: string; label: string }
 
 const UsageAnalytics: React.FC = () => {
   const navigate = useNavigate();
@@ -37,27 +34,7 @@ const UsageAnalytics: React.FC = () => {
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const [buOptions, setBuOptions] = useState<Option[]>([]);
-  const [appOptions, setAppOptions] = useState<Option[]>([]);
-
-  // ตัวเลือกใน dropdown โหลดครั้งเดียว — ไม่ผูกกับช่วงวัน
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [bus, apps] = await Promise.all([
-          businessUnitService.getAll({ page: 1, perpage: 100 }),
-          applicationService.getAll({ page: 1, perpage: 100 }),
-        ]);
-        if (cancelled) return;
-        setBuOptions((bus.data || []).map((b) => ({ value: b.code, label: `${b.code} — ${b.name}` })));
-        setAppOptions((apps.data || []).map((a) => ({ value: a.id, label: a.name })));
-      } catch {
-        // dropdown ว่างไม่ใช่เรื่องคอขาดบาดตาย — หน้าหลักยังใช้ได้โดยไม่กรอง
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const { buOptions, appOptions } = useAnalyticsFilterOptions();
 
   const fetchOverview = useCallback(async () => {
     setLoading(true);
@@ -104,8 +81,14 @@ const UsageAnalytics: React.FC = () => {
     [overview],
   );
 
+  // drill-down ต้องพาตัวกรองที่ใช้อยู่ "ทั้งชุด" ไปด้วย ไม่ใช่แค่ page path กับช่วงวัน —
+  // ถ้าพาไปไม่ครบ ผู้ใช้ที่กรอง BU-001 อยู่จะไปเจอหน้า explorer ที่แสดงทุก BU จำนวนแถว
+  // ไม่ตรงกับตัวเลขที่เพิ่งคลิกมา และไม่มี badge บอกด้วยว่าทำไมถึงไม่ตรง
   const goToEvents = (pagePath: string) => {
     const q = new URLSearchParams({ page_path: pagePath, from: range.from, to: range.to });
+    if (buCode) q.set('bu_code', buCode);
+    if (appId) q.set('app_id', appId);
+    if (eventType) q.set('event_type', eventType);
     navigate(`/activity-events?${q.toString()}`);
   };
 
@@ -119,11 +102,16 @@ const UsageAnalytics: React.FC = () => {
       { key: 'sessions', label: 'Sessions' },
       { key: 'users', label: 'Active users' },
     ]);
-    downloadCSV(csv, `usage-analytics-${range.from.slice(0, 10)}_${range.to.slice(0, 10)}.csv`);
+    // ชื่อไฟล์ต้องเป็นวันตามเวลาไทยเหมือนที่ UI แสดง ไม่ใช่วัน UTC ที่ตัดจาก ISO ตรง ๆ —
+    // ช่วง 1–7 ส.ค. ตามเวลาไทยมี from เป็น 2026-07-31T17:00Z จะได้ชื่อไฟล์เป็นวันที่ 31 ก.ค.
+    // ขอบบนของช่วงเป็น exclusive จึงถอยหนึ่งมิลลิวินาทีก่อนแปลง ให้ได้วันสุดท้ายที่รวมอยู่จริง
+    const fromYmd = ymdInTz(range.from);
+    const toYmd = ymdInTz(new Date(new Date(range.to).getTime() - 1).toISOString());
+    downloadCSV(csv, `usage-analytics-${fromYmd}_${toYmd}.csv`);
     toast.success('Data exported successfully');
   };
 
-  const isEmpty = !loading && !error && (overview?.summary.events ?? 0) === 0;
+  const isEmpty = !loading && (overview?.summary.events ?? 0) === 0;
 
   return (
     <Layout>
@@ -189,7 +177,12 @@ const UsageAnalytics: React.FC = () => {
 
         <StatCards summary={overview?.summary} loading={loading} />
 
-        {isEmpty ? (
+        {/*
+          fetch ล้มเหลว → overview เป็น null: ไม่ render ส่วนผลลัพธ์เลย เพราะกราฟเปล่ากับ
+          top list ที่ขึ้น "ไม่มีข้อมูล" อ่านเหมือนผลที่วัดมาได้จริงว่าเป็นศูนย์ ทั้งที่จริง
+          คือยังไม่รู้ค่า — เหลือแค่ banner error กับการ์ดสรุปที่แสดงขีดแทนตัวเลข
+        */}
+        {!error && (isEmpty ? (
           <Card>
             <CardContent className="p-0">
               <EmptyState
@@ -221,7 +214,7 @@ const UsageAnalytics: React.FC = () => {
               )}
             </div>
           </>
-        )}
+        ))}
       </div>
 
       {process.env.NODE_ENV === 'development' && (
