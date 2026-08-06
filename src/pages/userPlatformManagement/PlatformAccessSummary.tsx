@@ -20,8 +20,9 @@ export interface RegistrySummary {
 /**
  * Roll the loaded page into registry counts. `total` comes from the endpoint's
  * paginate envelope so the headline holder count reflects the whole registry, while the
- * breakdown describes the rows actually in hand — the two are labelled differently in the
- * UI rather than being silently mixed.
+ * breakdown (`platformWide`/`clusterOnly`/`assignments`/`inactive`) is computed only from
+ * the rows currently loaded on this page. `PlatformAccessSummary` renders a "This page
+ * only" caption over that breakdown so the two scopes are never presented as equivalent.
  */
 export function summarizeRegistry(rows: PlatformUserRow[], total: number): RegistrySummary {
   let platformWide = 0;
@@ -75,20 +76,28 @@ export function PlatformAccessSummary({
             </div>
           </div>
 
-          <dl className="flex flex-wrap gap-x-8 gap-y-3">
-            <div>
-              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Platform-wide</dt>
-              <dd className="font-mono text-xl font-semibold tabular-nums">{summary.platformWide}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Cluster-scoped</dt>
-              <dd className="font-mono text-xl font-semibold tabular-nums">{summary.clusterOnly}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Assignments</dt>
-              <dd className="font-mono text-xl font-semibold tabular-nums">{summary.assignments}</dd>
-            </div>
-          </dl>
+          <div className="flex flex-col gap-2">
+            <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-[0.1em]">
+              This page only
+            </span>
+            <dl
+              aria-label="Role-scope breakdown for the currently loaded page, not the full registry"
+              className="flex flex-wrap gap-x-8 gap-y-3"
+            >
+              <div>
+                <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Platform-wide</dt>
+                <dd className="font-mono text-xl font-semibold tabular-nums">{summary.platformWide}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Cluster-scoped</dt>
+                <dd className="font-mono text-xl font-semibold tabular-nums">{summary.clusterOnly}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Assignments</dt>
+                <dd className="font-mono text-xl font-semibold tabular-nums">{summary.assignments}</dd>
+              </div>
+            </dl>
+          </div>
 
           {summary.inactive > 0 && (
             <button

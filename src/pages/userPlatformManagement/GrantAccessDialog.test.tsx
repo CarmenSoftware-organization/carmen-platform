@@ -182,4 +182,41 @@ describe('GrantAccessDialog', () => {
     expect(viewerCheckbox).toBeChecked();
     expect(screen.getByText('Grant platform access')).toBeInTheDocument();
   });
+
+  // pickerOpenRef itself cannot be asserted on directly here: it is a private ref with
+  // no independent DOM-observable effect — it only gates Radix's Escape-key dismissal
+  // (`onEscapeKeyDown` on DialogContent), and that dismissal path does not fire under
+  // jsdom in this suite at all, even for a dialog that never touched the picker (a
+  // fresh-dialog `user.keyboard('{Escape}')` control case was tried and also failed to
+  // close). So an Escape-based test here would pass or fail for reasons unrelated to the
+  // fix. What IS honestly testable: `pickerOpenRef.current = false` sits in the same
+  // `[open]` effect, ahead of the same unconditional statements that reset `user` and
+  // `selectedRoleIds` and refetch role/cluster options — so proving that effect body
+  // re-executes on every reopen is the strongest available signal that the ref reset
+  // line runs too.
+  it('clears prior selections and refetches options on every reopen — the same effect that resets the Escape-key guard the picker owns', async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const onGranted = vi.fn();
+    const { rerender } = render(
+      <GrantAccessDialog open onOpenChange={onOpenChange} onGranted={onGranted} />,
+    );
+    await waitForOptionsLoaded();
+
+    await pickUser(user);
+    await user.click(screen.getByRole('checkbox', { name: 'Platform Admin' }));
+    expect(screen.getByRole('checkbox', { name: 'Platform Admin' })).toBeChecked();
+
+    // Simulate the dialog being closed by a path that never fires Radix's own
+    // onOpenChange — exactly the documented failure mode (a controlled parent close,
+    // not a user gesture the picker's own dropdown-close listeners would catch) —
+    // then reopened.
+    rerender(<GrantAccessDialog open={false} onOpenChange={onOpenChange} onGranted={onGranted} />);
+    rerender(<GrantAccessDialog open onOpenChange={onOpenChange} onGranted={onGranted} />);
+    await waitForOptionsLoaded();
+
+    expect(screen.getByRole('checkbox', { name: 'Platform Admin' })).not.toBeChecked();
+    expect(asMock(roleService.getAll)).toHaveBeenCalledTimes(2);
+    expect(asMock(clusterService.getAll)).toHaveBeenCalledTimes(2);
+  });
 });

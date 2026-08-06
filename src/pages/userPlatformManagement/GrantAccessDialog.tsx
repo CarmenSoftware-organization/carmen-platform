@@ -42,6 +42,10 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
 
   useEffect(() => {
     if (!open) return;
+    // Reset the Escape guard on open, not only on close: the dialog is controlled, so
+    // closing it from code never fires Radix's onOpenChange, and a stale `true` here
+    // would make a reopened dialog ignore Escape entirely.
+    pickerOpenRef.current = false;
     setUser(null);
     setSelectedRoleIds([]);
     setScopeType('platform');
@@ -89,6 +93,7 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
       await userPlatformService.assignBulk(user.id, { role_ids: selectedRoleIds, scope });
       toast.success('Access granted');
       onOpenChange(false);
+      pickerOpenRef.current = false;
       onGranted();
     } catch (err: unknown) {
       const { message } = parseApiError(err);

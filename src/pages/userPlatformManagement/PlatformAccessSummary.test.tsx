@@ -112,6 +112,20 @@ describe('PlatformAccessSummary', () => {
     expect(screen.getByText('14')).toBeInTheDocument();
     expect(screen.getByText('Assignments')).toBeInTheDocument();
     expect(screen.getByText('28')).toBeInTheDocument();
+
+    // The breakdown must be visibly marked as page-scoped, not just internally
+    // computed that way — a reader who never opens the source has no other way to
+    // know "28 assignments" describes the loaded page rather than the registry.
+    const pageCaption = screen.getByText(/this page/i);
+    expect(pageCaption).toBeInTheDocument();
+    // The caption must sit with the breakdown it describes, not float free elsewhere
+    // in the card — otherwise it labels nothing in particular.
+    const breakdownGroup = screen.getByText('Platform-wide').closest('dl');
+    expect(breakdownGroup).not.toBeNull();
+    expect(breakdownGroup?.parentElement).toContainElement(pageCaption);
+    // The headline holder count must sit outside that page-scoped group — it is the
+    // one number in the band that is NOT page-scoped.
+    expect(breakdownGroup?.parentElement).not.toContainElement(screen.getByText('137'));
   });
 
   it('singularizes the headline label for exactly one holder', () => {
