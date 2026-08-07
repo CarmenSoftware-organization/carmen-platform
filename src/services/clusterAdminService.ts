@@ -1,5 +1,5 @@
 import api from './api';
-import QueryParams from '../utils/QueryParams';
+import { buildQuery } from '../utils/buildQuery';
 import type {
   AdminScope,
   ApiListResponse,
@@ -16,17 +16,9 @@ const clusterAdminService = {
    * a super admin administers everything, so `clusters` is only a searchable page.
    */
   getMyAdminClusters: async (paginate: PaginateParams = {}): Promise<AdminScope> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      clusterSearchFields,
-      {},
-      paginate.sort,
-      paginate.advance,
+    const response = await api.get(
+      `/api-system/me/admin-clusters?${buildQuery(paginate, clusterSearchFields)}`,
     );
-    const response = await api.get(`/api-system/me/admin-clusters?${q.toQueryString()}`);
     const body = response.data;
     return {
       // `all` travels inside `summary`, not at the top level: the gateway's response envelope
@@ -41,18 +33,8 @@ const clusterAdminService = {
     clusterId: string,
     paginate: PaginateParams = {},
   ): Promise<ApiListResponse<ClusterInvitation>> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      ['email'],
-      {},
-      paginate.sort,
-      paginate.advance,
-    );
     const response = await api.get(
-      `/api-system/clusters/${clusterId}/invitations?${q.toQueryString()}`,
+      `/api-system/clusters/${clusterId}/invitations?${buildQuery(paginate, ['email'])}`,
     );
     return response.data;
   },

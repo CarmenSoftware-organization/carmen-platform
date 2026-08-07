@@ -1,5 +1,5 @@
 import api from './api';
-import QueryParams from '../utils/QueryParams';
+import { buildQuery } from '../utils/buildQuery';
 import type {
   PaginateParams,
   PlatformUserScope,
@@ -16,19 +16,9 @@ const userPlatformService = {
    * deploys the change that adds it, so callers must not assume its presence.
    */
   getAll: async (paginate: PaginateParams = {}): Promise<PlatformUsersResponse> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      defaultSearchFields,
-      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter)
-        ? (paginate.filter as Record<string, unknown>)
-        : {},
-      paginate.sort,
-      paginate.advance,
+    const response = await api.get(
+      `/api-system/platform/users?${buildQuery(paginate, defaultSearchFields)}`,
     );
-    const response = await api.get(`/api-system/platform/users?${q.toQueryString()}`);
     return response.data;
   },
 
