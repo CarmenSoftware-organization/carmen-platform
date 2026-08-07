@@ -17,18 +17,29 @@ The band is **registry-wide** — it describes the whole table, not the current 
 
 ## Aggregating client-side
 
-Six older pages fetch every row and aggregate in the browser:
+Six pages fetch every row and aggregate in the browser:
 
 ```ts
 userService.getAll({ perpage: -1, advance: ... })
 ```
 
-This works while the table is small and degrades quietly as it grows. Reach for it only after the options above don't fit:
+Reach for it only after the options above don't fit:
 
 1. Ask the backend for a `summary` block on the list endpoint
 2. Derive the number from `paginate.total` on a filtered 1-row query — the pattern already used for the archived count
 3. A **bounded** pagination loop with a `MAX_PAGES` guard
-4. `perpage: -1` — acceptable when the backend can't be changed yet and the row count is genuinely bounded. Note the assumption in a comment so the next person can find it.
+4. `perpage: -1` — acceptable when the backend can't be changed yet. Say in a comment *which metric* forces it, so the next reader doesn't re-derive it.
+
+### Count queries cannot express every metric
+
+A count query answers "how many rows match". It cannot answer:
+
+- **DISTINCT counts** — `UserManagement.businessUnits`, `BuSummary.clusters`
+- **SUMs** — `FleetCapacity` totals `bu_count`, `max_license_bu`, `users_count`, `total_max_license_users` across all clusters
+
+Those three pages need a backend `summary` block; no client-side rewrite reaches them. The remaining three (Role, News, Application) *are* expressible, but each would trade one request for four to six over a table holding tens of rows — worse, not better. All six carry a comment naming the specific blocker.
+
+**The real fix is a backend `summary` block.** Don't spend client-side effort working around its absence.
 
 ## Page wiring
 

@@ -132,6 +132,11 @@ const ClusterManagement: React.FC = () => {
   const loadFleet = useCallback(async () => {
     setFleetLoading(true);
     try {
+      // perpage:-1 is not just a size judgement: the gauges SUM bu_count,
+      // max_license_bu, users_count and total_max_license_users across every
+      // cluster, and count `nearLimit` per-row. Count queries cannot express a
+      // sum, so this needs a backend `summary` block to replace
+      // (agent-os/standards/pages/summary-band.md).
       const data = await clusterService.getAll({
         perpage: -1,
         advance: JSON.stringify({ where: { deleted_at: null } }),
