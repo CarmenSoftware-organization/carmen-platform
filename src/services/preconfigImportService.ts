@@ -1,4 +1,5 @@
 import api from './api';
+import { refreshAccessToken } from './tokenRefresh';
 import type {
   PreconfigCheckReport,
   PreconfigImportEvent,
@@ -69,6 +70,12 @@ const preconfigImportService = {
     onEvent: (e: PreconfigImportEvent) => void,
     signal?: AbortSignal,
   ): Promise<PreconfigImportSummary> => {
+    // `fetch` skips the axios response interceptor, so this request gets no
+    // transparent 401 refresh-and-retry. Imports run long, so start on a fresh
+    // access token. Best-effort: refreshAccessToken() throws when there is no
+    // refresh token, and that must not block a stream whose current token is
+    // still valid — a genuinely dead token simply comes back as a 401 below.
+    await refreshAccessToken().catch(() => {});
     const root = api.defaults.baseURL ?? '';
     // Unlike the axios calls above, `fetch` has no default Content-Type to fight — setting
     // one here would strip the multipart boundary, so it is deliberately omitted.

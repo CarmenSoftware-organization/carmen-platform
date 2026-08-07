@@ -1,0 +1,47 @@
+# Agent OS Standards Index
+
+api:
+  auth-interceptors:
+    description: 401 refresh-and-retry vs 403 pass-through, single-flight refresh, hard-reload teardown
+  backend-deploy-order:
+    description: New backend fields must be optional with a client-side fallback; runtime guards on responses
+  base-paths:
+    description: Choosing /api-system (platform registry) vs /api (tenant-scoped); verifying against swagger
+  doc-version-locking:
+    description: Optimistic-lock token wiring, 409 conflict handling, and the four common pitfalls
+  multipart-and-streaming:
+    description: FormData Content-Type rules (inverted between axios and fetch); NDJSON streams and their 401 gap
+  payload-translation:
+    description: Service translates flat form shape into the backend write model; replace semantics
+  service-module:
+    description: Service file shape, two-tier envelope unwrapping, buildQuery, no-UX-in-services rule
+
+errors:
+  catch-blocks:
+    description: Choosing parseApiError vs getErrorDetail vs devLog, and the isNotFound/isVersionConflict branch order
+  redaction:
+    description: Why parseApiError shows its message in production and getErrorDetail hides it
+  user-feedback:
+    description: Toast level semantics (warning = partial, info = no-op) and the ConfirmDialog contract
+  validation:
+    description: validateField switches on field name and silently passes unknown ones; required is opt-in
+
+pages:
+  decomposition:
+    description: When to split a page into its subdirectory, naming per file kind, and cross-page reuse
+  edit-page-modes:
+    description: Toggle vs edit-in-place vs relationship Edit pages, how to choose, and each one's state shape
+  management-page:
+    description: Full vs Config vs legacy Lightweight list pages, required structure, state shape, and non-negotiables
+  summary-band:
+    description: Stat band above the table — backend aggregate preferred, independent failure, three state slots
+
+testing:
+  jsdom-stubs:
+    description: Central setup vs per-file stubs, manual RTL cleanup, and the two matchMedia traps
+  mock-boundary:
+    description: Mock the environment and keep Can and routing real; vi.hoisted for mutable auth, toast, navigate
+  plan-execution:
+    description: Skip test-writing during plan execution — but never the type-check, lint, or existing suite
+  what-to-test:
+    description: Test at the level the user experiences; page over component, behaviour over snapshots

@@ -159,3 +159,11 @@ build/
 # Real customer preconfiguration workbook — never commit. Regenerate the mock with
 # `bun run generate:mock-preconfig`; sample_data/Preconfig-mock.xlsx IS committed.
 sample_data/Preconfig.xlsx
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/
+
+# Per-machine Claude Code permission grants. Machine-specific, and past entries have
+# embedded .env values (API base URL, app id) that the .env.* rules above keep out of git.
+# .claude/settings.json IS committed — it carries the shared hooks and status line.
+.claude/settings.local.json
