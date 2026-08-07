@@ -92,7 +92,7 @@ Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagg
 
 ## Deployment
 
-Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`). `.github/workflows/deploy-gcs.yml` builds from source and deploys keyless via Workload Identity Federation (`gcloud storage rsync` + CDN cache invalidation) — its **only** trigger is `workflow_dispatch`, so **nothing deploys automatically**, not even a push to `main`; someone runs it by hand. The other workflow, `.github/workflows/verify.yml`, runs `bun run build` (ESLint + tsc + Vite) on PRs to `main`/`DEV`/`UAT` and on pushes to every branch *except* those three — it does **not** run `bun run test`. So a push to `main` triggers nothing at all. Vercel (`vercel.json`) is retained in parallel.
+Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`). `.github/workflows/deploy-gcs.yml` builds from source and deploys keyless via Workload Identity Federation (`gcloud storage rsync` + CDN cache invalidation) — its **only** trigger is `workflow_dispatch`, so **nothing deploys automatically**, not even a push to `main`; someone runs it by hand. The other workflow, `.github/workflows/verify.yml`, runs `bun run test` then `bun run build` (ESLint + tsc + Vite) on PRs to `main`/`DEV`/`UAT` and on pushes to every branch *except* those three; a second job repeats the build under `npm ci` to mirror Vercel's install. So a push to `main` triggers nothing at all. Vercel (`vercel.json`) is retained in parallel.
 
 ## Unit & Component Tests
 
