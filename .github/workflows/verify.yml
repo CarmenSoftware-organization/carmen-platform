@@ -1,6 +1,6 @@
 name: Verify
 
-# Verifies lint + types + production build for non-main branches and PRs.
+# Verifies unit tests + lint + types + production build for non-main branches and PRs.
 # Uses only repo contents (checkout) and pinned actions — does not consume
 # any untrusted user input from PR titles/bodies/comments.
 
@@ -27,6 +27,15 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      # Runs before the build: the suite finishes in well under a minute, so a
+      # behavioural regression reports faster than waiting on ESLint + tsc + Vite.
+      # Vitest transpiles without type-checking, so this does not overlap with the
+      # build's tsc pass — the two catch different failures.
+      - name: Unit & component tests (Vitest)
+        env:
+          CI: 'true'
+        run: bun run test
 
       - name: Build (ESLint + TypeScript + Vite)
         env:
