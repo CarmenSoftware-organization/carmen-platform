@@ -103,7 +103,7 @@ Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (T
 - **Imports:** explicit — `import { describe, it, expect, vi } from 'vitest'` (no globals).
 - **Pure functions:** unit-test directly. Reference: `src/utils/*.test.ts`.
 - **Components:** React Testing Library + `@testing-library/user-event`; assert behavior/roles/text (no snapshots). Presentational examples: `src/pages/businessUnitEdit/*.test.tsx`.
-- **Page integration:** `vi.mock` the shell (`Layout`, `Can`) + services (and `api`), keep routing **real** via `MemoryRouter`. Reference: `src/pages/ClusterEdit.test.tsx`.
+- **Page integration:** `vi.mock` the shell (`Layout`, `AuthContext`) + services (and `api`) + `sonner`; keep routing **real** via `MemoryRouter`. **Never mock `Can`** — it *is* the permission logic, so stubbing it makes every permission test pass regardless of permissions. Drive it through a `vi.hoisted` mutable auth object instead. Reference: `src/pages/ClusterEdit.test.tsx`; full rule: `agent-os/standards/testing/mock-boundary.md`.
 
 ## E2E Tests
 
@@ -142,20 +142,22 @@ Every entity has two pages — **always copy the closest existing example**, do 
 ### Management page (`<Entity>Management.tsx`)
 Canonical example: **`src/pages/ClusterManagement.tsx`**
 
-Required structure: header row (title + Export CSV + Add button) → Card with search (debounced 400ms) + filter Sheet + active-filter badges → CardContent with `TableSkeleton` / `EmptyState` / `DataTable` (server-side) + loading overlay → dev-only debug Sheet.
+Required structure: header row (title + Export CSV + Add button) → summary band → Card with search (debounced 400ms) + filter Sheet + active-filter badges → CardContent with `TableSkeleton` / `EmptyState` / `DataTable` (server-side) + loading overlay → dev-only debug Sheet.
 
-Required state shape: `items`, `totalRows`, `loading`, `error`, `searchTerm`, `statusFilter`, `showFilters`, `rawResponse`, `copied`, `paginate` (`{ page, perpage, search, sort }`).
+Required state shape: `items`, `totalRows`, `loading`, `error`, `summary`/`summaryLoading`/`summaryError`, `searchTerm`, `statusFilter`, `showFilters`, `showDeleted`, `rawResponse`, `copied`, `paginate` (`{ page, perpage, search, sort }`).
+
+Levels, summary-band contract, and the soft-delete toggle: `agent-os/standards/pages/` (`management-page.md`, `summary-band.md`).
 
 ### Edit page (`<Entity>Edit.tsx`)
-Canonical examples: **`src/pages/ClusterEdit.tsx`** (simple), **`src/pages/ReportTemplateEdit.tsx`** (tabbed XML + sticky bottom bar).
+**Three modes, not one** — Toggle (`RoleEdit`, `UserEdit`, `NewsEdit`, `ApplicationEdit`, `ReportTemplateEdit`), Edit-in-place (`ClusterEdit`, `BusinessUnitEdit`), Relationship (`UserPlatformEdit`, no `formData` at all). Pick by counting sections + related tables. Decision rule and per-mode state shape: **`agent-os/standards/pages/edit-page-modes.md`**.
 
-**`src/pages/BusinessUnitEdit.tsx`** is the largest Edit page and is **decomposed** into `src/pages/businessUnitEdit/` — the page file is the orchestrator (form state + load/save + composition); the form is per-section components under `sections/` (sharing a `SectionFieldProps` bundle), the BU-users sub-flow is a `useBusinessUnitUsers` hook + `BusinessUnitUsersCard`, and Branding/Debug are their own cards. Follow this split if an Edit page grows unwieldy — don't let one page file balloon past ~600 lines.
+Canonical examples: **`src/pages/RoleEdit.tsx`** (Toggle, simple), **`src/pages/ReportTemplateEdit.tsx`** (tabbed XML + sticky bottom bar), **`src/pages/ClusterEdit.tsx`** (Edit-in-place with scrollspy + inline row editing).
 
-Required structure: header (back + title + Edit toggle) → error display → Card sections (form, `lg:grid-cols-2` on existing) → related-data cards → dev-only debug Sheet with tabs.
+**`src/pages/businessUnitEdit/`** is the reference decomposition — the page file is the orchestrator (form state + load/save + composition); the form is per-section components under `sections/` (sharing a `SectionFieldProps` bundle), the BU-users sub-flow is a `useBusinessUnitUsers` hook + `BusinessUnitUsersCard`, and Branding/Debug are their own cards. **Split when a piece has a name, not at a line count** — 24 pages have a subdirectory, from one file to ten. Naming conventions and the cross-page-reuse rule: `agent-os/standards/pages/decomposition.md`.
 
-Required state shape: `id` (from `useParams`), `isNew = !id`, `formData`, `loading`, `editing` (new ⇒ true; existing ⇒ false until Edit pressed), `saving`, `error`, `rawResponse`, `copied`, `savedFormData`.
+Required structure: header (back + title + Edit toggle *in Toggle mode*) → error display → Card sections (form, `lg:grid-cols-2` on existing) → related-data cards → dev-only debug Sheet with tabs.
 
-Edit/Cancel: stash `formData` into `savedFormData` on Edit; restore on Cancel.
+Required state shape: `id` (from `useParams`), `isNew = !id`, `formData`, `loading`, `saving`, `error`, `notFound`, `fieldErrors`, `rawResponse`, `copied`, `savedFormData`. Toggle mode adds `editing` (new ⇒ true; existing ⇒ false until Edit pressed) and stashes `formData` into `savedFormData` on Edit, restoring on Cancel. Edit-in-place keeps `savedFormData` for the `useUnsavedChanges` diff even without a toggle.
 
 ## Sidebar Layout
 
@@ -184,7 +186,7 @@ const xService = {
 };
 ```
 
-- **Base path:** `/api-system/...` (absolute `baseURL` — never proxied, see Environment above)
+- **Base path:** two backends behind one axios instance (absolute `baseURL` — never proxied, see Environment above). `/api-system/...` for the cross-tenant platform registry (clusters, business-units, applications, `platform/*`, report-templates, tenant, `user/clusters`); `/api/...` for tenant/BU-scoped or user-self routes (`auth/*`, `user/profile`, `user/permission/platform`, `news`, `notifications/broadcasts/*`, `config/{buCode}/...`). Both expose a `user/` namespace and they are unrelated — confirm against swagger, never copy the prefix from a neighbouring service file. Full rule: `agent-os/standards/api/base-paths.md`
 - **Headers:** `Content-Type: application/json`, `x-app-id` (env), `Authorization: Bearer <token>` (added by interceptor)
 - **Response shape:** `{ data: T | T[], paginate?: { total, page, perpage } }` — unwrap with `response.data.data || response.data`
 
@@ -204,7 +206,7 @@ Multiple enums: build a `where` object with `{ in: [...] }`, JSON.stringify only
 | Confirm a destructive action | `<ConfirmDialog>` (`components/ui/confirm-dialog.tsx`) | **Never** use `window.confirm()`. Async-safe `onConfirm` shows spinner |
 | Empty list state | `<EmptyState>` (`components/EmptyState.tsx`) | Required: `icon`, `title`. Include `description` + action button |
 | Initial table load | `<TableSkeleton columns rows>` | Use only when `loading && items.length === 0` |
-| User feedback | `toast.success/error/info/warning` from `sonner` | **Never** use `alert()`. Already wired in `App.tsx` |
+| User feedback | `toast.success/error/info/warning` from `sonner` | **Never** use `alert()`. Wired in `App.tsx`. Levels are semantic: `warning` = partial success (`Deleted 3, 2 failed`), `info` = no-op (`Already up to date`) — see `agent-os/standards/errors/user-feedback.md` |
 | Unsaved-change guard | `useUnsavedChanges(hasChanges)` | Compare `formData` vs `savedFormData` (or `initialFormData` if new) |
 | Keyboard shortcuts | `useGlobalShortcuts({ onSave, onCancel, onSearch })` | `?` help dialog auto-wired in `Layout` |
 | XML editing | `<XmlEditor>` (`components/XmlEditor.tsx`) | CM6 wrapper. Falls back to read-only Copy+Download when `readOnly` |
@@ -235,7 +237,9 @@ Active/inactive ⇒ `<Badge variant={x ? 'success' : 'secondary'}>` (never raw g
 - Input gets `className={fieldErrors[name] ? 'border-destructive' : ''}`
 - Pre-submit: re-validate all required fields, abort early if any error
 
-Built-in validators (`utils/validation.ts`): `isValidEmail`, `isValidCode` (2–20 chars `[A-Za-z0-9_-]`), `isValidPhone` (8–20 digits, `+`, spaces, `-`, `()`). `validateField` also handles `username` (email), `alias_name` (1–3 alphanum), `max_license_bu`, `max_license_users` (positive int).
+Built-in validators (`utils/validation.ts`): `isValidEmail`, `isValidCode` (2–20 chars `[A-Za-z0-9_-]`), `isValidPhone` (8–20 digits, `+`, spaces, `-`, `()`), `isValidUrl` (http/https only).
+
+`validateField(name, value, options?)` switches on the **field name** and ends in `default: return ''` — an unhandled name validates nothing, silently. Add a `case` rather than validating ad hoc in a page. Required is opt-in: `validateField('name', v, { required: true, label: 'Name' })`; without it an empty value always passes. Handled names and the full flow: `agent-os/standards/errors/validation.md`.
 
 ## Debug Sheet
 
@@ -339,23 +343,11 @@ backend read/write models are **asymmetric** — `src/services/applicationServic
 
 ## doc_version Optimistic Locking
 
-Versioned entities carry a numeric `doc_version`. The backend **requires** it on update and rejects a stale write with **HTTP 409** (message `Record was modified by another request …`). Every `<Entity>Edit` page that updates such a record must echo the last-seen token back. Full contract: `docs/doc-version-optimistic-locking-spec.md`.
+Versioned entities carry a numeric `doc_version`; a stale write gets **HTTP 409**. Hold it in its own `useState` (never in `formData`), send it on update only when the GET returned one, and on conflict `notifyVersionConflict()` + refetch. Helpers: `src/utils/docVersion.ts`. Reference page: `ClusterEdit.tsx`.
 
-**Helper — `src/utils/docVersion.ts`:**
-- `getDocVersion(record)` → the numeric token off a loaded record, else `undefined`.
-- `isVersionConflict(err)` → `true` only on 409 **and** a lock signal. Detection relies on the message match (`/modified by another request|doc_version/i`) because the gateway remaps the error `code` to `ALREADY_EXISTS` (same as a name-collision 409) — the message check is **load-bearing**, do not simplify it away (see the comment in the file).
-- `notifyVersionConflict()` → the single canonical conflict toast.
+Wiring rules, pitfalls, and the custom-write-payload list: **`agent-os/standards/api/doc-version-locking.md`**. Full contract: `docs/doc-version-optimistic-locking-spec.md`.
 
-**Per Edit page** (reference: `ClusterEdit.tsx`):
-- Hold `const [docVersion, setDocVersion] = useState<number>()` — **never** put `doc_version` in `formData` (it would pollute the unsaved-changes dirty-check and create payload).
-- Capture on load: `setDocVersion(getDocVersion(record))` inside `fetchX`.
-- Send on update **only when present**: `service.update(id, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) })`. Create paths never send it.
-- After save, the existing post-save `fetchX()` refreshes `docVersion` (the update response also returns the new one).
-- On conflict, branch the catch: `if (isVersionConflict(err)) { notifyVersionConflict(); await fetchX(); } else { <existing error handling, unchanged> }`. The page stays in edit mode; in-flight edits are discarded and reloaded to latest (standard optimistic-lock UX).
-
-**Defensive principle:** send the token only when the GET returned one — so an entity whose backend read doesn't yet expose `doc_version` is a runtime no-op (no 400 risk). Services with **custom write payloads** forward it explicitly: `applicationService.toWritePayload`, `roleService.update`, and `newsService.buildNewsFormData` (multipart appends `doc_version` as a **string** — the backend coerces it). Pass-through services (`Partial<T>`/`Record`) forward it automatically once the type carries `doc_version?: number`.
-
-Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, Email Settings. **Backend gotcha:** the admin "Role" page is **platform roles** (`/api-system/platform/roles` → `platform_role` service), not application-roles (`/api-system/roles`). Optimistic locking only fires when the backend read exposes `doc_version` AND the update guards `where: { id, doc_version }`.
+Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, News, Email Settings.
 
 ## Styling Reference
 
@@ -395,10 +387,10 @@ const fmt = (v?: string) => {
 9. **Persist `perpage` per-entity** in `localStorage` (`perpage_<type>`).
 10. **All shared types** in `src/types/index.ts`. Page-local `FormData` interfaces stay in the page file.
 11. **Add new fields as optional (`?`)** unless the API guarantees them.
-12. **Catch blocks** must use `parseApiError(err)` + `toast.error()` (plus `setFieldErrors(fields)` when returned).
-13. **All Management pages** need: debounced search (400ms), filter Sheet, server-side DataTable, CSV export, dev debug Sheet, `Ctrl/⌘+K` search shortcut.
-14. **All Edit pages** need: edit/read-only toggle, back button, Save/Cancel, dev debug Sheet with tabs, `useUnsavedChanges(hasChanges)`, `Ctrl/⌘+S` save, `Escape` cancel, real-time `validateField` on blur.
+12. **Catch blocks** pick one of three helpers from `utils/errorParser.ts` — `parseApiError` when a form needs per-field errors (then `setFieldErrors(fields)`), `getErrorDetail` when you only need a string (it redacts in prod), `devLog` when the user shouldn't be told. Check `isNotFoundError` / `isVersionConflict` **before** the generic branch. See `agent-os/standards/errors/catch-blocks.md`.
+13. **Full Management pages** need: debounced search (400ms), filter Sheet, server-side DataTable, CSV export, summary band, dev debug Sheet, `Ctrl/⌘+K` search shortcut. **Three levels exist** — Full (the target for anything new), Config (cards, for structurally-bounded row counts), and a legacy Lightweight tier that is debt. See `agent-os/standards/pages/management-page.md`.
+14. **All Edit pages** need: back button, Save/Cancel, dev debug Sheet with tabs, `useUnsavedChanges(hasChanges)`, `Ctrl/⌘+S` save, `Escape` cancel, real-time `validateField` on blur. The edit/read-only **toggle is mode-specific**, not universal — see `agent-os/standards/pages/edit-page-modes.md`.
 15. **Mobile-first responsive.** Test both layouts (`md` is the desktop/sidebar pivot).
 16. **Skeleton vs overlay vs empty:** see Loading States Decision Table — do not mix.
 17. **Versioned-entity Edit pages** must thread `doc_version` via `src/utils/docVersion.ts`: dedicated `docVersion` state (never in `formData`), send only when present, `409` → `notifyVersionConflict()` + refetch. See **doc_version Optimistic Locking**.
-18. **Tests** (Vitest): co-locate `*.test.ts(x)` beside source, use explicit `vitest` imports (no globals), assert behavior not snapshots. Pure utils → unit test; components → RTL; pages → mock shell+services, real `MemoryRouter`. See **Unit & Component Tests**. Don't churn `tsconfig.json` / `vite.config.ts` for test setup.
+18. **Tests** (Vitest): co-locate `*.test.ts(x)` beside source, use explicit `vitest` imports (no globals), assert behavior not snapshots. Pure utils → unit test; components → RTL; pages → mock shell+services, real `MemoryRouter`, **never mock `Can`**. See **Unit & Component Tests** and `agent-os/standards/testing/`. Don't churn `tsconfig.json` / `vite.config.ts` for test setup.
