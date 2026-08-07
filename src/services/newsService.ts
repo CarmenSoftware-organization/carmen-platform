@@ -1,5 +1,5 @@
 import api from './api';
-import QueryParams from '../utils/QueryParams';
+import { buildQuery } from '../utils/buildQuery';
 import type { PaginateParams, News, ApiListResponse, PaginateInfo } from '../types';
 
 const defaultSearchFields = ['title', 'contents'];
@@ -25,17 +25,7 @@ const buildNewsFormData = (data: Partial<News>, image: File): FormData => {
 
 const newsService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<News>> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      defaultSearchFields,
-      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter) ? paginate.filter as Record<string, unknown> : {},
-      paginate.sort,
-      paginate.advance,
-    );
-    const response = await api.get(`/api/news?${q.toQueryString()}`);
+    const response = await api.get(`/api/news?${buildQuery(paginate, defaultSearchFields)}`);
     // The backend wraps the paginated payload in a global { data, status, ... }
     // envelope and nests the list one level deeper. Walk down `.data` until we
     // reach the { paginate, data: [] } payload (or a bare array), tolerating both

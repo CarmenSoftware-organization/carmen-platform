@@ -34,7 +34,7 @@ Older services return raw `response.data` everywhere and make the page do `data.
 
 Use `buildQuery(paginate, defaultSearchFields)` from `src/utils/buildQuery.ts`. It narrows `filter` (rejects arrays and `null`) and returns the query string.
 
-Existing `getAll` methods still inline `new QueryParams(...)` — migrate one only when already editing it.
+Every service uses it — there are no inlined `new QueryParams(...)` call sites left. Construct `QueryParams` directly only if you need something `buildQuery` doesn't expose, and add it to the helper instead if the need is general.
 
 ## Rules
 

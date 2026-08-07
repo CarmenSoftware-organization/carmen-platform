@@ -1,24 +1,14 @@
 import api from "./api";
-import QueryParams from "../utils/QueryParams";
+import { buildQuery } from "../utils/buildQuery";
 import type { PaginateParams, User, ApiListResponse } from "../types";
 
 const defaultSearchFields = ["username", "email"];
 
 const userService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<User>> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      defaultSearchFields,
-      typeof paginate.filter === "object" && !Array.isArray(paginate.filter)
-        ? (paginate.filter as Record<string, unknown>)
-        : {},
-      paginate.sort,
-      paginate.advance,
+    const response = await api.get(
+      `/api-system/user?${buildQuery(paginate, defaultSearchFields)}`,
     );
-    const response = await api.get(`/api-system/user?${q.toQueryString()}`);
     return response.data;
   },
 

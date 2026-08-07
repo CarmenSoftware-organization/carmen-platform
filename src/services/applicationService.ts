@@ -1,5 +1,5 @@
 import api from './api';
-import QueryParams from '../utils/QueryParams';
+import { buildQuery } from '../utils/buildQuery';
 import type { PaginateParams, Application, ApplicationWritePayload, ApiListResponse, ApiCatalogGroup, DeviceType } from '../types';
 import { groupApiNames } from '../utils/apiCatalog';
 
@@ -43,17 +43,9 @@ const isApiCatalogGroup = (g: unknown): g is ApiCatalogGroup =>
 
 const applicationService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<Application>> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      defaultSearchFields,
-      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter) ? paginate.filter as Record<string, unknown> : {},
-      paginate.sort,
-      paginate.advance,
+    const response = await api.get(
+      `/api-system/applications?${buildQuery(paginate, defaultSearchFields)}`,
     );
-    const response = await api.get(`/api-system/applications?${q.toQueryString()}`);
     return response.data;
   },
 

@@ -1,5 +1,5 @@
 import api from './api';
-import QueryParams from '../utils/QueryParams';
+import { buildQuery } from '../utils/buildQuery';
 import type { PaginateParams, ApiListResponse } from '../types';
 
 export type ReportSourceType = "view" | "function" | "procedure";
@@ -47,17 +47,9 @@ const defaultSearchFields = ['name', 'description', 'report_group'];
 
 const reportTemplateService = {
   getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<ReportTemplate>> => {
-    const q = new QueryParams(
-      paginate.page,
-      paginate.perpage,
-      paginate.search,
-      paginate.searchfields,
-      defaultSearchFields,
-      typeof paginate.filter === 'object' && !Array.isArray(paginate.filter) ? paginate.filter as Record<string, unknown> : {},
-      paginate.sort,
-      paginate.advance,
+    const response = await api.get(
+      `/api-system/report-templates?${buildQuery(paginate, defaultSearchFields)}`,
     );
-    const response = await api.get(`/api-system/report-templates?${q.toQueryString()}`);
     return response.data;
   },
 
