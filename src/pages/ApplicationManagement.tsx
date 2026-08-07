@@ -129,6 +129,11 @@ const ApplicationManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
+      // perpage:-1 — this one IS expressible as count queries (device is the
+      // 4-value DeviceType enum), but it would take six round trips to replace a
+      // single request over a registry that holds tens of rows, not thousands.
+      // Deliberately left alone; revisit if the registry ever grows or the
+      // endpoint gains a `summary` block (agent-os/standards/pages/summary-band.md).
       const data = await applicationService.getAll({ perpage: -1 });
       const raw = data.data || data;
       setSummary(summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []));

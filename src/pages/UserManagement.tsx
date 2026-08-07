@@ -179,6 +179,11 @@ const UserManagement: React.FC = () => {
     setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
+        // perpage:-1 — active/inactive/archived are already count-query shaped, but
+        // `businessUnits` is a DISTINCT count of business-unit ids across every user.
+        // A count query answers "how many rows match", never "how many distinct
+        // values" — so this needs a backend `summary` block, not a client rewrite
+        // (agent-os/standards/pages/summary-band.md).
         userService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
         userService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
       ]);

@@ -135,6 +135,11 @@ const RoleManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
+      // perpage:-1 — the active/inactive counts could come from two `perpage: 1`
+      // count queries, but `topRoles` ranks every role by permission_count and
+      // that ordering is not something the list endpoint is known to sort on.
+      // Replace this once the endpoint returns a `summary` block
+      // (agent-os/standards/pages/summary-band.md).
       const data = await roleService.getAll({ perpage: -1 });
       const raw = data.data || data;
       setSummary(summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []));

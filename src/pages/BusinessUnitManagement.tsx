@@ -121,6 +121,10 @@ const BusinessUnitManagement: React.FC = () => {
     setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
+        // perpage:-1 is not just a size judgement: `clusters` is a DISTINCT count of
+        // cluster ids across every BU, and a count query answers "how many rows match",
+        // never "how many distinct values". Needs a backend `summary` block to replace
+        // (agent-os/standards/pages/summary-band.md).
         businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
         businessUnitService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
       ]);

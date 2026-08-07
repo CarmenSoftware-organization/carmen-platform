@@ -172,6 +172,10 @@ const NewsManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
+      // perpage:-1 — the three status counts are plain count queries, and `lead`
+      // is the first row of this same published_at:desc sort. Both are only worth
+      // splitting out once the endpoint returns a `summary` block; until then one
+      // request beats four (agent-os/standards/pages/summary-band.md).
       const data = await newsService.getAll({ perpage: -1, sort: 'published_at:desc' });
       const items = data.data || data;
       setSummary(summarizeNews(Array.isArray(items) ? (items as Parameters<typeof summarizeNews>[0]) : []));
