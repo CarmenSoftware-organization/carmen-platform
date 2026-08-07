@@ -19,7 +19,33 @@ export const isValidUrl = (value: string): boolean => {
   }
 };
 
-export const validateField = (name: string, value: string): string => {
+export interface ValidateFieldOptions {
+  /** Reject an empty (or whitespace-only) value. Off by default. */
+  required?: boolean;
+  /** Human-readable field name for the required message. Defaults to 'This field'. */
+  label?: string;
+}
+
+/**
+ * Validate one field by its **name**, returning '' when valid.
+ *
+ * Without `options.required` an empty value always passes — that is the historical
+ * behaviour every existing call site relies on, so requiredness is opt-in rather than
+ * inferred. Pass `{ required: true }` instead of appending the old
+ * `|| (v.trim() === '' ? 'X is required' : '')` dance at the call site.
+ *
+ * Unknown names fall through to `''`. Add a `case` rather than validating ad hoc in a page.
+ */
+export const validateField = (
+  name: string,
+  value: string,
+  options?: ValidateFieldOptions,
+): string => {
+  if (options?.required && !value?.trim()) {
+    return `${options.label ?? 'This field'} is required`;
+  }
+  // Historical contract, unchanged for every existing call site: a falsy value passes.
+  // A whitespace-only value still falls through to the switch, as it always has.
   if (!value) return '';
 
   switch (name) {

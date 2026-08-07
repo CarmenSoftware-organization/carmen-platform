@@ -7,7 +7,14 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      include: ['src/utils/**', 'src/pages/businessUnitEdit/**'],
+      include: ['src/**'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.d.ts',
+        'src/index.tsx',
+        'src/react-app-env.d.ts',
+        'src/vite-env.d.ts',
+      ],
     },
   },
 });

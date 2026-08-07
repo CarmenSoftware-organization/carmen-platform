@@ -1,4 +1,5 @@
 import api from './api';
+import { refreshAccessToken } from './tokenRefresh';
 import type { TenantMigrationStatus, TenantMigrationDeployResult, ProgressEvent, DeploySummary } from '../types';
 
 // Tenant DB schema migrations for a single BU. Super-admin only (backend enforces
@@ -42,6 +43,12 @@ const tenantMigrationService = {
     onEvent: (e: ProgressEvent) => void,
     signal?: AbortSignal,
   ): Promise<DeploySummary> => {
+    // `fetch` skips the axios response interceptor, so this request gets no
+    // transparent 401 refresh-and-retry. Deploys run for minutes, so start on a
+    // fresh access token. Best-effort: refreshAccessToken() throws when there is
+    // no refresh token, and that must not block a stream whose current token is
+    // still valid — a genuinely dead token simply comes back as a 401 below.
+    await refreshAccessToken().catch(() => {});
     const base = api.defaults.baseURL ?? '';
     const res = await fetch(`${base}/api-system/tenant/migrations/${buId}/deploy/stream`, {
       method: 'POST',
