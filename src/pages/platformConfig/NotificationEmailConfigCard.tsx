@@ -19,12 +19,14 @@ interface NotificationEmailConfigCardProps {
 }
 
 interface NotificationEmailFormData {
+  enabled: boolean;
   recipients: string;
   cc: string;
   subject_prefix: string;
 }
 
 const DEFAULTS: NotificationEmailConfig = {
+  enabled: false,
   recipients: [],
   cc: [],
   subject_prefix: '',
@@ -46,6 +48,7 @@ const splitCsv = (raw: string): string[] =>
 const toForm = (config: PlatformConfig | null): NotificationEmailFormData => {
   const value = (config?.value ?? {}) as Partial<NotificationEmailConfig>;
   return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : DEFAULTS.enabled,
     recipients: Array.isArray(value.recipients) ? value.recipients.join(', ') : '',
     cc: Array.isArray(value.cc) ? value.cc.join(', ') : '',
     subject_prefix:
@@ -82,7 +85,10 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
    * ตรวจฝั่ง FE เพื่อ UX เท่านั้น — backend ตัดสินสุดท้ายด้วย z.string().email() เสมอ
    * รายการว่างถือว่าถูกต้อง เพราะ "ไม่ส่งถึงใครเป็นการเฉพาะ" เป็นค่าที่ใช้ได้จริง
    */
-  const validate = (name: keyof NotificationEmailFormData, value: string): string => {
+  const validate = (
+    name: Exclude<keyof NotificationEmailFormData, 'enabled'>,
+    value: string,
+  ): string => {
     if (name === 'subject_prefix') {
       return value.length > 64 ? 'ยาวเกิน 64 ตัวอักษร' : '';
     }
@@ -90,12 +96,15 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
     return bad.length > 0 ? `อีเมลไม่ถูกต้อง: ${bad.join(', ')}` : '';
   };
 
-  const handleChange = (name: keyof NotificationEmailFormData, value: string) => {
+  const handleChange = (
+    name: Exclude<keyof NotificationEmailFormData, 'enabled'>,
+    value: string,
+  ) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const handleBlur = (name: keyof NotificationEmailFormData) => {
+  const handleBlur = (name: Exclude<keyof NotificationEmailFormData, 'enabled'>) => {
     setFieldErrors((prev) => ({ ...prev, [name]: validate(name, formData[name]) }));
   };
 
@@ -118,6 +127,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
     try {
       setSaving(true);
       await platformConfigService.update('notification_email', {
+        enabled: formData.enabled,
         recipients: splitCsv(formData.recipients),
         cc: splitCsv(formData.cc),
         subject_prefix: formData.subject_prefix.trim(),
@@ -152,6 +162,31 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="notification-email-enabled">Sending</Label>
+          {isEditing ? (
+            <label className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
+              <input
+                id="notification-email-enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={formData.enabled}
+                disabled={saving}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, enabled: e.target.checked }))
+                }
+              />
+              ส่งอีเมลแจ้งเตือนภายใน
+            </label>
+          ) : (
+            <ReadOnlyText value={form.enabled ? 'เปิด' : 'ปิด'} />
+          )}
+          <p className="text-xs text-muted-foreground">
+            ปิดไว้ = ไม่ส่งอีเมลแจ้งเตือนภายในเลย (เดิมคือ env <code className="font-mono">SMTP_ENABLED</code>)
+            · ไม่กระทบอีเมลของระบบอย่างลิงก์สมัครหรือตั้งรหัสผ่านใหม่ ซึ่งส่งเสมอ
+          </p>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="notification-email-recipients">Recipients</Label>
           {isEditing ? (

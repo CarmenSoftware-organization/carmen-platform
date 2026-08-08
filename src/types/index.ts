@@ -769,6 +769,8 @@ export interface LinkConfig {
  * (หน้า Email Setting) ซึ่งเข้ารหัสรหัสผ่านและแยกโปรไฟล์ตามวัตถุประสงค์ได้
  */
 export interface NotificationEmailConfig {
+  /** สวิตช์เปิด/ปิดการส่งอีเมลแจ้งเตือนภายใน — เดิมคือ env SMTP_ENABLED ของ micro-notification */
+  enabled: boolean;
   recipients: string[];
   cc: string[];
   subject_prefix: string;
