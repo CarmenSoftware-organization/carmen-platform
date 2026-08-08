@@ -764,6 +764,17 @@ export interface LinkConfig {
 }
 
 /**
+ * ผู้รับอีเมลแจ้งเตือนภายในและคำนำหน้าหัวเรื่อง — เป็น "นโยบาย" ไม่ใช่ความลับ
+ * ค่า SMTP (host / user / password) ไม่ได้อยู่ที่นี่ มันอยู่ที่ tb_email_sender_profile
+ * (หน้า Email Setting) ซึ่งเข้ารหัสรหัสผ่านและแยกโปรไฟล์ตามวัตถุประสงค์ได้
+ */
+export interface NotificationEmailConfig {
+  recipients: string[];
+  cc: string[];
+  subject_prefix: string;
+}
+
+/**
  * หนึ่งรายการจาก /api-system/platform/configs
  * `id` เป็น null เมื่อยังไม่เคยบันทึกคีย์นี้ และ backend กำลังคืนค่าเริ่มต้นในตัวมาแทน
  */

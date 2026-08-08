@@ -8,6 +8,7 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { InvitationConfigCard } from './platformConfig/InvitationConfigCard';
 import { SignupConfigCard } from './platformConfig/SignupConfigCard';
 import { LinkConfigCard } from './platformConfig/LinkConfigCard';
+import { NotificationEmailConfigCard } from './platformConfig/NotificationEmailConfigCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -55,6 +56,7 @@ const PlatformConfigManagement: React.FC = () => {
   const signup = configs.find((c) => c.key === 'signup') ?? null;
   const emailVerification = configs.find((c) => c.key === 'email_verification') ?? null;
   const passwordReset = configs.find((c) => c.key === 'password_reset') ?? null;
+  const notificationEmail = configs.find((c) => c.key === 'notification_email') ?? null;
 
   return (
     <Layout>
@@ -121,6 +123,15 @@ const PlatformConfigManagement: React.FC = () => {
               canManage={canManage}
               isEditing={editingKey === 'password_reset'}
               onRequestEdit={() => setEditingKey('password_reset')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <NotificationEmailConfigCard
+              key={`notification_email-${notificationEmail?.updated_at ?? 'default'}`}
+              config={notificationEmail}
+              canManage={canManage}
+              isEditing={editingKey === 'notification_email'}
+              onRequestEdit={() => setEditingKey('notification_email')}
               onCancelEdit={() => setEditingKey(null)}
               onSaved={handleSaved}
             />
