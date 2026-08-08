@@ -20,10 +20,12 @@ interface SignupConfigCardProps {
 
 interface SignupFormData {
   verify_base_url: string;
+  link_expiry_hours: string;
 }
 
 const DEFAULTS: SignupConfig = {
   verify_base_url: 'http://localhost:3000/register/verify',
+  link_expiry_hours: 24,
 };
 
 /**
@@ -37,6 +39,11 @@ const toForm = (config: PlatformConfig | null): SignupFormData => {
       typeof value.verify_base_url === 'string'
         ? value.verify_base_url
         : DEFAULTS.verify_base_url,
+    link_expiry_hours: String(
+      typeof value.link_expiry_hours === 'number'
+        ? value.link_expiry_hours
+        : DEFAULTS.link_expiry_hours,
+    ),
   };
 };
 
@@ -63,23 +70,29 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
    * base URL ที่มี query string ติดมาแล้วถือว่าถูกต้อง เพราะ backend ประกอบ token ด้วย
    * searchParams.set() ไม่ใช่การต่อสตริง อย่าเพิ่มกฎห้าม query string ตรงนี้
    */
-  const validate = (value: string): string => {
-    if (!value.trim()) return 'ต้องระบุ Verify URL';
-    try {
-      new URL(value);
-      return '';
-    } catch {
-      return 'รูปแบบ URL ไม่ถูกต้อง (ต้องมี scheme เช่น https://)';
+  const validate = (name: keyof SignupFormData, value: string): string => {
+    if (name === 'verify_base_url') {
+      if (!value.trim()) return 'ต้องระบุ Verify URL';
+      try {
+        new URL(value);
+        return '';
+      } catch {
+        return 'รูปแบบ URL ไม่ถูกต้อง (ต้องมี scheme เช่น https://)';
+      }
     }
+    const n = Number(value);
+    if (!value.trim()) return 'ต้องระบุจำนวนชั่วโมง';
+    if (!Number.isInteger(n) || n < 1 || n > 720) return 'ต้องเป็นจำนวนเต็ม 1–720';
+    return '';
   };
 
-  const handleChange = (value: string) => {
-    setFormData({ verify_base_url: value });
-    setFieldErrors({});
+  const handleChange = (name: keyof SignupFormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const handleBlur = () => {
-    setFieldErrors({ verify_base_url: validate(formData.verify_base_url) });
+  const handleBlur = (name: keyof SignupFormData) => {
+    setFieldErrors((prev) => ({ ...prev, [name]: validate(name, formData[name]) }));
   };
 
   const handleCancel = () => {
@@ -89,15 +102,19 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
   };
 
   const handleSave = async () => {
-    const error = validate(formData.verify_base_url);
-    if (error) {
-      setFieldErrors({ verify_base_url: error });
+    const errors: Record<string, string> = {
+      verify_base_url: validate('verify_base_url', formData.verify_base_url),
+      link_expiry_hours: validate('link_expiry_hours', formData.link_expiry_hours),
+    };
+    if (errors.verify_base_url || errors.link_expiry_hours) {
+      setFieldErrors(errors);
       return;
     }
     try {
       setSaving(true);
       await platformConfigService.update('signup', {
         verify_base_url: formData.verify_base_url.trim(),
+        link_expiry_hours: Number(formData.link_expiry_hours),
       });
       toast.success('บันทึกการตั้งค่าการสมัครแล้ว');
       await onSaved();
@@ -136,8 +153,8 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
               <Input
                 id="signup-verify-base-url"
                 value={formData.verify_base_url}
-                onChange={(e) => handleChange(e.target.value)}
-                onBlur={handleBlur}
+                onChange={(e) => handleChange('verify_base_url', e.target.value)}
+                onBlur={() => handleBlur('verify_base_url')}
                 className={fieldErrors.verify_base_url ? 'border-destructive' : ''}
                 placeholder="https://inventory.carmen.io/register/verify"
               />
@@ -155,6 +172,29 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
             <code className="font-mono">?token=…</code> itself, so enter the page URL only, e.g.{' '}
             <code className="font-mono">https://inventory.example.com/register/verify</code>.
           </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="signup-link-expiry-hours">Expiry (hours)</Label>
+          {isEditing ? (
+            <>
+              <Input
+                id="signup-link-expiry-hours"
+                type="number"
+                min={1}
+                max={720}
+                value={formData.link_expiry_hours}
+                onChange={(e) => handleChange('link_expiry_hours', e.target.value)}
+                onBlur={() => handleBlur('link_expiry_hours')}
+                className={fieldErrors.link_expiry_hours ? 'border-destructive' : ''}
+              />
+              {fieldErrors.link_expiry_hours && (
+                <p className="text-xs text-destructive">{fieldErrors.link_expiry_hours}</p>
+              )}
+            </>
+          ) : (
+            <ReadOnlyText value={`${form.link_expiry_hours} ชั่วโมง`} />
+          )}
         </div>
 
         {isEditing && (

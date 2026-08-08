@@ -751,6 +751,16 @@ export interface InvitationConfig {
  */
 export interface SignupConfig {
   verify_base_url: string;
+  link_expiry_hours: number;
+}
+
+/**
+ * ค่าตั้งที่มีรูปร่าง "ปลายทางลิงก์ + อายุลิงก์" — ใช้กับคีย์ email_verification และ password_reset
+ * ทั้งคู่เคยเป็น env ของ micro-business ย้ายมาที่นี่เพื่อให้แก้ได้โดยไม่ต้อง deploy
+ */
+export interface LinkConfig {
+  base_url: string;
+  expiry_hours: number;
 }
 
 /**

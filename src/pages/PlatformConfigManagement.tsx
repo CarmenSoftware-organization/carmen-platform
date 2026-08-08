@@ -7,6 +7,7 @@ import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { InvitationConfigCard } from './platformConfig/InvitationConfigCard';
 import { SignupConfigCard } from './platformConfig/SignupConfigCard';
+import { LinkConfigCard } from './platformConfig/LinkConfigCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -52,6 +53,8 @@ const PlatformConfigManagement: React.FC = () => {
 
   const invitation = configs.find((c) => c.key === 'invitation') ?? null;
   const signup = configs.find((c) => c.key === 'signup') ?? null;
+  const emailVerification = configs.find((c) => c.key === 'email_verification') ?? null;
+  const passwordReset = configs.find((c) => c.key === 'password_reset') ?? null;
 
   return (
     <Layout>
@@ -90,6 +93,34 @@ const PlatformConfigManagement: React.FC = () => {
               canManage={canManage}
               isEditing={editingKey === 'signup'}
               onRequestEdit={() => setEditingKey('signup')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <LinkConfigCard
+              key={`email_verification-${emailVerification?.updated_at ?? 'default'}`}
+              configKey="email_verification"
+              title="Email Verification"
+              description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
+              urlExample="https://inventory.carmen.io/verify-email"
+              defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
+              config={emailVerification}
+              canManage={canManage}
+              isEditing={editingKey === 'email_verification'}
+              onRequestEdit={() => setEditingKey('email_verification')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <LinkConfigCard
+              key={`password_reset-${passwordReset?.updated_at ?? 'default'}`}
+              configKey="password_reset"
+              title="Password Reset"
+              description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
+              urlExample="https://inventory.carmen.io/reset-password"
+              defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
+              config={passwordReset}
+              canManage={canManage}
+              isEditing={editingKey === 'password_reset'}
+              onRequestEdit={() => setEditingKey('password_reset')}
               onCancelEdit={() => setEditingKey(null)}
               onSaved={handleSaved}
             />
