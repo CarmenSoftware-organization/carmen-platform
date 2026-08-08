@@ -746,6 +746,14 @@ export interface InvitationConfig {
 }
 
 /**
+ * ค่าตั้งของการสมัคร — ปลายทางของลิงก์ยืนยันอีเมลที่ส่งก่อนสร้างบัญชี
+ * เดิมเป็น env `SIGNUP_VERIFY_BASE_URL` ของ micro-business ย้ายมาที่นี่เพื่อให้แก้ได้โดยไม่ต้อง deploy
+ */
+export interface SignupConfig {
+  verify_base_url: string;
+}
+
+/**
  * หนึ่งรายการจาก /api-system/platform/configs
  * `id` เป็น null เมื่อยังไม่เคยบันทึกคีย์นี้ และ backend กำลังคืนค่าเริ่มต้นในตัวมาแทน
  */

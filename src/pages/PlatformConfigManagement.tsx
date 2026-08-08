@@ -6,6 +6,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { InvitationConfigCard } from './platformConfig/InvitationConfigCard';
+import { SignupConfigCard } from './platformConfig/SignupConfigCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -50,6 +51,7 @@ const PlatformConfigManagement: React.FC = () => {
   };
 
   const invitation = configs.find((c) => c.key === 'invitation') ?? null;
+  const signup = configs.find((c) => c.key === 'signup') ?? null;
 
   return (
     <Layout>
@@ -78,6 +80,16 @@ const PlatformConfigManagement: React.FC = () => {
               canManage={canManage}
               isEditing={editingKey === 'invitation'}
               onRequestEdit={() => setEditingKey('invitation')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <SignupConfigCard
+              // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+              key={`signup-${signup?.updated_at ?? 'default'}`}
+              config={signup}
+              canManage={canManage}
+              isEditing={editingKey === 'signup'}
+              onRequestEdit={() => setEditingKey('signup')}
               onCancelEdit={() => setEditingKey(null)}
               onSaved={handleSaved}
             />
