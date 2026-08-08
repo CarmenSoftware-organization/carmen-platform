@@ -21,7 +21,7 @@ describe('emailSettingService', () => {
   });
 
   it('getAll requests the email-settings endpoint with an explicit perpage', async () => {
-    const rows = [{ id: '1', purpose: 'no_reply', from_email: 'a@b.co' }];
+    const rows = [{ id: '1', name: 'No-reply', from_email: 'a@b.co' }];
     mockApi.get.mockResolvedValue({ data: { data: rows } });
     const result = await emailSettingService.getAll();
     expect(mockApi.get).toHaveBeenCalledWith(`${BASE}?perpage=20`);
@@ -67,9 +67,9 @@ describe('emailSettingService', () => {
 
   it('create posts to the collection endpoint', async () => {
     mockApi.post.mockResolvedValue({ data: { data: { id: 'new' } } });
-    await emailSettingService.create({ purpose: 'no_reply', from_email: 'a@b.co' });
+    await emailSettingService.create({ name: 'No-reply', from_email: 'a@b.co' });
     expect(mockApi.post).toHaveBeenCalledWith(BASE, {
-      purpose: 'no_reply',
+      name: 'No-reply',
       from_email: 'a@b.co',
     });
   });

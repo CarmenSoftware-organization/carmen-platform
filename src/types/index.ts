@@ -705,7 +705,27 @@ export interface TenantCurrency {
   description?: string;
 }
 
-export type EmailSenderPurpose = 'no_reply' | 'support' | 'billing';
+/**
+ * เส้นทางอีเมลที่เลือกโปรไฟล์ผู้ส่งได้ — ไม่ใช่คุณสมบัติของโปรไฟล์อีกต่อไป
+ * โปรไฟล์เป็นรายการหลักที่ตั้งชื่อได้ ส่วนการจับคู่อยู่ใน platform config คีย์ `email_routing`
+ * A mail flow that can be routed to a sender profile; profiles themselves are a named master list.
+ */
+export type EmailFlow =
+  | 'register'
+  | 'verify_email'
+  | 'invitation'
+  | 'forgot_password'
+  | 'notification';
+
+/** mapping เส้นทาง → id ของโปรไฟล์ผู้ส่ง · `default` ใช้กับ flow ที่ไม่ได้ระบุ */
+export interface EmailRoutingConfig {
+  default: string;
+  register?: string;
+  verify_email?: string;
+  invitation?: string;
+  forgot_password?: string;
+  notification?: string;
+}
 
 /**
  * Platform-wide outbound email sender profile.
@@ -715,7 +735,7 @@ export type EmailSenderPurpose = 'no_reply' | 'support' | 'billing';
 export interface EmailSetting {
   id: string;
   doc_version?: number;
-  purpose: EmailSenderPurpose;
+  name: string;
   from_email: string;
   from_name?: string | null;
   smtp_host: string;

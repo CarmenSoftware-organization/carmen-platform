@@ -14,13 +14,14 @@ import { parseApiError } from '../../utils/errorParser';
 import { validateField } from '../../utils/validation';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
-import type { EmailSenderPurpose, EmailSetting } from '../../types';
+import type { EmailSetting } from '../../types';
 
 interface EmailSettingCardProps {
-  purpose: EmailSenderPurpose;
+  /** id ของโปรไฟล์ หรือ 'new' เมื่อยังไม่ได้บันทึก — ใช้ตั้ง id ของ input ให้ไม่ชนกันข้ามการ์ด */
+  profileKey: string;
+  /** ชื่อที่ผู้ดูแลตั้ง แสดงเป็นหัวการ์ด — โปรไฟล์ไม่ผูกกับวัตถุประสงค์อีกต่อไป */
   label: string;
   description: string;
-  inUse: boolean;
   setting: EmailSetting | null;
   canManage: boolean;
   isEditing: boolean;
@@ -38,6 +39,7 @@ interface EmailSettingCardProps {
 }
 
 interface EmailSettingFormData {
+  name: string;
   from_email: string;
   from_name: string;
   smtp_host: string;
@@ -49,6 +51,7 @@ interface EmailSettingFormData {
 }
 
 const emptyForm: EmailSettingFormData = {
+  name: '',
   from_email: '',
   from_name: '',
   smtp_host: '',
@@ -62,6 +65,7 @@ const emptyForm: EmailSettingFormData = {
 const toForm = (s: EmailSetting | null): EmailSettingFormData =>
   s
     ? {
+        name: s.name ?? '',
         from_email: s.from_email ?? '',
         from_name: s.from_name ?? '',
         smtp_host: s.smtp_host ?? '',
@@ -80,10 +84,9 @@ const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
 );
 
 export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
-  purpose,
+  profileKey,
   label,
   description,
-  inUse,
   setting,
   canManage,
   isEditing,
@@ -142,6 +145,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
 
   const validateAll = (): boolean => {
     const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = 'Profile name is required';
     if (!formData.from_email.trim()) errors.from_email = 'From email is required';
     else {
       const message = validateField('from_email', formData.from_email);
@@ -160,7 +164,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
     if (!validateAll()) return;
     setSaving(true);
     const payload: Partial<EmailSetting> = {
-      purpose,
+      name: formData.name.trim(),
       from_email: formData.from_email.trim(),
       from_name: formData.from_name.trim() || null,
       smtp_host: formData.smtp_host.trim(),
@@ -239,11 +243,6 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
         <div className="min-w-0">
           <CardTitle className="text-base">{label}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          {!inUse && (
-            <p className="mt-2 text-xs text-warning">
-              ยังไม่มีระบบไหนส่งอีเมลผ่านช่องทางนี้ — ตั้งค่าไว้ล่วงหน้าได้ แต่จะยังไม่มีเมลออก
-            </p>
-          )}
         </div>
         {isNew ? (
           <Badge variant="secondary">ยังไม่ตั้งค่า</Badge>
@@ -276,9 +275,22 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
         {isEditing && canManage && (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor={`from_email_${purpose}`}>From email</Label>
+              <Label htmlFor={`name_${profileKey}`}>Profile name</Label>
               <Input
-                id={`from_email_${purpose}`}
+                id={`name_${profileKey}`}
+                value={formData.name}
+                onChange={(e) => setValue('name', e.target.value)}
+                onBlur={(e) => handleBlur('name', e.target.value)}
+                className={fieldErrors.name ? 'border-destructive' : ''}
+                placeholder="No-reply"
+              />
+              {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={`from_email_${profileKey}`}>From email</Label>
+              <Input
+                id={`from_email_${profileKey}`}
                 aria-label="From email"
                 value={formData.from_email}
                 onChange={(e) => setValue('from_email', e.target.value)}
@@ -291,9 +303,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`from_name_${purpose}`}>From name</Label>
+              <Label htmlFor={`from_name_${profileKey}`}>From name</Label>
               <Input
-                id={`from_name_${purpose}`}
+                id={`from_name_${profileKey}`}
                 aria-label="From name"
                 value={formData.from_name}
                 onChange={(e) => setValue('from_name', e.target.value)}
@@ -301,9 +313,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`smtp_host_${purpose}`}>SMTP host</Label>
+              <Label htmlFor={`smtp_host_${profileKey}`}>SMTP host</Label>
               <Input
-                id={`smtp_host_${purpose}`}
+                id={`smtp_host_${profileKey}`}
                 aria-label="SMTP host"
                 value={formData.smtp_host}
                 onChange={(e) => setValue('smtp_host', e.target.value)}
@@ -315,9 +327,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`smtp_port_${purpose}`}>SMTP port</Label>
+              <Label htmlFor={`smtp_port_${profileKey}`}>SMTP port</Label>
               <Input
-                id={`smtp_port_${purpose}`}
+                id={`smtp_port_${profileKey}`}
                 aria-label="SMTP port"
                 value={formData.smtp_port}
                 onChange={(e) => setValue('smtp_port', e.target.value)}
@@ -329,9 +341,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`smtp_username_${purpose}`}>SMTP username</Label>
+              <Label htmlFor={`smtp_username_${profileKey}`}>SMTP username</Label>
               <Input
-                id={`smtp_username_${purpose}`}
+                id={`smtp_username_${profileKey}`}
                 aria-label="SMTP username"
                 value={formData.smtp_username}
                 onChange={(e) => setValue('smtp_username', e.target.value)}
@@ -370,9 +382,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </label>
 
             <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor={`note_${purpose}`}>Note</Label>
+              <Label htmlFor={`note_${profileKey}`}>Note</Label>
               <Input
-                id={`note_${purpose}`}
+                id={`note_${profileKey}`}
                 aria-label="Note"
                 value={formData.note}
                 onChange={(e) => setValue('note', e.target.value)}
