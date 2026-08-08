@@ -196,7 +196,10 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Invite user</DialogTitle>
-          <DialogDescription>Send an invitation to join this cluster.</DialogDescription>
+          <DialogDescription>
+            Send an invitation to join this cluster. The recipient does not need a Carmen account
+            yet — the link lets them set a password and join in one step.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">

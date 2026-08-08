@@ -1,18 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmailSettingCard } from './emailSettings/EmailSettingCard';
-import { EMAIL_SENDER_PURPOSES } from '../constants/emailSenderPurposes';
+import { EmailRoutingCard } from './emailSettings/EmailRoutingCard';
 import emailSettingService from '../services/emailSettingService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
-import type { EmailSenderPurpose, EmailSetting } from '../types';
+import type { EmailSetting } from '../types';
 
 const EmailSettingManagement: React.FC = () => {
   const { hasPermission, user } = useAuth();
@@ -21,8 +23,10 @@ const EmailSettingManagement: React.FC = () => {
   const [settings, setSettings] = useState<EmailSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [editingPurpose, setEditingPurpose] = useState<EmailSenderPurpose | null>(null);
-  const [pendingSwitch, setPendingSwitch] = useState<EmailSenderPurpose | null>(null);
+  // id ของโปรไฟล์ที่กำลังแก้ · 'new' คือการ์ดโปรไฟล์ใหม่ที่ยังไม่บันทึก · 'routing' คือการ์ด mapping
+  const [editingPurpose, setEditingPurpose] = useState<string | null>(null);
+  const [addingProfile, setAddingProfile] = useState(false);
+  const [pendingSwitch, setPendingSwitch] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
   // Any open editor counts as unsaved work: the card owns the form state, so the
@@ -50,7 +54,7 @@ const EmailSettingManagement: React.FC = () => {
     void fetchAll();
   }, [fetchAll]);
 
-  const requestEdit = (purpose: EmailSenderPurpose) => {
+  const requestEdit = (purpose: string) => {
     if (editingPurpose !== null && editingPurpose !== purpose) {
       setPendingSwitch(purpose);
       return;
@@ -64,7 +68,7 @@ const EmailSettingManagement: React.FC = () => {
   // otherwise the open card remounts (see the doc_version key above) and its unsaved
   // typed edit is silently discarded with no confirm prompt. Refetch always happens:
   // a mutation anywhere genuinely changes the data every card reads from.
-  const handleSaved = async (purpose: EmailSenderPurpose, opts?: { keepEditing?: boolean }) => {
+  const handleSaved = async (purpose: string, opts?: { keepEditing?: boolean }) => {
     if (!opts?.keepEditing && editingPurpose === purpose) setEditingPurpose(null);
     await fetchAll();
   };
@@ -90,30 +94,63 @@ const EmailSettingManagement: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {EMAIL_SENDER_PURPOSES.map((meta) => {
-              const setting = settings.find((s) => s.purpose === meta.value) ?? null;
-              return (
-              <EmailSettingCard
-                // Keying on doc_version remounts the card whenever the stored row
-                // changes, which is exactly what the 409 path needs: the form resets
-                // to the freshly-fetched values while the page keeps it in edit mode.
-                key={`${meta.value}-${setting?.doc_version ?? 'new'}`}
-                purpose={meta.value}
-                label={meta.label}
-                description={meta.description}
-                inUse={meta.inUse}
-                setting={setting}
-                canManage={canManage}
-                isEditing={editingPurpose === meta.value}
-                shortcutsEnabled={pendingSwitch === null}
-                callerIdentity={user?.email ?? ''}
-                onRequestEdit={() => requestEdit(meta.value)}
-                onCancelEdit={() => setEditingPurpose(null)}
-                onSaved={(opts) => handleSaved(meta.value, opts)}
-              />
-              );
-            })}
+          <div className="space-y-4">
+            <EmailRoutingCard
+              profiles={settings}
+              canManage={canManage}
+              isEditing={editingPurpose === 'routing'}
+              onRequestEdit={() => requestEdit('routing')}
+              onCancelEdit={() => setEditingPurpose(null)}
+              onSaved={() => handleSaved('routing')}
+            />
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-muted-foreground">Sender profiles</h2>
+              {canManage && !addingProfile && (
+                <Button variant="outline" size="sm" onClick={() => { setAddingProfile(true); requestEdit('new'); }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  เพิ่มโปรไฟล์
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              {addingProfile && (
+                <EmailSettingCard
+                  key="new"
+                  profileKey="new"
+                  label="โปรไฟล์ใหม่"
+                  description="ตั้งชื่อและใส่ค่า SMTP แล้วบันทึก จากนั้นจึงเลือกใช้ในตาราง mapping ด้านบน"
+                  setting={null}
+                  canManage={canManage}
+                  isEditing={editingPurpose === 'new'}
+                  shortcutsEnabled={pendingSwitch === null}
+                  callerIdentity={user?.email ?? ''}
+                  onRequestEdit={() => requestEdit('new')}
+                  onCancelEdit={() => { setEditingPurpose(null); setAddingProfile(false); }}
+                  onSaved={() => { setAddingProfile(false); void handleSaved('new'); }}
+                />
+              )}
+              {settings.map((setting) => (
+                <EmailSettingCard
+                  // Keying on doc_version remounts the card whenever the stored row
+                  // changes, which is exactly what the 409 path needs: the form resets
+                  // to the freshly-fetched values while the page keeps it in edit mode.
+                  key={`${setting.id}-${setting.doc_version ?? 'new'}`}
+                  profileKey={setting.id}
+                  label={setting.name}
+                  description={setting.note ?? 'โปรไฟล์ผู้ส่งอีเมล'}
+                  setting={setting}
+                  canManage={canManage}
+                  isEditing={editingPurpose === setting.id}
+                  shortcutsEnabled={pendingSwitch === null}
+                  callerIdentity={user?.email ?? ''}
+                  onRequestEdit={() => requestEdit(setting.id)}
+                  onCancelEdit={() => setEditingPurpose(null)}
+                  onSaved={(opts) => handleSaved(setting.id, opts)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -27,6 +27,15 @@ vi.mock('../services/emailSettingService', () => ({
   default: { getAll: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(), sendTest: vi.fn() },
 }));
 
+// การ์ด mapping อ่าน platform config ตอน mount — mock ไว้ให้คืน routing ที่ชี้โปรไฟล์แรก
+// The routing card reads platform config on mount.
+vi.mock('../services/platformConfigService', () => ({
+  default: {
+    getByKey: vi.fn().mockResolvedValue({ key: 'email_routing', value: { default: 's1' } }),
+    update: vi.fn().mockResolvedValue({}),
+  },
+}));
+
 const svc = emailSettingService as unknown as {
   getAll: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
@@ -36,7 +45,7 @@ const svc = emailSettingService as unknown as {
 const noReply: EmailSetting = {
   id: 's1',
   doc_version: 2,
-  purpose: 'no_reply',
+  name: 'No-reply',
   from_email: 'no-reply@carmen.io',
   from_name: 'Carmen',
   smtp_host: 'smtp.sendgrid.net',
@@ -51,7 +60,7 @@ const noReply: EmailSetting = {
 const support: EmailSetting = {
   id: 's2',
   doc_version: 1,
-  purpose: 'support',
+  name: 'Support',
   from_email: 'support@carmen.io',
   from_name: 'Carmen Support',
   smtp_host: 'smtp.sendgrid.net',
@@ -77,13 +86,14 @@ describe('EmailSettingManagement', () => {
     auth.user = { email: 'admin@carmen.io' };
   });
 
-  it('renders a card for every purpose even when the API returns only one', async () => {
-    svc.getAll.mockResolvedValue({ data: [noReply] });
+  it('renders one card per stored profile, plus the routing card', async () => {
+    svc.getAll.mockResolvedValue({ data: [noReply, support] });
     renderPage();
     expect(await screen.findByText('No-reply')).toBeInTheDocument();
     expect(screen.getByText('Support')).toBeInTheDocument();
-    expect(screen.getByText('Billing')).toBeInTheDocument();
-    expect(screen.getAllByText('ยังไม่ตั้งค่า')).toHaveLength(2);
+    expect(screen.getByText('Email routing')).toBeInTheDocument();
+    // โปรไฟล์เป็นรายการหลักแล้ว — ไม่มีการ์ด "ยังไม่ตั้งค่า" ของ purpose ที่ยังไม่มีแถวอีกต่อไป
+    expect(screen.queryByText('Billing')).not.toBeInTheDocument();
   });
 
   it('shows the data but no mutating controls without the manage permission', async () => {
@@ -103,12 +113,14 @@ describe('EmailSettingManagement', () => {
 
   it('asks before abandoning unsaved edits when another card is opened', async () => {
     const user = userEvent.setup();
-    svc.getAll.mockResolvedValue({ data: [noReply] });
+    // ต้องมีสองโปรไฟล์ เพราะการ์ดที่ยังไม่ตั้งค่าไม่มีอยู่ในโมเดลใหม่แล้ว การสลับจึงเป็นการกด Edit
+    // ของอีกโปรไฟล์หนึ่ง / Two profiles: switching now means opening another profile's Edit.
+    svc.getAll.mockResolvedValue({ data: [noReply, support] });
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit' }));
+    await user.click((await screen.findAllByRole('button', { name: 'Edit' }))[0]);
     await user.clear(screen.getByLabelText('From name'));
     await user.type(screen.getByLabelText('From name'), 'changed');
-    await user.click(screen.getAllByRole('button', { name: 'ตั้งค่า' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     expect(await screen.findByText(/ทิ้งการแก้ไขที่ยังไม่บันทึก/)).toBeInTheDocument();
   });
 

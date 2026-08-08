@@ -705,7 +705,27 @@ export interface TenantCurrency {
   description?: string;
 }
 
-export type EmailSenderPurpose = 'no_reply' | 'support' | 'billing';
+/**
+ * เส้นทางอีเมลที่เลือกโปรไฟล์ผู้ส่งได้ — ไม่ใช่คุณสมบัติของโปรไฟล์อีกต่อไป
+ * โปรไฟล์เป็นรายการหลักที่ตั้งชื่อได้ ส่วนการจับคู่อยู่ใน platform config คีย์ `email_routing`
+ * A mail flow that can be routed to a sender profile; profiles themselves are a named master list.
+ */
+export type EmailFlow =
+  | 'register'
+  | 'verify_email'
+  | 'invitation'
+  | 'forgot_password'
+  | 'notification';
+
+/** mapping เส้นทาง → id ของโปรไฟล์ผู้ส่ง · `default` ใช้กับ flow ที่ไม่ได้ระบุ */
+export interface EmailRoutingConfig {
+  default: string;
+  register?: string;
+  verify_email?: string;
+  invitation?: string;
+  forgot_password?: string;
+  notification?: string;
+}
 
 /**
  * Platform-wide outbound email sender profile.
@@ -715,7 +735,7 @@ export type EmailSenderPurpose = 'no_reply' | 'support' | 'billing';
 export interface EmailSetting {
   id: string;
   doc_version?: number;
-  purpose: EmailSenderPurpose;
+  name: string;
   from_email: string;
   from_name?: string | null;
   smtp_host: string;
@@ -743,6 +763,37 @@ export interface EmailSettingTestResult {
 export interface InvitationConfig {
   base_url: string;
   expiry_days: number;
+}
+
+/**
+ * ค่าตั้งของการสมัคร — ปลายทางของลิงก์ยืนยันอีเมลที่ส่งก่อนสร้างบัญชี
+ * เดิมเป็น env `SIGNUP_VERIFY_BASE_URL` ของ micro-business ย้ายมาที่นี่เพื่อให้แก้ได้โดยไม่ต้อง deploy
+ */
+export interface SignupConfig {
+  verify_base_url: string;
+  link_expiry_hours: number;
+}
+
+/**
+ * ค่าตั้งที่มีรูปร่าง "ปลายทางลิงก์ + อายุลิงก์" — ใช้กับคีย์ email_verification และ password_reset
+ * ทั้งคู่เคยเป็น env ของ micro-business ย้ายมาที่นี่เพื่อให้แก้ได้โดยไม่ต้อง deploy
+ */
+export interface LinkConfig {
+  base_url: string;
+  expiry_hours: number;
+}
+
+/**
+ * ผู้รับอีเมลแจ้งเตือนภายในและคำนำหน้าหัวเรื่อง — เป็น "นโยบาย" ไม่ใช่ความลับ
+ * ค่า SMTP (host / user / password) ไม่ได้อยู่ที่นี่ มันอยู่ที่ tb_email_sender_profile
+ * (หน้า Email Setting) ซึ่งเข้ารหัสรหัสผ่านและแยกโปรไฟล์ตามวัตถุประสงค์ได้
+ */
+export interface NotificationEmailConfig {
+  /** สวิตช์เปิด/ปิดการส่งอีเมลแจ้งเตือนภายใน — เดิมคือ env SMTP_ENABLED ของ micro-notification */
+  enabled: boolean;
+  recipients: string[];
+  cc: string[];
+  subject_prefix: string;
 }
 
 /**

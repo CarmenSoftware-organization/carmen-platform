@@ -23,7 +23,7 @@ const svc = emailSettingService as unknown as {
 const setting: EmailSetting = {
   id: 's1',
   doc_version: 3,
-  purpose: 'no_reply',
+  name: 'no_reply',
   from_email: 'no-reply@carmen.io',
   from_name: 'Carmen',
   smtp_host: 'smtp.sendgrid.net',
@@ -36,10 +36,9 @@ const setting: EmailSetting = {
 };
 
 const baseProps = {
-  purpose: 'no_reply' as const,
+  profileKey: 'p-1',
   label: 'No-reply',
   description: 'อีเมลอัตโนมัติ',
-  inUse: true,
   canManage: true,
   isEditing: false,
   onRequestEdit: vi.fn(),
@@ -93,10 +92,6 @@ describe('EmailSettingCard', () => {
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
   });
 
-  it('warns when no system sends through this purpose yet', () => {
-    render(<EmailSettingCard {...baseProps} inUse={false} setting={null} />);
-    expect(screen.getByText(/ยังไม่มีระบบไหนส่งอีเมลผ่านช่องทางนี้/)).toBeInTheDocument();
-  });
 
   it('replaces the test button with an explanation while editing', () => {
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
@@ -173,15 +168,16 @@ describe('EmailSettingCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('creates a new profile carrying the purpose and no doc_version', async () => {
+  it('creates a new profile carrying its name and no doc_version', async () => {
     const user = userEvent.setup();
     svc.create.mockResolvedValue({ data: { id: 'new' } });
     render(<EmailSettingCard {...baseProps} isEditing setting={null} />);
+    await user.type(screen.getByLabelText('Profile name'), 'No-reply');
     await user.type(screen.getByLabelText('From email'), 'no-reply@carmen.io');
     await user.type(screen.getByLabelText('SMTP host'), 'smtp.carmen.io');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(svc.create).toHaveBeenCalled());
-    expect(svc.create.mock.calls[0][0]).toMatchObject({ purpose: 'no_reply' });
+    expect(svc.create.mock.calls[0][0]).toMatchObject({ name: 'No-reply' });
     expect(svc.create.mock.calls[0][0]).not.toHaveProperty('doc_version');
   });
 

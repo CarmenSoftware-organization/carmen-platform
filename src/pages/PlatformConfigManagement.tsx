@@ -6,6 +6,9 @@ import { Skeleton } from '../components/ui/skeleton';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { InvitationConfigCard } from './platformConfig/InvitationConfigCard';
+import { SignupConfigCard } from './platformConfig/SignupConfigCard';
+import { LinkConfigCard } from './platformConfig/LinkConfigCard';
+import { NotificationEmailConfigCard } from './platformConfig/NotificationEmailConfigCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -50,6 +53,10 @@ const PlatformConfigManagement: React.FC = () => {
   };
 
   const invitation = configs.find((c) => c.key === 'invitation') ?? null;
+  const signup = configs.find((c) => c.key === 'signup') ?? null;
+  const emailVerification = configs.find((c) => c.key === 'email_verification') ?? null;
+  const passwordReset = configs.find((c) => c.key === 'password_reset') ?? null;
+  const notificationEmail = configs.find((c) => c.key === 'notification_email') ?? null;
 
   return (
     <Layout>
@@ -78,6 +85,53 @@ const PlatformConfigManagement: React.FC = () => {
               canManage={canManage}
               isEditing={editingKey === 'invitation'}
               onRequestEdit={() => setEditingKey('invitation')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <SignupConfigCard
+              // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+              key={`signup-${signup?.updated_at ?? 'default'}`}
+              config={signup}
+              canManage={canManage}
+              isEditing={editingKey === 'signup'}
+              onRequestEdit={() => setEditingKey('signup')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <LinkConfigCard
+              key={`email_verification-${emailVerification?.updated_at ?? 'default'}`}
+              configKey="email_verification"
+              title="Email Verification"
+              description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
+              urlExample="https://inventory.carmen.io/verify-email"
+              defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
+              config={emailVerification}
+              canManage={canManage}
+              isEditing={editingKey === 'email_verification'}
+              onRequestEdit={() => setEditingKey('email_verification')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <LinkConfigCard
+              key={`password_reset-${passwordReset?.updated_at ?? 'default'}`}
+              configKey="password_reset"
+              title="Password Reset"
+              description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
+              urlExample="https://inventory.carmen.io/reset-password"
+              defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
+              config={passwordReset}
+              canManage={canManage}
+              isEditing={editingKey === 'password_reset'}
+              onRequestEdit={() => setEditingKey('password_reset')}
+              onCancelEdit={() => setEditingKey(null)}
+              onSaved={handleSaved}
+            />
+            <NotificationEmailConfigCard
+              key={`notification_email-${notificationEmail?.updated_at ?? 'default'}`}
+              config={notificationEmail}
+              canManage={canManage}
+              isEditing={editingKey === 'notification_email'}
+              onRequestEdit={() => setEditingKey('notification_email')}
               onCancelEdit={() => setEditingKey(null)}
               onSaved={handleSaved}
             />
