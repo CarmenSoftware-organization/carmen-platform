@@ -152,7 +152,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
                 onChange={(e) => handleChange('base_url', e.target.value)}
                 onBlur={() => handleBlur('base_url')}
                 className={fieldErrors.base_url ? 'border-destructive' : ''}
-                placeholder="https://app.carmen.io/invitations"
+                placeholder="https://inventory.carmen.io/invitations"
               />
               {fieldErrors.base_url && (
                 <p className="text-xs text-destructive">{fieldErrors.base_url}</p>
@@ -162,7 +162,11 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
             <ReadOnlyText value={form.base_url} />
           )}
           <p className="text-xs text-muted-foreground">
-            ระบบจะเติม <code className="font-mono">?token=…</code> ต่อท้ายให้เอง
+            Where the invitation link in the email points. This is the Carmen inventory app, not
+            this console — the recipient accepts the invitation there, and can create their account
+            from the same link without signing up first. The system appends{' '}
+            <code className="font-mono">?token=…</code> itself, so enter the page URL only, e.g.{' '}
+            <code className="font-mono">https://inventory.example.com/invitations</code>.
           </p>
         </div>
 
