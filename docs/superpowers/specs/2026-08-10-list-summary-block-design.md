@@ -324,16 +324,77 @@ subagent ให้ข้ามด้วย — static check (`tsc`, `lint`) ย�
 
 ---
 
-## 10. สิ่งที่ต้องยืนยันตอนเขียนแผน
+## 10. คำตอบของสิ่งที่ต้องยืนยัน — ตรวจแล้ว 2026-08-10
 
-1. `tb_platform_role` / `tb_application` / `tb_news` มีคอลัมน์ `deleted_at` ครบทั้งสามหรือไม่ —
-   ตารางไหนไม่มี soft-delete ให้**ตัด**ฟิลด์ `deleted` ของ entity นั้นออก อย่าส่ง `0` หลอก
-2. handler ของทั้ง 6 route เป็น `handlePaginatedResult` จริงหรือไม่ (กับดัก 5.4)
-3. `orderBy: { tb_platform_role_tb_permission: { _count: 'desc' } }` ใช้ได้กับ Prisma เวอร์ชันในโปรเจกต์
-   หรือไม่ — `permission_count` เป็นค่า computed จาก `_count` ไม่ใช่คอลัมน์
-4. list service ของ BusinessUnit / User / Application / News มีการผสม scope แบบ `mergedWhere`
-   เหมือน cluster หรือไม่ — ถ้ามี ต้องใช้ตัวหลังผสมทุกที่
-5. `news.latest.bu_count` ดึงจากความสัมพันธ์ใด และ `0` แปลว่า global จริงตามที่ FE สมมติหรือไม่
+ทั้งห้าข้อถูกปิดแล้ว และสามข้อในนั้นเปลี่ยนรูปงานเฟส 2 อย่างมีนัยสำคัญ
+
+### 10.1 `deleted_at` มีครบ แต่ `tb_news` ไม่มี `is_active`
+
+`tb_platform_role`, `tb_application`, `tb_news`, `tb_business_unit`, `tb_user` มี `deleted_at` ครบทุกตาราง
+ฟิลด์ `deleted` จึงทำได้ทั้งหมด
+
+**แต่ `tb_news` ไม่มีคอลัมน์ `is_active`** (มีแต่ `status` แบบ enum) — แกนร่วมสี่ฟิลด์ที่หัวข้อ 4.1
+วางไว้จึง**ไม่ universal จริง** News ได้แค่ `total` + `deleted` ส่วน `active`/`inactive` ต้องตัดออก
+แล้วใช้ `draft`/`published`/`archived` ที่หัวข้อ 4.2 ระบุไว้แทน
+
+ผลต่อการออกแบบ: helper ร่วมต้องคืน `active`/`inactive` แบบ optional หรือแยกเป็นสองฟังก์ชัน —
+อย่าบังคับให้ News ส่ง `active: 0` ซึ่งอ่านได้ว่า "ไม่มีข่าวที่เปิดใช้งาน" ทั้งที่ความจริงคือ
+"คอนเซปต์นี้ไม่มีอยู่"
+
+### 10.2 สอง entity ใช้ `handleResult` — กับดัก 5.4 เกิดขึ้นจริง
+
+| entity | handler | ผล |
+|---|---|---|
+| BusinessUnit | `handlePaginatedResult` (`business-unit.controller.ts:127`) | ✅ ท่อพร้อม |
+| User | `handlePaginatedResult` (`user.controller.ts:36`) | ✅ ท่อพร้อม |
+| Role | `handlePaginatedResult` (`platform_role.controller.ts:54`) | ✅ ท่อพร้อม |
+| **Application** | **`handleResult`** (`application.controller.ts:48`) | ⚠️ payload ทั้งก้อนอยู่ใต้ `response.data` |
+| **News** | **`handleResult`** (`news.controller.ts:59`) | ⚠️ payload ทั้งก้อนอยู่ใต้ `response.data` |
+
+สองตัวนี้ต้องเลือกอย่างใดอย่างหนึ่ง — เปลี่ยนมาใช้ `handlePaginatedResult` (แต่จะเปลี่ยนรูป
+response ที่ gateway อ่านอยู่ ต้องแก้ gateway service คู่กัน) หรืออ่าน `summary` จาก
+`response.data.summary` ที่ gateway แทน **ห้ามลอกโค้ด gateway ของ cluster มาตรง ๆ**
+เพราะมันอ่าน `response.summary` ระดับบนสุด ซึ่งจะได้ `undefined` เงียบ ๆ
+
+### 10.3 `orderBy` ด้วย `_count` — Prisma รองรับ แต่ repo นี้ไม่เคยใช้เลย
+
+Prisma 7.9.1 รองรับ `orderBy: { <relation>: { _count: 'desc' } }` ตามเอกสาร แต่ทั้ง repo
+มี **0 การใช้งาน** และ `permission_count` ทุกวันนี้มาจาก `_count` ใน `select` แล้วแมปใน JS
+(`platform_role.service.ts:121`) จึงเป็นของที่ต้องพิสูจน์ในขั้นตอนแรกของ task นั้น
+ไม่ใช่สมมติว่าใช้ได้ — ถ้าไม่ได้ ทางถอยคือ `findMany` เอา `_count` มาแล้วเรียงใน JS
+ซึ่ง role มีจำนวนน้อยโดยโครงสร้างอยู่แล้ว
+
+### 10.4 scope ต่างกันสี่แบบ — ห้ามเหมาว่าเหมือน cluster
+
+| entity | scope | หมายเหตุ |
+|---|---|---|
+| Cluster | `platformScope.clusterScopeFor(userId, 'cluster.read')` | ผสมเป็น `mergedWhere` |
+| BusinessUnit | `clusterAdminAuthz.readableClusterScope(user_id)` | **คนละ service** |
+| User | `platformScope.clusterScopeFor(userId, 'user.read')` | **คนละ permission** |
+| Application | **ไม่มี scope เลย** | |
+| News | **ไม่มี scope เลย** | |
+
+สองอย่างที่ต้องระวังเป็นพิเศษ:
+
+- **BusinessUnit ซ้อน `deleted_at` ไว้ใน `AND[0]` เมื่อ scope ไม่ใช่ all** —
+  `where = { AND: [baseWhere, { cluster_id: { in: ... } }] }` โดย `baseWhere` เป็นตัวที่ถือ
+  `deleted_at: null` (`business-unit.service.ts:577-580`) **`stripSoftDelete` ที่ตัดแค่ระดับบนสุด
+  จะใช้ไม่ได้** และ `deleted` จะอ่านได้ 0 เสมอสำหรับผู้เรียกที่ scope แคบ — ข้อจำกัดที่หัวข้อ 5
+  ของ helper เขียนเตือนไว้ กลายเป็นบั๊กจริงทันทีที่ลอกมาใช้ ต้องเปลี่ยนวิธี: ให้ service
+  ส่ง `where` **ก่อน**ผสม `deleted_at` เข้ามาแทนการตัดทีหลัง
+- **User mutate `where` ในที่** แล้วต่อ `AND` เป็นชั้น ๆ และมี "third gate" ที่กรอง
+  account ที่ยังไม่ยืนยันอีเมลออกเสมอ (`user.service.ts:113`) summary ต้องใช้ `where`
+  **หลัง**ผ่านทุกด่าน ไม่ใช่ตัวที่ได้จาก `q.findMany()`
+
+### 10.5 `news.business_unit_ids` เป็น JSONB ไม่ใช่ relation
+
+```prisma
+business_unit_ids Json @default("[]") @db.JsonB
+```
+
+`tb_news` **ไม่มี relation ไปยัง `tb_business_unit`** เลย `bu_count` จึงนับด้วย Prisma `_count`
+ไม่ได้ ต้องอ่านค่า JSON ของบทความนั้นแล้วนับความยาว array ซึ่งไม่เป็นปัญหาเพราะ `latest`
+เป็น `take: 1` อยู่แล้ว และ `[]` = ไม่เจาะจง BU = global ตามที่ FE สมมติไว้จริง
 
 ---
 
@@ -346,8 +407,16 @@ entity เป็นอิสระต่อกันและใช้ pattern �
 near_limit, และเป็นตัวเดียวที่มี `mergedWhere` ยืนยันแล้วว่าผสม scope) เมื่อมันผ่านครบทั้งเส้น
 ตั้งแต่ Prisma ถึง band บนหน้าจอ อีก 5 ตัวจะเหลือแค่งานลอกแบบ
 
-ลำดับที่เหลือเรียงตามความยากลง: User (DISTINCT + newest) → News (status counts + latest) →
-Application (devices histogram) → BusinessUnit (DISTINCT ล้วน) → Role (top_roles)
+ลำดับที่เหลือ **แก้ใหม่หลังปิดคำถามหัวข้อ 10** — เรียงตามความเสี่ยงที่ค้นพบ ไม่ใช่ตามความซับซ้อน
+ของ aggregate อย่างที่ร่างไว้ตอนแรก:
+
+1. **BusinessUnit** — มี scope และเป็นตัวที่ `stripSoftDelete` ใช้ไม่ได้ (10.4) ต้องแก้สัญญาของ
+   helper ก่อน entity อื่นจะลอกไปใช้ผิด ๆ
+2. **User** — มี scope คนละ permission + `where` ถูก mutate + มี third gate (10.4)
+3. **Role** — ไม่มี scope แต่ต้องพิสูจน์ `orderBy _count` ซึ่ง repo ไม่เคยใช้ (10.3)
+4. **Application** — ไม่มี scope แต่ใช้ `handleResult` ต้องแก้ท่อ (10.2)
+5. **News** — ไม่มี scope แต่ชนสองข้อพร้อมกัน: `handleResult` (10.2) และไม่มี `is_active`
+   ทำให้แกนร่วมสี่ฟิลด์ใช้ไม่ได้ (10.1) ทำท้ายสุดเมื่อรูปของ helper นิ่งแล้ว
 
 ## 12. นอกขอบเขต
 
