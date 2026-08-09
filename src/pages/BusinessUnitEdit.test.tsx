@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 
@@ -160,7 +160,12 @@ describe('BusinessUnitEdit (one-document)', () => {
     // REGRESSION (finding #1): a successful create must land on the registered
     // `/business-units/:id/edit` route, not the unregistered `/business-units/:id`
     // — the latter falls through App.tsx's catch-all straight to the 404 page.
-    expect(await screen.findByTestId('pathname')).toHaveTextContent('/business-units/bu9/edit');
+    // waitFor, not findByTestId: the probe is on screen from the first render, so
+    // findBy resolves instantly against the pre-navigation pathname. React Router 7
+    // wraps navigation in React.startTransition, so the location lands a tick later.
+    await waitFor(() =>
+      expect(screen.getByTestId('pathname')).toHaveTextContent('/business-units/bu9/edit'),
+    );
   });
 });
 

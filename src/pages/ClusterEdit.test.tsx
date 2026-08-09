@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
@@ -134,7 +134,12 @@ describe('ClusterEdit — create navigates to the new cluster\'s edit route', ()
     await user.type(screen.getByPlaceholderText('Cluster name'), 'New Cluster');
     await user.click(screen.getByRole('button', { name: /create cluster/i }));
 
-    expect(await screen.findByTestId('pathname')).toHaveTextContent('/clusters/c9/edit');
+    // waitFor, not findByTestId: the probe is on screen from the first render, so
+    // findBy resolves instantly against the pre-navigation pathname. React Router 7
+    // wraps navigation in React.startTransition, so the location lands a tick later.
+    await waitFor(() =>
+      expect(screen.getByTestId('pathname')).toHaveTextContent('/clusters/c9/edit'),
+    );
   });
 });
 
