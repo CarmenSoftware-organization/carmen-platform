@@ -133,9 +133,15 @@ export const ConfigCardShell: React.FC<ConfigCardShellProps> = ({
   </Card>
 );
 
-/** ช่องอ่านอย่างเดียวของฟอร์ม config — เดิมประกาศซ้ำในทุกการ์ด */
+/**
+ * ช่องอ่านอย่างเดียวของฟอร์ม config — เดิมประกาศซ้ำในทุกการ์ด
+ *
+ * min-h-9 ไม่ใช่ h-9: NotificationEmailConfigCard ใช้ min-h-9 อยู่เดิมเพราะช่อง Recipients/CC
+ * เป็นรายการอีเมลที่ wrap ได้หลายบรรทัด ส่วนอีกสามการ์ดใช้ h-9 — min-h-9 ให้ผลเท่ากันเมื่อ
+ * เนื้อหาอยู่บรรทัดเดียว จึงครอบทั้งสี่การ์ดได้โดยไม่มีใครเปลี่ยนหน้าตา
+ */
 export const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
+  <div className="flex min-h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
     {value || '-'}
   </div>
 );
