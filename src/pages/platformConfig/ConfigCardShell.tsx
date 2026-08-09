@@ -73,7 +73,7 @@ export const ConfigCardShell: React.FC<ConfigCardShellProps> = ({
 
 /** ช่องอ่านอย่างเดียวของฟอร์ม config — เดิมประกาศซ้ำในทุกการ์ด */
 export const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
+  <div className="flex min-h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
     {value || '-'}
   </div>
 );
