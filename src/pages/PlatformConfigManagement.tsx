@@ -83,78 +83,110 @@ const PlatformConfigManagement: React.FC = () => {
             </CardContent>
           </Card>
         ) : loading ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Skeleton className="h-56 w-full" />
+          <div className="space-y-6">
+            {[
+              { heading: 'Email links & lifetimes', cards: 4 },
+              { heading: 'Invitation limits', cards: 1 },
+              { heading: 'Notifications', cards: 1 },
+            ].map((section) => (
+              <div key={section.heading} className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted-foreground">{section.heading}</h2>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {Array.from({ length: section.cards }).map((_, i) => (
+                    <Skeleton key={i} className="h-56 w-full" />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <InvitationConfigCard
-              // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-              key={`invitation-${invitation?.updated_at ?? 'default'}`}
-              config={invitation}
-              canManage={canManage}
-              isEditing={editingCard === 'invitation'}
-              onRequestEdit={() => setEditingCard('invitation')}
-              onCancelEdit={() => setEditingCard(null)}
-              onSaved={handleSaved}
-            />
-            <InvitationLimitsCard
-              // remount เมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-              key={`invitation-limits-${invitation?.updated_at ?? 'default'}`}
-              config={invitation}
-              canManage={canManage}
-              isEditing={editingCard === 'invitation_limits'}
-              onRequestEdit={() => setEditingCard('invitation_limits')}
-              onCancelEdit={() => setEditingCard(null)}
-              onSaved={handleSaved}
-            />
-            <SignupConfigCard
-              // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-              key={`signup-${signup?.updated_at ?? 'default'}`}
-              config={signup}
-              canManage={canManage}
-              isEditing={editingCard === 'signup'}
-              onRequestEdit={() => setEditingCard('signup')}
-              onCancelEdit={() => setEditingCard(null)}
-              onSaved={handleSaved}
-            />
-            <LinkConfigCard
-              key={`email_verification-${emailVerification?.updated_at ?? 'default'}`}
-              configKey="email_verification"
-              title="Email Verification"
-              description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
-              urlExample="https://inventory.carmen.io/verify-email"
-              defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
-              config={emailVerification}
-              canManage={canManage}
-              isEditing={editingCard === 'email_verification'}
-              onRequestEdit={() => setEditingCard('email_verification')}
-              onCancelEdit={() => setEditingCard(null)}
-              onSaved={handleSaved}
-            />
-            <LinkConfigCard
-              key={`password_reset-${passwordReset?.updated_at ?? 'default'}`}
-              configKey="password_reset"
-              title="Password Reset"
-              description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
-              urlExample="https://inventory.carmen.io/reset-password"
-              defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
-              config={passwordReset}
-              canManage={canManage}
-              isEditing={editingCard === 'password_reset'}
-              onRequestEdit={() => setEditingCard('password_reset')}
-              onCancelEdit={() => setEditingCard(null)}
-              onSaved={handleSaved}
-            />
-            <NotificationEmailConfigCard
-              key={`notification_email-${notificationEmail?.updated_at ?? 'default'}`}
-              config={notificationEmail}
-              canManage={canManage}
-              isEditing={editingCard === 'notification_email'}
-              onRequestEdit={() => setEditingCard('notification_email')}
-              onCancelEdit={() => setEditingCard(null)}
-              onSaved={handleSaved}
-            />
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">
+                Email links &amp; lifetimes
+              </h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <InvitationConfigCard
+                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                  key={`invitation-${invitation?.updated_at ?? 'default'}`}
+                  config={invitation}
+                  canManage={canManage}
+                  isEditing={editingCard === 'invitation'}
+                  onRequestEdit={() => setEditingCard('invitation')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+                <SignupConfigCard
+                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                  key={`signup-${signup?.updated_at ?? 'default'}`}
+                  config={signup}
+                  canManage={canManage}
+                  isEditing={editingCard === 'signup'}
+                  onRequestEdit={() => setEditingCard('signup')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+                <LinkConfigCard
+                  key={`email_verification-${emailVerification?.updated_at ?? 'default'}`}
+                  configKey="email_verification"
+                  title="Email Verification"
+                  description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
+                  urlExample="https://inventory.carmen.io/verify-email"
+                  defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
+                  config={emailVerification}
+                  canManage={canManage}
+                  isEditing={editingCard === 'email_verification'}
+                  onRequestEdit={() => setEditingCard('email_verification')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+                <LinkConfigCard
+                  key={`password_reset-${passwordReset?.updated_at ?? 'default'}`}
+                  configKey="password_reset"
+                  title="Password Reset"
+                  description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
+                  urlExample="https://inventory.carmen.io/reset-password"
+                  defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
+                  config={passwordReset}
+                  canManage={canManage}
+                  isEditing={editingCard === 'password_reset'}
+                  onRequestEdit={() => setEditingCard('password_reset')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">Invitation limits</h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <InvitationLimitsCard
+                  // remount เมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                  key={`invitation-limits-${invitation?.updated_at ?? 'default'}`}
+                  config={invitation}
+                  canManage={canManage}
+                  isEditing={editingCard === 'invitation_limits'}
+                  onRequestEdit={() => setEditingCard('invitation_limits')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">Notifications</h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <NotificationEmailConfigCard
+                  key={`notification_email-${notificationEmail?.updated_at ?? 'default'}`}
+                  config={notificationEmail}
+                  canManage={canManage}
+                  isEditing={editingCard === 'notification_email'}
+                  onRequestEdit={() => setEditingCard('notification_email')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
