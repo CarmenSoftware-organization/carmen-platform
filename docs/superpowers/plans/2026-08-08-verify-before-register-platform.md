@@ -125,14 +125,28 @@ placeholder ของ input เปลี่ยนเป็น `https://inventory
 bun run typecheck && bun run lint && bun run test
 ```
 
-- [ ] **Step 4: ตรวจในเบราว์เซอร์** — ยังไม่ได้ทำ ต้องใช้บัญชี platform admin
+- [x] **Step 4: ตรวจในเบราว์เซอร์** — ผ่านแล้ว 2026-08-09 ด้วยบัญชี platform admin
 
 เปิด Platform Config → การ์ด Invitation → อ่านข้อความใหม่ · ตรวจว่าฟิลด์ยังบันทึกได้ตามปกติ (ค่าเดิมไม่
 ถูกแก้โดยการ deploy นี้ — การเปลี่ยนค่าจริงเป็นงาน operational ใน checklist ท้ายแผน)
 
-> **ค้างอยู่ (2026-08-09):** ลองเปิด `/platform/configs` บน dev server แล้ว แต่บัญชีที่ล็อกอินอยู่เป็น
-> cluster admin จึงถูก view isolation เด้งไป `/cluster-admin/:id/cluster` — ต้องล็อกอินด้วยบัญชี
-> platform admin จึงจะเห็นการ์ดนี้ ส่วนข้อความใน Invite dialog ของ Task 1 ตรวจในเบราว์เซอร์แล้วผ่าน
+> **เคยค้างเพราะบัญชี:** cluster admin ถูก view isolation เด้งไป `/cluster-admin/:id/cluster`
+> เข้าหน้านี้ไม่ได้เลย ต้องเป็น platform admin เท่านั้น — ยืนยันซ้ำอีกครั้งตอนตรวจ
+
+**ผลจริง 2026-08-09 (dev server `localhost:3304` ชี้ gateway `localhost:4000`):**
+
+- ข้อความ helper แสดงครบทั้งสองสิ่งที่ห้ามขาด — "This is the Carmen inventory app, not this console"
+  และ "The system appends `?token=…` itself, so enter the page URL only" · `placeholder` ของช่อง
+  Base URL เป็น `https://inventory.carmen.io/invitations` ตามที่ Task 2 Step 2 ตั้งใจ
+- Edit → เปลี่ยน `Expiry (days)` 7 → 10 → Save ได้ **`PATCH …/configs/invitation` → 200**
+  แล้วเปลี่ยนกลับเป็น 7 ด้วยวิธีเดียวกัน ค่าสุดท้ายตรงกับค่าเดิมทุกฟิลด์
+- GET หลังบันทึกยืนยันว่า `max_per_admin_per_hour: 100` / `max_per_cluster_per_day: 500`
+  **ไม่ถูกล้าง** ทั้งที่การ์ดไม่ได้ส่งสองค่านี้ — ผลของการที่ PR #87 ย้ายไปใช้ `patch()`
+  (ถ้ายังเป็น `update()` = PUT full-replace จะได้ 422 จาก backend PR #319)
+- **ยืนยันงาน operational ที่ยังค้าง:** ค่า `base_url` บนฐาน dev ยังเป็น
+  `http://localhost:3000/invitations` และไม่มีอะไรฟังพอร์ต 3000 แล้ว (การ์ด Sign-up /
+  Email Verification / Password Reset ก็ชี้ localhost:3000 เหมือนกันทั้งหมด) — ผู้ใช้สั่งไว้ว่า
+  ยังไม่ต้องแก้ค่าในรอบนี้
 
 - [x] **Step 5: Commit** — ไม่มี commit แยก
 
