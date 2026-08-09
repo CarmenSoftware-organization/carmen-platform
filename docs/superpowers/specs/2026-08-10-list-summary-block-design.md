@@ -256,9 +256,15 @@ aggregate ที่ล้มจึงไม่มีวันทำให้ต�
 หรือ aggregate พัง ทั้งสองกรณี band แสดง headline ที่คำนวณเองได้จาก `paginate.total`
 ตามที่ `summary-band.md:16` กำหนดไว้แล้ว — ไม่ต้องมี error state แยก
 
-**ผลที่ตามมา:** prop `{ summary, loading, error, onRetry }` ของทั้ง 7 component ไม่เปลี่ยนรูป
-แต่ความหมายเปลี่ยน — `loading` / `error` / `onRetry` ผูกกับการโหลด **ตาราง** แทนการโหลด band
-และ state slot `summaryLoading` / `summaryError` กลายเป็นของตายที่ต้องลบ
+**ผลที่ตามมา:** prop ของ component ไม่เปลี่ยนรูป แต่ความหมายเปลี่ยน — `loading` / `error` /
+`onRetry` ผูกกับการโหลด **ตาราง** แทนการโหลด band และ state slot `summaryLoading` /
+`summaryError` กลายเป็นของตายที่ต้องลบ
+
+**ข้อยกเว้น: `FleetCapacity` ไม่ได้ใช้ contract 4 prop นั้น** — มันรับแค่ `{ summary, loading }`
+ไม่มี `error` / `onRetry` เลย และ `ClusterManagement` ตั้งชื่อ state ว่า `fleet` / `fleetLoading`
+ไม่ใช่ `summary*` (`ClusterManagement.tsx:431`) มาตรฐาน `summary-band.md:55` ที่เขียนว่า
+*"Props are always `{ summary, loading, error, onRetry }`"* จึงผิดมาตั้งแต่ต้น — component
+ที่ทำตามจริงมี 6 ตัว ไม่ใช่ 7 ต้องแก้ประโยคนั้นด้วย
 
 ต้องแก้หัวข้อ "Page wiring" ใน `summary-band.md` ทั้งหัวข้อ
 
