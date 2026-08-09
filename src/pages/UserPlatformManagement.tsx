@@ -55,7 +55,9 @@ const UserPlatformManagement: React.FC = () => {
 
   const [rows, setRows] = useState<PlatformUserRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
-  // Registry-wide aggregate from the endpoint's `summary` block. Stays `null` until the
+  // Filter-consistent aggregate from the endpoint's `summary` block — it counts every row
+  // matching the active `advance`/`search`, NOT the whole registry, so it changes when a
+  // filter changes. Stays `null` until the
   // backend for this change deploys — see PlatformAccessSummary for why the breakdown and
   // inactive warning render an explicit "unavailable" state (never a page-derived guess)
   // in that case. `totalRows` is passed alongside as `fallbackHolderTotal` so the headline
