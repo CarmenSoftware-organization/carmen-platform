@@ -137,6 +137,15 @@ const RoleEdit: React.FC = () => {
       .catch((err: unknown) => {
         setCatalogFailed(true);
         devLog('Failed to load permission catalog:', err);
+        // 403 ที่นี่แปลว่าบัญชีนี้ไม่มี rbac.read ซึ่ง backend เพิ่งเริ่มบังคับ (PR #320)
+        // แยกออกมาเพราะผู้ใช้แก้ชื่อ/สถานะ role ต่อได้ ต่างจาก error อื่นที่เป็นความผิดพลาดชั่วคราว
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 403) {
+          toast.error('ไม่มีสิทธิ์ rbac.read จึงโหลดรายการสิทธิ์ไม่ได้', {
+            description: 'แก้ชื่อและสถานะของ role ได้ตามปกติ แต่เลือกสิทธิ์ไม่ได้',
+          });
+          return;
+        }
         const { message } = parseApiError(err);
         toast.error('Failed to load permission catalog: ' + message);
       })
