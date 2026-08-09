@@ -763,6 +763,13 @@ export interface EmailSettingTestResult {
 export interface InvitationConfig {
   base_url: string;
   expiry_days: number;
+  /**
+   * เพดานคำเชิญต่อผู้ดูแลหนึ่งคนต่อชั่วโมง (backend default 100)
+   * optional เพราะแถวที่บันทึกก่อน backend PR #318 ไม่มีฟิลด์นี้
+   */
+  max_per_admin_per_hour?: number;
+  /** เพดานคำเชิญต่อ cluster ต่อวัน (backend default 500) */
+  max_per_cluster_per_day?: number;
 }
 
 /**

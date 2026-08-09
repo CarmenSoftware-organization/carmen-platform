@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Pencil, Save, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { LinkConfig, PlatformConfig } from '../../types';
@@ -30,12 +28,6 @@ interface LinkFormData {
   base_url: string;
   expiry_hours: string;
 }
-
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
-    {value || '-'}
-  </div>
-);
 
 /**
  * การ์ดของค่าตั้งที่มีรูปร่าง "ปลายทางลิงก์ + อายุลิงก์" — ใช้ร่วมกันหลายคีย์
@@ -121,7 +113,10 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
     }
     try {
       setSaving(true);
-      await platformConfigService.update(configKey, {
+      // PATCH ไม่ใช่ PUT: หลัง backend PR #319 การส่งไม่ครบทุกฟิลด์ของ schema ตอบ 422
+      // การ์ดนี้แสดงครบทั้ง 2 ฟิลด์ในวันนี้ แต่ PATCH ทำให้วันที่ backend เติมฟิลด์ที่ 3
+      // เข้า schema การ์ดนี้ยังบันทึกได้ตามเดิมแทนที่จะพังทันที
+      await platformConfigService.patch(configKey, {
         base_url: formData.base_url.trim(),
         expiry_hours: Number(formData.expiry_hours),
       });
@@ -139,20 +134,16 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
   const form = toForm(config);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="min-w-0">
-          <CardTitle className="text-base">{title}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        {canManage && !isEditing && (
-          <Button variant="outline" size="sm" onClick={onRequestEdit}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <ConfigCardShell
+      title={title}
+      description={description}
+      canManage={canManage}
+      isEditing={isEditing}
+      saving={saving}
+      onRequestEdit={onRequestEdit}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    >
         <div className="space-y-2">
           <Label htmlFor={`${configKey}-base-url`}>Base URL</Label>
           {isEditing ? (
@@ -201,24 +192,6 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
             <ReadOnlyText value={`${form.expiry_hours} ชั่วโมง`} />
           )}
         </div>
-
-        {isEditing && (
-          <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button variant="outline" onClick={handleCancel} disabled={saving}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    </ConfigCardShell>
   );
 };

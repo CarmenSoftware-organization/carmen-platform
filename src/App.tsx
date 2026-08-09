@@ -284,7 +284,7 @@ function AppContent() {
             <Route
               path="/platform/permissions"
               element={
-                <PrivateRoute requiredPermission="role.read">
+                <PrivateRoute requiredPermission="rbac.read">
                   <PermissionCatalog />
                 </PrivateRoute>
               }

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Pencil, Save, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { InvitationConfig, PlatformConfig } from '../../types';
@@ -23,10 +22,7 @@ interface InvitationFormData {
   expiry_days: string;
 }
 
-const DEFAULTS: InvitationConfig = {
-  base_url: 'http://localhost:3000/invitations',
-  expiry_days: 7,
-};
+const DEFAULTS = INVITATION_CONFIG_DEFAULTS;
 
 /**
  * แปลงค่าดิบจาก API เป็นค่าในฟอร์ม — ค่าที่ backend คืนมาผ่าน Zod แล้วเสมอ
@@ -41,12 +37,6 @@ const toForm = (config: PlatformConfig | null): InvitationFormData => {
     ),
   };
 };
-
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
-    {value || '-'}
-  </div>
-);
 
 export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
   config,
@@ -108,9 +98,9 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
     }
     try {
       setSaving(true);
-      // patch ไม่ใช่ update: schema ของคีย์ invitation ยังมี max_per_admin_per_hour และ
-      // max_per_cluster_per_day ที่การ์ดนี้ไม่ได้แสดงและแก้ไม่ได้ การส่งด้วย update() ซึ่งเป็น
-      // full replace จะเขียนทับสองค่านั้นด้วยค่าที่การ์ดไม่รู้จัก
+      // patch ไม่ใช่ update: การ์ด Rate limits แก้ max_per_admin_per_hour /
+      // max_per_cluster_per_day ของคีย์เดียวกันนี้อยู่คนละใบ การส่งด้วย update()
+      // ซึ่งเป็น full replace จะเขียนทับค่าที่การ์ดนี้ไม่ได้แสดง
       await platformConfigService.patch('invitation', {
         base_url: formData.base_url.trim(),
         expiry_days: Number(formData.expiry_days),
@@ -129,22 +119,16 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
   const form = toForm(config);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="min-w-0">
-          <CardTitle className="text-base">Invitation</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            ลิงก์ปลายทางและอายุของคำเชิญเข้าคลัสเตอร์
-          </p>
-        </div>
-        {canManage && !isEditing && (
-          <Button variant="outline" size="sm" onClick={onRequestEdit}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <ConfigCardShell
+      title="Invitation"
+      description="ลิงก์ปลายทางและอายุของคำเชิญเข้าคลัสเตอร์"
+      canManage={canManage}
+      isEditing={isEditing}
+      saving={saving}
+      onRequestEdit={onRequestEdit}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    >
         <div className="space-y-2">
           <Label htmlFor="invitation-base-url">Base URL</Label>
           {isEditing ? (
@@ -195,24 +179,6 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
             <ReadOnlyText value={`${form.expiry_days} วัน`} />
           )}
         </div>
-
-        {isEditing && (
-          <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button variant="outline" onClick={handleCancel} disabled={saving}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    </ConfigCardShell>
   );
 };

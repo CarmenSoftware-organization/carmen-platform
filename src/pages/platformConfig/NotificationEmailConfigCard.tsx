@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Pencil, Save, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { NotificationEmailConfig, PlatformConfig } from '../../types';
@@ -55,12 +53,6 @@ const toForm = (config: PlatformConfig | null): NotificationEmailFormData => {
       typeof value.subject_prefix === 'string' ? value.subject_prefix : DEFAULTS.subject_prefix,
   };
 };
-
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex min-h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
-    {value || '-'}
-  </div>
-);
 
 /**
  * การ์ดตั้งค่าว่าอีเมลแจ้งเตือนภายใน (รายงาน / การแจ้งเตือนระดับหน่วยธุรกิจ) ส่งถึงใคร
@@ -126,7 +118,10 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
     }
     try {
       setSaving(true);
-      await platformConfigService.update('notification_email', {
+      // PATCH ไม่ใช่ PUT: หลัง backend PR #319 การส่งไม่ครบทุกฟิลด์ของ schema ตอบ 422
+      // การ์ดนี้แสดงครบทั้ง 4 ฟิลด์ในวันนี้ แต่ PATCH ทำให้วันที่ backend เติมฟิลด์ที่ 5
+      // เข้า schema การ์ดนี้ยังบันทึกได้ตามเดิมแทนที่จะพังทันที
+      await platformConfigService.patch('notification_email', {
         enabled: formData.enabled,
         recipients: splitCsv(formData.recipients),
         cc: splitCsv(formData.cc),
@@ -146,22 +141,16 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
   const form = toForm(config);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="min-w-0">
-          <CardTitle className="text-base">Notification Email</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            ผู้รับอีเมลแจ้งเตือนภายใน (รายงาน / การแจ้งเตือนระดับหน่วยธุรกิจ)
-          </p>
-        </div>
-        {canManage && !isEditing && (
-          <Button variant="outline" size="sm" onClick={onRequestEdit}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <ConfigCardShell
+      title="Notification Email"
+      description="ผู้รับอีเมลแจ้งเตือนภายใน (รายงาน / การแจ้งเตือนระดับหน่วยธุรกิจ)"
+      canManage={canManage}
+      isEditing={isEditing}
+      saving={saving}
+      onRequestEdit={onRequestEdit}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    >
         <div className="space-y-2">
           <Label htmlFor="notification-email-enabled">Sending</Label>
           {isEditing ? (
@@ -255,24 +244,6 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
             รหัสผ่าน) ไม่ได้อยู่ที่นี่ — ตั้งที่หน้า Email Setting
           </p>
         </div>
-
-        {isEditing && (
-          <div className="flex gap-3 pt-2">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button variant="outline" onClick={handleCancel} disabled={saving}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    </ConfigCardShell>
   );
 };

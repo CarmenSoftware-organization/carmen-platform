@@ -358,14 +358,16 @@ const RoleManagement: React.FC = () => {
           subtitle="Manage platform roles and their permissions"
           actions={
             <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/platform/permissions')}
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                Permission Catalog
-              </Button>
+              <Can permission="rbac.read">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/platform/permissions')}
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Permission Catalog
+                </Button>
+              </Can>
               <Button
                 variant="outline"
                 size="sm"
