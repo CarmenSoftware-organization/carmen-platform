@@ -67,7 +67,7 @@
 **ทำไมต้องทำก่อน:** ทั้งสองที่ผิด**อยู่แล้ววันนี้** ไม่เกี่ยวกับงานที่กำลังจะทำ — `buildRegistrySummary`
 ที่ deploy อยู่คำนวณจากชุดที่ผ่าน `advance`/`search` แล้ว แต่เอกสารบอกว่าไม่สนใจ filter
 
-- [ ] **Step 1: แก้ประโยค semantics ใน `summary-band.md`**
+- [x] **Step 1: แก้ประโยค semantics ใน `summary-band.md`**
 
 หาบรรทัดนี้ (บรรทัด 14):
 
@@ -81,7 +81,7 @@ The band is **registry-wide** — it describes the whole table, not the current 
 The band is **filter-consistent** — it describes every row matching the current `advance` filter and `search`, not just the current page. It is *not* registry-wide: changing a filter changes the band. `summary.total` equals `paginate.total` whenever the list is showing live rows only, which is the invariant to assert. Say so in a comment; readers assume registry-wide otherwise.
 ```
 
-- [ ] **Step 2: แก้ประโยค props ใน `summary-band.md`**
+- [x] **Step 2: แก้ประโยค props ใน `summary-band.md`**
 
 หาบรรทัดนี้ (บรรทัด 55):
 
@@ -95,7 +95,7 @@ The band is **filter-consistent** — it describes every row matching the curren
 - Props are `{ summary, loading, error, onRetry }` on six of the seven bands. `FleetCapacity` takes only `{ summary, loading }` — it has no error affordance, and `ClusterManagement` names its state `fleet`/`fleetLoading` rather than `summary*`. Don't "fix" that to match without adding the retry UI it lacks.
 ```
 
-- [ ] **Step 3: แก้คอมเมนต์ใน `UserPlatformManagement.tsx`**
+- [x] **Step 3: แก้คอมเมนต์ใน `UserPlatformManagement.tsx`**
 
 หาคอมเมนต์เหนือ `const [summary, setSummary]` (ราวบรรทัด 58) ที่ขึ้นต้นว่า
 `// Registry-wide aggregate from the endpoint's summary block.` แทนคำว่า `Registry-wide`
@@ -109,7 +109,7 @@ The band is **filter-consistent** — it describes every row matching the curren
   // `paginate.total` and `summary.holders` are the same number by construction.
 ```
 
-- [ ] **Step 4: type-check + lint**
+- [x] **Step 4: type-check + lint**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform
@@ -118,7 +118,7 @@ bun run typecheck && bun run lint
 
 คาดหวัง: ผ่านทั้งคู่ (task นี้ไม่ได้แก้ตรรกะ ถ้าแดงแปลว่าแก้คอมเมนต์แล้วเผลอทำ syntax พัง)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add agent-os/standards/pages/summary-band.md src/pages/UserPlatformManagement.tsx
@@ -144,11 +144,17 @@ buildRegistrySummary ที่ deploy อยู่คำนวณจากชุ
 - Consumes: `PlatformScopeService.clusterScopeFor(userId, 'cluster.read')` → `{ all: boolean, clusterIds: string[] }` (มีอยู่แล้ว)
 - Produces:
   - `stripSoftDelete(where: Record<string, unknown>): Record<string, unknown>` — export จาก `summary.helper.ts` เฟส 2 ใช้ต่อ
-  - `CoreCounts { total: number; active: number; inactive: number; deleted: number }` — export type จาก `summary.helper.ts`
+  - `finiteCap(cap?: number | null): number | null` — export จาก `summary.helper.ts` แปลง 0/null/undefined เป็น "ไม่จำกัด"
+  - `NEAR_LIMIT_RATIO = 0.9` — export const จาก `summary.helper.ts`
   - `ClusterService.listCluster` คืน `Result<{ paginate: unknown; data: unknown[]; summary?: FleetSummary }>`
   - `FleetSummary` / `FleetCapacityTotals` — export interface จาก `summary.helper.ts`
 
-- [ ] **Step 1: สร้าง `summary.helper.ts`**
+> **บันทึกหลังทำจริง:** helper ที่นับ `total`/`active`/`inactive`/`deleted` แบบใช้ร่วมกัน
+> (`CoreCounts` ตามที่ร่างไว้ตอนแรก) **ยังไม่ได้สร้าง** — Cluster คำนวณสี่ค่านั้นในลูปเดียวกับที่มัน
+> พับ capacity อยู่แล้ว การดึงออกไปเป็นฟังก์ชันร่วมตอนมีผู้ใช้รายเดียวคือการเดารูปแบบล่วงหน้า
+> ให้สร้างตอนทำ entity ที่สองในเฟส 2 ซึ่งจะเห็นแล้วว่ารูปที่ใช้ร่วมกันจริงหน้าตาอย่างไร
+
+- [x] **Step 1: สร้าง `summary.helper.ts`**
 
 สร้างไฟล์ `apps/micro-cluster/src/common/helpers/summary.helper.ts`:
 
@@ -231,7 +237,7 @@ export function stripSoftDelete(
 }
 ```
 
-- [ ] **Step 2: import helper ใน `cluster.service.ts`**
+- [x] **Step 2: import helper ใน `cluster.service.ts`**
 
 หา import block ที่ดึงจาก `@/common` แล้วเพิ่มบรรทัดนี้ต่อท้าย import ทั้งหมด (helper ยังไม่ได้ถูก
 re-export จาก `common/index.ts` จึง import ตรงจากไฟล์):
@@ -248,7 +254,7 @@ import {
 alias นี้ใช้ได้แน่นอน — `apps/micro-cluster/tsconfig.json:14` ประกาศ `"@/*": ["src/*"]` ไว้แล้ว
 และ `cluster.service.ts` ก็ import จาก `@/common` อยู่
 
-- [ ] **Step 3: เพิ่ม `buildFleetSummary` ท้ายคลาส `ClusterService`**
+- [x] **Step 3: เพิ่ม `buildFleetSummary` ท้ายคลาส `ClusterService`**
 
 วางเมธอดนี้ก่อนปีกกาปิดคลาส:
 
@@ -365,7 +371,7 @@ alias นี้ใช้ได้แน่นอน — `apps/micro-cluster/tsco
   }
 ```
 
-- [ ] **Step 4: แนบ `summary` ลง return ของ `listCluster`**
+- [x] **Step 4: แนบ `summary` ลง return ของ `listCluster`**
 
 แก้ signature (บรรทัด ~340) จาก:
 
@@ -424,7 +430,7 @@ alias นี้ใช้ได้แน่นอน — `apps/micro-cluster/tsco
     });
 ```
 
-- [ ] **Step 5: เขียนเทสต์กัน scope leak**
+- [x] **Step 5: เขียนเทสต์กัน scope leak**
 
 นี่คือ**เทสต์เดียว**ที่แผนนี้อนุญาตให้เขียน เปิด
 `apps/micro-cluster/src/cluster/cluster/cluster.service.spec.ts` แล้วเพิ่ม `describe` block นี้
@@ -469,7 +475,7 @@ alias นี้ใช้ได้แน่นอน — `apps/micro-cluster/tsco
 > ถ้าเผลอส่ง `qArgs.where` (ตัวก่อนผสม) เข้าไป `'c-1'` จะไม่อยู่ในเงื่อนไขและเทสต์จะแดง
 > ตรวจชื่อ `sampleCluster` และ `basePaginate` ในไฟล์ว่าตรงกับที่ใช้จริง ถ้าชื่อไม่ตรงให้ใช้ชื่อในไฟล์
 
-- [ ] **Step 6: รันเทสต์ทั้งไฟล์**
+- [x] **Step 6: รันเทสต์ทั้งไฟล์**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
@@ -482,7 +488,7 @@ bunx jest apps/micro-cluster/src/cluster/cluster/cluster.service.spec.ts --runIn
 ซึ่งไม่เป็นไร เพราะ try/catch จะกลืน error แล้วแค่ไม่ใส่ `summary` — ถ้าเทสต์เดิมแดง แปลว่า
 try/catch ไม่ได้ครอบจริง กลับไปดู Step 4
 
-- [ ] **Step 7: type-check**
+- [x] **Step 7: type-check**
 
 ```bash
 bunx tsc --noEmit -p apps/micro-cluster/tsconfig.json
@@ -490,7 +496,7 @@ bunx tsc --noEmit -p apps/micro-cluster/tsconfig.json
 
 ถ้า path ของ tsconfig ไม่ตรง ให้หาด้วย `ls apps/micro-cluster/tsconfig*.json`
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/micro-cluster/src/common/helpers/summary.helper.ts \
@@ -520,7 +526,7 @@ aggregate ที่ล้มจะไม่ทำให้รายการล�
 - Consumes: `MicroserviceResponse.summary` — `handlePaginatedResult` แผ่ `summary` ขึ้นมาระดับบนสุดของ response แล้ว (`packages/nest-result/src/base-microservice-controller.ts:143`) ไม่ได้ซ่อนใต้ `response.data`
 - Produces: `ClusterFleetSummaryDto` — ใช้เป็น `summaryModel` และเป็นสัญญาที่ frontend Task 4 อ่าน
 
-- [ ] **Step 1: เพิ่ม DTO ท้าย `swagger/response.ts`**
+- [x] **Step 1: เพิ่ม DTO ท้าย `swagger/response.ts`**
 
 ```ts
 /**
@@ -574,7 +580,7 @@ export class ClusterFleetSummaryDto {
 }
 ```
 
-- [ ] **Step 2: ส่งต่อ `summary` ใน `getlistCluster`**
+- [x] **Step 2: ส่งต่อ `summary` ใน `getlistCluster`**
 
 แก้ return statement (บรรทัด 254-257) จาก:
 
@@ -605,7 +611,7 @@ export class ClusterFleetSummaryDto {
 ไม่ต้อง cast — `MicroserviceResponse` ประกาศ `summary?: unknown` ไว้แล้วที่
 `packages/nest-result/src/base-microservice-controller.ts:19` (เพิ่มตอนทำ user-platform registry)
 
-- [ ] **Step 3: ผูก DTO เข้ากับ Swagger**
+- [x] **Step 3: ผูก DTO เข้ากับ Swagger**
 
 ใน `platform_clusters.controller.ts` แก้บรรทัด 98 จาก:
 
@@ -627,14 +633,14 @@ export class ClusterFleetSummaryDto {
 **ระวัง:** บรรทัด 98 เป็นของ route `getListCluster` เท่านั้น ในไฟล์นี้มี `@ApiStdResponse(undefined, ...)`
 อยู่หลายที่ อย่าแก้ผิดตัว ยืนยันด้วยการดูว่า decorator block ที่แก้อยู่เหนือ `async getListCluster(`
 
-- [ ] **Step 4: type-check**
+- [x] **Step 4: type-check**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
 bunx tsc --noEmit -p apps/backend-gateway/tsconfig.json
 ```
 
-- [ ] **Step 5: ยืนยันว่า gateway boot ได้**
+- [x] **Step 5: ยืนยันว่า gateway boot ได้**
 
 DI ของ NestJS resolve ตอน runtime — `tsc` เขียวไม่ได้แปลว่า gateway ขึ้น task นี้ไม่ได้เพิ่ม
 provider ใหม่จึงไม่ควรมีปัญหา แต่ให้รัน controller spec ของ module นี้เพื่อยืนยัน:
@@ -645,7 +651,7 @@ bunx jest apps/backend-gateway/src/platform/platform_clusters --runInBand
 
 ถ้าไม่มี spec ในโฟลเดอร์นั้น ข้าม step นี้ไปและบันทึกไว้ในรายงานว่าข้ามเพราะไม่มี spec
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/backend-gateway/src/platform/platform_clusters/
@@ -674,7 +680,7 @@ git commit -m "feat(gateway): ส่งต่อ summary ของรายก�
 **เป้าหมายของ task นี้คือ "อ่านได้เมื่อมี"** — ยังไม่ลบ `perpage: -1` เพื่อให้ deploy FE ก่อน backend
 ได้อย่างปลอดภัย
 
-- [ ] **Step 1: เพิ่ม type ใน `src/types/index.ts`**
+- [x] **Step 1: เพิ่ม type ใน `src/types/index.ts`**
 
 วางต่อท้ายไฟล์ (หรือถัดจาก `PlatformUsersResponse` เพื่อให้ type ของ list response อยู่ด้วยกัน):
 
@@ -710,7 +716,7 @@ export interface ClustersResponse extends ApiListResponse<Cluster> {
 }
 ```
 
-- [ ] **Step 2: ให้ `clusterService.getAll` คืน `ClustersResponse`**
+- [x] **Step 2: ให้ `clusterService.getAll` คืน `ClustersResponse`**
 
 ใน `src/services/clusterService.ts` แก้ import และ signature:
 
@@ -729,7 +735,7 @@ import type { PaginateParams, Cluster, ClustersResponse } from '../types';
 
 ถ้า `ApiListResponse` ยังถูก import อยู่และไม่มีที่ใช้แล้ว ให้เอาออกจาก import (ไม่งั้น lint แดง)
 
-- [ ] **Step 3: ให้ `FleetCapacity` อ่านฟิลด์ `snake_case`**
+- [x] **Step 3: ให้ `FleetCapacity` อ่านฟิลด์ `snake_case`**
 
 ใน `src/pages/clusterManagement/FleetCapacity.tsx` แก้ import type:
 
@@ -761,7 +767,7 @@ function uncappedNote(t: FleetCapacityTotals): string | undefined {
             <Stat value={summary.near_limit} label="near limit" alert />
 ```
 
-- [ ] **Step 4: ให้ `fetchClusters` เก็บ `summary`**
+- [x] **Step 4: ให้ `fetchClusters` เก็บ `summary`**
 
 ใน `src/pages/ClusterManagement.tsx` หา `setTotalRows(...)` ใน `fetchClusters` แล้วเพิ่มบรรทัดนี้
 ต่อจากมัน:
@@ -773,7 +779,7 @@ function uncappedNote(t: FleetCapacityTotals): string | undefined {
       if (data.summary) setFleet(data.summary);
 ```
 
-- [ ] **Step 5: ให้ `loadFleet` ยอมถอยเมื่อ `summary` มาแล้ว**
+- [x] **Step 5: ให้ `loadFleet` ยอมถอยเมื่อ `summary` มาแล้ว**
 
 แก้คอมเมนต์เหนือ `loadFleet` และเพิ่ม guard ให้มันไม่ทับค่าที่มาจาก backend
 แทนที่บล็อกคอมเมนต์เดิมที่ขึ้นต้นว่า `// perpage:-1 is not just a size judgement:` ด้วย:
@@ -801,7 +807,7 @@ function uncappedNote(t: FleetCapacityTotals): string | undefined {
 กลับมาก่อนไม่แน่นอน ถ้า `loadFleet` เขียนทับตรง ๆ ค่าที่ backend ส่งมาอาจถูกค่าที่คำนวณเองทับ
 ในลำดับหนึ่ง แต่ไม่ทับในอีกลำดับ กลายเป็นบั๊กที่ขึ้นเป็นครั้งคราว
 
-- [ ] **Step 5b: ให้ `capacity.ts` เลิกประกาศ type เองและคืน `snake_case`**
+- [x] **Step 5b: ให้ `capacity.ts` เลิกประกาศ type เองและคืน `snake_case`**
 
 `summarizeFleet` เดิมคืน object ที่ใช้ชื่อ camelCase ซึ่งชนกับ `FleetSummary` ตัวใหม่ ต้องทำให้
 สองทางคืนรูปเดียวกัน ไม่งั้น `setFleet` รับได้ทางเดียว
@@ -823,12 +829,12 @@ grep -n "uncappedCount\|uncappedUsed\|nearLimit" src/utils/capacity.ts src/pages
 
 คาดหวัง: ไม่มีผลลัพธ์
 
-- [ ] **Step 6: แก้เทสต์ที่อ้างชื่อฟิลด์เดิม**
+- [x] **Step 6: แก้เทสต์ที่อ้างชื่อฟิลด์เดิม**
 
 `src/utils/capacity.test.ts` มี assertion ที่อ้าง `uncappedCount` / `uncappedUsed` / `nearLimit`
 เปลี่ยนเป็นชื่อ snake_case ให้ตรง **ไม่ต้องเพิ่มเทสต์ใหม่** แค่ทำให้ที่มีอยู่ compile และผ่าน
 
-- [ ] **Step 7: type-check + lint + รันเทสต์เดิม**
+- [x] **Step 7: type-check + lint + รันเทสต์เดิม**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform
@@ -839,7 +845,7 @@ bun run typecheck && bun run lint && bun run test
 ให้ตรวจว่าโค้ดใหม่ใช้ optional chaining จริง (`data.summary` ต้องเป็น optional) — อย่าแก้เทสต์
 ให้ใส่ `summary` เข้าไปเพื่อให้ผ่าน
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/types/index.ts src/services/clusterService.ts \
