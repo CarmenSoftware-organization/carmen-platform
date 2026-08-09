@@ -24,7 +24,7 @@
 - Modify: `src/pages/clusterAdmin/InviteUserDialog.tsx:199`
 - Modify: `src/pages/clusterAdmin/InvitationsTable.tsx` (ตรวจข้อความ ไม่แน่ว่าต้องแก้)
 
-- [ ] **Step 1: แก้ `DialogDescription`**
+- [x] **Step 1: แก้ `DialogDescription`**
 
 บรรทัด 199 ปัจจุบัน:
 
@@ -44,7 +44,7 @@
 ประโยคที่สองมีเหตุผล: Admin ที่เคยเจอ flow เก่าจะลังเลว่าต้องให้ปลายทางสมัครก่อนไหม ประโยคนี้ตอบไว้ตรงจุด
 ที่เขากำลังตัดสินใจ
 
-- [ ] **Step 2: ตรวจข้อความในตารางคำเชิญ**
+- [x] **Step 2: ตรวจข้อความในตารางคำเชิญ**
 
 ```bash
 grep -n "Revoke\|Resend\|accepted\|pending\|expired" src/pages/clusterAdmin/InvitationsTable.tsx
@@ -56,17 +56,17 @@ grep -n "Revoke\|Resend\|accepted\|pending\|expired" src/pages/clusterAdmin/Invi
 ข้อความยืนยันการ revoke ที่บรรทัด ~216 (`They will no longer be able to accept it.`) ยังถูกต้องอยู่
 ทั้งสองเส้นทาง ไม่ต้องแก้
 
-- [ ] **Step 3: typecheck + lint + ชุดทดสอบเดิม**
+- [x] **Step 3: typecheck + lint + ชุดทดสอบเดิม**
 
 ```bash
 bun run typecheck && bun run lint && bun run test
 ```
 
-- [ ] **Step 4: ตรวจในเบราว์เซอร์**
+- [x] **Step 4: ตรวจในเบราว์เซอร์**
 
 เปิดหน้า Cluster Admin → Users → ปุ่มเชิญผู้ใช้ → อ่านข้อความใน dialog ว่าอ่านรู้เรื่องและไม่ล้นกรอบ
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/pages/clusterAdmin/
@@ -84,56 +84,70 @@ git commit -m "docs(invite): say plainly that the recipient needs no account fir
 คำเชิญ ซึ่ง **อยู่ที่ `carmen-inventory-frontend-react` ที่ path `/invitations/:token`** ไม่ใช่ที่รีโปนี้
 ถ้าค่าใน production ยังชี้มาที่ platform ผู้รับคำเชิญจะกดลิงก์แล้วเจอ 404
 
-- [ ] **Step 1: อ่านการ์ดทั้งใบก่อนแก้**
+- [x] **Step 1: อ่านการ์ดทั้งใบก่อนแก้**
 
 ```bash
 sed -n '120,200p' src/pages/platformConfig/InvitationConfigCard.tsx
 ```
 ดูว่าข้อความ helper ใต้ฟิลด์ (บรรทัด ~164) เขียนว่าอะไร และ placeholder ของ input เป็นค่าอะไร
 
-- [ ] **Step 2: แก้ข้อความ helper ให้ระบุปลายทางชัด**
+- [x] **Step 2: แก้ข้อความ helper ให้ระบุปลายทางชัด**
 
-แทนที่ข้อความ helper ใต้ฟิลด์ Base URL ด้วย:
+> **แก้ข้อสันนิษฐานผิดของแผน (2026-08-09):** ร่างเดิมของ step นี้เขียนว่า *"The token is appended
+> as the last path segment"* ซึ่ง **ผิด** โค้ดจริงที่
+> `carmen-turborepo-backend-v2` → `apps/micro-cluster/src/cluster/user-invitation/user-invitation.service.ts:322`
+> ใช้ `invitationUrl.searchParams.set('token', …)` — token ไปเป็น **query string** ไม่ใช่ path segment
+> ฝั่งรับที่ `carmen-inventory-frontend-react` → `routes/invitation/invitation.route.tsx:48` รับได้
+> ทั้งสองแบบโดยตั้งใจ (`useParams()` ก่อน แล้ว fallback ไป `searchParams`) แต่ข้อความในการ์ดต้อง
+> สอนแบบที่ backend ทำจริง ไม่งั้นแอดมินจะกรอก Base URL ผิดรูป
+
+ข้อความที่อยู่ในโค้ดจริงตอนนี้ (`InvitationConfigCard.tsx:167-173`) ถูกต้องแล้ว และเข้ามาพร้อม
+commit ของ Task 1 (`b8f2c53`):
 
 ```tsx
           <p className="text-xs text-muted-foreground">
-            Where the invitation link in the email points. This is the Carmen inventory app, not this
-            console — the recipient accepts the invitation there, and can create their account from
-            the same link. The token is appended as the last path segment, e.g.
-            <code className="mx-1">https://app.example.com/invitations</code>.
+            Where the invitation link in the email points. This is the Carmen inventory app, not
+            this console — the recipient accepts the invitation there, and can create their account
+            from the same link without signing up first. The system appends{' '}
+            <code className="font-mono">?token=…</code> itself, so enter the page URL only, e.g.{' '}
+            <code className="font-mono">https://inventory.example.com/invitations</code>.
           </p>
 ```
 
-ปรับถ้อยคำให้เข้ากับข้อความเดิมที่อ่านได้จาก Step 1 — สิ่งที่ห้ามขาดคือสองอย่าง: **ปลายทางคือแอป
-inventory ไม่ใช่ console นี้** และ **รูปแบบของ URL ที่ token จะถูกต่อท้าย**
+สิ่งที่ห้ามขาดคือสองอย่าง: **ปลายทางคือแอป inventory ไม่ใช่ console นี้** และ **รูปแบบของ URL ที่
+token จะถูกต่อท้าย** — ครบทั้งคู่
 
-ถ้า placeholder ของ input ยังเป็นโดเมนของ platform ให้เปลี่ยนเป็นตัวอย่างของแอป inventory ด้วย
+placeholder ของ input เปลี่ยนเป็น `https://inventory.carmen.io/invitations` แล้วใน commit เดียวกัน
 
-- [ ] **Step 3: typecheck + lint + ชุดทดสอบเดิม**
+- [x] **Step 3: typecheck + lint + ชุดทดสอบเดิม**
 
 ```bash
 bun run typecheck && bun run lint && bun run test
 ```
 
-- [ ] **Step 4: ตรวจในเบราว์เซอร์**
+- [ ] **Step 4: ตรวจในเบราว์เซอร์** — ยังไม่ได้ทำ ต้องใช้บัญชี platform admin
 
 เปิด Platform Config → การ์ด Invitation → อ่านข้อความใหม่ · ตรวจว่าฟิลด์ยังบันทึกได้ตามปกติ (ค่าเดิมไม่
 ถูกแก้โดยการ deploy นี้ — การเปลี่ยนค่าจริงเป็นงาน operational ใน checklist ท้ายแผน)
 
-- [ ] **Step 5: Commit**
+> **ค้างอยู่ (2026-08-09):** ลองเปิด `/platform/configs` บน dev server แล้ว แต่บัญชีที่ล็อกอินอยู่เป็น
+> cluster admin จึงถูก view isolation เด้งไป `/cluster-admin/:id/cluster` — ต้องล็อกอินด้วยบัญชี
+> platform admin จึงจะเห็นการ์ดนี้ ส่วนข้อความใน Invite dialog ของ Task 1 ตรวจในเบราว์เซอร์แล้วผ่าน
 
-```bash
-git add src/pages/platformConfig/InvitationConfigCard.tsx
-git commit -m "docs(config): point the invitation base URL at the inventory app"
-```
+- [x] **Step 5: Commit** — ไม่มี commit แยก
+
+การแก้ไฟล์นี้ถูกรวบไปกับ commit ของ Task 1 (`b8f2c53`) แล้ว ไม่มีอะไรเหลือให้ commit
+`docs(config): point the invitation base URL at the inventory app` จึงไม่มีอยู่ในประวัติ — ไม่ใช่งานตกหล่น
 
 ---
 
 ## หลังทำครบ — งาน operational ที่ลืมไม่ได้
 
-- [ ] `bun run typecheck` · `bun run lint` · `bun run test` เขียว
+- [x] `bun run typecheck` · `bun run lint` · `bun run test` เขียว — 2026-08-09: typecheck 0 errors,
+      lint 0 errors/0 warnings, Vitest 1081/1081 ผ่าน (133 ไฟล์)
 - [ ] **เปลี่ยนค่า Invitation Base URL ในทุก environment** (dev/UAT/prod) ให้ชี้ไป
       `https://<inventory-app>/invitations` — ถ้าไม่ทำ ลิงก์คำเชิญที่ส่งออกหลัง deploy จะพาไป 404
-      ทำได้เมื่อ `carmen-inventory-frontend-react` deploy หน้ารับคำเชิญแล้วเท่านั้น
+      หน้ารับคำเชิญฝั่ง `carmen-inventory-frontend-react` **ขึ้น main แล้ว** (`routes/invitation/invitation.route.tsx`,
+      release v1.2.0) จึงไม่มีอะไรบล็อกข้อนี้อีกนอกจากการเข้าไปตั้งค่า
 - [ ] แจ้ง Cluster Admin ว่าตอนนี้เชิญคนที่ยังไม่มีบัญชีได้โดยไม่ต้องให้เขาสมัครก่อน — พฤติกรรมที่เขา
       เคยต้องอธิบายให้ปลายทางฟังเปลี่ยนไปแล้ว
