@@ -108,7 +108,10 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
     }
     try {
       setSaving(true);
-      await platformConfigService.update('invitation', {
+      // patch ไม่ใช่ update: schema ของคีย์ invitation ยังมี max_per_admin_per_hour และ
+      // max_per_cluster_per_day ที่การ์ดนี้ไม่ได้แสดงและแก้ไม่ได้ การส่งด้วย update() ซึ่งเป็น
+      // full replace จะเขียนทับสองค่านั้นด้วยค่าที่การ์ดไม่รู้จัก
+      await platformConfigService.patch('invitation', {
         base_url: formData.base_url.trim(),
         expiry_days: Number(formData.expiry_days),
       });
