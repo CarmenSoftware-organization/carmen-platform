@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { InvitationConfig, PlatformConfig } from '../../types';
@@ -21,11 +22,7 @@ interface LimitsFormData {
   max_per_cluster_per_day: string;
 }
 
-/** ต้องเท่ากับ default ใน PLATFORM_CONFIG_REGISTRY ฝั่ง backend */
-const DEFAULTS = {
-  max_per_admin_per_hour: 100,
-  max_per_cluster_per_day: 500,
-};
+const DEFAULTS = INVITATION_CONFIG_DEFAULTS;
 
 const toForm = (config: PlatformConfig | null): LimitsFormData => {
   const value = (config?.value ?? {}) as Partial<InvitationConfig>;

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { InvitationConfig, PlatformConfig } from '../../types';
@@ -21,10 +22,7 @@ interface InvitationFormData {
   expiry_days: string;
 }
 
-const DEFAULTS: InvitationConfig = {
-  base_url: 'http://localhost:3000/invitations',
-  expiry_days: 7,
-};
+const DEFAULTS = INVITATION_CONFIG_DEFAULTS;
 
 /**
  * แปลงค่าดิบจาก API เป็นค่าในฟอร์ม — ค่าที่ backend คืนมาผ่าน Zod แล้วเสมอ
