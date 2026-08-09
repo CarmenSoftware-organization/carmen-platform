@@ -26,6 +26,16 @@ errors:
   validation:
     description: validateField switches on field name and silently passes unknown ones; required is opt-in
 
+hooks:
+  debounced-value:
+    description: useDebouncedValue's [debounced, flush] contract, the onSettle batching reason, and when not to debounce
+  fetch-race-guards:
+    description: cancelled flag vs generation counter in fetching hooks; keeping a failed fetch retryable
+  hook-placement:
+    description: Shared vs page-local hooks; toast vs returned error by who can display it; context hooks throw
+  parallel-loads:
+    description: allSettled over all for independent loads, so one failure doesn't blank the rest
+
 pages:
   decomposition:
     description: When to split a page into its subdirectory, naming per file kind, and cross-page reuse
@@ -35,6 +45,24 @@ pages:
     description: Full vs Config vs legacy Lightweight list pages, required structure, state shape, and non-negotiables
   summary-band:
     description: Stat band above the table — backend aggregate preferred, independent failure, three state slots
+
+permissions:
+  gating-a-page:
+    description: A gate is three edits — route, nav list, and every button that links there
+  permission-checks:
+    description: hasPermission scoping (with clusterId vs without), UNRESOLVED_CLUSTER_ID, Can vs hasPermission
+  route-guards:
+    description: PrivateRoute vs AuthedRoute vs ClusterAdminRoute; Forbidden renders in place, never /403
+  unresolved-vs-denied:
+    description: null means not-resolved, not no-access; the degraded-session fallthrough and bootstrap hatch
+
+styling:
+  dark-mode:
+    description: Class-based theming; a new token must be declared in both :root and .dark; chart vs status colours
+  table-sticky-columns:
+    description: Frozen-column opt-in and its ceiling; measured offsets, opaque bases, edge shadow placement
+  tokens:
+    description: Colour comes from tokens — semantic classes, hsl(var(--token)) elsewhere, two permanent exceptions
 
 testing:
   jsdom-stubs:

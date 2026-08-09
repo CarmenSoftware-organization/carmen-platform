@@ -163,12 +163,14 @@ Required state shape: `id` (from `useParams`), `isNew = !id`, `formData`, `loadi
 
 `Layout.tsx` owns sidebar state (persisted to `localStorage('sidebar-collapsed')`); `Sidebar.tsx` renders desktop fixed sidebar (`w-60` / `w-16`) and a mobile Sheet drawer. Main content margin: `md:ml-16` ↔ `md:ml-60`. Transitions via `.sidebar-transition`.
 
-Add a nav item by editing `allNavItems` in `Layout.tsx`. Items carry a `group` (`'Organization' | 'Content' | 'Platform'`) and gate on either a single `permission` or `superAdminOnly`:
+Add a nav item by editing `ALL_PLATFORM_NAV_ITEMS` in **`src/components/nav/platformNav.ts`** (`Layout.tsx` only calls `buildPlatformNav`; the cluster-admin view has its own list in `nav/clusterAdminNav.ts`). Items carry a `group` (`'Organization' | 'Content' | 'Analytics' | 'Platform'`) and gate on either a single `permission` or `superAdminOnly`:
 ```tsx
 { path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read', group: 'Organization' }
 { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' }
 ```
-Filtered via `(!item.permission || hasPermission(item.permission)) && (!item.superAdminOnly || isSuperAdmin)` from `AuthContext`. Items with no `group` (e.g. Dashboard) render ungrouped at top. Collapsed state shows icons only, with right-side tooltips (`delayDuration={200}`).
+Filtered via `(!item.permission || hasPermission(item.permission)) && (!item.superAdminOnly || isSuperAdmin)` from `AuthContext`. Items with no `group` (e.g. Dashboard) render ungrouped at top. Collapsed state shows icons only, with right-side tooltips (`delayDuration={200}`). **Keep a group's items contiguous in the array** — `Sidebar` groups by consecutive runs, so splitting them renders the heading twice.
+
+Adding a nav item is only one of the three places a gate lives — see `agent-os/standards/permissions/gating-a-page.md`.
 
 ## Service Layer
 
@@ -215,6 +217,8 @@ Multiple enums: build a `where` object with `{ in: [...] }`, JSON.stringify only
 | Field-level validation | `validateField(name, value)` (`utils/validation.ts`) | Validates by field-name heuristic; pair with `fieldErrors` state |
 | API error parsing | `parseApiError(err)` (`utils/errorParser.ts`) | Returns `{ message, fields? }`. Use in every catch block |
 | CSV export | `generateCSV` + `downloadCSV` (`utils/csvExport.ts`) | Required on every Management page |
+
+Writing a **new** hook: where it lives, the race guard every fetching hook needs, `allSettled` over `all`, and the `useDebouncedValue` flush/`onSettle` contract — **`agent-os/standards/hooks/`**.
 
 ## Form Field Pattern
 
@@ -296,6 +300,8 @@ const handleSortChange = (sort: string) => setPaginate(p => ({ ...p, sort })); /
 
 After create: `navigate(\`/items/\${created.id}/edit\`, { replace: true })` — there is no bare `/items/:id` route, only `/items`, `/items/new`, and `/items/:id/edit`; navigating to the bare form falls through the catch-all to the 404 page.
 
+`PrivateRoute` is one of **three** guards (`AuthedRoute` and `ClusterAdminRoute` are not interchangeable with it), and a denied check renders `<Forbidden />` in place rather than redirecting. Guard choice, `hasPermission` scoping (`clusterId` changes the question), and the unresolved-≠-denied rule: **`agent-os/standards/permissions/`**.
+
 ## Report Template Edit Specifics
 
 `src/pages/ReportTemplateEdit.tsx` uses a different layout from other Edit pages: sticky left column (Info + BU Scope + Metadata) + tabbed right column (Dialog XML / Content XML / Preview) + sticky bottom action bar (offset matches sidebar: `md:left-16 lg:left-60`). Wrap page in `pb-20` so the bar doesn't overlap content. Use `<div hidden={...}>` for tab panels containing CodeMirror so editors stay mounted.
@@ -362,6 +368,8 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 **Icon convention:** `mr-2 h-4 w-4` inside buttons with text; `h-5 w-5` for standalone icon buttons (`size="icon"`).
 
 **Breakpoints:** mobile-first. `sm:` 640 · `md:` 768 (sidebar appears) · `lg:` 1024 (two-col form grids).
+
+How to *consume* a token (`hsl(var(--token))` where a class won't fit), the both-blocks rule for adding one, and the frozen-column CSS contract: **`agent-os/standards/styling/`**.
 
 ## DateTime
 
