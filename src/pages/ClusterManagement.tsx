@@ -23,7 +23,8 @@ import Can from '../components/Can';
 import { BrandMark } from '../components/BrandMark';
 import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
-import { summarizeFleet, type FleetSummary } from '../utils/capacity';
+import { summarizeFleet } from '../utils/capacity';
+import type { FleetSummary } from '../types';
 import type { Cluster, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -114,6 +115,9 @@ const ClusterManagement: React.FC = () => {
       }));
       setClusters(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
+      // The band rides on this same response — no second request. `summary` is absent until
+      // the backend deploys, and `loadFleet` below still fills the gap in the meantime.
+      if (data.summary) setFleet(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load clusters: ' + getErrorDetail(err));
@@ -132,11 +136,10 @@ const ClusterManagement: React.FC = () => {
   const loadFleet = useCallback(async () => {
     setFleetLoading(true);
     try {
-      // perpage:-1 is not just a size judgement: the gauges SUM bu_count,
-      // max_license_bu, users_count and total_max_license_users across every
-      // cluster, and count `nearLimit` per-row. Count queries cannot express a
-      // sum, so this needs a backend `summary` block to replace
-      // (agent-os/standards/pages/summary-band.md).
+      // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
+      // environment (see docs/superpowers/plans/2026-08-10-list-summary-block-cluster.md,
+      // Task 5). Until then this keeps the gauges filled for a frontend deployed ahead of
+      // its backend.
       const data = await clusterService.getAll({
         perpage: -1,
         advance: JSON.stringify({ where: { deleted_at: null } }),
@@ -149,7 +152,10 @@ const ClusterManagement: React.FC = () => {
         users_count: (item.users_count ?? (item._count as { tb_cluster_user?: number })?.tb_cluster_user ?? 0) as number,
         total_max_license_users: item.total_max_license_users as number | null | undefined,
       }));
-      setFleet(summarizeFleet(mapped));
+      // `loadFleet` and `fetchClusters` race on mount. Writing unconditionally would let
+      // the locally-computed value clobber a real `summary` in one interleaving but not the
+      // other — an intermittent wrong number rather than a reproducible bug.
+      setFleet((current) => current ?? summarizeFleet(mapped));
     } catch {
       setFleet(null); // strip falls back to its skeleton; the table still works
     } finally {

@@ -507,9 +507,39 @@ export interface PlatformUserRegistrySummary {
   inactive: number;
 }
 
-/** Response shape for `GET /api-system/platform/users` — `ApiListResponse` plus the registry-wide `summary` block (see `PlatformUserRegistrySummary`). */
+/** Response shape for `GET /api-system/platform/users` — `ApiListResponse` plus the filter-consistent `summary` block (see `PlatformUserRegistrySummary`). */
 export interface PlatformUsersResponse extends ApiListResponse<PlatformUserRow> {
   summary?: PlatformUserRegistrySummary;
+}
+
+/** Capped/uncapped rollup for one licence dimension of the fleet. A cap of 0/null/absent all mean uncapped. */
+export interface FleetCapacityTotals {
+  used: number;
+  cap: number;
+  uncapped_count: number;
+  uncapped_used: number;
+}
+
+/**
+ * Fleet aggregate from `GET /api-system/clusters` → `summary`.
+ *
+ * Filter-consistent: it counts every cluster matching the active `advance`/`search` and the
+ * caller's platform scope — not the whole registry. Field names are the API's `snake_case`
+ * on purpose; this is a wire type, not a view model.
+ */
+export interface FleetSummary {
+  total: number;
+  active: number;
+  inactive: number;
+  deleted: number;
+  near_limit: number;
+  bu: FleetCapacityTotals;
+  users: FleetCapacityTotals;
+}
+
+/** Response shape for `GET /api-system/clusters` — `ApiListResponse` plus the `summary` block. */
+export interface ClustersResponse extends ApiListResponse<Cluster> {
+  summary?: FleetSummary;
 }
 
 export interface LoginResponse {

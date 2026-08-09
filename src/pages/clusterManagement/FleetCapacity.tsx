@@ -2,12 +2,12 @@ import { Building2, Users } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { cn } from '../../lib/utils';
-import type { FleetSummary, CapacityTotals } from '../../utils/capacity';
+import type { FleetSummary, FleetCapacityTotals } from '../../types';
 import { CapacityGauge } from './CapacityGauge';
 
-function uncappedNote(t: CapacityTotals): string | undefined {
-  if (t.uncappedCount <= 0) return undefined;
-  return `+ ${t.uncappedCount} cluster${t.uncappedCount > 1 ? 's' : ''} with no cap (${t.uncappedUsed.toLocaleString()} in use)`;
+function uncappedNote(t: FleetCapacityTotals): string | undefined {
+  if (t.uncapped_count <= 0) return undefined;
+  return `+ ${t.uncapped_count} cluster${t.uncapped_count > 1 ? 's' : ''} with no cap (${t.uncapped_used.toLocaleString()} in use)`;
 }
 
 function Stat({ value, label, alert }: { value: number; label: string; alert?: boolean }) {
@@ -42,7 +42,7 @@ export function FleetCapacity({ summary, loading }: { summary: FleetSummary | nu
           <div className="flex gap-6 border-border sm:flex-col sm:gap-1.5 sm:border-l sm:pl-6">
             <Stat value={summary.total} label="clusters" />
             <Stat value={summary.active} label="active" />
-            <Stat value={summary.nearLimit} label="near limit" alert />
+            <Stat value={summary.near_limit} label="near limit" alert />
           </div>
         </div>
       )}
