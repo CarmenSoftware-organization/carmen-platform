@@ -351,10 +351,18 @@ subagent ให้ข้ามด้วย — static check (`tsc`, `lint`) ย�
 | **Application** | **`handleResult`** (`application.controller.ts:48`) | ⚠️ payload ทั้งก้อนอยู่ใต้ `response.data` |
 | **News** | **`handleResult`** (`news.controller.ts:59`) | ⚠️ payload ทั้งก้อนอยู่ใต้ `response.data` |
 
-สองตัวนี้ต้องเลือกอย่างใดอย่างหนึ่ง — เปลี่ยนมาใช้ `handlePaginatedResult` (แต่จะเปลี่ยนรูป
-response ที่ gateway อ่านอยู่ ต้องแก้ gateway service คู่กัน) หรืออ่าน `summary` จาก
-`response.data.summary` ที่ gateway แทน **ห้ามลอกโค้ด gateway ของ cluster มาตรง ๆ**
-เพราะมันอ่าน `response.summary` ระดับบนสุด ซึ่งจะได้ `undefined` เงียบ ๆ
+**แก้ข้อสรุปเดิม** — ตรวจฝั่ง gateway แล้วพบว่าผลไม่เหมือนกันทั้งสองตัว และไม่มีตัวไหนต้อง
+เปลี่ยนมาใช้ `handlePaginatedResult`:
+
+- **Application ไม่ต้องแก้ gateway เลยแม้แต่บรรทัดเดียว** — `applications.service.ts:30`
+  คืน `Result.ok(response.data)` ซึ่งเป็น payload ทั้งก้อน `summary` ที่ไมโครเซอร์วิสใส่มา
+  จึงไหลผ่านไปเองโดยอัตโนมัติ
+- **News ต้องแก้ 1 บรรทัด แต่คนละที่กับ cluster** — `news.service.ts:136` สร้าง object ใหม่
+  ด้วย `Result.ok({ paginate: payload?.paginate, data: list })` ต้องเพิ่ม `payload?.summary`
+  โดย `payload` คือ `response.data` **ไม่ใช่** `response` ระดับบนสุดอย่างที่ cluster ใช้
+
+**ห้ามลอกโค้ด gateway ของ cluster มาตรง ๆ กับ News** เพราะมันอ่าน `response.summary`
+ซึ่งจะได้ `undefined` เงียบ ๆ
 
 ### 10.3 `orderBy` ด้วย `_count` — Prisma รองรับ แต่ repo นี้ไม่เคยใช้เลย
 
@@ -376,15 +384,21 @@ Prisma 7.9.1 รองรับ `orderBy: { <relation>: { _count: 'desc' } }` �
 
 สองอย่างที่ต้องระวังเป็นพิเศษ:
 
-- **BusinessUnit ซ้อน `deleted_at` ไว้ใน `AND[0]` เมื่อ scope ไม่ใช่ all** —
-  `where = { AND: [baseWhere, { cluster_id: { in: ... } }] }` โดย `baseWhere` เป็นตัวที่ถือ
-  `deleted_at: null` (`business-unit.service.ts:577-580`) **`stripSoftDelete` ที่ตัดแค่ระดับบนสุด
-  จะใช้ไม่ได้** และ `deleted` จะอ่านได้ 0 เสมอสำหรับผู้เรียกที่ scope แคบ — ข้อจำกัดที่หัวข้อ 5
-  ของ helper เขียนเตือนไว้ กลายเป็นบั๊กจริงทันทีที่ลอกมาใช้ ต้องเปลี่ยนวิธี: ให้ service
-  ส่ง `where` **ก่อน**ผสม `deleted_at` เข้ามาแทนการตัดทีหลัง
-- **User mutate `where` ในที่** แล้วต่อ `AND` เป็นชั้น ๆ และมี "third gate" ที่กรอง
-  account ที่ยังไม่ยืนยันอีเมลออกเสมอ (`user.service.ts:113`) summary ต้องใช้ `where`
-  **หลัง**ผ่านทุกด่าน ไม่ใช่ตัวที่ได้จาก `q.findMany()`
+- **BusinessUnit เป็น entity เดียวที่ `stripSoftDelete` ใช้ไม่ได้** — เมื่อ scope ไม่ใช่ all
+  มันสร้าง `where = { AND: [baseWhere, { cluster_id: { in: ... } }] }` โดย `baseWhere`
+  เป็นตัวที่ถือ `deleted_at: null` (`business-unit.service.ts:577-580`) ระดับบนสุดจึงมีแต่ `AND`
+  การตัดจึงไม่ได้ทำอะไร แล้ว query ของ `deleted` กลายเป็น `deleted_at: null` **และ**
+  `deleted_at: { not: null }` พร้อมกัน → **ได้ 0 เสมอ** และได้ค่าถูกเมื่อ scope เป็น all
+  ซึ่งแย่กว่าพังตลอด เพราะมันถูกบ้างผิดบ้างตามผู้เรียก
+  วิธีแก้: ให้ service ส่ง `where` ที่**ยังไม่ผสม** `deleted_at` เข้ามาแทนการตัดทีหลัง
+- **อีกสี่ entity ใช้ `stripSoftDelete` ได้ปกติ** — Cluster (มาจาก `advance`), Application
+  (`application.service.ts:90`), News (`news.service.ts:155`), Role
+  (`platform_role.service.ts:91`) ล้วนวาง `deleted_at` ไว้ระดับบนสุด ส่วน User ตั้งด้วย
+  `where.deleted_at = null` ตรง ๆ (`user.service.ts:127`) ก็ระดับบนสุดเช่นกัน
+- **User mutate `where` ในที่** แล้วต่อ `AND` เป็นชั้น ๆ และมี **สองด่านที่ตั้งท้ายสุดเสมอ**
+  — `where.email_verified_at = { not: null }` (`user.service.ts:113`) กับ
+  `where.deleted_at = null` (`:127`) summary ต้องใช้ `where` **หลัง**ผ่านทุกด่าน ไม่ใช่ตัวที่ได้
+  จาก `q.findMany()` ไม่งั้นจะนับ account ที่ยังไม่ยืนยันอีเมลรวมเข้าไปด้วย ซึ่งตารางไม่แสดง
 
 ### 10.5 `news.business_unit_ids` เป็น JSONB ไม่ใช่ relation
 
