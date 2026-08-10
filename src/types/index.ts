@@ -664,6 +664,40 @@ export interface ApplicationsResponse extends ApiListResponse<Application> {
   summary?: ApplicationSummaryData;
 }
 
+/** The lead story shown in the newsroom masthead. */
+export interface LatestNews {
+  id: string;
+  title: string;
+  /** Presigned by the gateway — there is no token here to resolve. */
+  image_url?: string | null;
+  published_at?: string | null;
+  /** How many business units the article targets; 0 means global. */
+  bu_count: number;
+}
+
+/**
+ * Newsroom aggregate from the news list → `summary`.
+ *
+ * Has NO active/inactive split, unlike every other summary block: `tb_news` has no
+ * `is_active` column, so an article's lifecycle is its `status`. This is also the only place
+ * in the contract where `archived` means a **status** — a live row — rather than a deletion.
+ */
+export interface NewsSummaryData {
+  total: number;
+  /** Soft-deleted articles matching the same filter. */
+  deleted: number;
+  draft: number;
+  published: number;
+  /** status === 'archived' — a live row, NOT a soft-deleted one. */
+  archived: number;
+  latest: LatestNews | null;
+}
+
+/** Response shape for the news list — `ApiListResponse` plus `summary`. */
+export interface NewsResponse extends ApiListResponse<News> {
+  summary?: NewsSummaryData;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;
