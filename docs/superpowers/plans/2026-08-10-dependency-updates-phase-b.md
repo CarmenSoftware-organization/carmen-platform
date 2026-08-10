@@ -89,7 +89,7 @@ git diff --stat bun.lock package-lock.json
 git diff package.json
 ```
 
-Expected: `package.json` มี `"@eslint/js": "^10.0.1"` เพิ่มมาบรรทัดเดียวในบล็อก `devDependencies`
+Expected: `package.json` มี `"@eslint/js": "^8.57.1"` เพิ่มมาบรรทัดเดียวในบล็อก `devDependencies`
 ถ้ามีแพ็กเกจอื่นขยับตามมาใน lockfile ให้ `git checkout` ไฟล์ lock แล้วทำใหม่ — อย่าปล่อยผ่าน
 
 - [ ] **Step 4: สร้าง `eslint.config.mjs`**
