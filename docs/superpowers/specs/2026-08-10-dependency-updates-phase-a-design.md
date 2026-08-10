@@ -212,7 +212,7 @@ z-index ของ portal ซ้อนผิดชั้น · keyboard nav ใ�
 
 | เฟส | เนื้อหา | ทำไมอยู่ตรงนี้ |
 |---|---|---|
-| **B** | `eslint` 8.57→10.8 + flat config (`eslint.config.js`) + `eslint-plugin-react-hooks` 4→7 + `vite-plugin-checker` 0.10→0.14 | มัดรวมกันแยกไม่ได้ ESLint 9+ ไม่อ่าน `eslintConfig` ใน `package.json` แล้ว และเป็นทางเดียวที่ปิด `js-yaml` high ×2 ได้ |
+| **B** ✅ | `eslint` 8.57→**9.39.5** (ไม่ใช่ 10.8 ตามที่ตั้งเป้าไว้แต่แรก) + flat config (`eslint.config.mjs`) + `eslint-plugin-react-hooks` 4→7 + `vite-plugin-checker` 0.10→0.14 | มัดรวมกันแยกไม่ได้ ESLint 9+ ไม่อ่าน `eslintConfig` ใน `package.json` แล้ว — **ปิดแล้ว 2026-08-10 ดู `2026-08-10-dependency-updates-phase-b-results.md`.** เป้าหมายจริงคือ ESLint 9.39.5 ไม่ใช่ 10.8: `eslint-plugin-react@7.37.5` (เวอร์ชันล่าสุดที่มีอยู่จริง) ไม่มีเวอร์ชันไหนประกาศรองรับ ESLint 10 เลย (peer สูงสุด `^9.7`) และ crash จริงตอนรัน (`context.getFilename is not a function`) — ESLint 10 ยังค้างอยู่ รอ `eslint-plugin-react` ปล่อยเวอร์ชันที่รองรับก่อน ~~และเป็นทางเดียวที่ปิด `js-yaml` high ×2 ได้~~ — **ข้อนี้ผิด**: พิสูจน์แล้วว่า `overrides: { "js-yaml": "^4.3.0" }` บน ESLint 8 เดิมก็ปิดได้เช่นกัน (`bun audit` 9→6) โดยไม่ต้องอัป ESLint เลย |
 | **C** | Node 20→22/24 + `@types/node` 20→26 + `.nvmrc` + `engines` + workflows | **มี deadline จริง — Node 20 EOL 2026-10-01** |
 | **D** | `zod` 3→4, `react-markdown` 9→10, `jsdom` 29→30, `@testing-library/jest-dom` 6→7 | กระทบ 1–2 ไฟล์ต่อตัว ทำรวบเดียวได้ (`zod` ใช้แค่ `character-count-input.tsx`, `react-markdown` แค่ `MarkdownEditor.tsx`) |
 | **E** | `lucide-react` 0.563→1.31 | 114 ไฟล์แต่เป็น mechanical rename — ทำแยกเพราะ diff ใหญ่จนกลบอย่างอื่นในรีวิว |

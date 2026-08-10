@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
       checker({
         typescript: true,
         eslint: {
-          useFlatConfig: false,
+          useFlatConfig: true,
           lintCommand: 'eslint "./src/**/*.{ts,tsx}"',
           dev: { logLevel: ['error'] },
         },

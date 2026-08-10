@@ -50,7 +50,6 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     if (inputRef.current) inputRef.current.value = '';
     // Only re-run when the signal itself changes — this is an explicit external
     // discard trigger, not a response to `localPreview` or other local state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetSignal]);
 
   const validate = (file: File): string => {
