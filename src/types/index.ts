@@ -542,6 +542,28 @@ export interface ClustersResponse extends ApiListResponse<Cluster> {
   summary?: FleetSummary;
 }
 
+/**
+ * Overview aggregate from `GET /api-system/business-units` → `summary`.
+ *
+ * Filter-consistent and scope-aware: it counts every business unit matching the active
+ * `advance`/`search` **and** the clusters the caller may read — not the whole registry.
+ * `snake_case` because this is a wire type, not a view model.
+ */
+export interface BuSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted rows matching the same filter. The band labels these "Archived". */
+  deleted: number;
+  /** Distinct clusters the matched business units span — a count query cannot express this. */
+  clusters: number;
+}
+
+/** Response shape for `GET /api-system/business-units` — `ApiListResponse` plus `summary`. */
+export interface BusinessUnitsResponse extends ApiListResponse<BusinessUnit> {
+  summary?: BuSummaryData;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;
