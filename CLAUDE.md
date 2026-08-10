@@ -6,74 +6,29 @@ Guidance for Claude Code working in this repo. Read fully before changing code.
 
 Frontend-only React + TypeScript admin dashboard for clusters, business units, users, and report templates. Flat enterprise design (glassmorphism removed) with shadcn/ui + Tailwind. Backend (NestJS/Prisma) is a separate service reached via the `/api` and `/api-system` proxies.
 
-- **Framework:** React 19 + TypeScript (Vite 8) — strict mode on
-- **Styling:** Tailwind 3.4 with HSL CSS custom properties
-- **Components:** shadcn/ui (Radix + CVA) — primitives live in `src/components/ui/`
-- **Tables:** TanStack Table v8 via `DataTable` wrapper (`src/components/ui/data-table.tsx`)
-- **Routing:** react-router-dom v6
-- **HTTP:** Axios with interceptors (`src/services/api.ts`)
-- **Icons:** lucide-react
-- **Toasts:** sonner (≥2.0.7)
-- **XML editor:** CodeMirror 6
-- **Node:** 20.x (`.nvmrc`, `engines`); package manager: Bun (preferred) or npm with `legacy-peer-deps=true`
+Stack, versions, and scripts: read `package.json`. Package manager is **Bun** (preferred); npm works via the checked-in `.npmrc`.
 
 ## Commands
 
-```bash
-bun install                 # or: npm install
-bun start                   # Vite dev server on :3304 (--mode localhost → .env.localhost)
-bun run dev                 # same as bun start / dev:local (--mode localhost)
-bun run dev:local           # dev server against local backend (.env.localhost, --mode localhost)
-bun run dev:dev             # dev server against deployed DEV backend (.env.dev, --mode dev)
-bun run dev:uat             # dev server against UAT backend (.env.uat, --mode uat)
-bun run dev:prod            # dev server against the prod slot (.env.prod, --mode prod) — placeholder: points at DEV
-bun run build               # production build (--mode prod → .env.prod; sets REACT_APP_BUILD_DATE, emits to build/)
-bun run build:local         # build with local env (.env.localhost, --mode localhost)
-bun run build:dev           # build with DEV env (.env.dev, --mode dev)
-bun run build:uat           # build with UAT env (.env.uat, --mode uat)
-bun run build:prod          # build with prod env (.env.prod, --mode prod) — placeholder: points at DEV
-bun run preview             # serve the production build locally on :3304 (--mode prod → .env.prod)
-bun run build:bump          # cut a release: guards → prompt → gates → commit + annotated tag (never pushes)
-bun run changelog           # regenerate CHANGELOG.md from src/data/changelog.json without bumping
-bun run typecheck           # tsc --noEmit
-bun run lint                # eslint over src/
-bun run test                # unit + component tests (Vitest, jsdom) — one-shot
-bun run test:watch          # Vitest watch mode
-bun run test:cov            # Vitest with v8 coverage
-bun run test:scripts        # node --test for build scripts (scripts/lib/*.test.mjs)
-```
+`package.json` lists every script. What it does **not** tell you:
+
+- `dev:*` / `build:*` pick the env file by Vite **mode** (`localhost`/`dev`/`uat`/`prod`) — see **Environment** below.
+- `dev:prod` and `build:prod` are **placeholders that point at DEV**, not production.
+- `build` also stamps `REACT_APP_BUILD_DATE` and emits to `build/` (not `dist/`).
+- `build:bump` cuts a release locally and **never pushes** — see **Releases** below.
+- `test` is Vitest (jsdom); `test:scripts` is a *separate* `node --test` run over `scripts/lib/*.test.mjs` and is **not** covered by `test`.
 
 `vite-plugin-checker` runs both tsc and `eslint "./src/**/*.{ts,tsx}"` during `start`/`build`; `bun run typecheck` and `bun run lint` run the same two checks standalone, which is how `build:bump` gates a release. Pass `CI=true` to treat warnings as errors.
 
 ## Releases
 
-`bun run build:bump` (`scripts/release.mjs`) cuts a release **locally** — it never pushes
-and never fetches. Guards run in this order, all before anything is written:
-
-1. **version drift** — `package.json.version` must still equal `src/data/changelog.json` → `versions[0].version`
-2. **branch** — `main` or `chore/release-*`
-3. **working tree** — clean
-4. **not behind** `@{upstream}`; a branch with no upstream (every fresh `chore/release-*`) falls back to the remote-tracking ref `origin/main`. Skipped only when neither resolves.
-5. **`unreleased` non-empty**
-
-Then it prompts for patch/minor/major (pass the level as an argument to skip the prompt),
-checks the target **tag `vX.Y.Z` does not already exist**, gates on `typecheck` + `lint` +
-`test`, and only then writes `package.json`, `src/data/changelog.json`, and `CHANGELOG.md`,
-commits exactly those three with `git commit --only` (anything else you staged stays
-staged) as `chore(release): vX.Y.Z`, and creates the annotated tag `vX.Y.Z`.
+`bun run build:bump` cuts a release **locally** — it never pushes and never fetches. The
+guard order, what the script writes, and the **tag-push order** (a squash-merged release PR
+strands the tag outside `main`'s history) live in the **`cutting-a-release` skill**
+(`.claude/skills/cutting-a-release/SKILL.md`) — read it before cutting or fixing a release.
 
 The version the app displays comes from `src/data/changelog.json` → `versions[0].version`
-(`src/components/VersionBadge.tsx`), **not** from `package.json` — `package.json.version`
-is a mirror the script keeps in sync.
-
-**Push the tag last.** Cut on `main`: `git push origin HEAD && git push origin vX.Y.Z`.
-Cut on a `chore/release-*` branch: `git push origin HEAD` → open the PR → **merge it with a
-merge commit, not a squash** → *then* `git push origin vX.Y.Z`. A squash rewrites the
-release commit, so a tag pushed before the merge points at an object outside `main`'s
-history — and once pushed it can only be fixed by deleting the remote tag and re-tagging.
-The script prints whichever order applies.
-
-Spec: `docs/superpowers/specs/2026-08-05-build-bump-release-script-design.md`.
+(`src/components/VersionBadge.tsx`), **not** from `package.json`.
 
 ## Environment
 
@@ -96,9 +51,8 @@ Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (T
 
 ## Unit & Component Tests
 
-[Vitest](https://vitest.dev) (jsdom) is the in-repo test runner — separate from the Playwright E2E suite. Config lives in `vitest.config.ts` (standalone — does **not** touch `vite.config.ts`); `vitest.setup.ts` registers jest-dom matchers + `afterEach(cleanup)` (we run **no** `globals`, so RTL cleanup is wired manually — otherwise renders accumulate in the shared jsdom doc); `src/vitest.d.ts` makes the jest-dom matchers visible to tsc without touching `tsconfig.json`.
+Vitest (jsdom) is the in-repo test runner — separate from the Playwright E2E suite. `vitest.config.ts` is **standalone** and must not touch `vite.config.ts`; `vitest.setup.ts` wires RTL's `afterEach(cleanup)` **by hand** because we run **no** `globals` — without it renders accumulate in the shared jsdom doc. `src/vitest.d.ts` exposes the jest-dom matchers to tsc without touching `tsconfig.json`.
 
-- **Run:** `bun run test` (one-shot) · `test:watch` · `test:cov` (v8 coverage). Tests are excluded from the app bundle (never imported by app code).
 - **Location:** co-locate `*.test.ts` / `*.test.tsx` beside the source (e.g. `src/utils/validation.test.ts`).
 - **Imports:** explicit — `import { describe, it, expect, vi } from 'vitest'` (no globals).
 - **Pure functions:** unit-test directly. Reference: `src/utils/*.test.ts`.
@@ -109,31 +63,6 @@ Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (T
 
 E2E tests live in the standalone sibling repo **`../carmen-platform-e2e`** (Playwright).
 See that repo's `CLAUDE.md`. This repo's Vite dev server (`:3304`) is the system under test.
-
-## Project Structure (orientation only — `ls` for current state)
-
-```
-src/
-  components/      Layout, Sidebar, PrivateRoute, TableSkeleton, EmptyState,
-                   KeyboardShortcuts, XmlEditor, DialogPreview
-    ui/            shadcn primitives — DO NOT modify without a clear reason
-  pages/           Landing, Login, Dashboard, Profile,
-                   <Entity>Management.tsx (list) + <Entity>Edit.tsx (CRUD)
-                   for Cluster, BusinessUnit, User, ReportTemplate
-    businessUnitEdit/  BusinessUnitEdit.tsx decomposed — sections/, useBusinessUnitUsers
-                       hook, Form/Branding/Users/Debug cards, shared.tsx, types.ts
-    emailSettings/     EmailSettingManagement.tsx decomposed — EmailSettingCard,
-                       PasswordField (never returns null), TestEmailDialog
-  services/        api.ts (axios + interceptors) + one <entity>Service.ts per entity
-  types/index.ts   All shared TS types
-  utils/           QueryParams, csvExport, validation, errorParser, xml
-  hooks/           useUnsavedChanges
-  context/         AuthContext
-  lib/utils.ts     cn() = clsx + tailwind-merge
-  **/*.test.{ts,tsx}  Vitest unit/component tests, co-located beside source
-```
-
-Test config at repo root: `vitest.config.ts`, `vitest.setup.ts`, plus `src/vitest.d.ts` (jest-dom matcher types). See **Unit & Component Tests** above.
 
 ## The Two Page Patterns
 
@@ -357,7 +286,7 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 ## Styling Reference
 
-**Color tokens (HSL):** warm-neutral ground + single blue accent (calm-corporate reskin). `--primary` 221 61% 48% (blue) · `--accent` 40 8% 94% (neutral warm surface, not a brand hue) · `--destructive` 0 72% 51% · `--muted-foreground` 33 5% 43% · `--border` 40 8% 90% / `--input` 40 8% 87% · `--radius` 0.5rem. Status accents (success/warning/info) use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`. Full token reference (light + dark, all roles, hex, spacing, shadows, contrast) lives in **`.planning/design/system/tokens.md`** — sourced from `src/index.css` + `tailwind.config.js` (the source of truth; keep the doc in sync when those change).
+**Color tokens (HSL):** warm-neutral ground + a single blue accent (calm-corporate reskin) — `--accent` is a neutral warm surface, **not** a brand hue, and status accents use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`. Values live in `src/index.css` + `tailwind.config.js` (the source of truth); the full reference (light + dark, all roles, hex, spacing, shadows, contrast) is **`.planning/design/system/tokens.md`** — keep it in sync when those change.
 
 **Surfaces:** glassmorphism (`.glass` / `.glass-strong`) was removed in the enterprise redesign — surfaces are now flat `bg-card` / `bg-background` with a 1px `border`.
 
