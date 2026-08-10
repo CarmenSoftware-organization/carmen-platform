@@ -12,7 +12,6 @@ const neutraliseFormulaPrefix = (value: string): string => {
   return /^[=+@\t\r-]/.test(value) ? `'${value}` : value;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const generateCSV = <T extends Record<string, any>>(
   data: T[],
   columns: { key: keyof T; label: string }[]

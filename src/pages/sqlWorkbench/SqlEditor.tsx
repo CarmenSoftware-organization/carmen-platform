@@ -164,7 +164,6 @@ export function SqlEditor({
         sql({ dialect: PostgreSQL, schema: buildSchemaMap(schema), upperCaseKeywords: true }),
       ),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schema]);
 
   const replaceAll = (text: string) => {
