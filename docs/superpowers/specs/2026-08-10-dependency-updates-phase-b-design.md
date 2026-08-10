@@ -124,6 +124,27 @@ TypeError: Error while loading rule 'react/display-name':
 **0 finding** ความไม่แน่นอนที่ฉบับแรกกังวล (`no-unassigned-vars`, `no-useless-assignment`,
 `preserve-caught-error` — กฎที่มีเฉพาะใน 10) **ไม่อยู่ในเป้าหมายใหม่แล้ว**
 
+### 2.13 ESLint 9 เปิด `reportUnusedDisableDirectives` เป็น default — ต่างจากรายชื่อกฎ
+
+`lib/config/default-config.js:62` ของ ESLint 9 ตั้ง `linterOptions.reportUnusedDisableDirectives: 1`
+(= `warn`) ส่วน ESLint 8 ปิดไว้ นี่เป็น **linter option ไม่ใช่กฎ** จึงไม่ปรากฏในส่วนต่างของ
+`js.configs.recommended` ที่ 2.6 เทียบไว้ — การเทียบรายชื่อกฎอย่างเดียวจึงไม่พอที่จะบอกว่าผลลัพธ์
+จะเหมือนเดิม (ความผิดพลาดรูปแบบเดียวกับหัวข้อ 0 อีกครั้ง)
+
+ผลจริงกับ `src/`: **3 warning** ทั้งหมดเป็น "Unused eslint-disable directive"
+
+| ไฟล์ | directive | ทำไมไม่จำเป็น |
+|---|---|---|
+| `src/utils/csvExport.ts:15` | `@typescript-eslint/no-explicit-any` | กฎนี้ถูกตั้ง `'off'` ใน config อยู่แล้ว — ซ้ำซ้อนมาแต่แรก |
+| `src/components/ImageUpload.tsx:53` | `react-hooks/exhaustive-deps` | react-hooks v7 ไม่รายงานที่จุดนี้แล้ว |
+| `src/pages/sqlWorkbench/SqlEditor.tsx:167` | `react-hooks/exhaustive-deps` | เหตุผลเดียวกัน |
+
+**ข้อตัดสินของผู้ใช้: ลบทั้ง 3 directive ออกจาก `src/`** (ไม่ใช่ปิด option) เพราะ ESLint ยืนยันแล้ว
+ว่าไม่มีอะไรถูก suppress การเก็บไว้คือ comment ที่โกหกผู้อ่าน — **คอมเมนต์อธิบายเหตุผลที่กำกับอยู่
+เหนือสอง directive แรกให้คงไว้** เพราะมันอธิบายเจตนาของ dependency array ซึ่งยังมีคุณค่า
+
+นี่เป็น**ข้อยกเว้นเดียว**ของกฎ "ห้ามแตะ `src/`" ในเฟสนี้ ขอบเขตคือ 3 บรรทัดนี้เท่านั้น
+
 ### 2.7 baseline ของ lint คือศูนย์
 
 `eslint "./src/**/*.{ts,tsx}" -f json` บน main: **374 ไฟล์ · 0 error · 0 warning**
@@ -180,7 +201,7 @@ switch (process.env.ESLINT_USE_FLAT_CONFIG) {
 | # | ข้อตัดสิน | เหตุผล |
 |---|---|---|
 | 1 | **เป้าหมายคือ ESLint 9.39.5 ไม่ใช่ 10** | 10 ถูกบล็อกโดย `eslint-plugin-react` ที่ไม่มีเวอร์ชันรองรับ (2.3) |
-| 2 | **คงกฎเดิมทุกกฎ ไม่แตะ `src/`** | เฟสนี้ยกเครื่องมือ ไม่ใช่ยกระดับคุณภาพโค้ด |
+| 2 | **คงกฎเดิมทุกกฎ ไม่แตะ `src/` ยกเว้นการลบ 3 unused eslint-disable directive** | เฟสนี้ยกเครื่องมือ ไม่ใช่ยกระดับคุณภาพโค้ด — ข้อยกเว้นเดียวคือ 2.13 ซึ่งเป็นผลโดยตรงจากการอัป และ ESLint ยืนยันแล้วว่า directive เหล่านั้นไม่ได้ suppress อะไร |
 | 3 | **ไม่แตะ `.nvmrc` และ `engines`** | ESLint 9 ต้องการแค่ `^20.9.0` ซึ่ง repo ผ่านอยู่แล้ว (2.11) |
 | 4 | **ไม่ใช้ `FlatCompat`** | ลาก `@eslint/eslintrc` เข้ามาโดยไม่จำเป็น |
 | 5 | **ไม่แก้ `eslint.config.mjs` ที่ C1 สร้างไว้** | มันผ่าน equivalence gate แล้ว ถ้าต้องแก้แปลว่าสมมติฐานผิด ต้องหยุดรายงาน |
@@ -218,6 +239,7 @@ parser, settings, และกฎ 6 ข้อ (รวม `react-hooks/rules-of-h
 | `package.json` | `eslint` → `^9.39.5`, `@eslint/js` → `^9.39.5` (ต้องคู่กับ core, 2.5), `eslint-plugin-react-hooks` → `^7.1.1`, `vite-plugin-checker` → `^0.14.5` · **ลบบล็อก `eslintConfig` ทั้งบล็อก** |
 | `bun.lock`, `package-lock.json` | regenerate **ในคอมมิตเดียวกับ `package.json`** |
 | `vite.config.ts` | `useFlatConfig: false` → `true` |
+| `src/utils/csvExport.ts:15`, `src/components/ImageUpload.tsx:53`, `src/pages/sqlWorkbench/SqlEditor.tsx:167` | ลบบรรทัด `// eslint-disable-next-line …` ออกอย่างเดียว **คงคอมเมนต์อธิบายเหนือมันไว้** (2.13) |
 | `.nvmrc`, `engines` | **ไม่แตะ** (2.11) |
 | `eslint.config.mjs` | **ไม่แตะ** |
 
@@ -268,7 +290,7 @@ results doc + ปิดแถวเฟส B ในตาราง roadmap ขอ
 
 ## 8. สิ่งที่ไม่อยู่ในขอบเขต
 
-- **ไม่แตะ `src/`** — ถ้า lint บังคับให้แก้โค้ด ให้หยุดและรายงาน
+- **ไม่แตะ `src/` ยกเว้น 3 บรรทัดใน 2.13** — ถ้า lint บังคับให้แก้อย่างอื่น ให้หยุดและรายงาน
 - **ไม่ไป ESLint 10** — รอ `eslint-plugin-react` ปล่อยเวอร์ชันที่รองรับ บันทึกไว้ใน roadmap
 - **ไม่แตะ `.nvmrc` / `engines`** — เหตุผลเดิมมาจาก ESLint 10 ล้วน ๆ (2.11)
 - **ไม่เพิ่ม `overrides` / `resolutions`** ใด ๆ

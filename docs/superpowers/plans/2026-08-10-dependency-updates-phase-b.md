@@ -25,7 +25,8 @@
 
 ทุก task อยู่ใต้ข้อจำกัดเหล่านี้ทั้งหมด:
 
-- **ห้ามแตะไฟล์ใด ๆ ใน `src/`** ถ้า lint บังคับให้ต้องแก้โค้ด ให้ **หยุดและรายงาน** ไม่แก้เอง
+- **ห้ามแตะไฟล์ใด ๆ ใน `src/` ยกเว้นการลบ 3 unused eslint-disable directive ที่ระบุไว้ใน Task 2
+  Step 6b** ถ้า lint บังคับให้ต้องแก้อย่างอื่น ให้ **หยุดและรายงาน** ไม่แก้เอง
 - **ห้ามใช้ `FlatCompat` หรือติดตั้ง `@eslint/eslintrc`** — เป็นต้นทางของ `js-yaml` ที่เฟสนี้ตั้งใจปิด
 - **ห้ามเพิ่ม/ลด lint rule ใด ๆ** นอกจากส่วนต่างของ `js.configs.recommended` ที่ ESLint 9 กำหนดเอง
 - **ห้ามอัป** `eslint-plugin-react` (7.37.5), `eslint-plugin-jsx-a11y` (6.10.2),
@@ -226,6 +227,9 @@ EOF
 - Modify: `package.json` (4 เวอร์ชัน + ลบบล็อก `eslintConfig`)
 - Modify: `bun.lock`, `package-lock.json`
 - Modify: `vite.config.ts:30` (`useFlatConfig`)
+- Modify: `src/utils/csvExport.ts:15`, `src/components/ImageUpload.tsx:53`,
+  `src/pages/sqlWorkbench/SqlEditor.tsx:167` — ลบบรรทัด `eslint-disable-next-line` อย่างเดียว
+  (Step 6b) นี่เป็นข้อยกเว้นเดียวของกฎ "ห้ามแตะ `src/`"
 - **ห้ามแก้** `eslint.config.mjs` — ถ้าจำเป็นต้องแก้ แปลว่า Task 1 ยังไม่ถูก ให้หยุดและรายงาน
 - **ห้ามแตะ** `.nvmrc` และ `engines` — ESLint 9 ต้องการแค่ `^20.9.0` ซึ่ง repo ผ่านอยู่แล้ว
 
@@ -302,13 +306,39 @@ Expected:
 - `test` — `1081 passed (1081)`, `133 passed (133)` test files
 - `build` — สำเร็จ เขียนผลลง `build/`
 
-**ถ้า `lint` มี finding โผล่มา** — **ให้หยุด รายงานรายการ finding พร้อม `file:line` ครบทุกจุด
-และรอผู้ใช้ตัดสิน** ห้ามแก้ `src/` และห้ามปิดกฎเอง
+**คาดว่าจะเห็น 3 warning ตรงนี้** — ทั้งหมดเป็น "Unused eslint-disable directive" ที่ Step 6b
+เป็นคนแก้ ให้ทำ Step 6b แล้วรัน Step 6 ใหม่จนเขียว
 
-โอกาสเกิดต่ำมาก: ส่วนต่างของ `js.configs.recommended` ระหว่าง 8 กับ 9 คือ 4 กฎ
+**ถ้ามี finding อื่นนอกเหนือจาก 3 จุดนั้น** — **ให้หยุด รายงานพร้อม `file:line` ครบทุกจุด
+และรอผู้ใช้ตัดสิน** ห้ามแก้ `src/` เพิ่มและห้ามปิดกฎเอง
+
+โอกาสเกิด finding อื่นต่ำมาก: ส่วนต่างของ `js.configs.recommended` ระหว่าง 8 กับ 9 คือ 4 กฎ
 (`no-constant-binary-expression`, `no-empty-static-block`, `no-new-native-nonconstructor`,
 `no-unused-private-class-members`) ซึ่งมีอยู่ใน ESLint 8 อยู่แล้วและทดสอบกับ `src/` ล่วงหน้าไปแล้ว
-ได้ 0 finding ทั้งหมด — ต่างจากเป้าหมาย ESLint 10 เดิมที่มีกฎวัดล่วงหน้าไม่ได้ 2 ตัว
+ได้ 0 finding ทั้งหมด
+
+- [ ] **Step 6b: ลบ 3 unused eslint-disable directive**
+
+ESLint 9 ตั้ง `linterOptions.reportUnusedDisableDirectives: 1` (= warn) เป็น default
+(`lib/config/default-config.js:62`) ส่วน ESLint 8 ปิดไว้ — เป็น **linter option ไม่ใช่กฎ** จึงไม่โผล่
+ในส่วนต่างของ ruleset ที่เทียบไว้ล่วงหน้า
+
+ลบ **เฉพาะบรรทัด `// eslint-disable-next-line …`** ในสามจุดนี้ — **คงคอมเมนต์อธิบายเหตุผลที่อยู่
+เหนือมันไว้ทั้งหมด** เพราะมันอธิบายเจตนาของ dependency array ซึ่งยังมีคุณค่าแม้ directive จะหายไป:
+
+| ไฟล์ | บรรทัด | directive ที่ลบ |
+|---|---|---|
+| `src/utils/csvExport.ts` | 15 | `// eslint-disable-next-line @typescript-eslint/no-explicit-any` |
+| `src/components/ImageUpload.tsx` | 53 | `// eslint-disable-next-line react-hooks/exhaustive-deps` |
+| `src/pages/sqlWorkbench/SqlEditor.tsx` | 167 | `// eslint-disable-next-line react-hooks/exhaustive-deps` |
+
+ทั้งสามไม่ได้ suppress อะไรจริง — ESLint เป็นคนยืนยันเอง ตัวแรกซ้ำซ้อนมาแต่แรกเพราะ
+`@typescript-eslint/no-explicit-any` ถูกตั้ง `'off'` ใน config อยู่แล้ว ส่วนสองตัวหลังเกิดจาก
+react-hooks v7 ไม่รายงาน `exhaustive-deps` ที่จุดนั้นแล้ว
+
+จากนั้นรัน Step 6 ซ้ำ — ต้องได้ 0 error / 0 warning
+
+**ห้ามลบ directive อื่นที่ ESLint ไม่ได้รายงาน** และห้ามแก้บรรทัดอื่นในสามไฟล์นี้
 
 - [ ] **Step 7: ยืนยันจำนวนไฟล์ที่ lint**
 
@@ -363,7 +393,8 @@ override เป็นการตัดสินใจของผู้ใช�
 - [ ] **Step 10: Commit**
 
 ```bash
-git add package.json bun.lock package-lock.json vite.config.ts
+git add package.json bun.lock package-lock.json vite.config.ts \
+        src/utils/csvExport.ts src/components/ImageUpload.tsx src/pages/sqlWorkbench/SqlEditor.tsx
 git commit -F - <<'EOF'
 chore(deps): อัป ESLint 8→9, react-hooks 4→7, vite-plugin-checker 0.10→0.14
 
@@ -382,8 +413,14 @@ react-hooks ต้องขยับเพราะ ESLint 9 ถอด context.g
 4.6.2 เรียกอยู่ 16 จุดโดยไม่มี fallback ส่วน @eslint/js ต้องเดินคู่เวอร์ชัน
 กับ core เสมอ และ vite-plugin-checker 0.14.5 ขอ eslint >=9.39.4
 
-ไม่แตะ src/ และไม่แตะ .nvmrc/engines — lint ยังได้ 374 ไฟล์ 0 error
-0 warning เท่าเดิม
+ลบ eslint-disable directive 3 บรรทัดใน src/ ที่ไม่ได้ suppress อะไรแล้ว
+เพราะ ESLint 9 เปิด reportUnusedDisableDirectives เป็น default (เป็น
+linterOptions ไม่ใช่กฎ จึงไม่โผล่ตอนเทียบ ruleset ล่วงหน้า) — ตัวหนึ่ง
+ซ้ำซ้อนมาแต่แรกเพราะ no-explicit-any ถูกตั้ง off อยู่แล้ว อีกสองตัวเกิดจาก
+react-hooks v7 ไม่รายงาน exhaustive-deps ที่จุดนั้นแล้ว คอมเมนต์อธิบาย
+เจตนาที่กำกับอยู่คงไว้ทั้งหมด
+
+ไม่แตะ .nvmrc/engines — lint ยังได้ 374 ไฟล์ 0 error 0 warning เท่าเดิม
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 EOF
