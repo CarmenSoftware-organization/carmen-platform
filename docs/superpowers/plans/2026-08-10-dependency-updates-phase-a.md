@@ -49,7 +49,7 @@ bun audit: 16 vulnerabilities (9 high, 7 moderate)
 |---|---|---|
 | `postcss` ≤8.5.22 — path traversal ผ่าน `sourceMappingURL` (GHSA-r28c-9q8g-f849, GHSA-fxqj-rqcc-2cmp) | high + moderate | ✅ ใช่ |
 | `nanoid` <3.3.16 — infinite loop ×2 (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) | high ×2 | ✅ ใช่ (ขยับตาม postcss) |
-| `brace-expansion` — DoS ×2 (GHSA-rgw5-rvv9-x895, GHSA-3jxr-9vmj-r5cp) | high ×2 | ✅ ใช่ |
+| `brace-expansion` — DoS ×3 (GHSA-rgw5-rvv9-x895, GHSA-3jxr-9vmj-r5cp) | high ×2 | ✅ ใช่ |
 | `js-yaml` 4.0.0–4.1.1 — quadratic DoS ×3 (GHSA-h67p-54hq-rp68, GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj) ผ่าน `eslint › @eslint/eslintrc › js-yaml` | high ×2 + moderate | ❌ ไม่ — ติดใต้ ESLint 8 ต้องรอเฟส B |
 
 ---
@@ -224,7 +224,7 @@ git commit -m "$(cat <<'EOF'
 chore(deps): ทบทวน overrides/resolutions ทั้ง 8 ตัว
 
 - ลบ path-to-regexp: dead pin ไม่มีใน dependency tree แล้วตั้งแต่อัป react-router v7
-- ยก brace-expansion เป็น ^2.1.4: pin เดิม ^2.0.2 ปล่อยให้ lockfile ค้างที่ 2.1.1 ซึ่งยังโดน DoS ×2
+- ยก brace-expansion เป็น ^2.1.4: pin เดิม ^2.0.2 ปล่อยให้ lockfile ค้างที่ 2.1.1 ซึ่งยังโดน DoS ×3
 - ยก postcss ให้ตรงกับเวอร์ชันจริงที่ใช้อยู่ ไม่ให้ pin โกหกว่า floor ต่ำกว่าความจริง
 - คงอีก 5 ตัวไว้: minimatch, picomatch, follow-redirects, yaml, flatted
 
