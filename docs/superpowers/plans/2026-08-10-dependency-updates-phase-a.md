@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **ห้ามแก้ไฟล์ใดๆ ใน `src/`** — ถ้า `bun update` ทำให้ต้องแก้โค้ด แปลว่ามีบางอย่างไม่ใช่ minor จริง **ให้หยุดและรายงาน** ไม่ใช่แก้โค้ดตามไปเงียบๆ
-- **`overrides` (npm) และ `resolutions` (bun/yarn) ต้องมีเนื้อหาเหมือนกันเป๊ะเสมอ** — ถ้าไม่ตรงกัน bun กับ `npm ci` จะได้ dependency tree คนละแบบ ซึ่งเป็นความล้มเหลวแบบเดียวกับบั๊ก `react-is` ที่เคยทำ Vercel build พังสองรอบ (commit `bef7fac`)
+- **`overrides` (npm) และ `resolutions` (bun/yarn) ต้องมีเนื้อหาเหมือนกันเป๊ะเสมอ** — ถ้าไม่ตรงกัน bun กับ npm จะได้ dependency tree คนละแบบ ซึ่งเป็นความล้มเหลวแบบเดียวกับบั๊ก `react-is` ที่เคยทำ Vercel build พังสองรอบ (commit `bef7fac`) **`npm ci` ไม่ใช่เครื่องพิสูจน์ว่าสองบล็อกตรงกัน** — npm อ่านเฉพาะ `overrides` และไม่สนใจ `resolutions` เลย ถ้าสองบล็อกหลุดจากกัน `npm ci` จะผ่านเงียบๆ (มันพิสูจน์แค่ว่า npm ติดตั้งได้จาก `overrides` และ lockfile ที่ sync กัน) ต้องตรวจว่าสองบล็อกตรงกันด้วย JSON compare ตรงๆ ต่างหาก
 - **Branch:** `chore/deps-phase-a-safe-updates` (มีอยู่แล้ว มี spec commit `898b6e3` อยู่บนนั้น) → PR กลับเข้า `main` เท่านั้น **ห้าม push หรือ merge ไป `DEV` / `UAT`**
 - **ห้าม cut release** — ไม่แตะ `src/data/changelog.json` และไม่รัน `bun run build:bump`
 - **ห้าม deploy** — `deploy-gcs.yml` เป็น manual `workflow_dispatch` อยู่แล้ว ปล่อยไว้อย่างนั้น
@@ -49,7 +49,7 @@ bun audit: 16 vulnerabilities (9 high, 7 moderate)
 |---|---|---|
 | `postcss` ≤8.5.22 — path traversal ผ่าน `sourceMappingURL` (GHSA-r28c-9q8g-f849, GHSA-fxqj-rqcc-2cmp) | high + moderate | ✅ ใช่ |
 | `nanoid` <3.3.16 — infinite loop ×2 (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) | high ×2 | ✅ ใช่ (ขยับตาม postcss) |
-| `brace-expansion` — DoS ×3 (GHSA-rgw5-rvv9-x895, GHSA-3jxr-9vmj-r5cp) | high ×2 | ✅ ใช่ |
+| `brace-expansion` — DoS ×3 (GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-3jxr-9vmj-r5cp) | high ×3 | ✅ ใช่ |
 | `js-yaml` 4.0.0–4.1.1 — quadratic DoS ×3 (GHSA-h67p-54hq-rp68, GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj) ผ่าน `eslint › @eslint/eslintrc › js-yaml` | high ×2 + moderate | ❌ ไม่ — ติดใต้ ESLint 8 ต้องรอเฟส B |
 
 ---
@@ -152,7 +152,7 @@ EOF
 
 **Interfaces:**
 - Consumes: เวอร์ชันจริงของ `brace-expansion` และ `postcss` จาก Task 1 Step 4
-- Produces: บล็อก `overrides`/`resolutions` ชุดใหม่ที่ npm และ bun อ่านตรงกัน — Task 3 Step 5 (`npm ci`) คือตัวพิสูจน์ว่าตรงจริง
+- Produces: บล็อก `overrides`/`resolutions` ชุดใหม่ที่ npm และ bun อ่านตรงกัน — Task 3 Step 5 (`npm ci`) พิสูจน์ว่า npm ติดตั้งได้จาก `overrides` และ lockfile ที่ sync กัน (npm ไม่อ่าน `resolutions` เลย จึงพิสูจน์สองบล็อกตรงกันไม่ได้ด้วยตัวเอง) — ความตรงกันของสองบล็อกต้องตรวจด้วย JSON compare ตรงๆ
 
 - [ ] **Step 1: ตัดสินใจต่อ `brace-expansion` จากผล Task 1**
 
@@ -291,8 +291,11 @@ npm run build
 
 Expected: ทั้ง `npm ci` และ `npm run build` สำเร็จ
 
-ชั้นนี้คือตัวเดียวที่จับได้ว่า `overrides` (npm อ่าน) กับ `resolutions` (bun อ่าน) ไม่ตรงกัน
-**ถ้า `npm ci` พังแต่ bun ผ่าน → ปัญหาอยู่ที่ Task 2 ให้กลับไปตรวจว่าสองบล็อกมีเนื้อเหมือนกันเป๊ะหรือไม่**
+ชั้นนี้พิสูจน์ว่า npm ติดตั้งได้จาก `overrides` และ `package-lock.json` ที่ sync กัน — **ไม่ใช่**
+ตัวพิสูจน์ว่า `overrides` (npm อ่าน) กับ `resolutions` (bun อ่าน) ตรงกัน เพราะ npm ไม่อ่าน
+`resolutions` เลย ถ้าสองบล็อกหลุดจากกัน `npm ci` จะผ่านเงียบๆ ความตรงกันของสองบล็อกต้องตรวจ
+ด้วย JSON compare ตรงๆ ต่างหาก (ดู Task 2 Step 5)
+**ถ้า `npm ci` พังแต่ bun ผ่าน → ปัญหาอยู่ที่ Task 2 ให้กลับไปตรวจว่า `overrides` กับ `package-lock.json` sync กันหรือไม่**
 
 - [ ] **Step 6: คืน `node_modules` ให้เป็นของ bun**
 
@@ -483,7 +486,7 @@ _(เติมตัวเลขจริง ก่อน 16 (9 high, 7 moderate
 - [x] `bun run lint`
 - [x] `bun run test` — _(เติมจำนวนเทสต์)_
 - [x] `bun run build`
-- [x] `npm ci && npm run build` (mirror Vercel — ชั้นที่พิสูจน์ว่า overrides/resolutions ตรงกัน)
+- [x] `npm ci && npm run build` (mirror Vercel — พิสูจน์ว่า npm ติดตั้งได้จาก `overrides` และ lockfile ที่ sync กัน; ไม่ได้พิสูจน์ว่า `overrides`/`resolutions` ตรงกัน เพราะ npm ไม่อ่าน `resolutions` — ตรวจด้วย JSON compare ตรงๆ ต่างหาก)
 - [x] Browser: 4 จุดที่พึ่งพา Radix `DismissableLayer` + กวาด 10 primitives ใน 3 หน้า
 
 _(เติมผลที่เห็นจริงจาก browser gate)_

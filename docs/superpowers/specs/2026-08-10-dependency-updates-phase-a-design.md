@@ -25,8 +25,12 @@ subsystem อิสระ (build tool / lint / CSS framework / data table / icon
 
 ### 2.1 กอง A ทั้ง 27 ตัวอยู่ใน semver range เดิม
 
-`bun update` จะแก้ **`bun.lock` อย่างเดียว ไม่แตะ `package.json`** ซึ่งแปลว่า PR นี้จะมี diff เล็กมาก
-แต่พฤติกรรม runtime เปลี่ยนได้ทั้งแอป — เป็นกับดักของการรีวิว ที่ต้องชดเชยด้วย verification ที่หนักกว่าปกติ
+**แก้ไข (พิสูจน์แล้วว่าผิด):** เอกสารฉบับแรกเขียนตรงนี้ว่า `bun update` จะแก้ `bun.lock`
+อย่างเดียว ไม่แตะ `package.json` — ผิด `bun update` ของ bun 1.3.14 เขียน `package.json` ด้วย
+เสมอ (`--save` เป็น default) โดยยก caret range ให้ตรงเวอร์ชันที่ resolve ได้จริง ดู
+`docs/superpowers/specs/2026-08-10-dependency-updates-phase-a-results.md` หัวข้อ 6 สำหรับ
+ตัวเลขจริง (42 range string เปลี่ยน ไม่ใช่ 0) พฤติกรรม runtime เปลี่ยนได้ทั้งแอปแม้ diff ของ
+`bun.lock` จะดูเล็ก — เป็นกับดักของการรีวิว ที่ต้องชดเชยด้วย verification ที่หนักกว่าปกติ
 
 รายการที่ขยับ (จาก `bun outdated`):
 
@@ -44,12 +48,12 @@ subsystem อิสระ (build tool / lint / CSS framework / data table / icon
 |---|---|---|---|
 | `postcss` ≤8.5.22 — path traversal ผ่าน `sourceMappingURL` | high + moderate | direct dependency + `autoprefixer`, `tailwindcss › postcss-nested`, `vite` | **เฟส A** — `bun update` พาไป 8.5.26 |
 | `nanoid` <3.3.16 — infinite loop ×2 | high ×2 | `postcss › nanoid` | **เฟส A** — ขยับตาม postcss |
-| `brace-expansion` — DoS ×2 | high ×2 | ผ่าน override pin | **เฟส A** — ดู 2.3 |
+| `brace-expansion` — DoS ×3 (GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-3jxr-9vmj-r5cp) | high ×3 | ผ่าน override pin | **เฟส A** — ดู 2.3 |
 | `js-yaml` 4.0.0–4.1.1 — quadratic DoS ×3 | high ×2 + moderate | `eslint › @eslint/eslintrc › js-yaml` | ❌ **เฟส B เท่านั้น** — ติดใต้ ESLint 8 ที่ EOL แล้ว |
 
 ### 2.3 `brace-expansion` — pin ที่ตรึง CVE ไว้แทนที่จะกัน
 
-`overrides` ระบุ `^2.0.2` แต่ `bun.lock` resolve เป็น **2.1.1 ซึ่งยังโดนช่องโหว่ high ×2**
+`overrides` ระบุ `^2.0.2` แต่ `bun.lock` resolve เป็น **2.1.1 ซึ่งยังโดนช่องโหว่ high ×3**
 ขณะที่ dist-tag `maintenance-v2` ชี้ไปที่ **2.1.4** ซึ่งอยู่ในช่วง `^2.0.2` อยู่แล้ว
 
 สาเหตุคือ lockfile ตรึงเวอร์ชันที่ resolve ไว้ครั้งแรกจนกว่าจะมีคนสั่ง update — pin ที่ตั้งใจแก้ CVE
@@ -108,7 +112,7 @@ Unit test ไม่ครอบคลุมเรื่องนี้ เพร
 | `bun.lock` เปลี่ยน, `package.json` ไม่เปลี่ยน | `git diff --name-only` ได้ `bun.lock` ตัวเดียว | `bun update` ตีความ range เกินคาด — หยุดตรวจก่อนไปต่อ |
 | `postcss` > 8.5.22 | ปิด path-traversal high | ตรวจว่า override `postcss: ^8.5.6` กดไว้หรือไม่ → งานของคอมมิต 2 |
 | `nanoid` ≥ 3.3.16 | ปิด 2 high | ตรวจว่ามี postcss เก่าค้างใน tree หรือไม่ |
-| `brace-expansion` = 2.1.4 | ปิด 2 high | ยังค้าง 2.1.1 → ยก pin ในคอมมิต 2 |
+| `brace-expansion` = 2.1.4 | ปิด 3 high | ยังค้าง 2.1.1 → ยก pin ในคอมมิต 2 |
 | Radix ทั้ง 9 ตัวขยับ | ตรงกับตาราง 2.1 | ตรวจว่ามี transitive pin กดไว้หรือไม่ |
 
 เก็บผล `bun audit` **ก่อนและหลัง** ไว้เทียบเป็นหลักฐาน (ก่อน = 16 vulns / 9 high / 7 moderate)
@@ -120,7 +124,7 @@ Unit test ไม่ครอบคลุมเรื่องนี้ เพร
 | pin | สถานะที่ตรวจแล้ว | การตัดสินใจ |
 |---|---|---|
 | `path-to-regexp: ^1.9.0` | ไม่มีใน dependency tree | **ลบ** |
-| `brace-expansion: ^2.0.2` | resolve 2.1.1 ยังโดน high ×2 | ถ้าคอมมิต 1 ไม่พาขึ้น 2.1.4 → **ยกเป็น `^2.1.4`** |
+| `brace-expansion: ^2.0.2` | resolve 2.1.1 ยังโดน high ×3 | ถ้าคอมมิต 1 ไม่พาขึ้น 2.1.4 → **ยกเป็น `^2.1.4`** |
 | `postcss: ^8.5.6` | ต่ำกว่า direct dependency ที่จะเป็น 8.5.26 | **ยกให้ตรงกัน** ไม่ให้ pin กดเวอร์ชันจริงลง |
 | `minimatch: ^3.1.2` | resolve 3.1.5 ไม่ปรากฏใน audit | **คงไว้** + คอมเมนต์ |
 | `picomatch: ^2.3.1` | resolve 2.3.2 ไม่ปรากฏใน audit | **คงไว้** + คอมเมนต์ |
@@ -154,8 +158,11 @@ bun run build                                    # ESLint + tsc + Vite ผ่า
 rm -rf node_modules && npm ci && npm run build   # จำลอง Vercel
 ```
 
-ชั้น `npm ci` ไม่ใช่พิธีกรรม — คอมมิต 2 แก้ `overrides` และ `resolutions` ทั้งคู่
-ถ้าเผลอแก้ไม่ตรงกัน มีแค่ชั้นนี้ที่จับได้ (`verify.yml` มี job นี้อยู่แล้วเพื่อ mirror Vercel)
+ชั้น `npm ci` ไม่ใช่พิธีกรรม — มันพิสูจน์ว่า **npm ติดตั้งได้จาก `overrides` และ `package-lock.json`
+ที่ sync กัน** (`verify.yml` มี job นี้อยู่แล้วเพื่อ mirror Vercel) **แต่ไม่ได้พิสูจน์ว่า `overrides`
+กับ `resolutions` ตรงกัน** — npm อ่านเฉพาะ `overrides` และไม่สนใจ `resolutions` เลย ถ้าสองบล็อก
+หลุดจากกัน `npm ci` จะผ่านเงียบๆ (เขียวได้แม้ `resolutions` เพี้ยนไปคนละทาง) การยืนยันว่าสองบล็อก
+เหมือนกันเป๊ะต้องตรวจตรงๆ ด้วย JSON compare ไม่ใช่พึ่ง `npm ci` เป็นเกราะ
 
 หลังเสร็จต้องรัน `bun install` เพื่อคืน `node_modules` ให้เป็นของ bun ก่อนเปิด dev server
 
@@ -193,7 +200,7 @@ z-index ของ portal ซ้อนผิดชั้น · keyboard nav ใ�
 | อาการ | การถอย |
 |---|---|
 | เบราว์เซอร์เจอ Radix พัง | `git revert` คอมมิต 1 แล้วหา Radix ตัวที่ผิดด้วยการอัปทีละตัว |
-| `npm ci` พังแต่ bun ผ่าน | `git revert` คอมมิต 2 (overrides/resolutions ไม่ตรงกัน) |
+| `npm ci` พังแต่ bun ผ่าน | `git revert` คอมมิต 2 (`overrides` ไม่ sync กับ `package-lock.json` — npm ไม่อ่าน `resolutions` เลย ดังนั้นไม่ใช่ตัวจับความไม่ตรงกันระหว่างสองบล็อกนั้น) |
 | ต้องถอยทั้งหมด | revert ทั้ง 3 คอมมิต — ไม่มีผลข้างเคียงกับโค้ด |
 
 ---
