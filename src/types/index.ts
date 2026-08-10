@@ -564,6 +564,44 @@ export interface BusinessUnitsResponse extends ApiListResponse<BusinessUnit> {
   summary?: BuSummaryData;
 }
 
+/**
+ * One newest-member row inside the directory summary.
+ *
+ * `avatar_url` is already presigned by the gateway — the same swap the table rows go through.
+ * There is no token here to resolve.
+ */
+export interface NewestUser {
+  id: string;
+  username?: string | null;
+  email?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  avatar_url?: string | null;
+}
+
+/**
+ * Directory aggregate from the platform user list → `summary`.
+ *
+ * Filter-consistent and scope-aware, and it excludes unverified accounts exactly as the table
+ * does. `snake_case` because this is a wire type, not a view model.
+ */
+export interface UserSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted rows matching the same filter. The band labels these "Archived". */
+  deleted: number;
+  /** Distinct business units the matched users belong to — a count query cannot express this. */
+  business_units: number;
+  /** Newest matched users, most recent first. The band renders these as the presence stack. */
+  newest: NewestUser[];
+}
+
+/** Response shape for the platform user list — `ApiListResponse` plus `summary`. */
+export interface UsersResponse extends ApiListResponse<User> {
+  summary?: UserSummaryData;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;
