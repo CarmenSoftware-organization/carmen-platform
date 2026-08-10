@@ -16,16 +16,19 @@ describe('summarizeApplications', () => {
     expect(s.total).toBe(4);
     expect(s.active).toBe(3);
     expect(s.inactive).toBe(1);
-    expect(s.fullAccess).toBe(1);
+    expect(s.full_access).toBe(1);
     expect(s.scoped).toBe(3);
   });
 
-  it('groups devices and orders them web, mobile, desktop, pos', () => {
+  it('groups devices into buckets, folding a missing device into web', () => {
+    // Ordering is deliberately NOT asserted here: it moved to the band, so the same rule
+    // governs both this fallback and the endpoint's `summary.devices`. See the render test
+    // below for the platform order.
     const s = summarizeApplications(list);
-    expect(s.devices).toEqual([
-      { device: 'web', count: 2 },
+    expect([...s.devices].sort((a, b) => a.device.localeCompare(b.device))).toEqual([
       { device: 'mobile', count: 1 },
       { device: 'pos', count: 1 },
+      { device: 'web', count: 2 },
     ]);
   });
 
@@ -40,12 +43,15 @@ describe('ApplicationRegistrySummary', () => {
     total: 12,
     active: 10,
     inactive: 2,
-    fullAccess: 3,
+    deleted: 1,
+    full_access: 3,
     scoped: 9,
+    // Deliberately NOT in display order — the endpoint sends busiest-first, and the band is
+    // responsible for re-sorting. A fixture already in order could not catch a lost sort.
     devices: [
+      { device: 'pos', count: 2 },
       { device: 'web', count: 7 },
       { device: 'mobile', count: 3 },
-      { device: 'pos', count: 2 },
     ],
   };
 
@@ -57,11 +63,16 @@ describe('ApplicationRegistrySummary', () => {
     expect(screen.getByText('Scoped')).toBeInTheDocument();
   });
 
-  it('renders the device chips with uppercase POS', () => {
+  it('renders the device chips in platform order with uppercase POS, whatever order they arrive in', () => {
     render(<ApplicationRegistrySummary summary={summary} loading={false} />);
     expect(screen.getByText('Web')).toBeInTheDocument();
     expect(screen.getByText('Mobile')).toBeInTheDocument();
     expect(screen.getByText('POS')).toBeInTheDocument();
+    // The selector matches on the chip's own text node (just the label); `textContent` then
+    // also picks up the count from the nested span. Asserting the concatenation pins the
+    // order AND that each label kept its own number.
+    const chips = screen.getAllByText(/^(Web|Mobile|Desktop|POS)$/).map((el) => el.textContent);
+    expect(chips).toEqual(['Web7', 'Mobile3', 'POS2']);
   });
 
   it('shows a skeleton while loading', () => {

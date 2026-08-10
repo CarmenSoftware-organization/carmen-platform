@@ -633,6 +633,37 @@ export interface RolesResponse extends ApiListResponse<Role> {
   summary?: RolesSummaryData;
 }
 
+/** One bar of the application band's device-platform histogram. */
+export interface DeviceCount {
+  device: string;
+  count: number;
+}
+
+/**
+ * Registry aggregate from `GET /api-system/applications` → `summary`.
+ *
+ * `devices` arrives busiest-first; that is NOT the display order. The band applies its own
+ * platform ranking at render, so the same rule governs both this block and the client-side
+ * fallback — there is one ordering rule, in one place.
+ */
+export interface ApplicationSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted rows matching the same filter. */
+  deleted: number;
+  /** allow_all — can call every endpoint (audit-worthy). */
+  full_access: number;
+  /** Restricted to a named api set. */
+  scoped: number;
+  devices: DeviceCount[];
+}
+
+/** Response shape for `GET /api-system/applications` — `ApiListResponse` plus `summary`. */
+export interface ApplicationsResponse extends ApiListResponse<Application> {
+  summary?: ApplicationSummaryData;
+}
+
 export interface LoginResponse {
   access_token?: string;
   refresh_token?: string;
