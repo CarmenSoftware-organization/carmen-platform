@@ -8,6 +8,10 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 // แปลงหนึ่งต่อหนึ่งจากบล็อก `eslintConfig` ที่เคยอยู่ใน package.json
 // กฎทุกข้อและค่า severity ทุกตัวต้องเหมือนเดิมเป๊ะ — ดูสเปกหัวข้อ 4
 export default [
+  // ป้องกันไม่ให้ base config ทั้ง 5 ตัวด้านล่าง (ไม่มี `files` restriction) ไหลไป lint
+  // เอาต์พุต build / ไฟล์ helper นอก src/ เวลามีคนเรียก `eslint .` ตรง ๆ (เช่น editor extension)
+  // — วันนี้ไม่มี script ไหนเรียกแบบไม่มี glob เลย แต่กันไว้เผื่ออนาคต
+  { ignores: ['build/**', 'coverage/**', 'dist/**'] },
   js.configs.recommended,
   ...tsPlugin.configs['flat/recommended'],
   react.configs.flat.recommended,
@@ -16,12 +20,10 @@ export default [
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
       parser: tsParser,
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module',
-        ecmaFeatures: { jsx: true },
-      },
+      parserOptions: { ecmaFeatures: { jsx: true } },
     },
     settings: { react: { version: 'detect' } },
     plugins: { 'react-hooks': reactHooks },
