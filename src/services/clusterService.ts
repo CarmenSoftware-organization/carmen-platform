@@ -1,11 +1,11 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, Cluster, ApiListResponse } from '../types';
+import type { PaginateParams, Cluster, ClustersResponse } from '../types';
 
 const defaultSearchFields = ['name', 'code'];
 
 const clusterService = {
-  getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<Cluster>> => {
+  getAll: async (paginate: PaginateParams = {}): Promise<ClustersResponse> => {
     const response = await api.get(
       `/api-system/clusters?${buildQuery(paginate, defaultSearchFields)}`,
     );

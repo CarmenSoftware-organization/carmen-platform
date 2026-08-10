@@ -11,7 +11,7 @@ const [summary, setSummary] = useState<PlatformUserRegistrySummary | null>(null)
 setSummary(data?.summary ?? null);        // registry-wide, from the list response
 ```
 
-The band is **registry-wide** — it describes the whole table, not the current page and not the active filters. Say so in a comment; readers assume otherwise.
+The band is **filter-consistent** — it describes every row matching the current `advance` filter and `search`, not just the current page. It is *not* registry-wide: changing a filter changes the band. `summary.total` equals `paginate.total` whenever the list is showing live rows only, which is the invariant to assert. Say so in a comment; readers assume registry-wide otherwise.
 
 `summary` stays `null` until the backend deploys (see `api/backend-deploy-order.md`). Render a headline the band can compute without it — `paginate.total` usually equals the top-line count.
 
@@ -52,6 +52,6 @@ const [summaryError, setSummaryError] = useState(false);
 ```
 
 - `loadSummary` is a `useCallback`; call it after **every** mutation, not just on mount
-- Props are always `{ summary, loading, error, onRetry }`
+- Props are `{ summary, loading, error, onRetry }` on six of the seven bands. `FleetCapacity` takes only `{ summary, loading }` — it has no error affordance, and `ClusterManagement` names its state `fleet`/`fleetLoading` rather than `summary*`. Don't "fix" that to match without adding the retry UI it lacks.
 - **The band fails independently.** On error set `summary = null` + `summaryError = true`; the table keeps working and the band shows its own inline retry. Never let a failed aggregate blank the page.
 - Client-side shaping exports a pure `summarize<Entity>()` from the same file as the component — unit-test that, not the component

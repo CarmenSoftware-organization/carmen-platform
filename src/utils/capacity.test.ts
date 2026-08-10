@@ -42,8 +42,8 @@ describe('summarizeFleet', () => {
     const s = summarizeFleet(clusters);
     expect(s.bu.used).toBe(14 + 9 + 7);
     expect(s.bu.cap).toBe(20 + 9 + 12);
-    expect(s.bu.uncappedCount).toBe(1);
-    expect(s.bu.uncappedUsed).toBe(17);
+    expect(s.bu.uncapped_count).toBe(1);
+    expect(s.bu.uncapped_used).toBe(17);
     expect(s.users.used).toBe(312 + 88 + 95);
     expect(s.users.cap).toBe(400 + 150 + 150);
   });
@@ -52,6 +52,7 @@ describe('summarizeFleet', () => {
     const s = summarizeFleet(clusters);
     expect(s.total).toBe(4);
     expect(s.active).toBe(3);
-    expect(s.nearLimit).toBe(1); // only the bu-over cluster
+    expect(s.inactive).toBe(1);
+    expect(s.near_limit).toBe(1); // only the bu-over cluster
   });
 });
