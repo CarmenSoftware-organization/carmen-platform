@@ -57,7 +57,10 @@ bun audit: 16 vulnerabilities (9 high, 7 moderate)
 ### Task 1: อัปเดต lockfile ด้วย `bun update`
 
 **Files:**
-- Modify: `bun.lock` (ต้องเป็นไฟล์เดียวที่เปลี่ยน)
+- Modify: `bun.lock`
+- Modify: `package.json` (เฉพาะ semver range ใน `dependencies` / `devDependencies` — **ห้ามแตะบล็อก `overrides` / `resolutions`** นั่นเป็นงานของ Task 2)
+
+> **แก้ระหว่างทาง (2026-08-10):** แผนฉบับแรกเขียนว่า task นี้เป็น lockfile-only ซึ่ง **ผิด** — `bun update` ของ bun 1.3.14 เขียน `package.json` ด้วยเสมอ (`--save` เป็น default) โดยไล่ bump caret range ให้ตรงเวอร์ชันที่ resolve ได้ (`^19` → `^19.2.8`, `^1.1.18` → `^1.1.23`) `--no-save` ใช้แทนไม่ได้เพราะมันไม่เขียน lockfile ด้วย ผู้ใช้ตัดสินให้ **ยอมรับและคอมมิต `package.json` ไปด้วย** ด้วยเหตุผลเดียวกับที่ยก `brace-expansion` pin: floor ที่ต่ำกว่าความจริงคือสิ่งที่ปล่อยให้เวอร์ชันมีช่องโหว่กลับมาได้เงียบ ๆ ตอน lockfile ถูกสร้างใหม่
 
 **Interfaces:**
 - Consumes: baseline ในหัวข้อด้านบน
@@ -79,15 +82,19 @@ Expected: branch คือ `chore/deps-phase-a-safe-updates` และไม่�
 bun update
 ```
 
-- [ ] **Step 3: ตรวจว่ามีแค่ `bun.lock` ที่เปลี่ยน**
+- [ ] **Step 3: ตรวจว่าเปลี่ยนแค่ `bun.lock` กับ semver range ใน `package.json`**
 
 ```bash
 git diff --name-only
+git diff package.json | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | head -80
 ```
 
-Expected: `bun.lock` เท่านั้น
+Expected: มีแค่ `bun.lock` และ `package.json`
 
-**ถ้า `package.json` โผล่มาด้วย → หยุดทันที** อย่าคอมมิต รายงานว่า `bun update` ตีความ semver range เกินคาด แล้วรอคำสั่ง
+ใน diff ของ `package.json` ต้องเห็นเฉพาะการ bump semver range ใน `dependencies` / `devDependencies` เท่านั้น
+
+**ถ้าบล็อก `overrides` หรือ `resolutions` เปลี่ยน → หยุดทันที** อย่าคอมมิต รายงานว่า `bun update` แตะ pin ที่เป็นงานของ Task 2 แล้วรอคำสั่ง
+**ถ้ามีไฟล์ใน `src/` โผล่มา → หยุดทันที** เช่นกัน
 
 - [ ] **Step 4: ตรวจเวอร์ชันจริงตามเกณฑ์ทั้ง 4 ข้อ**
 
@@ -117,17 +124,23 @@ bun audit 2>&1 | tail -40
 - [ ] **Step 6: Commit**
 
 ```bash
-git add bun.lock
+git add bun.lock package.json
 git commit -m "$(cat <<'EOF'
 chore(deps): bun update ทั้ง 27 แพ็กเกจในช่วง semver เดิม
 
 Radix 9 ตัว, react/react-dom 19.2.8, axios 1.19.0, vite 8.2.1,
-vitest 4.1.10, postcss 8.5.26 และอื่นๆ — lockfile-only ไม่แตะ package.json
+vitest 4.1.10, postcss 8.5.26 และอื่นๆ
+
+bun update เขียน package.json ด้วย (--save เป็น default) — ยก caret range
+ให้ตรงเวอร์ชันที่ resolve ได้จริง ทำให้ floor สะท้อนความจริงและกันการถอย
+กลับไปเวอร์ชันเก่าตอน lockfile ถูกสร้างใหม่ ไม่แตะ overrides/resolutions
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 EOF
 )"
 ```
+
+**หมายเหตุที่ต้องรู้ก่อนไป Task 2:** `bun update` เพียงลำพัง **ปิดช่องโหว่ไม่ได้เลยสักตัว** — วัดแล้วได้ 16 vulnerabilities เท่า baseline เป๊ะ เพราะ `postcss@8.5.16` และ `nanoid@3.3.15` ยังค้างอยู่ในทรีคู่กับตัวใหม่ (override `^8.5.6` อนุญาตให้ตัวเก่าอยู่ได้) และ `brace-expansion` ไม่ขยับจาก 2.1.1 เลย ตัวที่ปิดช่องโหว่จริงคือการยก override ใน Task 2 — สลับกับที่ spec ฉบับแรกเข้าใจ
 
 ---
 
