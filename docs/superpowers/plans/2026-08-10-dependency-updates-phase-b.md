@@ -1,18 +1,23 @@
-# แผน implementation — dependencies เฟส B: ESLint 8→10 + flat config
+# แผน implementation — dependencies เฟส B: ESLint 8→9 + flat config
 
 > **สำหรับ agentic worker:** REQUIRED SUB-SKILL — ใช้ `superpowers:subagent-driven-development`
 > (แนะนำ) หรือ `superpowers:executing-plans` เพื่อทำทีละ task ทุกขั้นตอนใช้ checkbox (`- [ ]`)
 
-**Goal:** ย้าย ESLint จาก 8.57.1 (eslintrc ใน `package.json`) ไปเป็น 10.8.1 + `eslint.config.mjs`
-แบบ native เพื่อปิดช่องโหว่ `js-yaml` 3 ตัว โดยกฎ lint ทุกข้อและผลลัพธ์ต้องเหมือนเดิมเป๊ะ
+**Goal:** ย้าย ESLint จาก 8.57.1 (eslintrc ใน `package.json`) ไปเป็น 9.39.5 + `eslint.config.mjs`
+แบบ native เพื่อออกจากเวอร์ชันที่หมดอายุการซัพพอร์ต โดยกฎ lint ทุกข้อและผลลัพธ์ต้องเหมือนเดิมเป๊ะ
+(ปิดช่องโหว่ `js-yaml` 3 ตัวไปด้วยเป็นผลพลอยได้)
 
-**Architecture:** 3 คอมมิตเรียงกัน อาศัย "หน้าต่างซ้อน" ของ ESLint 8.57 ที่อ่าน flat config ได้เมื่อ
-สั่งผ่าน `ESLINT_USE_FLAT_CONFIG=true` — คอมมิตแรกพิสูจน์ว่า config ใหม่ให้ผลเท่าเดิมขณะยังอยู่บน
-ESLint 8 คอมมิตที่สองจึงค่อยอัปเวอร์ชัน ถ้าผลเปลี่ยนหลังคอมมิตสองจะรู้ทันทีว่าเป็นเรื่องเวอร์ชัน
-ไม่ใช่การแปลง config
+**Architecture:** 3 คอมมิตเรียงกัน อาศัย "หน้าต่างซ้อน" ของ ESLint 8.57 ที่สลับไป flat config
+ทันทีที่ไฟล์ปรากฏ และบังคับกลับไป eslintrc ได้ด้วย `ESLINT_USE_FLAT_CONFIG=false` — คอมมิตแรก
+พิสูจน์ว่า config ใหม่ให้ผลเท่าเดิมขณะยังอยู่บน ESLint 8 คอมมิตที่สองจึงค่อยอัปเวอร์ชัน ถ้าผลเปลี่ยน
+หลังคอมมิตสองจะรู้ทันทีว่าเป็นเรื่องเวอร์ชัน ไม่ใช่การแปลง config
 
-**Tech Stack:** ESLint 10.8.1 · `@eslint/js` 10.0.1 · `eslint-plugin-react-hooks` 7.1.1 ·
+**Tech Stack:** ESLint 9.39.5 · `@eslint/js` 9.39.5 · `eslint-plugin-react-hooks` 7.1.1 ·
 `vite-plugin-checker` 0.14.5 · Bun 1.3.14 (+ npm สำหรับ `package-lock.json`) · Vite 8
+
+**หมายเหตุเป้าหมาย:** แผนฉบับแรกตั้งเป้าที่ ESLint 10.8.1 แต่การ implement พิสูจน์ว่า
+`eslint-plugin-react` ไม่มีเวอร์ชันใดรองรับ ESLint 10 (latest 7.37.5, peer `^9.7`) และ crash จริง
+ทุกไฟล์ — ดูสเปกหัวข้อ 0 และ 2.3
 
 **สเปก:** `docs/superpowers/specs/2026-08-10-dependency-updates-phase-b-design.md`
 
@@ -22,9 +27,11 @@ ESLint 8 คอมมิตที่สองจึงค่อยอัปเ�
 
 - **ห้ามแตะไฟล์ใด ๆ ใน `src/`** ถ้า lint บังคับให้ต้องแก้โค้ด ให้ **หยุดและรายงาน** ไม่แก้เอง
 - **ห้ามใช้ `FlatCompat` หรือติดตั้ง `@eslint/eslintrc`** — เป็นต้นทางของ `js-yaml` ที่เฟสนี้ตั้งใจปิด
-- **ห้ามเพิ่ม/ลด lint rule ใด ๆ** นอกจากส่วนต่างของ `js.configs.recommended` ที่ ESLint 10 กำหนดเอง
+- **ห้ามเพิ่ม/ลด lint rule ใด ๆ** นอกจากส่วนต่างของ `js.configs.recommended` ที่ ESLint 9 กำหนดเอง
 - **ห้ามอัป** `eslint-plugin-react` (7.37.5), `eslint-plugin-jsx-a11y` (6.10.2),
   `@typescript-eslint/eslint-plugin` และ `@typescript-eslint/parser` (8.66.0)
+- **ห้ามแตะ `.nvmrc` และ `engines`** — ESLint 9 ต้องการ `^20.9.0` ซึ่ง repo ผ่านอยู่แล้ว
+- **ห้ามเพิ่ม `overrides` / `resolutions`** ใด ๆ เพื่อกลบช่องโหว่ — ให้รายงาน ผู้ใช้เป็นคนตัดสิน
 - **ห้ามใช้ `configs.recommended` ของ `eslint-plugin-react-hooks` v7** (16 กฎ) — ประกาศ 2 กฎเอง
 - **ห้ามเติม `"type": "module"` ใน `package.json`** — `tailwind.config.js` และ `postcss.config.js`
   เป็น CJS จะพังทันที
@@ -39,9 +46,9 @@ ESLint 8 คอมมิตที่สองจึงค่อยอัปเ�
 | ไฟล์ | สถานะ | หน้าที่ |
 |---|---|---|
 | `eslint.config.mjs` | **สร้างใหม่** (Task 1) | flat config ตัวเดียวของทั้ง repo แทน `eslintConfig` ใน `package.json` |
-| `package.json` | แก้ (Task 1 + 2) | Task 1 เพิ่ม `@eslint/js@^8.57.1` · Task 2 ขยับ 4 เวอร์ชัน (รวม `@eslint/js`→10) + ลบ `eslintConfig` + `engines` |
+| `package.json` | แก้ (Task 1 + 2) | Task 1 เพิ่ม `@eslint/js@^8.57.1` · Task 2 ขยับ 4 เวอร์ชัน (รวม `@eslint/js`→`^9.39.5`) + ลบ `eslintConfig` |
 | `bun.lock` · `package-lock.json` | แก้ (Task 1 + 2) | ต้องขยับพร้อม `package.json` เสมอ |
-| `.nvmrc` | แก้ (Task 2) | `20` → `20.19` ให้ตรง floor ของ ESLint 10 |
+| `.nvmrc` | **ไม่แตะ** | ESLint 9 ต้องการแค่ `^20.9.0` — `20` เดิมผ่านอยู่แล้ว |
 | `vite.config.ts` | แก้ (Task 2) | `useFlatConfig: false` → `true` |
 | `docs/superpowers/specs/…-phase-b-results.md` | สร้างใหม่ (Task 4) | บันทึกผลจริงทุกเกต |
 | `docs/superpowers/specs/…-phase-a-design.md` | แก้ (Task 4) | ทำเครื่องหมายว่าเฟส B ปิดแล้วในตาราง roadmap |
@@ -69,7 +76,7 @@ bun add -d @eslint/js@^8.57.1
 8.57 ไม่มีในรีจิสทรี และ flat config ตรวจชื่อกฎตอนโหลด จึง throw ก่อนแตะไฟล์ใด ๆ
 (Task 2 เป็นคนอัปเป็น `^10.0.1` พร้อมกับ ESLint core)
 
-ที่ต้องประกาศเองเพราะ ESLint 10 ไม่มี `@eslint/js` เป็น dependency แล้ว (8.57 มีเป็น transitive)
+ที่ต้องประกาศเองเพราะ ESLint 9+ ไม่มี `@eslint/js` เป็น dependency แล้ว (8.57 มีเป็น transitive)
 
 - [ ] **Step 2: sync lockfile ทั้งสองไฟล์**
 
@@ -216,46 +223,46 @@ EOF
 ## Task 2: อัปเวอร์ชันและตัด eslintrc ทิ้ง (คอมมิต C2)
 
 **Files:**
-- Modify: `package.json` (3 เวอร์ชัน + ลบบล็อก `eslintConfig` + `engines.node`)
+- Modify: `package.json` (4 เวอร์ชัน + ลบบล็อก `eslintConfig`)
 - Modify: `bun.lock`, `package-lock.json`
-- Modify: `.nvmrc`
 - Modify: `vite.config.ts:30` (`useFlatConfig`)
-- **ห้ามแก้** `eslint.config.mjs` — ถ้าจำเป็นต้องแก้ แปลว่า Task 1 ยังไม่ถูก ให้ย้อนไปแก้ที่นั่น
+- **ห้ามแก้** `eslint.config.mjs` — ถ้าจำเป็นต้องแก้ แปลว่า Task 1 ยังไม่ถูก ให้หยุดและรายงาน
+- **ห้ามแตะ** `.nvmrc` และ `engines` — ESLint 9 ต้องการแค่ `^20.9.0` ซึ่ง repo ผ่านอยู่แล้ว
 
 **Interfaces:**
 - Consumes: `eslint.config.mjs` จาก Task 1 (ใช้ตามที่เป็น)
-- Produces: repo ที่รันบน ESLint 10 ล้วน ไม่มี `eslintConfig` เหลือ — Task 3 และ 4 ใช้ต่อ
+- Produces: repo ที่รันบน ESLint 9 ล้วน ไม่มี `eslintConfig` เหลือ — Task 3 และ 4 ใช้ต่อ
 
 - [ ] **Step 1: อัป 4 แพ็กเกจ**
 
 ```bash
-bun add -d eslint@^10.8.1 @eslint/js@^10.0.1 eslint-plugin-react-hooks@^7.1.1 vite-plugin-checker@^0.14.5
+bun add -d eslint@^9.39.5 @eslint/js@^9.39.5 eslint-plugin-react-hooks@^7.1.1 vite-plugin-checker@^0.14.5
 ```
 
 ทั้งสี่ตัวต้องไปพร้อมกัน:
-- ESLint 10 ถอด `context.getSource/getScope/getSourceCode/getAncestors` ซึ่ง react-hooks 4.6.2
-  เรียกอยู่ 17 จุดโดยไม่มี fallback
-- `vite-plugin-checker` 0.10 ประกาศ peer เป็น ESLint 8
-- **`@eslint/js` ต้องขยับคู่กับ core เสมอ** — สาย 8 กับ ESLint 10 หรือสาย 10 กับ ESLint 8
-  ล้วนพังตอนโหลด config เพราะรายชื่อกฎใน `configs.recommended` ไม่ตรงกับรีจิสทรีของ core
+- ESLint 9 ถอด `context.getSource` / `getScope` / `getAncestors` ซึ่ง react-hooks 4.6.2
+  เรียกอยู่ 16 จุดโดยไม่มี fallback (มันเรียก `getSourceCode` อีก 1 จุด ซึ่ง 9 ยังมี)
+- `vite-plugin-checker` 0.14.5 ประกาศ peer `eslint >=9.39.4` — **9.39.5 เป็นเวอร์ชันแรกที่ผ่าน**
+  จึงเป็นเหตุผลที่ต้องตรึงเลขนี้ ไม่ใช่เลขต่ำกว่า
+- **`@eslint/js` ต้องขยับคู่กับ core เสมอ** — คนละสายกับ core จะพังตอนโหลด config เพราะรายชื่อกฎ
+  ใน `configs.recommended` ไม่ตรงกับรีจิสทรีของ core
 
-- [ ] **Step 2: ลบบล็อก `eslintConfig` และตั้ง `engines`**
+**ทำไมเป็น 9 ไม่ใช่ 10:** `eslint-plugin-react@7.37.5` (เวอร์ชันล่าสุด peer แค่ `^9.7`) เรียก
+`context.getFilename()` ที่ `lib/util/version.js:31` ซึ่ง ESLint 10 ถอดออก → crash ทุกไฟล์
+ESLint 9 ยังมีเมธอดนี้ พิสูจน์แล้วจากการรันจริง
 
-แก้ `package.json`:
-- ลบคีย์ `"eslintConfig"` ทั้งบล็อก (ตั้งแต่ `"eslintConfig": {` ถึงปีกกาปิดของมัน) — ESLint 10
-  ไม่อ่านแล้ว การทิ้งไว้คือ config ตายที่หลอกคนอ่าน
-- เปลี่ยน `"engines": { "node": "20.x" }` เป็น `"engines": { "node": ">=20.19" }`
+- [ ] **Step 2: ลบบล็อก `eslintConfig`**
 
-- [ ] **Step 3: ตรึง `.nvmrc`**
+แก้ `package.json`: ลบคีย์ `"eslintConfig"` ทั้งบล็อก (ตั้งแต่ `"eslintConfig": {` ถึงปีกกาปิด
+ของมัน) — ESLint 9 ไม่อ่านแล้ว การทิ้งไว้คือ config ตายที่หลอกคนอ่าน
 
-เขียนทับ `.nvmrc` ด้วยบรรทัดเดียว:
+**ห้ามแตะ `engines`** — `eslint@9.39.5` ประกาศ `engines: ^18.18.0 || ^20.9.0 || >=21.1.0`
+ซึ่ง `"20.x"` เดิมผ่านอยู่แล้ว การแก้เป็นการล้ำเข้าเฟส C โดยไม่มีเหตุ
 
-```
-20.19
-```
+- [ ] **Step 3: (ถูกถอดออก — ไม่ต้องแตะ `.nvmrc`)**
 
-`eslint@10.8.1` ประกาศ `engines: ^20.19.0 || ^22.13.0 || >=24` ค่า `20` เดิมปลายเปิดเกินจริง
-(`.github/workflows/verify.yml:65` อ่านไฟล์นี้ผ่าน `node-version-file`)
+ขั้นตอนนี้เคยสั่งตรึง `.nvmrc` เป็น `20.19` เพราะ ESLint 10 บังคับ `^20.19.0` เมื่อเป้าหมาย
+เปลี่ยนเป็น 9 เหตุผลนั้นหายไป — ข้ามไป Step 4 ได้เลย
 
 - [ ] **Step 4: เปิด flat config ให้ vite-plugin-checker**
 
@@ -276,7 +283,8 @@ bun add -d eslint@^10.8.1 @eslint/js@^10.0.1 eslint-plugin-react-hooks@^7.1.1 vi
 ```bash
 bun install
 npm install --package-lock-only
-git diff --stat package.json bun.lock package-lock.json .nvmrc vite.config.ts
+git diff --stat package.json bun.lock package-lock.json vite.config.ts
+git status --short   # .nvmrc ต้องไม่ปรากฏในรายการนี้
 ```
 
 - [ ] **Step 6: static gate ข้อ 1–4**
@@ -294,10 +302,13 @@ Expected:
 - `test` — `1081 passed (1081)`, `133 passed (133)` test files
 - `build` — สำเร็จ เขียนผลลง `build/`
 
-**ถ้า `lint` มี finding โผล่มา** — เกือบแน่นอนว่าเป็น `no-unassigned-vars` หรือ
-`no-useless-assignment` (2 กฎที่ ESLint 10 เพิ่มใน recommended และวัดล่วงหน้าไม่ได้)
-**ให้หยุด รายงานรายการ finding พร้อม `file:line` และรอผู้ใช้ตัดสิน** ห้ามแก้ `src/` และ
-ห้ามปิดกฎเอง
+**ถ้า `lint` มี finding โผล่มา** — **ให้หยุด รายงานรายการ finding พร้อม `file:line` ครบทุกจุด
+และรอผู้ใช้ตัดสิน** ห้ามแก้ `src/` และห้ามปิดกฎเอง
+
+โอกาสเกิดต่ำมาก: ส่วนต่างของ `js.configs.recommended` ระหว่าง 8 กับ 9 คือ 4 กฎ
+(`no-constant-binary-expression`, `no-empty-static-block`, `no-new-native-nonconstructor`,
+`no-unused-private-class-members`) ซึ่งมีอยู่ใน ESLint 8 อยู่แล้วและทดสอบกับ `src/` ล่วงหน้าไปแล้ว
+ได้ 0 finding ทั้งหมด — ต่างจากเป้าหมาย ESLint 10 เดิมที่มีกฎวัดล่วงหน้าไม่ได้ 2 ตัว
 
 - [ ] **Step 7: ยืนยันจำนวนไฟล์ที่ lint**
 
@@ -336,31 +347,43 @@ bun audit
 Expected: **6 vulnerabilities** — `js-yaml` หายครบ 3 ตัว เหลือ `undici` (jsdom) 5 และ `uuid`
 (exceljs) 1
 
-ถ้าตัวเลขไม่ใช่ 6 ให้ดูว่าช่องโหว่ใหม่มาจาก tree ของ `@babel/core` / `hermes-parser` /
-`zod-validation-error` ที่ react-hooks v7 ลากมาหรือไม่ **บันทึกไว้รายงาน อย่าเพิ่มบล็อก
-`overrides` เพื่อกลบในขั้นนี้** — การแก้ override เป็นการตัดสินใจของผู้ใช้
+ESLint 9 ยังมี `@eslint/eslintrc` เป็น dependency (ต่างจาก 10 ที่ถอดออก) แต่เป็นเวอร์ชัน `^3.3.6`
+ซึ่งขอ `js-yaml: ^4.3.0` — อยู่นอกช่วงช่องโหว่ (`>=4.0.0 <=4.1.1`) ช่องโหว่จึงหายด้วยเหตุผลนี้
+ไม่ใช่เพราะ `@eslint/eslintrc` หายไป
+
+ถ้าตัวเลขไม่ใช่ 6:
+- ถ้ายังเห็น `js-yaml` — แปลว่า lockfile ตรึงสำเนาเก่าไว้จากเส้นทางอื่น ให้รายงานพร้อมเส้นทางที่
+  `bun audit` แสดง
+- ถ้ามีช่องโหว่ใหม่ — ดูว่ามาจาก tree ของ `@babel/core` / `hermes-parser` / `zod-validation-error`
+  ที่ react-hooks v7 ลากมาหรือไม่
+
+ทั้งสองกรณี **บันทึกไว้ในรายงานแล้วรายงานกลับ อย่าเพิ่มบล็อก `overrides` เพื่อกลบ** — การแก้
+override เป็นการตัดสินใจของผู้ใช้
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add package.json bun.lock package-lock.json .nvmrc vite.config.ts
+git add package.json bun.lock package-lock.json vite.config.ts
 git commit -F - <<'EOF'
-chore(deps): อัป ESLint 8→10, react-hooks 4→7, vite-plugin-checker 0.10→0.14
+chore(deps): อัป ESLint 8→9, react-hooks 4→7, vite-plugin-checker 0.10→0.14
 
-ปิดช่องโหว่ js-yaml 3 ตัว (2 high, 1 moderate) ที่ติดใต้ eslint 8 มาตลอด
-— ESLint 10 ไม่มี @eslint/eslintrc เป็น dependency แล้ว จึงไม่มี js-yaml
-ตามมาด้วย
+พา repo ออกจาก ESLint 8 ที่หมดอายุการซัพพอร์ตแล้ว และตัดบล็อก eslintConfig
+ใน package.json ทิ้ง เพราะ ESLint 9 อ่านแต่ flat config
 
-ทั้งสามตัวต้องขยับพร้อมกัน ไม่ใช่เพราะ peer range แต่เพราะ ESLint 10 ถอด
-context.getSource/getScope/getSourceCode/getAncestors ทิ้ง และ react-hooks
-4.6.2 เรียกทั้งสามตัวรวม 17 จุดโดยไม่มี fallback ส่วน vite-plugin-checker
-0.10 ประกาศ peer เป็น eslint 8
+ปิดช่องโหว่ js-yaml 3 ตัวไปด้วย — ไม่ใช่เพราะ @eslint/eslintrc หายไป
+(ESLint 9 ยังมีเป็น dependency) แต่เพราะ eslintrc 3.3.6 ขอ js-yaml ^4.3.0
+ซึ่งอยู่นอกช่วงช่องโหว่ >=4.0.0 <=4.1.1
 
-ลบบล็อก eslintConfig ออกจาก package.json เพราะ ESLint 10 ไม่อ่านแล้ว
-ตรึง .nvmrc เป็น 20.19 และ engines เป็น >=20.19 ให้ตรง floor ที่ eslint 10
-ประกาศไว้ (^20.19.0 || ^22.13.0 || >=24)
+เป้าหมายเป็น 9 ไม่ใช่ 10 เพราะ eslint-plugin-react ตัวล่าสุด (7.37.5) เรียก
+context.getFilename() ที่ ESLint 10 ถอดออก และประกาศ peer แค่ ^9.7 —
+ไม่มีเวอร์ชันให้อัปไป รอ upstream ปล่อยตัวรองรับก่อนถึงจะไป 10 ได้
 
-ไม่แตะ src/ เลย — lint ยังได้ 374 ไฟล์ 0 error 0 warning เท่าเดิม
+react-hooks ต้องขยับเพราะ ESLint 9 ถอด context.getSource/getScope ซึ่ง
+4.6.2 เรียกอยู่ 16 จุดโดยไม่มี fallback ส่วน @eslint/js ต้องเดินคู่เวอร์ชัน
+กับ core เสมอ และ vite-plugin-checker 0.14.5 ขอ eslint >=9.39.4
+
+ไม่แตะ src/ และไม่แตะ .nvmrc/engines — lint ยังได้ 374 ไฟล์ 0 error
+0 warning เท่าเดิม
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 EOF
@@ -475,30 +498,45 @@ EOF
 
 ```bash
 git push -u origin chore/deps-phase-b-eslint-flat-config
-gh pr create --base main --title "chore(deps): อัปเดต dependencies เฟส B — ESLint 8→10 + flat config" --body "$(cat <<'EOF'
+gh pr create --base main --title "chore(deps): อัปเดต dependencies เฟส B — ESLint 8→9 + flat config" --body "$(cat <<'EOF'
 ## สรุป
 
-ย้าย ESLint 8.57 → 10.8 และย้าย config จากบล็อก `eslintConfig` ใน `package.json`
-ไปเป็น `eslint.config.mjs` แบบ native ปิดช่องโหว่ `js-yaml` 3 ตัวที่ติดใต้ ESLint 8 มาตลอด
+ย้าย ESLint 8.57 → 9.39.5 และย้าย config จากบล็อก `eslintConfig` ใน `package.json`
+ไปเป็น `eslint.config.mjs` แบบ native พา repo ออกจาก ESLint 8 ที่หมดอายุการซัพพอร์ตแล้ว
+และปิดช่องโหว่ `js-yaml` 3 ตัวไปด้วย
 
 **ไม่แตะ `src/` เลย** — lint ยังได้ 374 ไฟล์ · 0 error · 0 warning เท่าเดิม
 
+## ทำไมเป็น 9 ไม่ใช่ 10
+
+`eslint-plugin-react` เวอร์ชันล่าสุด (7.37.5) เรียก `context.getFilename()` ที่
+`lib/util/version.js:31` ซึ่ง ESLint 10 ถอดออก ทำให้ crash ทุกไฟล์ และมันประกาศ peer
+แค่ `^9.7` — **ไม่มีเวอร์ชันให้อัปไป** ต้องรอ upstream ปล่อยตัวที่รองรับก่อน
+ESLint 9 ยังมีเมธอดนี้ ทุก plugin จึงทำงานได้ครบ
+
 ## ทำไมต้องอัป 3 แพ็กเกจพร้อมกัน
 
-ESLint 10 ถอด `context.getSource` / `getScope` / `getSourceCode` / `getAncestors` ทิ้ง
-และ `eslint-plugin-react-hooks@4.6.2` เรียกทั้งสามตัวรวม 17 จุดโดยไม่มี fallback —
-เป็นความพังจริงตอนรัน ไม่ใช่แค่ peer range ที่ `legacy-peer-deps` กลบได้
-ส่วน `vite-plugin-checker@0.10` ประกาศ peer เป็น ESLint 8
+ESLint 9 ถอด `context.getSource` / `getScope` / `getAncestors` ทิ้ง และ
+`eslint-plugin-react-hooks@4.6.2` เรียกอยู่ 16 จุดโดยไม่มี fallback — เป็นความพังจริงตอนรัน
+ไม่ใช่แค่ peer range ที่ `legacy-peer-deps` กลบได้ ส่วน `vite-plugin-checker@0.14.5`
+ประกาศ peer `eslint >=9.39.4` และ `@eslint/js` ต้องเดินคู่เวอร์ชันกับ core เสมอ
 
-`eslint-plugin-react` / `jsx-a11y` / `@typescript-eslint` **ไม่ต้องอัป** — ตัวแรกรอดเพราะมี
-compat layer ส่วนสองตัวหลังไม่เรียก API ที่ถูกถอดเลย
+`eslint-plugin-react` / `jsx-a11y` / `@typescript-eslint` **ไม่ต้องอัป** — ทั้งสามผ่าน ESLint 9
+อยู่แล้ว
+
+## ช่องโหว่ที่ปิดได้ และที่มาที่ไม่ตรงกับที่คิด
+
+`js-yaml` 3 ตัวหายไม่ใช่เพราะ `@eslint/eslintrc` หายไป (ESLint 9 ยังมีเป็น dependency)
+แต่เพราะ `@eslint/eslintrc@3.3.6` ขอ `js-yaml: ^4.3.0` ซึ่งอยู่นอกช่วงช่องโหว่
+`>=4.0.0 <=4.1.1`
 
 ## โครงคอมมิต
 
-อาศัยหน้าต่างซ้อนของ ESLint 8.57 ที่อ่าน flat config ได้เมื่อสั่งผ่าน `ESLINT_USE_FLAT_CONFIG`
+อาศัยหน้าต่างซ้อนของ ESLint 8.57 ที่สลับไป flat config เองทันทีที่ไฟล์ปรากฏ และบังคับกลับไป
+eslintrc ได้ด้วย `ESLINT_USE_FLAT_CONFIG=false`
 
 1. `refactor(lint)` — เพิ่ม `eslint.config.mjs` ที่พิสูจน์แล้วว่าให้ผลตรงกับ eslintrc เดิมทุกบรรทัด ยังอยู่บน ESLint 8
-2. `chore(deps)` — อัปเวอร์ชัน ลบ `eslintConfig` ตรึง `.nvmrc`/`engines` เป็น 20.19 (floor ที่ ESLint 10 บังคับ)
+2. `chore(deps)` — อัปเวอร์ชัน + ลบ `eslintConfig` (ไม่แตะ `.nvmrc`/`engines` — ESLint 9 ต้องการแค่ `^20.9.0`)
 3. `docs(deps)` — บันทึกผล
 
 ทุกคอมมิตติดตั้งได้และ build ผ่านโดยลำพัง
