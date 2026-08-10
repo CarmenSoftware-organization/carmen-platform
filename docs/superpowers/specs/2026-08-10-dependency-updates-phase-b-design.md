@@ -68,7 +68,7 @@
 
 `eslint:recommended` ในโลก flat config มาจากแพ็กเกจ `@eslint/js` ซึ่ง **ไม่ได้อยู่ใน dependencies
 ของ eslint 10.8.1** (ต่างจาก 8.57.1 ที่มีเป็น transitive) ถ้าไม่ประกาศเอง config จะ resolve ไม่เจอ
-หลังอัป
+หลังอัป — และเวอร์ชันที่ประกาศต้องตรงกับ ESLint core เสมอ ดู 2.12
 
 ### 2.5 `js.configs.recommended` ของ 10 ต่างจาก `eslint:recommended` ของ 8
 
@@ -116,15 +116,42 @@ v7 ประกาศ `@babel/core`, `@babel/parser`, `hermes-parser`, `zod`, `z
 **จุดที่รอดมาแบบเฉียด:** v7 `require('zod/v4')` ซึ่งเป็น subpath ที่มีเฉพาะใน zod ≥3.25 — repo นี้มี
 `zod@3.25.76` พอดี ถ้าเป็น 3.24 จะพังทันที เฟส D (`zod` 3→4) จึงต้องไม่ถอย zod ลงต่ำกว่า 3.25
 
-### 2.9 ESLint 8.57 อ่าน flat config ได้ ถ้าสั่งให้อ่าน
+### 2.9 ESLint 8.57 สลับไป flat config เองทันทีที่ไฟล์ปรากฏ — สวิตช์ที่ใช้ได้จริงคือ `=false`
 
-`node_modules/eslint/lib/eslint/flat-eslint.js` ของ 8.57.1 มี engine ครบ และ lookup list
-มีทั้ง `eslint.config.js`, `eslint.config.mjs`, `eslint.config.cjs` — เปิดใช้ผ่าน
-`ESLINT_USE_FLAT_CONFIG=true` (บรรทัด 1137)
+> **แก้ไข (พิสูจน์แล้วว่าฉบับแรกผิด):** เอกสารฉบับแรกเขียนตรงนี้ว่า ESLint 8 จะ *เมิน*
+> `eslint.config.mjs` เว้นแต่ตั้ง `ESLINT_USE_FLAT_CONFIG=true` — **ผิด** ข้อสรุปนั้นมาจากการเห็นว่า
+> โค้ดมี `switch (process.env.ESLINT_USE_FLAT_CONFIG)` แล้วอนุมานว่าต้อง opt-in โดยไม่ได้อ่าน
+> branch `default:`
 
-โดยไม่ตั้ง env var ตัวนี้ ESLint 8 จะ **เมิน** `eslint.config.mjs` แล้วอ่าน `eslintConfig` ใน
-`package.json` ตามเดิม จึงมี "หน้าต่างซ้อน" ที่ config ทั้งสองรูปแบบอยู่ในรีโปพร้อมกันได้โดยไม่ชนกัน
-— นี่คือฐานของโครงคอมมิตในหัวข้อ 5
+`shouldUseFlatConfig()` ใน `node_modules/eslint/lib/eslint/flat-eslint.js:1136` เป็นแบบนี้:
+
+```js
+switch (process.env.ESLINT_USE_FLAT_CONFIG) {
+    case "true":  return true;
+    case "false": return false;
+    default:      return !!(await findFlatConfigFile(cwd));   // ← auto-detect
+}
+```
+
+ผลจริงคือ **ทันทีที่ `eslint.config.mjs` ปรากฏในรีโป ESLint 8.57 จะใช้มันเป็นหลัก** และเมิน
+`eslintConfig` ใน `package.json` แทน — ตรงข้ามกับที่ฉบับแรกเขียนไว้ทุกประการ
+
+หน้าต่างซ้อนยังมีอยู่จริง แต่ต้อง**กลับด้านสวิตช์**: `ESLINT_USE_FLAT_CONFIG=false` บังคับให้อ่าน
+eslintrc ได้แม้ไฟล์ flat จะมีอยู่ (ยืนยันด้วยการรันจริง) เส้นทาง flat จึงกลายเป็นค่า default
+และ eslintrc กลายเป็นเส้นทางที่ต้องสั่ง
+
+### 2.12 `@eslint/js` ต้องเดินคู่เวอร์ชันกับ ESLint core
+
+`@eslint/js@10.0.1` + ESLint 8.57 **พังทันทีตอนโหลด config** เพราะ `configs.recommended` ของมัน
+อ้าง `no-unassigned-vars` ซึ่ง ESLint 8.57 ไม่มีในรีจิสทรี (ยืนยันด้วย `new Linter().getRules()`
+— ทั้ง `no-unassigned-vars`, `no-useless-assignment`, `preserve-caught-error` ล้วนไม่มี)
+flat config ตรวจชื่อกฎตอนโหลด ไม่ใช่ตอนรัน จึง throw ก่อนแตะไฟล์ใด ๆ
+
+`@eslint/js@8.57.1` + ESLint 8.57 + `eslint.config.mjs` ตามหัวข้อ 4 ให้ผล **374 ไฟล์ · 0 error ·
+0 warning** ตรง baseline พอดี (รันจริงแล้ว)
+
+ผลต่อโครงคอมมิต: C1 ต้องใช้ `@eslint/js@^8.57.1` และ C2 ต้องอัปเป็น `^10.0.1` **พร้อมกับ** ESLint
+core — สองแพ็กเกจนี้แยกคอมมิตกันไม่ได้
 
 ### 2.10 Node floor ของ ESLint 10 สูงกว่าที่ repo ประกาศไว้
 
@@ -239,16 +266,19 @@ export default [
 | แตะไฟล์ | อะไร |
 |---|---|
 | `eslint.config.mjs` | สร้างใหม่ ตามหัวข้อ 4 |
-| `package.json` | เพิ่ม `@eslint/js` เป็น devDependency **เท่านั้น** — ยังไม่ลบ `eslintConfig` ยังไม่ขยับเวอร์ชันใด |
+| `package.json` | เพิ่ม `@eslint/js` เวอร์ชัน **`^8.57.1`** เป็น devDependency **เท่านั้น** — ต้องเป็นสาย 8 ให้ตรงกับ ESLint core ที่ยังเป็น 8.57 (2.12) ยังไม่ลบ `eslintConfig` ยังไม่ขยับเวอร์ชันใด |
 | `bun.lock`, `package-lock.json` | regenerate ทั้งสองไฟล์ในคอมมิตนี้ โดย **diff ต้องมีแค่ `@eslint/js`** — ถ้ามีแพ็กเกจอื่นขยับตามมา ให้ย้อนกลับแล้วตรึงเฉพาะตัวที่ตั้งใจ ไม่ปล่อยผ่าน |
 
 **เกต — equivalence check:** ผลของสอง config ต้องตรงกันทุกบรรทัด
 
+หลังไฟล์ `eslint.config.mjs` ปรากฏ เส้นทาง **default กลายเป็น flat** และ eslintrc คือเส้นทางที่ต้อง
+สั่งด้วย `ESLINT_USE_FLAT_CONFIG=false` (2.9) — ตรงข้ามกับที่สเปกฉบับแรกเข้าใจ
+
 ```bash
 lintjson() { jq -S '[.[] | {f: .filePath, m: [.messages[] | {ruleId, severity, line, column}]} | select(.m | length > 0)]'; }
 
-npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/eslintrc.json
-ESLINT_USE_FLAT_CONFIG=true npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/flat.json
+ESLINT_USE_FLAT_CONFIG=false npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/eslintrc.json
+npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/flat.json
 diff /tmp/eslintrc.json /tmp/flat.json && echo "EQUIVALENT"
 ```
 
@@ -256,14 +286,19 @@ diff /tmp/eslintrc.json /tmp/flat.json && echo "EQUIVALENT"
 `ruleId` / `severity` / `line` / `column` เพราะ metadata อย่าง `usedDeprecatedRules` ต่างกันได้
 โดยไม่มีความหมาย
 
-การรัน `bun run lint` แบบปกติต้องยังทำงานเหมือนเดิมทุกประการ เพราะ `eslintConfig` ยังอยู่และ
-ESLint 8 ยังเมิน `eslint.config.mjs` โดย default (2.9)
+**กับดักที่ทำให้เกตนี้ให้ false positive:** ถ้า ESLint crash ทั้งสองฝั่ง ทั้งสองไฟล์จะเป็นไฟล์ว่าง
+(0 ไบต์) ไม่ใช่ `[]` แล้ว `diff` ของไฟล์ว่างสองไฟล์ก็ยังว่าง — จึงต้องตรวจว่าเนื้อไฟล์เป็น `[]`
+จริง ไม่ใช่ดูแค่ผลของ `diff` (เกิดขึ้นจริงแล้วในรอบแรกของการ implement)
+
+หลัง C1 `bun run lint` จะใช้ **flat config** ส่วน `vite-plugin-checker` ยังใช้ eslintrc เพราะ
+`vite.config.ts` ตั้ง `useFlatConfig: false` ไว้ — repo จะมีสองเส้นทางที่อ่าน config คนละไฟล์
+ชั่วคราวหนึ่งคอมมิต ซึ่งยอมรับได้เพราะเกตนี้พิสูจน์แล้วว่าทั้งสองให้ผลเท่ากัน และ C2 ตามมาทันที
 
 ### C2 — `chore(deps): อัป ESLint 8→10, react-hooks 4→7, vite-plugin-checker 0.10→0.14`
 
 | แตะไฟล์ | อะไร |
 |---|---|
-| `package.json` | `eslint` → `^10.8.1`, `eslint-plugin-react-hooks` → `^7.1.1`, `vite-plugin-checker` → `^0.14.5` · **ลบบล็อก `eslintConfig` ทั้งบล็อก** · `engines.node` → `>=20.19` |
+| `package.json` | `eslint` → `^10.8.1`, **`@eslint/js` → `^10.0.1`** (ต้องขยับคู่กับ core เสมอ ดู 2.12), `eslint-plugin-react-hooks` → `^7.1.1`, `vite-plugin-checker` → `^0.14.5` · **ลบบล็อก `eslintConfig` ทั้งบล็อก** · `engines.node` → `>=20.19` |
 | `bun.lock`, `package-lock.json` | regenerate **ในคอมมิตเดียวกับ `package.json`** — บทเรียนตรงจากเฟส A |
 | `.nvmrc` | `20` → `20.19` |
 | `vite.config.ts` | `useFlatConfig: false` → `true` |

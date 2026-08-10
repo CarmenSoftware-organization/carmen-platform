@@ -39,7 +39,7 @@ ESLint 8 คอมมิตที่สองจึงค่อยอัปเ�
 | ไฟล์ | สถานะ | หน้าที่ |
 |---|---|---|
 | `eslint.config.mjs` | **สร้างใหม่** (Task 1) | flat config ตัวเดียวของทั้ง repo แทน `eslintConfig` ใน `package.json` |
-| `package.json` | แก้ (Task 1 + 2) | Task 1 เพิ่ม `@eslint/js` · Task 2 ขยับ 3 เวอร์ชัน + ลบ `eslintConfig` + `engines` |
+| `package.json` | แก้ (Task 1 + 2) | Task 1 เพิ่ม `@eslint/js@^8.57.1` · Task 2 ขยับ 4 เวอร์ชัน (รวม `@eslint/js`→10) + ลบ `eslintConfig` + `engines` |
 | `bun.lock` · `package-lock.json` | แก้ (Task 1 + 2) | ต้องขยับพร้อม `package.json` เสมอ |
 | `.nvmrc` | แก้ (Task 2) | `20` → `20.19` ให้ตรง floor ของ ESLint 10 |
 | `vite.config.ts` | แก้ (Task 2) | `useFlatConfig: false` → `true` |
@@ -59,14 +59,17 @@ ESLint 8 คอมมิตที่สองจึงค่อยอัปเ�
 - Consumes: `eslintConfig` block ที่มีอยู่ใน `package.json` (ต้นฉบับที่ต้องแปลง) — ยังไม่ลบใน task นี้
 - Produces: ไฟล์ `eslint.config.mjs` ที่ Task 2 จะใช้ต่อ **โดยไม่แก้อีกเลย**
 
-- [ ] **Step 1: ติดตั้ง `@eslint/js` เป็น devDependency**
+- [ ] **Step 1: ติดตั้ง `@eslint/js` สาย 8 เป็น devDependency**
 
 ```bash
-bun add -d @eslint/js@^10.0.1
+bun add -d @eslint/js@^8.57.1
 ```
 
-ESLint 10 ไม่มี `@eslint/js` เป็น dependency แล้ว (8.57 มีเป็น transitive) ถ้าไม่ประกาศเอง
-config จะ resolve ไม่เจอหลัง Task 2
+ต้องเป็น **สาย 8 ไม่ใช่ 10** ในขั้นนี้ — `@eslint/js@10` อ้างกฎ `no-unassigned-vars` ที่ ESLint
+8.57 ไม่มีในรีจิสทรี และ flat config ตรวจชื่อกฎตอนโหลด จึง throw ก่อนแตะไฟล์ใด ๆ
+(Task 2 เป็นคนอัปเป็น `^10.0.1` พร้อมกับ ESLint core)
+
+ที่ต้องประกาศเองเพราะ ESLint 10 ไม่มี `@eslint/js` เป็น dependency แล้ว (8.57 มีเป็น transitive)
 
 - [ ] **Step 2: sync lockfile ทั้งสองไฟล์**
 
@@ -137,15 +140,27 @@ export default [
 
 - [ ] **Step 5: รัน equivalence check**
 
+ทันทีที่ `eslint.config.mjs` ปรากฏ ESLint 8.57 จะใช้ **flat เป็นค่า default** และ eslintrc กลาย
+เป็นเส้นทางที่ต้องสั่งด้วย `ESLINT_USE_FLAT_CONFIG=false` (ตรงข้ามกับที่หลายคนเข้าใจ — โค้ดของ
+`shouldUseFlatConfig()` มี `default: return !!(await findFlatConfigFile(cwd))`)
+
 ```bash
 lintjson() { jq -S '[.[] | {f: .filePath, m: [.messages[] | {ruleId, severity, line, column}]} | select(.m | length > 0)]'; }
 
-npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/eslintrc.json
-ESLINT_USE_FLAT_CONFIG=true npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/flat.json
+ESLINT_USE_FLAT_CONFIG=false npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/eslintrc.json
+npx eslint "./src/**/*.{ts,tsx}" -f json | lintjson > /tmp/flat.json
+
+echo "--- เนื้อไฟล์ (ต้องเป็น [] ทั้งคู่ ไม่ใช่ไฟล์ว่าง) ---"
+wc -c /tmp/eslintrc.json /tmp/flat.json
+cat /tmp/eslintrc.json; cat /tmp/flat.json
 diff /tmp/eslintrc.json /tmp/flat.json && echo "EQUIVALENT"
 ```
 
-Expected: พิมพ์ `EQUIVALENT` และทั้งสองไฟล์มีเนื้อหาเป็น `[]`
+Expected: ทั้งสองไฟล์มีเนื้อหาเป็น `[]` (3 ไบต์) และพิมพ์ `EQUIVALENT`
+
+**กับดักที่ต้องกันให้ได้:** ถ้า ESLint crash ทั้งสองฝั่ง ทั้งสองไฟล์จะเป็นไฟล์ว่าง 0 ไบต์ แล้ว
+`diff` ก็ยังว่าง — เกตจะผ่านทั้งที่ไม่มีอะไรถูกตรวจเลย จึงต้องดู `wc -c` และเนื้อไฟล์ทุกครั้ง
+ไม่ใช่ดูแค่ผลของ `diff` (เคสนี้เกิดขึ้นจริงแล้วในความพยายามรอบแรก)
 
 ถ้า `diff` ไม่ว่าง แปลว่าการแปลง config ยังไม่ตรง — แก้ `eslint.config.mjs` ให้ตรงก่อน **ห้ามแก้
 `src/`** และห้ามไปต่อ Task 2
@@ -159,15 +174,20 @@ ESLINT_USE_FLAT_CONFIG=true npx eslint "./src/**/*.{ts,tsx}" -f json \
 
 Expected: `374`
 
-- [ ] **Step 7: ยืนยันว่าเส้นทางเดิมไม่กระทบ**
+- [ ] **Step 7: ยืนยันว่าทุกเส้นทางยังเขียว**
 
 ```bash
-bun run lint && echo "lint เดิมยังเขียว"
+bun run lint && echo "lint เขียว (เส้นทางนี้ใช้ flat config แล้ว)"
 bun run typecheck
+CI=true REACT_APP_API_BASE_URL=https://placeholder.invalid REACT_APP_API_APP_ID=ci-placeholder bun run build
 ```
 
-Expected: ทั้งสองคำสั่งผ่านโดยไม่มี output error — ESLint 8 ยังอ่าน `eslintConfig` ตามเดิมเพราะ
-ไม่ได้ตั้ง `ESLINT_USE_FLAT_CONFIG`
+Expected: ทั้งสามคำสั่งผ่าน
+
+หมายเหตุ: `bun run lint` ตอนนี้ใช้ **flat config** แล้ว (auto-detect) ส่วน `bun run build` ยังใช้
+eslintrc เพราะ `vite.config.ts` ตั้ง `useFlatConfig: false` ไว้ — สองเส้นทางอ่าน config คนละไฟล์
+ชั่วคราวหนึ่งคอมมิต ซึ่งเป็นเหตุผลที่ต้องรัน build ในขั้นนี้ด้วย: เพื่อพิสูจน์ว่าทั้งสองเส้นทางเขียว
+พร้อมกัน Task 2 จะรวมให้เหลือเส้นทางเดียว
 
 - [ ] **Step 8: Commit**
 
@@ -206,15 +226,18 @@ EOF
 - Consumes: `eslint.config.mjs` จาก Task 1 (ใช้ตามที่เป็น)
 - Produces: repo ที่รันบน ESLint 10 ล้วน ไม่มี `eslintConfig` เหลือ — Task 3 และ 4 ใช้ต่อ
 
-- [ ] **Step 1: อัป 3 แพ็กเกจ**
+- [ ] **Step 1: อัป 4 แพ็กเกจ**
 
 ```bash
-bun add -d eslint@^10.8.1 eslint-plugin-react-hooks@^7.1.1 vite-plugin-checker@^0.14.5
+bun add -d eslint@^10.8.1 @eslint/js@^10.0.1 eslint-plugin-react-hooks@^7.1.1 vite-plugin-checker@^0.14.5
 ```
 
-ทั้งสามตัวต้องไปพร้อมกัน: ESLint 10 ถอด `context.getSource/getScope/getSourceCode/getAncestors`
-ซึ่ง react-hooks 4.6.2 เรียกอยู่ 17 จุดโดยไม่มี fallback ส่วน vite-plugin-checker 0.10 ประกาศ
-peer เป็น ESLint 8
+ทั้งสี่ตัวต้องไปพร้อมกัน:
+- ESLint 10 ถอด `context.getSource/getScope/getSourceCode/getAncestors` ซึ่ง react-hooks 4.6.2
+  เรียกอยู่ 17 จุดโดยไม่มี fallback
+- `vite-plugin-checker` 0.10 ประกาศ peer เป็น ESLint 8
+- **`@eslint/js` ต้องขยับคู่กับ core เสมอ** — สาย 8 กับ ESLint 10 หรือสาย 10 กับ ESLint 8
+  ล้วนพังตอนโหลด config เพราะรายชื่อกฎใน `configs.recommended` ไม่ตรงกับรีจิสทรีของ core
 
 - [ ] **Step 2: ลบบล็อก `eslintConfig` และตั้ง `engines`**
 
