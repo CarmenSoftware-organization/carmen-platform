@@ -241,4 +241,28 @@ linter option default) ที่ไม่มีทางยืนยันได
 | `0d38075` (C2) | `chore(deps): อัป ESLint 8→9, react-hooks 4→7, vite-plugin-checker 0.10→0.14` | `package.json`, `bun.lock`, `package-lock.json`, `vite.config.ts`, `src/utils/csvExport.ts`, `src/components/ImageUpload.tsx`, `src/pages/sqlWorkbench/SqlEditor.tsx` |
 | (เอกสารนี้) (C3) | `docs(deps): บันทึกผลเฟส B และปิดแถวเฟส B ใน roadmap` | `docs/superpowers/specs/` เท่านั้น |
 
-ทุกคอมมิตติดตั้งได้และ build ผ่านโดยลำพัง (ยืนยันด้วย static gate ข้อ 5–6 ในหัวข้อ 4.2)
+ยืนยันที่ tree สุดท้ายด้วย static gate ข้อ 5–6 ในหัวข้อ 4.2 — ไม่ได้รันแยกรายคอมมิต
+
+---
+
+## 10. ความเสี่ยงที่รับไว้
+
+**picomatch skew:** `package.json` มี `overrides`/`resolutions` ระดับ global
+`"picomatch": "^2.3.1"` (มีมาก่อนเฟสนี้ ไม่ได้เพิ่มในเฟสนี้) ทำให้ `node_modules/picomatch`
+resolve เป็น `2.3.2` ขณะที่ `vite-plugin-checker@0.14.5` ที่เฟสนี้อัปเข้ามาประกาศ
+`dependencies.picomatch: "^4.0.4"` — ต่างกัน 2 major version
+
+**ที่มา:** ไล่ถึง call site แล้ว — `dist/glob.js` → `createIgnore()` → เรียกที่
+`dist/checkers/eslint/main.js:120` ใช้เป็น `ignored` ของ chokidar watcher **เฉพาะ dev mode
+เท่านั้น ไม่อยู่ในเส้นทาง build**
+
+**ผลการทดสอบ:** ทดสอบ picomatch `2.3.2` กับ pattern จริงที่ `createIgnore()` ใช้แล้ว —
+ผ่านทุกเคส ผลจำกัดอยู่ที่ dev file-watcher behavior เท่านั้น ไม่กระทบ lint/typecheck/build
+
+**เหตุผลที่ไม่แก้ในเฟสนี้:** แผนเฟส B ห้ามแตะ `overrides`/`resolutions` — การ scope override
+ให้แคบลง (เช่น ผูกกับแพ็กเกจที่ต้องการจริง ๆ แทนการกดทั้งทรี) เป็นการเปลี่ยน toolchain
+กว้างกว่าขอบเขตเฟสนี้ ควรพิจารณาในเฟส C ที่จะแตะ toolchain อยู่แล้ว
+
+**บันทึกไว้เพราะ:** repo นี้เคยโดนบั๊กสายเดียวกัน (transitive/peer version skew ที่ override
+บังไว้เงียบ ๆ) จน Vercel build พังสองรอบ (recharts/`react-is`) — job `verify-npm` ถูกสร้างขึ้น
+มาเพื่อดักเรื่องนี้โดยเฉพาะ ดู `project_recharts_react_is_peer_dep` ในบันทึกของทีม
