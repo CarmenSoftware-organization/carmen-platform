@@ -21,21 +21,19 @@ describe('summarizeRoles', () => {
 
   it('ranks the broadest roles first and caps the spotlight at three', () => {
     const s = summarizeRoles(list);
-    expect(s.topRoles.map((r) => r.name)).toEqual(['Super Admin', 'Manager', 'Retired']);
-    expect(s.maxCount).toBe(31);
+    expect(s.top_roles.map((r) => r.name)).toEqual(['Super Admin', 'Manager', 'Retired']);
+    expect(s.top_roles[0].permission_count).toBe(31);
   });
 
   it('defaults a missing permission count to zero and names', () => {
     const s = summarizeRoles([{ id: 'x', is_active: true }]);
-    expect(s.topRoles[0]).toEqual({ id: 'x', name: '(unnamed role)', count: 0 });
-    expect(s.maxCount).toBe(0);
+    expect(s.top_roles[0]).toEqual({ id: 'x', name: '(unnamed role)', permission_count: 0 });
   });
 
   it('handles an empty registry', () => {
     const s = summarizeRoles([]);
     expect(s.total).toBe(0);
-    expect(s.topRoles).toEqual([]);
-    expect(s.maxCount).toBe(0);
+    expect(s.top_roles).toEqual([]);
   });
 });
 
@@ -44,12 +42,12 @@ describe('RolesAccessSummary', () => {
     total: 5,
     active: 4,
     inactive: 1,
-    topRoles: [
-      { id: 'a', name: 'Super Admin', count: 31 },
-      { id: 'b', name: 'Manager', count: 12 },
-      { id: 'c', name: 'Viewer', count: 4 },
+    deleted: 0,
+    top_roles: [
+      { id: 'a', name: 'Super Admin', permission_count: 31 },
+      { id: 'b', name: 'Manager', permission_count: 12 },
+      { id: 'c', name: 'Viewer', permission_count: 4 },
     ],
-    maxCount: 31,
   };
 
   const renderBand = (props = {}) =>
@@ -79,7 +77,7 @@ describe('RolesAccessSummary', () => {
   });
 
   it('invites creating roles when the registry is empty', () => {
-    renderBand({ summary: { total: 0, active: 0, inactive: 0, topRoles: [], maxCount: 0 } });
+    renderBand({ summary: { total: 0, active: 0, inactive: 0, deleted: 0, top_roles: [] } });
     expect(screen.getByText('No roles yet.')).toBeInTheDocument();
   });
 

@@ -24,7 +24,7 @@ describe('summarizeNews', () => {
     const s = summarizeNews(list);
     expect(s.latest?.id).toBe('c');
     expect(s.latest?.title).toBe('Newest');
-    expect(s.latest?.buCount).toBe(2);
+    expect(s.latest?.bu_count).toBe(2);
   });
 
   it('treats a missing status as draft', () => {
@@ -68,7 +68,8 @@ describe('NewsroomSummary', () => {
     draft: 3,
     published: 12,
     archived: 5,
-    latest: { id: 'c', title: 'New tax module is live', imageUrl: undefined, publishedAt: '2026-07-08', buCount: 0 },
+    deleted: 2,
+    latest: { id: 'c', title: 'New tax module is live', image_url: null, published_at: '2026-07-08', bu_count: 0 },
   };
 
   const renderBand = (props = {}) =>

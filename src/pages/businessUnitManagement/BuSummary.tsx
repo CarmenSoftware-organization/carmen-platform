@@ -1,6 +1,7 @@
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import type { BuSummaryData } from '../../types';
 
 interface BuLike {
   is_active?: boolean;
@@ -10,19 +11,18 @@ interface BuLike {
   audit?: { deleted?: { at?: string } };
 }
 
-export interface BuSummaryData {
-  total: number; // non-deleted business units
-  active: number;
-  inactive: number;
-  archived: number; // soft-deleted
-  clusters: number; // distinct clusters they span
-}
-
 /**
- * Roll a (non-deleted) business-unit list up into overview counts. `archived` is
- * passed in separately because soft-deleted rows are excluded from the list feed.
+ * TEMPORARY FALLBACK — roll a (non-deleted) business-unit list up into overview counts.
+ *
+ * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
+ * frontend deployed ahead of its backend. Delete it once the block is live everywhere
+ * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ *
+ * `deleted` is passed in separately because soft-deleted rows are excluded from the list feed
+ * — the client cannot see them at all, which is exactly why this metric wanted a backend
+ * block in the first place.
  */
-export function summarizeBus(list: BuLike[], archived = 0): BuSummaryData {
+export function summarizeBus(list: BuLike[], deleted = 0): BuSummaryData {
   let active = 0;
   let inactive = 0;
   const clusters = new Set<string>();
@@ -33,7 +33,7 @@ export function summarizeBus(list: BuLike[], archived = 0): BuSummaryData {
     const cluster = bu.cluster_id ?? bu.cluster_name;
     if (cluster) clusters.add(String(cluster));
   }
-  return { total: active + inactive, active, inactive, archived, clusters: clusters.size };
+  return { total: active + inactive, active, inactive, deleted, clusters: clusters.size };
 }
 
 function Legend({ color, label, value }: { color: string; label: string; value: number }) {
@@ -89,8 +89,8 @@ export function BuSummary({ summary, loading, error = false, onRetry = () => {} 
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
               <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
               <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
-              {summary.archived > 0 && (
-                <Legend color="hsl(var(--destructive))" label="Archived" value={summary.archived} />
+              {summary.deleted > 0 && (
+                <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
               )}
             </div>
           </div>

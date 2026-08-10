@@ -21,7 +21,8 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { BrandMark } from '../components/BrandMark';
-import { BuSummary, summarizeBus, type BuSummaryData } from './businessUnitManagement/BuSummary';
+import { BuSummary, summarizeBus } from './businessUnitManagement/BuSummary';
+import type { BuSummaryData } from '../types';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -102,6 +103,9 @@ const BusinessUnitManagement: React.FC = () => {
       }));
       setBusinessUnits(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
+      // The band rides on this same response — no second request. `summary` is absent until
+      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
+      if (data.summary) setSummary(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load business units: ' + getErrorDetail(err));
@@ -121,18 +125,21 @@ const BusinessUnitManagement: React.FC = () => {
     setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
-        // perpage:-1 is not just a size judgement: `clusters` is a DISTINCT count of
-        // cluster ids across every BU, and a count query answers "how many rows match",
-        // never "how many distinct values". Needs a backend `summary` block to replace
-        // (agent-os/standards/pages/summary-band.md).
+        // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
+        // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
+        // Task 6). Until then this keeps the strip filled for a frontend deployed ahead of
+        // its backend.
         businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
         businessUnitService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
       ]);
       const items = ((allRes as { data?: unknown }).data ?? allRes) as Parameters<typeof summarizeBus>[0];
       const list = Array.isArray(items) ? items : [];
-      const deleted = deletedRes as { paginate?: { total?: number }; total?: number };
-      const archived = deleted.paginate?.total ?? deleted.total ?? 0;
-      setSummary(summarizeBus(list, archived));
+      const deletedRows = deletedRes as { paginate?: { total?: number }; total?: number };
+      const deletedCount = deletedRows.paginate?.total ?? deletedRows.total ?? 0;
+      // `loadSummary` and `fetchBusinessUnits` race on mount. Writing unconditionally would
+      // let the locally-computed value clobber a real `summary` in one interleaving but not
+      // the other — an intermittent wrong number rather than a reproducible bug.
+      setSummary((current) => current ?? summarizeBus(list, deletedCount));
     } catch {
       setSummary(null); // strip swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

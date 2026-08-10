@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import type { NewestUser, UserSummaryData } from '../../types';
 
 interface UserLike {
   id: string;
@@ -26,44 +27,55 @@ export interface FaceItem {
   label: string;
 }
 
-export interface UserSummaryData {
-  total: number; // non-deleted users
-  active: number;
-  inactive: number;
-  archived: number; // soft-deleted (counted separately — excluded from the list feed)
-  businessUnits: number; // distinct BUs the population spans
-  faces: FaceItem[]; // newest users, most-recent first
-}
-
 /** How many overlapping faces to show before collapsing the rest into "+N". */
 export const FACE_LIMIT = 6;
 
 const deletedAt = (u: UserLike) => u.deleted_at ?? u.audit?.deleted?.at ?? null;
 const createdAt = (u: UserLike) => u.created_at ?? u.audit?.created?.at ?? '';
 
-function displayName(u: UserLike): string {
-  const full = [u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ');
-  return full || u.name || u.username || u.email || 'Unknown user';
+/**
+ * Build the display name from whatever the row carries.
+ *
+ * Takes the wire shape (`NewestUser`) rather than a full user row, because the band now
+ * receives only the six fields the endpoint sends for the presence stack. `middlename` is
+ * absent from that projection on purpose — the stack shows an 8px avatar with the name in a
+ * tooltip, so a middle name adds nothing and would cost a column on every summary query.
+ */
+function displayName(u: NewestUser): string {
+  const full = [u.firstname, u.lastname].filter(Boolean).join(' ');
+  return full || u.username || u.email || 'Unknown user';
 }
 
-function initialsOf(u: UserLike): string {
+function initialsOf(u: NewestUser): string {
   const f = u.firstname?.trim();
   const l = u.lastname?.trim();
   if (f || l) return ((f?.[0] ?? '') + (l?.[0] ?? '')).toUpperCase();
-  const base = (u.name || u.username || u.email || '').trim();
+  const base = (u.username || u.email || '').trim();
   return base ? base.slice(0, 2).toUpperCase() : '?';
 }
 
-function toFace(u: UserLike): FaceItem {
-  return { id: u.id, initials: initialsOf(u), avatarUrl: u.avatar_url, label: displayName(u) };
+/** Turn one wire row into the shape the presence stack renders. */
+export function toFace(u: NewestUser): FaceItem {
+  return {
+    id: u.id,
+    initials: initialsOf(u),
+    avatarUrl: u.avatar_url ?? undefined,
+    label: displayName(u),
+  };
 }
 
 /**
- * Roll a (non-deleted) user list up into directory overview counts. `archived` is
- * passed in separately because soft-deleted rows are excluded from the list feed.
- * `faces` are the newest members — the signature "recently added" presence stack.
+ * TEMPORARY FALLBACK — roll a (non-deleted) user list up into directory overview counts.
+ *
+ * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
+ * frontend deployed ahead of its backend. Delete it once the block is live everywhere
+ * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ *
+ * `deleted` is passed in separately because soft-deleted rows never reach the list feed.
+ * Returns the wire shape so both sources are interchangeable — a caller must never have to
+ * know which one produced the value it is holding.
  */
-export function summarizeUsers(list: UserLike[], archived = 0): UserSummaryData {
+export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
   let active = 0;
   let inactive = 0;
   const bus = new Set<string>();
@@ -75,12 +87,31 @@ export function summarizeUsers(list: UserLike[], archived = 0): UserSummaryData 
     else inactive += 1;
     for (const b of u.business_unit ?? []) if (b?.id) bus.add(b.id);
   }
-  const faces = alive
+  const newest = alive
     .map((u) => ({ u, t: Date.parse(createdAt(u)) || 0 }))
     .sort((a, b) => b.t - a.t)
     .slice(0, FACE_LIMIT)
-    .map(({ u }) => toFace(u));
-  return { total: active + inactive, active, inactive, archived, businessUnits: bus.size, faces };
+    .map(({ u }) => ({
+      id: u.id,
+      // `u.name` is a legacy display field on list rows that the endpoint's `summary` block
+      // has no counterpart for — tb_user has username/email and the profile has
+      // firstname/lastname, nothing named `name`. Folding it into the username slot keeps
+      // this fallback rendering exactly what it rendered before, without inventing a wire
+      // field the backend will never send. It disappears with the fallback itself.
+      username: u.username ?? u.name ?? null,
+      email: u.email ?? null,
+      firstname: u.firstname ?? null,
+      lastname: u.lastname ?? null,
+      avatar_url: u.avatar_url ?? null,
+    }));
+  return {
+    total: active + inactive,
+    active,
+    inactive,
+    deleted,
+    business_units: bus.size,
+    newest,
+  };
 }
 
 function Legend({ color, label, value }: { color: string; label: string; value: number }) {
@@ -171,13 +202,15 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
               <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
               <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
-              {summary.archived > 0 && (
-                <Legend color="hsl(var(--destructive))" label="Archived" value={summary.archived} />
+              {summary.deleted > 0 && (
+                <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
               )}
             </div>
           </div>
 
-          {summary.faces.length > 0 && <Faces faces={summary.faces} total={summary.total} />}
+          {summary.newest.length > 0 && (
+            <Faces faces={summary.newest.map(toFace)} total={summary.total} />
+          )}
         </div>
       )}
     </Card>

@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, News, ApiListResponse, PaginateInfo } from '../types';
+import type { PaginateParams, News, NewsResponse, NewsSummaryData, PaginateInfo } from '../types';
 
 const defaultSearchFields = ['title', 'contents'];
 
@@ -24,7 +24,7 @@ const buildNewsFormData = (data: Partial<News>, image: File): FormData => {
 };
 
 const newsService = {
-  getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<News>> => {
+  getAll: async (paginate: PaginateParams = {}): Promise<NewsResponse> => {
     const response = await api.get(`/api/news?${buildQuery(paginate, defaultSearchFields)}`);
     // The backend wraps the paginated payload in a global { data, status, ... }
     // envelope and nests the list one level deeper. Walk down `.data` until we
@@ -38,15 +38,20 @@ const newsService = {
     ) {
       node = (node as { data: unknown }).data;
     }
-    const payload = node as { data?: News[]; paginate?: PaginateInfo } | News[];
+    const payload = node as { data?: News[]; paginate?: PaginateInfo; summary?: NewsSummaryData } | News[];
     const list = Array.isArray(payload) ? payload : payload?.data ?? [];
     const paginateInfo = Array.isArray(payload) ? undefined : payload?.paginate;
+    // `summary` sits beside `data`/`paginate` on the unwrapped payload. This function
+    // rebuilds the response object rather than returning it, so anything not copied here is
+    // dropped — silently, with the band simply staying empty.
+    const summary = Array.isArray(payload) ? undefined : payload?.summary;
     // The list endpoint includes soft-deleted records; hide them. The deletion flag
     // is exposed as nested `audit.deleted.at` (older payloads used top-level
     // `deleted_at`), so check both.
     return {
       data: list.filter((n) => !n.deleted_at && !n.audit?.deleted?.at),
       paginate: paginateInfo,
+      ...(summary !== undefined && { summary }),
     };
   },
 

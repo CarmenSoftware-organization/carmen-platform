@@ -3,7 +3,8 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { ApplicationRegistrySummary, summarizeApplications, type ApplicationSummaryData } from './applicationManagement/ApplicationRegistrySummary';
+import { ApplicationRegistrySummary, summarizeApplications } from './applicationManagement/ApplicationRegistrySummary';
+import type { ApplicationSummaryData } from '../types';
 import applicationService from '../services/applicationService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
@@ -110,6 +111,9 @@ const ApplicationManagement: React.FC = () => {
       });
       setApplications(items);
       setTotalRows(data.paginate?.total ?? (data as { total?: number }).total ?? (Array.isArray(items) ? items.length : 0));
+      // The band rides on this same response — no second request. `summary` is absent until
+      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
+      if (data.summary) setSummary(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load applications: ' + getErrorDetail(err));
@@ -129,14 +133,18 @@ const ApplicationManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
-      // perpage:-1 — this one IS expressible as count queries (device is the
-      // 4-value DeviceType enum), but it would take six round trips to replace a
-      // single request over a registry that holds tens of rows, not thousands.
-      // Deliberately left alone; revisit if the registry ever grows or the
-      // endpoint gains a `summary` block (agent-os/standards/pages/summary-band.md).
+      // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
+      // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
+      // Task 6). Until then this keeps the band filled for a frontend deployed ahead of
+      // its backend.
       const data = await applicationService.getAll({ perpage: -1 });
       const raw = data.data || data;
-      setSummary(summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []));
+      // `loadSummary` and the table fetch race on mount. Writing unconditionally would let
+      // the locally-computed value clobber a real `summary` in one interleaving but not the
+      // other — an intermittent wrong number rather than a reproducible bug.
+      setSummary((current) =>
+        current ?? summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []),
+      );
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

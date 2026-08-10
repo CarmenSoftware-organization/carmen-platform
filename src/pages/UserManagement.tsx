@@ -3,7 +3,8 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
-import { UserDirectorySummary, summarizeUsers, type UserSummaryData } from "./userManagement/UserDirectorySummary";
+import { UserDirectorySummary, summarizeUsers } from "./userManagement/UserDirectorySummary";
+import type { UserSummaryData } from "../types";
 import userService from "../services/userService";
 import { getErrorDetail } from '../utils/errorParser';
 import { useAuth } from '../context/AuthContext';
@@ -159,6 +160,12 @@ const UserManagement: React.FC = () => {
       setUsers(mapped);
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
+      // The band rides on this same response — no second request. `summary` is absent until
+      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
+      // `data` is deliberately widened to Record<string, unknown> above (the row mapping
+      // tolerates two historic shapes), so the block needs its type restated here.
+      const wireSummary = data.summary as UserSummaryData | undefined;
+      if (wireSummary) setSummary(wireSummary);
       setError("");
     } catch (err: unknown) {
       setError("Failed to load users: " + getErrorDetail(err));
@@ -179,19 +186,21 @@ const UserManagement: React.FC = () => {
     setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
-        // perpage:-1 — active/inactive/archived are already count-query shaped, but
-        // `businessUnits` is a DISTINCT count of business-unit ids across every user.
-        // A count query answers "how many rows match", never "how many distinct
-        // values" — so this needs a backend `summary` block, not a client rewrite
-        // (agent-os/standards/pages/summary-band.md).
+        // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
+        // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
+        // Task 6). Until then this keeps the band filled for a frontend deployed ahead of
+        // its backend.
         userService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
         userService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
       ]);
       const items = ((allRes as { data?: unknown }).data ?? allRes) as Parameters<typeof summarizeUsers>[0];
       const list = Array.isArray(items) ? items : [];
-      const deleted = deletedRes as { paginate?: { total?: number }; total?: number };
-      const archived = deleted.paginate?.total ?? deleted.total ?? 0;
-      setSummary(summarizeUsers(list, archived));
+      const deletedRows = deletedRes as { paginate?: { total?: number }; total?: number };
+      const deletedCount = deletedRows.paginate?.total ?? deletedRows.total ?? 0;
+      // `loadSummary` and `fetchUsers` race on mount. Writing unconditionally would let the
+      // locally-computed value clobber a real `summary` in one interleaving but not the
+      // other — an intermittent wrong number rather than a reproducible bug.
+      setSummary((current) => current ?? summarizeUsers(list, deletedCount));
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

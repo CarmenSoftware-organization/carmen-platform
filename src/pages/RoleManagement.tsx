@@ -3,7 +3,8 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { RolesAccessSummary, summarizeRoles, type RolesSummaryData } from './roleManagement/RolesAccessSummary';
+import { RolesAccessSummary, summarizeRoles } from './roleManagement/RolesAccessSummary';
+import type { RolesSummaryData } from '../types';
 import roleService from '../services/roleService';
 import { getErrorDetail, devLog, parseApiError } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
@@ -116,6 +117,9 @@ const RoleManagement: React.FC = () => {
       });
       setRoles(items);
       setTotalRows(data.paginate?.total ?? (Array.isArray(items) ? items.length : 0));
+      // The band rides on this same response — no second request. `summary` is absent until
+      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
+      if (data.summary) setSummary(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load roles: ' + getErrorDetail(err));
@@ -135,14 +139,18 @@ const RoleManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
-      // perpage:-1 — the active/inactive counts could come from two `perpage: 1`
-      // count queries, but `topRoles` ranks every role by permission_count and
-      // that ordering is not something the list endpoint is known to sort on.
-      // Replace this once the endpoint returns a `summary` block
-      // (agent-os/standards/pages/summary-band.md).
+      // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
+      // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
+      // Task 6). Until then this keeps the band filled for a frontend deployed ahead of
+      // its backend.
       const data = await roleService.getAll({ perpage: -1 });
       const raw = data.data || data;
-      setSummary(summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []));
+      // `loadSummary` and the table fetch race on mount. Writing unconditionally would let
+      // the locally-computed value clobber a real `summary` in one interleaving but not the
+      // other — an intermittent wrong number rather than a reproducible bug.
+      setSummary((current) =>
+        current ?? summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []),
+      );
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

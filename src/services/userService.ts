@@ -1,11 +1,11 @@
 import api from "./api";
 import { buildQuery } from "../utils/buildQuery";
-import type { PaginateParams, User, ApiListResponse } from "../types";
+import type { PaginateParams, UsersResponse } from "../types";
 
 const defaultSearchFields = ["username", "email"];
 
 const userService = {
-  getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<User>> => {
+  getAll: async (paginate: PaginateParams = {}): Promise<UsersResponse> => {
     const response = await api.get(
       `/api-system/user?${buildQuery(paginate, defaultSearchFields)}`,
     );

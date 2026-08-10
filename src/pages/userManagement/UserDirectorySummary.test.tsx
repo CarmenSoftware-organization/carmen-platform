@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { summarizeUsers, UserDirectorySummary, FACE_LIMIT } from './UserDirectorySummary';
+import { summarizeUsers, UserDirectorySummary, FACE_LIMIT, toFace } from './UserDirectorySummary';
 
 describe('summarizeUsers', () => {
   const list = [
@@ -15,14 +15,14 @@ describe('summarizeUsers', () => {
     expect(s.total).toBe(3);
     expect(s.active).toBe(2);
     expect(s.inactive).toBe(1);
-    expect(s.businessUnits).toBe(3); // b1, b2, b3
-    expect(s.archived).toBe(4);
+    expect(s.business_units).toBe(3); // b1, b2, b3
+    expect(s.deleted).toBe(4);
   });
 
   it('never counts a soft-deleted row that slips into the list', () => {
     const s = summarizeUsers([...list, { id: 'u9', is_active: true, deleted_at: '2026-01-01', business_unit: [{ id: 'b9' }] }]);
     expect(s.total).toBe(3);
-    expect(s.businessUnits).toBe(3); // b9 excluded
+    expect(s.business_units).toBe(3); // b9 excluded
   });
 
   it('reads audit fallbacks for deleted + created dates', () => {
@@ -31,7 +31,7 @@ describe('summarizeUsers', () => {
       { id: 'z', is_active: true, name: 'Gone', audit: { deleted: { at: '2026-02-01' } } },
     ]);
     expect(s.total).toBe(1);
-    expect(s.faces[0]?.id).toBe('a');
+    expect(s.newest[0]?.id).toBe('a');
   });
 
   it('orders faces newest-first and caps them at FACE_LIMIT', () => {
@@ -42,8 +42,8 @@ describe('summarizeUsers', () => {
       created_at: `2026-01-${String(i + 1).padStart(2, '0')}`,
     }));
     const s = summarizeUsers(many);
-    expect(s.faces).toHaveLength(FACE_LIMIT);
-    expect(s.faces[0].id).toBe(`u${FACE_LIMIT + 2}`); // highest date first
+    expect(s.newest).toHaveLength(FACE_LIMIT);
+    expect(s.newest[0].id).toBe(`u${FACE_LIMIT + 2}`); // highest date first
   });
 
   it('derives initials from name parts, then falls back to a single field', () => {
@@ -51,7 +51,7 @@ describe('summarizeUsers', () => {
       { id: 'p', is_active: true, firstname: 'Grace', lastname: 'Hopper', created_at: '2026-01-05' },
       { id: 'q', is_active: true, username: 'admin', created_at: '2026-01-01' },
     ]);
-    const byId = Object.fromEntries(s.faces.map((f) => [f.id, f]));
+    const byId = Object.fromEntries(s.newest.map(toFace).map((f) => [f.id, f]));
     expect(byId.p.initials).toBe('GH');
     expect(byId.q.initials).toBe('AD');
   });
@@ -62,11 +62,11 @@ describe('UserDirectorySummary', () => {
     total: 128,
     active: 96,
     inactive: 32,
-    archived: 5,
-    businessUnits: 8,
-    faces: [
-      { id: 'f1', initials: 'AL', label: 'Ana Lopez' },
-      { id: 'f2', initials: 'BN', label: 'Ben North' },
+    deleted: 5,
+    business_units: 8,
+    newest: [
+      { id: 'f1', firstname: 'Ana', lastname: 'Lopez' },
+      { id: 'f2', firstname: 'Ben', lastname: 'North' },
     ],
   };
 
@@ -83,7 +83,7 @@ describe('UserDirectorySummary', () => {
   });
 
   it('hides the archived legend when there are none', () => {
-    render(<UserDirectorySummary summary={{ ...summary, archived: 0 }} loading={false} />);
+    render(<UserDirectorySummary summary={{ ...summary, deleted: 0 }} loading={false} />);
     expect(screen.queryByText('Archived')).not.toBeInTheDocument();
   });
 

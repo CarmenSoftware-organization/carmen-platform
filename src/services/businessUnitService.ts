@@ -1,11 +1,11 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, BusinessUnit, ApiListResponse } from '../types';
+import type { PaginateParams, BusinessUnit, BusinessUnitsResponse } from '../types';
 
 const defaultSearchFields = ['name', 'code', 'description'];
 
 const businessUnitService = {
-  getAll: async (paginate: PaginateParams = {}): Promise<ApiListResponse<BusinessUnit>> => {
+  getAll: async (paginate: PaginateParams = {}): Promise<BusinessUnitsResponse> => {
     const response = await api.get(
       `/api-system/business-units?${buildQuery(paginate, defaultSearchFields)}`,
     );

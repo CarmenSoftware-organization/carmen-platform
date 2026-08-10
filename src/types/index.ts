@@ -442,6 +442,7 @@ export interface Role {
   is_active?: boolean;
   permissions: string[];                 // permission keys
   doc_version?: number; // optimistic-lock token (read model)
+  permission_count?: number; // list read model only — absent on the detail read
 }
 
 export interface PermissionCatalogItem {
@@ -540,6 +541,161 @@ export interface FleetSummary {
 /** Response shape for `GET /api-system/clusters` — `ApiListResponse` plus the `summary` block. */
 export interface ClustersResponse extends ApiListResponse<Cluster> {
   summary?: FleetSummary;
+}
+
+/**
+ * Overview aggregate from `GET /api-system/business-units` → `summary`.
+ *
+ * Filter-consistent and scope-aware: it counts every business unit matching the active
+ * `advance`/`search` **and** the clusters the caller may read — not the whole registry.
+ * `snake_case` because this is a wire type, not a view model.
+ */
+export interface BuSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted rows matching the same filter. The band labels these "Archived". */
+  deleted: number;
+  /** Distinct clusters the matched business units span — a count query cannot express this. */
+  clusters: number;
+}
+
+/** Response shape for `GET /api-system/business-units` — `ApiListResponse` plus `summary`. */
+export interface BusinessUnitsResponse extends ApiListResponse<BusinessUnit> {
+  summary?: BuSummaryData;
+}
+
+/**
+ * One newest-member row inside the directory summary.
+ *
+ * `avatar_url` is already presigned by the gateway — the same swap the table rows go through.
+ * There is no token here to resolve.
+ */
+export interface NewestUser {
+  id: string;
+  username?: string | null;
+  email?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  avatar_url?: string | null;
+}
+
+/**
+ * Directory aggregate from the platform user list → `summary`.
+ *
+ * Filter-consistent and scope-aware, and it excludes unverified accounts exactly as the table
+ * does. `snake_case` because this is a wire type, not a view model.
+ */
+export interface UserSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted rows matching the same filter. The band labels these "Archived". */
+  deleted: number;
+  /** Distinct business units the matched users belong to — a count query cannot express this. */
+  business_units: number;
+  /** Newest matched users, most recent first. The band renders these as the presence stack. */
+  newest: NewestUser[];
+}
+
+/** Response shape for the platform user list — `ApiListResponse` plus `summary`. */
+export interface UsersResponse extends ApiListResponse<User> {
+  summary?: UserSummaryData;
+}
+
+/** One spotlighted role in the access band's breadth ranking. */
+export interface TopRole {
+  id: string;
+  name: string;
+  permission_count: number;
+}
+
+/**
+ * RBAC aggregate from the platform role list → `summary`.
+ *
+ * This endpoint has no per-caller scope — everyone past the permission gate reads the same
+ * registry — so the counts describe the active `advance`/`search` and nothing else. The bar
+ * scale (`maxCount` in the old client-side shape) is `top_roles[0].permission_count`, derived
+ * at render time rather than sent twice.
+ */
+export interface RolesSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted roles matching the same filter. */
+  deleted: number;
+  /** Broadest first, at most three entries. */
+  top_roles: TopRole[];
+}
+
+/** Response shape for `GET /api-system/platform/roles` — `ApiListResponse` plus `summary`. */
+export interface RolesResponse extends ApiListResponse<Role> {
+  summary?: RolesSummaryData;
+}
+
+/** One bar of the application band's device-platform histogram. */
+export interface DeviceCount {
+  device: string;
+  count: number;
+}
+
+/**
+ * Registry aggregate from `GET /api-system/applications` → `summary`.
+ *
+ * `devices` arrives busiest-first; that is NOT the display order. The band applies its own
+ * platform ranking at render, so the same rule governs both this block and the client-side
+ * fallback — there is one ordering rule, in one place.
+ */
+export interface ApplicationSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted rows matching the same filter. */
+  deleted: number;
+  /** allow_all — can call every endpoint (audit-worthy). */
+  full_access: number;
+  /** Restricted to a named api set. */
+  scoped: number;
+  devices: DeviceCount[];
+}
+
+/** Response shape for `GET /api-system/applications` — `ApiListResponse` plus `summary`. */
+export interface ApplicationsResponse extends ApiListResponse<Application> {
+  summary?: ApplicationSummaryData;
+}
+
+/** The lead story shown in the newsroom masthead. */
+export interface LatestNews {
+  id: string;
+  title: string;
+  /** Presigned by the gateway — there is no token here to resolve. */
+  image_url?: string | null;
+  published_at?: string | null;
+  /** How many business units the article targets; 0 means global. */
+  bu_count: number;
+}
+
+/**
+ * Newsroom aggregate from the news list → `summary`.
+ *
+ * Has NO active/inactive split, unlike every other summary block: `tb_news` has no
+ * `is_active` column, so an article's lifecycle is its `status`. This is also the only place
+ * in the contract where `archived` means a **status** — a live row — rather than a deletion.
+ */
+export interface NewsSummaryData {
+  total: number;
+  /** Soft-deleted articles matching the same filter. */
+  deleted: number;
+  draft: number;
+  published: number;
+  /** status === 'archived' — a live row, NOT a soft-deleted one. */
+  archived: number;
+  latest: LatestNews | null;
+}
+
+/** Response shape for the news list — `ApiListResponse` plus `summary`. */
+export interface NewsResponse extends ApiListResponse<News> {
+  summary?: NewsSummaryData;
 }
 
 export interface LoginResponse {

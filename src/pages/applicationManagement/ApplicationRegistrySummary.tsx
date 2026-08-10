@@ -2,25 +2,12 @@ import { AlertTriangle } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import type { ApplicationSummaryData, DeviceCount } from '../../types';
 
 interface AppLike {
   is_active?: boolean;
   allow_all?: boolean;
   device?: string;
-}
-
-export interface DeviceCount {
-  device: string;
-  count: number;
-}
-
-export interface ApplicationSummaryData {
-  total: number;
-  active: number;
-  inactive: number;
-  fullAccess: number; // allow_all — can call every endpoint (audit-worthy)
-  scoped: number; // restricted to a named api set
-  devices: DeviceCount[];
 }
 
 const DEVICE_ORDER = ['web', 'mobile', 'desktop', 'pos'];
@@ -29,7 +16,27 @@ const rank = (d: string) => {
   return i === -1 ? DEVICE_ORDER.length : i;
 };
 
-/** Roll the app list into registry counts: status, API-access scope, and the device-platform mix. */
+/**
+ * Order the histogram by platform, not by count.
+ *
+ * Applied at render so it governs both sources — the endpoint's `summary.devices` arrives
+ * busiest-first and the fallback below builds its own order. One display rule, one place;
+ * otherwise the bars reshuffle the moment the backend starts answering.
+ */
+const byPlatform = (devices: DeviceCount[]): DeviceCount[] =>
+  [...devices].sort((a, b) => rank(a.device) - rank(b.device) || a.device.localeCompare(b.device));
+
+/**
+ * TEMPORARY FALLBACK — roll the app list into registry counts: status, API-access scope, and
+ * the device-platform mix.
+ *
+ * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
+ * frontend deployed ahead of its backend. Delete it once the block is live everywhere
+ * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ *
+ * `deleted` always reports 0 here: the list feed excludes soft-deleted rows, so this path
+ * cannot see them at all.
+ */
 export function summarizeApplications(list: AppLike[]): ApplicationSummaryData {
   let active = 0;
   let inactive = 0;
@@ -46,11 +53,17 @@ export function summarizeApplications(list: AppLike[]): ApplicationSummaryData {
     dev.set(d, (dev.get(d) ?? 0) + 1);
   }
 
-  const devices = Array.from(dev.entries())
-    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
-    .map(([device, count]) => ({ device, count }));
+  const devices = Array.from(dev.entries()).map(([device, count]) => ({ device, count }));
 
-  return { total: active + inactive, active, inactive, fullAccess, scoped, devices };
+  return {
+    total: active + inactive,
+    active,
+    inactive,
+    deleted: 0,
+    full_access: fullAccess,
+    scoped,
+    devices,
+  };
 }
 
 const capDevice = (d: string) => (d === 'pos' ? 'POS' : d.charAt(0).toUpperCase() + d.slice(1));
@@ -103,22 +116,22 @@ export function ApplicationRegistrySummary({ summary, loading, error = false, on
             <div
               className="bg-muted flex h-3 overflow-hidden rounded-full"
               role="img"
-              aria-label={`${summary.fullAccess} full access, ${summary.scoped} scoped`}
+              aria-label={`${summary.full_access} full access, ${summary.scoped} scoped`}
             >
-              <span className="bg-warning" style={{ width: `${pct(summary.fullAccess)}%` }} />
+              <span className="bg-warning" style={{ width: `${pct(summary.full_access)}%` }} />
               <span className="bg-success" style={{ width: `${pct(summary.scoped)}%` }} />
             </div>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-              <ScopeLegend color="hsl(var(--warning))" label="Full access" value={summary.fullAccess} warn={summary.fullAccess > 0} />
+              <ScopeLegend color="hsl(var(--warning))" label="Full access" value={summary.full_access} warn={summary.full_access > 0} />
               <ScopeLegend color="hsl(var(--success))" label="Scoped" value={summary.scoped} />
             </div>
           </div>
 
-          {summary.devices.length > 0 && (
+          {(summary.devices ?? []).length > 0 && (
             <div className="shrink-0">
               <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Devices</div>
               <div className="flex flex-wrap gap-1.5">
-                {summary.devices.map((d) => (
+                {byPlatform(summary.devices ?? []).map((d) => (
                   <span key={d.device} className="text-muted-foreground inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs">
                     {capDevice(d.device)}
                     <span className="text-foreground font-mono text-[12px] font-semibold tabular-nums">{d.count}</span>

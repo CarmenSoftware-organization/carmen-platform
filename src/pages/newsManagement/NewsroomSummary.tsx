@@ -3,6 +3,7 @@ import { Newspaper, Globe, Building2, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import type { NewsSummaryData } from '../../types';
 
 interface NewsLike {
   id: string;
@@ -15,25 +16,17 @@ interface NewsLike {
   deleted_at?: string;
 }
 
-export interface LatestNews {
-  id: string;
-  title: string;
-  imageUrl?: string;
-  publishedAt?: string;
-  buCount: number; // 0 = global
-}
-
-export interface NewsSummaryData {
-  total: number;
-  draft: number;
-  published: number;
-  archived: number;
-  latest: LatestNews | null; // most recently published article
-}
-
 /**
- * Roll the (non-deleted) news list into pipeline counts and pick the lead story —
- * the most recently published article, which anchors the masthead.
+ * TEMPORARY FALLBACK — roll the (non-deleted) news list into pipeline counts and pick the
+ * lead story, the most recently published article that anchors the masthead.
+ *
+ * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
+ * frontend deployed ahead of its backend. Delete it once the block is live everywhere
+ * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ *
+ * `deleted` always reports 0 here: the list feed excludes soft-deleted rows entirely, so this
+ * path cannot see them. Note that `archived` is a STATUS, not a deletion — the two are
+ * different things on this entity alone.
  */
 export function summarizeNews(list: NewsLike[]): NewsSummaryData {
   let draft = 0;
@@ -56,6 +49,7 @@ export function summarizeNews(list: NewsLike[]): NewsSummaryData {
 
   return {
     total: draft + published + archived,
+    deleted: 0,
     draft,
     published,
     archived,
@@ -63,9 +57,9 @@ export function summarizeNews(list: NewsLike[]): NewsSummaryData {
       ? {
           id: lead.id,
           title: lead.title || '(untitled)',
-          imageUrl: lead.image_url || lead.image,
-          publishedAt: lead.published_at,
-          buCount: lead.business_unit_ids?.length ?? 0,
+          image_url: lead.image_url || lead.image || null,
+          published_at: lead.published_at ?? null,
+          bu_count: lead.business_unit_ids?.length ?? 0,
         }
       : null,
   };
@@ -153,9 +147,9 @@ export function NewsroomSummary({ summary, loading, error = false, onRetry = () 
             <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Latest</div>
             {summary.latest ? (
               <div className="flex items-start gap-3">
-                {summary.latest.imageUrl ? (
+                {summary.latest.image_url ? (
                   <img
-                    src={summary.latest.imageUrl}
+                    src={summary.latest.image_url}
                     alt=""
                     className="h-12 w-16 shrink-0 rounded-md border object-cover"
                     onError={(e) => {
@@ -175,9 +169,9 @@ export function NewsroomSummary({ summary, loading, error = false, onRetry = () 
                     {summary.latest.title}
                   </Link>
                   <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-                    <span>Published {timeAgo(summary.latest.publishedAt)}</span>
+                    <span>Published {timeAgo(summary.latest.published_at ?? undefined)}</span>
                     <span className="text-muted-foreground/40">·</span>
-                    <Reach buCount={summary.latest.buCount} />
+                    <Reach buCount={summary.latest.bu_count} />
                   </div>
                 </div>
               </div>

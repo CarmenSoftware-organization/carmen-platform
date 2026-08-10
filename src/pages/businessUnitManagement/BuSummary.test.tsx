@@ -17,7 +17,7 @@ describe('summarizeBus', () => {
     expect(s.active).toBe(3);
     expect(s.inactive).toBe(1);
     expect(s.clusters).toBe(3); // c1, c2, Beta
-    expect(s.archived).toBe(4);
+    expect(s.deleted).toBe(4);
   });
 
   it('never counts a soft-deleted row that slips into the list', () => {
@@ -29,7 +29,7 @@ describe('summarizeBus', () => {
 
 describe('BuSummary', () => {
   it('renders the total, cluster spread and status split', () => {
-    render(<BuSummary summary={{ total: 97, active: 84, inactive: 13, archived: 4, clusters: 10 }} loading={false} />);
+    render(<BuSummary summary={{ total: 97, active: 84, inactive: 13, deleted: 4, clusters: 10 }} loading={false} />);
     expect(screen.getByText('97')).toBeInTheDocument();
     expect(screen.getByText(/across 10 clusters/)).toBeInTheDocument();
     expect(screen.getByText('84')).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe('BuSummary', () => {
   });
 
   it('hides the archived legend when there are none', () => {
-    render(<BuSummary summary={{ total: 5, active: 5, inactive: 0, archived: 0, clusters: 1 }} loading={false} />);
+    render(<BuSummary summary={{ total: 5, active: 5, inactive: 0, deleted: 0, clusters: 1 }} loading={false} />);
     expect(screen.queryByText('Archived')).not.toBeInTheDocument();
   });
 
