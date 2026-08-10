@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams } from '../types';
+import type { PaginateParams, RolesResponse } from '../types';
 
 const defaultSearchFields = ['name', 'description'];
 
@@ -13,7 +13,7 @@ export interface RoleWriteData {
 }
 
 const roleService = {
-  getAll: async (paginate: PaginateParams = {}) => {
+  getAll: async (paginate: PaginateParams = {}): Promise<RolesResponse> => {
     const response = await api.get(
       `/api-system/platform/roles?${buildQuery(paginate, defaultSearchFields)}`,
     );

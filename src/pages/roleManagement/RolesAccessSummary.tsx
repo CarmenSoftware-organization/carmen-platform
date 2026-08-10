@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import type { RolesSummaryData } from '../../types';
 
 interface RoleLike {
   id: string;
@@ -10,26 +11,18 @@ interface RoleLike {
   permission_count?: number;
 }
 
-export interface TopRole {
-  id: string;
-  name: string;
-  count: number;
-}
-
-export interface RolesSummaryData {
-  total: number;
-  active: number;
-  inactive: number;
-  topRoles: TopRole[]; // broadest first, up to 3
-  maxCount: number; // widest role's permission count — the bar scale
-}
-
 /** How many roles to spotlight in the breadth bars. */
 export const TOP_ROLES = 3;
 
 /**
- * Roll roles up into RBAC counts and rank them by breadth — how many permissions
- * each grants. The widest role is the most powerful, so it anchors the bar scale.
+ * TEMPORARY FALLBACK — roll roles up into RBAC counts and rank them by breadth.
+ *
+ * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
+ * frontend deployed ahead of its backend. Delete it once the block is live everywhere
+ * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ *
+ * `deleted` cannot be known here: the list feed excludes soft-deleted rows entirely, so this
+ * path always reports 0. Only the backend block can fill it truthfully.
  */
 export function summarizeRoles(list: RoleLike[]): RolesSummaryData {
   let active = 0;
@@ -39,14 +32,18 @@ export function summarizeRoles(list: RoleLike[]): RolesSummaryData {
     else inactive += 1;
   }
   const ranked = list
-    .map((r) => ({ id: r.id, name: r.name || '(unnamed role)', count: r.permission_count ?? 0 }))
-    .sort((a, b) => b.count - a.count);
+    .map((r) => ({
+      id: r.id,
+      name: r.name || '(unnamed role)',
+      permission_count: r.permission_count ?? 0,
+    }))
+    .sort((a, b) => b.permission_count - a.permission_count);
   return {
     total: active + inactive,
     active,
     inactive,
-    topRoles: ranked.slice(0, TOP_ROLES),
-    maxCount: ranked.length ? ranked[0].count : 0,
+    deleted: 0,
+    top_roles: ranked.slice(0, TOP_ROLES),
   };
 }
 
@@ -58,6 +55,11 @@ interface RolesAccessSummaryProps {
 }
 
 export function RolesAccessSummary({ summary, loading, error = false, onRetry = () => {} }: RolesAccessSummaryProps) {
+  // The widest role anchors the bar scale. Derived here rather than carried on the wire —
+  // it is always `top_roles[0].permission_count`, so sending it would be a second copy of a
+  // number already present, free to drift.
+  const barScale = summary?.top_roles?.[0]?.permission_count ?? 0;
+
   return (
     <Card className="p-4 sm:p-5">
       {error ? (
@@ -79,11 +81,11 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
 
           <div className="min-w-[16rem] flex-1">
             <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Broadest roles</div>
-            {summary.topRoles.length === 0 ? (
+            {(summary.top_roles ?? []).length === 0 ? (
               <p className="text-muted-foreground text-sm">No roles yet.</p>
             ) : (
               <div className="space-y-2">
-                {summary.topRoles.map((r) => (
+                {(summary.top_roles ?? []).map((r) => (
                   <div key={r.id} className="flex items-center gap-3">
                     <Link
                       to={`/platform/roles/${r.id}/edit`}
@@ -95,14 +97,14 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
                     <div
                       className="bg-muted h-2 flex-1 overflow-hidden rounded-full"
                       role="img"
-                      aria-label={`${r.name}: ${r.count} permission${r.count === 1 ? '' : 's'}`}
+                      aria-label={`${r.name}: ${r.permission_count} permission${r.permission_count === 1 ? '' : 's'}`}
                     >
                       <span
                         className="bg-primary block h-full rounded-full"
-                        style={{ width: `${summary.maxCount > 0 ? (r.count / summary.maxCount) * 100 : 0}%` }}
+                        style={{ width: `${barScale > 0 ? (r.permission_count / barScale) * 100 : 0}%` }}
                       />
                     </div>
-                    <span className="w-8 shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums">{r.count}</span>
+                    <span className="w-8 shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums">{r.permission_count}</span>
                   </div>
                 ))}
               </div>

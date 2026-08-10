@@ -442,6 +442,7 @@ export interface Role {
   is_active?: boolean;
   permissions: string[];                 // permission keys
   doc_version?: number; // optimistic-lock token (read model)
+  permission_count?: number; // list read model only — absent on the detail read
 }
 
 export interface PermissionCatalogItem {
@@ -600,6 +601,36 @@ export interface UserSummaryData {
 /** Response shape for the platform user list — `ApiListResponse` plus `summary`. */
 export interface UsersResponse extends ApiListResponse<User> {
   summary?: UserSummaryData;
+}
+
+/** One spotlighted role in the access band's breadth ranking. */
+export interface TopRole {
+  id: string;
+  name: string;
+  permission_count: number;
+}
+
+/**
+ * RBAC aggregate from the platform role list → `summary`.
+ *
+ * This endpoint has no per-caller scope — everyone past the permission gate reads the same
+ * registry — so the counts describe the active `advance`/`search` and nothing else. The bar
+ * scale (`maxCount` in the old client-side shape) is `top_roles[0].permission_count`, derived
+ * at render time rather than sent twice.
+ */
+export interface RolesSummaryData {
+  total: number;
+  active: number;
+  inactive: number;
+  /** Soft-deleted roles matching the same filter. */
+  deleted: number;
+  /** Broadest first, at most three entries. */
+  top_roles: TopRole[];
+}
+
+/** Response shape for `GET /api-system/platform/roles` — `ApiListResponse` plus `summary`. */
+export interface RolesResponse extends ApiListResponse<Role> {
+  summary?: RolesSummaryData;
 }
 
 export interface LoginResponse {
