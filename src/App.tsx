@@ -29,7 +29,9 @@ const ReportTemplateEdit = lazy(() => import("./pages/ReportTemplateEdit"));
 const ReportFormGroupManagement = lazy(() => import("./pages/ReportFormGroupManagement"));
 const NewsManagement = lazy(() => import("./pages/NewsManagement"));
 const NewsEdit = lazy(() => import("./pages/NewsEdit"));
+const BroadcastManagement = lazy(() => import("./pages/BroadcastManagement"));
 const BroadcastCompose = lazy(() => import("./pages/BroadcastCompose"));
+const BroadcastEdit = lazy(() => import("./pages/BroadcastEdit"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const RoleManagement = lazy(() => import("./pages/RoleManagement"));
@@ -250,10 +252,26 @@ function AppContent() {
               }
             />
             <Route
+              path="/broadcasts"
+              element={
+                <PrivateRoute requiredPermission="broadcast.read">
+                  <BroadcastManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/broadcasts/new"
               element={
                 <PrivateRoute requiredPermission="broadcast.send">
                   <BroadcastCompose />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/broadcasts/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="broadcast.read">
+                  <BroadcastEdit />
                 </PrivateRoute>
               }
             />

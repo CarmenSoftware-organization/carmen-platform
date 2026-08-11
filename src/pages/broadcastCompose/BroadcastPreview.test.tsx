@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { BroadcastPreview, severityStyle, reachSummary } from './BroadcastPreview';
+import { BroadcastPreview, severityStyle, reachSummary } from '../../components/BroadcastPreview';
 
 describe('severityStyle', () => {
   it('maps each preset to a distinct accent', () => {
