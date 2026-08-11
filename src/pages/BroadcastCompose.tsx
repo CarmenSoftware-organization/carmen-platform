@@ -212,7 +212,7 @@ const BroadcastCompose: React.FC = () => {
     }
   };
 
-  type ValidatableField = 'title' | 'message' | 'typeCustom' | 'scheduledAtLocal' | 'buCode' | 'recipients';
+  type ValidatableField = 'title' | 'message' | 'typeCustom' | 'scheduledAtLocal' | 'expiresAtLocal' | 'buCode' | 'recipients';
 
   // `validateField` (utils/validation.ts) switches on field-name heuristics (email/code/url/…)
   // and bails out early with '' for any empty value — it cannot express "this field is
@@ -255,6 +255,22 @@ const BroadcastCompose: React.FC = () => {
         if (ts <= Date.now()) return 'Scheduled time must be in the future';
         return '';
       }
+      case 'expiresAtLocal': {
+        // preset ไม่ต้องตรวจ — คำนวณจาก base เสมอจึงเป็นอนาคตโดยนิยาม
+        if (form.expiryPreset !== 'custom') return '';
+        const v = form.expiresAtLocal;
+        if (!v) return 'Pick an expiry date and time';
+        const ts = new Date(v).getTime();
+        if (Number.isNaN(ts)) return 'Invalid date/time';
+        if (ts <= Date.now()) return 'Expiry must be in the future';
+        if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
+          const scheduled = new Date(form.scheduledAtLocal).getTime();
+          if (!Number.isNaN(scheduled) && ts <= scheduled) {
+            return 'Expiry must be after the scheduled send time';
+          }
+        }
+        return '';
+      }
       case 'buCode':
         if (mode === 'bu' && !form.buCode) return 'Choose a business unit';
         return '';
@@ -267,7 +283,7 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const VALIDATABLE_FIELDS: ValidatableField[] = [
-    'title', 'message', 'typeCustom', 'scheduledAtLocal', 'buCode', 'recipients',
+    'title', 'message', 'typeCustom', 'scheduledAtLocal', 'expiresAtLocal', 'buCode', 'recipients',
   ];
 
   const validate = (): Record<string, string> => {
@@ -585,6 +601,35 @@ const BroadcastCompose: React.FC = () => {
                     )}
                   </div>
                 )}
+                <div className="space-y-2 pt-1">
+                  <Label htmlFor="expiryPreset">Expires</Label>
+                  <select
+                    id="expiryPreset"
+                    value={formData.expiryPreset}
+                    onChange={(e) => setField('expiryPreset', e.target.value as ExpiryPreset)}
+                    className={SELECT_CLASS}
+                  >
+                    <option value="7d">7 days</option>
+                    <option value="30d">30 days</option>
+                    <option value="90d">90 days</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                  {formData.expiryPreset === 'custom' && (
+                    <div className="space-y-1">
+                      <input
+                        id="expiresAtLocal"
+                        type="datetime-local"
+                        value={formData.expiresAtLocal}
+                        onChange={(e) => setField('expiresAtLocal', e.target.value)}
+                        onBlur={() => handleFieldBlur('expiresAtLocal')}
+                        className={SELECT_CLASS + (fieldErrors.expiresAtLocal ? ' border-destructive' : '')}
+                      />
+                      {fieldErrors.expiresAtLocal && (
+                        <p className="text-xs text-destructive">{fieldErrors.expiresAtLocal}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </section>
             </CardContent>
           </Card>
