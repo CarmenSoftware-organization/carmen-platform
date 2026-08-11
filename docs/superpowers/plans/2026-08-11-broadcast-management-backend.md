@@ -753,16 +753,26 @@ export class BroadcastUpdateDto extends createZodDto(BroadcastUpdateSchema) {}
     }
 
     // metadata เป็นพื้นที่ร่วม — backend เขียน id/bu_code ลงไปเองตอนสร้าง จึงต้อง merge ไม่ใช่ replace
+    // และต้องถอดสอง key นั้นออกจากฝั่ง client ก่อน ไม่งั้นผู้เรียกส่ง { bu_code: "อะไรก็ได้" } มา
+    // เขียนทับได้ ทำให้หน้ารายการแสดง BU ผิด (การส่งจริงไม่กระทบ — getRecipientsForBroadcast
+    // อ่านผู้รับจากคอลัมน์ scope/scope_id ไม่ใช่จาก metadata) การันตีที่ต้องการคือ
+    // "key ของ backend รอดจากการ merge และยังเชื่อถือได้"
+    const { bu_code: _ownedBuCode, id: _ownedId, ...clientMetadata } = patch.metadata ?? {};
     const nextMetadata =
       patch.metadata === undefined
         ? undefined
         : ({
             ...((current.metadata ?? {}) as Record<string, unknown>),
-            ...patch.metadata,
+            ...clientMetadata,
           } as Prisma.InputJsonValue);
 
-    const updated = await prisma.tb_broadcast_notification.update({
-      where: { id },
+    // เขียนแบบมีเงื่อนไข ไม่ใช่ "ตรวจแล้วค่อยเขียน" — การอ่าน doc_version มาเทียบด้านบนยังจำเป็น
+    // (ใช้ตัดสิน not_found, content lock และสถานะ) แต่ถ้าปล่อยให้คำสั่งเขียนใช้ where: { id }
+    // เฉยๆ PATCH สองอันที่ถือ doc_version เดียวกันจะผ่านด่านทั้งคู่แล้วเขียนทั้งคู่ increment
+    // ลงสองครั้ง งานของคนแรกหายเงียบโดยที่เขาได้ 200 — คือ lost update ที่ doc_version มีไว้
+    // ป้องกันพอดี ใส่ doc_version ลงใน where ของคำสั่งเขียน ให้ฐานข้อมูลเป็นคนตัดสินแทน
+    const written = await prisma.tb_broadcast_notification.updateMany({
+      where: { id, doc_version: patch.doc_version, deleted_at: null },
       data: {
         ...(patch.title !== undefined ? { title: patch.title } : {}),
         ...(patch.message !== undefined ? { message: patch.message } : {}),
@@ -774,7 +784,10 @@ export class BroadcastUpdateDto extends createZodDto(BroadcastUpdateSchema) {}
         updated_by_id: updatedById,
       },
     });
+    if (written.count === 0) return { ok: false, code: 'conflict' };
 
+    // updateMany ไม่คืนแถว จึงต้องอ่านกลับเพื่อสร้าง response
+    const updated = await prisma.tb_broadcast_notification.findUnique({ where: { id } });
     return { ok: true, row: this.toRow(updated, now) };
   }
 ```
@@ -899,8 +912,12 @@ curl -s -X PATCH "http://localhost:4000/api/notifications/broadcasts/$ID" \
   "${H[@]}" -d "{\"end_at\":\"2027-01-01T00:00:00Z\",\"doc_version\":$V}" | jq '.data | {status,end_at,doc_version}'
 
 # 4) แก้ severity แล้ว bu_code ต้องยังอยู่ (พิสูจน์ว่า merge ไม่ใช่ replace)
-curl -s -X PATCH "http://localhost:4000/api/notifications/broadcasts/$ID" \
-  "${H[@]}" -d "{\"metadata\":{\"severity\":\"WARNING\"},\"doc_version\":$((V+1))}" | jq '.data.severity, .data.bu_code'
+#    ต้องใช้แถวที่สถานะเป็น scheduled ไม่ใช่ active — `metadata` ถูกล็อกร่วมกับ title/message
+#    ตามกฎข้อ 2 ดังนั้นแถว active จะได้ 400 ไม่ใช่ 200 (จุดนี้แผนเคยเขียนผิด แก้แล้ว)
+SID=<id ของ probe row ที่สถานะ scheduled>
+SV=<doc_version ของแถวนั้น>
+curl -s -X PATCH "http://localhost:4000/api/notifications/broadcasts/$SID" \
+  "${H[@]}" -d "{\"metadata\":{\"severity\":\"WARNING\"},\"doc_version\":$SV}" | jq '.data.severity, .data.bu_code'
 
 # 5) Expire now — end_at เป็นอดีต ต้องผ่าน
 curl -s -X PATCH "http://localhost:4000/api/notifications/broadcasts/$ID" \
@@ -910,6 +927,10 @@ curl -s -X PATCH "http://localhost:4000/api/notifications/broadcasts/$ID" \
 Expected: (1) `409` · (2) error `Content cannot be edited…` + `fields` มี `title` · (3) `status: "active"`,
 `doc_version` = V+1 · (4) `severity: "WARNING"` และ `bu_code` **ยังเป็นค่าเดิม ไม่ใช่ null** ·
 (5) `status: "expired"`
+
+**หมายเหตุเรื่อง typing:** `tsconfig` ของรีโปนี้ตั้ง `strictNullChecks: false` ซึ่งทำให้ TypeScript
+narrow discriminated union ที่ใช้ boolean tag ไม่ได้ — ต้องเขียน `if (result.ok === true)`
+ไม่ใช่ `if (result.ok)` มิฉะนั้น type-check ไม่ผ่าน ความหมายเหมือนกันทุกประการ Task 5 ก็เจอแบบเดียวกัน
 
 **เคส 4 คือเคสที่สำคัญที่สุดในแผนนี้** — `bu_code` เป็น null เมื่อไหร่แปลว่า metadata ถูก replace
 ทับ ให้กลับไปแก้ Step 2
@@ -953,16 +974,18 @@ git commit -m "feat(broadcast): PATCH /api/notifications/broadcasts/:id พร�
     const prisma = await this.getPrisma();
     const current = await prisma.tb_broadcast_notification.findUnique({ where: { id } });
     if (!current || current.deleted_at) return { ok: false, code: 'not_found' };
-    if (current.doc_version !== docVersion) return { ok: false, code: 'conflict' };
 
-    await prisma.tb_broadcast_notification.update({
-      where: { id },
+    // เขียนแบบมีเงื่อนไขเหมือน update() — ดูเหตุผลเต็มที่นั่น การอ่านด้านบนใช้แยก not_found
+    // ออกจาก conflict เท่านั้น ส่วนการตัดสิน doc_version เกิดที่ฐานข้อมูลในคำสั่งเขียน
+    const written = await prisma.tb_broadcast_notification.updateMany({
+      where: { id, doc_version: docVersion, deleted_at: null },
       data: {
         deleted_at: new Date(),
         deleted_by_id: deletedById,
         doc_version: { increment: 1 },
       },
     });
+    if (written.count === 0) return { ok: false, code: 'conflict' };
     return { ok: true };
   }
 ```
