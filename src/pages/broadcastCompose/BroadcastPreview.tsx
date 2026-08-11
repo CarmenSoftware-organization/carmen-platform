@@ -58,6 +58,7 @@ interface BroadcastPreviewProps {
   buLabel?: string;
   sendMode: 'now' | 'schedule';
   scheduledLabel?: string; // formatted scheduled time, when valid
+  expiresLabel?: string; // formatted expiry time, when resolvable
 }
 
 /** The signature: the broadcast rendered as recipients will see it, plus who it reaches and when. */
@@ -71,6 +72,7 @@ export function BroadcastPreview({
   buLabel,
   sendMode,
   scheduledLabel,
+  expiresLabel,
 }: BroadcastPreviewProps) {
   const sev = severityStyle(typePreset);
   const typeLabel = typePreset === 'OTHER' ? (customLabel?.trim() || 'Custom') : sev.label;
@@ -127,6 +129,19 @@ export function BroadcastPreview({
             </>
           )}
         </div>
+        {expiresLabel && (
+          <div className="text-muted-foreground flex items-center gap-2 px-2.5 py-1 text-sm">
+            <Calendar className="size-4 shrink-0" />
+            <span className="min-w-0">Expires {expiresLabel}</span>
+          </div>
+        )}
+        {/* The colour bar and Badge above are the sender's own categorisation. The backend
+            hardcodes `event: info` on every broadcast and has no severity column at all, so
+            recipients never see any of it — saying so here stops the sender believing a
+            Critical broadcast lands in red. The value is still persisted in metadata.severity. */}
+        <p className="text-muted-foreground/80 px-2.5 pt-1 text-[11px] leading-relaxed">
+          Colour and label are an internal categorisation — recipients see a standard notification.
+        </p>
       </div>
     </Card>
   );

@@ -38,6 +38,16 @@ const MESSAGE_MAX = 2000;
 const TYPE_CUSTOM_MAX = 50;
 const TYPE_CUSTOM_RE = /^[A-Z0-9_]+$/;
 
+type ExpiryPreset = '7d' | '30d' | '90d' | 'custom';
+
+const EXPIRY_DAYS: Record<Exclude<ExpiryPreset, 'custom'>, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 interface BroadcastFormData {
   title: string;
   message: string;
@@ -46,6 +56,8 @@ interface BroadcastFormData {
   sendMode: 'now' | 'schedule';
   scheduledAtLocal: string;
   buCode: string;
+  expiryPreset: ExpiryPreset;
+  expiresAtLocal: string;
 }
 
 const initialForm: BroadcastFormData = {
@@ -56,6 +68,8 @@ const initialForm: BroadcastFormData = {
   sendMode: 'now',
   scheduledAtLocal: '',
   buCode: '',
+  expiryPreset: '30d',
+  expiresAtLocal: '',
 };
 
 const TYPE_OPTIONS: { value: BroadcastTypePreset; label: string }[] = [
@@ -66,16 +80,45 @@ const TYPE_OPTIONS: { value: BroadcastTypePreset; label: string }[] = [
   { value: 'OTHER', label: 'Other…' },
 ];
 
-function resolveType(form: BroadcastFormData, prefix: 'SYS' | 'BU'): string {
-  if (form.typePreset === 'OTHER') return form.typeCustom.trim().toUpperCase();
-  return `${prefix}_${form.typePreset}`;
+/** severity ของผู้ส่ง — ไปอยู่ใน metadata ไม่ใช่ฟิลด์ `type` ที่ backend ทิ้งแล้ว */
+function resolveSeverity(form: BroadcastFormData): string {
+  return form.typePreset === 'OTHER' ? form.typeCustom.trim().toUpperCase() : form.typePreset;
+}
+
+/**
+ * แปลง preset/custom เป็น ISO Z สำหรับ `end_at`
+ *
+ * คำแนะนำจากสเปก (ผู้ใช้ตัดสินขั้นสุดท้าย): base ของ preset ควรเป็น `scheduled_at`
+ * เมื่อ sendMode === 'schedule' ไม่ใช่เวลาปัจจุบัน — ไม่งั้นคนที่ตั้งส่งวันที่ 20 แล้วเลือก
+ * "7 days" จะได้ประกาศที่หมดอายุวันที่ 18 คือตายก่อนถูกส่ง ผู้รับไม่เห็นอะไรเลย
+ * ถ้า scheduledAtLocal ว่างหรือ parse ไม่ได้ ให้ถอยไปใช้เวลาปัจจุบัน (validation
+ * บล็อกที่ scheduledAtLocal อยู่แล้วก่อนถึง submit)
+ *
+ * ตัวช่วยที่มีให้ใช้: EXPIRY_DAYS, DAY_MS, form.expiryPreset, form.expiresAtLocal,
+ * form.sendMode, form.scheduledAtLocal — ผลลัพธ์ต้องผ่าน .toISOString() เสมอ
+ */
+function resolveExpiryIso(form: BroadcastFormData): string {
+  if (form.expiryPreset === 'custom') {
+    // `new Date('').toISOString()` throws RangeError rather than yielding 'Invalid Date', and
+    // the Preview calls this on every render — including while the user has picked Custom but
+    // not yet typed a date. Returning '' keeps the page alive; validateOne('expiresAtLocal')
+    // is what stops an empty value from ever reaching the API.
+    const ts = new Date(form.expiresAtLocal).getTime();
+    return Number.isNaN(ts) ? '' : new Date(ts).toISOString();
+  }
+  const scheduled = form.sendMode === 'schedule' && form.scheduledAtLocal
+    ? new Date(form.scheduledAtLocal).getTime()
+    : NaN;
+  const base = Number.isNaN(scheduled) ? Date.now() : scheduled;
+  return new Date(base + EXPIRY_DAYS[form.expiryPreset] * DAY_MS).toISOString();
 }
 
 function buildSystemPayload(form: BroadcastFormData, recipients: UserOption[]): BroadcastSystemPayload {
   const payload: BroadcastSystemPayload = {
     title: form.title.trim(),
     message: form.message.trim(),
-    type: resolveType(form, 'SYS'),
+    end_at: resolveExpiryIso(form),
+    metadata: { severity: resolveSeverity(form) },
   };
   if (recipients.length > 0) payload.userIds = recipients.map((r) => r.id);
   if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
@@ -89,7 +132,8 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
     bu_code: form.buCode,
     title: form.title.trim(),
     message: form.message.trim(),
-    type: resolveType(form, 'BU'),
+    end_at: resolveExpiryIso(form),
+    metadata: { severity: resolveSeverity(form) },
   };
   if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
     payload.scheduled_at = new Date(form.scheduledAtLocal).toISOString();
@@ -173,7 +217,7 @@ const BroadcastCompose: React.FC = () => {
     }
   };
 
-  type ValidatableField = 'title' | 'message' | 'typeCustom' | 'scheduledAtLocal' | 'buCode' | 'recipients';
+  type ValidatableField = 'title' | 'message' | 'typeCustom' | 'scheduledAtLocal' | 'expiresAtLocal' | 'buCode' | 'recipients';
 
   // `validateField` (utils/validation.ts) switches on field-name heuristics (email/code/url/…)
   // and bails out early with '' for any empty value — it cannot express "this field is
@@ -216,6 +260,22 @@ const BroadcastCompose: React.FC = () => {
         if (ts <= Date.now()) return 'Scheduled time must be in the future';
         return '';
       }
+      case 'expiresAtLocal': {
+        // preset ไม่ต้องตรวจ — คำนวณจาก base เสมอจึงเป็นอนาคตโดยนิยาม
+        if (form.expiryPreset !== 'custom') return '';
+        const v = form.expiresAtLocal;
+        if (!v) return 'Pick an expiry date and time';
+        const ts = new Date(v).getTime();
+        if (Number.isNaN(ts)) return 'Invalid date/time';
+        if (ts <= Date.now()) return 'Expiry must be in the future';
+        if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
+          const scheduled = new Date(form.scheduledAtLocal).getTime();
+          if (!Number.isNaN(scheduled) && ts <= scheduled) {
+            return 'Expiry must be after the scheduled send time';
+          }
+        }
+        return '';
+      }
       case 'buCode':
         if (mode === 'bu' && !form.buCode) return 'Choose a business unit';
         return '';
@@ -228,7 +288,7 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const VALIDATABLE_FIELDS: ValidatableField[] = [
-    'title', 'message', 'typeCustom', 'scheduledAtLocal', 'buCode', 'recipients',
+    'title', 'message', 'typeCustom', 'scheduledAtLocal', 'expiresAtLocal', 'buCode', 'recipients',
   ];
 
   const validate = (): Record<string, string> => {
@@ -330,6 +390,8 @@ const BroadcastCompose: React.FC = () => {
     formData.typeCustom.length > 0 ||
     formData.sendMode !== 'now' ||
     formData.scheduledAtLocal.length > 0 ||
+    formData.expiryPreset !== '30d' ||
+    formData.expiresAtLocal.length > 0 ||
     formData.buCode.length > 0 ||
     recipients.length > 0;
 
@@ -349,6 +411,10 @@ const BroadcastCompose: React.FC = () => {
   const scheduledLabel = (() => {
     if (formData.sendMode !== 'schedule' || !formData.scheduledAtLocal) return undefined;
     const t = new Date(formData.scheduledAtLocal);
+    return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
+  })();
+  const expiresLabel = (() => {
+    const t = new Date(resolveExpiryIso(formData));
     return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
   })();
 
@@ -544,6 +610,35 @@ const BroadcastCompose: React.FC = () => {
                     )}
                   </div>
                 )}
+                <div className="space-y-2 pt-1">
+                  <Label htmlFor="expiryPreset">Expires</Label>
+                  <select
+                    id="expiryPreset"
+                    value={formData.expiryPreset}
+                    onChange={(e) => setField('expiryPreset', e.target.value as ExpiryPreset)}
+                    className={SELECT_CLASS}
+                  >
+                    <option value="7d">7 days</option>
+                    <option value="30d">30 days</option>
+                    <option value="90d">90 days</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                  {formData.expiryPreset === 'custom' && (
+                    <div className="space-y-1">
+                      <input
+                        id="expiresAtLocal"
+                        type="datetime-local"
+                        value={formData.expiresAtLocal}
+                        onChange={(e) => setField('expiresAtLocal', e.target.value)}
+                        onBlur={() => handleFieldBlur('expiresAtLocal')}
+                        className={SELECT_CLASS + (fieldErrors.expiresAtLocal ? ' border-destructive' : '')}
+                      />
+                      {fieldErrors.expiresAtLocal && (
+                        <p className="text-xs text-destructive">{fieldErrors.expiresAtLocal}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </section>
             </CardContent>
           </Card>
@@ -560,6 +655,7 @@ const BroadcastCompose: React.FC = () => {
               buLabel={buLabel}
               sendMode={formData.sendMode}
               scheduledLabel={scheduledLabel}
+              expiresLabel={expiresLabel}
             />
           </div>
         </div>
