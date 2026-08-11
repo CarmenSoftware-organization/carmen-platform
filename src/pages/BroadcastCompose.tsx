@@ -38,6 +38,16 @@ const MESSAGE_MAX = 2000;
 const TYPE_CUSTOM_MAX = 50;
 const TYPE_CUSTOM_RE = /^[A-Z0-9_]+$/;
 
+type ExpiryPreset = '7d' | '30d' | '90d' | 'custom';
+
+const EXPIRY_DAYS: Record<Exclude<ExpiryPreset, 'custom'>, number> = {
+  '7d': 7,
+  '30d': 30,
+  '90d': 90,
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 interface BroadcastFormData {
   title: string;
   message: string;
@@ -46,6 +56,8 @@ interface BroadcastFormData {
   sendMode: 'now' | 'schedule';
   scheduledAtLocal: string;
   buCode: string;
+  expiryPreset: ExpiryPreset;
+  expiresAtLocal: string;
 }
 
 const initialForm: BroadcastFormData = {
@@ -56,6 +68,8 @@ const initialForm: BroadcastFormData = {
   sendMode: 'now',
   scheduledAtLocal: '',
   buCode: '',
+  expiryPreset: '30d',
+  expiresAtLocal: '',
 };
 
 const TYPE_OPTIONS: { value: BroadcastTypePreset; label: string }[] = [
@@ -66,16 +80,40 @@ const TYPE_OPTIONS: { value: BroadcastTypePreset; label: string }[] = [
   { value: 'OTHER', label: 'Other…' },
 ];
 
-function resolveType(form: BroadcastFormData, prefix: 'SYS' | 'BU'): string {
-  if (form.typePreset === 'OTHER') return form.typeCustom.trim().toUpperCase();
-  return `${prefix}_${form.typePreset}`;
+/** severity ของผู้ส่ง — ไปอยู่ใน metadata ไม่ใช่ฟิลด์ `type` ที่ backend ทิ้งแล้ว */
+function resolveSeverity(form: BroadcastFormData): string {
+  return form.typePreset === 'OTHER' ? form.typeCustom.trim().toUpperCase() : form.typePreset;
+}
+
+/**
+ * แปลง preset/custom เป็น ISO Z สำหรับ `end_at`
+ *
+ * คำแนะนำจากสเปก (ผู้ใช้ตัดสินขั้นสุดท้าย): base ของ preset ควรเป็น `scheduled_at`
+ * เมื่อ sendMode === 'schedule' ไม่ใช่เวลาปัจจุบัน — ไม่งั้นคนที่ตั้งส่งวันที่ 20 แล้วเลือก
+ * "7 days" จะได้ประกาศที่หมดอายุวันที่ 18 คือตายก่อนถูกส่ง ผู้รับไม่เห็นอะไรเลย
+ * ถ้า scheduledAtLocal ว่างหรือ parse ไม่ได้ ให้ถอยไปใช้เวลาปัจจุบัน (validation
+ * บล็อกที่ scheduledAtLocal อยู่แล้วก่อนถึง submit)
+ *
+ * ตัวช่วยที่มีให้ใช้: EXPIRY_DAYS, DAY_MS, form.expiryPreset, form.expiresAtLocal,
+ * form.sendMode, form.scheduledAtLocal — ผลลัพธ์ต้องผ่าน .toISOString() เสมอ
+ */
+function resolveExpiryIso(form: BroadcastFormData): string {
+  if (form.expiryPreset === 'custom') {
+    return new Date(form.expiresAtLocal).toISOString();
+  }
+  const scheduled = form.sendMode === 'schedule' && form.scheduledAtLocal
+    ? new Date(form.scheduledAtLocal).getTime()
+    : NaN;
+  const base = Number.isNaN(scheduled) ? Date.now() : scheduled;
+  return new Date(base + EXPIRY_DAYS[form.expiryPreset] * DAY_MS).toISOString();
 }
 
 function buildSystemPayload(form: BroadcastFormData, recipients: UserOption[]): BroadcastSystemPayload {
   const payload: BroadcastSystemPayload = {
     title: form.title.trim(),
     message: form.message.trim(),
-    type: resolveType(form, 'SYS'),
+    end_at: resolveExpiryIso(form),
+    metadata: { severity: resolveSeverity(form) },
   };
   if (recipients.length > 0) payload.userIds = recipients.map((r) => r.id);
   if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
@@ -89,7 +127,8 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
     bu_code: form.buCode,
     title: form.title.trim(),
     message: form.message.trim(),
-    type: resolveType(form, 'BU'),
+    end_at: resolveExpiryIso(form),
+    metadata: { severity: resolveSeverity(form) },
   };
   if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
     payload.scheduled_at = new Date(form.scheduledAtLocal).toISOString();
@@ -330,6 +369,8 @@ const BroadcastCompose: React.FC = () => {
     formData.typeCustom.length > 0 ||
     formData.sendMode !== 'now' ||
     formData.scheduledAtLocal.length > 0 ||
+    formData.expiryPreset !== '30d' ||
+    formData.expiresAtLocal.length > 0 ||
     formData.buCode.length > 0 ||
     recipients.length > 0;
 

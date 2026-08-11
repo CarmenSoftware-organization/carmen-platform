@@ -775,7 +775,13 @@ export type BroadcastTypePreset = 'INFO' | 'WARNING' | 'CRITICAL' | 'MAINTENANCE
 export interface BroadcastSystemPayload {
   title: string;
   message: string;
-  type?: string;
+  /**
+   * เมื่อประกาศหมดอายุ (ISO 8601 Z) — backend บังคับแบบไม่มี default ตั้งแต่ PR #324
+   * (SystemBroadcastCreateSchema) และบังคับแม้ในกิ่ง userIds ที่ตัวมันเองไม่ได้ใช้ค่า
+   * เพื่อให้ request มีรูปเดียว การไม่ส่งฟิลด์นี้ = 400 ทุกครั้ง
+   */
+  end_at: string;
+  /** severity ของผู้ส่งอยู่ที่ `metadata.severity` — schema ไม่มีคอลัมน์สำหรับมัน */
   metadata?: Record<string, unknown>;
   scheduled_at?: string; // ISO date-time
   userIds?: string[];    // UUIDs; when present, fans out as personal rows
@@ -785,7 +791,8 @@ export interface BroadcastBuPayload {
   bu_code: string;
   title: string;
   message: string;
-  type?: string;
+  /** ดู BroadcastSystemPayload.end_at — BuBroadcastCreateSchema บังคับเหมือนกัน */
+  end_at: string;
   metadata?: Record<string, unknown>;
   scheduled_at?: string; // ISO date-time
 }
