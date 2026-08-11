@@ -124,7 +124,7 @@ Expected: ทั้งสองรายงานว่าไม่มี drift 
 ```bash
 psql "$SYSTEM_DATABASE_URL" -c "
 SELECT r.name, p.resource || '.' || p.action AS perm
-FROM \"CARMEN_SYSTEM\".tb_platform_role_permission rp
+FROM \"CARMEN_SYSTEM\".tb_platform_role_tb_permission rp
 JOIN \"CARMEN_SYSTEM\".tb_platform_role r ON r.id = rp.platform_role_id
 JOIN \"CARMEN_SYSTEM\".tb_platform_permission p ON p.id = rp.platform_permission_id
 WHERE p.resource = 'broadcast' ORDER BY r.name, perm;"
@@ -271,15 +271,21 @@ export class BroadcastAdminService {
    * @param now - Reference instant / เวลาอ้างอิง
    * @returns Prisma where fragment / ชิ้นส่วน where ของ Prisma
    */
-  private statusWhere(status: Exclude<BroadcastStatus, 'deleted'>, now: Date) {
-    if (status === 'scheduled') return { scheduled_at: { gt: now } };
+  private statusWhere(status: BroadcastStatus, now: Date) {
+    // ทุก fragment ต้องกัน deleted_at ออกก่อนเสมอ — นิยามสถานะบอกว่า 'deleted' ชนะทุกอย่าง
+    // ถ้าไม่กัน แถวที่ลบแล้วจะเข้า bucket active ตอนเปิด include_deleted แล้วถูกติดป้ายว่า
+    // deleted ในเวลาเดียวกัน คือแถวที่สถานะขัดกับ filter ที่เลือกมันมา
+    if (status === 'deleted') return { deleted_at: { not: null } };
+    if (status === 'scheduled') return { deleted_at: null, scheduled_at: { gt: now } };
     if (status === 'expired') {
       return {
+        deleted_at: null,
         end_at: { lte: now },
         OR: [{ scheduled_at: null }, { scheduled_at: { lte: now } }],
       };
     }
     return {
+      deleted_at: null,
       AND: [
         { OR: [{ scheduled_at: null }, { scheduled_at: { lte: now } }] },
         { OR: [{ end_at: null }, { end_at: { gt: now } }] },
@@ -327,7 +333,7 @@ export class BroadcastAdminService {
       [SORTABLE.has(sortField) ? sortField : 'created_at']: sortDir === 'asc' ? 'asc' : 'desc',
     } as Prisma.tb_broadcast_notificationOrderByWithRelationInput;
 
-    const [rows, total, active, scheduled, expired, all] = await prisma.$transaction([
+    const [rows, total, active, scheduled, expired, deleted, all] = await prisma.$transaction([
       prisma.tb_broadcast_notification.findMany({
         where,
         orderBy,
@@ -338,13 +344,16 @@ export class BroadcastAdminService {
       prisma.tb_broadcast_notification.count({ where: { AND: [base, this.statusWhere('active', now)] } }),
       prisma.tb_broadcast_notification.count({ where: { AND: [base, this.statusWhere('scheduled', now)] } }),
       prisma.tb_broadcast_notification.count({ where: { AND: [base, this.statusWhere('expired', now)] } }),
+      prisma.tb_broadcast_notification.count({ where: { AND: [base, this.statusWhere('deleted', now)] } }),
       prisma.tb_broadcast_notification.count({ where: base }),
     ]);
 
+    // `deleted` เป็น 0 เสมอเมื่อ include_deleted ปิด เพราะ base มี deleted_at: null อยู่แล้ว
+    // ทำให้ all = active + scheduled + expired + deleted ทุกกรณี แถบสรุปจึงบวกกลับได้เสมอ
     return {
       data: rows.map((r) => this.toRow(r, now)),
       paginate: { total, page, perpage },
-      summary: { all, active, scheduled, expired },
+      summary: { all, active, scheduled, expired, deleted },
     };
   }
 }
@@ -399,7 +408,13 @@ export const BroadcastListQuerySchema = z.object({
   sort: z.string().optional(),
   status: z.enum(['active', 'scheduled', 'expired']).optional(),
   scope: z.enum(['system', 'business_unit']).optional(),
-  include_deleted: z.coerce.boolean().optional(),
+  // ห้ามใช้ z.coerce.boolean() — มันคือ Boolean(input) และ query param มาเป็น string เสมอ
+  // ทำให้ "false" และ "0" กลายเป็น true (พิสูจน์แล้วกับ zod 3.25.76 ในรีโปนี้) ผลคือ
+  // ?include_deleted=false จะคืนแถวที่ลบแล้ว ซึ่งตรงข้ามกับที่ผู้เรียกขอ
+  include_deleted: z
+    .enum(['true', 'false'])
+    .transform((v) => v === 'true')
+    .optional(),
 });
 
 export type BroadcastListQueryModel = z.infer<typeof BroadcastListQuerySchema>;

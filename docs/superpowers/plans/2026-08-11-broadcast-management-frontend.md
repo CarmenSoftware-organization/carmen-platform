@@ -267,12 +267,19 @@ export interface BroadcastUpdatePayload {
   doc_version: number;
 }
 
-/** สรุปตามสถานะ — backend คำนวณโดย **เพิกเฉยต่อ filter `status`** โดยตั้งใจ */
+/**
+ * สรุปตามสถานะ — backend คำนวณโดย **เพิกเฉยต่อ filter `status`** โดยตั้งใจ แต่ยังเชื่อฟัง
+ * `search`/`scope`/`include_deleted`
+ *
+ * `deleted` เป็น 0 เสมอเมื่อ `include_deleted` ปิด ทำให้
+ * `all = active + scheduled + expired + deleted` ทุกกรณี แถบจึงบวกกลับได้เสมอ
+ */
 export interface BroadcastSummaryData {
   all: number;
   active: number;
   scheduled: number;
   expired: number;
+  deleted: number;
 }
 
 export interface BroadcastListResponse {
@@ -396,6 +403,8 @@ interface Props {
   onRetry: () => void;
   activeStatus: Exclude<BroadcastStatus, 'deleted'> | null;
   onSelectStatus: (status: Exclude<BroadcastStatus, 'deleted'> | null) => void;
+  showDeleted: boolean;
+  onToggleDeleted: () => void;
 }
 
 /**
@@ -409,7 +418,7 @@ interface Props {
  * แถบล้มแยกจากตาราง: error แล้วโชว์ retry ของตัวเอง ตารางทำงานต่อ
  */
 export function BroadcastSummary({
-  summary, loading, error, onRetry, activeStatus, onSelectStatus,
+  summary, loading, error, onRetry, activeStatus, onSelectStatus, showDeleted, onToggleDeleted,
 }: Props) {
   if (error) {
     return (
@@ -422,25 +431,34 @@ export function BroadcastSummary({
     );
   }
 
-  const cells: { key: Exclude<BroadcastStatus, 'deleted'> | null; label: string; value?: number }[] = [
-    { key: null, label: 'All', value: summary?.all },
-    { key: 'active', label: 'Active', value: summary?.active },
-    { key: 'scheduled', label: 'Scheduled', value: summary?.scheduled },
-    { key: 'expired', label: 'Expired', value: summary?.expired },
+  // สี่ช่องแรกกรองตามสถานะ ช่อง Deleted สลับ Show deleted แทน — เพราะ query param `status`
+  // รับแค่ active|scheduled|expired การเข้าถึงแถวที่ลบแล้วทำผ่าน include_deleted ไม่ใช่ผ่าน
+  // status ทุกช่องจึงยังกดได้และทำอะไรสักอย่าง ไม่มีช่องที่เป็นแค่ตัวเลขนิ่งๆ ปนอยู่
+  const cells: {
+    label: string;
+    value?: number;
+    pressed: boolean;
+    onSelect: () => void;
+  }[] = [
+    { label: 'All', value: summary?.all, pressed: activeStatus === null, onSelect: () => onSelectStatus(null) },
+    { label: 'Active', value: summary?.active, pressed: activeStatus === 'active', onSelect: () => onSelectStatus('active') },
+    { label: 'Scheduled', value: summary?.scheduled, pressed: activeStatus === 'scheduled', onSelect: () => onSelectStatus('scheduled') },
+    { label: 'Expired', value: summary?.expired, pressed: activeStatus === 'expired', onSelect: () => onSelectStatus('expired') },
+    { label: 'Deleted', value: summary?.deleted, pressed: showDeleted, onSelect: onToggleDeleted },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {cells.map((c) => (
         <Card
           key={c.label}
           role="button"
           tabIndex={0}
-          aria-pressed={activeStatus === c.key}
-          onClick={() => onSelectStatus(c.key)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectStatus(c.key); } }}
+          aria-pressed={c.pressed}
+          onClick={c.onSelect}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.onSelect(); } }}
           className={`cursor-pointer p-4 transition-colors hover:bg-muted/50 ${
-            activeStatus === c.key ? 'border-primary' : ''
+            c.pressed ? 'border-primary' : ''
           }`}
         >
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.label}</div>
@@ -453,6 +471,9 @@ export function BroadcastSummary({
   );
 }
 ```
+
+`Deleted` เป็น 0 เสมอเมื่อ toggle ปิด — นั่นถูกต้อง ไม่ใช่บั๊ก และเป็นสิ่งที่ทำให้
+`all = active + scheduled + expired + deleted` เป็นจริงทุกกรณี ตรวจข้อนี้ในเบราว์เซอร์ด้วย
 
 - [ ] **Step 3: สร้าง `broadcastColumns.tsx`**
 

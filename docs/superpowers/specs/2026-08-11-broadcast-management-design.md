@@ -144,7 +144,7 @@ Response:
     "created_by": { "id": "uuid", "name": "…" }
   }],
   "paginate": { "total": 42, "page": 1, "perpage": 20 },
-  "summary":  { "all": 42, "active": 8, "scheduled": 3, "expired": 31 }
+  "summary":  { "all": 42, "active": 8, "scheduled": 3, "expired": 31, "deleted": 0 }
 }
 ```
 
@@ -161,6 +161,11 @@ filter ที่ใช้อยู่ ที่นี่ทำแบบนั้
 ต้องเขียนคอมเมนต์กำกับไว้ทั้งที่ query ฝั่ง backend และที่หน้า FE เพราะคนอ่านจะสมมติตามมาตรฐาน
 
 `summary.all` เท่ากับ `paginate.total` ก็ต่อเมื่อไม่ได้กรอง `status` เท่านั้น — เขียนกำกับด้วย
+
+**`deleted` เป็นช่องที่ห้าและเป็น 0 เสมอเมื่อ `include_deleted` ปิด** (base มี `deleted_at: null`
+อยู่แล้ว) ทำให้ `all = active + scheduled + expired + deleted` ในทุกกรณี แถบสรุปจึงบวกกลับได้เสมอ
+ไม่ว่า toggle จะเปิดหรือปิด — เพิ่มเข้ามาหลังพบว่าถ้าไม่มีช่องนี้ แถวที่ลบแล้วจะไปโผล่ในช่อง
+`active` ตอนเปิด toggle ซึ่งขัดกับกฎลำดับสถานะที่ `deleted` ต้องชนะทุกอย่าง
 
 ## `PATCH /api/notifications/broadcasts/:id`
 
