@@ -80,7 +80,7 @@ const BroadcastManagement: React.FC = () => {
       setRawResponse(data);
       const rows = data.data || [];
       setItems(rows);
-      setTotalRows(data.paginate?.total ?? rows.length);
+      setTotalRows(data.paginate?.total ?? data.total ?? rows.length);
       if (data.summary) {
         setSummary(data.summary);
       }

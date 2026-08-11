@@ -837,9 +837,7 @@ export interface BroadcastSummary {
   deleted: number;
 }
 
-export interface BroadcastsResponse {
-  data: BroadcastListItem[];
-  paginate: PaginateInfo;
+export interface BroadcastsResponse extends ApiListResponse<BroadcastListItem> {
   summary: BroadcastSummary;
 }
 
