@@ -17,6 +17,7 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/report-templates', label: 'Report Templates', icon: FileText, permission: 'report_template.read', group: 'Content' },
   { path: '/report-form-groups', label: 'Form Groups', icon: LayoutGrid, permission: 'report_template.read', group: 'Content' },
   { path: '/news', label: 'News', icon: Newspaper, permission: 'news.read', group: 'Content' },
+  { path: '/broadcasts', label: 'Broadcasts', icon: Megaphone, permission: 'broadcast.read', group: 'Content' },
   { path: '/broadcasts/new', label: 'Send Broadcast', icon: Megaphone, permission: 'broadcast.send', group: 'Content' },
   // Analytics — must stay contiguous: Sidebar groups by consecutive runs of the same
   // `group` label, so splitting these two would render two separate "Analytics" headings.

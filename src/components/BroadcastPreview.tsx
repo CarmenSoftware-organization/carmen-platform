@@ -1,8 +1,8 @@
 import { Globe, Users, Building2, Send, Calendar, AlertTriangle } from 'lucide-react';
-import { Card } from '../../components/ui/card';
-import { Badge, type BadgeProps } from '../../components/ui/badge';
-import { cn } from '../../lib/utils';
-import type { BroadcastTargetMode, BroadcastTypePreset } from '../../types';
+import { Card } from './ui/card';
+import { Badge, type BadgeProps } from './ui/badge';
+import { cn } from '../lib/utils';
+import type { BroadcastTargetMode, BroadcastTypePreset } from '../types';
 
 export interface SeverityStyle {
   label: string;
