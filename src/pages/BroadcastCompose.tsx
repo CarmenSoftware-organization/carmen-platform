@@ -47,6 +47,7 @@ interface BroadcastFormData {
   sendMode: 'now' | 'schedule';
   scheduledAtLocal: string;
   buCode: string;
+  metadataBuCode: string;
   expiryPreset: ExpiryPreset;
   expiresAtLocal: string;
 }
@@ -59,6 +60,7 @@ const initialForm: BroadcastFormData = {
   sendMode: 'now',
   scheduledAtLocal: '',
   buCode: '',
+  metadataBuCode: '',
   expiryPreset: '30d',
   expiresAtLocal: '',
 };
@@ -77,11 +79,15 @@ function resolveSeverity(form: BroadcastFormData): string {
 }
 
 function buildSystemPayload(form: BroadcastFormData, recipients: UserOption[]): BroadcastSystemPayload {
+  const metadata: Record<string, unknown> = { severity: resolveSeverity(form) };
+  if (form.metadataBuCode) {
+    metadata.bu_code = form.metadataBuCode;
+  }
   const payload: BroadcastSystemPayload = {
     title: form.title.trim(),
     message: form.message.trim(),
     end_at: resolveExpiryIso(form),
-    metadata: { severity: resolveSeverity(form) },
+    metadata,
   };
   if (recipients.length > 0) payload.userIds = recipients.map((r) => r.id);
   if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
@@ -91,12 +97,16 @@ function buildSystemPayload(form: BroadcastFormData, recipients: UserOption[]): 
 }
 
 function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
+  const metadata: Record<string, unknown> = { severity: resolveSeverity(form) };
+  if (form.metadataBuCode) {
+    metadata.bu_code = form.metadataBuCode;
+  }
   const payload: BroadcastBuPayload = {
     bu_code: form.buCode,
     title: form.title.trim(),
     message: form.message.trim(),
     end_at: resolveExpiryIso(form),
-    metadata: { severity: resolveSeverity(form) },
+    metadata,
   };
   if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
     payload.scheduled_at = new Date(form.scheduledAtLocal).toISOString();
@@ -356,6 +366,7 @@ const BroadcastCompose: React.FC = () => {
     formData.expiryPreset !== '30d' ||
     formData.expiresAtLocal.length > 0 ||
     formData.buCode.length > 0 ||
+    formData.metadataBuCode.length > 0 ||
     recipients.length > 0;
 
   useUnsavedChanges(isDirty);
@@ -385,6 +396,7 @@ const BroadcastCompose: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
         <PageHeader
+          backTo="/broadcasts"
           beforeTitle={<Megaphone className="h-6 w-6 text-primary" />}
           title="Send Broadcast"
           subtitle="Push a notification to all users, specific users, or a business unit."
@@ -527,7 +539,7 @@ const BroadcastCompose: React.FC = () => {
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
-                  {formData.typePreset === 'OTHER' && (
+                    {formData.typePreset === 'OTHER' && (
                     <div className="space-y-1">
                       <Input
                         id="typeCustom"
@@ -542,6 +554,29 @@ const BroadcastCompose: React.FC = () => {
                       )}
                     </div>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="metadataBuCode">Related Business Unit (Metadata)</Label>
+                  <select
+                    id="metadataBuCode"
+                    value={formData.metadataBuCode}
+                    onChange={(e) => setField('metadataBuCode', e.target.value)}
+                    className={SELECT_CLASS}
+                    disabled={buLoading}
+                  >
+                    <option value="">{buLoading ? 'Loading business units…' : 'None (optional)'}</option>
+                    {businessUnits
+                      .filter((b) => b.is_active !== false)
+                      .map((b) => (
+                        <option key={b.id} value={b.code}>
+                          {b.name} ({b.code})
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Attaches this business unit code to the broadcast's metadata (e.g. for navigation).
+                  </p>
                 </div>
               </section>
 
