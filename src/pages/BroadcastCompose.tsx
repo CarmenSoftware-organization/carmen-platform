@@ -99,7 +99,12 @@ function resolveSeverity(form: BroadcastFormData): string {
  */
 function resolveExpiryIso(form: BroadcastFormData): string {
   if (form.expiryPreset === 'custom') {
-    return new Date(form.expiresAtLocal).toISOString();
+    // `new Date('').toISOString()` throws RangeError rather than yielding 'Invalid Date', and
+    // the Preview calls this on every render — including while the user has picked Custom but
+    // not yet typed a date. Returning '' keeps the page alive; validateOne('expiresAtLocal')
+    // is what stops an empty value from ever reaching the API.
+    const ts = new Date(form.expiresAtLocal).getTime();
+    return Number.isNaN(ts) ? '' : new Date(ts).toISOString();
   }
   const scheduled = form.sendMode === 'schedule' && form.scheduledAtLocal
     ? new Date(form.scheduledAtLocal).getTime()
@@ -408,6 +413,10 @@ const BroadcastCompose: React.FC = () => {
     const t = new Date(formData.scheduledAtLocal);
     return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
   })();
+  const expiresLabel = (() => {
+    const t = new Date(resolveExpiryIso(formData));
+    return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
+  })();
 
   return (
     <Layout>
@@ -646,6 +655,7 @@ const BroadcastCompose: React.FC = () => {
               buLabel={buLabel}
               sendMode={formData.sendMode}
               scheduledLabel={scheduledLabel}
+              expiresLabel={expiresLabel}
             />
           </div>
         </div>
