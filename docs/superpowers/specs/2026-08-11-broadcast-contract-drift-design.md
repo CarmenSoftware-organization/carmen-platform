@@ -187,6 +187,54 @@ Expires  10 Sep 2026, 09:00
   `POST /api/notifications/broadcasts/system` ตอบ **201** และ body มี `end_at` กับ
   `metadata.severity` — การส่งจริงต้องขออนุญาตผู้ใช้ก่อนกด
 
+## ผลการตรวจสอบ
+
+ตรวจในเบราว์เซอร์ที่ `http://localhost:3304/broadcasts/new` เมื่อ 2026-08-11 บน backend
+`localhost:4000` ผู้ใช้ `superadmin@carmen.com`
+
+ตรวจโดยไม่ส่งจริง — ผ่านทั้งหมด:
+
+| สิ่งที่ตรวจ | ผล |
+|---|---|
+| ฟิลด์ Expires ค่าเริ่มต้น 30 days | ผ่าน |
+| Preview แสดง `Expires 9/10/2026` (วันนี้ +30 วัน) | ผ่าน |
+| คำเตือนเรื่อง severity ใต้ Delivery | ผ่าน |
+| เลือก Custom โดยยังไม่กรอกวันที่ → หน้าไม่พัง | ผ่าน |
+| วันที่ในอดีต → `Expiry must be in the future` | ผ่าน |
+| expiry ก่อน scheduled → `Expiry must be after the scheduled send time` | ผ่าน |
+| preset นับจาก `scheduled_at`: scheduled 12/1/2026 + 7 days → `Expires 12/8/2026` | ผ่าน |
+| `isDirty` ไม่ trigger จากค่า default | ผ่าน |
+
+ส่งจริงหนึ่งครั้ง (ผู้ใช้อนุญาตล่วงหน้า) ด้วย audience = Specific users เลือก
+`superadmin@carmen.com` คนเดียว:
+
+- `POST http://localhost:4000/api/notifications/broadcasts/system` → **201** (เดิมคือ 400)
+- response: `{ data: { ids: ["389ee326-26c8-4cb9-a24f-8fa9c1d81790"] },
+  response: { status: 201, message: "Created Successfully" } }`
+- อ่านกลับผ่าน `GET /api/notifications` ได้แถว:
+  `{ title: "Contract drift verification", event: "info", doc_type: "system",
+     metadata: { id: null, bu_code: null, severity: "INFO" } }`
+
+สามข้อที่หลักฐานนี้ยืนยัน:
+
+1. `end_at` ผ่าน zod validation แล้ว — 400 หายไป ซึ่งเป็น root cause ทั้งหมด
+2. `metadata.severity` ถูกเก็บและอ่านกลับได้จริง ไม่ได้ถูก strip
+3. `event: "info"` แม้ FE ไม่เคยส่ง `event` เลย — ยืนยันว่า backend hardcode ค่านี้ คำเตือนที่
+   เพิ่มใน Preview จึงพูดความจริง
+
+หลักฐานเพิ่มเติมที่ไม่ได้คาดไว้: broadcast แถวก่อนหน้าที่ส่งก่อนแก้มี `metadata: null` —
+ยืนยันโดยตรงว่าฟิลด์ `type` ที่ FE ส่งมาตลอดถูกทิ้งจริง ไม่ใช่แค่ข้อสรุปจากการอ่าน schema
+และ backend เติม `id`/`bu_code` เข้า `metadata` เอง ดังนั้น `metadata` เป็นพื้นที่ร่วมของทั้งสอง
+ฝั่ง ไม่ใช่ของ frontend คนเดียว
+
+บั๊กที่พบระหว่าง implement (ไม่ได้อยู่ในสเปกเดิม): `resolveExpiryIso` เรียก
+`new Date('').toISOString()` ซึ่ง **throw RangeError** ไม่ใช่คืน Invalid Date เมื่อ Preview
+เรียกฟังก์ชันนี้ทุก render หน้าจะพังทันทีที่ผู้ใช้เลือก Custom แต่ยังไม่กรอกวันที่ แก้โดยให้คืน
+`''` เมื่อ parse ไม่ได้ โดยยังมี `validateOne('expiresAtLocal')` กันค่าว่างไม่ให้ถึง API
+
+ยังไม่ได้ทดสอบ: เส้น `POST /broadcasts/bu` (BU broadcast) — ใช้ `resolveExpiryIso` ตัวเดียวกัน
+และ `BuBroadcastCreateSchema` บังคับ `end_at` เหมือนกัน แต่ไม่ได้ยิงจริง
+
 ## นอกขอบเขต
 
 - ยกระดับ severity เป็นคอลัมน์จริง + enum — ทำเมื่อมี UI ฝั่งผู้รับที่อ่านมัน
