@@ -23,7 +23,7 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BroadcastPreview } from '../components/BroadcastPreview';
 import { resolveExpiryIso, type ExpiryPreset } from '../utils/broadcastExpiry';
-import type { BroadcastListItem, BroadcastStatus } from '../types';
+import type { BroadcastListItem, BroadcastStatus, BroadcastUpdatePayload } from '../types';
 
 interface BroadcastEditData {
   title: string;
@@ -214,20 +214,34 @@ const BroadcastEdit: React.FC = () => {
     try {
       const scheduled_at = formData.scheduledAtLocal ? new Date(formData.scheduledAtLocal).toISOString() : null;
       const end_at = new Date(formData.expiresAtLocal).toISOString();
-      
-      // Only merge severity, preserve other metadata
-      const currentMeta = typeof rawResponse?.metadata === 'object' ? rawResponse.metadata : {};
-      const metadata = { ...currentMeta, severity: formData.severity };
 
-      await broadcastService.update(id!, {
-        title: formData.title,
-        message: formData.message,
-        metadata,
-        scheduled_at,
-        end_at,
-        doc_version: docVersion ?? 0,
-      });
-      
+      // ส่งเฉพาะฟิลด์ที่เปลี่ยนจริง ห้ามส่งทั้งก้อน — backend ถือว่า "มี title/message/metadata ใน
+      // payload" คือการแตะเนื้อหา (`touchesContent`) แล้วตอบ 400 content_locked ทุกครั้งที่สถานะ
+      // ปัจจุบันไม่ใช่ scheduled ส่งทั้งก้อนจึงทำให้ต่ออายุ/Expire now แถวที่ออกอากาศแล้วพังหมด
+      // ทั้งที่ backend อนุญาต end_at ตลอด เทียบกับ savedFormData ไม่ใช่ rawResponse เพราะ input
+      // datetime-local เก็บถึงนาที ค่าที่แปลงกลับจึงไม่เท่ากับ ISO เดิมที่มีวินาทีติดมาด้วย
+      const patch: BroadcastUpdatePayload = { doc_version: docVersion ?? 0 };
+      if (formData.title !== savedFormData.title) patch.title = formData.title;
+      if (formData.message !== savedFormData.message) patch.message = formData.message;
+      if (formData.severity !== savedFormData.severity) {
+        // metadata merge ไม่ใช่ replace — backend เขียน id/bu_code ของตัวเองไว้ในก้อนนี้
+        const currentMeta = typeof rawResponse?.metadata === 'object' ? rawResponse.metadata : {};
+        patch.metadata = { ...currentMeta, severity: formData.severity };
+      }
+      if (formData.scheduledAtLocal !== savedFormData.scheduledAtLocal) patch.scheduled_at = scheduled_at;
+      if (formData.expiresAtLocal !== savedFormData.expiresAtLocal) patch.end_at = end_at;
+
+      // ปุ่ม Save ปิดอยู่เมื่อไม่มีอะไรเปลี่ยน แต่ Ctrl+S ไม่ผ่านปุ่ม — กัน PATCH เปล่าที่ได้ผลแค่
+      // ดัน doc_version ขึ้นหนึ่งโดยไม่มีข้อมูลเปลี่ยน
+      if (Object.keys(patch).length === 1) {
+        toast.info('No changes to save');
+        setConfirmDialog({ open: false, type: null });
+        setEditing(false);
+        return;
+      }
+
+      await broadcastService.update(id!, patch);
+
       toast.success(rawResponse?.status === 'active' && end_at <= new Date().toISOString() ? 'Broadcast expired successfully' : 'Changes saved successfully');
       setConfirmDialog({ open: false, type: null });
       await fetchBroadcast();
