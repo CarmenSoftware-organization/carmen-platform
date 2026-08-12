@@ -252,6 +252,8 @@ const BroadcastManagement: React.FC = () => {
           onRetry={() => fetchItems(paginate)}
           statusFilter={statusFilter}
           onStatusFilter={handleStatusFilter}
+          showDeleted={showDeleted}
+          onToggleDeleted={handleShowDeletedToggle}
         />
 
         <Card>
