@@ -12,6 +12,8 @@ interface BroadcastSummaryProps {
   onRetry: () => void;
   statusFilter: string[];
   onStatusFilter: (status: string) => void;
+  showDeleted: boolean;
+  onToggleDeleted: () => void;
 }
 
 export const BroadcastSummary: React.FC<BroadcastSummaryProps> = ({
@@ -21,6 +23,8 @@ export const BroadcastSummary: React.FC<BroadcastSummaryProps> = ({
   onRetry,
   statusFilter,
   onStatusFilter,
+  showDeleted,
+  onToggleDeleted,
 }) => {
   if (error) {
     return (
@@ -32,11 +36,16 @@ export const BroadcastSummary: React.FC<BroadcastSummaryProps> = ({
     );
   }
 
+  // ช่อง Deleted ต่างจากอีกสี่ช่องโดยตั้งใจ: query param `status` รับแค่ active|scheduled|expired
+  // การเข้าถึงแถวที่ลบแล้วทำผ่าน include_deleted ฉะนั้นช่องนี้จึงสลับ Show deleted ไม่ใช่กรอง status
+  // ที่ต้องมีช่องนี้เพราะ backend ส่ง summary.deleted มาด้วย และ all = active + scheduled + expired
+  // + deleted ถ้าไม่แสดง deleted ผู้ใช้จะเห็น All ไม่เท่าผลรวมช่องที่เหลือทันทีที่มีแถวถูกลบ
   const items = [
     { key: 'all', label: 'All', value: summary?.all, color: 'text-foreground' },
     { key: 'active', label: 'Active', value: summary?.active, color: 'text-success' },
     { key: 'scheduled', label: 'Scheduled', value: summary?.scheduled, color: 'text-info' },
     { key: 'expired', label: 'Expired', value: summary?.expired, color: 'text-muted-foreground' },
+    { key: 'deleted', label: 'Deleted', value: summary?.deleted, color: 'text-destructive' },
   ] as const;
 
   return (
@@ -44,13 +53,19 @@ export const BroadcastSummary: React.FC<BroadcastSummaryProps> = ({
       <CardContent className="p-0">
         <div className="flex flex-wrap divide-x divide-border">
           {items.map(({ key, label, value, color }) => {
-            const isActive = statusFilter.length === 0 ? key === 'all' : statusFilter.includes(key);
+            const isActive =
+              key === 'deleted'
+                ? showDeleted
+                : statusFilter.length === 0
+                  ? key === 'all'
+                  : statusFilter.includes(key);
             return (
               <button
                 key={key}
-                onClick={() => onStatusFilter(key)}
+                aria-pressed={isActive}
+                onClick={() => (key === 'deleted' ? onToggleDeleted() : onStatusFilter(key))}
                 className={cn(
-                  'flex-1 basis-1/4 p-4 text-left transition-colors hover:bg-muted/50 sm:p-6',
+                  'flex-1 basis-1/2 p-4 text-left transition-colors hover:bg-muted/50 sm:basis-1/3 sm:p-6 lg:basis-1/5',
                   isActive && 'bg-muted/30'
                 )}
               >
