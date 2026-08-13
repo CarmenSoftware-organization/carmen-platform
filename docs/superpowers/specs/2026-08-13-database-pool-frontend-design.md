@@ -193,9 +193,8 @@ edit-in-place
 
 ฟิลด์: Name · Description · Host · Port · Database · Username · Password · Active · Note
 จัดใน `lg:grid-cols-2` ตามมาตรฐาน ทุกฟิลด์ต้องมีทั้งโหมดแก้และโหมดอ่านอย่างเดียว ตาม
-**Form Field Pattern** — `ReadOnlyText` เป็น component เล็กที่แต่ละหน้าประกาศเอง (ตัวที่มีอยู่
-อยู่ใน `src/pages/businessUnitEdit/shared` ผูกกับหน้านั้น) หน้านี้ประกาศของตัวเองในไฟล์
-ไม่ import ข้ามหน้า ตาม `agent-os/standards/pages/decomposition.md`
+**Form Field Pattern** — ใช้ `ReadOnlyField` จาก `src/components/ReadOnlyField.tsx`
+(component กลางที่ `RoleEdit` ใช้อยู่) ไม่ต้องประกาศ `ReadOnlyText` ของตัวเอง
 
 **Password:**
 - สร้างใหม่ → บังคับกรอก
