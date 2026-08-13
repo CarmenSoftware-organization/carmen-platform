@@ -99,6 +99,19 @@ export interface DatabasePoolsResponse {
   data: DatabasePool[];
   paginate?: { total: number; page: number; perpage: number; pages?: number };
 }
+
+/** สิ่งที่ส่งไปเขียน — ไม่ใช่รูปที่อ่านกลับมา (ไม่มี id/doc_version/audit) */
+export interface DatabasePoolWriteInput {
+  name: string;
+  description?: string;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password?: string;
+  is_active: boolean;
+  note?: string;
+}
 ```
 
 - [ ] **Step 2: แก้ `BusinessUnit` ใน `src/types/index.ts`**
@@ -117,7 +130,12 @@ export interface DatabasePoolsResponse {
 ```ts
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, DatabasePool, DatabasePoolsResponse } from '../types';
+import type {
+  PaginateParams,
+  DatabasePool,
+  DatabasePoolsResponse,
+  DatabasePoolWriteInput,
+} from '../types';
 
 // ตรงกับ defaultSearchFields ฝั่ง backend (database-pool.service.ts:80)
 const defaultSearchFields = ['name', 'host', 'database'];
@@ -142,13 +160,13 @@ const databasePoolService = {
     return response.data;
   },
 
-  create: async (data: Partial<DatabasePool> & { password: string }) => {
+  create: async (data: DatabasePoolWriteInput & { password: string }) => {
     const response = await api.post(BASE, data);
     return response.data;
   },
 
   // doc_version เป็น required ฝั่ง backend (DatabasePoolUpdateDto) ต่างจาก entity อื่นในrepo นี้
-  update: async (id: string, data: Partial<DatabasePool> & { doc_version: number }) => {
+  update: async (id: string, data: DatabasePoolWriteInput & { doc_version: number }) => {
     const response = await api.put(`${BASE}/${id}`, data);
     return response.data;
   },
@@ -299,15 +317,10 @@ const handleDelete = async () => {
     setDeleteTarget(null);
     fetchPools();
   } catch (err) {
-    // 409 DATABASE_POOL_IN_USE — ข้อความจาก backend เติมรายชื่อ BU มาให้แล้ว
-    // ผ่าน placeholder {business_units} จึงมีค่ากว่าข้อความกลางๆ
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    if (status === 409) {
-      toast.error(getErrorDetail(err));
-    } else {
-      toast.error(getErrorDetail(err));
-      devLog('deleteDatabasePool', err);
-    }
+    // 409 DATABASE_POOL_IN_USE — backend เติมรายชื่อ BU ลงในข้อความให้แล้วผ่าน
+    // placeholder {business_units} จึงแสดงข้อความของ backend ตรงๆ ทุกกรณี
+    toast.error(getErrorDetail(err));
+    devLog('deleteDatabasePool', err);
   }
 };
 ```
@@ -402,8 +415,8 @@ state อื่นตามมาตรฐาน: `id` จาก `useParams`, `i
 payload:
 
 ```ts
-const buildPayload = (data: DatabasePoolFormData) => {
-  const payload: Record<string, unknown> = {
+const buildPayload = (data: DatabasePoolFormData): DatabasePoolWriteInput => {
+  const payload: DatabasePoolWriteInput = {
     name: data.name.trim(),
     description: data.description.trim() || undefined,
     host: data.host.trim(),
@@ -420,18 +433,25 @@ const buildPayload = (data: DatabasePoolFormData) => {
 };
 ```
 
+**ห้ามใช้ `as never` / `as any` / `as unknown as X` ที่ไหนก็ตามในไฟล์นี้** — ถ้า type ไม่ลง
+แปลว่า signature ใน `databasePoolService` ผิด ให้กลับไปแก้ที่นั่น
+
 save:
 
 ```ts
 try {
   if (isNew) {
-    const created = await databasePoolService.create({ ...buildPayload(formData), password: formData.password } as never);
+    const created = await databasePoolService.create({
+      ...buildPayload(formData),
+      password: formData.password,
+    });
     const row = created?.data ?? created;
     toast.success('Database pool created');
     navigate(`/platform/database-pools/${row.id}/edit`, { replace: true });
   } else {
     // doc_version เป็น required ฝั่ง backend จึงส่งทุกครั้ง ต่างจากหน้าอื่นที่ส่งเมื่อมีค่า
-    await databasePoolService.update(id!, { ...buildPayload(formData), doc_version: docVersion ?? 0 } as never);
+    // fallback 0 ตรงกับ @default(0) ของคอลัมน์ ใช้เมื่อ GET ไม่คืน doc_version มา
+    await databasePoolService.update(id!, { ...buildPayload(formData), doc_version: docVersion ?? 0 });
     toast.success('Changes saved');
     setSavedFormData(formData);
     setEditing(false);
