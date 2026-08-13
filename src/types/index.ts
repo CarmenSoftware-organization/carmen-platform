@@ -154,7 +154,6 @@ export interface BusinessUnit {
   calculation_method?: string;
   default_currency_id?: string;
   // Config & Connection
-  db_connection?: unknown;
   database_pool_id?: string | null;
   db_schema?: string | null;
   database_pool?: { id: string; name: string } | null;

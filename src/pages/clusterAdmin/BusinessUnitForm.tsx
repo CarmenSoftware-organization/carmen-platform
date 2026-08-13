@@ -29,7 +29,7 @@ import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCa
 import type { BusinessUnitConfig } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
-// Booleans (is_hq/is_active), arrays (db_connection/config), and the fields this narrowed
+// Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
 // page never exposes (cluster_id comes from the URL only; max_license_users is a platform
 // decision; code is a system identifier this view no longer surfaces — it still loads from
 // the API and still ships in the save payload, see fetchBusinessUnit/buildPayload below,
@@ -37,7 +37,7 @@ import type { BusinessUnitConfig } from '../../types';
 // them from being wired into a text input here.
 type TextFieldName = Exclude<
   keyof BusinessUnitFormData,
-  'is_hq' | 'is_active' | 'db_connection' | 'config' | 'cluster_id' | 'max_license_users' | 'code'
+  'is_hq' | 'is_active' | 'config' | 'cluster_id' | 'max_license_users' | 'code'
   | 'database_pool_id' | 'db_schema' | 'database_pool_name'
 >;
 
@@ -162,7 +162,7 @@ const BusinessUnitForm: React.FC = () => {
         calculation_method: bu.calculation_method || '',
         default_currency_id: bu.default_currency_id || '',
         config: Array.isArray(bu.config) ? bu.config : [],
-        // max_license_users, db_connection, and the pool fields (database_pool_id, db_schema,
+        // max_license_users and the pool fields (database_pool_id, db_schema,
         // database_pool_name) are intentionally left at their initialFormData defaults — this
         // page never reads or writes any of them.
       };
@@ -294,7 +294,7 @@ const BusinessUnitForm: React.FC = () => {
     return true;
   };
 
-  // cluster_id, max_license_users, db_connection, and the three database pool fields
+  // cluster_id, max_license_users, and the three database pool fields
   // (database_pool_id, db_schema, database_pool_name) are never sent to the backend:
   // cluster_id is immutable on update (the record's cluster is fixed), and the others are
   // platform-only concerns gated on platform roles — this page does not expose them.
@@ -309,7 +309,6 @@ const BusinessUnitForm: React.FC = () => {
       if (
         key === 'cluster_id' ||
         key === 'max_license_users' ||
-        key === 'db_connection' ||
         key === 'database_pool_id' ||
         key === 'db_schema' ||
         key === 'database_pool_name'

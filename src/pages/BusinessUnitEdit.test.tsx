@@ -44,8 +44,11 @@ vi.mock('../services/clusterService', () => ({
 vi.mock('../services/businessUnitService', () => ({
   default: {
     getById: vi.fn(), getAll: vi.fn(), create: vi.fn(), update: vi.fn(),
-    uploadLogo: vi.fn(), uploadAvatar: vi.fn(), revealDbPassword: vi.fn(),
+    uploadLogo: vi.fn(), uploadAvatar: vi.fn(),
   },
+}));
+vi.mock('../services/databasePoolService', () => ({
+  default: { getAll: vi.fn() },
 }));
 vi.mock('../services/currencyService', () => ({
   default: { getForBu: vi.fn().mockResolvedValue([]) },
@@ -57,6 +60,7 @@ vi.mock('../services/api', () => ({
 import BusinessUnitEdit from './BusinessUnitEdit';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
+import databasePoolService from '../services/databasePoolService';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
@@ -92,6 +96,7 @@ beforeEach(() => {
   asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme' }] });
   asMock(businessUnitService.getAll).mockResolvedValue({ data: [] });
   asMock(businessUnitService.getById).mockResolvedValue({ data: fakeBu });
+  asMock(databasePoolService.getAll).mockResolvedValue({ data: [] });
 });
 
 describe('BusinessUnitEdit (one-document)', () => {
@@ -185,12 +190,9 @@ describe('BusinessUnitEdit — write access is gated on canEdit', () => {
     // page has loaded
     expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
 
-    // DB connection: the credential inputs must not be reachable at all.
-    expect(screen.queryByRole('textbox', { name: 'Host' })).toBeNull();
-    expect(screen.queryByLabelText('Password')).toBeNull();
-    expect(screen.queryByRole('spinbutton', { name: 'Port' })).toBeNull();
-    expect(screen.queryByRole('textbox', { name: 'User' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /add field/i })).toBeNull();
+    // DB connection: the pool selector must not be reachable at all.
+    expect(screen.queryByRole('combobox', { name: 'Database Pool' })).toBeNull();
+    expect(screen.queryByLabelText('Schema')).toBeNull();
 
     // Calculation settings / number formats / configuration.
     expect(screen.queryByRole('combobox', { name: /calculation method/i })).toBeNull();
@@ -206,7 +208,7 @@ describe('BusinessUnitEdit — write access is gated on canEdit', () => {
     // Discriminating control: proves the assertions above are not vacuous.
     renderAt('/business-units/bu1/edit');
 
-    expect(await screen.findByRole('textbox', { name: 'Host' })).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: 'Database Pool' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /calculation method/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add config entry/i })).toBeInTheDocument();
     expect(screen.getByTestId('branding-card')).toHaveAttribute('data-editing', 'true');
@@ -261,28 +263,31 @@ describe('BusinessUnitEdit — canEdit fails closed on an empty cluster_id', () 
     renderAt('/business-units/bu1/edit');
 
     expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'Host' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Database Pool' })).toBeNull();
     expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'false');
   });
 });
 
-// SECURITY. db_connection.password is now redacted to '' by the backend on every
-// read, so the field is write-only: a blank input must never overwrite the stored
-// password with an empty string. dbFieldsToObject already drops blank-valued
-// fields from the save payload — these tests lock that behaviour in for the
-// password key specifically, in both directions.
-describe('BusinessUnitEdit — save omits a blank db_connection password', () => {
-  const buWithDbConnection = {
+// DATA INTEGRITY. buildPayload() only re-sends database_pool_id/db_schema when they
+// actually changed from the last-loaded snapshot — the platform-role-gated backend
+// write would otherwise 403 a cluster admin who saved an unrelated field without ever
+// touching the pool. These tests lock that diffing behaviour in, in both directions
+// (the direct replacement for the old write-only db_connection.password coverage,
+// which no longer applies now that BU records hold no credentials at all).
+describe('BusinessUnitEdit — save omits unchanged database pool fields', () => {
+  const buWithPool = {
     ...fakeBu,
-    db_connection: { host: 'db.example.com', port: 5432, password: '' },
+    database_pool_id: 'p1',
+    db_schema: 'cbr_prod',
+    database_pool: { id: 'p1', name: 'tenant-db-sg-01' },
   };
 
-  it('omits password from the update payload when the field is left blank', async () => {
+  it('omits database_pool_id/db_schema from the update payload when neither changed', async () => {
     const user = userEvent.setup();
-    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithDbConnection });
+    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithPool });
     renderAt('/business-units/bu1/edit');
 
-    // Edit an unrelated field to reveal the save bar; the password input is untouched.
+    // Edit an unrelated field to reveal the save bar; the pool/schema are untouched.
     await user.click(await screen.findByRole('button', { name: 'Test BU' }));
     const nameInput = screen.getByRole('textbox', { name: /business unit name/i });
     await user.clear(nameInput);
@@ -293,21 +298,23 @@ describe('BusinessUnitEdit — save omits a blank db_connection password', () =>
 
     expect(businessUnitService.update).toHaveBeenCalledTimes(1);
     const payload = asMock(businessUnitService.update).mock.calls[0][1];
-    expect(payload.db_connection).toMatchObject({ host: 'db.example.com', port: 5432 });
-    expect(payload.db_connection).not.toHaveProperty('password');
+    expect(payload).not.toHaveProperty('database_pool_id');
+    expect(payload).not.toHaveProperty('db_schema');
   });
 
-  it('includes the new password in the update payload when the user sets one', async () => {
+  it('includes the new schema in the update payload once the user sets one on a BU with no pool configured yet', async () => {
     const user = userEvent.setup();
-    asMock(businessUnitService.getById).mockResolvedValue({ data: buWithDbConnection });
+    asMock(businessUnitService.getById).mockResolvedValue({ data: fakeBu }); // no pool/schema set
     renderAt('/business-units/bu1/edit');
 
-    await user.type(await screen.findByLabelText('Password'), 'newpass123');
+    const schemaInput = await screen.findByLabelText('Schema');
+    await user.type(schemaInput, 'cbr_prod');
+    await user.tab();
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
     expect(businessUnitService.update).toHaveBeenCalledTimes(1);
     const payload = asMock(businessUnitService.update).mock.calls[0][1];
-    expect(payload.db_connection).toMatchObject({ password: 'newpass123' });
+    expect(payload.db_schema).toBe('cbr_prod');
   });
 });
 

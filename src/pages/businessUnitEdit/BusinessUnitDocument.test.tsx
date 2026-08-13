@@ -1,9 +1,31 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import BusinessUnitDocument from './BusinessUnitDocument';
 import { initialFormData } from './types';
 import type { BusinessUnitFormData } from './types';
+
+// Mutable auth so `<Can>` (the REAL component, rendered inside DatabaseConnectionSection —
+// never mocked here) has an AuthContext to read via useAuth(). Without this, mounting the
+// document throws "useAuth must be used within an AuthProvider" the moment the DB pool
+// section's edit-mode branch reaches its <Can permission="database_pool.read"> gate.
+const auth = vi.hoisted(() => ({
+  isSuperAdmin: false,
+  hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
+}));
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => auth,
+}));
+
+vi.mock('../../services/databasePoolService', () => ({
+  default: { getAll: vi.fn() },
+}));
+
+import BusinessUnitDocument from './BusinessUnitDocument';
+import databasePoolService from '../../services/databasePoolService';
+
+beforeEach(() => {
+  vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [] } as never);
+});
 
 const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocument>> = {}) => {
   const onCommit = vi.fn();
@@ -28,10 +50,7 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
       onConfigChange={noop}
       onAddConfigRow={noop}
       onRemoveConfigRow={noop}
-      onDbFieldChange={noop}
-      onDbExtraChange={noop}
-      onAddDbExtraRow={noop}
-      onRemoveDbExtraRow={noop}
+      onPoolChange={noop}
       {...overrides}
     />,
   );
