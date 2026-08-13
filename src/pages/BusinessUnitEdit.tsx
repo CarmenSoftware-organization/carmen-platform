@@ -376,6 +376,10 @@ const BusinessUnitEdit: React.FC = () => {
     if (!formData.code.trim()) errs.code = 'Code is required';
     else errs.code = validateField('code', formData.code);
     if (!formData.name.trim()) errs.name = 'Name is required';
+    // db_schema is optional (empty = not configured), but a non-empty value must still
+    // be a valid postgres identifier before Save goes through — onBlur alone only
+    // renders the error, it never blocks submit.
+    if (formData.db_schema) errs.db_schema = validateField('db_schema', formData.db_schema);
     const active = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {

@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import databasePoolService from '../services/databasePoolService';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getErrorDetail, devLog, parseApiError } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
@@ -148,8 +148,9 @@ const DatabasePoolManagement: React.FC = () => {
       fetchPools();
     } catch (err) {
       // 409 DATABASE_POOL_IN_USE — backend เติมรายชื่อ BU ลงในข้อความให้แล้วผ่าน
-      // placeholder {business_units} จึงแสดงข้อความของ backend ตรงๆ ทุกกรณี
-      toast.error(getErrorDetail(err));
+      // placeholder {business_units} จึงต้องใช้ข้อความของ backend ตรงๆ ทุกกรณี — getErrorDetail
+      // จะตัดเหลือ "Please try again later." ใน production ซึ่งกลืนรายชื่อ BU ที่บล็อกอยู่ไปหมด
+      toast.error(parseApiError(err).message);
       devLog('deleteDatabasePool', err);
     }
   };

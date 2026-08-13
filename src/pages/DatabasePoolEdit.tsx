@@ -16,11 +16,12 @@ import Can from '../components/Can';
 import { Save, Pencil, X, Loader2, ArrowLeft, SearchX, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { parseApiError, getErrorDetail, isNotFoundError } from '../utils/errorParser';
+import { parseApiError, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { useAuth } from '../context/AuthContext';
 import type { DatabasePoolWriteInput } from '../types';
 
 interface DatabasePoolFormData {
@@ -78,6 +79,7 @@ const DatabasePoolEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
+  const { hasPermission } = useAuth();
 
   const [formData, setFormData] = useState<DatabasePoolFormData>(emptyForm);
   const [savedFormData, setSavedFormData] = useState<DatabasePoolFormData>(emptyForm);
@@ -211,6 +213,11 @@ const DatabasePoolEdit: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Final gate: Ctrl/Cmd+S and Enter-inside-a-text-input both call this without going
+    // through the Save button — the only place `<Can permission="database_pool.manage">`
+    // gates — so the permission check has to live here too. Mirrors BusinessUnitEdit.tsx's
+    // handleSave, where every caller funnels through one checked handler.
+    if (!hasPermission('database_pool.manage')) return;
     if (!validateBeforeSubmit()) return;
 
     setSaving(true);
@@ -237,6 +244,13 @@ const DatabasePoolEdit: React.FC = () => {
         fetchPool();
       }
     } catch (err) {
+      if (isNotFoundError(err)) {
+        // Another tab deleted this pool between load and submit — route into the
+        // not-found state this page already renders, instead of a generic banner
+        // over a record that no longer exists.
+        setNotFound(true);
+        return;
+      }
       if (isVersionConflict(err)) {
         // Checks code + message, not just the 409 status, so it doesn't swallow the
         // name-collision 409 handled just below.
@@ -246,8 +260,9 @@ const DatabasePoolEdit: React.FC = () => {
       }
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
-        // DATABASE_POOL_NAME_EXISTS
-        setFieldErrors(prev => ({ ...prev, name: getErrorDetail(err) }));
+        // DATABASE_POOL_NAME_EXISTS — surface the backend message verbatim (it names
+        // the field), not getErrorDetail's redacted "Please try again later." in prod.
+        setFieldErrors(prev => ({ ...prev, name: parseApiError(err).message }));
         return;
       }
       const { message, fields } = parseApiError(err);

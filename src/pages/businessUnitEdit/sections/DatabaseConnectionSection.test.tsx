@@ -71,11 +71,15 @@ describe('DatabaseConnectionSection', () => {
     expect(await screen.findByRole('option', { name: 'tenant-db-sg-01' })).toBeInTheDocument();
   });
 
-  it('shows a read-only view when the user lacks database_pool.read', async () => {
+  it('shows a read-only view when the user lacks database_pool.read, without ever calling getAll', async () => {
     auth.hasPermission = (perm: string) => perm !== 'database_pool.read';
     render(<DatabaseConnectionSection {...baseProps({ editing: true })} />);
     expect(screen.queryByLabelText('Database Pool')).not.toBeInTheDocument();
     expect(screen.getByText(/platform-level permission/i)).toBeInTheDocument();
+    // The fetch lives in a child only mounted inside <Can>, so a user who fails the
+    // gate must never issue the request — that request would 403 and toast even
+    // though the fallback view above renders correctly.
+    expect(databasePoolService.getAll).not.toHaveBeenCalled();
   });
 
   it('calls onPoolChange when the pool select changes', async () => {
