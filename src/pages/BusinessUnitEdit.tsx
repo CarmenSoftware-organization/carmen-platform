@@ -438,9 +438,14 @@ const BusinessUnitEdit: React.FC = () => {
     // permission check lives here rather than only on the affordances.
     if (!canEdit) return;
     if (!validateRequired()) return;
+    // The dialog is open: only its own confirm/cancel resolves this. Without this bail,
+    // a second Ctrl/Cmd+S while the dialog is up falls through the gate below and saves the
+    // repoint unconfirmed — Radix blocks clicks on the button beneath, not global keydown
+    // (useGlobalShortcuts attaches a plain window keydown listener with no open-modal check).
+    if (poolChangeConfirm) return;
     // Repointing an already-configured BU to a different pool/schema needs an explicit
     // confirm — the dialog's own onConfirm calls doSave() directly, bypassing this gate.
-    if (poolRepointed && !poolChangeConfirm) {
+    if (poolRepointed) {
       setPoolChangeConfirm(true);
       return;
     }
