@@ -24,7 +24,7 @@ import BusinessUnitDocument from './BusinessUnitDocument';
 import databasePoolService from '../../services/databasePoolService';
 
 beforeEach(() => {
-  vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [] } as never);
+  vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [] });
 });
 
 const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocument>> = {}) => {

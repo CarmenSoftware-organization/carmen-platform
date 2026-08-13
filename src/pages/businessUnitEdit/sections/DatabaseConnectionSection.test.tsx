@@ -52,7 +52,7 @@ const baseProps = (over: Partial<Props> = {}): Props => ({
 describe('DatabaseConnectionSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: pools } as never);
+    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: pools });
     auth.hasPermission = () => true;
   });
 
@@ -85,7 +85,7 @@ describe('DatabaseConnectionSection', () => {
       ...pools,
       { id: 'p2', name: 'tenant-db-sg-02', host: 'h', port: 5432, database: 'd', username: 'u', is_active: true },
     ];
-    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: twoPools } as never);
+    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: twoPools });
     render(<DatabaseConnectionSection {...baseProps({ editing: true, onPoolChange })} />);
 
     const select = await screen.findByLabelText('Database Pool');
@@ -96,7 +96,7 @@ describe('DatabaseConnectionSection', () => {
 
   it('keeps a bound-but-inactive pool in the options, labelled (inactive)', async () => {
     const inactivePool = { id: 'p9', name: 'legacy-pool', host: 'h', port: 5432, database: 'd', username: 'u', is_active: false };
-    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [inactivePool] } as never);
+    vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [inactivePool] });
     render(<DatabaseConnectionSection {...baseProps({
       editing: true,
       formData: { ...initialFormData, database_pool_id: 'p9', db_schema: 'x', database_pool_name: 'legacy-pool' },
