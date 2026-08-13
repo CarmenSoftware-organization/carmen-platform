@@ -37,7 +37,7 @@ export const TenantMigrationCard = ({
   const disabledReason = !isSuperAdmin
     ? 'Super-admin required.'
     : !hasDbConnection
-    ? 'Configure a database connection first.'
+    ? 'Configure a database pool and schema first.'
     : null;
   const busy = loadingStatus || deploying;
   const actionsDisabled = disabledReason !== null || busy;

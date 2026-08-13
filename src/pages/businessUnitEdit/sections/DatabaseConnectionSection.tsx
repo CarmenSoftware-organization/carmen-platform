@@ -2,230 +2,142 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Button } from '../../../components/ui/button';
 import Can from '../../../components/Can';
-import { Plus, Trash2, Eye, EyeOff, Loader2 } from 'lucide-react';
-import DbConnectionView from '../../../components/DbConnectionView';
-import { dbFieldsToObject } from '../../../utils/dbConnection';
-import businessUnitService from '../../../services/businessUnitService';
-import { parseApiError } from '../../../utils/errorParser';
-import { UNRESOLVED_CLUSTER_ID } from '../../../utils/permissions';
-import { CollapsibleSection, ReadOnlyText } from '../shared';
+import { Loader2 } from 'lucide-react';
+import databasePoolService from '../../../services/databasePoolService';
+import { getErrorDetail } from '../../../utils/errorParser';
+import { CollapsibleSection, ReadOnlyText, selectClassName } from '../shared';
+import type { DatabasePool } from '../../../types';
 import type { SectionFieldProps } from '../types';
 
-const KNOWN_DB_FIELDS = [
-  { key: 'host', label: 'Host', type: 'text' },
-  { key: 'port', label: 'Port', type: 'number' },
-  { key: 'database', label: 'Database', type: 'text' },
-  { key: 'schema', label: 'Schema', type: 'text' },
-  { key: 'user', label: 'User', type: 'text' },
-  { key: 'password', label: 'Password', type: 'password' },
-  { key: 'ssl', label: 'SSL', type: 'boolean' },
-] as const;
-
-const KNOWN_KEYS: readonly string[] = KNOWN_DB_FIELDS.map((f) => f.key);
-
 interface DatabaseConnectionSectionProps extends SectionFieldProps {
-  // BU id, needed to call the guarded reveal endpoint. Undefined for a new
-  // (unsaved) business unit — there is nothing stored yet to reveal.
-  businessUnitId?: string;
-  onDbFieldChange: (key: string, value: string) => void;
-  onDbExtraChange: (index: number, field: 'key' | 'value', value: string) => void;
-  onAddDbExtraRow: () => void;
-  onRemoveDbExtraRow: (index: number) => void;
+  onPoolChange: (field: 'database_pool_id' | 'db_schema', value: string) => void;
 }
 
+/**
+ * BU ไม่ถือ credential อีกต่อไป — เลือก pool ที่ใช้ร่วมกันแล้วระบุ schema ของตัวเอง
+ *
+ * โหมดอ่านไม่เรียก API เลย: BU response ส่ง `database_pool: { id, name }` มาให้แล้ว
+ * คนที่ไม่มี `database_pool.read` จึงยังเห็นว่า BU นี้ผูกกับ pool ชื่ออะไร แต่แก้ไม่ได้
+ * — host/port/username ของ pool ไม่ถูกแสดงที่นี่โดยตั้งใจ
+ */
 const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
   formData,
   editing,
-  businessUnitId,
-  onDbFieldChange,
-  onDbExtraChange,
-  onAddDbExtraRow,
-  onRemoveDbExtraRow,
+  fieldErrors,
+  onBlur,
+  onPoolChange,
 }) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [revealing, setRevealing] = useState(false);
-  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  const [pools, setPools] = useState<DatabasePool[]>([]);
+  const [loadingPools, setLoadingPools] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
-  // Defense-in-depth: a previously revealed plaintext password must not linger
-  // once the admin leaves edit mode — clear it rather than relying on unmount.
+  // โหลดตอนเข้าโหมดแก้เท่านั้น ไม่ใช่ตอน mount — โหมดอ่านไม่ต้องใช้รายการนี้
   useEffect(() => {
-    if (!editing) {
-      setRevealedPassword(null);
-    }
+    if (!editing) return;
+    let cancelled = false;
+    setLoadingPools(true);
+    setLoadFailed(false);
+    databasePoolService
+      .getAll({ page: 1, perpage: 200, sort: 'name:asc' })
+      .then((res) => {
+        if (cancelled) return;
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setPools(rows);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadFailed(true);
+        toast.error(getErrorDetail(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPools(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [editing]);
 
-  const fields = formData.db_connection;
-  const valueOf = (key: string) => fields.find((f) => f.key === key)?.value ?? '';
-  const extras = fields
-    .map((f, i) => ({ f, i }))
-    .filter(({ f }) => !KNOWN_KEYS.includes(f.key));
-
-  const portValue = valueOf('port');
-  const portInvalid = portValue !== '' && !Number.isFinite(Number(portValue));
-
-  // On-demand only — never fetched on mount. The endpoint is server-side gated on
-  // cluster.update (fail-closed); the <Can> wrapper below is defense-in-depth, not
-  // the security boundary.
-  const handleReveal = async () => {
-    if (!businessUnitId) return;
-    setRevealing(true);
-    try {
-      const dbConnection = await businessUnitService.revealDbPassword(businessUnitId);
-      const raw = dbConnection.password;
-      setRevealedPassword(raw == null ? '' : String(raw));
-    } catch (err) {
-      const { message } = parseApiError(err);
-      toast.error(message);
-    } finally {
-      setRevealing(false);
-    }
-  };
+  const readOnlyView = (
+    <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
+      <div className="space-y-2">
+        <Label>Database Pool</Label>
+        <ReadOnlyText value={formData.database_pool_name} />
+      </div>
+      <div className="space-y-2">
+        <Label>Schema</Label>
+        <ReadOnlyText value={formData.db_schema} />
+      </div>
+    </div>
+  );
 
   if (!editing) {
     return (
-      <CollapsibleSection title="Database Connection" description="Database connection configuration (JSON)" forceOpen>
-        <div className="space-y-2">
-          <Label htmlFor="db_connection">Connection Config</Label>
-          <DbConnectionView value={JSON.stringify(dbFieldsToObject(fields))} />
-        </div>
+      <CollapsibleSection title="Database Connection" description="Shared database pool and schema" forceOpen>
+        {readOnlyView}
       </CollapsibleSection>
     );
   }
 
-  return (
-    <CollapsibleSection title="Database Connection" description="Database connection configuration" forceOpen>
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
-          {KNOWN_DB_FIELDS.map((field) => {
-            if (field.type === 'boolean') {
-              return (
-                <div key={field.key} className="space-y-2">
-                  <Label>{field.label}</Label>
-                  <label className="flex h-9 items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={valueOf(field.key) === 'true'}
-                      onChange={(e) => onDbFieldChange(field.key, e.target.checked ? 'true' : 'false')}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm text-muted-foreground">Enabled</span>
-                  </label>
-                </div>
-              );
-            }
-            if (field.type === 'password') {
-              return (
-                <div key={field.key} className="space-y-2">
-                  <Label htmlFor={`db_${field.key}`}>{field.label}</Label>
-                  <div className="relative">
-                    <Input
-                      id={`db_${field.key}`}
-                      type={showPassword ? 'text' : 'password'}
-                      value={valueOf(field.key)}
-                      onChange={(e) => onDbFieldChange(field.key, e.target.value)}
-                      placeholder={field.label}
-                      className="pr-9"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-9 w-9"
-                      onClick={() => setShowPassword((s) => !s)}
-                      aria-label={showPassword ? 'Hide password' : 'Reveal password'}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  {/* Write-only: the server never returns a real password value (redacted
-                      to '' on every read), so a blank field here does not mean "clearing"
-                      it on save — dbFieldsToObject already omits blank values from the
-                      save payload, and the backend preserves the stored password. */}
-                  <p className="text-xs text-muted-foreground">
-                    Leave blank to keep the current password.
-                  </p>
-                  {businessUnitId && (
-                    // formData.cluster_id can be empty for a cluster-less BU — fall back to
-                    // the UNRESOLVED_CLUSTER_ID sentinel so the check stays on checkPermission's
-                    // scoped branch (fail closed) instead of falling through to its broad
-                    // "any cluster" branch (fail open on cluster.update held elsewhere).
-                    <Can permission="cluster.update" clusterId={formData.cluster_id || UNRESOLVED_CLUSTER_ID}>
-                      <div className="space-y-2 pt-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleReveal}
-                          disabled={revealing}
-                        >
-                          {revealing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          {revealing ? 'Revealing…' : 'Reveal current password'}
-                        </Button>
-                        {revealedPassword !== null && (
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Current stored password</Label>
-                            <ReadOnlyText value={revealedPassword || '(empty)'} />
-                          </div>
-                        )}
-                      </div>
-                    </Can>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <div key={field.key} className="space-y-2">
-                <Label htmlFor={`db_${field.key}`}>{field.label}</Label>
-                <Input
-                  id={`db_${field.key}`}
-                  type={field.type === 'number' ? 'number' : 'text'}
-                  value={valueOf(field.key)}
-                  onChange={(e) => onDbFieldChange(field.key, e.target.value)}
-                  placeholder={field.label}
-                />
-                {field.key === 'port' && portInvalid && (
-                  <p className="text-xs text-destructive">Port must be a number.</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
+  // pool ที่ผูกอยู่แต่ถูกปิดใช้งานต้องยังอยู่ในตัวเลือก ไม่งั้นจะดูเหมือนไม่เคยตั้งค่า
+  const activePools = pools.filter((p) => p.is_active);
+  const current = pools.find((p) => p.id === formData.database_pool_id);
+  const options = current && !current.is_active ? [current, ...activePools] : activePools;
 
-        <div className="space-y-3 border-t pt-4">
-          <Label className="text-xs text-muted-foreground">Additional fields</Label>
-          {extras.map(({ f, i }) => (
-            <div key={i} className="grid gap-3 grid-cols-1 sm:grid-cols-[1fr_1fr_auto] items-end">
-              <div className="space-y-2">
-                <Label>Key</Label>
-                <Input value={f.key} onChange={(e) => onDbExtraChange(i, 'key', e.target.value)} placeholder="Key" />
-              </div>
-              <div className="space-y-2">
-                <Label>Value</Label>
-                <Input value={f.value} onChange={(e) => onDbExtraChange(i, 'value', e.target.value)} placeholder="Value" />
-                {f.value.trim() !== '' && f.key.trim() === '' && (
-                  <p className="text-xs text-destructive">Key is required.</p>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => onRemoveDbExtraRow(i)}
-                aria-label="Remove field"
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button type="button" variant="outline" size="sm" onClick={onAddDbExtraRow}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add field
-          </Button>
+  return (
+    <CollapsibleSection title="Database Connection" description="Shared database pool and schema" forceOpen>
+      <Can permission="database_pool.read" fallback={
+        <div className="space-y-3">
+          {readOnlyView}
+          <p className="text-xs text-muted-foreground">
+            Changing the database pool requires a platform-level permission.
+          </p>
         </div>
-      </div>
+      }>
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="database_pool_id">Database Pool</Label>
+            {loadingPools ? (
+              <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading pools…
+              </div>
+            ) : loadFailed ? (
+              <ReadOnlyText value={formData.database_pool_name} />
+            ) : (
+              <select
+                id="database_pool_id"
+                value={formData.database_pool_id}
+                onChange={(e) => onPoolChange('database_pool_id', e.target.value)}
+                className={selectClassName}
+              >
+                <option value="">— Not set —</option>
+                {options.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.is_active ? '' : ' (inactive)'}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="db_schema">Schema</Label>
+            <Input
+              id="db_schema"
+              name="db_schema"
+              value={formData.db_schema}
+              onChange={(e) => onPoolChange('db_schema', e.target.value)}
+              onBlur={onBlur}
+              placeholder="cbr_prod"
+              className={fieldErrors.db_schema ? 'border-destructive' : ''}
+            />
+            {fieldErrors.db_schema && (
+              <p className="text-xs text-destructive">{fieldErrors.db_schema}</p>
+            )}
+          </div>
+        </div>
+      </Can>
     </CollapsibleSection>
   );
 };

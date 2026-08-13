@@ -1,6 +1,5 @@
 import type React from 'react';
 import type { BusinessUnitConfig } from '../../types';
-import type { DbConnectionField } from '../../utils/dbConnection';
 
 export const BU_ROLES = ['admin', 'user'] as const;
 
@@ -96,7 +95,10 @@ export interface BusinessUnitFormData {
   calculation_method: string;
   default_currency_id: string;
   // Config & Connection
-  db_connection: DbConnectionField[];
+  // BU ไม่ถือ credential อีกแล้ว — ชี้ไป tb_database_pool ที่ใช้ร่วมกัน แล้วระบุ schema ของตัวเอง
+  database_pool_id: string;    // '' = ยังไม่ตั้งค่า
+  db_schema: string;
+  database_pool_name: string;  // อ่านอย่างเดียว มาจาก database_pool.name ไม่เคยถูกส่งกลับ
   config: BusinessUnitConfig[];
 }
 
@@ -149,7 +151,9 @@ export const initialFormData: BusinessUnitFormData = {
   recipe_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
   calculation_method: '',
   default_currency_id: '',
-  db_connection: [],
+  database_pool_id: '',
+  db_schema: '',
+  database_pool_name: '',
   config: [],
 };
 

@@ -38,7 +38,7 @@ export const TenantSeedCard = ({
   const disabledReason = !isSuperAdmin
     ? 'Super-admin required.'
     : !hasDbConnection
-    ? 'Configure a database connection first.'
+    ? 'Configure a database pool and schema first.'
     : null;
   const busy = loadingStatus || seeding;
   const actionsDisabled = disabledReason !== null || busy;

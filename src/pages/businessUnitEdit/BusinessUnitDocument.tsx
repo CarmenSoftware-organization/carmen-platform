@@ -13,8 +13,6 @@ import DatabaseConnectionSection from './sections/DatabaseConnectionSection';
 interface BusinessUnitDocumentProps {
   formData: BusinessUnitFormData;
   fieldErrors: Record<string, string>;
-  // Undefined when creating a new BU — there is no stored db_connection to reveal yet.
-  businessUnitId?: string;
   clusterName: string;
   logoUrl?: string;
   avatarUrl?: string;
@@ -37,10 +35,7 @@ interface BusinessUnitDocumentProps {
   onConfigChange: (index: number, field: keyof BusinessUnitConfig, value: string) => void;
   onAddConfigRow: () => void;
   onRemoveConfigRow: (index: number) => void;
-  onDbFieldChange: (key: string, value: string) => void;
-  onDbExtraChange: (index: number, field: 'key' | 'value', value: string) => void;
-  onAddDbExtraRow: () => void;
-  onRemoveDbExtraRow: (index: number) => void;
+  onPoolChange: (field: 'database_pool_id' | 'db_schema', value: string) => void;
   brandingSlot?: React.ReactNode;
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
@@ -70,7 +65,6 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
   const {
     formData: f,
     fieldErrors,
-    businessUnitId,
     clusterName,
     logoUrl,
     avatarUrl,
@@ -91,10 +85,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     onConfigChange,
     onAddConfigRow,
     onRemoveConfigRow,
-    onDbFieldChange,
-    onDbExtraChange,
-    onAddDbExtraRow,
-    onRemoveDbExtraRow,
+    onPoolChange,
     brandingSlot,
     advancedExtraSlot,
     usersSlot,
@@ -277,11 +268,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       />
       <DatabaseConnectionSection
         {...sectionField}
-        businessUnitId={businessUnitId}
-        onDbFieldChange={onDbFieldChange}
-        onDbExtraChange={onDbExtraChange}
-        onAddDbExtraRow={onAddDbExtraRow}
-        onRemoveDbExtraRow={onRemoveDbExtraRow}
+        onPoolChange={onPoolChange}
       />
       {advancedExtraSlot}
       {usersSlot}

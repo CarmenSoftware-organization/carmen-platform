@@ -8,12 +8,12 @@ import clusterService from '../services/clusterService';
 import currencyService from '../services/currencyService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { Save, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
-import { objectToDbFields, dbFieldsToObject } from '../utils/dbConnection';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../types';
@@ -60,8 +60,15 @@ const BusinessUnitEdit: React.FC = () => {
     cluster_id: searchParams.get('cluster_id') || '',
   });
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
+
+  // จริงเมื่อ "เคยตั้งค่าไว้แล้ว" และกำลังเปลี่ยนไปเป็นค่าอื่น — BU ใหม่หรือ BU ที่ยังไม่เคย
+  // ตั้งค่าไม่ต้องถาม เพราะไม่มีข้อมูลเดิมให้หลุดมือ
+  const poolRepointed =
+    (!!savedFormData.database_pool_id && formData.database_pool_id !== savedFormData.database_pool_id) ||
+    (!!savedFormData.db_schema && formData.db_schema !== savedFormData.db_schema);
 
   // One-document surface: everything is editable in place (no read/edit toggle),
   // gated by permission. Create needs cluster.create; edit needs cluster.update.
@@ -228,7 +235,9 @@ const BusinessUnitEdit: React.FC = () => {
         recipe_format: toJsonString(bu.recipe_format, defaultFormat),
         calculation_method: bu.calculation_method || '',
         default_currency_id: bu.default_currency_id || '',
-        db_connection: objectToDbFields(bu.db_connection),
+        database_pool_id: bu.database_pool_id || '',
+        db_schema: bu.db_schema || '',
+        database_pool_name: bu.database_pool?.name || '',
         config: Array.isArray(bu.config) ? bu.config : [],
       };
       setFormData(loaded);
@@ -298,30 +307,9 @@ const BusinessUnitEdit: React.FC = () => {
     }));
   };
 
-  const handleDbFieldChange = (key: string, value: string) => {
-    setFormData(prev => {
-      const fields = [...prev.db_connection];
-      const idx = fields.findIndex(f => f.key === key);
-      if (idx >= 0) fields[idx] = { ...fields[idx], value };
-      else fields.push({ key, value });
-      return { ...prev, db_connection: fields };
-    });
-  };
-
-  const handleDbExtraChange = (index: number, field: 'key' | 'value', value: string) => {
-    setFormData(prev => {
-      const fields = [...prev.db_connection];
-      fields[index] = { ...fields[index], [field]: value };
-      return { ...prev, db_connection: fields };
-    });
-  };
-
-  const addDbExtraRow = () => {
-    setFormData(prev => ({ ...prev, db_connection: [...prev.db_connection, { key: '', value: '' }] }));
-  };
-
-  const removeDbExtraRow = (index: number) => {
-    setFormData(prev => ({ ...prev, db_connection: prev.db_connection.filter((_, i) => i !== index) }));
+  const handlePoolChange = (field: 'database_pool_id' | 'db_schema', value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setFieldErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const buildPayload = (data: BusinessUnitFormData) => {
@@ -354,13 +342,21 @@ const BusinessUnitEdit: React.FC = () => {
       }
     }
 
-    // db_connection is held as editable fields; serialize back to an object.
-    // Omit it entirely when empty (matches the other optional fields).
-    const dbConnObj = dbFieldsToObject(data.db_connection);
-    if (Object.keys(dbConnObj).length > 0) {
-      payload.db_connection = dbConnObj;
-    } else {
-      delete payload.db_connection;
+    // The spread loop above already copied database_pool_id/db_schema/database_pool_name
+    // in whenever they were non-empty, regardless of whether they changed — scrub them
+    // first, then re-add only what actually changed.
+    delete payload.database_pool_id;
+    delete payload.db_schema;
+    delete payload.database_pool_name;   // ค่าแสดงผลล้วน ไม่มีในสัญญาฝั่ง backend
+
+    // ส่งฟิลด์ pool เฉพาะเมื่อค่าต่างจากที่โหลดมา — backend ตรวจ `!== undefined` แล้วบังคับ
+    // ด่าน canWriteClusterViaPlatformRole ส่งค่าเดิมซ้ำไปจะทำให้คนที่ไม่มีสิทธิ์ระดับ
+    // แพลตฟอร์มโดน 403 ทั้งที่ไม่ได้แตะฟิลด์นี้
+    if (data.database_pool_id !== savedFormData.database_pool_id) {
+      payload.database_pool_id = data.database_pool_id || null;
+    }
+    if (data.db_schema !== savedFormData.db_schema) {
+      payload.db_schema = data.db_schema || null;
     }
 
     // Include config array (filter out empty rows)
@@ -389,11 +385,9 @@ const BusinessUnitEdit: React.FC = () => {
     return true;
   };
 
-  const handleSave = async () => {
-    // Final gate: every caller (button, Ctrl/Cmd+S) funnels through here, so the
-    // permission check lives here rather than only on the affordances.
-    if (!canEdit) return;
-    if (!validateRequired()) return;
+  // Actual save request — split out of handleSave so the pool-repoint confirm dialog
+  // can invoke it directly on confirm without re-running the gate that opened it.
+  const doSave = async () => {
     setSaving(true);
     setError('');
 
@@ -437,6 +431,20 @@ const BusinessUnitEdit: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    // Final gate: every caller (button, Ctrl/Cmd+S) funnels through here, so the
+    // permission check lives here rather than only on the affordances.
+    if (!canEdit) return;
+    if (!validateRequired()) return;
+    // Repointing an already-configured BU to a different pool/schema needs an explicit
+    // confirm — the dialog's own onConfirm calls doSave() directly, bypassing this gate.
+    if (poolRepointed && !poolChangeConfirm) {
+      setPoolChangeConfirm(true);
+      return;
+    }
+    await doSave();
   };
 
   // Helper to get cluster name from clusters array
@@ -537,7 +545,6 @@ const BusinessUnitEdit: React.FC = () => {
         <BusinessUnitDocument
           formData={formData}
           fieldErrors={fieldErrors}
-          businessUnitId={id}
           clusterName={getClusterName(formData.cluster_id)}
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}
@@ -558,10 +565,7 @@ const BusinessUnitEdit: React.FC = () => {
           onConfigChange={handleConfigChange}
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
-          onDbFieldChange={handleDbFieldChange}
-          onDbExtraChange={handleDbExtraChange}
-          onAddDbExtraRow={addDbExtraRow}
-          onRemoveDbExtraRow={removeDbExtraRow}
+          onPoolChange={handlePoolChange}
           brandingSlot={
             !isNew ? (
               <BusinessUnitBrandingCard
@@ -583,7 +587,7 @@ const BusinessUnitEdit: React.FC = () => {
                   buId={id!}
                   buCode={formData.code}
                   buName={formData.name}
-                  hasDbConnection={formData.db_connection.length > 0}
+                  hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
                   isSuperAdmin={isSuperAdmin}
                 />
                 <TenantSeedCard
@@ -591,7 +595,7 @@ const BusinessUnitEdit: React.FC = () => {
                   buId={id!}
                   buCode={formData.code}
                   buName={formData.name}
-                  hasDbConnection={formData.db_connection.length > 0}
+                  hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
                   isSuperAdmin={isSuperAdmin}
                 />
                 <InterfaceEntitlementCard
@@ -658,6 +662,19 @@ const BusinessUnitEdit: React.FC = () => {
           fabClassName={hasChanges || isNew ? 'bottom-20' : undefined}
         />
       )}
+
+      <ConfirmDialog
+        open={poolChangeConfirm}
+        onOpenChange={setPoolChangeConfirm}
+        title="Repoint this business unit?"
+        description={`This business unit will read and write ${formData.db_schema || '(no schema)'} in the selected database pool. Data in the previous location stays where it is and will no longer be reachable from this screen.`}
+        confirmText="Repoint"
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          setPoolChangeConfirm(false);
+          await doSave();
+        }}
+      />
     </Layout>
   );
 };

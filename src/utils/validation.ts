@@ -70,6 +70,13 @@ export const validateField = (
     case 'url':
     case 'image':
       return isValidUrl(value) ? '' : 'Must be a valid http(s) URL';
+    case 'db_schema': {
+      if (!value) return options?.required ? `${options.label || 'Schema'} is required` : '';
+      // postgres identifier: ขึ้นต้นด้วยตัวอักษรหรือ _ ตามด้วยตัวอักษร/ตัวเลข/_ ยาวไม่เกิน 63
+      return /^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(value)
+        ? ''
+        : 'Schema must start with a letter or underscore and contain only letters, numbers, and underscores';
+    }
     default:
       return '';
   }
