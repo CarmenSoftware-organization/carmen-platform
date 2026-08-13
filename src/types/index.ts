@@ -1013,10 +1013,7 @@ export interface DatabasePool {
   updated_at?: string | null;
 }
 
-export interface DatabasePoolsResponse {
-  data: DatabasePool[];
-  paginate?: { total: number; page: number; perpage: number; pages?: number };
-}
+export type DatabasePoolsResponse = ApiListResponse<DatabasePool>;
 
 /** สิ่งที่ส่งไปเขียน — ไม่ใช่รูปที่อ่านกลับมา (ไม่มี id/doc_version/audit) */
 export interface DatabasePoolWriteInput {

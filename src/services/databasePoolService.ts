@@ -16,7 +16,7 @@ const BASE = '/api-system/platform/database-pools';
  *
  * password ถูกมาสก์เป็น '••••••' ในทุก response และไม่มี endpoint reveal —
  * `update` จึงส่ง password เฉพาะตอนที่ผู้ใช้พิมพ์ค่าใหม่จริง ผู้เรียกต้องตัดฟิลด์นี้
- * ออกเองเมื่อไม่ได้แก้ (ดู DatabasePoolEdit.buildPayload)
+ * ออกเองเมื่อไม่ได้แก้
  */
 const databasePoolService = {
   getAll: async (paginate: PaginateParams = {}): Promise<DatabasePoolsResponse> => {
