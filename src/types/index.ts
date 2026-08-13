@@ -155,6 +155,9 @@ export interface BusinessUnit {
   default_currency_id?: string;
   // Config & Connection
   db_connection?: unknown;
+  database_pool_id?: string | null;
+  db_schema?: string | null;
+  database_pool?: { id: string; name: string } | null;
   config?: BusinessUnitConfig[] | null;
   cluster_name?: string;
   created_at?: string;
@@ -989,6 +992,43 @@ export interface EmailSetting {
 export interface EmailSettingTestResult {
   sent: boolean;
   reason?: string;
+}
+
+// ==================== Database Pool (tb_database_pool) ====================
+
+export interface DatabasePool {
+  id: string;
+  doc_version?: number;
+  name: string;
+  description?: string | null;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  /** มาสก์เสมอ (`••••••`) — ไม่มี endpoint ไหนคืนค่าจริง */
+  password?: string | null;
+  is_active: boolean;
+  note?: string | null;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+export interface DatabasePoolsResponse {
+  data: DatabasePool[];
+  paginate?: { total: number; page: number; perpage: number; pages?: number };
+}
+
+/** สิ่งที่ส่งไปเขียน — ไม่ใช่รูปที่อ่านกลับมา (ไม่มี id/doc_version/audit) */
+export interface DatabasePoolWriteInput {
+  name: string;
+  description?: string;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password?: string;
+  is_active: boolean;
+  note?: string;
 }
 
 // ==================== Platform Config (tb_platform_config) ====================
