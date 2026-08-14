@@ -91,9 +91,12 @@ export function CharacterCountInput({
   const errorId = `${fieldId}-error`;
   const [touched, setTouched] = useState(false);
 
-  // ข้อความกำหนดเอง ไม่ใช้ default ของ zod: มันแสดงต่อผู้ใช้ใน role="alert" และถ้อยคำของ zod
-  // เปลี่ยนไปมาระหว่าง major (v3 "String must contain at least N character(s)" →
-  // v4 "Too small: expected string to have >=N characters")
+  // ข้อความกำหนดเอง ไม่ใช้ default ของ zod เพราะถ้อยคำของ zod เปลี่ยนทุก major
+  // (v3 "String must contain at least N character(s)" → v4 "Too small: expected string
+  // to have >=N characters") และข้อความนี้ไปโผล่ใน role="alert" ที่ผู้ใช้อ่าน
+  // หมายเหตุ ณ 2026-08-14: ผู้เรียกใช้เพียงรายเดียว (InlineField) ไม่ส่ง minLength และไม่ปิด
+  // hardCap จึงยังไม่มีเส้นทางไหนใน UI ที่ trigger ข้อความนี้ได้จริง — การกำหนดเองที่นี่คือ
+  // การกันไว้ล่วงหน้าสำหรับผู้เรียกใช้รายถัดไป ไม่ใช่การแก้บั๊กที่ผู้ใช้เห็นอยู่
   const schema = useMemo(
     () => z
       .string()
