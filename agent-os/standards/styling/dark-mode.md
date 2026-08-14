@@ -19,6 +19,26 @@ review is the enforcement.
 Dark values are not the light values darkened — they are retuned (higher lightness on
 `--primary`, lower saturation on grounds). Pick them against the dark ground, not by formula.
 
+### Exposing a new token as a utility — `@theme inline`, never plain `@theme`
+
+Tailwind v4 lets you mint utilities from CSS, but only the `inline` form survives a theme
+switch:
+
+```css
+:root { --brand: 221 61% 48%; }
+.dark { --brand: 217 70% 60%; }
+@theme inline { --color-brand: hsl(var(--brand)); }   /* → bg-brand, text-brand, border-brand */
+```
+
+`inline` tells Tailwind not to mint its own variable, so `bg-brand` compiles to
+`background-color:hsl(var(--brand))` and keeps following `.dark`. Writing
+`@theme { --color-brand: hsl(221 61% 48%); }` instead compiles to one frozen value
+(`#2f5fc5`) that is **identical in both themes** — the same silent failure as declaring a
+token in one block only, and just as invisible to the build and the test suite.
+
+Plain `@theme` is correct only for values that genuinely don't vary by theme (spacing,
+radius, a fixed brand colour).
+
 ## Reading the theme
 
 - Need the current mode in a component → `useDarkMode()` (throws outside `ThemeProvider`).
