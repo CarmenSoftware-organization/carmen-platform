@@ -18,7 +18,9 @@
 
 ## 2. สถานะตั้งต้น (ตรวจสด 2026-08-14)
 
-`bun outdated` = 14 แพ็กเกจ · `bun audit` = 6 ช่องโหว่ · main ที่ `67fa154` · 1081 เทสต์เขียว
+`bun outdated` = 14 แพ็กเกจ · `bun audit` = 6 ช่องโหว่ · main ที่ `67fa154` ·
+**1049 เทสต์ใน 131 ไฟล์เขียวครบ** (วัดสดบน branch เปล่า 2026-08-14 — ไม่ใช่ 1081 ตามที่ handoff
+รอบก่อนบันทึกไว้ ตัวเลขนั้นเป็นของก่อน `61f6efc` ที่รื้อ `db_connection` ออกพร้อมเทสต์ของมัน)
 
 **กองปลอดภัย (patch/minor) — รวมเข้าเฟส C:**
 
@@ -156,8 +158,8 @@ row selection, และ mobile card view (`meta.card`) ผ่านตัวน
    (`bun install` แล้ว `npm install --package-lock-only`) — เฟส A ต้อง squash เพราะละเลยข้อนี้
    ทำให้คอมมิตกลางทาง `npm ci` พังและ `git bisect` ตาย
 3. gate ก่อนขอ merge ทุกเฟส:
-   `bun run typecheck` · `bun run lint` · `bun run test` (1081+ เขียวครบ) · `bun run build` ·
-   `npm ci` ให้ผ่าน (mirror Vercel)
+   `bun run typecheck` · `bun run lint` · `bun run test` (1049+ เขียวครบ — ห้ามลดลง) ·
+   `bun run build` · `npm ci` ให้ผ่าน (mirror Vercel) แล้ว `bun install` คืน tree ของ bun
 4. เฟส E, F, H เพิ่ม browser verify จริงตามที่ระบุในเฟสนั้น — screenshot เป็นหลักฐาน
 5. เฟสไหน gate ไม่ผ่านและแก้ไม่ได้ในขอบเขตของเฟสนั้น → **หยุด รายงาน ไม่ข้ามไปเฟสถัดไป**
 6. หนึ่ง PR ต่อหนึ่งเฟส · ผู้ใช้รีวิวและ merge เอง · **ไม่ deploy** (`deploy-gcs.yml` เป็น
@@ -198,7 +200,7 @@ row selection, และ mobile card view (`meta.card`) ผ่านตัวน
 
 - `bun outdated` เหลือเฉพาะ **`eslint` + `@eslint/js`** (บล็อก upstream) และ **`@types/node`**
   (ตรึงตาม runtime โดยเจตนา) — ไม่มีตัวอื่นค้าง
-- 1081+ เทสต์เขียวครบ · typecheck/lint/build ผ่าน · `npm ci` ผ่าน
+- 1049+ เทสต์เขียวครบ (จำนวนห้ามลดลงจาก baseline) · typecheck/lint/build ผ่าน · `npm ci` ผ่าน
 - UI ไม่มี regression ที่มองเห็นได้ ยืนยันด้วย browser verify ในเฟส E/F/H
 - ทุกเฟสมี PR ของตัวเองพร้อม results doc สั้น ๆ บันทึกสิ่งที่สเปกนี้เดาผิด
 

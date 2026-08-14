@@ -20,7 +20,7 @@
 - **ห้ามแตะ `overrides.picomatch`** (และ override ตัวอื่น) — เป็นหนี้ที่กันไว้นอกเฟส C–H
 - ทุกครั้งที่ `package.json` เปลี่ยน ต้อง regenerate **ทั้ง** `bun.lock` (`bun install`) และ `package-lock.json` (`npm install --package-lock-only`) **ในคอมมิตเดียวกัน** — เฟส A ต้อง squash เพราะละเลยข้อนี้แล้วคอมมิตกลางทาง `npm ci` พัง
 - `overrides` กับ `resolutions` ใน `package.json` ต้องมีเนื้อหาเท่ากันเสมอ — **npm อ่านเฉพาะ `overrides`** ไม่อ่าน `resolutions` ไม่มีเครื่องมือไหนจับ drift ให้ ต้องเทียบเอง
-- gate ทุก task ที่แตะ dependency: `bun run typecheck` · `bun run lint` · `bun run test` (ต้องเขียว 1081+) · `bun run build` · `npm ci`
+- gate ทุก task ที่แตะ dependency: `bun run typecheck` · `bun run lint` · `bun run test` (ต้องเขียว 1049 ตัวใน 131 ไฟล์ — baseline วัดสด 2026-08-14 ห้ามลดลง) · `bun run build` · `npm ci`
 - **`npm ci` ต้องเป็นคำสั่งสุดท้ายของ gate เสมอ และต้องตามด้วย `bun install` ทันที** — `npm ci` ลบ `node_modules` ทั้งก้อนแล้วติดตั้งใหม่ด้วย hoisting ของ npm ซึ่งไม่เหมือนของ bun ถ้าไม่คืน tree ก่อนทำงานต่อ คำสั่ง `bun` ถัดไปจะทำงานบน tree ผิดชนิด และผลเทสต์ที่ได้จะไม่ใช่ผลของ tree ที่ dev ใช้จริง
 - **ห้ามรันคำสั่งใด ๆ ที่แตะ `node_modules` ขณะ dev server ทำงานอยู่** — vite รันจาก `node_modules/.bin/vite` ตรวจด้วย `lsof -ti :3304` ก่อนเริ่มทุก task
 - **ไม่ deploy · ไม่ cut release · ไม่ขยับ `src/data/changelog.json`**
@@ -116,7 +116,7 @@ bun run test
 bun run build
 ```
 
-Expected: typecheck ไม่มี error · lint 0 error 0 warning · เทสต์เขียว 1081+ ตัว · build สำเร็จลง `build/`
+Expected: typecheck ไม่มี error · lint 0 error 0 warning · เทสต์เขียว 1049 ตัวใน 131 ไฟล์ (baseline วัดสดแล้ว ห้ามลดลง) · build สำเร็จลง `build/`
 
 หมายเหตุ: `@types/node` ข้ามไป 4 major — ถ้า typecheck ฟ้อง error ที่ไฟล์ใน `src/` **ห้ามแก้ซอร์ส** ให้หยุดและรายงาน เพราะขัด Global Constraints (แต่ error ที่ `vite.config.ts`/`vitest.config.ts`/`scripts/` แก้ได้ ไม่ใช่ `src/`)
 
@@ -211,7 +211,7 @@ npm ci
 bun install   # บังคับ: คืน tree ของ bun หลัง npm ci
 ```
 
-Expected: ทุกคำสั่งผ่าน · เทสต์เขียว 1081+ ตัว
+Expected: ทุกคำสั่งผ่าน · เทสต์เขียว 1049 ตัวใน 131 ไฟล์ (baseline วัดสดแล้ว ห้ามลดลง)
 
 `@typescript-eslint` 8.66→8.67 เป็น minor แต่ rule ใหม่หรือ rule ที่แม่นขึ้นอาจโผล่ warning ใหม่ได้ — ถ้า lint ฟ้องที่ `src/` ให้หยุดและรายงาน อย่าแก้ซอร์สเงียบ ๆ
 
