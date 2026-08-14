@@ -230,7 +230,7 @@ specificity เลย ดังนั้น `*` ที่ไม่อยู่ l
 - [ ] **ขั้น 1: วัดก่อนแก้ — H-U1 เกิดจริงหรือไม่**
 
 ```bash
-bun run dev:localhost
+bun run dev:local
 ```
 
 เปิดหน้าที่มี border สีสถานะและ focus ring แล้ววัดด้วย computed style ในคอนโซล —
@@ -417,7 +417,7 @@ git commit -m "fix(ui): rename utility ที่ v4 เปลี่ยนคว�
 - [ ] **ขั้น 1: ตั้ง dev server**
 
 ```bash
-bun run dev:localhost
+bun run dev:local
 ```
 
 (ผู้ใช้อาจรัน server อยู่แล้วบน :3304 — ทั้งสอง Vite mode bind พอร์ตเดียวกัน

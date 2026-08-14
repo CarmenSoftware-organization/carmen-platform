@@ -246,9 +246,16 @@ workaround ในซอร์สเพื่อดันให้ผ่าน ·
   (ตรึงตาม runtime โดยเจตนา), **`@tanstack/react-table`** (เฟส F เลื่อน) และ **`typescript`**
   (เฟส G เลื่อน — บล็อกโดย `typescript-eslint`) ดู §5 — ไม่มีตัวอื่นค้าง
 
-**สรุปหลังเดินเฟส C–G จริง:** สามเฟสแรก (C, D, E) merge เข้า `main` แล้ว · เฟส F และ G เลื่อน
-ด้วยเหตุผลคนละแบบ — F เลื่อนเพราะ **เลือกที่จะรอ** (v9 stable ได้ 10 วัน, v8 ไม่มีช่องโหว่),
-G เลื่อนเพราะ **ถูกบล็อก** (`typescript-eslint` throw บน TS 7) เหลือเฟส H เป็นงานที่ยังทำได้
+**สรุปหลังเดินเฟส C–H จริง:** C, D, E merge เข้า `main` แล้ว · F และ G เลื่อนด้วยเหตุผล
+คนละแบบ — F เลื่อนเพราะ **เลือกที่จะรอ** (v9 stable ได้ 10 วัน, v8 ไม่มีช่องโหว่),
+G เลื่อนเพราะ **ถูกบล็อก** (`typescript-eslint` throw บน TS 7) · **เฟส H เสร็จแล้ว** —
+อัปเป็น 4.3.3 ด้วยแนวทาง compat (`@config`), 1049/1049 เทสต์, browser verify ผ่านครบ
+6 จุดเสี่ยง ผลเต็มอยู่ใน `2026-08-14-dependency-updates-phase-h-results.md`
+
+**สิ่งที่เฟส H พบและสเปกนี้ไม่ได้คาดถึงเลย:** v4 ใช้ native cascade layers ทำให้ CSS ที่
+อยู่นอก `@layer` (custom CSS 358 บรรทัดใน `src/index.css`) **ชนะ utility ทุกตัวไม่ว่า
+specificity** — `* { border-color }` กลืน `border-*` ทั้งแอป และ **gate ทุกตัวเขียวโดยไม่
+รู้เรื่องนี้** เพราะไม่มีเทสต์ไหน assert CSS class และ jsdom ไม่ประมวลผล CSS จริง
 - 1049+ เทสต์เขียวครบ (จำนวนห้ามลดลงจาก baseline) · typecheck/lint/build ผ่าน · `npm ci` ผ่าน
 - UI ไม่มี regression ที่มองเห็นได้ ยืนยันด้วย browser verify ในเฟส E/F/H
 - ทุกเฟสมี PR ของตัวเองพร้อม results doc สั้น ๆ บันทึกสิ่งที่สเปกนี้เดาผิด
