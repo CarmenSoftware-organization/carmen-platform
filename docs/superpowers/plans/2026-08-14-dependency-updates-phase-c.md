@@ -21,6 +21,8 @@
 - ทุกครั้งที่ `package.json` เปลี่ยน ต้อง regenerate **ทั้ง** `bun.lock` (`bun install`) และ `package-lock.json` (`npm install --package-lock-only`) **ในคอมมิตเดียวกัน** — เฟส A ต้อง squash เพราะละเลยข้อนี้แล้วคอมมิตกลางทาง `npm ci` พัง
 - `overrides` กับ `resolutions` ใน `package.json` ต้องมีเนื้อหาเท่ากันเสมอ — **npm อ่านเฉพาะ `overrides`** ไม่อ่าน `resolutions` ไม่มีเครื่องมือไหนจับ drift ให้ ต้องเทียบเอง
 - gate ทุก task ที่แตะ dependency: `bun run typecheck` · `bun run lint` · `bun run test` (ต้องเขียว 1081+) · `bun run build` · `npm ci`
+- **`npm ci` ต้องเป็นคำสั่งสุดท้ายของ gate เสมอ และต้องตามด้วย `bun install` ทันที** — `npm ci` ลบ `node_modules` ทั้งก้อนแล้วติดตั้งใหม่ด้วย hoisting ของ npm ซึ่งไม่เหมือนของ bun ถ้าไม่คืน tree ก่อนทำงานต่อ คำสั่ง `bun` ถัดไปจะทำงานบน tree ผิดชนิด และผลเทสต์ที่ได้จะไม่ใช่ผลของ tree ที่ dev ใช้จริง
+- **ห้ามรันคำสั่งใด ๆ ที่แตะ `node_modules` ขณะ dev server ทำงานอยู่** — vite รันจาก `node_modules/.bin/vite` ตรวจด้วย `lsof -ti :3304` ก่อนเริ่มทุก task
 - **ไม่ deploy · ไม่ cut release · ไม่ขยับ `src/data/changelog.json`**
 - ไม่ต้องเขียนเทสต์ใหม่ในเฟสนี้ (ไม่มีพฤติกรรมใหม่) แต่ static check + ชุดเทสต์เดิมต้องผ่านครบ
 
@@ -118,13 +120,14 @@ Expected: typecheck ไม่มี error · lint 0 error 0 warning · เทส
 
 หมายเหตุ: `@types/node` ข้ามไป 4 major — ถ้า typecheck ฟ้อง error ที่ไฟล์ใน `src/` **ห้ามแก้ซอร์ส** ให้หยุดและรายงาน เพราะขัด Global Constraints (แต่ error ที่ `vite.config.ts`/`vitest.config.ts`/`scripts/` แก้ได้ ไม่ใช่ `src/`)
 
-- [ ] **Step 8: ยืนยัน npm clean install (mirror ของ Vercel)**
+- [ ] **Step 8: ยืนยัน npm clean install (mirror ของ Vercel) แล้วคืน tree ของ bun**
 
 ```bash
 npm ci
+bun install   # บังคับ: npm ci เพิ่งรื้อ node_modules เป็น layout ของ npm ต้องคืนเป็นของ bun ก่อนทำงานต่อ
 ```
 
-Expected: สำเร็จ ไม่ฟ้อง lockfile drift · ถ้าฟ้อง `npm ci can only install packages when package.json and package-lock.json are in sync` แปลว่า Step 4 ทำไม่ครบ
+Expected: `npm ci` สำเร็จ ไม่ฟ้อง lockfile drift · ถ้าฟ้อง `npm ci can only install packages when package.json and package-lock.json are in sync` แปลว่า Step 4 ทำไม่ครบ
 
 *(หมายเหตุ: `npm ci` รันบน Node 26 ในเครื่องนี้ ไม่ใช่ Node 24 — การพิสูจน์บน Node 24 จริงอยู่ที่ Task 3)*
 
@@ -205,6 +208,7 @@ bun run lint
 bun run test
 bun run build
 npm ci
+bun install   # บังคับ: คืน tree ของ bun หลัง npm ci
 ```
 
 Expected: ทุกคำสั่งผ่าน · เทสต์เขียว 1081+ ตัว
