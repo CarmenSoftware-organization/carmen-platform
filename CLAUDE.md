@@ -288,6 +288,36 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 **Color tokens (HSL):** warm-neutral ground + a single blue accent (calm-corporate reskin) — `--accent` is a neutral warm surface, **not** a brand hue, and status accents use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`. Values live in `src/index.css` + `tailwind.config.js` (the source of truth); the full reference (light + dark, all roles, hex, spacing, shadows, contrast) is **`.planning/design/system/tokens.md`** — keep it in sync when those change.
 
+**Adding a token (Tailwind v4):** you can declare tokens straight in `src/index.css` and the
+utilities come free — no `tailwind.config.js` edit. **Which form you use depends on whether the
+value changes with the theme, and getting it wrong fails silently:**
+
+```css
+/* Theme-dependent (every colour) — value in BOTH blocks, exposed via @theme inline */
+:root { --brand: 221 61% 48%; }
+.dark { --brand: 217 70% 60%; }        /* required, not optional */
+@theme inline { --color-brand: hsl(var(--brand)); }
+
+/* Theme-independent only (spacing, radius, a fixed colour) — @theme directly */
+@theme { --spacing-gutter: 3rem; }
+```
+
+`inline` is what makes dark mode work: it tells Tailwind **not** to mint its own variable, so
+`bg-brand` compiles to `background-color:hsl(var(--brand))` and follows `.dark`. A plain
+`@theme --color-brand: …` compiles to a single frozen value (`#e61a5e`) that is identical in
+both themes — no build error, no failing test, just one wrong colour in dark mode. The
+both-blocks rule in `agent-os/standards/styling/dark-mode.md` therefore still applies in full.
+
+`@theme` and the legacy `@config` coexist (Tailwind merges both into one theme), so this needs
+no migration; `@utility`, `@custom-variant`, `@container`, and oklch likewise all work against
+the current setup — verified, not assumed. The **existing** 36 tokens stay in
+`tailwind.config.js`, which maps utility names onto `hsl(var(--token))`; their values live in
+`:root` / `.dark` as bare HSL triplets (`--background: 40 9% 97.5%`, no `hsl()` wrapper) so
+`hsl(var(--x) / 0.4)` opacity works. Don't "modernise" those into full colour values — 9 files
+pass them to JS as `hsl(var(--x))` (Recharts, the summary Legends) and would break. Moving the
+old tokens into `@theme` was considered and **deliberately declined** — it buys consistency,
+not capability.
+
 **Surfaces:** glassmorphism (`.glass` / `.glass-strong`) was removed in the enterprise redesign — surfaces are now flat `bg-card` / `bg-background` with a 1px `border`.
 
 **Spacing:** page wrapper `space-y-4 sm:space-y-6` · card content `space-y-4` · field `space-y-2` · button gaps `gap-3`.
