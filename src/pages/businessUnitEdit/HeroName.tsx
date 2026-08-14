@@ -40,7 +40,7 @@ export function HeroName({ value, disabled, onCommit }: HeroNameProps) {
             setEditing(false);
           }
         }}
-        className="border-primary bg-background text-foreground w-full max-w-sm rounded-md border px-2 py-0.5 text-xl font-semibold tracking-tight outline-none"
+        className="border-primary bg-background text-foreground w-full max-w-sm rounded-md border px-2 py-0.5 text-xl font-semibold tracking-tight outline-hidden"
       />
     );
   }

@@ -117,7 +117,7 @@ export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
 function Legend({ color, label, value }: { color: string; label: string; value: number }) {
   return (
     <span className="text-muted-foreground flex items-center gap-2 text-xs">
-      <span className="size-2 rounded-sm" style={{ background: color }} />
+      <span className="size-2 rounded-xs" style={{ background: color }} />
       {label}
       <span className="text-foreground font-mono text-[13px] font-semibold tabular-nums">{value}</span>
     </span>

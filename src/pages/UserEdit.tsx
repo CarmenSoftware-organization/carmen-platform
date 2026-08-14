@@ -223,7 +223,7 @@ const UserEdit: React.FC = () => {
     }
   };
 
-  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 
   // Data precondition (honestly named, separate from permission): Add BU only
   // makes sense if this user belongs to at least one cluster to add into.

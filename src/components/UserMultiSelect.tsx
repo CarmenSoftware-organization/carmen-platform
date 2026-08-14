@@ -67,7 +67,7 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
       {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
       <div
         className={cn(
-          'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2 py-1.5 text-sm shadow-sm focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
+          'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border bg-transparent px-2 py-1.5 text-sm shadow-xs focus-within:outline-hidden focus-within:ring-1 focus-within:ring-ring',
           error ? 'border-destructive' : 'border-input',
           disabled && 'bg-muted/50 cursor-not-allowed',
         )}
@@ -106,7 +106,7 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : ''}
-            className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            className="flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground"
           />
         </div>
       </div>

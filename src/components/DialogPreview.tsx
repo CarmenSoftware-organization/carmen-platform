@@ -100,7 +100,7 @@ function renderControl(el: Element): React.ReactNode {
     return (
       <select
         disabled
-        className="flex h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-1 text-sm text-muted-foreground shadow-sm"
+        className="flex h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-1 text-sm text-muted-foreground shadow-xs"
       >
         <option>Select {source || 'value'}…</option>
       </select>

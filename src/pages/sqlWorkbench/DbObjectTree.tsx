@@ -73,7 +73,7 @@ export function DbObjectTree({
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
           <input
             type="text"
-            className="bg-background ring-offset-background focus:ring-ring h-7 w-full rounded border pr-2 pl-7 text-xs outline-none focus:ring-2"
+            className="bg-background ring-offset-background focus:ring-ring h-7 w-full rounded border pr-2 pl-7 text-xs outline-hidden focus:ring-2"
             placeholder="Search tables, views, procedures..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}

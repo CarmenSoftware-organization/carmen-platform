@@ -69,7 +69,7 @@ const Landing: React.FC = () => {
         className="min-h-dvh flex items-center justify-center bg-background"
       >
         <div className="space-y-4 text-center">
-          <div className="mx-auto grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-sm">
+          <div className="mx-auto grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-xs">
             C
           </div>
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
@@ -84,7 +84,7 @@ const Landing: React.FC = () => {
       {/* Header — identity + entrance */}
       <header className="container mx-auto flex items-center justify-between px-4 py-4 sm:py-6">
         <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-base font-bold text-primary-foreground shadow-sm">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-base font-bold text-primary-foreground shadow-xs">
             C
           </div>
           <div className="leading-none">

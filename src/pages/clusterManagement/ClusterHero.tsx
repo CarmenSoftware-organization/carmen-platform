@@ -59,7 +59,7 @@ export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, m
           {logoUrl ? (
             <img src={logoUrl} alt="" className="h-11 w-16 rounded-lg border object-cover" />
           ) : (
-            <div className="grid h-11 w-16 place-items-center rounded-lg bg-gradient-to-br from-primary to-info text-xs font-bold tracking-wide text-white">
+            <div className="grid h-11 w-16 place-items-center rounded-lg bg-linear-to-br from-primary to-info text-xs font-bold tracking-wide text-white">
               {initials}
             </div>
           )}

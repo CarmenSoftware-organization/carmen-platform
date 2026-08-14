@@ -29,7 +29,7 @@ interface InlineFieldProps {
 }
 
 const inputBase =
-  'w-full max-w-sm rounded-md border bg-background px-2.5 py-1.5 text-sm text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring';
+  'w-full max-w-sm rounded-md border bg-background px-2.5 py-1.5 text-sm text-foreground outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
 
 // The contract pairs the message with a destructive border; the border must track
 // the error, not stay primary while the message shouts.

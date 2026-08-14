@@ -71,7 +71,7 @@ const capDevice = (d: string) => (d === 'pos' ? 'POS' : d.charAt(0).toUpperCase(
 function ScopeLegend({ color, label, value, warn }: { color: string; label: string; value: number; warn?: boolean }) {
   return (
     <span className={`flex items-center gap-2 text-xs ${warn ? 'text-warning' : 'text-muted-foreground'}`}>
-      {warn ? <AlertTriangle className="size-3.5" /> : <span className="size-2 rounded-sm" style={{ background: color }} />}
+      {warn ? <AlertTriangle className="size-3.5" /> : <span className="size-2 rounded-xs" style={{ background: color }} />}
       {label}
       <span className={`font-mono text-[13px] font-semibold tabular-nums ${warn ? 'text-warning' : 'text-foreground'}`}>{value}</span>
     </span>

@@ -171,7 +171,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
                   src={brand.logoUrl}
                   tone="primary"
                   size="sm"
-                  className="shadow-sm"
+                  className="shadow-xs"
                 />
                 <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
                   {brand.name}

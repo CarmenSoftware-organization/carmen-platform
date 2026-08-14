@@ -17,7 +17,7 @@ export interface InlineCellProps {
 }
 
 const selectClass =
-  'h-8 w-full max-w-[180px] rounded-md border border-primary bg-background px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring';
+  'h-8 w-full max-w-[180px] rounded-md border border-primary bg-background px-2 text-sm outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
 
 /** Read-mode display that becomes a select on click; commits on change, reverts on Escape/blur. */
 export function InlineCell({ value, display, options, ariaLabel, disabled, onCommit }: InlineCellProps) {
