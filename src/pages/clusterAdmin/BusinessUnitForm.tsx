@@ -29,7 +29,7 @@ import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCa
 import type { BusinessUnitConfig } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
-// Booleans (is_hq/is_active), arrays (db_connection/config), and the fields this narrowed
+// Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
 // page never exposes (cluster_id comes from the URL only; max_license_users is a platform
 // decision; code is a system identifier this view no longer surfaces — it still loads from
 // the API and still ships in the save payload, see fetchBusinessUnit/buildPayload below,
@@ -37,7 +37,8 @@ import type { BusinessUnitConfig } from '../../types';
 // them from being wired into a text input here.
 type TextFieldName = Exclude<
   keyof BusinessUnitFormData,
-  'is_hq' | 'is_active' | 'db_connection' | 'config' | 'cluster_id' | 'max_license_users' | 'code'
+  'is_hq' | 'is_active' | 'config' | 'cluster_id' | 'max_license_users' | 'code'
+  | 'database_pool_id' | 'db_schema' | 'database_pool_name'
 >;
 
 /**
@@ -50,8 +51,9 @@ type TextFieldName = Exclude<
  * spec's B5 and the 2026-08-06 addendum removing BU create from this view.
  *
  * Three things are deliberately absent:
- * - The DB-connection section: `GET .../reveal-db-connection` is gated on a platform
- *   permission and 403s here, so the page never reads or writes `db_connection`.
+ * - The database-pool section: pools are a platform-wide resource and the backend gates any
+ *   write that touches `database_pool_id`/`db_schema` on a platform role (not on cluster
+ *   membership), so this view neither reads nor writes them.
  * - `max_license_users`: a platform decision, consistent with licensing being read-only
  *   on the cluster page.
  * - The BU-users card: membership is managed on the Users page, not here.
@@ -160,8 +162,9 @@ const BusinessUnitForm: React.FC = () => {
         calculation_method: bu.calculation_method || '',
         default_currency_id: bu.default_currency_id || '',
         config: Array.isArray(bu.config) ? bu.config : [],
-        // max_license_users / db_connection intentionally left at their initialFormData
-        // defaults ('' / []) — this page never reads or writes either.
+        // max_license_users and the pool fields (database_pool_id, db_schema,
+        // database_pool_name) are intentionally left at their initialFormData defaults — this
+        // page never reads or writes any of them.
       };
       setFormData(loaded);
       setSavedFormData(loaded);
@@ -291,9 +294,10 @@ const BusinessUnitForm: React.FC = () => {
     return true;
   };
 
-  // cluster_id, max_license_users, and db_connection are never sent to the backend:
-  // the first is immutable on update (the record's cluster is fixed), the other two are
-  // platform-only concerns this page does not expose.
+  // cluster_id, max_license_users, and the three database pool fields
+  // (database_pool_id, db_schema, database_pool_name) are never sent to the backend:
+  // cluster_id is immutable on update (the record's cluster is fixed), and the others are
+  // platform-only concerns gated on platform roles — this page does not expose them.
   const buildPayload = (data: BusinessUnitFormData): Record<string, unknown> => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
@@ -302,7 +306,13 @@ const BusinessUnitForm: React.FC = () => {
 
     const payload: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(data)) {
-      if (key === 'cluster_id' || key === 'max_license_users' || key === 'db_connection') continue;
+      if (
+        key === 'cluster_id' ||
+        key === 'max_license_users' ||
+        key === 'database_pool_id' ||
+        key === 'db_schema' ||
+        key === 'database_pool_name'
+      ) continue;
       if (typeof val === 'boolean') {
         payload[key] = val;
       } else if (val !== '' && val !== undefined && val !== null) {

@@ -45,6 +45,8 @@ const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const ActivityEventManagement = lazy(() => import("./pages/ActivityEventManagement"));
 const EmailSettingManagement = lazy(() => import("./pages/EmailSettingManagement"));
 const PlatformConfigManagement = lazy(() => import("./pages/PlatformConfigManagement"));
+const DatabasePoolManagement = lazy(() => import("./pages/DatabasePoolManagement"));
+const DatabasePoolEdit = lazy(() => import("./pages/DatabasePoolEdit"));
 const ClusterAdminEntry = lazy(() => import("./pages/clusterAdmin/ClusterAdminEntry"));
 const ClusterProfile = lazy(() => import("./pages/clusterAdmin/ClusterProfile"));
 const ClusterAdminBusinessUnitList = lazy(() => import("./pages/clusterAdmin/BusinessUnitList"));
@@ -368,6 +370,30 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="platform_config.read">
                   <PlatformConfigManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/database-pools"
+              element={
+                <PrivateRoute requiredPermission="database_pool.read">
+                  <DatabasePoolManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/database-pools/new"
+              element={
+                <PrivateRoute requiredPermission="database_pool.read">
+                  <DatabasePoolEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/database-pools/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="database_pool.read">
+                  <DatabasePoolEdit />
                 </PrivateRoute>
               }
             />

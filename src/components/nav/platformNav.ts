@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet,
-  BarChart3, MousePointerClick, Settings,
+  BarChart3, MousePointerClick, Settings, Server,
 } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 
@@ -31,6 +31,7 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
   { path: '/platform/user-platform', label: 'User Platform', icon: UserCog, permission: 'user_platform.read', group: 'Platform' },
   { path: '/sql-workbench', label: 'SQL Workbench', icon: Database, permission: 'sql_workbench.read', group: 'Platform' },
+  { path: '/platform/database-pools', label: 'Database Pools', icon: Server, permission: 'database_pool.read', group: 'Platform' },
 ];
 
 /** The platform-administration navigation, filtered to what this user may reach. */
