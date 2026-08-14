@@ -134,17 +134,35 @@ frozen column ✅
    ก่อนอ่านค่าเสมอ
 4. **raw size หลอกตาในการเทียบ CSS** — `@property` เป็นบล็อกซ้ำ ๆ ที่ gzip บีบได้ดีมาก
    +61% raw กลายเป็น +4.3 KB จริงบนสาย
+5. **`rg` ไม่ค้น `.planning/` ถ้าไม่ใส่ `--hidden`** — เป็น hidden directory · และถ้าเขียน
+   pattern ที่ขึ้นต้นด้วย `--` แล้วใช้ `--` คั่น flag ที่ตามมา**จะกลายเป็น path** rg จะพ่น
+   `No such file or directory` แต่**ยังคืนผลลัพธ์จาก path ที่เหลือ** ทำให้ดูเหมือนค้นสำเร็จ
+   ทั้งที่ขอบเขตหายไปครึ่งหนึ่ง — เกือบทำให้ลบ token ที่ `.planning/design/system/tokens.md`
+   นิยามไว้ทิ้ง
 
 ## หนี้ที่บันทึกไว้ (ไม่แก้ในเฟสนี้ — ข้อจำกัดร่วมข้อ 9)
 
 | หนี้ | รายละเอียด |
 |---|---|
-| `keyframes accordion` + `animation` ใน `tailwind.config.js` | dead config — `animate-accordion-*` ใช้ **0 จุด** ทั้งแอป |
-| `--shadow-sm` / `--shadow-md` ใน `index.css` | dead token — ประกาศทั้งสอง theme แต่ใช้ **0 ไฟล์** (มีแต่ `--shadow-xs` ที่ใช้จริง 2 ไฟล์) |
 | ย้ายไป CSS-first (`@theme`) | ตามสเปก §8 — งานคนละใบ ทำหลังเฟส H นิ่ง |
 | `overrides.picomatch` global → scoped | ตามสเปก §8 |
 | `Inter` font (`index.css:111`) | impeccable hook ทัก overused-font — โค้ดเดิม นอกขอบเขตเฟส dependency |
 | `.sidebar-transition` animate `width`/`margin` (`index.css:340`) | impeccable hook ทัก layout thrash — เป็น sidebar contract เดิมใน `CLAUDE.md` |
+
+## แก้การจัดประเภทผิดของเอกสารฉบับนี้เอง (2026-08-14 หลัง merge)
+
+ฉบับแรกลงรายการสองอย่างนี้ไว้เป็น "dead config / dead token" จาก**การนับการใช้งานอย่างเดียว**
+โดยไม่ได้ถามว่าทำไมมันถึงมีอยู่ · ตรวจซ้ำแล้ว **ทั้งคู่ถูกเก็บไว้โดยตั้งใจ ไม่ใช่ของเหลือ**
+จึงไม่ลบและถอดออกจากตารางหนี้:
+
+| สิ่งที่เคยเรียกว่า dead | หลักฐานว่าตั้งใจเก็บ |
+|---|---|
+| `keyframes accordion` + `animation` ใน `tailwind.config.js` | `.planning/design/system/component-checklist.md:98` ลง **Accordion / Collapsible** ไว้ในรายการ primitive ที่รอเพิ่ม พร้อมระบุว่า config "already ships accordion keyframes" · `docs/superpowers/plans/2026-07-01-enterprise-ui-redesign-phase-1-foundations.md:414` สั่งตอนล้าง keyframes รอบก่อนว่าลบ `ripple`/`rippling` แต่ **keep `accordion-down`/`accordion-up`** |
+| `--shadow-sm` / `--shadow-md` ใน `index.css` | `.planning/design/system/tokens.md:163-172` นิยามเป็น **elevation scale 3 ระดับ** พร้อมค่า light/dark ครบ ("Defined as CSS variables, not Tailwind's default shadow scale") · `2026-07-16-calm-corporate-reskin-design.md:90` สั่ง "keep, lighten slightly" |
+
+**บทเรียน:** "ใช้ 0 จุด" **ไม่ใช่**หลักฐานว่าเป็น dead code — token ของ design system และ
+keyframes ของ primitive ที่ยังไม่ได้สร้าง ถูกออกแบบมาก่อนถูกใช้โดยธรรมชาติ · ก่อนเรียกอะไรว่า
+dead ให้ค้นใน `.planning/` ด้วย (**เป็น hidden directory — `rg` ไม่ค้นให้ถ้าไม่มี `--hidden`**)
 
 ## สิ่งที่แผนเดาผิด
 
