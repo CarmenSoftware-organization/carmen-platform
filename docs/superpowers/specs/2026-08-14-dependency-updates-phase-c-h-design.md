@@ -118,24 +118,68 @@
 แล้วจึงแก้ ห้ามไล่แก้ตามที่ tsc ฟ้องทีละตัวโดยไม่มีรายการ — เพราะไอคอนที่ถูกถอดออกเงียบ ๆ
 จะกลายเป็น runtime error ไม่ใช่ type error
 
-### เฟส F — `@tanstack/react-table` 8 → 9
+### เฟส F — `@tanstack/react-table` 8 → 9 — **เลื่อนออกไป (ผู้ใช้ตัดสิน 2026-08-14)**
 
-**เนื้อหา:** อัปแพ็กเกจ + ปรับ `src/components/ui/data-table.tsx` + column def 16 ไฟล์
+**เนื้อหาเดิมที่วางไว้:** อัปแพ็กเกจ + ปรับ `src/components/ui/data-table.tsx` + column def 16 ไฟล์
 
-**ความเสี่ยง:** `data-table.tsx` คือหัวใจของทุก Management page — pagination, sort,
-row selection, และ mobile card view (`meta.card`) ผ่านตัวนี้หมด
+**ทำไมเลื่อน — ข้อมูลที่ตรวจได้ก่อนลงมือ:**
 
-**บังคับ:** browser verify จริงบน `:3304` อย่างน้อย 2 หน้า (หนึ่งหน้า server-side list +
-หนึ่งหน้าที่มี row selection) ทั้ง desktop และ mobile card view ก่อนขอ merge
+v9 **ไม่ใช่ version bump แต่เป็น API rewrite** ตรวจ export จริงของ `9.1.2` เทียบกับ 12 สัญลักษณ์
+ที่ repo ใช้ใน 18 ไฟล์:
 
-### เฟส G — `typescript` 5.9 → 7.0
+| สิ่งที่ repo ใช้ | สถานะใน v9 |
+|---|---|
+| `useReactTable` | **ถูกถอด** → `useTable` + ต้องประกาศ `features` เอง (`rowSortingFeature`, `rowPaginationFeature`, `rowSelectionFeature`, …) |
+| `getCoreRowModel` / `getSortedRowModel` / `getFilteredRowModel` / `getPaginationRowModel` | **ถูกถอดจาก entry หลัก** → มีใน `@tanstack/react-table/legacy` (partial: มี `get*RowModel` แต่ไม่มี `useReactTable`/`flexRender`) หรือใช้ `create*RowModel` แบบใหม่ |
+| `flexRender` | ยังมีใน entry หลัก |
+| `ColumnDef<TData, TValue>` | generic เปลี่ยนเป็น **`<TFeatures extends TableFeatures, TData, TValue>`** — กระทบ **26 จุดประกาศ** |
+| `SortingState` `PaginationState` `RowSelectionState` `Table` `Updater` | import ได้ บางตัวต้องเพิ่ม type param |
 
-**เนื้อหา:** อัป TS + พิสูจน์ว่า toolchain ทั้งเส้นยังทำงาน (`tsc --noEmit`,
+**และตัวเลขที่ชี้ขาด:** `9.0.0` stable เผยแพร่ **2026-08-04 — 10 วันก่อนวันที่ตัดสินใจ**
+(9.1.2 เมื่อ 2026-08-09) ส่วน `8.21.3` (2025-04-14) **ไม่มีช่องโหว่ ไม่มีประกาศ EOL**
+การอัป major ที่ stable ได้ 10 วันในคอมโพเนนต์ที่ทุก Management page พึ่งพา = รับความเสี่ยง
+โดยไม่มีผลตอบแทนที่จับต้องได้ **ต้นทุนของการรอคือศูนย์**
+
+**เงื่อนไขปลดล็อก (ทำเฟส F เมื่อข้อใดข้อหนึ่งเป็นจริง):**
+
+1. v9 ออกถึง ~9.3+ หรือผ่านไปอย่างน้อย 3 เดือนนับจาก 2026-08-04 โดยไม่มี regression ใหญ่
+2. v8 ถูกประกาศ EOL หรือพบช่องโหว่
+3. มีฟีเจอร์ใน v9 ที่โปรเจกต์ต้องใช้จริง
+
+**เมื่อทำจริง บังคับ:** browser verify บน `:3304` อย่างน้อย 2 หน้า (server-side list +
+หน้าที่มี row selection) ทั้ง desktop และ mobile card view ก่อนขอ merge · และควรพิจารณาสร้าง
+type alias กลาง (เช่น `AppColumnDef<TData, TValue>`) เพื่อลด diff จาก 26 จุดเหลือการเปลี่ยน import
+
+### เฟส G — `typescript` 5.9 → 7.0 — **เลื่อนออกไป (พิสูจน์ด้วยการรันจริง 2026-08-14)**
+
+**เนื้อหาเดิมที่วางไว้:** อัป TS + พิสูจน์ว่า toolchain ทั้งเส้นยังทำงาน (`tsc --noEmit`,
 `vite-plugin-checker`, `typescript-eslint`, `vitest`)
 
-**เงื่อนไขยกเลิก:** TS 7 เป็น native port ที่เขียนใหม่ ถ้าเครื่องมือตัวใดตัวหนึ่งเข้ากันไม่ได้
-**ให้หยุดและรายงานว่าเฟส G ถูกเลื่อน** พร้อมเงื่อนไขปลดล็อก — ห้ามแก้ workaround ในซอร์ส
-เพื่อดันให้ผ่าน
+**เงื่อนไขยกเลิกที่เขียนไว้ล่วงหน้า:** TS 7 เป็น native port ที่เขียนใหม่ ถ้าเครื่องมือตัวใด
+ตัวหนึ่งเข้ากันไม่ได้ **ให้หยุดและรายงานว่าเฟส G ถูกเลื่อน** พร้อมเงื่อนไขปลดล็อก — ห้ามแก้
+workaround ในซอร์สเพื่อดันให้ผ่าน · **เงื่อนไขนี้ถูกทริกเกอร์จริง**
+
+**สิ่งที่ทดลองแล้ว (ติดตั้ง TS 7.0.2 จริงบน branch แล้วย้อนกลับ):**
+
+| ขั้น | ผล |
+|---|---|
+| ติดตั้ง `typescript@7.0.2` | สำเร็จ · TS 7 ยังให้ binary ชื่อ `tsc` เหมือนเดิม |
+| `tsc --noEmit` ครั้งแรก | **ล้ม 2 error ที่ `tsconfig.json`** — `target=ES5` และ `moduleResolution=node10` **ถูกถอดออกจาก TS 7** |
+| แก้เป็น `target: es2020` + `moduleResolution: bundler` | เหลือ **6 error** — `Cannot find name 'process'` ทั้งหมด (bundler resolution ไม่ดึง `@types/node` เข้าโดยปริยาย) |
+| เพิ่ม `"types": ["node", "vite/client"]` | **`tsc --noEmit` ผ่านสะอาด** — ซอร์สทั้ง repo ผ่าน TS 7 ได้โดยไม่ต้องแก้โค้ดแม้แต่บรรทัดเดียว |
+| `bun run lint` | ❌ **`Error: typescript-eslint does not support TS 7.0.`** — throw ที่ module load (`@typescript-eslint/parser/dist/index.js:49`) lint พังทั้งหมด และ `bun run build` จะพังตามเพราะ `vite-plugin-checker` รัน eslint |
+
+**ตัวบล็อกคือ `typescript-eslint` ตัวเดียว ไม่ใช่ TS 7 เอง** — ทั้ง `latest` (8.67.0) และ
+`canary` (8.67.1-alpha.4) peer เป็น `typescript: ">=4.8.4 <6.1.0"` และตัวไลบรารีเช็คเวอร์ชัน
+แล้ว throw เอง ไม่ใช่แค่ warning จาก package manager (repo มี `legacy-peer-deps=true` อยู่แล้ว
+จึงติดตั้งผ่าน แต่รันไม่ผ่าน)
+
+**เงื่อนไขปลดล็อก:** `typescript-eslint` ปล่อยเวอร์ชันที่ประกาศรองรับ TS 7 — ตรวจด้วย
+`npm view @typescript-eslint/parser@latest peerDependencies.typescript` ใช้เวลาไม่กี่วินาที
+
+**เมื่อทำจริง — งานที่ต้องทำนอกจากอัปแพ็กเกจ (พิสูจน์แล้วว่าเท่านี้พอ):** แก้ `tsconfig.json`
+สามจุด — `target: "es5"` → `"es2020"` · `moduleResolution: "node"` → `"bundler"` ·
+เพิ่ม `"types": ["node", "vite/client"]` **ไม่ต้องแก้ซอร์สเลย**
 
 ### เฟส H — `tailwindcss` 3.4.1 → 4.3.3 (แนวทาง compat)
 
@@ -198,8 +242,13 @@ row selection, และ mobile card view (`meta.card`) ผ่านตัวน
 
 เมื่อจบเฟส H:
 
-- `bun outdated` เหลือเฉพาะ **`eslint` + `@eslint/js`** (บล็อก upstream) และ **`@types/node`**
-  (ตรึงตาม runtime โดยเจตนา) — ไม่มีตัวอื่นค้าง
+- `bun outdated` เหลือเฉพาะ **`eslint` + `@eslint/js`** (บล็อก upstream), **`@types/node`**
+  (ตรึงตาม runtime โดยเจตนา), **`@tanstack/react-table`** (เฟส F เลื่อน) และ **`typescript`**
+  (เฟส G เลื่อน — บล็อกโดย `typescript-eslint`) ดู §5 — ไม่มีตัวอื่นค้าง
+
+**สรุปหลังเดินเฟส C–G จริง:** สามเฟสแรก (C, D, E) merge เข้า `main` แล้ว · เฟส F และ G เลื่อน
+ด้วยเหตุผลคนละแบบ — F เลื่อนเพราะ **เลือกที่จะรอ** (v9 stable ได้ 10 วัน, v8 ไม่มีช่องโหว่),
+G เลื่อนเพราะ **ถูกบล็อก** (`typescript-eslint` throw บน TS 7) เหลือเฟส H เป็นงานที่ยังทำได้
 - 1049+ เทสต์เขียวครบ (จำนวนห้ามลดลงจาก baseline) · typecheck/lint/build ผ่าน · `npm ci` ผ่าน
 - UI ไม่มี regression ที่มองเห็นได้ ยืนยันด้วย browser verify ในเฟส E/F/H
 - ทุกเฟสมี PR ของตัวเองพร้อม results doc สั้น ๆ บันทึกสิ่งที่สเปกนี้เดาผิด
