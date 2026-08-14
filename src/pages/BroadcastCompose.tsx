@@ -32,7 +32,7 @@ import type {
 } from '../types';
 
 const SELECT_CLASS =
-  'h-9 w-full rounded-md border border-input bg-transparent pl-3 pr-10 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring truncate';
+  'h-9 w-full rounded-md border border-input bg-transparent pl-3 pr-10 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring truncate';
 
 const TITLE_MAX = 200;
 const MESSAGE_MAX = 2000;

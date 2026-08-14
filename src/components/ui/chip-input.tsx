@@ -103,7 +103,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       className={cn(
-        'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm shadow-sm focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
+        'flex min-h-9 w-full flex-wrap items-center gap-1.5 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm shadow-xs focus-within:outline-hidden focus-within:ring-1 focus-within:ring-ring',
         className,
       )}
       onClick={() => inputRef.current?.focus()}
@@ -140,7 +140,7 @@ export const ChipInput: React.FC<ChipInputProps> = ({
           if (draft.trim()) commit(draft);
         }}
         placeholder={chips.length === 0 ? placeholder : ''}
-        className="flex-1 min-w-[120px] bg-transparent outline-none placeholder:text-muted-foreground"
+        className="flex-1 min-w-[120px] bg-transparent outline-hidden placeholder:text-muted-foreground"
         list={listId}
       />
       {listId && (

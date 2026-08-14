@@ -122,7 +122,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               src={brand.logoUrl}
               tone="primary"
               size="md"
-              className="shadow-sm transition-transform duration-300 group-hover:scale-105"
+              className="shadow-xs transition-transform duration-300 group-hover:scale-105"
             />
             {!isCollapsed && (
               <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
@@ -195,7 +195,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   src={brand.logoUrl}
                   tone="primary"
                   size="md"
-                  className="shadow-sm transition-transform duration-300 group-hover:scale-105"
+                  className="shadow-xs transition-transform duration-300 group-hover:scale-105"
                 />
                 <span className="truncate text-xl font-bold text-foreground">
                   {brand.name}

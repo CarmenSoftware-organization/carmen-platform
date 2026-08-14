@@ -155,7 +155,7 @@ export function BuSwitcher({
             aria-controls="bu-switcher-list"
             aria-activedescendant={flat[active] ? `bu-opt-${active}` : undefined}
             aria-label="Search business units"
-            className="placeholder:text-muted-foreground flex-1 bg-transparent text-[15px] outline-none"
+            className="placeholder:text-muted-foreground flex-1 bg-transparent text-[15px] outline-hidden"
             placeholder={`Search ${businessUnits.length} business units by code, name or cluster…`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}

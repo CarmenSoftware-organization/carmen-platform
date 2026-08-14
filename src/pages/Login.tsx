@@ -156,7 +156,7 @@ const Login: React.FC = () => {
         <div className="w-full max-w-sm space-y-8">
           {/* Compact brand header — mobile only (panel is hidden below lg) */}
           <div className="flex items-center gap-3 lg:hidden">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-sm">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-xs">
               C
             </div>
             <div className="leading-none">

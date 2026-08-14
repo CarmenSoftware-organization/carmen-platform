@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@config "../tailwind.config.js";
 
 :root {
   --background: 40 9% 97.5%;
@@ -84,27 +84,35 @@
   --bu-chip-l: 58%;
 }
 
-* {
-  border-color: hsl(var(--border));
-}
+/* These global resets MUST stay inside @layer base. Tailwind v4 emits its
+   utilities into a native `@layer utilities`, and unlayered CSS beats layered
+   CSS regardless of specificity — so an unlayered `* { border-color }` silently
+   swallows every `border-*` utility in the app (verified: `border-destructive`
+   computed to the neutral --border colour before this was layered). Under v3
+   these rules could sit unlayered because plain specificity applied. */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
 
-html {
-  scroll-behavior: smooth;
-}
+  html {
+    scroll-behavior: smooth;
+  }
 
-:focus-visible {
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-  border-radius: var(--radius);
-}
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: var(--radius);
+  }
 
-body {
-  background-color: hsl(var(--background)) !important;
-  color: hsl(var(--foreground)) !important;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-feature-settings: "rlig" 1, "calt" 1;
-  line-height: 1.5;
-  min-height: 100dvh;
+  body {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: 1.5;
+    min-height: 100dvh;
+  }
 }
 
 .tabular-nums {

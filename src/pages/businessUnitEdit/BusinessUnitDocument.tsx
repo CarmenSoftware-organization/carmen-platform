@@ -135,7 +135,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             {logoUrl ? (
               <img src={logoUrl} alt="" className="h-11 w-16 rounded-lg border object-cover" />
             ) : (
-              <div className="from-primary to-info grid h-11 w-16 place-items-center rounded-lg bg-gradient-to-br text-[11px] font-bold text-white">
+              <div className="from-primary to-info grid h-11 w-16 place-items-center rounded-lg bg-linear-to-br text-[11px] font-bold text-white">
                 {f.code.slice(0, 8).toUpperCase() || 'BU'}
               </div>
             )}
@@ -161,7 +161,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
                 disabled={!canEdit}
                 aria-pressed={f.is_active}
                 onClick={() => onToggle('is_active', !f.is_active)}
-                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-none focus-visible:ring-1"
+                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
               >
                 <Badge variant={f.is_active ? 'success' : 'secondary'}>{f.is_active ? 'Active' : 'Inactive'}</Badge>
               </button>
@@ -170,7 +170,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
                 disabled={!canEdit}
                 aria-pressed={f.is_hq}
                 onClick={() => onToggle('is_hq', !f.is_hq)}
-                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-none focus-visible:ring-1"
+                className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
               >
                 <Badge variant={f.is_hq ? 'default' : 'secondary'}>HQ</Badge>
               </button>

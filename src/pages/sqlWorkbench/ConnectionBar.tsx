@@ -23,7 +23,7 @@ export function ConnectionBar({ bu, canWrite, onSwitch }: ConnectionBarProps) {
   const rail = bu ? buHueColor(bu.code) : 'hsl(var(--border))';
 
   return (
-    <div className="bg-card flex items-stretch overflow-hidden rounded-lg border shadow-sm">
+    <div className="bg-card flex items-stretch overflow-hidden rounded-lg border shadow-xs">
       {/* live-target hue rail */}
       <div className="w-1 shrink-0" style={{ background: rail }} aria-hidden="true" />
 

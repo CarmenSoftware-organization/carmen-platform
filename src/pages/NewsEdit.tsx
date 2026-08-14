@@ -63,7 +63,7 @@ const fmt = (v?: string) => {
 };
 
 const selectClassName =
-  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+  'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
 
 const NewsEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -319,7 +319,7 @@ const NewsEdit: React.FC = () => {
                   placeholder="Headline"
                   aria-label="Headline"
                   className={cn(
-                    'w-full border-b border-transparent bg-transparent pb-1 text-2xl font-bold tracking-tight outline-none transition-colors placeholder:text-muted-foreground/40 focus:border-primary sm:text-3xl',
+                    'w-full border-b border-transparent bg-transparent pb-1 text-2xl font-bold tracking-tight outline-hidden transition-colors placeholder:text-muted-foreground/40 focus:border-primary sm:text-3xl',
                     fieldErrors.title && 'border-destructive',
                   )}
                   required

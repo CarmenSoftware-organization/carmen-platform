@@ -287,7 +287,7 @@ export function StepPanel({
                 aria-pressed={selected}
                 aria-label={`${preview.counts[v]} ${v} — filter to ${v} rows`}
                 onClick={() => toggleVerdict(v)}
-                className={`rounded-md py-1 transition ring-offset-background hover:ring-1 hover:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                className={`rounded-md py-1 transition ring-offset-background hover:ring-1 hover:ring-ring focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   selected ? 'ring-2 ring-ring ring-offset-1' : ''
                 }`}
               >

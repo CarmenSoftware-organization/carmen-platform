@@ -104,7 +104,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     return (
       <div
         className={cn(
-          'flex min-h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-1.5 text-sm shadow-sm',
+          'flex min-h-9 w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-1.5 text-sm shadow-xs',
           error ? 'border-destructive' : 'border-input',
           disabled && 'bg-muted/50',
         )}
@@ -133,7 +133,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     <div ref={wrapperRef} className="relative">
       <div
         className={cn(
-          'flex min-h-9 w-full items-center gap-1 rounded-md border bg-transparent px-2 py-1.5 text-sm shadow-sm focus-within:outline-none focus-within:ring-1 focus-within:ring-ring',
+          'flex min-h-9 w-full items-center gap-1 rounded-md border bg-transparent px-2 py-1.5 text-sm shadow-xs focus-within:outline-hidden focus-within:ring-1 focus-within:ring-ring',
           error ? 'border-destructive' : 'border-input',
           disabled && 'bg-muted/50 cursor-not-allowed',
         )}
@@ -152,7 +152,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
           onFocus={() => changeOpen(true)}
           placeholder={placeholder}
           aria-label={ariaLabel}
-          className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+          className="flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground"
         />
       </div>
 

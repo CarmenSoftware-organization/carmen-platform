@@ -15,7 +15,7 @@ export function DeployConsole({ batch }: { batch: BatchProgress | null }) {
   const pct = batch.total ? (batch.applied / batch.total) * 100 : 0;
 
   return (
-    <div className="overflow-hidden rounded-xl border shadow-sm">
+    <div className="overflow-hidden rounded-xl border shadow-xs">
       <div className="bg-card flex items-center justify-between gap-2 border-b px-4 py-3">
         <div className="flex items-center gap-2.5 text-sm font-semibold">
           <Loader2 className="text-warning size-3.5 animate-spin" />

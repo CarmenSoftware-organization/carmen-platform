@@ -225,7 +225,7 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       {!readOnly && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            <label className="cursor-pointer inline-flex h-8 items-center rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+            <label className="cursor-pointer inline-flex h-8 items-center rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
               <input
                 ref={fileInputRef}
                 type="file"
