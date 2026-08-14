@@ -91,8 +91,14 @@ export function CharacterCountInput({
   const errorId = `${fieldId}-error`;
   const [touched, setTouched] = useState(false);
 
+  // ข้อความกำหนดเอง ไม่ใช้ default ของ zod: มันแสดงต่อผู้ใช้ใน role="alert" และถ้อยคำของ zod
+  // เปลี่ยนไปมาระหว่าง major (v3 "String must contain at least N character(s)" →
+  // v4 "Too small: expected string to have >=N characters")
   const schema = useMemo(
-    () => z.string().min(minLength).max(maxLength),
+    () => z
+      .string()
+      .min(minLength, `Must be at least ${minLength} characters`)
+      .max(maxLength, `Must be at most ${maxLength} characters`),
     [minLength, maxLength],
   );
   const result = schema.safeParse(value);
