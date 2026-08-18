@@ -9,12 +9,10 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, CreditCard, Download } from 'lucide-react';
+import { Plus, Filter, X, CreditCard, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { ListEmptyState } from '../components/ListEmptyState';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
@@ -32,6 +30,9 @@ const STATUS_OPTIONS: SubscriptionStatus[] = ['active', 'inactive', 'expired'];
 // backend ไม่มี default sort เลย (`orderBy: {}`) ถ้าไม่ส่ง `sort` — ลำดับแถวข้ามหน้าจะไม่นิ่ง
 // (phase-b-backend-contract.md §8.3) จึงต้องมีค่านี้เสมอ ไม่ปล่อยให้ตกไปเป็นสตริงว่าง
 const DEFAULT_SORT = 'end_date:desc';
+// `DataTable`'s `defaultSort` prop wants `{ id, desc }`, not the `field:asc|desc` string —
+// derive both from the one constant above so they can never drift apart.
+const [DEFAULT_SORT_ID, DEFAULT_SORT_DIRECTION] = DEFAULT_SORT.split(':');
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -78,7 +79,6 @@ const SubscriptionManagement: React.FC = () => {
     advance: buildAdvance(storedSearch, storedStatus, storedExpiringSoon),
   });
 
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,9 +145,16 @@ const SubscriptionManagement: React.FC = () => {
   const handleExpiringSoonToggle = () => {
     const next = !expiringSoonFilter;
     setExpiringSoonFilter(next);
+    // buildAdvance ignores `status` entirely once expiringSoon is on (it forces active) — leaving
+    // statusFilter populated would make the Filters badge count a filter that has no effect on
+    // the request, so clear it here rather than just disabling its buttons (review B2#4: "what
+    // the user sees on screen must equal what's sent to the backend").
+    const nextStatus = next ? [] : statusFilter;
+    if (next) setStatusFilter([]);
     localStorage.setItem('filter_subscription_expiring_soon', JSON.stringify(next));
+    if (next) localStorage.setItem('filters_subscription_status', JSON.stringify([]));
     localStorage.setItem('page_subscriptions', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(searchTerm, statusFilter, next) }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(searchTerm, nextStatus, next) }));
   };
 
   const handleClearStatusFilter = () => {
@@ -175,22 +182,6 @@ const SubscriptionManagement: React.FC = () => {
     localStorage.setItem('sort_subscriptions', next);
     localStorage.setItem('page_subscriptions', '1');
     setPaginate(prev => ({ ...prev, sort: next, page: 1 }));
-  };
-
-  const handleDelete = useCallback((id: string) => {
-    setDeleteId(id);
-  }, []);
-
-  const handleConfirmDelete = async () => {
-    if (!deleteId) return;
-    try {
-      await subscriptionService.delete(deleteId);
-      toast.success('Subscription deleted successfully');
-      setDeleteId(null);
-      setPaginate(prev => ({ ...prev }));
-    } catch (err: unknown) {
-      toast.error('Failed to delete subscription', { description: getErrorDetail(err) });
-    }
   };
 
   const handleExport = () => {
@@ -228,6 +219,10 @@ const SubscriptionManagement: React.FC = () => {
       // cluster_name/cluster_code มาจาก join กับ tb_cluster ไม่ใช่คอลัมน์จริงของ tb_subscription —
       // เรียงด้วยคอลัมน์นี้ backend throw 400 (phase-b-backend-contract.md §8.3)
       enableSorting: false,
+      // mobile card header: both Subscription and Cluster are 'title' — the same dual-title
+      // pattern as ClusterManagement's Code+Name columns (data-table.tsx joins multiple title
+      // cells with a middot). Cluster must be one of them per the B2 review corrections.
+      meta: { card: 'title' },
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span>{row.original.cluster_name}</span>
@@ -278,36 +273,13 @@ const SubscriptionManagement: React.FC = () => {
         </div>
       ),
     },
-    {
-      id: 'actions',
-      header: '',
-      meta: { headerClassName: 'max-w-12', cellClassName: 'text-center p-0 max-w-12', card: 'actions' },
-      enableSorting: false,
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.subscription_number}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {/* ungated: route /subscriptions/:id/edit ใช้ subscription.read เท่านั้น — คนที่อ่านได้
-                อย่างเดียวต้องเปิดหน้าดูได้ (ปุ่มเขียนถูกกั้นภายในหน้า Edit เอง) */}
-            <DropdownMenuItem onClick={() => navigate(`/subscriptions/${row.original.id}/edit`)} className="cursor-pointer">
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <Can permission="subscription.manage">
-              <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </Can>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-    },
-  ], [navigate, handleDelete]);
+  ], []);
+  // No actions column: with Delete removed (review B2#1 — the backend can never surface a
+  // soft-deleted subscription, so a delete button nobody can verify or undo was worse than no
+  // button), the only remaining row action was "Edit", which just duplicated the already-
+  // clickable Subscription/Cluster links above. A single-item dropdown that only navigates
+  // (never mutates) is redundant chrome, not a genuine menu — so it's gone rather than kept
+  // as a one-item DropdownMenu.
 
   return (
     <Layout>
@@ -371,7 +343,7 @@ const SubscriptionManagement: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter} disabled={expiringSoonFilter}>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>
                             Clear
                           </Button>
                         )}
@@ -486,7 +458,7 @@ const SubscriptionManagement: React.FC = () => {
                       perpage={paginate.perpage}
                       onPaginateChange={handlePaginateChange}
                       onSortChange={handleSortChange}
-                      defaultSort={{ id: 'end_date', desc: true }}
+                      defaultSort={{ id: DEFAULT_SORT_ID, desc: DEFAULT_SORT_DIRECTION === 'desc' }}
                     />
                   </>
                 )}
@@ -495,16 +467,6 @@ const SubscriptionManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
-
-      <ConfirmDialog
-        open={deleteId !== null}
-        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Subscription"
-        description="Are you sure you want to delete this subscription? This action cannot be undone."
-        confirmText="Delete"
-        confirmVariant="destructive"
-        onConfirm={handleConfirmDelete}
-      />
 
       <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/subscriptions" data={rawResponse} />
     </Layout>

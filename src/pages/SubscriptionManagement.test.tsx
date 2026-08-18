@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -103,7 +103,6 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   asMock(subscriptionService.getAll).mockResolvedValue(listResponse);
-  asMock(subscriptionService.delete).mockResolvedValue({});
 });
 
 const renderPage = () =>
@@ -165,34 +164,76 @@ describe('SubscriptionManagement — Add Subscription gate (subscription.manage)
   });
 });
 
-describe('SubscriptionManagement — row action gate (Edit ungated, Delete needs subscription.manage)', () => {
-  const openRowMenu = async (user: ReturnType<typeof userEvent.setup>) =>
-    user.click(screen.getByRole('button', { name: /actions for sub-0001/i }));
-
-  it('shows Edit but hides Delete for a read-only user (subscription.read only)', async () => {
-    auth.hasPermission = (perm) => perm === 'subscription.read';
-    const user = userEvent.setup();
+// Review B2#1: the row actions dropdown (Edit + Delete) was removed entirely. Delete is gone
+// (the backend can never surface a soft-deleted subscription, so nobody could verify or undo
+// it), and a single-item "Edit" dropdown would have just duplicated the already-clickable
+// Subscription/Cluster links. This is a regression guard for both halves of that decision:
+// no dropdown/menu exists, and the links it would have duplicated still reach the edit route
+// on their own — for every caller regardless of permission, since the route itself only
+// requires subscription.read (a read-only user must still be able to open it).
+describe('SubscriptionManagement — no row actions menu; links go straight to the edit route', () => {
+  it('has no "Actions" trigger and no Delete anywhere on the row, even with subscription.manage', async () => {
+    auth.hasPermission = () => true;
     renderPage();
     await screen.findByText('SUB-0001');
 
-    await openRowMenu(user);
-
-    // Edit is never gated on subscription.manage — the route itself only requires
-    // subscription.read, so a read-only user must still be able to open it.
-    expect(await screen.findByRole('menuitem', { name: /^edit$/i })).toBeInTheDocument();
-    expect(screen.queryByRole('menuitem', { name: /^delete$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /actions for/i })).toBeNull();
+    expect(screen.queryByRole('menuitem')).toBeNull();
+    expect(screen.queryByText(/^delete$/i)).toBeNull();
   });
 
-  it('shows both Edit and Delete with subscription.manage (discriminating control)', async () => {
-    auth.hasPermission = (perm) => perm === 'subscription.read' || perm === 'subscription.manage';
+  it('the Subscription number links straight to /subscriptions/:id/edit for a read-only user', async () => {
+    auth.hasPermission = (perm) => perm === 'subscription.read';
+    renderPage();
+
+    const subLink = await screen.findByRole('link', { name: 'SUB-0001' });
+    expect(subLink).toHaveAttribute('href', '/subscriptions/sub1/edit');
+  });
+});
+
+// Review B2#4/#6: buildAdvance forces status=active and ignores any status the user picked
+// once "Expiring soon" is on, so the UI must not leave a stale, silently-ineffective status
+// selection visible — the toggle now disables the status buttons AND clears the selection.
+describe('SubscriptionManagement — "Expiring soon" locks and clears the status filter', () => {
+  it('disables the status buttons, shows the lock message, and clears a status picked beforehand', async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('SUB-0001');
 
-    await openRowMenu(user);
+    const filtersButton = screen.getByRole('button', { name: /filters/i });
+    await user.click(filtersButton);
+    await user.click(await screen.findByRole('button', { name: /^active$/i }));
 
-    expect(await screen.findByRole('menuitem', { name: /^edit$/i })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: /^delete$/i })).toBeInTheDocument();
+    // One real filter selected so far — the Filters button badge says so.
+    expect(within(filtersButton).getByText('1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^active$/i })).not.toBeDisabled();
+
+    await user.click(screen.getByLabelText(/expiring within 30 days/i));
+
+    // The status buttons are now disabled and the lock message explains why — not just
+    // silently ignored while still looking selectable.
+    expect(screen.getByRole('button', { name: /^active$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^inactive$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^expired$/i })).toBeDisabled();
+    expect(
+      screen.getByText(/locked to active while showing subscriptions expiring soon/i),
+    ).toBeInTheDocument();
+
+    // Still exactly one filter shown — the previously-selected status was cleared, not just
+    // visually disabled while continuing to count toward the badge.
+    expect(within(filtersButton).getByText('1')).toBeInTheDocument();
+    expect(within(filtersButton).queryByText('2')).toBeNull();
+
+    // What's on screen must equal what's sent: the request the toggle triggered carries only
+    // the forced active/expiring-soon clause, no leftover status:{in:...} from the earlier pick.
+    await waitFor(() => {
+      const lastCall = asMock(subscriptionService.getAll).mock.calls.at(-1)?.[0];
+      const parsed = JSON.parse(lastCall.advance);
+      expect(parsed.where.AND).toEqual([
+        { status: 'active' },
+        { end_date: { gte: expect.any(String), lte: expect.any(String) } },
+      ]);
+    });
   });
 });
 
