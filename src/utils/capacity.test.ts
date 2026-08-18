@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { utilization, isNearLimit, summarizeFleet } from './capacity';
+import { utilization, isNearLimit, summarizeFleet, seatUtilization } from './capacity';
 
 describe('utilization', () => {
   it('grades ok / warn / over against a finite cap', () => {
@@ -54,5 +54,40 @@ describe('summarizeFleet', () => {
     expect(s.active).toBe(3);
     expect(s.inactive).toBe(1);
     expect(s.near_limit).toBe(1); // only the bu-over cluster
+  });
+});
+
+describe('seatUtilization', () => {
+  it('cap = 0 with no usage is ok, with a zero ratio and 0%', () => {
+    const s = seatUtilization(0, 0);
+    expect(s.level).toBe('ok');
+    expect(s.cap).toBe(0);
+    expect(s.ratio).toBe(0);
+    expect(s.pct).toBe(0);
+  });
+
+  it('cap = 0 with any usage is over — zero seats never means unlimited', () => {
+    const s = seatUtilization(3, 0);
+    expect(s.level).toBe('over');
+    expect(s.cap).toBe(0);
+    expect(s.ratio).toBe(1);
+    expect(s.pct).toBe(100);
+  });
+
+  it('grades ok / warn / over against a finite cap, same thresholds as utilization()', () => {
+    expect(seatUtilization(5, 10).level).toBe('ok');
+    expect(seatUtilization(9, 10).level).toBe('warn'); // exactly 90%
+    expect(seatUtilization(10, 10).level).toBe('over'); // exactly 100%
+    expect(seatUtilization(12, 10).level).toBe('over'); // exceeded
+  });
+
+  it('never returns "none" — the seat system has no uncapped state', () => {
+    expect(seatUtilization(0, 0).level).not.toBe('none');
+    expect(seatUtilization(50, 100).level).not.toBe('none');
+    expect(seatUtilization(0, 5).level).not.toBe('none');
+  });
+
+  it('reports rounded percentage', () => {
+    expect(seatUtilization(1, 3).pct).toBe(33);
   });
 });
