@@ -3455,10 +3455,18 @@ grep -rn "403\|Forbidden\|permission" components/api-error-toaster.tsx lib/api-e
 
 - [ ] **Step 2: แยกตาม `code` ใน body**
 
-`LicenseInterceptor` โยน body รูปนี้ (ดู Task A5):
+**รูปที่ client ได้รับจริง — `code` อยู่ใต้ `error` ไม่ใช่ระดับบนสุด** (แก้ 2026-08-18)
+
+global `ExceptionFilter` ลบ `code` ระดับบนสุดทิ้งเสมอ แล้วใส่กลับใต้ `error` object
+หลังจากที่ Task A5 ลงทะเบียน `LICENSE_REQUIRED`/`LICENSE_EXPIRED` ใน `ERROR_CATALOG` แล้ว:
+
 ```jsonc
-{ "code": "LICENSE_REQUIRED", "feature": "procurement.purchase_request", "bu_codes": ["T02"] }
-{ "code": "LICENSE_EXPIRED",  "feature": "…", "bu_codes": ["T02"] }
+{
+  "success": false, "status": 403,
+  "message": "<ข้อความจากแคตาล็อกตามภาษา>", "timestamp": "...", "path": "...",
+  "error": { "code": "LICENSE_REQUIRED", "id": 2110001 },
+  "feature": "procurement.purchase_request", "bu_codes": ["T02"]
+}
 ```
 
 ```ts
@@ -3468,7 +3476,9 @@ grep -rn "403\|Forbidden\|permission" components/api-error-toaster.tsx lib/api-e
  * ทั้งที่คนที่ต้องทำอะไรคือฝ่ายจัดซื้อ
  */
 function handleForbidden(body: unknown) {
-  const code = (body as { code?: string } | null)?.code;
+  // `code` อยู่ใต้ `error` เพราะ ExceptionFilter ของ gateway จัด envelope แบบนั้น
+  // (ร่างแรกของแผนเขียนว่าอยู่ระดับบนสุด — ผิด แก้ 2026-08-18)
+  const code = (body as { error?: { code?: string } } | null)?.error?.code;
   if (code === "LICENSE_REQUIRED") {
     dispatchPermissionDenied(undefined, undefined, "license");
     return true;
@@ -3481,8 +3491,8 @@ function handleForbidden(body: unknown) {
 }
 ```
 
-**NestJS ห่อ body ที่โยนจาก `ForbiddenException` ไว้ตามรูปของมันเอง** — ยิง curl ดูของจริงก่อน
-เขียนตัวแกะ อย่าเดาว่า `code` อยู่ชั้นบนสุด อาจอยู่ใต้ `response` หรือ `message`
+**ยิง curl ดูของจริงก่อนเขียนตัวแกะเสมอ** — รูปด้านบนคือสิ่งที่ตรวจจากซอร์สของ
+`exception.fillter.ts:148-195` แล้ว แต่ยืนยันกับ response จริงอีกครั้งไม่เสียหาย
 
 - [ ] **Step 3: ตรวจของจริงด้วย curl**
 

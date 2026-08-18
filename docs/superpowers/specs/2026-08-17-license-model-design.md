@@ -340,14 +340,32 @@ LicenseInterceptor ────────────┘  อ่านจา�
 
 ### 5.3 รูปของ error
 
+> **แก้ 2026-08-18 — ร่างแรกของสเปกนี้ผิด** เขียนว่า `code` อยู่ระดับบนสุดของ body
+> ของจริงคือทุก exception ไหลผ่าน global `ExceptionFilter` (`apps/backend-gateway/src/exception/exception.fillter.ts`)
+> ซึ่ง **ลบ `code` ออกแบบไม่มีเงื่อนไข** (`:167`) แล้วใส่กลับเฉพาะเมื่อหา entry ใน `ERROR_CATALOG` เจอ
+> โดยจัดไว้ใต้ `error` object ตาม envelope มาตรฐานของ repo
+
+ต้องลงทะเบียน `LICENSE_REQUIRED` / `LICENSE_EXPIRED` ใน `packages/error-catalog/src/catalog.ts`
+(module prefix `LICENSE: 211`, `http_status: 403`) ไม่งั้น **`code` จะหายไปเงียบ ๆ** และ FE
+แยก "ต้องซื้อเพิ่ม" กับ "ต้องต่ออายุ" ไม่ได้เลย
+
+รูปที่ client ได้รับจริง:
+
 ```jsonc
 // 403
-{ "code": "LICENSE_REQUIRED", "feature": "procurement.purchase_request", "bu_codes": ["T02"] }
-{ "code": "LICENSE_EXPIRED",  "feature": "procurement.purchase_request", "bu_codes": ["T02"],
-  "end_date": "2026-06-30T00:00:00Z" }
+{
+  "success": false,
+  "status": 403,
+  "message": "<ข้อความจากแคตาล็อกตามภาษาของ client>",
+  "timestamp": "...",
+  "path": "/api/T02/purchase-requests",
+  "error": { "code": "LICENSE_REQUIRED", "id": 2110001 },   // ← code อยู่ตรงนี้ ไม่ใช่ระดับบนสุด
+  "feature": "procurement.purchase_request",
+  "bu_codes": ["T02"]
+}
 ```
 
-FE ต้องแยกให้ออกจาก 403 ของ permission ไม่งั้นจะขึ้น dialog ผิดใบ (§8.5)
+FE ต้องอ่าน **`error.code`** และแยกให้ออกจาก 403 ของ permission ไม่งั้นจะขึ้น dialog ผิดใบ (§8.10)
 
 ### 5.4 สวิตช์นิรภัย
 
