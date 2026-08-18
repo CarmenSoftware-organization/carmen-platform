@@ -47,6 +47,19 @@
 - ทุกตารางใหม่ต้องมี `doc_version` + audit 6 คอลัมน์ + soft delete ตามแบบของ repo
 - ทุก datetime เป็น `TIMESTAMPTZ` / ISO 8601 `Z` (กฎ timezone ของโปรเจกต์)
 
+### API ของ repo ที่ยืนยันแล้ว (อย่าเดา อย่าประดิษฐ์)
+
+ตรวจจากซอร์สจริงตอน pre-flight แล้ว — ถ้าโค้ดในแผนขัดกับตารางนี้ ให้เชื่อตารางนี้
+
+| ของ | ความจริง |
+|---|---|
+| `Result` | `import { TryCatch, Result, ErrorCode } from '@/common'` — มี `ok(v)` · `error(msg, code?, data?)` · `errorFromCatalog(entry, …)` · `fromMicroserviceError(res)` · **ไม่มี `fail()`** |
+| `ErrorCode` | มีแค่ `ALREADY_EXISTS` `INTERNAL` `INVALID_ARGUMENT` `NOT_FOUND` `PERMISSION_DENIED` `UNAUTHENTICATED` `VALIDATION_FAILURE` — **ไม่มี `CONFLICT`** ใช้ `ERROR_CATALOG` + `errorFromCatalog` แทน |
+| doc_version | อัปเดตแบบ optimistic `where: { id, doc_version }` แล้วดูว่ากระทบ 0 แถวไหม — ดู `apps/micro-cluster/src/cluster/cluster/cluster.service.ts:217-219` |
+| `_prisma-client.ts` | export `makePlatformClient(url?)` เท่านั้น ไม่มี client สำเร็จรูป |
+| schema name | `CARMEN_SYSTEM` (ยืนยันจาก `SYSTEM_SCHEMA_NAME` ใน `.env` ของ DEV) |
+| `permission.route-map.ts` | export `ROUTE_RESOURCE_MAP` · `SUB_RESOURCE_SEGMENTS` · `SUB_PATH_RESOURCE_MAP` · `VERB_ACTION` · `ACTION_OVERRIDES` · `SUB_PATH_ACTION_OVERRIDES` · `WORKFLOW_GATED_RESOURCES` · `PLANNED_RESOURCES` · `PLANNED_ACTIONS` · `is_module_level_resource()` |
+
 ### กฎ commit / branch
 
 - `carmen-turborepo-backend-v2` → กิ่ง `feature/license-model` · PR เข้า `main`
@@ -1682,7 +1695,12 @@ replace semantics เต็มรูป เหมือน `applicationService` 
     );
     const unknown = [...new Set(bus.flatMap((b) => b.feature_keys))].filter((k) => !valid.has(k));
     if (unknown.length > 0) {
-      return Result.fail(HttpStatus.BAD_REQUEST, `feature key ที่ไม่รู้จัก: ${unknown.join(', ')}`);
+      // API จริงคือ Result.error(message, ErrorCode) — **ไม่มี Result.fail()**
+      // รูปแบบนี้ลอกจาก business-unit-interface.service.ts:113-115
+      return Result.error(
+        `feature key ที่ไม่รู้จัก: ${unknown.join(', ')}`,
+        ErrorCode.VALIDATION_FAILURE,
+      );
     }
 
     // 2. บังคับกฎ "มีลูกต้องมีแม่" ตั้งแต่ตอนเขียน — evaluator เช็คซ้ำแต่ที่นี่คือด่านแรก
@@ -1700,9 +1718,13 @@ replace semantics เต็มรูป เหมือน `applicationService` 
         where: { id, deleted_at: null },
         select: { id: true, doc_version: true },
       });
-      if (!current) return Result.fail(HttpStatus.NOT_FOUND, 'ไม่พบสัญญา');
+      if (!current) return Result.error('ไม่พบสัญญา', ErrorCode.NOT_FOUND);
       if (docVersion !== undefined && current.doc_version !== docVersion) {
-        return Result.fail(HttpStatus.CONFLICT, 'ข้อมูลถูกแก้ไขโดยผู้อื่น');
+        // ไม่มี ErrorCode.CONFLICT ใน enum — ใช้ ERROR_CATALOG เหมือนที่
+        // user-invitation.service.ts:1205-1207 ทำ ถ้ายังไม่มีรายการสำหรับ
+        // version conflict ให้เพิ่มเข้า ERROR_CATALOG แล้วใช้ Result.errorFromCatalog
+        // อย่าประดิษฐ์ ErrorCode ใหม่
+        return Result.errorFromCatalog(ERROR_CATALOG.DOC_VERSION_CONFLICT);
       }
 
       const now = new Date();
