@@ -46,6 +46,10 @@ vi.mock('../context/AuthContext', () => ({
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 
+vi.mock('../services/clusterService', () => ({
+  default: { getAll: vi.fn() },
+}));
+
 vi.mock('../services/subscriptionService', () => ({
   default: {
     getAll: vi.fn(),
@@ -60,6 +64,7 @@ vi.mock('../services/subscriptionService', () => ({
 
 import SubscriptionManagement from './SubscriptionManagement';
 import subscriptionService from '../services/subscriptionService';
+import clusterService from '../services/clusterService';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
@@ -103,7 +108,16 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   asMock(subscriptionService.getAll).mockResolvedValue(listResponse);
+  asMock(clusterService.getAll).mockResolvedValue({
+    data: [
+      { id: 'c1', code: 'ACME', name: 'Acme Cluster', is_active: true },
+      { id: 'c2', code: 'BETA', name: 'Beta Cluster', is_active: true },
+    ],
+    paginate: { total: 2, page: 1, perpage: 100 },
+  });
 });
+
+const lastCall = () => asMock(subscriptionService.getAll).mock.calls.at(-1)?.[0];
 
 const renderPage = () =>
   render(
@@ -257,5 +271,176 @@ describe('SubscriptionManagement — search folds into `advance`, never `search`
     expect(JSON.parse(lastCall.advance)).toEqual({
       where: { AND: [{ subscription_number: { contains: 'SUB-9', mode: 'insensitive' } }] },
     });
+  });
+});
+
+// Review I2: `end_date:desc` alone is not a total order, and spec §9 backfills every cluster a
+// contract with the same far-future end_date — so on day one every row ties. Postgres is free
+// to return tied rows in a different order per query, which makes rows repeat or vanish across
+// pages with no error at all. `id` is the primary key, so it breaks every tie.
+describe('SubscriptionManagement — sort always carries a unique tiebreaker', () => {
+  it('sends end_date:desc,id:asc on the first request', async () => {
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(lastCall().sort).toBe('end_date:desc,id:asc');
+  });
+
+  it('keeps the tiebreaker when the user sorts by a column header', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    // TanStack's 3-state cycle from the desc default: first click clears the sort (the page
+    // substitutes DEFAULT_SORT rather than sending an empty one), the second flips to asc.
+    await user.click(screen.getByRole('button', { name: /period/i }));
+    await waitFor(() => expect(lastCall().sort).toBe('end_date:desc,id:asc'));
+
+    await user.click(screen.getByRole('button', { name: /period/i }));
+    await waitFor(() => expect(lastCall().sort).toBe('end_date:asc,id:asc'));
+  });
+
+  it('restores the default (never an empty sort) if a stored sort is blank', async () => {
+    localStorage.setItem('sort_subscriptions', '');
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(lastCall().sort).toBe('end_date:desc,id:asc');
+  });
+
+  it('adds the tiebreaker to a stored sort saved before this fix', async () => {
+    localStorage.setItem('sort_subscriptions', 'subscription_number:asc');
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(lastCall().sort).toBe('subscription_number:asc,id:asc');
+  });
+});
+
+// Review I1: the filter sent raw `status`, while the badge and the summary cards both show
+// `state`. Ticking Expired has to catch rows whose status is still 'active' but whose end_date
+// has passed — those are exactly the rows the table labels "expired".
+describe('SubscriptionManagement — the State filter matches what the badge shows', () => {
+  const openFilters = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+  };
+
+  it('translates Expired into status=expired OR (status=active AND end_date past)', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await openFilters(user);
+    await user.click(await screen.findByRole('button', { name: /^expired$/i }));
+
+    await waitFor(() => {
+      const parsed = JSON.parse(lastCall().advance);
+      expect(parsed.where.AND).toEqual([
+        {
+          OR: [
+            { OR: [{ status: 'expired' }, { status: 'active', end_date: { lt: expect.any(String) } }] },
+          ],
+        },
+      ]);
+    });
+  });
+
+  it('translates Active into status=active AND end_date not yet passed', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await openFilters(user);
+    await user.click(await screen.findByRole('button', { name: /^active$/i }));
+
+    await waitFor(() => {
+      const parsed = JSON.parse(lastCall().advance);
+      expect(parsed.where.AND).toEqual([
+        { OR: [{ status: 'active', end_date: { gte: expect.any(String) } }] },
+      ]);
+    });
+    // The raw-column form is gone for good.
+    expect(lastCall().advance).not.toContain('"in"');
+  });
+
+  it('labels the filter "State", the same word the column header uses', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await openFilters(user);
+    // Two on screen: the filter-sheet group label and the table column header.
+    expect(await screen.findAllByText('State')).toHaveLength(2);
+  });
+});
+
+// Review M3: spec §8.1 lists BU, Features, and a cluster filter. The counts were already on
+// every row (they even shipped in the CSV export) — just never rendered.
+describe('SubscriptionManagement — BU and Features columns', () => {
+  it('renders both column headers with the row values', async () => {
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(screen.getByText('BU')).toBeInTheDocument();
+    expect(screen.getByText('Features')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();  // bu_count
+    expect(screen.getByText('5')).toBeInTheDocument();  // feature_count
+  });
+
+  it('does not offer sorting on either — they are backend aggregates, not columns (400)', async () => {
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(screen.queryByRole('button', { name: /^BU$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Features$/ })).toBeNull();
+  });
+});
+
+describe('SubscriptionManagement — cluster filter', () => {
+  it('sends cluster_id in advance and shows a removable badge', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    await user.selectOptions(await screen.findByLabelText('Cluster'), 'c2');
+
+    await waitFor(() => {
+      const parsed = JSON.parse(lastCall().advance);
+      expect(parsed.where.AND).toContainEqual({ cluster_id: 'c2' });
+    });
+
+    // Close the sheet before touching the badge behind it — Radix marks the rest of the page
+    // aria-hidden while a modal sheet is open.
+    await user.keyboard('{Escape}');
+    await user.click(await screen.findByRole('button', { name: 'ล้างตัวกรอง cluster' }));
+    await waitFor(() => expect(lastCall().advance).toBe(''));
+  });
+
+  it('lists every cluster the loader returned', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    const select = await screen.findByLabelText('Cluster');
+    expect(within(select).getByRole('option', { name: 'ACME - Acme Cluster' })).toBeInTheDocument();
+    expect(within(select).getByRole('option', { name: 'BETA - Beta Cluster' })).toBeInTheDocument();
+  });
+
+  // Same reasoning as review C1: a request the user is not allowed to make is a request that
+  // can bounce them out of the app, so it is not made at all — and the control it feeds goes
+  // with it rather than sitting there empty.
+  it('is hidden, and no cluster request is made, without cluster.read', async () => {
+    auth.hasPermission = (perm) => perm.startsWith('subscription.');
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await user.click(screen.getByRole('button', { name: /filters/i }));
+    // The sheet is open (its State group rendered) — the Cluster control simply is not there.
+    await screen.findByRole('button', { name: /^expired$/i });
+    expect(screen.queryByLabelText('Cluster')).toBeNull();
+    expect(clusterService.getAll).not.toHaveBeenCalled();
   });
 });

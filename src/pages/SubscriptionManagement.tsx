@@ -19,20 +19,40 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { SubscriptionSummary } from './subscriptionManagement/SubscriptionSummary';
-import { buildAdvance } from './subscriptionManagement/buildAdvance';
+import { buildAdvance, type SubscriptionFilters } from './subscriptionManagement/buildAdvance';
 import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../utils/subscriptionState';
 import { seatUtilization } from '../utils/capacity';
-import type { Subscription, SubscriptionStatus, SubscriptionSummary as SummaryType, PaginateParams } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { useAllClusters } from '../hooks/useAllClusters';
+import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
-const STATUS_OPTIONS: SubscriptionStatus[] = ['active', 'inactive', 'expired'];
+// สถานะที่แสดงผล (`state`) ชุดเดียวกับที่ badge ในตารางและการ์ด summary ใช้ — ไม่ใช่ `status` ดิบ
+// การกรองแปลงกลับเป็นเงื่อนไขบนคอลัมน์จริงใน `buildAdvance`
+const STATE_OPTIONS: SubscriptionState[] = ['active', 'inactive', 'expired'];
 
 // backend ไม่มี default sort เลย (`orderBy: {}`) ถ้าไม่ส่ง `sort` — ลำดับแถวข้ามหน้าจะไม่นิ่ง
 // (phase-b-backend-contract.md §8.3) จึงต้องมีค่านี้เสมอ ไม่ปล่อยให้ตกไปเป็นสตริงว่าง
-const DEFAULT_SORT = 'end_date:desc';
-// `DataTable`'s `defaultSort` prop wants `{ id, desc }`, not the `field:asc|desc` string —
-// derive both from the one constant above so they can never drift apart.
-const [DEFAULT_SORT_ID, DEFAULT_SORT_DIRECTION] = DEFAULT_SORT.split(':');
+const DEFAULT_SORT_ID = 'end_date';
+const DEFAULT_SORT_DESC = true;
+// ...และคอลัมน์เดียวยังไม่ใช่ลำดับสมบูรณ์: สเปก §9 สั่ง backfill ให้ทุก cluster ได้สัญญาที่
+// `end_date` ไกล ๆ เท่ากันหมด → แถวที่ค่าเท่ากันจะสลับตำแหน่งระหว่างคำขอของแต่ละหน้า แล้วแถวซ้ำ/
+// แถวหายข้ามหน้าโดยไม่มี error ใด ๆ · `id` เป็น primary key จึง unique เสมอและตัดเสมอทุกกรณี
+// (backend รับ multi-sort คั่นด้วย `,`/`;` — contract §8.3)
+const SORT_TIEBREAKER = 'id:asc';
+const DEFAULT_SORT = `${DEFAULT_SORT_ID}:${DEFAULT_SORT_DESC ? 'desc' : 'asc'},${SORT_TIEBREAKER}`;
+
+/**
+ * ต่อ tiebreaker ให้ค่า sort **ทุกค่า** ที่ `DataTable` ส่งมา ไม่ใช่เฉพาะค่าเริ่มต้น — เรียงตาม
+ * `status` หรือ `subscription_number` ก็มีค่าซ้ำได้เหมือนกัน · ค่าว่าง (header toggle วนกลับมาที่
+ * "ไม่เรียง") ตกกลับไปเป็น DEFAULT_SORT ไม่ใช่ส่งสตริงว่างให้ backend
+ */
+const withTiebreaker = (sort: string): string => {
+  const s = sort.trim();
+  if (!s) return DEFAULT_SORT;
+  const alreadyHasId = s.split(/[;,]/).some((part) => part.trim().startsWith('id:'));
+  return alreadyHasId ? s : `${s},${SORT_TIEBREAKER}`;
+};
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -61,22 +81,36 @@ const SubscriptionManagement: React.FC = () => {
   const [summaryError, setSummaryError] = useState('');
 
   const storedSearch = localStorage.getItem('search_subscriptions') || '';
-  const storedStatus = getStoredJSON<SubscriptionStatus[]>('filters_subscription_status', []);
+  const storedStates = getStoredJSON<SubscriptionState[]>('filters_subscription_state', []);
   const storedExpiringSoon = getStoredJSON<boolean>('filter_subscription_expiring_soon', false);
+  const storedCluster = localStorage.getItem('filter_subscription_cluster') || '';
   const storedPage = Number(localStorage.getItem('page_subscriptions')) || 1;
-  const storedSort = localStorage.getItem('sort_subscriptions') || DEFAULT_SORT;
+  const storedSort = withTiebreaker(localStorage.getItem('sort_subscriptions') || '');
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
-  const [statusFilter, setStatusFilter] = useState<SubscriptionStatus[]>(storedStatus);
+  const [stateFilter, setStateFilter] = useState<SubscriptionState[]>(storedStates);
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<boolean>(storedExpiringSoon);
+  const [clusterFilter, setClusterFilter] = useState<string>(storedCluster);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+
+  // รายชื่อ cluster สำหรับตัวกรอง — โหลดเฉพาะเมื่อผู้ใช้อ่าน cluster ได้จริง ด้วยเหตุผลเดียวกับ
+  // SubscriptionCard (review C1): ยิงคำขอที่ผู้ใช้ไม่มีสิทธิ์คือการเสี่ยงให้ interceptor เด้งออกจาก
+  // ระบบโดยที่หน้าเจ้าของคำขอห้ามไม่ได้
+  const { hasPermission } = useAuth();
+  const canReadClusters = hasPermission('cluster.read');
+  const { clusters, error: clustersError } = useAllClusters(canReadClusters);
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
     perpage: Number(localStorage.getItem('perpage_subscription')) || 10,
     sort: storedSort,
-    advance: buildAdvance(storedSearch, storedStatus, storedExpiringSoon),
+    advance: buildAdvance({
+      search: storedSearch,
+      states: storedStates,
+      expiringSoon: storedExpiringSoon,
+      clusterId: storedCluster,
+    }),
   });
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -115,13 +149,24 @@ const SubscriptionManagement: React.FC = () => {
     fetchSubscriptions(paginate);
   }, [fetchSubscriptions, paginate]);
 
+  // ตัวกรองปัจจุบันทั้งชุด — ทุก handler ส่งเฉพาะสิ่งที่ตัวเองเปลี่ยนผ่าน `over` ที่เหลือมาจาก
+  // state ของ render ปัจจุบัน (ค่าถูกเสมอเพราะ handler ถูกสร้างใหม่ทุก render)
+  const advanceFor = (over: Partial<SubscriptionFilters> = {}) =>
+    buildAdvance({
+      search: searchTerm,
+      states: stateFilter,
+      expiringSoon: expiringSoonFilter,
+      clusterId: clusterFilter,
+      ...over,
+    });
+
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     localStorage.setItem('search_subscriptions', value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => {
       localStorage.setItem('page_subscriptions', '1');
-      setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(value, statusFilter, expiringSoonFilter) }));
+      setPaginate(prev => ({ ...prev, page: 1, advance: advanceFor({ search: value }) }));
     }, 400);
   };
 
@@ -131,54 +176,69 @@ const SubscriptionManagement: React.FC = () => {
     setPaginate(prev => ({ ...prev, page, perpage }));
   };
 
-  const handleStatusFilter = (status: SubscriptionStatus) => {
+  const handleStateFilter = (state: SubscriptionState) => {
     if (expiringSoonFilter) return; // ต้องปิด "ใกล้หมดอายุ" ก่อน — ดู UI disabled state ด้านล่าง
-    const next = statusFilter.includes(status)
-      ? statusFilter.filter((s) => s !== status)
-      : [...statusFilter, status];
-    setStatusFilter(next);
-    localStorage.setItem('filters_subscription_status', JSON.stringify(next));
+    const next = stateFilter.includes(state)
+      ? stateFilter.filter((s) => s !== state)
+      : [...stateFilter, state];
+    setStateFilter(next);
+    localStorage.setItem('filters_subscription_state', JSON.stringify(next));
     localStorage.setItem('page_subscriptions', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(searchTerm, next, expiringSoonFilter) }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: advanceFor({ states: next }) }));
   };
 
   const handleExpiringSoonToggle = () => {
     const next = !expiringSoonFilter;
     setExpiringSoonFilter(next);
-    // buildAdvance ignores `status` entirely once expiringSoon is on (it forces active) — leaving
-    // statusFilter populated would make the Filters badge count a filter that has no effect on
+    // buildAdvance ignores `states` entirely once expiringSoon is on (it forces active) — leaving
+    // stateFilter populated would make the Filters badge count a filter that has no effect on
     // the request, so clear it here rather than just disabling its buttons (review B2#4: "what
     // the user sees on screen must equal what's sent to the backend").
-    const nextStatus = next ? [] : statusFilter;
-    if (next) setStatusFilter([]);
+    const nextStates = next ? [] : stateFilter;
+    if (next) setStateFilter([]);
     localStorage.setItem('filter_subscription_expiring_soon', JSON.stringify(next));
-    if (next) localStorage.setItem('filters_subscription_status', JSON.stringify([]));
+    if (next) localStorage.setItem('filters_subscription_state', JSON.stringify([]));
     localStorage.setItem('page_subscriptions', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(searchTerm, nextStatus, next) }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: advanceFor({ states: nextStates, expiringSoon: next }) }));
   };
 
-  const handleClearStatusFilter = () => {
-    setStatusFilter([]);
-    localStorage.setItem('filters_subscription_status', JSON.stringify([]));
+  const handleClusterFilter = (clusterId: string) => {
+    setClusterFilter(clusterId);
+    localStorage.setItem('filter_subscription_cluster', clusterId);
     localStorage.setItem('page_subscriptions', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(searchTerm, [], expiringSoonFilter) }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: advanceFor({ clusterId }) }));
+  };
+
+  const handleClearStateFilter = () => {
+    setStateFilter([]);
+    localStorage.setItem('filters_subscription_state', JSON.stringify([]));
+    localStorage.setItem('page_subscriptions', '1');
+    setPaginate(prev => ({ ...prev, page: 1, advance: advanceFor({ states: [] }) }));
   };
 
   const handleClearAllFilters = () => {
-    setStatusFilter([]);
+    setStateFilter([]);
     setExpiringSoonFilter(false);
-    localStorage.setItem('filters_subscription_status', JSON.stringify([]));
+    setClusterFilter('');
+    localStorage.setItem('filters_subscription_state', JSON.stringify([]));
     localStorage.setItem('filter_subscription_expiring_soon', JSON.stringify(false));
+    localStorage.setItem('filter_subscription_cluster', '');
     localStorage.setItem('page_subscriptions', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(searchTerm, [], false) }));
+    setPaginate(prev => ({
+      ...prev,
+      page: 1,
+      advance: advanceFor({ states: [], expiringSoon: false, clusterId: '' }),
+    }));
   };
 
-  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (expiringSoonFilter ? 1 : 0);
+  const activeFilterCount =
+    (stateFilter.length > 0 ? 1 : 0) + (expiringSoonFilter ? 1 : 0) + (clusterFilter ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     // DataTable's 3-state header toggle can cycle back to "" (unsorted) — never let that
     // through, or the next fetch drops `orderBy` entirely (see DEFAULT_SORT comment above).
-    const next = sort || DEFAULT_SORT;
+    // Every value gets the id tiebreaker, not just the default one.
+    const next = withTiebreaker(sort);
     localStorage.setItem('sort_subscriptions', next);
     localStorage.setItem('page_subscriptions', '1');
     setPaginate(prev => ({ ...prev, sort: next, page: 1 }));
@@ -232,7 +292,9 @@ const SubscriptionManagement: React.FC = () => {
     },
     {
       id: 'state',
-      header: 'Status',
+      // "State" ไม่ใช่ "Status": ค่าที่แสดงคือ `state` ที่ backend คำนวณให้ และตัวกรองในฟิลเตอร์ชีต
+      // ก็ใช้ชุดเดียวกัน — ป้ายสองที่บนจอเดียวกันต้องเรียกของสิ่งเดียวกันด้วยชื่อเดียวกัน (review I1)
+      header: 'State',
       meta: { card: 'badge' },
       // `state` backend คำนวณให้ ไม่ใช่คอลัมน์จริงเช่นกัน — ห้ามเรียง
       enableSorting: false,
@@ -248,6 +310,24 @@ const SubscriptionManagement: React.FC = () => {
           </div>
         );
       },
+    },
+    {
+      id: 'bu_count',
+      header: 'BU',
+      // bu_count/feature_count เป็นค่า aggregate ที่ backend คำนวณตอน compose แถว ไม่ใช่คอลัมน์จริง
+      // ของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
+      enableSorting: false,
+      // ซ่อนบนการ์ดมือถือ: ตัวเลขล้วนสองบรรทัดที่ไม่มีบริบท ทำให้การ์ดยาวขึ้นโดยไม่ช่วยตัดสินใจ
+      // รายละเอียดครบอยู่ในหน้าแก้ไขสัญญาซึ่งกดจากหัวการ์ดได้อยู่แล้ว
+      meta: { card: 'hidden' },
+      cell: ({ row }) => <span className="tabular-nums">{row.original.bu_count}</span>,
+    },
+    {
+      id: 'feature_count',
+      header: 'Features',
+      enableSorting: false,
+      meta: { card: 'hidden' },
+      cell: ({ row }) => <span className="tabular-nums">{row.original.feature_count}</span>,
     },
     {
       id: 'seats',
@@ -336,14 +416,16 @@ const SubscriptionManagement: React.FC = () => {
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
                     <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter subscriptions by status and expiry</SheetDescription>
+                    <SheetDescription>Filter subscriptions by state, cluster, and expiry</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
-                        {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>
+                        {/* ป้ายชุดเดียวกับ badge ในตาราง: กรองด้วย `state` (สถานะที่แสดงผล)
+                            ไม่ใช่ `status` ดิบ — review I1 */}
+                        <span className="text-sm font-medium">State</span>
+                        {stateFilter.length > 0 && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStateFilter}>
                             Clear
                           </Button>
                         )}
@@ -354,20 +436,39 @@ const SubscriptionManagement: React.FC = () => {
                         </p>
                       )}
                       <div className="flex flex-wrap gap-1">
-                        {STATUS_OPTIONS.map((s) => (
+                        {STATE_OPTIONS.map((s) => (
                           <Button
                             key={s}
-                            variant={statusFilter.includes(s) ? 'default' : 'outline'}
+                            variant={stateFilter.includes(s) ? 'default' : 'outline'}
                             size="sm"
                             className="h-7 text-xs capitalize"
                             disabled={expiringSoonFilter}
-                            onClick={() => handleStatusFilter(s)}
+                            onClick={() => handleStateFilter(s)}
                           >
                             {s}
                           </Button>
                         ))}
                       </div>
                     </div>
+                    {canReadClusters && (
+                      <div className="space-y-3">
+                        <label htmlFor="cluster-filter" className="text-sm font-medium">Cluster</label>
+                        <select
+                          id="cluster-filter"
+                          value={clusterFilter}
+                          onChange={(e) => handleClusterFilter(e.target.value)}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="">All clusters</option>
+                          {clusters.map((c) => (
+                            <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                          ))}
+                        </select>
+                        {clustersError && (
+                          <p className="text-xs text-destructive" role="alert">{clustersError}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="space-y-3">
                       <span className="text-sm font-medium">Expiry</span>
                       <div className="flex items-center gap-2">
@@ -403,14 +504,26 @@ const SubscriptionManagement: React.FC = () => {
                     </button>
                   </Badge>
                 ) : (
-                  statusFilter.map((s) => (
+                  stateFilter.map((s) => (
                     <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
                       {s}
-                      <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
+                      <button onClick={() => handleStateFilter(s)} className="ml-0.5 hover:text-foreground">
                         <X className="h-3 w-3" />
                       </button>
                     </Badge>
                   ))
+                )}
+                {clusterFilter && (
+                  <Badge variant="secondary" className="text-xs gap-1 pr-1">
+                    {clusters.find((c) => c.id === clusterFilter)?.name ?? clusterFilter}
+                    <button
+                      onClick={() => handleClusterFilter('')}
+                      className="ml-0.5 hover:text-foreground"
+                      aria-label="ล้างตัวกรอง cluster"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
                   Clear all
@@ -458,7 +571,7 @@ const SubscriptionManagement: React.FC = () => {
                       perpage={paginate.perpage}
                       onPaginateChange={handlePaginateChange}
                       onSortChange={handleSortChange}
-                      defaultSort={{ id: DEFAULT_SORT_ID, desc: DEFAULT_SORT_DIRECTION === 'desc' }}
+                      defaultSort={{ id: DEFAULT_SORT_ID, desc: DEFAULT_SORT_DESC }}
                     />
                   </>
                 )}
