@@ -574,8 +574,13 @@ async function main() {
   let updated = 0;
 
   for (const f of LICENSE_FEATURE_SEED) {
+    // มองทุกแถวของ key นี้ ไม่กรอง deleted_at — feature ที่เคย retire แล้วกลับมา
+    // ต้องปลุกแถวเดิม ไม่ใช่สร้างแถวใหม่ทับ ไม่งั้น catalog สะสมแถวซาก
+    // unique index เป็น [key, deleted_at] ซึ่ง Postgres ถือว่า NULL ไม่เท่ากัน
+    // แถวซ้ำจึงสร้างได้จริงโดยไม่มี error — ต้องกันด้วยตรรกะตรงนี้เอง
     const existing = await prisma_platform.tb_license_feature.findFirst({
-      where: { key: f.key, deleted_at: null },
+      where: { key: f.key },
+      orderBy: { deleted_at: { sort: "asc", nulls: "first" } },
       select: { id: true },
     });
     if (existing) {
@@ -587,6 +592,8 @@ async function main() {
           description: f.description,
           sort_order: f.sort_order,
           is_active: true,
+          deleted_at: null,      // ปลุกกลับถ้าเคยถูก retire
+          deleted_by_id: null,
           updated_at: new Date(),
         },
       });
@@ -630,13 +637,17 @@ main()
 
 ```ts
 /**
- * ตรวจว่าไฟล์ที่ generator สร้างตรงกับ source จริงไหม — read-only ไม่แตะ DB ไม่เขียนไฟล์
- * รัน generator ใหม่ลง temp แล้วเทียบเนื้อหากับไฟล์ที่ commit ไว้
+ * ตรวจว่าไฟล์ที่ generator สร้างตรงกับ source จริงไหม — ไม่แตะ DB
+ *
+ * generator hardcode path ปลายทางไว้ จึงเขียนทับไฟล์จริงเสมอ สคริปต์นี้เลย
+ * snapshot เนื้อไฟล์ไว้ก่อน รัน generator เทียบผล แล้ว **คืนค่าเดิมทุกกรณี**
+ * เพื่อให้คำสั่งชื่อ audit เป็น read-only จริง ถ้าไม่คืน คนที่รันเพื่อ "ตรวจ"
+ * จะโดนไฟล์ในเครื่องตัวเองถูกแก้เงียบ ๆ
  *
  * ป้องกันกรณีคนแก้ permission.route-map.ts แล้วลืมรัน generator ซึ่งจะทำให้
  * LicenseInterceptor ไม่รู้จัก route ใหม่และปล่อยผ่านเงียบๆ
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -664,6 +675,8 @@ TARGETS.forEach((t, i) => {
     console.error(`DRIFT: ${t} ไม่ตรงกับผลลัพธ์ของ generator — รัน \`bun run generate:license-catalog\` แล้ว commit`);
     drifted = true;
   }
+  // คืนค่าเดิมเสมอ — audit ต้องไม่แก้ไฟล์ของคนที่รันมันเพื่อตรวจ
+  writeFileSync(resolve(ROOT, t), before[i]);
 });
 
 if (drifted) process.exit(1);
