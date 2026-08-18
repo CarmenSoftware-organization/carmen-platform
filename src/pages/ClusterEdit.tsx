@@ -27,6 +27,7 @@ import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
 import { DetailsSection } from './clusterEdit/sections/DetailsSection';
 import { BrandingSection } from './clusterEdit/sections/BrandingSection';
 import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSection';
+import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
 import type { BusinessUnit } from '../types';
@@ -454,6 +455,7 @@ const ClusterEdit: React.FC = () => {
     { id: 'details', label: 'Details' },
     { id: 'branding', label: 'Branding' },
     { id: 'business-units', label: 'Business Units', count: businessUnits.length },
+    { id: 'subscription', label: 'Subscription' },
     { id: 'users', label: 'Users', count: users.clusterUsers.length },
   ];
 
@@ -581,6 +583,10 @@ const ClusterEdit: React.FC = () => {
                       />
                     </CardContent>
                   </Card>
+                </section>
+
+                <section id="subscription" className="scroll-mt-20">
+                  <SubscriptionCard clusterId={id!} />
                 </section>
 
                 <section id="users" className="scroll-mt-20">
