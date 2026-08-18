@@ -1077,6 +1077,20 @@ export interface NotificationEmailConfig {
 }
 
 /**
+ * สวิตช์เดียวที่ตัดสินว่า licensing "บังคับใช้" จริงหรือแค่บันทึก (shadow mode)
+ *
+ * ไม่ได้อ่านผ่าน service ของ platform config — backend-gateway (`LicenseInterceptor`) และ
+ * micro-cluster (`assertSeatAvailable`) อ่าน `tb_platform_config` ตรง ๆ คนละ process
+ * ต่างมี cache 60 วิของตัวเอง การบันทึกจากหน้านี้จึงมีผลภายในราวหนึ่งนาที ไม่ใช่ทันที
+ * และไม่ต้อง deploy ใหม่
+ *
+ * ตัวเดียวกันนี้เปิด **ทั้ง** การบังคับใช้ license รายฟีเจอร์ และเพดานที่นั่งพร้อมกัน
+ */
+export interface LicenseConfig {
+  enforcement_enabled: boolean;
+}
+
+/**
  * หนึ่งรายการจาก /api-system/platform/configs
  * `id` เป็น null เมื่อยังไม่เคยบันทึกคีย์นี้ และ backend กำลังคืนค่าเริ่มต้นในตัวมาแทน
  */
