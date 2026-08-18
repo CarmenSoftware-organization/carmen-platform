@@ -905,7 +905,7 @@ export class LicenseService {
   async resolveSeatBatch(buIds: string[]): Promise<Record<string, BuSeat>> {
     if (buIds.length === 0) return {};
 
-    const [caps, usedGroups, pendingInvitationIds] = await Promise.all([
+    const [caps, usedGroups, invitationLinks] = await Promise.all([
       this.prismaSystem.tb_business_unit.findMany({
         where: { id: { in: buIds } },
         select: { id: true, max_license_users: true },
@@ -920,28 +920,40 @@ export class LicenseService {
         },
         _count: { _all: true },
       }),
-      this.prismaSystem.tb_user_invitation
-        .findMany({ where: { status: 'pending', deleted_at: null }, select: { id: true } })
-        .then((rows) => rows.map((r) => r.id)),
+      // tb_user_invitation_business_unit ไม่มี relation ย้อนไป tb_user_invitation ใน schema
+      // จึงต้องยิงสองครั้ง — แต่ยิงจากฝั่งที่ scope ด้วย buIds ก่อนเสมอ
+      // ถ้ายิง tb_user_invitation ก่อน จะได้ pending ของทั้งแพลตฟอร์มมาทั้งกอง
+      // ซึ่งโตตามขนาดระบบ ไม่ใช่ตามขนาดคำขอ
+      this.prismaSystem.tb_user_invitation_business_unit.findMany({
+        where: { business_unit_id: { in: buIds }, deleted_at: null },
+        select: { business_unit_id: true, user_invitation_id: true },
+      }),
     ]);
 
-    // tb_user_invitation_business_unit ไม่มี relation ไปหา tb_user_invitation ใน schema
-    // จึงต้องยิงสองครั้ง แทนที่จะ join ในคำสั่งเดียว
-    const pendingGroups =
-      pendingInvitationIds.length === 0
-        ? []
-        : await this.prismaSystem.tb_user_invitation_business_unit.groupBy({
-            by: ['business_unit_id'],
+    const pendingBy = new Map<string, number>();
+    if (invitationLinks.length > 0) {
+      const pendingIds = new Set(
+        (
+          await this.prismaSystem.tb_user_invitation.findMany({
             where: {
-              business_unit_id: { in: buIds },
+              // คำเชิญใบเดียวผูกได้หลาย BU — de-dupe ก่อนใส่ in
+              id: { in: [...new Set(invitationLinks.map((l) => l.user_invitation_id))] },
+              status: 'pending',
               deleted_at: null,
-              user_invitation_id: { in: pendingInvitationIds },
             },
-            _count: { _all: true },
-          });
+            select: { id: true },
+          })
+        ).map((r) => r.id),
+      );
+      // นับใน JS แทน groupBy เพราะต้องกรองด้วย status ที่อยู่คนละตาราง
+      for (const link of invitationLinks) {
+        if (pendingIds.has(link.user_invitation_id)) {
+          pendingBy.set(link.business_unit_id, (pendingBy.get(link.business_unit_id) ?? 0) + 1);
+        }
+      }
+    }
 
     const usedBy = new Map(usedGroups.map((g) => [g.business_unit_id, g._count._all]));
-    const pendingBy = new Map(pendingGroups.map((g) => [g.business_unit_id, g._count._all]));
     const capBy = new Map(caps.map((c) => [c.id, c.max_license_users]));
 
     const out: Record<string, BuSeat> = {};
