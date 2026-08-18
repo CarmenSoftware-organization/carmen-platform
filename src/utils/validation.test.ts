@@ -89,4 +89,23 @@ describe('validateField', () => {
   it('returns empty string for unknown field names', () => {
     expect(validateField('whatever', 'value')).toBe('');
   });
+
+  it('validates subscription_number (letters, numbers, spaces, - _ . /)', () => {
+    expect(validateField('subscription_number', 'SUB-2026-001')).toBe('');
+    expect(validateField('subscription_number', 'a')).toBe('');
+    expect(validateField('subscription_number', 'Acme / Q1 2026')).toBe('');
+    expect(validateField('subscription_number', '#bad!')).toBe(
+      'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)',
+    );
+    expect(validateField('subscription_number', 'a'.repeat(51))).toBe(
+      'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)',
+    );
+  });
+
+  it('validates start_date/end_date as parseable dates', () => {
+    expect(validateField('start_date', '2026-01-01')).toBe('');
+    expect(validateField('end_date', '2026-12-31')).toBe('');
+    expect(validateField('start_date', 'not-a-date')).toBe('Must be a valid date');
+    expect(validateField('end_date', 'nope')).toBe('Must be a valid date');
+  });
 });

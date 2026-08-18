@@ -70,6 +70,16 @@ export const validateField = (
     case 'url':
     case 'image':
       return isValidUrl(value) ? '' : 'Must be a valid http(s) URL';
+    case 'subscription_number':
+      // No format rule is documented by the backend beyond "required, unique per cluster"
+      // (phase-b-backend-contract.md §4) — this is a defensive length + charset bound, not
+      // a mirror of a server-side constraint.
+      return /^[A-Za-z0-9][A-Za-z0-9 _\-./]{0,49}$/.test(value)
+        ? ''
+        : 'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)';
+    case 'start_date':
+    case 'end_date':
+      return Number.isNaN(Date.parse(value)) ? 'Must be a valid date' : '';
     case 'db_schema': {
       if (!value) return options?.required ? `${options.label || 'Schema'} is required` : '';
       // postgres identifier: ขึ้นต้นด้วยตัวอักษรหรือ _ ตามด้วยตัวอักษร/ตัวเลข/_ ยาวไม่เกิน 63
