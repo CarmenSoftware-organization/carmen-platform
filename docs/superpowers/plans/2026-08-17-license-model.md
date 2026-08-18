@@ -46,7 +46,14 @@
 - **permission ใหม่:** `subscription.read` · `subscription.manage`
 - **ลำดับการตัดสิน:** เช็ค "feature อยู่ในสัญญาไหม" **ก่อน** เช็ค state เสมอ (สเปก §3.2)
 - **license ไม่มี admin bypass** — ต่างจาก `useCan()` ที่ `isAdmin → true` ทุกกรณี
-- **`max_license_users` = `null` หรือ `0` → ไม่จำกัด** (ตรงกับ `carmen-platform/src/utils/capacity.ts:2`)
+- **`max_license_users` = `null` หรือ `0` → `0`** (**แก้ 2026-08-18** — เดิมแผนนี้เขียนว่า "ไม่จำกัด"
+  ซึ่ง **ผิดโมเดลธุรกิจ** ดูสเปก §6) · **ไม่มีคำว่า "ไม่จำกัด" ในระบบ seat อีกต่อไป** `cap` เป็นจำนวนเต็มเสมอ
+- **seat เป็นของ cluster ไม่ใช่ของ BU** — pool = `SUM(max_license_users)` ของ BU ที่ `is_active`
+  และไม่ถูกลบ ใน cluster · used = `COUNT(DISTINCT user_id)` ที่มี active BU membership ใน cluster
+  คนเดียวอยู่กี่ BU ก็กิน 1 · **ไม่มีเพดานรายใบ** (สเปก §6.1)
+- **`carmen-platform/src/utils/capacity.ts` ยังตีความ `0` = ไม่จำกัด** — ต้องแก้ในเฟส B ก่อนใช้
+  `utilization()`/`isNearLimit()` กับ seat · **ห้ามพลิกความหมาย `0` ของ `max_license_bu` ไปด้วย**
+  (คนละเรื่อง ไม่ได้อยู่ในกติกาที่ยืนยัน) ต้องแยกฟังก์ชันออกมา — สเปก §6.4
 - ทุกตารางใหม่ต้องมี `doc_version` + audit 6 คอลัมน์ + soft delete ตามแบบของ repo
 - ทุก datetime เป็น `TIMESTAMPTZ` / ISO 8601 `Z` (กฎ timezone ของโปรเจกต์)
 
@@ -1637,9 +1644,10 @@ export interface SubscriptionRow {
   status: 'active' | 'inactive' | 'expired';
   bu_count: number;
   feature_count: number;
+  /** ระดับ cluster — COUNT(DISTINCT user_id) ไม่ใช่ผลบวกของ BU (แก้ 2026-08-18) */
   seat_used: number;
-  /** null = มี BU อย่างน้อยหนึ่งตัวที่ไม่จำกัด */
-  seat_cap: number | null;
+  /** ระดับ cluster = SUM(max_license_users) ของ BU ที่ active · **ไม่เป็น null แล้ว** ไม่มี "ไม่จำกัด" */
+  seat_cap: number;
   doc_version: number;
 }
 
@@ -2131,9 +2139,12 @@ export interface Subscription {
   doc_version: number;
 }
 
+/** ที่นั่งของ **cluster** ทั้งก้อน ไม่ใช่ของ BU (แก้ 2026-08-18 — สเปก §6.1) */
 export interface SubscriptionSeat {
   used: number;
-  cap: number | null;
+  /** ไม่เป็น null แล้ว — null/0 ที่ฝั่ง DB แปลงเป็น 0 ตั้งแต่ backend */
+  cap: number;
+  /** invitation ที่ยัง pending แบบ distinct ต่อ cluster ไม่ใช่ต่อ BU link */
   pending_invites: number;
 }
 
@@ -2142,11 +2153,14 @@ export interface SubscriptionBu {
   bu_code: string;
   bu_name: string;
   feature_keys: string[];
-  seat: SubscriptionSeat;
+  /** ใบนี้ซื้อไปเท่าไร (สมทบ pool) — **แทนที่ `seat` เดิม** ผลรวมทุกใบ = SubscriptionDetail.seat.cap */
+  licensed_users: number;
 }
 
 export interface SubscriptionDetail
   extends Omit<Subscription, 'bu_count' | 'feature_count' | 'seat_used' | 'seat_cap'> {
+  /** ระดับ cluster — ย้ายขึ้นมาจาก bus[] เพราะ seat เป็น pool ร่วม ไม่ใช่ของราย BU */
+  seat: SubscriptionSeat;
   bus: SubscriptionBu[];
 }
 
@@ -2521,7 +2535,28 @@ validate on blur ด้วย `validateField(name, value, { required: true, labe
 
 - [ ] **Step 3: การ์ดที่นั่ง (read-only)**
 
-`SeatsCard.tsx` — ตารางเรียบๆ ต่อ BU:
+`SeatsCard.tsx` — **แก้ 2026-08-18: เป็นตัวเลขระดับ cluster ไม่ใช่ตารางต่อ BU อีกต่อไป**
+seat เป็น pool ร่วมของ cluster (สเปก §6.1) การแสดงเป็นแถวต่อ BU จะทำให้ผู้ใช้เอาไปบวกกันเอง
+ซึ่งผิด · `SubscriptionDetail.seat` อยู่ระดับบนแล้ว ส่วน `bus[].licensed_users` คือ "ใบนี้ซื้อไปเท่าไร"
+
+```tsx
+// cap แก้ที่นี่ไม่ได้โดยตั้งใจ — max_license_users เป็นฟิลด์ของ BU และมีหน้าแก้อยู่แล้ว
+// ที่ BusinessUnitEdit ให้แก้ได้สองที่ = สร้างแหล่งความจริงที่สอง
+// seat.cap ไม่เป็น null แล้ว — อย่าใช้ utilization() จาก capacity.ts จนกว่าจะแก้ตาม §6.4
+const { used, cap, pending_invites } = detail.seat;   // ระดับ cluster
+const projected = used + pending_invites;
+const willExceed = projected > cap;
+```
+
+ส่วนหัว: `{used} / {cap} ที่นั่ง` (ไม่มีเคส "ไม่จำกัด") + เตือนที่ 90% + แถบ pending
+`รอตอบรับ {pending_invites} → อาจถึง {projected}/{cap}` เมื่อ `willExceed`
+
+ใต้ลงมาเป็นรายการ BU แบบ read-only ว่าแต่ละใบสมทบ pool เท่าไร — `{bu.bu_name} · ซื้อ {bu.licensed_users}`
+พร้อมลิงก์ `แก้เพดาน` ไป `/business-units/:id/edit` · **ผลรวมของ `licensed_users` ต้องเท่ากับ `cap`**
+ถ้าไม่เท่าแปลว่ามี BU ที่ inactive/deleted สมทบอยู่ในที่ใดที่หนึ่ง = บั๊ก
+
+<details><summary>โค้ดเดิม (ตารางต่อ BU) — เก็บไว้อ้างอิงเท่านั้น ห้ามใช้</summary>
+
 
 ```tsx
 // cap แก้ที่นี่ไม่ได้โดยตั้งใจ — max_license_users เป็นฟิลด์ของ BU และมีหน้าแก้อยู่แล้ว
@@ -2554,7 +2589,10 @@ validate on blur ด้วย `validateField(name, value, { required: true, labe
 })}
 ```
 
-**คำเชิญที่รอตอบรับไม่กิน seat แต่ต้องเตือน** — นี่คือเหตุผลเดียวที่คอลัมน์นี้มีอยู่
+</details>
+
+**คำเชิญที่รอตอบรับไม่กิน seat แต่ต้องเตือน** — นี่คือเหตุผลเดียวที่ส่วนนี้มีอยู่
+`pending_invites` เป็น invitation แบบ distinct ต่อ cluster แล้ว ไม่ใช่ต่อ BU link
 
 - [ ] **Step 4: typecheck + lint + เบราว์เซอร์**
 

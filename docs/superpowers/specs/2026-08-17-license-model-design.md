@@ -384,44 +384,110 @@ flag อยู่ใน DB ไม่ใช่ env var เพื่อให้�
 
 ## 6. Seat enforcement
 
-### 6.1 นับใครบ้าง
+> **แก้ทั้งหมวด 2026-08-18** — โมเดลเดิมในสเปกนี้ (เพดานรายใบ) **ผิดโมเดลธุรกิจ**
+> เจ้าของระบบยืนยันว่าแต่ละ BU เป็นผู้ซื้อจำนวนผู้ใช้เอง และ **ผลรวมของทุก BU คือจำนวนคนที่ใช้งานได้
+> ทั้ง cluster** เช่น BU1 ซื้อ 2 · BU2 ซื้อ 3 → รวม 5 คน และทั้ง 5 คนเข้าได้ทั้ง 2 BU
+> หลักฐานบน DEV: BU `Blueledgers (AVG)` ซื้อ **0** แต่มีผู้ใช้ **10 คน** — ถูกต้องเพราะกินจาก pool
+> ของ cluster ถ้าเป็นเพดานรายใบ กรณีนี้จะถูกบล็อกทันที
+
+### 6.1 นับอย่างไร
+
+**Pool** — สิ่งที่ cluster ซื้อไว้ทั้งหมด
 
 ```sql
-SELECT count(*) FROM tb_user_tb_business_unit ubu
-  JOIN tb_user u ON u.id = ubu.user_id
- WHERE ubu.business_unit_id = $1
-   AND ubu.deleted_at IS NULL AND ubu.is_active = true   -- ลิงก์ BU ยัง active
-   AND u.deleted_at   IS NULL AND u.is_active   = true   -- ตัว user ยัง active
+SELECT coalesce(sum(max_license_users), 0)
+  FROM tb_business_unit
+ WHERE cluster_id = $1 AND is_active = true AND deleted_at IS NULL
 ```
 
+**Used** — นับ *หัวคน* ไม่ใช่จำนวนลิงก์
+
+```sql
+SELECT count(DISTINCT ubu.user_id)
+  FROM tb_user_tb_business_unit ubu
+  JOIN tb_business_unit bu ON bu.id = ubu.business_unit_id
+  JOIN tb_user u          ON u.id  = ubu.user_id
+ WHERE bu.cluster_id = $1
+   AND ubu.is_active = true AND ubu.deleted_at IS NULL   -- ลิงก์ BU ยัง active
+   AND bu.is_active  = true AND bu.deleted_at  IS NULL   -- BU ยัง active
+   AND u.is_active   = true AND u.deleted_at   IS NULL   -- ตัว user ยัง active
+```
+
+| กติกา | ค่า |
+|---|---|
+| คนเดียวอยู่กี่ BU | กิน **1** ที่นั่ง |
+| BU admin | **นับ** (role ของ membership ไม่มีผล) |
+| cluster admin / super admin | **ไม่นับ** — ทั้งคู่ไม่มี BU membership การนับผ่าน BU ตัดออกเอง **ห้ามเขียนเงื่อนไขยกเว้น role** |
+| `max_license_users` เป็น `null` | **= 0** ต้องระบุค่า |
+| `max_license_users` เป็น `0` | **= 0** |
+| "ไม่จำกัด" | **ไม่มีอีกต่อไป** `cap` เป็นจำนวนเต็มเสมอทุกที่ |
+
 **คำเชิญที่ยังไม่มีคนกดรับ ไม่กิน seat** — แต่หน้า platform แสดงจำนวนที่รอตอบรับพร้อมคำเตือนว่า
-อาจทำให้เกิน cap เมื่อทุกคนกดรับ (`7 active / 10 · ⚠ รอตอบรับ 5 → อาจถึง 12/10`)
+อาจทำให้เกิน pool เมื่อทุกคนกดรับ (`7 active / 10 · ⚠ รอตอบรับ 5 → อาจถึง 12/10`)
+`pending_invites` นับ invitation แบบ **distinct ต่อ cluster** — หนึ่งใบ = หนึ่งคนในอนาคต ไม่ใช่หนึ่งใบต่อ BU link
 
-`max_license_users` เป็น `null` หรือ `0` → ไม่จำกัด (ตรงกับที่ `src/utils/capacity.ts:2` นิยามไว้แล้ว)
+**เงื่อนไข pool ข้างบนต้องเหมือน `total_max_license_users` ใน `cluster.service.ts` เป๊ะ** — ตัวเลขนั้น
+ขึ้นจอ ClusterManagement อยู่แล้ว การมีนิยามที่สองคือบั๊กที่ผู้ใช้เห็นเลขไม่ตรงกันสองที่
 
-### 6.2 บังคับที่ 3 จุด
+### 6.2 บังคับที่ไหน
+
+`assertSeatAvailable(tx, anchor, addingUserIds, enforcementEnabled)`
+โดย `anchor` เป็น `{ businessUnitId }` หรือ `{ clusterId }` และ **รับรายชื่อ user ไม่ใช่จำนวน** —
+คนที่มี active membership ใน cluster อยู่แล้วกิน **0** ที่นั่งเมื่อถูกเพิ่มเข้า BU ที่สอง
 
 | # | จุด | ไฟล์ |
 |---|---|---|
-| 1 | รับคำเชิญ | `micro-cluster/src/cluster/user-invitation/user-invitation.service.ts:1046` (`createMany`) |
-| 2 | แอดมิน assign ตรง | `micro-cluster/src/cluster/business-unit/business-unit.service.ts` (`create`) |
-| 3 | **เปิดใช้งาน user ที่ถูกปิดไว้** (`is_active: false → true`) | จุดที่ลืมง่ายที่สุด — cap อยู่ที่ "active" ไม่ใช่ "ถูก assign" |
+| 1 | รับคำเชิญ | `user-invitation.service.ts` — เรียก **ครั้งเดียว** ด้วย `{ clusterId }` ต่อให้คำเชิญครอบหลาย BU (ใบเดียว = คนเดียว = 1 ที่นั่ง) |
+| 2 | แอดมิน assign ตรง | `business-unit.service.ts` (`create`) |
+| 3 | **เปิดใช้งาน user ที่ถูกปิดไว้** (`false → true`) | จุดที่ลืมง่ายที่สุด — pool อยู่ที่ "active" ไม่ใช่ "ถูก assign" |
+| 4 | **โอนแถว membership ไปให้คนอื่น** (`data.user_id` เปลี่ยน) | เพิ่ม 2026-08-18 — โมเดลเดิมไม่ต้องเช็คเพราะจำนวนลิงก์เท่าเดิม **โมเดลหัวคนต้องเช็ค** คนเดิมอาจมีที่นั่งอื่นอยู่ คนใหม่ไม่มี |
+| 5 | **ย้าย BU ข้าม cluster** (`data.business_unit_id` เปลี่ยน) | เพิ่ม 2026-08-18 — คนนี้คือหัวคนใหม่ของ pool ปลายทาง |
 
-ทั้งสามห่อด้วย `assertSeatAvailable(tx, business_unit_id, adding)`:
+trigger: `willBeActive && (activatingUser || reassigningUser || movingBusinessUnit)`
+โดย `willBeActive` **ต้องยึดค่าเดิมเมื่อไม่ได้ส่ง `is_active` มา** ไม่งั้นการโอนแถวที่ active อยู่แล้ว
+(ซึ่งไม่ส่ง `is_active`) จะยังหลุดทั้งที่แก้ trigger ไปแล้ว
+
+**คงพฤติกรรมเดิม:** แก้ฟิลด์อื่นล้วนๆ (role, is_default) บนแถวที่ active อยู่แล้ว **ต้องไม่ถูกบล็อก**
+แม้ cluster เต็ม เพราะไม่ได้เพิ่มหัวคน
 
 ```sql
--- ภายใน transaction เดียวกับการเพิ่ม/เปิดใช้งาน user
-SELECT max_license_users FROM tb_business_unit WHERE id = $1 FOR UPDATE;
+-- ภายใน transaction เดียวกับการเพิ่ม/เปิดใช้งาน/โอน user
+SELECT id FROM tb_cluster WHERE id = $1 FOR UPDATE;   -- ล็อกก่อนนับเสมอ
 ```
 
-**`FOR UPDATE` คือหัวใจ** — ถ้าไม่มี คำเชิญสองใบที่ถูกกดรับพร้อมกันจะอ่านจำนวนที่นั่งเดิมทั้งคู่
-แล้วผ่านทั้งคู่ กลายเป็นเกิน limit โดยไม่มีอะไรฟ้อง ล็อกแถว `tb_business_unit` (ซึ่งมีอยู่แน่นอน)
-ไม่ใช่แถว subscription (ซึ่งอาจยังไม่มี)
+**`FOR UPDATE` คือหัวใจ และต้องล็อกที่ `tb_cluster` ไม่ใช่ `tb_business_unit`** — ขอบเขตการแข่งขัน
+คือ cluster แล้ว การล็อกแถว BU ไม่พออีกต่อไป เพราะคำขอสองใบที่ยิงคนละ BU ใน cluster เดียวกัน
+จะล็อกคนละแถวแล้วผ่านทั้งคู่ · คำสั่งล็อกต้องเป็น statement แยกจากคิวรี aggregate เพราะ Postgres
+ปฏิเสธ `FOR UPDATE` ที่ใช้ร่วมกับ aggregate / `DISTINCT` / `GROUP BY`
+
+**ข้อจำกัดที่ยอมรับ (fail-closed, มีคอมเมนต์กำกับในโค้ด):**
+- `used + newCount` เป็นแค่**ขอบบน** — `tb_user.is_active` เป็น `@default(false)` คนที่ยังไม่ activate
+  จึงไม่อยู่ทั้งใน `used` และ `already_in` แต่ถูกคิด 1 ที่นั่ง · **ห้ามถอด `u.is_active` ออกจาก
+  `already_in` เพื่อ "แก้"** จะกลายเป็น fail-open: นับว่ามีที่นั่งแล้ว เข้าฟรี แล้วทะลุ pool ตอน activate
+- การโอนแถวที่ไม่ทำให้หัวคนเพิ่ม ถูกบล็อกตอน pool เต็มพอดี (คิดคนที่รับเข้า ไม่เครดิตคนที่ออก)
+  ตัดสินแล้วว่าไม่ทำ crediting — ต้องรู้ว่าแถวนี้เป็น membership สุดท้ายของคนเดิมหรือไม่ ซับซ้อนเกินคุ้ม
+  สำหรับเคสที่ล้มไปทางปลอดภัยและแอดมินทำสองขั้นได้
 
 ### 6.3 `max_license_bu` — ไม่ต้องทำอะไร (แก้ 2026-08-18)
 
 บังคับใช้ที่ backend อยู่แล้วใน `business-unit.service.ts:85-99` **ไม่อยู่ในขอบเขตงานนี้**
 การเพิ่มการเช็คตัวที่สองคือการสร้างแหล่งความจริงที่สอง ซึ่งเป็นสิ่งที่สเปกนี้คัดค้านมาตลอด
+
+### 6.4 หนี้ที่กติกา `null = 0` สร้างขึ้น — ต้องปิดในเฟส B (เพิ่ม 2026-08-18)
+
+โค้ดที่ ship อยู่แล้ว 4 จุดตีความ seat คนละแบบกับกติกาที่ยืนยันแล้ว **ทั้งหมดอยู่บนหน้าจอจริงตอนนี้**
+ไม่ได้เกิดจากงานนี้ แต่ถูกทำให้เห็นชัดโดยงานนี้
+
+| # | ที่ | อาการ |
+|---|---|---|
+| 1 | `carmen-platform/src/utils/capacity.ts:21` | `cap && cap > 0 ? cap : null` → cluster ที่ pool = 0 แสดงว่า **"ไม่จำกัด"** ทั้งที่จะบล็อกทุกการเพิ่มคน |
+| 2 | `micro-cluster/src/common/helpers/summary.helper.ts` `finiteCap()` | กติกาเดียวกับข้อ 1 ฝั่ง backend — ใช้กับ pool ที่ `cluster.service.ts` |
+| 3 | `ClusterManagement` `users_count` | นับแถว `tb_cluster_user` ซึ่ง **รวม cluster admin** แต่กติกาคือ cluster admin ไม่กินที่นั่ง → **ตัวเศษผิดแกน** ต้องเปลี่ยนไปใช้ `COUNT(DISTINCT user_id)` ผ่าน BU membership |
+| 4 | `cluster.service.ts:569` `total_count_license_users` | รวม BU ที่ inactive/deleted ด้วย ต่างจากนิยาม pool ทุกที่ |
+
+ข้อ 1 กับ 2 ต้อง**พลิกพร้อมกัน** — แก้ข้างเดียวทำให้ backend บล็อกแต่ band บอกว่าไม่จำกัด (หรือกลับกัน)
+ข้อ 1 ระวัง: `utilization()` ใช้ร่วมกับ `max_license_bu` ซึ่ง **ไม่ได้อยู่ในกติกาที่ยืนยัน**
+ห้ามพลิกความหมาย `0` ของ `max_license_bu` ไปด้วย — ต้องแยกฟังก์ชัน seat ออกมาต่างหาก
 
 ---
 
@@ -466,7 +532,7 @@ search debounce 400ms + filter Sheet · `TableSkeleton`/`EmptyState`/`DataTable 
 | สถานะ | `<Badge>` — คำนวณจาก `end_date` ตอน render ไม่ใช่อ่าน `status` ดิบ |
 | BU | จำนวน BU ในสัญญา |
 | Features | จำนวน feature ที่เปิด |
-| Seats | `used / cap` รวมทั้ง cluster + เตือนที่ 90% ด้วย `isNearLimit()` ที่มีอยู่แล้ว |
+| Seats | `used / cap` **ระดับ cluster** (§6.1) + เตือนที่ 90% · **`isNearLimit()`/`utilization()` ใช้ตรงๆ ไม่ได้** — `capacity.ts:21` แปลง `0 → null` = ไม่จำกัด ซึ่งขัดกับกติกา `0 = 0` ต้องแก้ก่อน (ดู §6.4) |
 
 - **summary band:** ทั้งหมด · ใช้งาน · หมดอายุ · ใกล้หมดอายุ (≤30 วัน) · ลบแล้ว
 - **`meta.card` hints** สำหรับ DataTable mobile card (title = cluster, badge = สถานะ) —
@@ -510,7 +576,8 @@ BU: [ HQ ▾ ]                                        [คัดลอกจา�
 เอาสิ่งที่ไม่มีขอบเขตไปเป็น**คอลัมน์**คือจุดที่ layout พังเสมอ เพราะแถวเลื่อนลงได้ไม่จำกัด
 แต่คอลัมน์เลื่อนข้างไม่ได้ — และพังบนมือถือ
 
-**การ์ดที่นั่งเป็น read-only โดยตั้งใจ** — `max_license_users` เป็นฟิลด์ของ BU และมีหน้าแก้อยู่แล้วที่
+**การ์ดที่นั่งเป็นระดับ cluster และ read-only โดยตั้งใจ** — ตัวเลข `used`/`cap` เป็นของ cluster ทั้งก้อน
+ส่วน `max_license_users` ("ใบนี้ซื้อไปเท่าไร") เป็นฟิลด์ของ BU และมีหน้าแก้อยู่แล้วที่
 `BusinessUnitEdit.tsx:331` ให้แก้ได้สองที่ = สร้างแหล่งความจริงที่สอง ตรงนี้แสดงผล + ลิงก์ไปหน้านั้น
 
 ### 8.3 carmen-platform — การ์ด read-only ใน Cluster Edit
@@ -543,7 +610,7 @@ business_unit: [{
     state: "active",                  // active | expired | inactive | none
     end_date: "2026-12-31T00:00:00Z",
     features: ["procurement", "procurement.purchase_request", ...],
-    seat: { used: 7, cap: 10, pending_invites: 5 }
+    seat: { used: 7, cap: 10, pending_invites: 5 }   // ระดับ cluster · cap ไม่เป็น null แล้ว
   }
 }]
 ```
@@ -670,7 +737,7 @@ interface PermissionDeniedDetail {
 | static | `bun run typecheck` + `bun run lint` (FE ทั้ง 2) · `bun run check-types` (BE) |
 | drift | `audit:license-catalog` + `audit:api-system-permission` (CI) |
 | backend | curl: มี license → 200 · ไม่มี → 403 `LICENSE_REQUIRED` · หมดอายุ → GET 200 / POST 403 `LICENSE_EXPIRED` |
-| seat | เชิญเกิน cap → 403 · เปิดใช้งาน user ตอนเต็ม cap → 403 · ยิงพร้อมกัน 2 request ตอนเหลือ 1 ที่นั่ง → ผ่านใบเดียว |
+| seat | เชิญเกิน pool → 403 · เปิดใช้งาน user ตอน pool เต็ม → 403 · ยิงพร้อมกัน 2 request ตอนเหลือ 1 ที่นั่ง → ผ่านใบเดียว · **คนที่มีที่นั่งอยู่แล้วเพิ่มเข้า BU ที่สองตอน pool เต็ม → ผ่าน** · **โอนแถว membership ให้คนใหม่ตอน pool เต็ม → 403** · pool = 0 (ทุก BU เป็น null) + เพิ่มคนใหม่ → 403 |
 | browser | sidebar ล็อก · dialog ถูกใบ · banner หมดอายุ · ปุ่มเขียน disabled · responsive ให้เช็ค `innerWidth` ไม่ใช่ดูจากภาพ |
 
 **หมายเหตุ backend jest:** `micro-business` ต้องรันแบบ `cd apps/<app> && bunx jest <path> --runInBand --forceExit`
