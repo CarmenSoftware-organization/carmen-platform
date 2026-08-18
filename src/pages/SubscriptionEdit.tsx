@@ -23,6 +23,8 @@ import { useAuth } from '../context/AuthContext';
 import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { SeatsCard } from './subscriptionEdit/SeatsCard';
+import { FeatureMatrixCard } from './subscriptionEdit/FeatureMatrixCard';
+import { toFeaturesPayload } from './subscriptionEdit/featureSelection';
 import type { BusinessUnit, Cluster, SubscriptionBu, SubscriptionDetail } from '../types';
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -277,17 +279,36 @@ const SubscriptionEdit: React.FC = () => {
       setError('Missing doc_version for this record — reload the page and try again.');
       return;
     }
+    const infoChanged = JSON.stringify(formData) !== JSON.stringify(savedFormData);
+    const busChanged = JSON.stringify(bus) !== JSON.stringify(savedBus);
     setSaving(true);
     setError('');
     try {
-      const payload = {
-        doc_version: docVersion,
-        subscription_number: formData.subscription_number,
-        start_date: fromYmd(formData.start_date),
-        end_date: fromYmd(formData.end_date),
-        status: formData.status,
-      };
-      await subscriptionService.update(id!, payload);
+      // Two independent endpoints share one doc_version — PATCH bumps it, so a subsequent
+      // PUT .../features in the same save must carry the bumped value, not the one this page
+      // loaded with, or it 409s against itself.
+      let currentDocVersion = docVersion;
+      if (infoChanged) {
+        const payload = {
+          doc_version: currentDocVersion,
+          subscription_number: formData.subscription_number,
+          start_date: fromYmd(formData.start_date),
+          end_date: fromYmd(formData.end_date),
+          status: formData.status,
+        };
+        const result = await subscriptionService.update(id!, payload);
+        const updated = (result?.data || result) as SubscriptionDetail | undefined;
+        const nextVersion = getDocVersion(updated);
+        if (nextVersion != null) {
+          currentDocVersion = nextVersion;
+          setDocVersion(nextVersion);
+        }
+      }
+      if (busChanged) {
+        // Replace semantics (phase-b-backend-contract.md §4) — send only the two fields the
+        // endpoint accepts; bu_code/bu_name/licensed_users are server-composed read fields.
+        await subscriptionService.setFeatures(id!, toFeaturesPayload(bus), currentDocVersion);
+      }
       toast.success('Changes saved successfully');
       await load();
     } catch (err: unknown) {
@@ -445,13 +466,16 @@ const SubscriptionEdit: React.FC = () => {
                       <CardDescription>Per-BU feature entitlements</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {/* Task B4 mounts <FeatureMatrixCard bus={bus} clusterBus={clusterBus}
-                          onChange={setBus} readOnly={!canEdit} /> here. State + the BU roster
-                          for this cluster (clusterBusLoading tracks its fetch) are wired and
-                          ready; this task only reserves the layout slot. */}
-                      <p className="text-sm text-muted-foreground">
-                        {clusterBusLoading ? 'Loading business units…' : 'Coming soon.'}
-                      </p>
+                      {clusterBusLoading ? (
+                        <p className="text-sm text-muted-foreground">Loading business units…</p>
+                      ) : (
+                        <FeatureMatrixCard
+                          bus={bus}
+                          clusterBus={clusterBus}
+                          onChange={setBus}
+                          readOnly={!canEdit}
+                        />
+                      )}
                     </CardContent>
                   </Card>
                 </section>

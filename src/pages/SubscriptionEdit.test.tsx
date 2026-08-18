@@ -85,6 +85,11 @@ beforeEach(() => {
   auth.hasPermission = () => true;
   asMock(businessUnitService.getAll).mockResolvedValue(emptyBuList);
   asMock(clusterService.getAll).mockResolvedValue(emptyClusterList);
+  // FeatureMatrixCard (Task B4) fetches its own catalog on mount whenever an existing
+  // subscription renders — every test below that reaches that section needs this resolved,
+  // or the card's own catalogFailed state (tested separately in FeatureMatrixCard.test.tsx)
+  // would fire here and swallow unrelated assertions.
+  asMock(subscriptionService.getFeatureCatalog).mockResolvedValue({ data: [] });
 });
 
 describe('SubscriptionEdit — create mode reads cluster_id from the query param', () => {
@@ -164,6 +169,86 @@ describe('SubscriptionEdit — update sends doc_version plus only the allowed fi
       end_date: '2026-12-31T00:00:00.000Z',
       status: 'active',
     });
+  });
+});
+
+describe('SubscriptionEdit — Save persists FeatureMatrixCard (B4) bus edits too', () => {
+  beforeEach(() => {
+    asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
+    asMock(businessUnitService.getAll).mockResolvedValue({
+      data: [
+        { id: 'bu1', code: 'BU1', name: 'Acme BU', is_active: true },
+        { id: 'bu2', code: 'BU2', name: 'Beta BU', is_active: true },
+      ],
+      paginate: { total: 2, page: 1, perpage: 100 },
+    });
+  });
+
+  it('bus-only change: calls setFeatures with the mapped payload + current doc_version, never touches update', async () => {
+    asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
+    const user = userEvent.setup();
+    renderAt('/subscriptions/sub1/edit');
+
+    await screen.findByText('SUB-0001');
+    await user.selectOptions(await screen.findByLabelText('เลือกหน่วยธุรกิจที่จะเพิ่ม'), 'bu2');
+    await user.click(screen.getByRole('button', { name: 'เพิ่ม' }));
+
+    await user.click(await screen.findByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(subscriptionService.setFeatures).toHaveBeenCalledTimes(1));
+    expect(subscriptionService.setFeatures).toHaveBeenCalledWith(
+      'sub1',
+      [
+        { business_unit_id: 'bu1', feature_keys: [] },
+        { business_unit_id: 'bu2', feature_keys: [] },
+      ],
+      3,
+    );
+    expect(subscriptionService.update).not.toHaveBeenCalled();
+  });
+
+  it('both changed: PATCHes first, then calls setFeatures with the doc_version the PATCH response returned', async () => {
+    asMock(subscriptionService.update).mockResolvedValue({
+      data: { ...sampleDetail, subscription_number: 'SUB-0002', doc_version: 4 },
+    });
+    asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
+    const user = userEvent.setup();
+    renderAt('/subscriptions/sub1/edit');
+
+    const numberInput = await screen.findByDisplayValue('SUB-0001');
+    await user.clear(numberInput);
+    await user.type(numberInput, 'SUB-0002');
+    await user.selectOptions(await screen.findByLabelText('เลือกหน่วยธุรกิจที่จะเพิ่ม'), 'bu2');
+    await user.click(screen.getByRole('button', { name: 'เพิ่ม' }));
+
+    await user.click(await screen.findByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(subscriptionService.setFeatures).toHaveBeenCalledTimes(1));
+    expect(subscriptionService.update).toHaveBeenCalledTimes(1);
+    // The bumped doc_version (4) from update()'s own response, not the stale value (3) this
+    // page loaded with — calling setFeatures with 3 here would 409 against the PATCH that just
+    // ran in the same save.
+    expect(subscriptionService.setFeatures).toHaveBeenCalledWith(
+      'sub1',
+      [
+        { business_unit_id: 'bu1', feature_keys: [] },
+        { business_unit_id: 'bu2', feature_keys: [] },
+      ],
+      4,
+    );
+  });
+
+  it('no bus change: Save never calls setFeatures at all', async () => {
+    asMock(subscriptionService.update).mockResolvedValue({ data: sampleDetail });
+    const user = userEvent.setup();
+    renderAt('/subscriptions/sub1/edit');
+
+    const numberInput = await screen.findByDisplayValue('SUB-0001');
+    await user.type(numberInput, 'X');
+    await user.click(await screen.findByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(subscriptionService.update).toHaveBeenCalledTimes(1));
+    expect(subscriptionService.setFeatures).not.toHaveBeenCalled();
   });
 });
 
