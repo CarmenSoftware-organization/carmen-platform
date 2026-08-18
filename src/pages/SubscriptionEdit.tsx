@@ -4,7 +4,6 @@ import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import subscriptionService from '../services/subscriptionService';
 import businessUnitService from '../services/businessUnitService';
-import clusterService from '../services/clusterService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -18,6 +17,8 @@ import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog, isNotFoundError, parseApiError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useAllClusters } from '../hooks/useAllClusters';
+import { fetchAllPages } from '../utils/fetchAllPages';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useAuth } from '../context/AuthContext';
 import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
@@ -25,7 +26,7 @@ import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionE
 import { SeatsCard } from './subscriptionEdit/SeatsCard';
 import { FeatureMatrixCard } from './subscriptionEdit/FeatureMatrixCard';
 import { toFeaturesPayload } from './subscriptionEdit/featureSelection';
-import type { BusinessUnit, Cluster, SubscriptionBu, SubscriptionDetail } from '../types';
+import type { BusinessUnit, SubscriptionBu, SubscriptionDetail } from '../types';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -46,26 +47,22 @@ const fromYmd = (ymd: string): string => (ymd ? `${ymd}T00:00:00.000Z` : '');
 // never `perpage: -1` (BusinessUnitEdit.tsx:168 / ClusterEdit.tsx:178 are the trap this repo
 // already decided against). perpage:100 up to 10 pages is far beyond any real cluster's BU
 // count; hitting the cap is a signal something is wrong, not a size this cluster should reach.
+// The loop itself (and the cap warning) lives in `fetchAllPages`, shared with the cluster
+// picker's `useAllClusters` — review M7: those two were paginated differently in this one file.
 const CLUSTER_BU_PAGE_SIZE = 100;
 const CLUSTER_BU_MAX_PAGES = 10;
 
-async function fetchAllClusterBus(clusterId: string): Promise<BusinessUnit[]> {
+function fetchAllClusterBus(clusterId: string): Promise<BusinessUnit[]> {
   const advance = JSON.stringify({ where: { cluster_id: clusterId } });
-  const all: BusinessUnit[] = [];
-  for (let page = 1; page <= CLUSTER_BU_MAX_PAGES; page++) {
-    const res = await businessUnitService.getAll({ page, perpage: CLUSTER_BU_PAGE_SIZE, advance });
-    const items = res.data ?? [];
-    all.push(...items);
-    const total = res.paginate?.total;
-    if (items.length === 0) break;
-    if (total != null && all.length >= total) break;
-    if (page === CLUSTER_BU_MAX_PAGES && (total == null || all.length < total)) {
-      devLog('fetchAllClusterBus: hit the page cap without reaching paginate.total', {
-        clusterId, loaded: all.length, total,
-      });
-    }
-  }
-  return all;
+  return fetchAllPages<BusinessUnit>(
+    (page, perpage) => businessUnitService.getAll({ page, perpage, advance }),
+    {
+      pageSize: CLUSTER_BU_PAGE_SIZE,
+      maxPages: CLUSTER_BU_MAX_PAGES,
+      label: 'fetchAllClusterBus',
+      context: { clusterId },
+    },
+  );
 }
 
 // 409-not-a-version-conflict on this endpoint is always the unique(cluster_id,
@@ -109,8 +106,9 @@ const SubscriptionEdit: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const [clusters, setClusters] = useState<Cluster[]>([]);
-  const [clustersLoading, setClustersLoading] = useState(false);
+  // Cluster picker — only needed to create a subscription. An existing one shows its cluster
+  // read-only from `detail`, so nothing is fetched for that case (`enabled = isNew`).
+  const { clusters, loading: clustersLoading, error: clustersError } = useAllClusters(isNew);
 
   const [clusterBus, setClusterBus] = useState<BusinessUnit[]>([]);
   const [clusterBusLoading, setClusterBusLoading] = useState(false);
@@ -159,19 +157,6 @@ const SubscriptionEdit: React.FC = () => {
   }, [id, isNew]);
 
   useEffect(() => { void load(); }, [load]);
-
-  // Cluster picker — only needed to create a subscription. An existing one shows its
-  // cluster read-only from `detail`, so there is nothing to fetch here for that case.
-  useEffect(() => {
-    if (!isNew) return;
-    let cancelled = false;
-    setClustersLoading(true);
-    clusterService.getAll({ perpage: 200, sort: 'name:asc' })
-      .then((res) => { if (!cancelled) setClusters(res.data ?? []); })
-      .catch((err) => { if (!cancelled) devLog('Failed to load clusters:', err); })
-      .finally(() => { if (!cancelled) setClustersLoading(false); });
-    return () => { cancelled = true; };
-  }, [isNew]);
 
   // BU roster for the subscription's cluster — feeds Task B4's picker in both modes (a
   // cluster picked while creating, or the cluster an existing subscription already belongs
@@ -410,6 +395,7 @@ const SubscriptionEdit: React.FC = () => {
                 isNew
                 clusters={clusters}
                 clustersLoading={clustersLoading}
+                clustersError={clustersError}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 onFocus={handleFocus}

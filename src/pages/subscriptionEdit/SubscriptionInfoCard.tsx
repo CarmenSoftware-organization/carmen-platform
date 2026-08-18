@@ -33,6 +33,9 @@ export interface SubscriptionInfoCardProps {
   /** Candidate clusters for the picker — only rendered when `isNew`. */
   clusters: Cluster[];
   clustersLoading?: boolean;
+  /** Why the cluster list is empty, when it failed to load — shown under the picker so the
+   * user isn't left staring at a dropdown with nothing in it and no explanation (M7). */
+  clustersError?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -55,6 +58,7 @@ export function SubscriptionInfoCard({
   state,
   clusters,
   clustersLoading,
+  clustersError,
   onChange,
   onBlur,
   onFocus,
@@ -100,6 +104,9 @@ export function SubscriptionInfoCard({
                 </select>
                 {fieldErrors.cluster_id && (
                   <p className="text-destructive text-xs">{fieldErrors.cluster_id}</p>
+                )}
+                {clustersError && (
+                  <p className="text-destructive text-xs" role="alert">{clustersError}</p>
                 )}
               </>
             ) : (

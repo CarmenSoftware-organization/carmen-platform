@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -363,5 +363,49 @@ describe('SubscriptionEdit — not found', () => {
 
     expect(await screen.findByText('Subscription not found')).toBeInTheDocument();
     expect(screen.queryByText('ที่นั่ง')).toBeNull();
+  });
+});
+
+// Review M7: the picker used a flat `perpage: 200`, so cluster #201 was simply unreachable —
+// no error, no hint, while the BU roster in this very same file already paged properly. Both
+// now go through `fetchAllPages`.
+describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
+  it('keeps fetching pages until paginate.total is covered', async () => {
+    const page1 = Array.from({ length: 100 }, (_, i) => ({
+      id: `c${i}`, code: `C${i}`, name: `Cluster ${i}`, is_active: true,
+    }));
+    const page2 = [{ id: 'c201', code: 'C201', name: 'Cluster 201', is_active: true }];
+    asMock(clusterService.getAll).mockImplementation(async ({ page }: { page: number }) => ({
+      data: page === 1 ? page1 : page2,
+      paginate: { total: 101, page, perpage: 100 },
+    }));
+
+    renderAt('/subscriptions/new');
+
+    const select = (await screen.findByLabelText(/cluster/i)) as HTMLSelectElement;
+    // The 101st cluster is selectable — under the old flat request it never arrived.
+    await waitFor(() =>
+      expect(within(select).getByRole('option', { name: 'C201 - Cluster 201' })).toBeInTheDocument(),
+    );
+    expect(clusterService.getAll).toHaveBeenCalledTimes(2);
+    expect(asMock(clusterService.getAll).mock.calls[0][0]).toEqual({ page: 1, perpage: 100, sort: 'name:asc' });
+    expect(asMock(clusterService.getAll).mock.calls[1][0]).toEqual({ page: 2, perpage: 100, sort: 'name:asc' });
+  });
+
+  it('says why the picker is empty when the cluster list fails to load', async () => {
+    asMock(clusterService.getAll).mockRejectedValue(new Error('network down'));
+
+    renderAt('/subscriptions/new');
+
+    expect(await screen.findByText(/โหลดรายชื่อ cluster ไม่สำเร็จ/)).toBeInTheDocument();
+  });
+
+  it('does not fetch clusters at all when editing an existing subscription', async () => {
+    asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
+
+    renderAt('/subscriptions/sub1/edit');
+
+    await screen.findByDisplayValue('SUB-0001');
+    expect(clusterService.getAll).not.toHaveBeenCalled();
   });
 });
