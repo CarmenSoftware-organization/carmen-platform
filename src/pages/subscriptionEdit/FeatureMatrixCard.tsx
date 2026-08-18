@@ -19,8 +19,11 @@ import {
   groupCatalog,
   nextSelectedBuId,
   removeBu,
+  removeFeatureKey,
+  selectedChildCount,
   setModuleSelection,
   toggleFeature,
+  unknownFeatureKeys,
 } from './featureSelection';
 
 export interface FeatureMatrixCardProps {
@@ -146,6 +149,9 @@ export function FeatureMatrixCard({ bus, clusterBus, onChange, readOnly }: Featu
   const available = availableBus(bus, clusterBus);
   const currentBu = bus.find((b) => b.business_unit_id === selectedBuId);
   const selected = new Set(currentBu?.feature_keys ?? []);
+  // คีย์ที่สัญญาผูกไว้แต่ไม่มีใน catalog ที่ active แล้ว — ต้องมองเห็นและถอดออกได้ ไม่ใช่ถูกกรอง
+  // ทิ้งเงียบ ๆ แล้วยังถูกส่งกลับไปทุกครั้งจนบันทึกไม่ได้ตลอดกาล (review I3)
+  const unknownKeys = unknownFeatureKeys(currentBu?.feature_keys ?? [], catalog);
   const groups = groupCatalog(catalog);
   const visibleGroups = filterGroups(groups, query);
   const removingBu = confirmRemoveBuId ? bus.find((b) => b.business_unit_id === confirmRemoveBuId) : undefined;
@@ -180,6 +186,42 @@ export function FeatureMatrixCard({ bus, clusterBus, onChange, readOnly }: Featu
       </div>
     );
   }
+
+  // กลุ่มเล็ก ๆ ท้ายรายการสำหรับคีย์ที่ไม่รู้จัก — โหมดอ่านอย่างเดียวแสดงเฉย ๆ (ไม่มีปุ่ม) โหมดแก้
+  // มีปุ่มถอดทีละคีย์ · **ไม่ถอดให้อัตโนมัติ** การแก้ payload ให้เงียบ ๆ คือการเปลี่ยนสัญญาของลูกค้า
+  // โดยที่ไม่มีใครเห็นว่าเปลี่ยนอะไรไป
+  const unknownBlock = unknownKeys.length > 0 && (
+    <div className="space-y-1.5 rounded-md border border-dashed border-warning/50 bg-warning/5 p-2">
+      <p className="text-xs font-medium text-muted-foreground">
+        ไม่รู้จัก (ถูกปิดใช้งาน) ({unknownKeys.length})
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {unknownKeys.map((k) =>
+          readOnly ? (
+            <Badge key={k} variant="outline" className="font-mono text-xs" title={k}>{k}</Badge>
+          ) : (
+            <Button
+              key={k}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 font-mono text-xs"
+              aria-label={`ถอดสิทธิ์ที่ไม่รู้จัก ${k}`}
+              onClick={() => onChange(removeFeatureKey(bus, selectedBuId, k))}
+            >
+              {k}
+              <X className="h-3 w-3" />
+            </Button>
+          ),
+        )}
+      </div>
+      <p className="text-muted-foreground text-[11px]">
+        {readOnly
+          ? 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว แต่ยังผูกอยู่กับสัญญานี้'
+          : 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว — ต้องถอดออกก่อน จึงจะบันทึกสิทธิ์ของสัญญานี้ได้'}
+      </p>
+    </div>
+  );
 
   const allVisibleModules = visibleGroups.map((g) => g.module.key);
   const allVisibleExpanded = query
@@ -296,6 +338,7 @@ export function FeatureMatrixCard({ bus, clusterBus, onChange, readOnly }: Featu
                       </div>
                     </div>
                   ))}
+                {unknownBlock}
               </div>
             )
           ) : (
@@ -401,7 +444,13 @@ export function FeatureMatrixCard({ bus, clusterBus, onChange, readOnly }: Featu
                   </div>
                 </>
               )}
-              <p className="text-xs text-muted-foreground">{selected.size} รายการที่เลือก</p>
+              {unknownBlock}
+              {/* นับเฉพาะ "ลูก" ให้ตรงกับผลรวมของ badge count/total ต่อโมดูลข้างบน — key ของ
+                  module ถูกติ๊กอัตโนมัติตามลูก ถ้านับด้วยจะกลายเป็น "2 รายการ" ทั้งที่เลือกลูกเดียว
+                  (review M5) */}
+              <p className="text-xs text-muted-foreground">
+                {selectedChildCount(currentBu.feature_keys, catalog)} รายการที่เลือก
+              </p>
             </div>
           )}
         </>

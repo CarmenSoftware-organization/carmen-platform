@@ -23,6 +23,17 @@ export function moduleOf(key: string): string {
 }
 
 /**
+ * ลำดับเดียวกับ backend เป๊ะ: `sort_order asc` แล้วต่อด้วย `key asc`
+ * (`subscription.service.ts:588-591`) — ไม่มี tiebreaker แปลว่าสอง feature ที่ `sort_order` เท่ากัน
+ * สลับที่กันเองได้ทุก render และไม่ตรงกับที่ server ส่งมา (review M11) · เทียบ `key` ด้วย `<`/`>`
+ * ไม่ใช่ `localeCompare` เพื่อให้เป็นลำดับ byte เดียวกับ Postgres ไม่ใช่ลำดับตาม locale ของเบราว์เซอร์
+ */
+function byOrderThenKey(a: LicenseFeature, b: LicenseFeature): number {
+  if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+  return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+}
+
+/**
  * module → children, sorted. `parent_key === null` is a top-level module (contract §5); the
  * backend already returns rows pre-sorted by `sort_order` then `key`, but re-sorting here is
  * cheap and keeps this function correct even if that guarantee ever changes.
@@ -31,14 +42,57 @@ export function groupCatalog(catalog: LicenseFeature[]): FeatureGroup[] {
   const modules = catalog
     .filter((f) => f.parent_key === null)
     .slice()
-    .sort((a, b) => a.sort_order - b.sort_order);
+    .sort(byOrderThenKey);
   return modules.map((m) => ({
     module: m,
     children: catalog
       .filter((f) => f.parent_key === m.key)
       .slice()
-      .sort((a, b) => a.sort_order - b.sort_order),
+      .sort(byOrderThenKey),
   }));
+}
+
+/**
+ * feature key ของ BU ที่ไม่มีอยู่ใน catalog ที่ active — เกิดขึ้นเมื่อ feature ถูก `is_active: false`
+ * หลังจากสัญญาผูกมันไว้แล้ว (catalog กรองเฉพาะ active, contract §5)
+ *
+ * ต้องแสดงให้เห็น ไม่ใช่กรองทิ้งเงียบ ๆ: `PUT .../features` เป็น replace semantics และ backend
+ * ตอบ **422 "feature key ที่ไม่รู้จัก: …"** ทุกครั้งที่ยังส่งคีย์นั้นกลับไป → ตกสาขา generic →
+ * `getErrorDetail` redact ใน production → ผู้ใช้เห็นแค่ "Please try again later." กดกี่ครั้งก็เหมือนเดิม
+ * โดยไม่มีปุ่มไหนถอดมันออกได้เลย (review I3)
+ */
+export function unknownFeatureKeys(featureKeys: string[], catalog: LicenseFeature[]): string[] {
+  const known = new Set(catalog.map((f) => f.key));
+  return featureKeys.filter((k) => !known.has(k)).slice().sort();
+}
+
+/**
+ * ถอด feature key ออกจาก BU หนึ่งใบแบบตรงตัว — ไม่แตะคีย์อื่นเลย
+ *
+ * ต่างจาก `toggleFeature(..., false)` โดยตั้งใจ: ตัวนั้นรักษา invariant module↔children ด้วย
+ * (ถอดลูกตัวสุดท้ายแล้วถอด module ตามให้) ซึ่งถูกสำหรับคีย์ที่อยู่ใน catalog แต่ผิดสำหรับคีย์
+ * ที่ไม่รู้จัก — `moduleOf('procurement.legacy')` คือ `'procurement'` ที่ยังใช้งานได้อยู่ การกด
+ * "ถอด" คีย์ที่ตายแล้วต้องไม่ไปถอดโมดูลที่ยังมีชีวิตทิ้ง
+ */
+export function removeFeatureKey(bus: SubscriptionBu[], buId: string, key: string): SubscriptionBu[] {
+  return bus.map((bu) =>
+    bu.business_unit_id === buId
+      ? { ...bu, feature_keys: bu.feature_keys.filter((k) => k !== key) }
+      : bu,
+  );
+}
+
+/**
+ * จำนวน feature ที่เลือกไว้ **นับเฉพาะลูก** (`parent_key !== null`)
+ *
+ * key ของ module ถูกเลือกอัตโนมัติเมื่อมีลูกถูกเลือก (ดู `toggleFeature`) ถ้านับรวมด้วย ตัวเลข
+ * "N รายการที่เลือก" จะไม่ตรงกับผลรวมของ badge `count/total` ต่อโมดูลที่อยู่เหนือมันบนจอเดียวกัน
+ * — เลือกลูกตัวเดียวแล้วขึ้น "2 รายการที่เลือก" (review M5) · คีย์ที่ไม่อยู่ใน catalog ไม่ถูกนับ
+ * เพราะมีบล็อก "ไม่รู้จัก" นับให้ต่างหากอยู่แล้ว
+ */
+export function selectedChildCount(featureKeys: string[], catalog: LicenseFeature[]): number {
+  const children = new Set(catalog.filter((f) => f.parent_key !== null).map((f) => f.key));
+  return featureKeys.filter((k) => children.has(k)).length;
 }
 
 /**

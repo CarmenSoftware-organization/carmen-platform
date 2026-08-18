@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FeatureMatrixCard } from './FeatureMatrixCard';
+import { toFeaturesPayload } from './featureSelection';
 import subscriptionService from '../../services/subscriptionService';
 import type { BusinessUnit, LicenseFeature, SubscriptionBu } from '../../types';
 
@@ -283,5 +284,137 @@ describe('FeatureMatrixCard — read-only mode with an existing selection', () =
   it('shows a plain message when the selected BU has no features assigned', async () => {
     render(<Harness initialBus={[bu({ feature_keys: [] })]} clusterBus={[businessUnit()]} readOnly />);
     expect(await screen.findByText('ไม่มีสิทธิ์ที่กำหนดให้ Acme BU')).toBeInTheDocument();
+  });
+});
+
+// Renders exactly what a Save would PUT, so a test can prove a key really left the payload
+// rather than merely leaving the screen.
+function PayloadHarness({
+  initialBus,
+  clusterBus,
+  readOnly = false,
+}: {
+  initialBus: SubscriptionBu[];
+  clusterBus: BusinessUnit[];
+  readOnly?: boolean;
+}) {
+  const [bus, setBus] = useState(initialBus);
+  return (
+    <>
+      <FeatureMatrixCard bus={bus} clusterBus={clusterBus} onChange={setBus} readOnly={readOnly} />
+      <pre data-testid="payload">{JSON.stringify(toFeaturesPayload(bus))}</pre>
+    </>
+  );
+}
+
+// Review I3: the catalog only carries `is_active: true` rows, but `bus[].feature_keys` came
+// straight from the contract. A feature switched off afterwards vanished from both UI modes
+// while `toFeaturesPayload` kept shipping it — backend 422 "feature key ที่ไม่รู้จัก", parsed by
+// the generic branch, redacted in production to "Please try again later.", with no control
+// anywhere to remove the offending key. Show it, and let the user take it off deliberately.
+describe('FeatureMatrixCard — feature keys missing from the catalog', () => {
+  const withDeadKeys = () => [
+    bu({ feature_keys: ['procurement', 'procurement.purchase_request', 'legacy.dead', 'ghost'] }),
+  ];
+
+  it('lists them under "ไม่รู้จัก (ถูกปิดใช้งาน)" instead of hiding them', async () => {
+    render(<PayloadHarness initialBus={withDeadKeys()} clusterBus={[businessUnit()]} />);
+    await screen.findByText('Acme BU');
+
+    expect(screen.getByText(/ไม่รู้จัก \(ถูกปิดใช้งาน\)/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ถอดสิทธิ์ที่ไม่รู้จัก legacy.dead' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ถอดสิทธิ์ที่ไม่รู้จัก ghost' })).toBeInTheDocument();
+  });
+
+  it('does not remove them on its own — the payload still carries them until the user acts', async () => {
+    render(<PayloadHarness initialBus={withDeadKeys()} clusterBus={[businessUnit()]} />);
+    await screen.findByText('Acme BU');
+
+    expect(JSON.parse(screen.getByTestId('payload').textContent!)[0].feature_keys)
+      .toContain('legacy.dead');
+  });
+
+  it('drops the key from the payload once its ถอด button is clicked, leaving the rest intact', async () => {
+    const user = userEvent.setup();
+    render(<PayloadHarness initialBus={withDeadKeys()} clusterBus={[businessUnit()]} />);
+    await screen.findByText('Acme BU');
+
+    await user.click(screen.getByRole('button', { name: 'ถอดสิทธิ์ที่ไม่รู้จัก legacy.dead' }));
+
+    const keys = JSON.parse(screen.getByTestId('payload').textContent!)[0].feature_keys;
+    expect(keys).not.toContain('legacy.dead');
+    // Removing a dead child must not take its (still real) module down with it, and must not
+    // touch the other dead key either.
+    expect(keys).toEqual(['procurement', 'procurement.purchase_request', 'ghost']);
+    expect(screen.queryByRole('button', { name: 'ถอดสิทธิ์ที่ไม่รู้จัก legacy.dead' })).toBeNull();
+  });
+
+  it('shows nothing extra when every key is in the catalog', async () => {
+    render(
+      <PayloadHarness
+        initialBus={[bu({ feature_keys: ['procurement', 'procurement.purchase_request'] })]}
+        clusterBus={[businessUnit()]}
+      />,
+    );
+    await screen.findByText('Acme BU');
+
+    expect(screen.queryByText(/ไม่รู้จัก \(ถูกปิดใช้งาน\)/)).toBeNull();
+  });
+
+  it('read-only mode shows them with no remove button at all', async () => {
+    render(<PayloadHarness initialBus={withDeadKeys()} clusterBus={[businessUnit()]} readOnly />);
+    await screen.findByText('Acme BU');
+
+    expect(screen.getByText(/ไม่รู้จัก \(ถูกปิดใช้งาน\)/)).toBeInTheDocument();
+    expect(screen.getByText('legacy.dead')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /ถอดสิทธิ์ที่ไม่รู้จัก/ })).toBeNull();
+  });
+
+  it('read-only mode shows them even when the BU has no catalog feature left', async () => {
+    render(
+      <PayloadHarness
+        initialBus={[bu({ feature_keys: ['ghost'] })]}
+        clusterBus={[businessUnit()]}
+        readOnly
+      />,
+    );
+    await screen.findByText('Acme BU');
+
+    // Not the "ไม่มีสิทธิ์ที่กำหนดให้" message — the contract does hold something, it is just dead.
+    expect(screen.getByText(/ไม่รู้จัก \(ถูกปิดใช้งาน\)/)).toBeInTheDocument();
+    expect(screen.queryByText('ไม่มีสิทธิ์ที่กำหนดให้ Acme BU')).toBeNull();
+  });
+});
+
+// Review M5: selecting one child showed "2 รายการที่เลือก" because the module key that
+// `toggleFeature` adds automatically was counted too — directly contradicting the 1/2 badge
+// rendered a few pixels above it.
+describe('FeatureMatrixCard — the "N รายการที่เลือก" counter counts children only', () => {
+  it('says 1 after one child is checked, matching the module badge', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialBus={[bu({ feature_keys: [] })]} clusterBus={[businessUnit()]} />);
+    await screen.findByText('Acme BU');
+
+    expect(screen.getByText('0 รายการที่เลือก')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^Procurement/ }));
+    await user.click(screen.getByRole('button', { name: 'Purchase Request' }));
+
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    expect(screen.getByText('1 รายการที่เลือก')).toBeInTheDocument();
+  });
+
+  it('counts children across modules and ignores keys missing from the catalog', async () => {
+    render(
+      <Harness
+        initialBus={[bu({
+          feature_keys: ['procurement', 'procurement.purchase_request', 'inventory', 'inventory.stock_count', 'ghost'],
+        })]}
+        clusterBus={[businessUnit()]}
+      />,
+    );
+    await screen.findByText('Acme BU');
+
+    expect(screen.getByText('2 รายการที่เลือก')).toBeInTheDocument();
   });
 });

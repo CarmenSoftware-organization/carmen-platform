@@ -11,6 +11,9 @@ import {
   setModuleSelection,
   copyFrom,
   toFeaturesPayload,
+  unknownFeatureKeys,
+  removeFeatureKey,
+  selectedChildCount,
 } from './featureSelection';
 import type { BusinessUnit, LicenseFeature, SubscriptionBu } from '../../types';
 
@@ -316,5 +319,101 @@ describe('toFeaturesPayload — the only shape PUT .../features accepts', () => 
   it('maps every BU in order', () => {
     const bus = [bu({ business_unit_id: 'bu1' }), bu({ business_unit_id: 'bu2' })];
     expect(toFeaturesPayload(bus).map((b) => b.business_unit_id)).toEqual(['bu1', 'bu2']);
+  });
+});
+
+// Review M11: the backend orders the catalog `sort_order asc, key asc`
+// (subscription.service.ts:588-591). Re-sorting on only `sort_order` left ties resolved by
+// Array#sort's own stability against whatever order the rows happened to arrive in — a
+// different order from the server's for the same data.
+describe('groupCatalog — tiebreaker matches the backend ordering', () => {
+  it('breaks equal sort_order by key, for modules', () => {
+    const tied: LicenseFeature[] = [
+      feature({ key: 'zulu', parent_key: null, label: 'Zulu', sort_order: 0 }),
+      feature({ key: 'alpha', parent_key: null, label: 'Alpha', sort_order: 0 }),
+      feature({ key: 'mike', parent_key: null, label: 'Mike', sort_order: 0 }),
+    ];
+    expect(groupCatalog(tied).map((g) => g.module.key)).toEqual(['alpha', 'mike', 'zulu']);
+  });
+
+  it('breaks equal sort_order by key, for children of one module', () => {
+    const tied: LicenseFeature[] = [
+      feature({ key: 'ops', parent_key: null, label: 'Ops', sort_order: 0 }),
+      feature({ key: 'ops.zebra', parent_key: 'ops', label: 'Zebra', sort_order: 5 }),
+      feature({ key: 'ops.apple', parent_key: 'ops', label: 'Apple', sort_order: 5 }),
+    ];
+    expect(groupCatalog(tied)[0].children.map((c) => c.key)).toEqual(['ops.apple', 'ops.zebra']);
+  });
+
+  it('still puts a lower sort_order first regardless of key', () => {
+    const mixed: LicenseFeature[] = [
+      feature({ key: 'alpha', parent_key: null, label: 'Alpha', sort_order: 9 }),
+      feature({ key: 'zulu', parent_key: null, label: 'Zulu', sort_order: 1 }),
+    ];
+    expect(groupCatalog(mixed).map((g) => g.module.key)).toEqual(['zulu', 'alpha']);
+  });
+});
+
+// Review I3: a feature switched to is_active:false disappears from the catalog but stays on
+// the contract. It has to stay visible, or the payload keeps carrying a key the backend 422s
+// on ("feature key ที่ไม่รู้จัก") with no control anywhere to remove it.
+describe('unknownFeatureKeys', () => {
+  it('returns keys the catalog does not know about, sorted', () => {
+    expect(unknownFeatureKeys(['procurement', 'zzz.gone', 'aaa.gone'], catalog))
+      .toEqual(['aaa.gone', 'zzz.gone']);
+  });
+
+  it('returns nothing when every key is in the catalog', () => {
+    expect(unknownFeatureKeys(['procurement', 'procurement.purchase_order'], catalog)).toEqual([]);
+  });
+
+  it('treats an empty catalog as "everything is unknown" (never silently drops the list)', () => {
+    expect(unknownFeatureKeys(['procurement'], [])).toEqual(['procurement']);
+  });
+});
+
+describe('removeFeatureKey', () => {
+  it('removes exactly that key from that BU and nothing else', () => {
+    const bus = [bu({ feature_keys: ['procurement', 'procurement.legacy', 'inventory'] })];
+    expect(removeFeatureKey(bus, 'bu1', 'procurement.legacy')[0].feature_keys)
+      .toEqual(['procurement', 'inventory']);
+  });
+
+  it('does NOT drop the module when its last surviving child is an unknown key', () => {
+    // toggleFeature would clear `procurement` here (its parent invariant). That is right for a
+    // catalog child and wrong for a dead key — the module is still a real, licensed feature.
+    const bus = [bu({ feature_keys: ['procurement', 'procurement.legacy'] })];
+    expect(removeFeatureKey(bus, 'bu1', 'procurement.legacy')[0].feature_keys).toEqual(['procurement']);
+  });
+
+  it('leaves other BUs untouched', () => {
+    const bus = [
+      bu({ business_unit_id: 'bu1', feature_keys: ['dead.key'] }),
+      bu({ business_unit_id: 'bu2', feature_keys: ['dead.key'] }),
+    ];
+    const result = removeFeatureKey(bus, 'bu1', 'dead.key');
+    expect(result[0].feature_keys).toEqual([]);
+    expect(result[1].feature_keys).toEqual(['dead.key']);
+  });
+});
+
+// Review M5: the counter said "2 รายการที่เลือก" after one child click, because the auto-added
+// module key was counted too — contradicting the per-module `count/total` badge right above it.
+describe('selectedChildCount', () => {
+  it('counts only children, not the auto-selected module key', () => {
+    expect(selectedChildCount(['procurement', 'procurement.purchase_request'], catalog)).toBe(1);
+  });
+
+  it('counts children across modules', () => {
+    const keys = ['procurement', 'procurement.purchase_request', 'inventory', 'inventory.stock_count'];
+    expect(selectedChildCount(keys, catalog)).toBe(2);
+  });
+
+  it('does not count keys missing from the catalog (the unknown block reports those)', () => {
+    expect(selectedChildCount(['procurement.purchase_request', 'dead.key'], catalog)).toBe(1);
+  });
+
+  it('is 0 when only module keys are selected', () => {
+    expect(selectedChildCount(['procurement', 'inventory'], catalog)).toBe(0);
   });
 });
