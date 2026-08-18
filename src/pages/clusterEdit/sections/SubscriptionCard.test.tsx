@@ -134,12 +134,42 @@ describe('SubscriptionCard — no data', () => {
   });
 
   it('hides the create-subscription action without subscription.manage', async () => {
-    auth.hasPermission = () => false;
+    // Read-only user: still loads and renders the card (subscription.read), but no create button.
+    auth.hasPermission = (perm) => perm === 'subscription.read';
     asMock(subscriptionService.getAll).mockResolvedValue(listResponse([]));
     renderCard();
 
     expect(await screen.findByText('ยังไม่มีสัญญา')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'สร้างสัญญา' })).toBeNull();
+  });
+});
+
+// Review C1: this card lives on /clusters/:id/edit, a page that shipped long before
+// subscriptions existed. Without `subscription.read` the gateway answers 401 (AppIdGuard,
+// not 403), which tokenRefresh.ts turns into clearSession() + a redirect to /login — the
+// component's own `.catch` never gets the chance to stop it because the axios interceptor
+// runs first. The only fix that works is not making the request at all.
+describe('SubscriptionCard — no subscription.read', () => {
+  it('never calls the service and renders nothing at all', async () => {
+    auth.hasPermission = () => false;
+    asMock(subscriptionService.getAll).mockResolvedValue(listResponse([sub()]));
+    const { container } = renderCard();
+
+    // Give any effect a chance to fire before asserting the negative.
+    await waitFor(() => expect(screen.getByTestId('path')).toBeInTheDocument());
+    expect(subscriptionService.getAll).not.toHaveBeenCalled();
+    expect(screen.queryByText('Subscription')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(container.querySelector('ul')).toBeNull();
+  });
+
+  it('still loads for a user who has subscription.read but not subscription.manage', async () => {
+    auth.hasPermission = (perm) => perm === 'subscription.read';
+    asMock(subscriptionService.getAll).mockResolvedValue(listResponse([sub()]));
+    renderCard();
+
+    expect(await screen.findByText('SUB-2026-001')).toBeInTheDocument();
+    expect(subscriptionService.getAll).toHaveBeenCalledTimes(1);
   });
 });
 

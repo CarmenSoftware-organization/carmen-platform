@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { EmptyState } from '../../../components/EmptyState';
 import Can from '../../../components/Can';
+import { useAuth } from '../../../context/AuthContext';
 import subscriptionService from '../../../services/subscriptionService';
 import { seatUtilization } from '../../../utils/capacity';
 import { devLog } from '../../../utils/errorParser';
@@ -33,14 +34,26 @@ const fmtDate = (v?: string) => {
  * already-shipped page, not core data. Swallow the error (devLog only) and render nothing at
  * all, rather than an error banner or a broken card, for a page that has to keep working
  * regardless of subscription data availability.
+ *
+ * **The `subscription.read` check must gate the request itself, not just the markup.** Cluster
+ * Edit shipped long before subscriptions existed, so this card runs for every user who opens
+ * `/clusters/:id/edit`. Until `subscription.*` is in the `tb_application` allowlist the
+ * gateway's `AppIdGuard` answers **401**, not 403 — and a 401 is indistinguishable from an
+ * expired token to `tokenRefresh.ts`, which refreshes, retries, gets 401 again, then
+ * `clearSession()`s and bounces the user to `/login`. The `.catch` below cannot stop that: the
+ * axios interceptor runs first. So the fetch is skipped entirely when the permission is
+ * missing — the fourth gate on top of nav/route/`<Can>` (gating-a-page.md).
  */
 export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canRead = hasPermission('subscription.read');
   const [items, setItems] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    if (!canRead) return;
     let cancelled = false;
     setLoading(true);
     setFailed(false);
@@ -65,9 +78,9 @@ export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
     return () => {
       cancelled = true;
     };
-  }, [clusterId]);
+  }, [clusterId, canRead]);
 
-  if (failed) return null;
+  if (!canRead || failed) return null;
 
   return (
     <Card>
