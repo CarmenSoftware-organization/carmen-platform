@@ -1164,3 +1164,81 @@ export interface AnalyticsFilterParams {
   session_id?: string;
   page_path?: string;
 }
+
+// ==================== Subscriptions / License Features (tb_subscription) ====================
+
+/** สถานะที่เก็บใน DB — ห้ามใช้ตัดสินสถานะที่แสดงผล ใช้ `state` แทนเสมอ */
+export type SubscriptionStatus = 'active' | 'inactive' | 'expired';
+
+/**
+ * สถานะที่แสดงผล — backend คำนวณให้แล้วจาก status + end_date และคืนมาในทุก response
+ * (row ของ list และ detail) ห้าม frontend คำนวณเอง (swagger: "The frontend must not
+ * recompute this from status/end_date — use this field directly")
+ */
+export type SubscriptionState = 'active' | 'expired' | 'inactive';
+
+export interface Subscription {
+  id: string;
+  cluster_id: string;
+  cluster_name: string;
+  cluster_code: string;
+  subscription_number: string;
+  start_date: string;
+  end_date: string;
+  status: SubscriptionStatus;
+  state: SubscriptionState;
+  bu_count: number;
+  feature_count: number;
+  seat_used: number;
+  /** จำนวนเต็มเสมอ ไม่มี null — ไม่มีคำว่า "ไม่จำกัด" ในระบบที่นั่ง 0 คือศูนย์ที่นั่งจริงๆ */
+  seat_cap: number;
+  doc_version: number;
+}
+
+/** ที่นั่งของ **cluster** ทั้งก้อน ไม่ใช่ของ BU — seat เป็น pool ร่วมระดับ cluster (สเปก §6.1) */
+export interface SubscriptionSeat {
+  used: number;
+  /** จำนวนเต็มเสมอ ไม่มีค่า "ไม่จำกัด" ในระบบที่นั่ง */
+  cap: number;
+  /** invitation ที่ยัง pending แบบ distinct ต่อ cluster ไม่ใช่ต่อ BU link */
+  pending_invites: number;
+}
+
+export interface SubscriptionBu {
+  business_unit_id: string;
+  bu_code: string;
+  bu_name: string;
+  feature_keys: string[];
+  /** ใบนี้ซื้อไปเท่าไร (สมทบ pool) — แทนที่ `seat` เดิม ผลรวมทุกใบ = SubscriptionDetail.seat.cap */
+  licensed_users: number;
+}
+
+export interface SubscriptionDetail
+  extends Omit<Subscription, 'bu_count' | 'feature_count' | 'seat_used' | 'seat_cap'> {
+  /** ระดับ cluster — ย้ายขึ้นมาจาก bus[] เพราะ seat เป็น pool ร่วม ไม่ใช่ของราย BU */
+  seat: SubscriptionSeat;
+  bus: SubscriptionBu[];
+}
+
+export interface LicenseFeature {
+  key: string;
+  /** null = เป็น module ระดับบน */
+  parent_key: string | null;
+  label: string;
+  description: string | null;
+  sort_order: number;
+}
+
+export interface SubscriptionSummary {
+  total: number;
+  active: number;
+  expired: number;
+  expiring_soon: number;
+  deleted: number;
+}
+
+export interface SubscriptionsResponse {
+  data: Subscription[];
+  paginate: { total: number; page: number; perpage: number; pages: number };
+  summary?: SubscriptionSummary;
+}

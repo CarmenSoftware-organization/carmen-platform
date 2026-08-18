@@ -20,6 +20,8 @@ const ApplicationManagement = lazy(() => import("./pages/ApplicationManagement")
 const ApplicationEdit = lazy(() => import("./pages/ApplicationEdit"));
 const BusinessUnitManagement = lazy(() => import("./pages/BusinessUnitManagement"));
 const BusinessUnitEdit = lazy(() => import("./pages/BusinessUnitEdit"));
+const SubscriptionManagement = lazy(() => import("./pages/SubscriptionManagement"));
+const SubscriptionEdit = lazy(() => import("./pages/SubscriptionEdit"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -154,6 +156,30 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="cluster.update">
                   <BusinessUnitEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/subscriptions"
+              element={
+                <PrivateRoute requiredPermission="subscription.read">
+                  <SubscriptionManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/subscriptions/new"
+              element={
+                <PrivateRoute requiredPermission="subscription.manage">
+                  <SubscriptionEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/subscriptions/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="subscription.read">
+                  <SubscriptionEdit />
                 </PrivateRoute>
               }
             />

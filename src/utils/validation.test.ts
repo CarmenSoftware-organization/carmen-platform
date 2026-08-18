@@ -89,4 +89,56 @@ describe('validateField', () => {
   it('returns empty string for unknown field names', () => {
     expect(validateField('whatever', 'value')).toBe('');
   });
+
+  it('validates subscription_number (letters, numbers, spaces, - _ . /)', () => {
+    expect(validateField('subscription_number', 'SUB-2026-001')).toBe('');
+    expect(validateField('subscription_number', 'a')).toBe('');
+    expect(validateField('subscription_number', 'Acme / Q1 2026')).toBe('');
+    expect(validateField('subscription_number', '#bad!')).toBe(
+      'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)',
+    );
+    expect(validateField('subscription_number', 'a'.repeat(51))).toBe(
+      'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)',
+    );
+  });
+
+  it('validates start_date/end_date as parseable dates', () => {
+    expect(validateField('start_date', '2026-01-01')).toBe('');
+    expect(validateField('end_date', '2026-12-31')).toBe('');
+    expect(validateField('start_date', 'not-a-date')).toBe('Must be a valid date');
+    expect(validateField('end_date', 'nope')).toBe('Must be a valid date');
+  });
+
+  // Review M1: the three subscription cases skipped the "required is opt-in" contract this
+  // file documents. An empty value never reached them (the function-level guard returns
+  // first), but a whitespace-only one did — and came back as a *format* complaint, which
+  // reads as "your subscription number is malformed" for a field the user simply left blank.
+  describe('subscription fields honour the opt-in required contract', () => {
+    it('passes a blank value when required is not requested', () => {
+      expect(validateField('subscription_number', '')).toBe('');
+      expect(validateField('subscription_number', '   ')).toBe('');
+      expect(validateField('start_date', '')).toBe('');
+      expect(validateField('start_date', '  ')).toBe('');
+      expect(validateField('end_date', '')).toBe('');
+      expect(validateField('end_date', '  ')).toBe('');
+    });
+
+    it('reports "is required" — never a format error — for a blank required value', () => {
+      expect(validateField('subscription_number', '', { required: true, label: 'Subscription number' }))
+        .toBe('Subscription number is required');
+      expect(validateField('subscription_number', '   ', { required: true, label: 'Subscription number' }))
+        .toBe('Subscription number is required');
+      expect(validateField('start_date', '  ', { required: true, label: 'Start date' }))
+        .toBe('Start date is required');
+      expect(validateField('end_date', '', { required: true, label: 'End date' }))
+        .toBe('End date is required');
+    });
+
+    it('still applies the format rule to a non-blank value', () => {
+      expect(validateField('subscription_number', '#bad!', { required: true, label: 'Subscription number' }))
+        .toBe('Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)');
+      expect(validateField('end_date', 'nope', { required: true, label: 'End date' }))
+        .toBe('Must be a valid date');
+    });
+  });
 });

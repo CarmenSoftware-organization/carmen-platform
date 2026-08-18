@@ -27,6 +27,7 @@ import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
 import { DetailsSection } from './clusterEdit/sections/DetailsSection';
 import { BrandingSection } from './clusterEdit/sections/BrandingSection';
 import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSection';
+import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
 import type { BusinessUnit } from '../types';
@@ -39,6 +40,9 @@ const ClusterEdit: React.FC = () => {
   const isNew = !id;
   const { hasPermission } = useAuth();
   const canEdit = !isNew && hasPermission('cluster.update', { clusterId: id });
+  // `subscription.*` is platform-scoped (never per-cluster), so no clusterId context here —
+  // the same call `SubscriptionCard` makes to decide whether it renders at all.
+  const canReadSubscriptions = hasPermission('subscription.read');
 
   const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
@@ -454,6 +458,15 @@ const ClusterEdit: React.FC = () => {
     { id: 'details', label: 'Details' },
     { id: 'branding', label: 'Branding' },
     { id: 'business-units', label: 'Business Units', count: businessUnits.length },
+    // `SubscriptionCard` renders nothing at all without `subscription.read` — it must not even
+    // fire the request (review C1), so an unconditional entry here is a menu item that scrolls
+    // to an empty stretch of page for every user who lacks the permission.
+    //
+    // Only the nav entry is conditional: the `<section id="subscription">` anchor below stays
+    // static markup on purpose. `useScrollSpy` observes elements by id, and an anchor that is
+    // always present is what keeps it from observing something that isn't there — an empty
+    // section costs nothing.
+    ...(canReadSubscriptions ? [{ id: 'subscription', label: 'Subscription' }] : []),
     { id: 'users', label: 'Users', count: users.clusterUsers.length },
   ];
 
@@ -581,6 +594,10 @@ const ClusterEdit: React.FC = () => {
                       />
                     </CardContent>
                   </Card>
+                </section>
+
+                <section id="subscription" className="scroll-mt-20">
+                  <SubscriptionCard clusterId={id!} />
                 </section>
 
                 <section id="users" className="scroll-mt-20">
