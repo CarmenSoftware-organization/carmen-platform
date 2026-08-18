@@ -1,9 +1,25 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+
+// Mutable auth so a test can revoke cluster.update. `Can` (the REAL component, not mocked)
+// reads this via useAuth() — mocking `Can` itself would make the gating test below vacuous.
+const auth = vi.hoisted(() => ({
+  isSuperAdmin: false,
+  hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
+}));
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => auth,
+}));
+
 import { SeatsCard } from './SeatsCard';
 import type { SubscriptionBu, SubscriptionSeat } from '../../types';
+
+beforeEach(() => {
+  auth.isSuperAdmin = false;
+  auth.hasPermission = () => true;
+});
 
 const renderCard = (seat: SubscriptionSeat, bus: SubscriptionBu[]) =>
   render(
@@ -75,16 +91,50 @@ describe('SeatsCard — cluster-level pool, never "unlimited"', () => {
     expect(screen.getByText(/no business units on this subscription yet/i)).toBeInTheDocument();
   });
 
-  it('shows a soft mismatch note when licensed_users does not sum to cap', () => {
+});
+
+// Review I4: the old note fired on `licensedSum !== cap` and blamed "deactivated or deleted
+// business units". Both halves were wrong. `cap` is the sum over EVERY active BU of the
+// cluster (subscription.service.ts:700-706), while the list above covers only the BUs on THIS
+// contract — so a partial-coverage contract (the whole reason the feature exists) tripped the
+// note every single time, with an explanation that pointed at BUs which are not counted in
+// `cap` to begin with. The replacement states the pool relationship unconditionally.
+describe('SeatsCard — pool explanation, not a mismatch warning', () => {
+  it('explains the cluster-wide pool even when licensed_users does not sum to cap', () => {
     renderCard({ used: 8, cap: 15, pending_invites: 0 }, [bu({ licensed_users: 10 })]);
-    expect(screen.getByText(/ผลรวมที่นั่งที่ซื้อ \(10\) ไม่เท่ากับเพดานรวม \(15\)/)).toBeInTheDocument();
+    expect(screen.getByText(/ที่นั่งเป็น pool ของทั้ง cluster/)).toBeInTheDocument();
+    expect(screen.queryByText(/ไม่เท่ากับเพดานรวม/)).toBeNull();
+    expect(screen.queryByText(/ปิดใช้งานหรือถูกลบ/)).toBeNull();
   });
 
-  it('hides the mismatch note when licensed_users sums to cap', () => {
+  it('shows the same explanation when licensed_users happens to sum to cap', () => {
     renderCard(
       { used: 8, cap: 15, pending_invites: 0 },
       [bu({ business_unit_id: 'bu1', licensed_users: 10 }), bu({ business_unit_id: 'bu2', licensed_users: 5 })],
     );
-    expect(screen.queryByText(/ผลรวมที่นั่งที่ซื้อ/)).toBeNull();
+    expect(screen.getByText(/ที่นั่งเป็น pool ของทั้ง cluster/)).toBeInTheDocument();
+  });
+});
+
+// Review M2: /business-units/:id/edit is gated on `cluster.update` (App.tsx), a different
+// permission from this page's `subscription.manage` — an ungated link sends anyone holding
+// only the latter straight into the Forbidden page.
+describe('SeatsCard — "แก้เพดาน" is gated on cluster.update', () => {
+  it('renders plain text instead of a link when the user lacks cluster.update', () => {
+    auth.hasPermission = (perm) => perm === 'subscription.manage';
+    renderCard({ used: 8, cap: 15, pending_invites: 0 }, [bu()]);
+
+    expect(screen.queryByRole('link', { name: 'แก้เพดาน' })).toBeNull();
+    expect(screen.getByText('แก้เพดานได้ที่หน้าหน่วยธุรกิจ')).toBeInTheDocument();
+  });
+
+  it('renders the link when the user does hold cluster.update (discriminating control)', () => {
+    auth.hasPermission = (perm) => perm === 'cluster.update';
+    renderCard({ used: 8, cap: 15, pending_invites: 0 }, [bu()]);
+
+    expect(screen.getByRole('link', { name: 'แก้เพดาน' })).toHaveAttribute(
+      'href',
+      '/business-units/bu1/edit',
+    );
   });
 });
