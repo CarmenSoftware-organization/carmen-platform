@@ -110,8 +110,8 @@
     "follow-redirects": "^1.15.6",
     "yaml": "^2.3.4",
     "flatted": "^3.3.2",
-    "@codemirror/state": "^6.7.1",
-    "@codemirror/view": "^6.43.9"
+    "@codemirror/state": "$@codemirror/state",
+    "@codemirror/view": "$@codemirror/view"
   },
   "resolutions": {
     "brace-expansion": "^2.1.4",
@@ -120,7 +120,7 @@
     "follow-redirects": "^1.15.6",
     "yaml": "^2.3.4",
     "flatted": "^3.3.2",
-    "@codemirror/state": "^6.7.1",
-    "@codemirror/view": "^6.43.9"
+    "@codemirror/state": "$@codemirror/state",
+    "@codemirror/view": "$@codemirror/view"
   }
 }
