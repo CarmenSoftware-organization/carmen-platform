@@ -1491,14 +1491,27 @@ export async function assertSeatAvailable(
   });
 
   if (used + adding > cap) {
-    throw new ForbiddenException({
-      code: 'SEAT_LIMIT_REACHED',
-      message: `จำนวนผู้ใช้ที่ใช้งานอยู่จะเกินสิทธิ์ที่ซื้อไว้ (${used}/${cap} ต้องการเพิ่ม ${adding})`,
-      used,
-      cap,
-      adding,
-    });
+    // โยน Error ธรรมดาที่มี `code` เป็น **own property** ไม่ใช่ ForbiddenException
+    // (แก้ 2026-08-18) — `HttpException` เก็บ payload ไว้ใน `.response` ซึ่ง `@TryCatch`
+    // มองไม่เห็น เพราะมันตรวจ `'code' in error` ผลคือ code หายและกลายเป็น 500 แทน 403
+    // ยังต้อง throw ไม่ใช่ return เพราะการ throw คือสิ่งที่ทำให้ $transaction rollback
+    const err = new Error(
+      `จำนวนผู้ใช้ที่ใช้งานอยู่จะเกินสิทธิ์ที่ซื้อไว้ (${used}/${cap} ต้องการเพิ่ม ${adding})`,
+    ) as SeatLimitError;
+    err.code = 'SEAT_LIMIT_REACHED';
+    err.used = used;
+    err.cap = cap;
+    err.adding = adding;
+    throw err;
   }
+```
+
+และต้องเพิ่ม branch ใน `apps/micro-cluster/src/common/decorators/try-catch.decorator.ts`
+เพื่อแปลงเป็น `Result.errorFromCatalog(ERROR_CATALOG.SEAT_LIMIT_REACHED, undefined, { used, cap, adding })`
+พร้อมเพิ่ม entry `SEAT_LIMIT_REACHED` (`MODULE.LICENSE`, id 3, `http_status: 403`) ใน error catalog
+
+> **`TryCatch` มี 3 ตัวแยกกันต่อ app** (`micro-business` · `micro-cluster` · `micro-file`) — แก้เฉพาะของ micro-cluster
+> **branch `DOC_VERSION_CONFLICT` ในนั้นเป็น dead code** ไม่มีใคร throw error ที่มี code นั้นเลยทั้ง repo
 }
 
 ```
