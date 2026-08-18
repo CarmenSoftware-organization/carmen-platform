@@ -10,6 +10,7 @@ import { InvitationLimitsCard } from './platformConfig/InvitationLimitsCard';
 import { SignupConfigCard } from './platformConfig/SignupConfigCard';
 import { LinkConfigCard } from './platformConfig/LinkConfigCard';
 import { NotificationEmailConfigCard } from './platformConfig/NotificationEmailConfigCard';
+import { LicenseEnforcementCard } from './platformConfig/LicenseEnforcementCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -23,11 +24,15 @@ type CardId =
   | 'signup'
   | 'email_verification'
   | 'password_reset'
-  | 'notification_email';
+  | 'notification_email'
+  | 'license';
 
 const PlatformConfigManagement: React.FC = () => {
   const { hasPermission } = useAuth();
   const canManage = hasPermission('platform_config.manage');
+  // คีย์ `license` มีด่านที่สองฝั่ง backend (`platform_configs.controller.ts` → `mayWriteKey`)
+  // ต้องมี `license.manage` เพิ่มจึงจะเขียนได้ ไม่ gate ตรงนี้ = ปุ่ม Edit ที่ Save แล้ว 403 เสมอ
+  const canManageLicense = canManage && hasPermission('license.manage');
 
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +72,7 @@ const PlatformConfigManagement: React.FC = () => {
   const emailVerification = configs.find((c) => c.key === 'email_verification') ?? null;
   const passwordReset = configs.find((c) => c.key === 'password_reset') ?? null;
   const notificationEmail = configs.find((c) => c.key === 'notification_email') ?? null;
+  const license = configs.find((c) => c.key === 'license') ?? null;
 
   return (
     <Layout>
@@ -88,6 +94,7 @@ const PlatformConfigManagement: React.FC = () => {
               { heading: 'Email links & lifetimes', cards: 4 },
               { heading: 'Invitation limits', cards: 1 },
               { heading: 'Notifications', cards: 1 },
+              { heading: 'Licensing', cards: 1 },
             ].map((section) => (
               <div key={section.heading} className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted-foreground">{section.heading}</h2>
@@ -182,6 +189,21 @@ const PlatformConfigManagement: React.FC = () => {
                   canManage={canManage}
                   isEditing={editingCard === 'notification_email'}
                   onRequestEdit={() => setEditingCard('notification_email')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">Licensing</h2>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <LicenseEnforcementCard
+                  key={`license-${license?.updated_at ?? 'default'}`}
+                  config={license}
+                  canManage={canManageLicense}
+                  isEditing={editingCard === 'license'}
+                  onRequestEdit={() => setEditingCard('license')}
                   onCancelEdit={() => setEditingCard(null)}
                   onSaved={handleSaved}
                 />
