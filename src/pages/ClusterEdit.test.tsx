@@ -289,3 +289,42 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
     expect(screen.getByRole('checkbox', { name: /select jane doe/i })).toBeInTheDocument();
   });
 });
+
+// Follow-up to review C1: `SubscriptionCard` now renders nothing (and fires no request) for a
+// user without `subscription.read`. An unconditional nav entry then became a menu item that
+// scrolls to an empty stretch of page — for everyone, since the permission is not seeded yet.
+describe('ClusterEdit — the Subscription nav entry follows subscription.read', () => {
+  const renderClusterEdit = async () => {
+    asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
+    renderAt('/clusters/c1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' });
+    return screen.getByRole('navigation', { name: 'Cluster sections' });
+  };
+
+  it('omits the menu item without subscription.read, leaving every other entry alone', async () => {
+    auth.hasPermission = (perm) => perm !== 'subscription.read';
+
+    const nav = await renderClusterEdit();
+
+    expect(within(nav).queryByRole('button', { name: 'Subscription' })).toBeNull();
+    expect(within(nav).getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: /business units/i })).toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: /users/i })).toBeInTheDocument();
+  });
+
+  it('shows the menu item with subscription.read (discriminating control)', async () => {
+    auth.hasPermission = () => true;
+
+    const nav = await renderClusterEdit();
+
+    expect(within(nav).getByRole('button', { name: 'Subscription' })).toBeInTheDocument();
+  });
+
+  // The anchor is deliberately NOT conditional: useScrollSpy observes elements by id, and its
+  // safety comes from those anchors being static markup. An empty section costs nothing.
+  it('keeps the <section id="subscription"> anchor in the DOM either way', async () => {
+    auth.hasPermission = (perm) => perm !== 'subscription.read';
+    await renderClusterEdit();
+    expect(document.getElementById('subscription')).toBeInTheDocument();
+  });
+});
