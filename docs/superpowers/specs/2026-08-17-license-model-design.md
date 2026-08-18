@@ -66,7 +66,12 @@ if (!requiredPermissions) return true;
 | CSV export | `BusinessUnitManagement.tsx:239` |
 | **การบังคับใช้ฝั่ง backend** | **ไม่มี** — grep เจอแต่ DTO / serializer / swagger |
 
-แถม `BusinessUnitEdit.tsx:405-409` เช็ค `max_license_bu` **ในเบราว์เซอร์อย่างเดียว** ยิง API ตรงก็ทะลุ
+> **แก้ 2026-08-18:** ร่างแรกของสเปกนี้อ้างว่า `max_license_bu` เช็คในเบราว์เซอร์อย่างเดียว
+> **ผิด** — `apps/micro-cluster/src/cluster/business-unit/business-unit.service.ts:85-99`
+> บังคับใช้อยู่แล้วตอนสร้าง BU (นับแล้วเทียบ `cluster.max_license_bu` คืน `ErrorCode.INVALID_ARGUMENT`)
+> ที่ `BusinessUnitEdit.tsx:405-409` เป็นการเช็คซ้ำฝั่ง UI เพื่อ UX ไม่ใช่ด่านเดียว
+> คงเหลือข้อสังเกตเดียว: การเช็คนั้นเป็น count-then-create ไม่มีล็อก จึงมี race ถ้าสร้าง BU พร้อมกัน
+> (ความเสี่ยงต่ำ เป็นงานของแอดมิน) — **ไม่อยู่ในขอบเขต v1**
 
 **ผลต่อ design:** ไม่สร้างฟิลด์ seat ใหม่ ใช้ `max_license_users` เดิม งาน v1 คือ *บังคับใช้ฟิลด์ที่มีอยู่*
 
@@ -395,10 +400,10 @@ SELECT max_license_users FROM tb_business_unit WHERE id = $1 FOR UPDATE;
 แล้วผ่านทั้งคู่ กลายเป็นเกิน limit โดยไม่มีอะไรฟ้อง ล็อกแถว `tb_business_unit` (ซึ่งมีอยู่แน่นอน)
 ไม่ใช่แถว subscription (ซึ่งอาจยังไม่มี)
 
-### 6.3 แถม — ปิดรูที่เปิดอยู่
+### 6.3 `max_license_bu` — ไม่ต้องทำอะไร (แก้ 2026-08-18)
 
-ย้ายการเช็ค `max_license_bu` จากเบราว์เซอร์ (`BusinessUnitEdit.tsx:405-409`) ลงมาที่ backend
-ตอนสร้าง BU ใช้ helper รูปแบบเดียวกัน
+บังคับใช้ที่ backend อยู่แล้วใน `business-unit.service.ts:85-99` **ไม่อยู่ในขอบเขตงานนี้**
+การเพิ่มการเช็คตัวที่สองคือการสร้างแหล่งความจริงที่สอง ซึ่งเป็นสิ่งที่สเปกนี้คัดค้านมาตลอด
 
 ---
 

@@ -106,7 +106,7 @@
 | `apps/backend-gateway/src/license/license.module.ts` | wiring |
 | `apps/backend-gateway/src/auth/guards/keycloak.guard.ts` | เติม `license` ลง `x-bu-datas` |
 | `apps/backend-gateway/src/app.module.ts` | register `LicenseInterceptor` + `LicenseModule` |
-| `apps/micro-cluster/src/cluster/common/seat.helper.ts` | `assertSeatAvailable` + `assertBuQuotaAvailable` |
+| `apps/micro-cluster/src/cluster/common/seat.helper.ts` | `assertSeatAvailable` (เท่านั้น — ดู Ruling 7) |
 | `apps/micro-cluster/src/cluster/user-invitation/user-invitation.service.ts` | เสียบ seat check |
 | `apps/micro-cluster/src/cluster/business-unit/business-unit.service.ts` | เสียบ seat check + BU quota |
 | `apps/micro-business/src/subscription/*` | CRUD ผ่าน TCP (controller/service/module) |
@@ -1393,7 +1393,7 @@ flag ปิดอยู่ = shadow mode log อย่างเดียว"
 
 ---
 
-### Task A6: Seat enforcement + ปิดรู `max_license_bu`
+### Task A6: Seat enforcement
 
 **Files:**
 - Create: `apps/micro-cluster/src/cluster/common/seat.helper.ts`
@@ -1401,11 +1401,13 @@ flag ปิดอยู่ = shadow mode log อย่างเดียว"
 - Modify: `apps/micro-cluster/src/cluster/business-unit/business-unit.service.ts` (จุด `tb_user_tb_business_unit.create` และจุดที่เปลี่ยน `is_active` ของลิงก์ BU)
 
 **Interfaces:**
-- Consumes: `tb_business_unit.max_license_users` · `tb_cluster.max_license_bu` (มีอยู่แล้วทั้งคู่)
+- Consumes: `tb_business_unit.max_license_users` (มีอยู่แล้ว ไม่มีใครบังคับใช้)
 - Produces:
   - `assertSeatAvailable(tx, businessUnitId: string, adding: number): Promise<void>` — โยน `ForbiddenException` เมื่อเต็ม
-  - `assertBuQuotaAvailable(tx, clusterId: string, adding: number): Promise<void>`
-  - error code `SEAT_LIMIT_REACHED` · `BU_LIMIT_REACHED`
+  - error code `SEAT_LIMIT_REACHED`
+
+> **`max_license_bu` ไม่อยู่ในขอบเขต task นี้ (แก้ 2026-08-18)** — บังคับใช้อยู่แล้วที่
+> `business-unit.service.ts:85-99` การเพิ่มการเช็คตัวที่สองคือการสร้างแหล่งความจริงที่สอง
 
 - [ ] **Step 1: เขียน helper**
 
@@ -1471,48 +1473,6 @@ export async function assertSeatAvailable(
   }
 }
 
-/**
- * ตรวจว่ายังสร้าง business unit เพิ่มใน cluster นี้ได้ไหม
- *
- * เดิมเช็คในเบราว์เซอร์อย่างเดียว (carmen-platform BusinessUnitEdit.tsx:405-409)
- * ซึ่งยิง API ตรงก็ทะลุ ย้ายลงมาที่นี่เพื่อให้บังคับใช้จริง
- *
- * @param tx - transaction client / Transaction client
- * @param clusterId - cluster ที่จะเพิ่ม BU / Target cluster
- * @param adding - จำนวน BU ที่จะเพิ่ม / How many BUs are being added
- * @throws ForbiddenException เมื่อเกินเพดาน / When the cap would be exceeded
- */
-export async function assertBuQuotaAvailable(
-  tx: TxClient,
-  clusterId: string,
-  adding: number,
-): Promise<void> {
-  if (adding <= 0) return;
-
-  const locked = await tx.$queryRaw<{ max_license_bu: number | null }[]>`
-    SELECT max_license_bu
-      FROM "CARMEN_SYSTEM".tb_cluster
-     WHERE id = ${clusterId}::uuid
-       AND deleted_at IS NULL
-     FOR UPDATE
-  `;
-  const cap = locked[0]?.max_license_bu ?? null;
-  if (cap === null || cap <= 0) return;
-
-  const used = await tx.tb_business_unit.count({
-    where: { cluster_id: clusterId, deleted_at: null },
-  });
-
-  if (used + adding > cap) {
-    throw new ForbiddenException({
-      code: 'BU_LIMIT_REACHED',
-      message: `จำนวนหน่วยธุรกิจจะเกินสิทธิ์ที่ซื้อไว้ (${used}/${cap} ต้องการเพิ่ม ${adding})`,
-      used,
-      cap,
-      adding,
-    });
-  }
-}
 ```
 
 > **ต้องยืนยันชื่อ schema จริงก่อนใช้ `$queryRaw`** — เปิด `packages/prisma-shared-schema-platform/prisma/schema.prisma`
@@ -1539,8 +1499,14 @@ export async function assertBuQuotaAvailable(
 แทน `<ตัวแปร array ที่กำลังจะ createMany>` ด้วยชื่อจริงของ array ที่ส่งเข้า `data:`
 เพิ่ม import `import { assertSeatAvailable } from '../common/seat.helper';`
 
-**`prisma` ตรงนี้ต้องเป็น transaction client ตัวเดียวกับ `createMany`** — ถ้า `createMany`
-ไม่ได้อยู่ใน `$transaction` ให้ห่อทั้งก้อนด้วย `$transaction` ก่อน ไม่งั้น `FOR UPDATE` ไม่มีผล
+**ยืนยันแล้ว (2026-08-18):** `createMany` ตัวนี้อยู่ใน `this.prismaSystem.$transaction(async (prisma) => {`
+ที่เริ่มราวบรรทัด 1038 อยู่แล้ว และตัวแปรชื่อ `prisma` พอดี — **ไม่ต้องห่อ `$transaction` เพิ่ม**
+แค่วาง `assertSeatAvailable(prisma, …)` ไว้ในบล็อกนั้น ให้ใช้ client ตัวเดียวกับที่เขียนจริง
+ไม่งั้น `FOR UPDATE` ล็อกคนละ transaction แล้วไม่มีผล
+
+ในบล็อกนั้นมีการ "ยึดคำเชิญก่อน" ด้วย `updateMany` แบบมีเงื่อนไข (กัน race ของ token ซ้ำ) —
+**วาง seat check ไว้หลังการยึดคำเชิญ แต่ก่อน `createMany`** เพื่อไม่ให้คำเชิญถูกยึดทิ้งฟรี
+ถ้าที่นั่งเต็ม (throw จะ rollback ทั้ง transaction อยู่แล้ว แต่ลำดับนี้อ่านง่ายกว่า)
 
 - [ ] **Step 3: เสียบที่จุด assign ตรง + เปิดใช้งาน user**
 
@@ -1550,7 +1516,6 @@ export async function assertBuQuotaAvailable(
 - ก่อน `update` ใดๆ ที่เปลี่ยน `is_active` ของลิงก์ BU จาก `false` เป็น `true` เรียก
   `await assertSeatAvailable(tx, businessUnitId, 1);` **จุดนี้ลืมง่ายที่สุด** เพราะ cap อยู่ที่
   "active" ไม่ใช่ "ถูก assign" — ถ้าไม่เช็ค ลูกค้าปิด user แล้วเปิดใหม่ก็ทะลุ cap ได้
-- ก่อน `tb_business_unit.create({...})` เรียก `await assertBuQuotaAvailable(tx, clusterId, 1);`
 
 ค้นด้วย:
 ```bash
@@ -1578,10 +1543,10 @@ cd apps/micro-cluster && bunx jest src/cluster/business-unit --runInBand --force
 
 ```bash
 git add apps/micro-cluster/src/cluster/
-git commit -m "feat(license): บังคับ seat limit และเพดานจำนวน BU ที่ backend
+git commit -m "feat(license): บังคับ seat limit ที่ backend
 
-max_license_users กับ max_license_bu มีมานานแล้วแต่ไม่มีใครบังคับใช้
-(max_license_bu เคยเช็คในเบราว์เซอร์อย่างเดียว ยิง API ตรงก็ทะลุ)
+max_license_users มีมานานแล้วแต่ไม่มีใครบังคับใช้เลย
+(max_license_bu ไม่แตะ — business-unit.service.ts:85-99 บังคับอยู่แล้ว)
 
 เช็ค 3 จุด: รับคำเชิญ · assign ตรง · เปิดใช้งาน user ที่ปิดไว้
 ล็อกแถว BU ด้วย FOR UPDATE ก่อนนับ ไม่งั้นสองคำขอพร้อมกันผ่านทั้งคู่
@@ -3614,7 +3579,6 @@ ON CONFLICT (key, deleted_at) DO UPDATE SET value = '{"enabled": true}'::jsonb, 
 | ตั้ง `end_date` ย้อนหลัง แล้ว `POST` | `403 LICENSE_EXPIRED` |
 | เชิญคนเกิน `max_license_users` | `403 SEAT_LIMIT_REACHED` |
 | กดรับคำเชิญ 2 ใบพร้อมกันตอนเหลือ 1 ที่นั่ง | ผ่านใบเดียว |
-| สร้าง BU เกิน `max_license_bu` ผ่าน API ตรง | `403 BU_LIMIT_REACHED` |
 
 **คืนค่าที่แก้เพื่อทดสอบทุกตัวกลับให้เรียบร้อย**
 
