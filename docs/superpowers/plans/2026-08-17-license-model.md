@@ -2210,7 +2210,9 @@ const subscriptionService = {
   },
 
   // PATCH ไม่ใช่ PUT — แก้เฉพาะข้อมูลสัญญา (วันที่/status) ไม่แตะ feature
-  update: async (id: string, data: Partial<Subscription> & { doc_version?: number }) => {
+  // **doc_version บังคับส่งเสมอ** (แก้ 2026-08-18) — backend คืน 400 ถ้าไม่ส่ง
+  // เหมือน platform_role · การป้องกันที่ข้ามได้เงียบ ๆ ไม่ใช่การป้องกัน
+  update: async (id: string, data: Partial<Subscription> & { doc_version: number }) => {
     const response = await api.patch(`${BASE}/${id}`, data);
     return response.data;
   },
@@ -2222,7 +2224,7 @@ const subscriptionService = {
   setFeatures: async (
     id: string,
     bus: { business_unit_id: string; feature_keys: string[] }[],
-    docVersion?: number,
+    docVersion: number,   // บังคับ (แก้ 2026-08-18) — backend คืน 400 ถ้าไม่ส่ง
   ): Promise<{ data: SubscriptionDetail }> => {
     const response = await api.put(`${BASE}/${id}/features`, { bus, doc_version: docVersion });
     return response.data;
