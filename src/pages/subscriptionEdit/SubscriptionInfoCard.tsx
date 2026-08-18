@@ -201,12 +201,12 @@ export function SubscriptionInfoCard({
                 Always show both so "status=active but already expired" is visible at a glance —
                 never recompute state on the frontend (swagger: use the field as-is). */}
             {!isNew && state && (
-              <p className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Effective state:{' '}
                 <Badge variant={state === 'active' ? 'success' : 'secondary'} className="ml-1 capitalize">
                   {state}
                 </Badge>
-              </p>
+              </div>
             )}
           </div>
         </div>
