@@ -59,10 +59,13 @@ type TextFieldName = Exclude<
  *   membership), so this view neither reads nor writes them.
  *
  * Licensing is read-only here too, consistent with the cluster page: the User Licenses card
- * below is rendered read-only because `<Can permission="subscription.manage">` inside the card
- * itself hides every write control for a cluster admin, so this page adds no parallel `canEdit`
- * gate. (There used to be a single `max_license_users` column on the BU row covering this same
- * decision — Task 6.1 dropped it now that `tb_business_unit_license` fully replaces it.)
+ * below is passed `readOnly` and no write callbacks, so seats can be read on this view and
+ * changed only on the platform Business Unit page. That used to rest on the card's internal
+ * `<Can permission="subscription.manage">` alone, which held for a cluster admin but not for a
+ * platform admin opening this same route — they hold the permission and got the full write
+ * surface on a view that is scoped not to have one. (There used to be a single
+ * `max_license_users` column on the BU row covering this same decision — Task 6.1 dropped it
+ * now that `tb_business_unit_license` fully replaces it.)
  *
  * The BU-users card lives here now. It was deliberately excluded when this page was written,
  * before seat enforcement existed: membership was purely an access question and the Users page
@@ -659,18 +662,21 @@ const BusinessUnitForm: React.FC = () => {
 
         <BusinessUnitUsersCard users={users} canEdit clusterSeat={clusterSeat} />
 
-        {/* Read-only here by design — cluster admins don't hold `subscription.manage`, and the
-            card's own <Can permission="subscription.manage"> already hides every write control.
-            No parallel `canEdit` prop: two sources of truth for the same permission is how they
-            drift apart. */}
+        {/* Read-only here by design, and now enforced rather than assumed. The card's own
+            <Can permission="subscription.manage"> is a check on the *viewer*, not on the page:
+            a platform admin who holds that permission can open this cluster-admin route and used
+            to get the full add/edit/delete surface on a view that is supposed to be a statement
+            of entitlement, not a place to change one. `readOnly` answers the page-level question
+            instead, so the answer no longer depends on who is looking. Deliberately still not a
+            `canEdit` prop — see the note above the card component for why the two differ.
+            No write callbacks are wired at all, so there is no reachable path from this page to
+            businessUnitLicenseService. Licensing is changed on the platform Business Unit page. */}
         <BusinessUnitLicensesCard
           licenses={licenses.licenses}
           loading={licenses.loading}
           saving={licenses.saving}
           clusterSeat={clusterSeat}
-          onCreate={licenses.create}
-          onUpdate={licenses.update}
-          onRemove={licenses.remove}
+          readOnly
         />
           </>
         ))}

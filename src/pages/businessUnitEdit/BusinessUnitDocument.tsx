@@ -203,7 +203,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             <div className="min-w-0">
               <ReadOnlyText value={`${activeSeats}`} />
               <p className="text-muted-foreground mt-1 text-[11px]">
-                จาก {activeLicenseCount} ใบที่ใช้ได้ · แก้ที่การ์ด User Licenses
+                From {activeLicenseCount} active {activeLicenseCount === 1 ? 'license' : 'licenses'} · change these in the User Licenses card
               </p>
             </div>
           </div>

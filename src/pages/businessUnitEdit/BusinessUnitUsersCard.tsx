@@ -38,9 +38,9 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
           </div>
           {clusterSeat && (
             <p className={`text-xs mt-1 ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
-              ใช้ {clusterSeat.used} / {clusterSeat.cap} ที่นั่ง (ทั้ง cluster)
+              {clusterSeat.used} / {clusterSeat.cap} cluster seats used
               {over && (
-                <> · ต้องปิดผู้ใช้อีก {clusterSeat.used - clusterSeat.cap} คน ที่ไม่มี BU อื่นในคลัสเตอร์นี้</>
+                <> · deactivate {clusterSeat.used - clusterSeat.cap} more who belong to no other BU in this cluster</>
               )}
             </p>
           )}
@@ -105,7 +105,7 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                         หมายเหตุนี้ เพราะยังตัดสินไม่ได้ว่าปิดแล้วคืนที่นั่งหรือเปล่า */}
                     {u.is_active && u.frees_seat === false && (
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        อยู่ BU อื่นด้วย — ปิดแล้วไม่คืนที่นั่ง
+                        Also in another BU — deactivating frees no seat
                       </p>
                     )}
                   </td>

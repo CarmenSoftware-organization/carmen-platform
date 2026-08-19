@@ -43,8 +43,8 @@ describe('BusinessUnitLicensesCard', () => {
     ]} />);
     // ใบ 'b' ยัง scheduled (เริ่ม 2026-10-01, NOW = 2026-08-19) จึงไม่นับเข้าที่นั่งที่ใช้ได้ —
     // ผลรวมต้องเป็น 10 (เฉพาะใบ 'a' ที่ active) ไม่ใช่ 15 (10+5 รวมทุกใบ)
-    expect(screen.getByText(/^10 ที่นั่ง/)).toBeInTheDocument();
-    expect(screen.getByText(/จาก 1 ใบที่ใช้ได้/)).toBeInTheDocument();
+    expect(screen.getByText(/^10 seats from/)).toBeInTheDocument();
+    expect(screen.getByText(/1 active license$/)).toBeInTheDocument();
   });
 
   it('ใบที่หมดอายุถูกซ่อนไว้จนกว่าจะกดแสดง — เป็นประวัติ ไม่ใช่ noise', async () => {
@@ -54,27 +54,45 @@ describe('BusinessUnitLicensesCard', () => {
       lic({ id: 'old', licensed_users: 8, start_date: '2025-01-01T00:00:00.000Z', end_date: '2025-12-31T00:00:00.000Z' }),
     ]} />);
     expect(screen.queryByText('8')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /แสดงใบที่หมดอายุ/ }));
+    await user.click(screen.getByRole('button', { name: /Show expired/ }));
     expect(screen.getByText('8')).toBeInTheDocument();
   });
 
   it('ใบจาก migration ขึ้นป้ายว่าต้องระบุวันหมดอายุ', () => {
     render(<BusinessUnitLicensesCard {...base} licenses={[lic({ note: 'migrated — ต้องระบุวันหมดอายุจริง', end_date: '2099-12-31T00:00:00.000Z' })]} />);
-    expect(screen.getByText(/ต้องระบุวันหมดอายุ/)).toBeInTheDocument();
+    expect(screen.getByText(/End date required/)).toBeInTheDocument();
   });
 
   it('บอก pool ระดับ cluster เพราะเพดานไม่ใช่ของ BU นี้', () => {
     render(<BusinessUnitLicensesCard {...base} licenses={[lic({})]} />);
     expect(screen.getByText(/12 \/ 15/)).toBeInTheDocument();
-    expect(screen.getByText(/ทั้ง cluster/)).toBeInTheDocument();
+    expect(screen.getByText(/Cluster pool:/)).toBeInTheDocument();
   });
 
   it('ไม่มี subscription.manage = ไม่มีปุ่มเพิ่ม/แก้/ลบ แต่ยังเห็นรายการ', () => {
     auth.permissions = ['cluster.read'];  // ผู้ที่แก้ BU ได้ แต่ไม่ได้ดูแลสัญญา
     render(<BusinessUnitLicensesCard {...base} licenses={[lic({})]} />);
-    expect(screen.queryByRole('button', { name: /เพิ่มใบ/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^ลบ$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Add license/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();  // ยังอ่านได้
+  });
+
+  // นี่คือกรณีที่ `<Can>` เพียงอย่างเดียวเอาไม่อยู่ และเป็นเหตุผลที่ `readOnly` มีอยู่:
+  // permission ครบทุกตัว แต่หน้าที่แสดงการ์ดนี้ไม่ใช่พื้นผิวสำหรับเขียน
+  it('readOnly = ไม่มีปุ่มเขียนเลย ถึงจะมี subscription.manage ครบ', () => {
+    render(<BusinessUnitLicensesCard {...base} readOnly licenses={[lic({})]} />);
+    expect(auth.permissions).toContain('subscription.manage');  // กันเทสต์ผ่านเพราะสิทธิ์หาย
+    expect(screen.queryByRole('button', { name: /Add license/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Edit$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument();
+    expect(screen.getByText('10')).toBeInTheDocument();  // ยังอ่านได้
+    expect(screen.getByText(/read-only/)).toBeInTheDocument();
+  });
+
+  it('readOnly + ยังไม่มีใบ = เล่าสถานะ ไม่ชวนให้เพิ่ม', () => {
+    render(<BusinessUnitLicensesCard {...base} readOnly licenses={[]} />);
+    expect(screen.getByText(/has not assigned seats/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Add license/ })).not.toBeInTheDocument();
   });
 
   // ยืนยันเป็นส่วนประกอบเวลาท้องถิ่น ไม่ใช่สตริง ISO ตายตัว — เครื่อง dev รัน +07 ส่วน CI รัน UTC
@@ -86,11 +104,11 @@ describe('BusinessUnitLicensesCard', () => {
     const onCreate = vi.fn().mockResolvedValue(undefined);
     render(<BusinessUnitLicensesCard {...base} licenses={[]} onCreate={onCreate} />);
 
-    await user.click(screen.getAllByRole('button', { name: /เพิ่มใบ/ })[0]);
-    fireEvent.change(screen.getByLabelText('จำนวนที่นั่ง'), { target: { value: '10' } });
-    fireEvent.change(screen.getByLabelText('วันเริ่ม'), { target: { value: '2026-12-01' } });
-    fireEvent.change(screen.getByLabelText('วันหมดอายุ'), { target: { value: '2026-12-31' } });
-    await user.click(screen.getByRole('button', { name: 'เพิ่ม' }));
+    await user.click(screen.getAllByRole('button', { name: /Add license/ })[0]);
+    fireEvent.change(screen.getByLabelText('Seats'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-12-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-12-31' } });
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     const { start_date, end_date } = onCreate.mock.calls[0][0];
@@ -114,9 +132,9 @@ describe('BusinessUnitLicensesCard', () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();
     render(<BusinessUnitLicensesCard {...base} onRemove={onRemove} licenses={[lic({})]} />);
-    await user.click(screen.getByRole('button', { name: /ลบ/ }));
+    await user.click(screen.getByRole('button', { name: /Remove/ }));
     expect(onRemove).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: /ยืนยัน|Confirm/ }));
+    await user.click(screen.getByRole('button', { name: /Confirm|ยืนยัน/ }));
     expect(onRemove).toHaveBeenCalledWith('l1');
   });
 });
