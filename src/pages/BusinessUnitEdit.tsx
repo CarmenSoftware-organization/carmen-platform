@@ -25,8 +25,10 @@ import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
 import { initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
+import { useBusinessUnitLicenses } from './businessUnitEdit/useBusinessUnitLicenses';
 import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCard';
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
+import BusinessUnitLicensesCard from './businessUnitEdit/BusinessUnitLicensesCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
@@ -63,6 +65,15 @@ const BusinessUnitEdit: React.FC = () => {
   const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
+  const licenses = useBusinessUnitLicenses(id);
+
+  // Seat pool is the cluster's, not this BU's — `total_max_license_users` is a backend
+  // aggregate across every BU in the cluster. Treat 0/null/absent as uncapped (no meter),
+  // same convention as ClusterManagement's CapacityMeter — never show a false "0 / 0".
+  const currentCluster = clusters.find((c) => c.id === formData.cluster_id);
+  const clusterSeat = currentCluster?.total_max_license_users
+    ? { used: currentCluster.users_count ?? 0, cap: currentCluster.total_max_license_users }
+    : undefined;
 
   // จริงเมื่อ "เคยตั้งค่าไว้แล้ว" และกำลังเปลี่ยนไปเป็นค่าอื่น — BU ใหม่หรือ BU ที่ยังไม่เคย
   // ตั้งค่าไม่ต้องถาม เพราะไม่มีข้อมูลเดิมให้หลุดมือ
@@ -616,6 +627,19 @@ const BusinessUnitEdit: React.FC = () => {
             ) : null
           }
           usersSlot={!isNew ? <BusinessUnitUsersCard users={users} canEdit={canEdit} /> : null}
+          licensesSlot={
+            !isNew ? (
+              <BusinessUnitLicensesCard
+                licenses={licenses.licenses}
+                loading={licenses.loading}
+                saving={licenses.saving}
+                clusterSeat={clusterSeat}
+                onCreate={licenses.create}
+                onUpdate={licenses.update}
+                onRemove={licenses.remove}
+              />
+            ) : null
+          }
         />
       </div>
 

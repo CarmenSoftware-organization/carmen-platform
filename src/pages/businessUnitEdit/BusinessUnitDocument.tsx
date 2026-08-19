@@ -39,6 +39,7 @@ interface BusinessUnitDocumentProps {
   brandingSlot?: React.ReactNode;
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
+  licensesSlot?: React.ReactNode;
 }
 
 function Group({
@@ -89,6 +90,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     brandingSlot,
     advancedExtraSlot,
     usersSlot,
+    licensesSlot,
   } = props;
 
   // `canEdit` is the one source of write access on this page. Each section already
@@ -272,6 +274,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       />
       {advancedExtraSlot}
       {usersSlot}
+      {licensesSlot}
     </div>
   );
 }
