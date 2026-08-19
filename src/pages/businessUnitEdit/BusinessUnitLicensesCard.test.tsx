@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import BusinessUnitLicensesCard from './BusinessUnitLicensesCard';
 import type { BusinessUnitLicense } from '../../types';
@@ -75,6 +75,39 @@ describe('BusinessUnitLicensesCard', () => {
     expect(screen.queryByRole('button', { name: /เพิ่มใบ/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^ลบ$/ })).not.toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();  // ยังอ่านได้
+  });
+
+  // ยืนยันเป็นส่วนประกอบเวลาท้องถิ่น ไม่ใช่สตริง ISO ตายตัว — เครื่อง dev รัน +07 ส่วน CI รัน UTC
+  // เทียบสตริงตรง ๆ จะเขียวที่หนึ่งแล้วแดงอีกที่หนึ่งโดยที่โค้ดไม่ผิด
+  // ใช้ fireEvent.change กับ <input type="date"> เพราะการพิมพ์ทีละตัวอักษรลงช่องวันที่
+  // ขึ้นกับ locale ของ jsdom
+  it('วันหมดอายุครอบคลุมถึงสิ้นวันตามเวลาผู้ใช้ ไม่ใช่เที่ยงคืน UTC', async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn().mockResolvedValue(undefined);
+    render(<BusinessUnitLicensesCard {...base} licenses={[]} onCreate={onCreate} />);
+
+    await user.click(screen.getAllByRole('button', { name: /เพิ่มใบ/ })[0]);
+    fireEvent.change(screen.getByLabelText('จำนวนที่นั่ง'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('วันเริ่ม'), { target: { value: '2026-12-01' } });
+    fireEvent.change(screen.getByLabelText('วันหมดอายุ'), { target: { value: '2026-12-31' } });
+    await user.click(screen.getByRole('button', { name: 'เพิ่ม' }));
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    const { start_date, end_date } = onCreate.mock.calls[0][0];
+    const start = new Date(start_date);
+    const end = new Date(end_date);
+
+    expect([start.getFullYear(), start.getMonth() + 1, start.getDate()]).toEqual([2026, 12, 1]);
+    expect([start.getHours(), start.getMinutes(), start.getSeconds()]).toEqual([0, 0, 0]);
+
+    expect([end.getFullYear(), end.getMonth() + 1, end.getDate()]).toEqual([2026, 12, 31]);
+    expect([end.getHours(), end.getMinutes(), end.getSeconds(), end.getMilliseconds()])
+      .toEqual([23, 59, 59, 999]);
+
+    // ส่งขึ้นสายเป็น UTC เสมอ ไม่ว่าเครื่องจะอยู่โซนไหน
+    expect(end_date.endsWith('Z')).toBe(true);
+    // ใบที่เริ่มและหมดวันเดียวกันต้องผ่าน CHECK `end_date > start_date` ของ DB
+    expect(new Date(end_date).getTime()).toBeGreaterThan(new Date(start_date).getTime());
   });
 
   it('ลบใบต้องผ่าน ConfirmDialog ไม่ลบทันที', async () => {
