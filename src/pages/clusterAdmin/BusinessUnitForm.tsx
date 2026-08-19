@@ -19,12 +19,13 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
-import { ReadOnlyText, ReadOnlyTextarea, AddrField, InlineField } from '../businessUnitEdit/shared';
+import { ReadOnlyText, ReadOnlyTextarea, AddrField, InlineField, Group } from '../businessUnitEdit/shared';
 import { initialFormData, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
 import { ClusterBuDocument } from './businessUnitForm/ClusterBuDocument';
+import { SeatMeter } from './businessUnitForm/SeatMeter';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
 import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
@@ -562,6 +563,35 @@ const BusinessUnitForm: React.FC = () => {
               onUploadAvatar={handleUploadAvatar}
             />
           }
+          seatsSlot={
+            <Card className="overflow-hidden p-0">
+              <Group label="People & seats">
+                {clusterSeat && (
+                  <div className="mb-4">
+                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={licenses.activeSeats} />
+                  </div>
+                )}
+                <BusinessUnitUsersCard users={users} canEdit={canEdit} />
+                {/* Read-only here by design, and enforced rather than assumed. The card's own
+                    <Can permission="subscription.manage"> is a check on the *viewer*, not on the
+                    page: a platform admin who holds that permission can open this cluster-admin
+                    route and used to get the full add/edit/delete surface on a view that is
+                    supposed to be a statement of entitlement, not a place to change one.
+                    `readOnly` answers the page-level question instead, so the answer no longer
+                    depends on who is looking. Deliberately still not a `canEdit` prop — see the
+                    note above the card component for why the two differ. No write callbacks are
+                    wired at all, so there is no reachable path from this page to
+                    businessUnitLicenseService. Licensing is changed on the platform Business
+                    Unit page. */}
+                <BusinessUnitLicensesCard
+                  licenses={licenses.licenses}
+                  loading={licenses.loading}
+                  saving={licenses.saving}
+                  readOnly
+                />
+              </Group>
+            </Card>
+          }
         />
 
         <Card>
@@ -630,24 +660,6 @@ const BusinessUnitForm: React.FC = () => {
           onConfigChange={handleConfigChange}
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
-        />
-        <BusinessUnitUsersCard users={users} canEdit clusterSeat={clusterSeat} />
-
-        {/* Read-only here by design, and now enforced rather than assumed. The card's own
-            <Can permission="subscription.manage"> is a check on the *viewer*, not on the page:
-            a platform admin who holds that permission can open this cluster-admin route and used
-            to get the full add/edit/delete surface on a view that is supposed to be a statement
-            of entitlement, not a place to change one. `readOnly` answers the page-level question
-            instead, so the answer no longer depends on who is looking. Deliberately still not a
-            `canEdit` prop — see the note above the card component for why the two differ.
-            No write callbacks are wired at all, so there is no reachable path from this page to
-            businessUnitLicenseService. Licensing is changed on the platform Business Unit page. */}
-        <BusinessUnitLicensesCard
-          licenses={licenses.licenses}
-          loading={licenses.loading}
-          saving={licenses.saving}
-          clusterSeat={clusterSeat}
-          readOnly
         />
           </>
         ))}
