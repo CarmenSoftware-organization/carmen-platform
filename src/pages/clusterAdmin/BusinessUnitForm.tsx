@@ -34,14 +34,13 @@ import type { BusinessUnitConfig } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
 // Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
-// page never exposes (cluster_id comes from the URL only; max_license_users is a platform
-// decision; code is a system identifier this view no longer surfaces — it still loads from
-// the API and still ships in the save payload, see fetchBusinessUnit/buildPayload below,
-// it just never renders) are excluded so the compiler — not just convention — stops any of
-// them from being wired into a text input here.
+// page never exposes (cluster_id comes from the URL only; code is a system identifier this
+// view no longer surfaces — it still loads from the API and still ships in the save payload,
+// see fetchBusinessUnit/buildPayload below, it just never renders) are excluded so the
+// compiler — not just convention — stops any of them from being wired into a text input here.
 type TextFieldName = Exclude<
   keyof BusinessUnitFormData,
-  'is_hq' | 'is_active' | 'config' | 'cluster_id' | 'max_license_users' | 'code'
+  'is_hq' | 'is_active' | 'config' | 'cluster_id' | 'code'
   | 'database_pool_id' | 'db_schema' | 'database_pool_name'
 >;
 
@@ -54,14 +53,16 @@ type TextFieldName = Exclude<
  * `max_license_bu`, which is a platform decision — see the 2026-08-05 cluster-admin-layout
  * spec's B5 and the 2026-08-06 addendum removing BU create from this view.
  *
- * Two things are still deliberately absent:
+ * One thing is still deliberately absent:
  * - The database-pool section: pools are a platform-wide resource and the backend gates any
  *   write that touches `database_pool_id`/`db_schema` on a platform role (not on cluster
  *   membership), so this view neither reads nor writes them.
- * - `max_license_users`: a platform decision, consistent with licensing being read-only
- *   on the cluster page. The User Licenses card below is rendered read-only for the same
- *   reason — `<Can permission="subscription.manage">` inside the card itself hides every
- *   write control for a cluster admin, so this page adds no parallel `canEdit` gate.
+ *
+ * Licensing is read-only here too, consistent with the cluster page: the User Licenses card
+ * below is rendered read-only because `<Can permission="subscription.manage">` inside the card
+ * itself hides every write control for a cluster admin, so this page adds no parallel `canEdit`
+ * gate. (There used to be a single `max_license_users` column on the BU row covering this same
+ * decision — Task 6.1 dropped it now that `tb_business_unit_license` fully replaces it.)
  *
  * The BU-users card lives here now. It was deliberately excluded when this page was written,
  * before seat enforcement existed: membership was purely an access question and the Users page
@@ -184,9 +185,8 @@ const BusinessUnitForm: React.FC = () => {
         calculation_method: bu.calculation_method || '',
         default_currency_id: bu.default_currency_id || '',
         config: Array.isArray(bu.config) ? bu.config : [],
-        // max_license_users and the pool fields (database_pool_id, db_schema,
-        // database_pool_name) are intentionally left at their initialFormData defaults — this
-        // page never reads or writes any of them.
+        // The pool fields (database_pool_id, db_schema, database_pool_name) are intentionally
+        // left at their initialFormData defaults — this page never reads or writes any of them.
       };
       setFormData(loaded);
       setSavedFormData(loaded);
@@ -322,10 +322,10 @@ const BusinessUnitForm: React.FC = () => {
     return true;
   };
 
-  // cluster_id, max_license_users, and the three database pool fields
-  // (database_pool_id, db_schema, database_pool_name) are never sent to the backend:
-  // cluster_id is immutable on update (the record's cluster is fixed), and the others are
-  // platform-only concerns gated on platform roles — this page does not expose them.
+  // cluster_id and the three database pool fields (database_pool_id, db_schema,
+  // database_pool_name) are never sent to the backend: cluster_id is immutable on update (the
+  // record's cluster is fixed), and the pool fields are platform-only concerns gated on
+  // platform roles — this page does not expose them.
   const buildPayload = (data: BusinessUnitFormData): Record<string, unknown> => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
@@ -336,7 +336,6 @@ const BusinessUnitForm: React.FC = () => {
     for (const [key, val] of Object.entries(data)) {
       if (
         key === 'cluster_id' ||
-        key === 'max_license_users' ||
         key === 'database_pool_id' ||
         key === 'db_schema' ||
         key === 'database_pool_name'
