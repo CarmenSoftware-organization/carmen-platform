@@ -218,7 +218,8 @@ export default function BusinessUnitLicensesCard({
                     </td>
                     <td className="px-2 py-1 text-right whitespace-nowrap">
                       <Button size="sm" onClick={submitCreate} disabled={saving || !canSubmitDraft(draft)}>
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'เพิ่ม'}
+                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {saving ? 'กำลังบันทึก...' : 'เพิ่ม'}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>ยกเลิก</Button>
                     </td>
@@ -273,7 +274,8 @@ export default function BusinessUnitLicensesCard({
                           </td>
                           <td className="px-2 py-1 text-right whitespace-nowrap">
                             <Button size="sm" onClick={() => submitUpdate(l)} disabled={saving || !canSubmitDraft(draft)}>
-                              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'บันทึก'}
+                              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
                             </Button>
                             <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>ยกเลิก</Button>
                           </td>

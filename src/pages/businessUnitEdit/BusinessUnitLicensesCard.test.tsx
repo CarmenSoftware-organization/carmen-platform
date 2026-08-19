@@ -35,11 +35,15 @@ beforeEach(() => {
 
 describe('BusinessUnitLicensesCard', () => {
   it('แสดงผลรวมของใบที่ใช้ได้ ไม่ใช่ผลรวมทุกใบ', () => {
-    render(<BusinessUnitLicensesCard {...base} licenses={[
+    // cap ตั้งใจเป็น 99 (ไม่ใช่ 15 ของ base) กันไม่ให้เทสต์ผ่านเพราะตัวเลขบังเอิญตรงกับ
+    // clusterSeat.cap แทนที่จะตรงกับผลรวมที่นั่งจริงที่การ์ดคำนวณเอง
+    render(<BusinessUnitLicensesCard {...base} clusterSeat={{ used: 12, cap: 99 }} licenses={[
       lic({ id: 'a', licensed_users: 10 }),
       lic({ id: 'b', licensed_users: 5, start_date: '2026-10-01T00:00:00.000Z', end_date: '2027-09-30T00:00:00.000Z' }),
     ]} />);
-    expect(screen.getByText(/15 ที่นั่ง/)).toBeInTheDocument();  // 10 active + 5 scheduled = pool ของ cluster
+    // ใบ 'b' ยัง scheduled (เริ่ม 2026-10-01, NOW = 2026-08-19) จึงไม่นับเข้าที่นั่งที่ใช้ได้ —
+    // ผลรวมต้องเป็น 10 (เฉพาะใบ 'a' ที่ active) ไม่ใช่ 15 (10+5 รวมทุกใบ)
+    expect(screen.getByText(/^10 ที่นั่ง/)).toBeInTheDocument();
     expect(screen.getByText(/จาก 1 ใบที่ใช้ได้/)).toBeInTheDocument();
   });
 
