@@ -16,9 +16,16 @@ interface BusinessUnitUsersCardProps {
   users: ReturnType<typeof useBusinessUnitUsers>;
   /** Write access for BU membership — the page's `canEdit`. Read-only by default. */
   canEdit?: boolean;
+  /** pool ระดับ cluster ไม่ใช่ของ BU นี้ — คนที่ active อยู่หลาย BU ในคลัสเตอร์เดียวกันถือแค่ 1 ที่นั่ง
+   *  นับ active เฉพาะแถวใน BU นี้จึงเป็นตัวส่วนที่ผิด แถบนี้จึงต้องมาจาก `cluster_seat` ของ backend
+   *  (Task 4b.1) ไม่ใช่คำนวณเองจาก `users.buUsers` */
+  clusterSeat?: { used: number; cap: number };
 }
 
-const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, canEdit = false }) => (
+const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, canEdit = false, clusterSeat }) => {
+  const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
+
+  return (
   <Card>
     <CardHeader>
       <div className="flex items-center justify-between">
@@ -30,6 +37,14 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
               <span className="text-muted-foreground text-xs">of {users.buUsers.length} total</span>
             </span>
           </CardDescription>
+          {clusterSeat && (
+            <p className={`text-xs mt-1 ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
+              ใช้ {clusterSeat.used} / {clusterSeat.cap} ที่นั่ง (ทั้ง cluster)
+              {over && (
+                <> · ต้องปิดผู้ใช้อีก {clusterSeat.used - clusterSeat.cap} คน ที่ไม่มี BU อื่นในคลัสเตอร์นี้</>
+              )}
+            </p>
+          )}
         </div>
         {canEdit && (
           <Button variant="outline" size="sm" onClick={users.handleOpenAddUser}>
@@ -87,6 +102,13 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                     <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
                       {u.is_active ? 'Active' : 'Inactive'}
                     </Badge>
+                    {/* frees_seat มาจาก backend เท่านั้น (optional — Task 4b.1) — undefined ต้องไม่ขึ้น
+                        หมายเหตุนี้ เพราะยังตัดสินไม่ได้ว่าปิดแล้วคืนที่นั่งหรือเปล่า */}
+                    {u.is_active && u.frees_seat === false && (
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        อยู่ BU อื่นด้วย — ปิดแล้วไม่คืนที่นั่ง
+                      </p>
+                    )}
                   </td>
                   {canEdit && (
                     <td className="px-4 py-2 text-center">
@@ -266,6 +288,7 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
       )}
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default BusinessUnitUsersCard;

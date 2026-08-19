@@ -26,6 +26,10 @@ import CalculationSettingsSection from '../businessUnitEdit/sections/Calculation
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
+import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
+import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
+import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
+import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
 import type { BusinessUnitConfig } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
@@ -50,13 +54,25 @@ type TextFieldName = Exclude<
  * `max_license_bu`, which is a platform decision — see the 2026-08-05 cluster-admin-layout
  * spec's B5 and the 2026-08-06 addendum removing BU create from this view.
  *
- * Three things are deliberately absent:
+ * Two things are still deliberately absent:
  * - The database-pool section: pools are a platform-wide resource and the backend gates any
  *   write that touches `database_pool_id`/`db_schema` on a platform role (not on cluster
  *   membership), so this view neither reads nor writes them.
  * - `max_license_users`: a platform decision, consistent with licensing being read-only
- *   on the cluster page.
- * - The BU-users card: membership is managed on the Users page, not here.
+ *   on the cluster page. The User Licenses card below is rendered read-only for the same
+ *   reason — `<Can permission="subscription.manage">` inside the card itself hides every
+ *   write control for a cluster admin, so this page adds no parallel `canEdit` gate.
+ *
+ * The BU-users card lives here now. It was deliberately excluded when this page was written,
+ * before seat enforcement existed: membership was purely an access question and the Users page
+ * owned it. Seats changed that — an over-quota cluster is blocked from writing until someone
+ * deactivates users, and that someone is the cluster admin, who cannot reach the platform
+ * Business Unit page. Cluster membership (tb_cluster_user) is still managed on the Users page;
+ * this card manages BU membership (tb_user_tb_business_unit), which is what seats count.
+ * การ์ดผู้ใช้ของ BU ย้ายมาอยู่ที่นี่แล้ว เดิมถูกกันออกโดยตั้งใจตอนที่ยังไม่มีการบังคับที่นั่ง
+ * แต่ตอนนี้ cluster ที่เกินโควตาจะเขียนอะไรไม่ได้จนกว่าจะมีคนปิดผู้ใช้ และคนนั้นคือ cluster admin
+ * ซึ่งเข้าหน้า Business Unit ของ platform ไม่ได้ cluster membership (tb_cluster_user) ยังจัดการที่
+ * หน้า Users เหมือนเดิม การ์ดนี้จัดการ BU membership (tb_user_tb_business_unit) ซึ่งเป็นตัวที่ seat นับ
  */
 const BusinessUnitForm: React.FC = () => {
   const { clusterId, buId } = useParams<{ clusterId: string; buId: string }>();
@@ -75,6 +91,12 @@ const BusinessUnitForm: React.FC = () => {
   const [accessLost, setAccessLost] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  // Cluster-wide seat pool for this BU's cluster — { used, cap } from the BU detail response
+  // (Task 4b.1's `cluster_seat`). Optional and undefined until a deployed backend sends it.
+  const [clusterSeat, setClusterSeat] = useState<{ used: number; cap: number } | undefined>(undefined);
+
+  const users = useBusinessUnitUsers(buId, formData.cluster_id, false);
+  const licenses = useBusinessUnitLicenses(buId);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -172,6 +194,12 @@ const BusinessUnitForm: React.FC = () => {
       setLogoUrl(bu.logo?.url || '');
       setAvatarUrl(bu.avatar?.url || '');
       setDefaultCurrency(bu.default_currency || null);
+      users.setBuUsers(Array.isArray(bu.users) ? bu.users : []);
+      setClusterSeat(
+        bu.cluster_seat && typeof bu.cluster_seat.used === 'number' && typeof bu.cluster_seat.cap === 'number'
+          ? { used: bu.cluster_seat.used, cap: bu.cluster_seat.cap }
+          : undefined,
+      );
       setAccessLost(false);
     } catch (err: unknown) {
       // A 403 here means the admin membership was revoked while this page was open. Same guard
@@ -628,6 +656,22 @@ const BusinessUnitForm: React.FC = () => {
           code={formData.code}
           onUploadLogo={handleUploadLogo}
           onUploadAvatar={handleUploadAvatar}
+        />
+
+        <BusinessUnitUsersCard users={users} canEdit clusterSeat={clusterSeat} />
+
+        {/* Read-only here by design — cluster admins don't hold `subscription.manage`, and the
+            card's own <Can permission="subscription.manage"> already hides every write control.
+            No parallel `canEdit` prop: two sources of truth for the same permission is how they
+            drift apart. */}
+        <BusinessUnitLicensesCard
+          licenses={licenses.licenses}
+          loading={licenses.loading}
+          saving={licenses.saving}
+          clusterSeat={clusterSeat}
+          onCreate={licenses.create}
+          onUpdate={licenses.update}
+          onRemove={licenses.remove}
         />
           </>
         ))}

@@ -27,6 +27,9 @@ export interface BUUser {
   firstname: string | null;
   middlename: string | null;
   lastname: string | null;
+  /** ปิด membership นี้แล้วคืนที่นั่งให้ pool ของ cluster ไหม — มีเมื่อ backend ส่งมา (Task 4b.1) เท่านั้น,
+   *  จึงต้อง optional เสมอ (กฎข้อ 11): backend อาจยังไม่ deploy ในบางสภาพแวดล้อม */
+  frees_seat?: boolean;
 }
 
 export interface DefaultCurrency {
