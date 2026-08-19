@@ -66,7 +66,7 @@ export function AddressBlock({ prefix, formData, disabled = false, onChange }: A
       label={label}
       placeholder={label}
       value={v(suffix)}
-      editing
+      editing={!disabled}
       onChange={onChange}
     />
   );
