@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { UserPlus, Pencil, Trash2, Save, X, Search } from 'lucide-react';
@@ -31,12 +31,11 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
       <div className="flex items-center justify-between">
         <div>
           <CardTitle className="text-base">Users</CardTitle>
-          <CardDescription>
-            <span className="flex items-center gap-2 mt-0.5">
-              <Badge variant="success" className="text-xs px-1.5 py-0">{users.buUsers.filter(u => u.is_active).length} Active</Badge>
-              <span className="text-muted-foreground text-xs">of {users.buUsers.length} total</span>
-            </span>
-          </CardDescription>
+          {/* ไม่ใช้ CardDescription: มันเรนเดอร์เป็น <p> ซึ่งครอบ <div> ของ Badge ไม่ได้ */}
+          <div className="flex items-center gap-2 mt-0.5">
+            <Badge variant="success" className="text-xs px-1.5 py-0">{users.buUsers.filter(u => u.is_active).length} Active</Badge>
+            <span className="text-muted-foreground text-xs">of {users.buUsers.length} total</span>
+          </div>
           {clusterSeat && (
             <p className={`text-xs mt-1 ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
               ใช้ {clusterSeat.used} / {clusterSeat.cap} ที่นั่ง (ทั้ง cluster)
