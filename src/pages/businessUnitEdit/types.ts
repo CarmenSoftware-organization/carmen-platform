@@ -47,7 +47,6 @@ export interface BusinessUnitFormData {
   description: string;
   is_hq: boolean;
   is_active: boolean;
-  max_license_users: string;
   // Hotel Information
   hotel_name: string;
   hotel_tel: string;
@@ -110,7 +109,6 @@ export const initialFormData: BusinessUnitFormData = {
   description: '',
   is_hq: false,
   is_active: true,
-  max_license_users: '',
   hotel_name: '',
   hotel_tel: '',
   hotel_email: '',

@@ -106,7 +106,6 @@ export interface BusinessUnit {
   description?: string;
   is_hq?: boolean;
   is_active: boolean;
-  max_license_users?: number;
   // Hotel Information
   hotel_name?: string;
   hotel_tel?: string;

@@ -40,6 +40,8 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
       defaultCurrency={null}
       getCalculationMethodLabel={(m) => m}
       canEdit
+      activeSeats={0}
+      activeLicenseCount={0}
       onCommit={onCommit}
       onToggle={noop}
       onValidate={onValidate}
@@ -64,7 +66,6 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
 const EDITABLE_FIELDS: [keyof BusinessUnitFormData, string][] = [
   ['code', 'Code'],
   ['alias_name', 'Alias'],
-  ['max_license_users', 'Max users'],
   ['description', 'Description'],
   ['hotel_name', 'Hotel name'],
   ['hotel_address_line1', 'Address line 1'],
@@ -114,6 +115,14 @@ describe('BusinessUnitDocument', () => {
     await user.tab();
 
     expect(onCommit).toHaveBeenCalledWith(name, '12');
+  });
+
+  it('Max users เป็นค่าอ่านอย่างเดียว — แก้ได้ที่การ์ด User Licenses เท่านั้น', () => {
+    setup({ activeSeats: 15, activeLicenseCount: 2 });
+
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByText(/จาก 2 ใบที่ใช้ได้/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Max users')).not.toBeInTheDocument();
   });
 
   it('lets the user set the required code on a new business unit', async () => {

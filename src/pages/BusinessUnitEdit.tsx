@@ -205,7 +205,6 @@ const BusinessUnitEdit: React.FC = () => {
         description: bu.description || '',
         is_hq: bu.is_hq ?? false,
         is_active: bu.is_active ?? true,
-        max_license_users: bu.max_license_users != null ? String(bu.max_license_users) : '',
         hotel_name: bu.hotel_name || '',
         hotel_tel: bu.hotel_tel || '',
         hotel_email: bu.hotel_email || '',
@@ -337,13 +336,6 @@ const BusinessUnitEdit: React.FC = () => {
       } else if (val !== '' && val !== undefined && val !== null) {
         payload[key] = val;
       }
-    }
-
-    // Convert max_license_users to number
-    if (data.max_license_users) {
-      payload.max_license_users = Number(data.max_license_users);
-    } else {
-      delete payload.max_license_users;
     }
 
     // Parse number format fields from JSON strings to objects
@@ -575,6 +567,8 @@ const BusinessUnitEdit: React.FC = () => {
           currenciesFailed={currenciesFailed}
           getCalculationMethodLabel={getCalculationMethodLabel}
           canEdit={canEdit}
+          activeSeats={licenses.activeSeats}
+          activeLicenseCount={licenses.activeLicenseCount}
           onCommit={handleInlineCommit}
           onToggle={handleInlineToggle}
           onValidate={handleInlineValidate}

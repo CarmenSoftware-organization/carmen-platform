@@ -230,13 +230,17 @@ const BusinessUnitManagement: React.FC = () => {
   };
 
   const handleExport = () => {
+    // `max_license_users` dropped (Task 3.5) — this list endpoint has no per-row seat total to
+    // export instead: seats are now dated licence rows summed via a view, and the only
+    // computed aggregate the backend exposes is per-cluster (`Cluster.total_max_license_users`),
+    // not per-BU. Rather than export the retired raw column (stale the moment any licence
+    // changes) or a blank column, the column is dropped.
     const csv = generateCSV(businessUnits, [
       { key: 'code', label: 'Code' },
       { key: 'name', label: 'Name' },
       { key: 'alias_name', label: 'Alias Name' },
       { key: 'cluster_name', label: 'Cluster' },
       { key: 'is_active', label: 'Status' },
-      { key: 'max_license_users', label: 'Max Licensed Users' },
       { key: 'created_at', label: 'Created' },
     ]);
     downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);

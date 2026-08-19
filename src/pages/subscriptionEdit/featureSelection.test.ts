@@ -143,18 +143,16 @@ describe('availableBus', () => {
 });
 
 describe('addBu', () => {
-  it('adds a new SubscriptionBu with empty feature_keys, seeded licensed_users from max_license_users', () => {
-    const cluster = [businessUnit({ id: 'bu2', code: 'BU2', name: 'Beta BU', max_license_users: 25 })];
+  // `BusinessUnit.max_license_users` no longer exists (carmen-platform Task 3.5 — seats moved
+  // to dated licence rows) so there is nothing left on the BU record for `addBu` to seed
+  // `licensed_users` from; it always seeds 0, a client-side placeholder the backend recomputes
+  // on refetch after save.
+  it('adds a new SubscriptionBu with empty feature_keys and licensed_users seeded to 0', () => {
+    const cluster = [businessUnit({ id: 'bu2', code: 'BU2', name: 'Beta BU' })];
     const result = addBu([], cluster, 'bu2');
     expect(result).toEqual([
-      { business_unit_id: 'bu2', bu_code: 'BU2', bu_name: 'Beta BU', feature_keys: [], licensed_users: 25 },
+      { business_unit_id: 'bu2', bu_code: 'BU2', bu_name: 'Beta BU', feature_keys: [], licensed_users: 0 },
     ]);
-  });
-
-  it('defaults licensed_users to 0 when the BU has no max_license_users', () => {
-    const cluster = [businessUnit({ id: 'bu2' })];
-    const result = addBu([], cluster, 'bu2');
-    expect(result[0].licensed_users).toBe(0);
   });
 
   it('is a no-op when the BU id is unknown', () => {

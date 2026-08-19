@@ -40,8 +40,8 @@ describe('ClusterHero', () => {
     expect(screen.getByText(/by S\. Chan/)).toBeInTheDocument();
   });
 
-  it('reads users capacity as uncapped when there is no per-BU cap', () => {
+  it('reads users capacity as uncapped when there is no cluster user cap', () => {
     render(<ClusterHero {...base} users={{ used: 312, cap: null, active: 287 }} />);
-    expect(screen.getByText(/no per-BU user cap set/)).toBeInTheDocument();
+    expect(screen.getByText(/no user cap set/)).toBeInTheDocument();
   });
 });

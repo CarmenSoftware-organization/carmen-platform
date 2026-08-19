@@ -17,8 +17,10 @@ export interface SeatsCardProps {
  * anywhere in this system, so this component never renders that word.
  *
  * `bus[].licensed_users` is what each subscription line "bought" toward the pool, not a
- * per-BU seat cap — the cap itself (`max_license_users`) lives on the BU record and is
- * edited there (linked via "แก้เพดาน"), never here, to avoid a second source of truth.
+ * per-BU seat cap — there is no such thing any more (carmen-platform Task 3.5): a BU's
+ * contribution to the pool is the sum of its own dated licence rows, edited on the BU's own
+ * edit page (linked via "แก้เพดาน") in the User Licenses card, never here, to avoid a second
+ * source of truth.
  */
 export function SeatsCard({ seat, bus }: SeatsCardProps) {
   const { used, cap, pending_invites } = seat;

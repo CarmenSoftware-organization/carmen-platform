@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import businessUnitLicenseService from '../../services/businessUnitLicenseService';
 import { getErrorDetail } from '../../utils/errorParser';
 import { isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
+import { sumActiveLicenses, licenseStatus } from '../../utils/buLicense';
 import type { BusinessUnitLicense } from '../../types';
 
 export function useBusinessUnitLicenses(buId: string | undefined) {
@@ -86,6 +87,11 @@ export function useBusinessUnitLicenses(buId: string | undefined) {
     licenses,
     loading,
     saving,
+    // Consumed by BusinessUnitDocument's read-only "Max users" display (Task 3.5) — the
+    // card below computes these independently from its own `licenses` prop; this copy is
+    // for the document header, not a second source of truth (same inputs, same functions).
+    activeSeats: sumActiveLicenses(licenses),
+    activeLicenseCount: licenses.filter((l) => licenseStatus(l) === 'active').length,
     reload,
     create,
     update,

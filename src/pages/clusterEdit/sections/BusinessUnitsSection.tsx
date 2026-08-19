@@ -101,7 +101,11 @@ export function BusinessUnitsSection({
                   <td className="px-4 py-2"><Badge variant="outline" className="text-xs">{bu.code}</Badge></td>
                   <td className="px-4 py-2">{bu.name}</td>
                   <td className="px-4 py-2">
-                    <CapacityMeter used={clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length} cap={bu.max_license_users} />
+                    {/* No per-BU cap any more (Task 3.5) — the license limit belongs to the
+                        cluster as a whole, not to any one BU, so this is a plain uncapped
+                        count, matching CapacityMeter's own "0/null/absent = uncapped"
+                        convention. */}
+                    <CapacityMeter used={clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length} cap={null} />
                   </td>
                   <td className="px-4 py-2">
                     <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
