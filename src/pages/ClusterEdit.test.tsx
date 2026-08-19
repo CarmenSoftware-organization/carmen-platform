@@ -328,3 +328,62 @@ describe('ClusterEdit — the Subscription nav entry follows subscription.read',
     expect(document.getElementById('subscription')).toBeInTheDocument();
   });
 });
+
+// REGRESSION-PROOFING (Task 3.5, review Finding 2). The Add User dialog's license-limit
+// check used to be a per-BU ceiling (`bu.max_license_users`) — wrong from the start, since
+// the cap always belonged to the cluster as a whole, not to any one BU. It was rewritten to
+// compare `users.clusterUsers.length` against the cluster's own `total_max_license_users`.
+// These two tests exercise that comparison end to end (open dialog, pick a real candidate,
+// read the disabled state + message off the DOM) so a future regression — reverting to a
+// per-BU check, or breaking the cluster-level one — shows up as a red test, not only a
+// passing `tsc`.
+describe('ClusterEdit — Add User dialog respects the cluster-wide license cap', () => {
+  const clusterUser = {
+    id: 'cu1',
+    user_id: 'u1',
+    email: 'jane@example.com',
+    role: 'user',
+    is_active: true,
+    userInfo: { firstname: 'Jane', lastname: 'Doe' },
+  };
+  const candidateUser = {
+    id: 'u2', username: 'newuser1', email: 'newuser1@example.com', firstname: 'New', lastname: 'User',
+  };
+
+  beforeEach(() => {
+    // One existing cluster user (userUsed = 1) — same shape/precedent as the write-surface
+    // gating describe block above (`asMock(api.get).mockResolvedValue(...)` unconditionally).
+    asMock(api.get).mockResolvedValue({ data: { data: [clusterUser] } });
+    asMock(userService.getAll).mockResolvedValue({ data: [candidateUser], paginate: { total: 1 } });
+  });
+
+  it('cluster has seats free: a picked candidate can be submitted', async () => {
+    asMock(clusterService.getById).mockResolvedValue({
+      data: { ...fakeCluster, total_max_license_users: 5 }, // 1 used of 5 — room to spare
+    });
+    const user = userEvent.setup();
+    renderAt('/clusters/c1/edit');
+
+    await user.click(await screen.findByRole('button', { name: /add user/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('button', { name: /newuser1/i }));
+
+    expect(screen.getByText(/1 of 5 licensed users in this cluster/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /add user/i })).not.toBeDisabled();
+  });
+
+  it('cluster is at its cap: blocks the submit even with a candidate picked, and says why', async () => {
+    asMock(clusterService.getById).mockResolvedValue({
+      data: { ...fakeCluster, total_max_license_users: 1 }, // 1 used of 1 — at the cluster's cap
+    });
+    const user = userEvent.setup();
+    renderAt('/clusters/c1/edit');
+
+    await user.click(await screen.findByRole('button', { name: /add user/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('button', { name: /newuser1/i }));
+
+    expect(screen.getByText(/cluster license limit reached \(1\/1\)/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /add user/i })).toBeDisabled();
+  });
+});

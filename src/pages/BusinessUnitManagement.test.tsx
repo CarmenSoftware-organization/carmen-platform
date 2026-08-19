@@ -60,8 +60,8 @@ const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 // Two rows in two different clusters, so scoped-gate tests can prove the check is
 // bound to *this row's* cluster_id, not "any cluster" / a wholesale grant.
 const businessUnits = [
-  { id: 'bu1', code: 'BU1', name: 'Acme HQ', alias_name: 'HQ', cluster_id: 'c1', cluster_name: 'Acme Cluster', is_active: true, max_license_users: 50, created_at: '2025-02-01T00:00:00Z' },
-  { id: 'bu2', code: 'BU2', name: 'Beta Branch', alias_name: 'BB', cluster_id: 'c2', cluster_name: 'Beta Cluster', is_active: true, max_license_users: 20, created_at: '2025-03-01T00:00:00Z' },
+  { id: 'bu1', code: 'BU1', name: 'Acme HQ', alias_name: 'HQ', cluster_id: 'c1', cluster_name: 'Acme Cluster', is_active: true, created_at: '2025-02-01T00:00:00Z' },
+  { id: 'bu2', code: 'BU2', name: 'Beta Branch', alias_name: 'BB', cluster_id: 'c2', cluster_name: 'Beta Cluster', is_active: true, created_at: '2025-03-01T00:00:00Z' },
 ];
 
 const listResponse = { data: businessUnits, paginate: { total: 2, page: 1, perpage: 10 } };

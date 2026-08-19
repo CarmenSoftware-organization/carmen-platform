@@ -40,6 +40,8 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
       defaultCurrency={null}
       getCalculationMethodLabel={(m) => m}
       canEdit
+      activeSeats={0}
+      activeLicenseCount={0}
       onCommit={onCommit}
       onToggle={noop}
       onValidate={onValidate}
@@ -64,7 +66,6 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
 const EDITABLE_FIELDS: [keyof BusinessUnitFormData, string][] = [
   ['code', 'Code'],
   ['alias_name', 'Alias'],
-  ['max_license_users', 'Max users'],
   ['description', 'Description'],
   ['hotel_name', 'Hotel name'],
   ['hotel_address_line1', 'Address line 1'],
@@ -114,6 +115,20 @@ describe('BusinessUnitDocument', () => {
     await user.tab();
 
     expect(onCommit).toHaveBeenCalledWith(name, '12');
+  });
+
+  it('Max users เป็นค่าอ่านอย่างเดียว — แก้ได้ที่การ์ด User Licenses เท่านั้น', () => {
+    setup({ activeSeats: 15, activeLicenseCount: 2 });
+
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByText(/จาก 2 ใบที่ใช้ได้/)).toBeInTheDocument();
+    // ไม่ใช่ queryByLabelText('Max users') — InlineField ใส่ aria-label ให้ตัวควบคุมเฉพาะตอน
+    // editing === true เท่านั้น โหมดอ่านเป็น <button> ล้วนไม่มี aria-label เลย ดังนั้น
+    // queryByLabelText จะผ่านเสมอไม่ว่าฟิลด์นี้จะยังเป็น InlineField ที่แก้ได้อยู่หรือไม่
+    // (ไม่มีใครคลิกเข้า edit mode ในเทสต์นี้) — ต้องเช็คปุ่มคลิกเข้าโหมดแก้ไขแทน ปุ่มนั้นคือปุ่มเดียว
+    // ที่ EDITABLE_FIELDS ด้านบนคลิกเพื่อเปิดทุกแถว (ชื่อปุ่ม "Set <label>…") ถ้าฟิลด์นี้ย้อนกลับไป
+    // เป็น InlineField ปุ่มนี้จะกลับมาปรากฏและ assertion นี้จะแดง (ดูหลักฐาน RED ใน task-3.5-report.md)
+    expect(screen.queryByRole('button', { name: /max users/i })).not.toBeInTheDocument();
   });
 
   it('lets the user set the required code on a new business unit', async () => {

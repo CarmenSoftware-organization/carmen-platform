@@ -25,8 +25,10 @@ import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
 import { initialFormData } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
+import { useBusinessUnitLicenses } from './businessUnitEdit/useBusinessUnitLicenses';
 import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCard';
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
+import BusinessUnitLicensesCard from './businessUnitEdit/BusinessUnitLicensesCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
@@ -63,6 +65,15 @@ const BusinessUnitEdit: React.FC = () => {
   const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
+  const licenses = useBusinessUnitLicenses(id);
+
+  // Seat pool is the cluster's, not this BU's — `total_max_license_users` is a backend
+  // aggregate across every BU in the cluster. Treat 0/null/absent as uncapped (no meter),
+  // same convention as ClusterManagement's CapacityMeter — never show a false "0 / 0".
+  const currentCluster = clusters.find((c) => c.id === formData.cluster_id);
+  const clusterSeat = currentCluster?.total_max_license_users
+    ? { used: currentCluster.users_count ?? 0, cap: currentCluster.total_max_license_users }
+    : undefined;
 
   // จริงเมื่อ "เคยตั้งค่าไว้แล้ว" และกำลังเปลี่ยนไปเป็นค่าอื่น — BU ใหม่หรือ BU ที่ยังไม่เคย
   // ตั้งค่าไม่ต้องถาม เพราะไม่มีข้อมูลเดิมให้หลุดมือ
@@ -194,7 +205,6 @@ const BusinessUnitEdit: React.FC = () => {
         description: bu.description || '',
         is_hq: bu.is_hq ?? false,
         is_active: bu.is_active ?? true,
-        max_license_users: bu.max_license_users != null ? String(bu.max_license_users) : '',
         hotel_name: bu.hotel_name || '',
         hotel_tel: bu.hotel_tel || '',
         hotel_email: bu.hotel_email || '',
@@ -326,13 +336,6 @@ const BusinessUnitEdit: React.FC = () => {
       } else if (val !== '' && val !== undefined && val !== null) {
         payload[key] = val;
       }
-    }
-
-    // Convert max_license_users to number
-    if (data.max_license_users) {
-      payload.max_license_users = Number(data.max_license_users);
-    } else {
-      delete payload.max_license_users;
     }
 
     // Parse number format fields from JSON strings to objects
@@ -564,6 +567,8 @@ const BusinessUnitEdit: React.FC = () => {
           currenciesFailed={currenciesFailed}
           getCalculationMethodLabel={getCalculationMethodLabel}
           canEdit={canEdit}
+          activeSeats={licenses.activeSeats}
+          activeLicenseCount={licenses.activeLicenseCount}
           onCommit={handleInlineCommit}
           onToggle={handleInlineToggle}
           onValidate={handleInlineValidate}
@@ -616,6 +621,19 @@ const BusinessUnitEdit: React.FC = () => {
             ) : null
           }
           usersSlot={!isNew ? <BusinessUnitUsersCard users={users} canEdit={canEdit} /> : null}
+          licensesSlot={
+            !isNew ? (
+              <BusinessUnitLicensesCard
+                licenses={licenses.licenses}
+                loading={licenses.loading}
+                saving={licenses.saving}
+                clusterSeat={clusterSeat}
+                onCreate={licenses.create}
+                onUpdate={licenses.update}
+                onRemove={licenses.remove}
+              />
+            ) : null
+          }
         />
       </div>
 

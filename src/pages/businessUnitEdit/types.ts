@@ -27,6 +27,9 @@ export interface BUUser {
   firstname: string | null;
   middlename: string | null;
   lastname: string | null;
+  /** ปิด membership นี้แล้วคืนที่นั่งให้ pool ของ cluster ไหม — มีเมื่อ backend ส่งมา (Task 4b.1) เท่านั้น,
+   *  จึงต้อง optional เสมอ (กฎข้อ 11): backend อาจยังไม่ deploy ในบางสภาพแวดล้อม */
+  frees_seat?: boolean;
 }
 
 export interface DefaultCurrency {
@@ -47,7 +50,6 @@ export interface BusinessUnitFormData {
   description: string;
   is_hq: boolean;
   is_active: boolean;
-  max_license_users: string;
   // Hotel Information
   hotel_name: string;
   hotel_tel: string;
@@ -110,7 +112,6 @@ export const initialFormData: BusinessUnitFormData = {
   description: '',
   is_hq: false,
   is_active: true,
-  max_license_users: '',
   hotel_name: '',
   hotel_tel: '',
   hotel_email: '',

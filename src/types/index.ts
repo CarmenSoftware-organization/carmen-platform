@@ -106,7 +106,6 @@ export interface BusinessUnit {
   description?: string;
   is_hq?: boolean;
   is_active: boolean;
-  max_license_users?: number;
   // Hotel Information
   hotel_name?: string;
   hotel_tel?: string;
@@ -1255,4 +1254,22 @@ export interface SubscriptionsResponse {
   data: Subscription[];
   paginate: { total: number; page: number; perpage: number; pages: number };
   summary?: SubscriptionSummary;
+}
+
+// ==================== BU User License (tb_business_unit_license) ====================
+
+/** สถานะของใบ — คำนวณจากวันที่ทุกครั้งที่อ่าน ไม่เก็บใน DB */
+export type BuLicenseStatus = 'active' | 'scheduled' | 'expired';
+
+/** ใบซื้อที่นั่งหนึ่งใบของ BU — ผลรวมของใบที่ active คือที่นั่งที่ BU สมทบเข้า pool ของ cluster */
+export interface BusinessUnitLicense {
+  id: string;
+  business_unit_id: string;
+  licensed_users: number;
+  /** ISO 8601 พร้อม Z — แปลงเป็นเวลาท้องถิ่นตอนแสดงผลเท่านั้น */
+  start_date: string;
+  end_date: string;
+  reference_no?: string | null;
+  note?: string | null;
+  doc_version: number;
 }

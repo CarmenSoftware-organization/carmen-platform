@@ -230,7 +230,7 @@ describe('FeatureMatrixCard — copy features from another BU', () => {
 describe('FeatureMatrixCard — add a BU to the contract', () => {
   it('adds the picked BU with no features yet and selects it', async () => {
     const user = userEvent.setup();
-    const clusterBus = [businessUnit({ id: 'bu1' }), businessUnit({ id: 'bu2', code: 'BU2', name: 'Beta BU', max_license_users: 5 })];
+    const clusterBus = [businessUnit({ id: 'bu1' }), businessUnit({ id: 'bu2', code: 'BU2', name: 'Beta BU' })];
     render(<Harness initialBus={[bu()]} clusterBus={clusterBus} />);
     await screen.findByText('Acme BU');
 

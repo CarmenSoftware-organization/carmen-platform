@@ -65,6 +65,10 @@ const ClusterEdit: React.FC = () => {
     created_by_name?: string;
     updated_at?: string;
     updated_by_name?: string;
+    // Seat pool is the cluster's own aggregate (backend-computed from the license view) —
+    // see the `userCap`/`userUsed` derivation below.
+    users_count?: number;
+    total_max_license_users?: number;
   }>({});
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -148,6 +152,8 @@ const ClusterEdit: React.FC = () => {
         created_by_name: cluster.created_by_name ?? cluster.audit?.created?.name,
         updated_at: cluster.updated_at ?? cluster.audit?.updated?.at,
         updated_by_name: cluster.updated_by_name ?? cluster.audit?.updated?.name,
+        users_count: cluster.users_count,
+        total_max_license_users: cluster.total_max_license_users,
       });
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
@@ -449,8 +455,12 @@ const ClusterEdit: React.FC = () => {
   const buCap = formData.max_license_bu ? Number(formData.max_license_bu) : null;
   const buActive = businessUnits.filter((b) => b.is_active).length;
   const userUsed = users.clusterUsers.length;
-  const userTotalCap = businessUnits.reduce((sum, bu) => sum + (bu.max_license_users ?? 0), 0);
-  const userCap = businessUnits.some((bu) => bu.max_license_users != null) ? userTotalCap : null;
+  // Seat cap is the cluster's own aggregate now (backend-computed from the licence view,
+  // per BU-scoped dated rows) — it can no longer be summed client-side from
+  // `bu.max_license_users`, which no longer exists on the BU record at all (Task 3.5).
+  // 0/null/absent = uncapped, same convention as `buCap` above and ClusterManagement's
+  // CapacityMeter.
+  const userCap = clusterMeta.total_max_license_users ? clusterMeta.total_max_license_users : null;
   const userActive = users.clusterUsers.filter((u) => u.is_active !== false).length;
 
   const navItems: NavItem[] = [
@@ -765,41 +775,37 @@ const ClusterEdit: React.FC = () => {
               >
                 <option value="">Select business unit</option>
                 {businessUnits.map((bu) => {
+                  // The license limit is the cluster's, not any one BU's (Task 3.5) —
+                  // a BU no longer carries its own ceiling, so there is nothing per-BU to
+                  // disable here; this count is informational only.
                   const buUserCount = users.clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length;
-                  const max = bu.max_license_users;
-                  const atLimit = max != null && buUserCount >= max;
                   return (
-                    <option key={bu.id} value={bu.id} disabled={atLimit}>
-                      {bu.code} - {bu.name} ({buUserCount}{max != null ? `/${max}` : ''} users){atLimit ? ' - Limit reached' : ''}
+                    <option key={bu.id} value={bu.id}>
+                      {bu.code} - {bu.name} ({buUserCount} users)
                     </option>
                   );
                 })}
               </select>
-              {addUserBuId && (() => {
-                const selectedBu = businessUnits.find(bu => bu.id === addUserBuId);
-                if (!selectedBu) return null;
-                const buUserCount = users.clusterUsers.filter((cu) => cu.parent_bu_id === addUserBuId).length;
-                const max = selectedBu.max_license_users;
-                if (max == null) return null;
-                const atLimit = buUserCount >= max;
-                return (
-                  <p className={`text-xs ${atLimit ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    {atLimit
-                      ? `License limit reached (${buUserCount}/${max})`
-                      : `${buUserCount} of ${max} licensed users`}
-                  </p>
-                );
-              })()}
+              {/* Cluster-wide cap (Task 3.5) — shown once for the dialog, not tied to
+                  whichever BU happens to be selected: the seat pool is shared across every
+                  BU in the cluster, so the limit does not depend on that choice. */}
+              {userCap != null && (
+                <p className={`text-xs ${userUsed >= userCap ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {userUsed >= userCap
+                    ? `Cluster license limit reached (${userUsed}/${userCap})`
+                    : `${userUsed} of ${userCap} licensed users in this cluster`}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
             {(() => {
-              const selectedBu = addUserBuId ? businessUnits.find(bu => bu.id === addUserBuId) : null;
-              const buAtLimit = selectedBu && selectedBu.max_license_users != null
-                && users.clusterUsers.filter((cu) => cu.parent_bu_id === addUserBuId).length >= selectedBu.max_license_users;
+              // Cluster-wide cap, not a per-BU one (Task 3.5) — the seat pool belongs to the
+              // cluster as a whole, so this does not depend on which BU is selected above.
+              const clusterAtLimit = userCap != null && userUsed >= userCap;
               return (
-                <Button size="sm" onClick={() => void handleSubmitAddUser()} disabled={addingUser || !selectedUser || !!buAtLimit}>
+                <Button size="sm" onClick={() => void handleSubmitAddUser()} disabled={addingUser || !selectedUser || clusterAtLimit}>
                   <UserPlus className="mr-2 h-4 w-4" />
                   {addingUser ? 'Adding...' : 'Add User'}
                 </Button>

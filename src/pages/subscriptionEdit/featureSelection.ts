@@ -121,11 +121,14 @@ export function availableBus(bus: SubscriptionBu[], clusterBus: BusinessUnit[]):
 }
 
 /**
- * Adds a BU to the contract with no features yet. `licensed_users` seeds from the BU's own
- * `max_license_users` (task-B4-corrections.md §1 — `seat` was removed from `SubscriptionBu` in
- * phase A; this is a client-side placeholder only, the real contribution to the pool is
- * recomputed by the backend on refetch after save). A no-op if the BU is unknown or already on
- * the contract, so a stray double-click can't produce a duplicate row.
+ * Adds a BU to the contract with no features yet. `licensed_users` seeds at 0 — this is only a
+ * client-side placeholder (task-B4-corrections.md §1 — `seat` was removed from `SubscriptionBu`
+ * in phase A) and the real contribution to the pool is recomputed by the backend on refetch
+ * after save. It used to seed from the BU's own `max_license_users`, but that field no longer
+ * exists on `BusinessUnit` (carmen-platform Task 3.5 — seats moved to dated licence rows, summed
+ * via a backend view); there is nothing left on the BU record itself to seed from. A no-op if
+ * the BU is unknown or already on the contract, so a stray double-click can't produce a
+ * duplicate row.
  */
 export function addBu(bus: SubscriptionBu[], clusterBus: BusinessUnit[], buId: string): SubscriptionBu[] {
   const source = clusterBus.find((cb) => cb.id === buId);
@@ -138,7 +141,7 @@ export function addBu(bus: SubscriptionBu[], clusterBus: BusinessUnit[], buId: s
       bu_code: source.code,
       bu_name: source.name,
       feature_keys: [],
-      licensed_users: source.max_license_users ?? 0,
+      licensed_users: 0,
     },
   ];
 }

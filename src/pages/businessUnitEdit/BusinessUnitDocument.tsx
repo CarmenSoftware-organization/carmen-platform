@@ -5,6 +5,7 @@ import { Copy } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
 import { InlineField, type InlineOption } from './InlineField';
+import { ReadOnlyText } from './shared';
 import CalculationSettingsSection from './sections/CalculationSettingsSection';
 import NumberFormatsSection from './sections/NumberFormatsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
@@ -23,6 +24,11 @@ interface BusinessUnitDocumentProps {
   currenciesFailed?: boolean;
   getCalculationMethodLabel: (method: string) => string;
   canEdit: boolean;
+  // Read-only "Max users" display — computed from the User Licenses card's own license
+  // rows (sumActiveLicenses / active count), not form state. There is no editable control
+  // for this number any more; it is edited only via the licenses card below.
+  activeSeats: number;
+  activeLicenseCount: number;
   // simple-field commits (edit-in-place)
   onCommit: (name: string, value: string) => void;
   onToggle: (name: string, value: boolean) => void;
@@ -39,6 +45,7 @@ interface BusinessUnitDocumentProps {
   brandingSlot?: React.ReactNode;
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
+  licensesSlot?: React.ReactNode;
 }
 
 function Group({
@@ -75,6 +82,8 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     currenciesFailed,
     getCalculationMethodLabel,
     canEdit,
+    activeSeats,
+    activeLicenseCount,
     onCommit,
     onToggle,
     onValidate,
@@ -89,6 +98,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     brandingSlot,
     advancedExtraSlot,
     usersSlot,
+    licensesSlot,
   } = props;
 
   // `canEdit` is the one source of write access on this page. Each section already
@@ -185,7 +195,18 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
           {inline('alias_name', 'Alias', { validate: true, maxLength: 3 })}
           {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
-          {inline('max_license_users', 'Max users', { type: 'number', mono: true, validate: true })}
+          {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
+              this BU's dated license rows, edited only in the User Licenses card below. Not an
+              InlineField: there is nothing here to click into edit mode. */}
+          <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
+            <span className="text-muted-foreground pt-2 text-xs">Max users</span>
+            <div className="min-w-0">
+              <ReadOnlyText value={`${activeSeats}`} />
+              <p className="text-muted-foreground mt-1 text-[11px]">
+                จาก {activeLicenseCount} ใบที่ใช้ได้ · แก้ที่การ์ด User Licenses
+              </p>
+            </div>
+          </div>
           {inline('description', 'Description', { type: 'textarea', maxLength: 500 })}
         </Group>
 
@@ -272,6 +293,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       />
       {advancedExtraSlot}
       {usersSlot}
+      {licensesSlot}
     </div>
   );
 }

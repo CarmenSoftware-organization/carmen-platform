@@ -8,8 +8,8 @@ import { BusinessUnitsSection } from './BusinessUnitsSection';
 import type { BusinessUnit } from '../../../types';
 
 const bus: BusinessUnit[] = [
-  { id: 'b1', cluster_id: 'c1', code: 'HQ', name: 'Head Office', is_active: true, max_license_users: 10 },
-  { id: 'b2', cluster_id: 'c1', code: 'BR', name: 'Branch', is_active: false, max_license_users: 5 },
+  { id: 'b1', cluster_id: 'c1', code: 'HQ', name: 'Head Office', is_active: true },
+  { id: 'b2', cluster_id: 'c1', code: 'BR', name: 'Branch', is_active: false },
 ];
 
 function renderSection(extra?: Partial<React.ComponentProps<typeof BusinessUnitsSection>>) {

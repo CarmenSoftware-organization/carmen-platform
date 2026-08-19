@@ -107,7 +107,7 @@ export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, m
           note={
             usersFree != null
               ? `${usersFree} licence${usersFree === 1 ? '' : 's'} free`
-              : 'no per-BU user cap set'
+              : 'no user cap set'
           }
         />
       </div>
