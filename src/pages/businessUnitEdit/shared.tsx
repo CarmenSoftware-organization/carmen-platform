@@ -98,3 +98,5 @@ export function Group({
     </div>
   );
 }
+
+export { InlineField, type InlineOption } from './InlineField';

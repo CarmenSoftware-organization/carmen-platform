@@ -9,7 +9,6 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
@@ -20,12 +19,12 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
-import { ReadOnlyText, ReadOnlyTextarea, AddrField } from '../businessUnitEdit/shared';
+import { ReadOnlyText, ReadOnlyTextarea, AddrField, InlineField } from '../businessUnitEdit/shared';
 import { initialFormData, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
-import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
+import { ClusterBuDocument } from './businessUnitForm/ClusterBuDocument';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
 import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
@@ -483,38 +482,6 @@ const BusinessUnitForm: React.FC = () => {
     <AddrField id={id} label={label} placeholder={label} value={formData[id]} editing={canEdit} onChange={handleChange} />
   );
 
-  const isHqField = (
-    <div className="space-y-2">
-      <Label htmlFor="is_hq">Headquarters</Label>
-      {canEdit ? (
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" id="is_hq" name="is_hq" checked={formData.is_hq} onChange={handleChange} className="h-4 w-4 rounded border-input" />
-          <span className="text-sm">This is the HQ business unit</span>
-        </label>
-      ) : (
-        <div>
-          <Badge variant={formData.is_hq ? 'default' : 'secondary'}>{formData.is_hq ? 'HQ' : 'Not HQ'}</Badge>
-        </div>
-      )}
-    </div>
-  );
-
-  const isActiveField = (
-    <div className="space-y-2">
-      <Label htmlFor="is_active">Status</Label>
-      {canEdit ? (
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" id="is_active" name="is_active" checked={formData.is_active} onChange={handleChange} className="h-4 w-4 rounded border-input" />
-          <span className="text-sm">Active</span>
-        </label>
-      ) : (
-        <div>
-          <Badge variant={formData.is_active ? 'success' : 'secondary'}>{formData.is_active ? 'Active' : 'Inactive'}</Badge>
-        </div>
-      )}
-    </div>
-  );
-
   if (loading) {
     return (
       <ClusterAdminLayout>
@@ -552,7 +519,18 @@ const BusinessUnitForm: React.FC = () => {
       <div className="space-y-4 sm:space-y-6 pb-20">
         <PageHeader
           backTo={`/cluster-admin/${clusterId}/business-units`}
-          title={formData.name || '(unnamed business unit)'}
+          title={
+            <InlineField
+              name="name"
+              label="Name"
+              value={formData.name}
+              required
+              disabled={!canEdit}
+              error={fieldErrors.name}
+              onCommit={handleInlineCommit}
+              onValidate={handleInlineValidate}
+            />
+          }
           subtitle="Manage this business unit's details"
         />
 
@@ -562,49 +540,17 @@ const BusinessUnitForm: React.FC = () => {
 
         {!error && (accessLost ? <ClusterAccessLost /> : (
           <>
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-            <CardDescription>Identity for this business unit</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('name', 'Name', { required: true })}
-              {textField('alias_name', 'Alias', { mono: true })}
-            </div>
-            {textField('description', 'Description', { textarea: true })}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {isHqField}
-              {isActiveField}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Hotel information</CardTitle>
-            <CardDescription>Property details and address</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('hotel_name', 'Hotel name')}
-              {textField('hotel_tel', 'Phone', { mono: true })}
-              {textField('hotel_email', 'Email', { type: 'email' })}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {addrField('hotel_address_line1', 'Address line 1')}
-              {addrField('hotel_address_line2', 'Address line 2')}
-              {addrField('hotel_sub_district', 'Sub-district')}
-              {addrField('hotel_district', 'District')}
-              {addrField('hotel_city', 'City')}
-              {addrField('hotel_province', 'Province')}
-              {addrField('hotel_postal_code', 'Postal code')}
-              {addrField('hotel_country', 'Country')}
-              {addrField('hotel_latitude', 'Latitude')}
-              {addrField('hotel_longitude', 'Longitude')}
-            </div>
-          </CardContent>
-        </Card>
+        <ClusterBuDocument
+          formData={formData}
+          fieldErrors={fieldErrors}
+          logoUrl={logoUrl}
+          avatarUrl={avatarUrl}
+          canEdit={canEdit}
+          onCommit={handleInlineCommit}
+          onToggle={handleInlineToggle}
+          onValidate={handleInlineValidate}
+          onChange={handleChange}
+        />
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2">
@@ -673,16 +619,6 @@ const BusinessUnitForm: React.FC = () => {
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
         />
-        <BusinessUnitBrandingCard
-          logoUrl={logoUrl}
-          avatarUrl={avatarUrl}
-          editing={canEdit}
-          name={formData.name}
-          code={formData.code}
-          onUploadLogo={handleUploadLogo}
-          onUploadAvatar={handleUploadAvatar}
-        />
-
         <BusinessUnitUsersCard users={users} canEdit clusterSeat={clusterSeat} />
 
         {/* Read-only here by design, and now enforced rather than assumed. The card's own
