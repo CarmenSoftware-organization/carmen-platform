@@ -19,8 +19,9 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
-import { ReadOnlyText, ReadOnlyTextarea, InlineField, Group, CollapsibleSection } from '../businessUnitEdit/shared';
+import { ReadOnlyText, ReadOnlyTextarea, Group, CollapsibleSection } from '../businessUnitEdit/shared';
 import { initialFormData, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
+import { HeroName } from '../businessUnitEdit/HeroName';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
@@ -533,15 +534,10 @@ const BusinessUnitForm: React.FC = () => {
         <PageHeader
           backTo={`/cluster-admin/${clusterId}/business-units`}
           title={
-            <InlineField
-              name="name"
-              label="Name"
+            <HeroName
               value={formData.name}
-              required
               disabled={!canEdit}
-              error={fieldErrors.name}
-              onCommit={handleInlineCommit}
-              onValidate={handleInlineValidate}
+              onCommit={(v) => handleInlineCommit('name', v)}
             />
           }
           subtitle="Manage this business unit's details"
