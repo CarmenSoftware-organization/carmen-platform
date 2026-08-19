@@ -14,6 +14,9 @@ export interface ClusterBuDocumentProps {
   onToggle: (name: string, value: boolean) => void;
   onValidate: (name: string, value: string) => void;
   onChange: React.ChangeEventHandler<HTMLInputElement>;
+  /** BusinessUnitBrandingCard — the hero's logo/avatar stay display-only; this is
+   *  the real upload surface, same split as the platform BusinessUnitDocument.tsx. */
+  brandingSlot?: React.ReactNode;
   /** People & seats — task 5 */
   seatsSlot?: React.ReactNode;
   /** Billing entity + System settings — task 6 */
@@ -22,7 +25,7 @@ export interface ClusterBuDocumentProps {
 
 export function ClusterBuDocument({
   formData: f, fieldErrors, logoUrl, avatarUrl, canEdit,
-  onCommit, onToggle, onValidate, onChange, seatsSlot, collapsedSlot,
+  onCommit, onToggle, onValidate, onChange, brandingSlot, seatsSlot, collapsedSlot,
 }: ClusterBuDocumentProps) {
   const inline = (
     name: keyof BusinessUnitFormData,
@@ -46,8 +49,10 @@ export function ClusterBuDocument({
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden p-0">
-        {/* hero — logo/avatar คลิกเพื่ออัปโหลด (เดินสายใน task 4 step 5),
-            badge คลิกเพื่อสลับ การ์ด Branding เดิมจึงไม่ต้องมีบนหน้านี้ */}
+        {/* hero — logo/avatar เป็น display-only แค่ให้เห็นเร็วๆ อัปโหลดจริงยังอยู่ที่
+            BusinessUnitBrandingCard (brandingSlot) เหมือนหน้า platform BusinessUnitDocument.tsx
+            ทุกประการ — สเปกเดิมของงานนี้เข้าใจผิดว่า hero ทำให้การ์ด Branding ซ้ำซ้อน ไม่ใช่
+            badge คลิกเพื่อสลับ */}
         <div className="flex flex-wrap items-center gap-4 p-5 sm:p-6">
           <div className="flex shrink-0 gap-2.5">
             {logoUrl ? (
@@ -97,6 +102,8 @@ export function ClusterBuDocument({
           {inline('description', 'Description', { type: 'textarea' })}
         </Group>
       </Card>
+
+      {brandingSlot}
 
       {seatsSlot}
 

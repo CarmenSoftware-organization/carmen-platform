@@ -25,6 +25,7 @@ import CalculationSettingsSection from '../businessUnitEdit/sections/Calculation
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
 import { ClusterBuDocument } from './businessUnitForm/ClusterBuDocument';
+import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
 import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
@@ -550,6 +551,17 @@ const BusinessUnitForm: React.FC = () => {
           onToggle={handleInlineToggle}
           onValidate={handleInlineValidate}
           onChange={handleChange}
+          brandingSlot={
+            <BusinessUnitBrandingCard
+              logoUrl={logoUrl}
+              avatarUrl={avatarUrl}
+              editing={canEdit}
+              name={formData.name}
+              code={formData.code}
+              onUploadLogo={handleUploadLogo}
+              onUploadAvatar={handleUploadAvatar}
+            />
+          }
         />
 
         <Card>
