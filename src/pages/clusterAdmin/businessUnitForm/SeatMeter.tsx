@@ -27,6 +27,7 @@ const BAR_BY_LEVEL: Record<string, string> = {
 export function SeatMeter({ used, cap, licensed }: SeatMeterProps) {
   const u = seatUtilization(used, cap);
   const overBy = Math.max(0, u.used - u.cap);
+  const seatsLeft = Math.max(0, u.cap - u.used);
   // ส่วนที่ล้นวาดต่อท้ายโดยมีเส้นคั่น ไม่ใช่แถบเต็มสีแดง — ต้องเห็นว่าล้น *เท่าไร*
   const fillPct = u.cap === 0 ? 0 : Math.min(100, (Math.min(u.used, u.cap) / u.cap) * 100);
   const overPct = u.cap === 0 ? 0 : Math.min(40, (overBy / u.cap) * 100);
@@ -50,7 +51,9 @@ export function SeatMeter({ used, cap, licensed }: SeatMeterProps) {
           ? `over by ${overBy} — deactivate ${overBy} ${overBy === 1 ? 'user' : 'users'} to save`
           : u.level === 'over'
             ? 'at capacity — deactivate a user before adding another'
-            : `${licensed != null ? `licensed ${licensed} · ` : ''}used ${u.used} · cluster cap ${u.cap}`}
+            : u.level === 'warn'
+              ? `nearing capacity — ${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left`
+              : `${licensed != null ? `licensed ${licensed} · ` : ''}used ${u.used} · cluster cap ${u.cap}`}
       </p>
     </div>
   );
