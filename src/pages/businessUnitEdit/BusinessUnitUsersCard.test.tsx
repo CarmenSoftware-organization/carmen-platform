@@ -101,6 +101,10 @@ describe('BusinessUnitUsersCard — แถบ seat ระดับ cluster', () 
     );
     expect(screen.getByText(/12 \/ 5/)).toBeInTheDocument();
     expect(screen.getByText(/ต้องปิดผู้ใช้อีก 7 คน/)).toBeInTheDocument();
+    // aUser (จาก stubUsers) ไม่มี frees_seat เลย (undefined) — แถวปกติที่ backend ยังไม่ส่งค่า
+    // หรือ frees_seat เป็น true ต้องไม่มีหมายเหตุนี้ ถ้า implementation โชว์หมายเหตุให้ทุกแถว
+    // active โดยไม่เช็ค frees_seat เลย เทสต์นี้ต้องจับได้
+    expect(screen.queryByText(/อยู่ BU อื่นด้วย/)).not.toBeInTheDocument();
   });
 
   it('ไม่ขึ้นเตือนเมื่อยังไม่เกิน', () => {
