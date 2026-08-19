@@ -85,11 +85,23 @@ Details แสดง `Code` กับ `Cluster` ซึ่งหน้านี�
 `seatUtilization` คืน `{ used, cap, ratio, level: 'ok'|'warn'|'over', pct }` โดยเกณฑ์ warn
 คือ 90% และกฎ "cap = 0 หมายถึงศูนย์ที่นั่ง ไม่ใช่ไม่จำกัด" — seat meter (§6) ได้ทั้งสองอย่างฟรี
 
-### 2.3 ไม่มี Collapsible primitive ใน repo
+### 2.3 มี `CollapsibleSection` อยู่แล้ว — ห้ามเขียนใหม่
 
-`src/components/ui/` ไม่มี `collapsible`/`accordion` ท่าที่ repo ใช้จริงคือทำมือด้วย
-`useState` + `ChevronDown`/`ChevronRight` + `aria-expanded` (`src/pages/ApplicationEdit.tsx:540`)
-ทำตามนั้น — ห้ามเพิ่ม dependency (CLAUDE.md กฎ 6)
+> **แก้ไข 2026-08-19:** ฉบับแรกของสเปกนี้เขียนว่า repo ไม่มี Collapsible primitive และให้ทำมือ
+> ตาม `ApplicationEdit.tsx:540` — **ผิด** `src/components/ui/` ไม่มีก็จริง แต่
+> `src/pages/businessUnitEdit/shared.tsx:24` มี `CollapsibleSection` export อยู่แล้ว
+
+```ts
+CollapsibleSection({ title: string, description?: string,
+                     defaultOpen?: boolean, forceOpen?: boolean, children })
+```
+
+ตรงกับที่ §4.2 ต้องการพอดี: `description` คือ preview หนึ่งบรรทัดบนหัวข้อ, `defaultOpen={false}`
+คือยุบไว้, มี chevron หมุนและคลิกทั้งหัวข้อได้
+
+**ข้อควรระวัง:** doc ของมันระบุว่า "call site ปัจจุบันทุกตัวปักตัวเองให้เปิดตลอด (`forceOpen`)"
+— หน้านี้จะเป็น**ผู้ใช้รายแรกของเส้นทางยุบ/กางจริง** เส้นทางนั้นจึงยังไม่เคยรันใน production
+ต้องตรวจในเบราว์เซอร์ (§8.2) ไม่ใช่สันนิษฐานว่าใช้ได้
 
 ### 2.4 `src/pages/clusterAdmin/` ไม่มีเทสต์เลยสักไฟล์
 
@@ -303,8 +315,9 @@ commit ลง `formData` ตอน blur/Enter เท่านั้น **ไม�
 | `src/pages/clusterAdmin/businessUnitForm/ClusterBuDocument.tsx` | **ใหม่** — hero + 4 กลุ่ม |
 | `src/pages/clusterAdmin/businessUnitForm/SeatMeter.tsx` | **ใหม่** — §6 |
 | `src/pages/clusterAdmin/businessUnitForm/AddressBlock.tsx` | **ใหม่** — §7 (อ่าน/กาง) |
-| `src/pages/clusterAdmin/businessUnitForm/CollapsibleGroup.tsx` | **ใหม่** — §2.3 |
 | `src/pages/clusterAdmin/businessUnitForm/formatAddress.ts` | **ใหม่** — ฟังก์ชันบริสุทธิ์ |
+
+(ไม่มีไฟล์ Collapsible — ใช้ `CollapsibleSection` ที่ `shared.tsx:24` ตาม §2.3)
 | `src/pages/businessUnitEdit/shared.tsx` | ย้าย `Group` มาจาก `BusinessUnitDocument.tsx:51` + export |
 | `src/pages/businessUnitEdit/BusinessUnitDocument.tsx` | import `Group` จาก `shared` แทนนิยามในไฟล์ — **ไม่เปลี่ยนพฤติกรรม** |
 
