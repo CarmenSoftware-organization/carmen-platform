@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import businessUnitService from '../../services/businessUnitService';
@@ -19,12 +19,13 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
-import { ReadOnlyText, ReadOnlyTextarea, AddrField, InlineField, Group } from '../businessUnitEdit/shared';
+import { ReadOnlyText, ReadOnlyTextarea, InlineField, Group, CollapsibleSection } from '../businessUnitEdit/shared';
 import { initialFormData, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
 import { ClusterBuDocument } from './businessUnitForm/ClusterBuDocument';
+import { AddressBlock } from './businessUnitForm/AddressBlock';
 import { SeatMeter } from './businessUnitForm/SeatMeter';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
@@ -432,6 +433,20 @@ const BusinessUnitForm: React.FC = () => {
 
   const sectionField = { formData, editing: canEdit, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
 
+  // preview ของกลุ่มที่ยุบ — หัวข้อเปล่า ๆ บังคับให้คลิกเพื่อรู้ว่าข้างในว่างหรือมีของ
+  // ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง" ที่การยุบกลุ่มมีไว้เพื่อไม่ให้บัง
+  const billingPreview =
+    [formData.company_name, formData.tax_no && `TAX ${formData.tax_no}`]
+      .filter(Boolean).join(' · ') || 'Not set';
+
+  const settingsPreview =
+    [
+      formData.timezone,
+      formData.config.length > 0
+        ? `${formData.config.length} config ${formData.config.length === 1 ? 'entry' : 'entries'}`
+        : '',
+    ].filter(Boolean).join(' · ') || 'Defaults';
+
   // Generic edit/read-only renderer for the plain text fields (Form Field Pattern).
   const textField = (
     name: TextFieldName,
@@ -479,10 +494,6 @@ const BusinessUnitForm: React.FC = () => {
       </div>
     );
   };
-
-  const addrField = (id: TextFieldName, label: string) => (
-    <AddrField id={id} label={label} placeholder={label} value={formData[id]} editing={canEdit} onChange={handleChange} />
-  );
 
   if (loading) {
     return (
@@ -592,74 +603,60 @@ const BusinessUnitForm: React.FC = () => {
               </Group>
             </Card>
           }
-        />
+          collapsedSlot={
+            <>
+              <CollapsibleSection title="Billing entity" description={billingPreview}>
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    {canEdit && (
+                      <Button type="button" variant="ghost" size="sm" onClick={copyHotelAddressToCompany}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy from hotel address
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {textField('company_name', 'Company name')}
+                    {textField('company_tel', 'Phone', { mono: true })}
+                    {textField('company_email', 'Email', { type: 'email' })}
+                    {textField('tax_no', 'Tax ID', { mono: true })}
+                    {textField('branch_no', 'Branch', { mono: true })}
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1 text-sm">Address</div>
+                    <AddressBlock prefix="company" formData={formData} disabled={!canEdit} onChange={handleChange} />
+                  </div>
+                </div>
+              </CollapsibleSection>
 
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-2">
-            <div>
-              <CardTitle>Company information</CardTitle>
-              <CardDescription>Billing entity, tax details, and address</CardDescription>
-            </div>
-            {canEdit && (
-              <Button type="button" variant="ghost" size="sm" onClick={copyHotelAddressToCompany}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy from hotel address
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('company_name', 'Company name')}
-              {textField('company_tel', 'Phone', { mono: true })}
-              {textField('company_email', 'Email', { type: 'email' })}
-              {textField('tax_no', 'Tax ID', { mono: true })}
-              {textField('branch_no', 'Branch', { mono: true })}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {addrField('company_address_line1', 'Address line 1')}
-              {addrField('company_address_line2', 'Address line 2')}
-              {addrField('company_sub_district', 'Sub-district')}
-              {addrField('company_district', 'District')}
-              {addrField('company_city', 'City')}
-              {addrField('company_province', 'Province')}
-              {addrField('company_postal_code', 'Postal code')}
-              {addrField('company_country', 'Country')}
-              {addrField('company_latitude', 'Latitude')}
-              {addrField('company_longitude', 'Longitude')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Date & time</CardTitle>
-            <CardDescription>Locale formatting for this business unit</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('timezone', 'Timezone')}
-              {textField('date_format', 'Date format', { mono: true })}
-              {textField('date_time_format', 'Date-time format', { mono: true })}
-              {textField('time_format', 'Time format', { mono: true })}
-              {textField('long_time_format', 'Long time format', { mono: true })}
-              {textField('short_time_format', 'Short time format', { mono: true })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <CalculationSettingsSection
-          {...sectionField}
-          defaultCurrency={defaultCurrency}
-          getCalculationMethodLabel={getCalculationMethodLabel}
-          showCurrencyField={false}
-          canEditCalculationMethod={false}
-        />
-        <NumberFormatsSection {...sectionField} />
-        <ConfigurationSection
-          {...sectionField}
-          onConfigChange={handleConfigChange}
-          onAddConfigRow={addConfigRow}
-          onRemoveConfigRow={removeConfigRow}
+              <CollapsibleSection title="System settings" description={settingsPreview}>
+                <div className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {textField('timezone', 'Timezone')}
+                    {textField('date_format', 'Date format', { mono: true })}
+                    {textField('date_time_format', 'Date-time format', { mono: true })}
+                    {textField('time_format', 'Time format', { mono: true })}
+                    {textField('long_time_format', 'Long time format', { mono: true })}
+                    {textField('short_time_format', 'Short time format', { mono: true })}
+                  </div>
+                  <CalculationSettingsSection
+                    {...sectionField}
+                    defaultCurrency={defaultCurrency}
+                    getCalculationMethodLabel={getCalculationMethodLabel}
+                    showCurrencyField={false}
+                    canEditCalculationMethod={false}
+                  />
+                  <NumberFormatsSection {...sectionField} />
+                  <ConfigurationSection
+                    {...sectionField}
+                    onConfigChange={handleConfigChange}
+                    onAddConfigRow={addConfigRow}
+                    onRemoveConfigRow={removeConfigRow}
+                  />
+                </div>
+              </CollapsibleSection>
+            </>
+          }
         />
           </>
         ))}
