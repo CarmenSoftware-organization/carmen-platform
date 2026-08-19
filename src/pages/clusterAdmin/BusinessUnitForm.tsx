@@ -14,7 +14,7 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import businessUnitService from '../../services/businessUnitService';
 import { validateField } from '../../utils/validation';
-import { getErrorDetail, parseApiError } from '../../utils/errorParser';
+import { devLog, getErrorDetail, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
@@ -55,7 +55,7 @@ type TextFieldName = Exclude<
  */
 const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
   name: 'Name is required',
-  alias_name: 'Alias cannot be cleared — it must be at least 3 characters',
+  alias_name: 'Alias cannot be cleared',
   hotel_email: 'Hotel email cannot be cleared',
   company_email: 'Company email cannot be cleared',
 };
@@ -114,7 +114,28 @@ const BusinessUnitForm: React.FC = () => {
   // (Task 4b.1's `cluster_seat`). Optional and undefined until a deployed backend sends it.
   const [clusterSeat, setClusterSeat] = useState<{ used: number; cap: number } | undefined>(undefined);
 
-  const users = useBusinessUnitUsers(buId, formData.cluster_id, false);
+  // Re-reads only `cluster_seat`, not the whole record: fetchBusinessUnit() would also
+  // overwrite formData/savedFormData, discarding any edit in progress elsewhere on the page.
+  // The BU-users card mutates `buUsers` locally and never touches this figure, so without this
+  // the meter goes stale the moment the admin does the exact thing it told them to do — see
+  // useBusinessUnitUsers's `onMutate` below, called once per successful add/edit/delete, never
+  // from an effect, so this cannot loop.
+  const refreshClusterSeat = async () => {
+    try {
+      const data = await businessUnitService.getById(buId!);
+      const bu = data.data || data;
+      setClusterSeat(
+        bu.cluster_seat && typeof bu.cluster_seat.used === 'number' && typeof bu.cluster_seat.cap === 'number'
+          ? { used: bu.cluster_seat.used, cap: bu.cluster_seat.cap }
+          : undefined,
+      );
+    } catch (err: unknown) {
+      // Silent — the meter simply keeps showing its last known value.
+      devLog('refreshClusterSeat', err);
+    }
+  };
+
+  const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
   const licenses = useBusinessUnitLicenses(buId);
 
   // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
@@ -354,7 +375,12 @@ const BusinessUnitForm: React.FC = () => {
       const after = String(formData[key] ?? '');
       if (before !== '' && after.trim() === '') errs[key] = message;
     }
-    const active = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
+    // fieldErrors already carries any standing onBlur error (e.g. "Alias must be 1-3
+    // alphanumeric characters" still showing under the field) — Save must not fire while one
+    // of those is on screen, even when this pass finds nothing new wrong. `errs` wins over a
+    // stale entry for the same key since it is the freshest check.
+    const combined: Record<string, string> = { ...fieldErrors, ...errs };
+    const active = Object.fromEntries(Object.entries(combined).filter(([, v]) => v));
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       toast.error('Please fix the highlighted fields', { description: Object.values(active).join(', ') });

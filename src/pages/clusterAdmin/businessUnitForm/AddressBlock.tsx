@@ -46,15 +46,16 @@ export function AddressBlock({ prefix, formData, disabled = false, onChange }: A
           className="hover:bg-primary/5 -mx-2 block w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:cursor-default disabled:hover:bg-transparent"
         >
           {lines.length > 0 ? (
-            lines.map((line) => <div key={line}>{line}</div>)
+            lines.map((line, idx) => <span key={idx} className="block">{line}</span>)
           ) : (
             <span className="text-muted-foreground italic">Set address…</span>
           )}
         </button>
         {(lat || lon) && (
-          <p className="text-muted-foreground px-2 font-mono text-xs">
-            {lat || '—'}, {lon || '—'}
-          </p>
+          <div className="text-muted-foreground flex items-baseline gap-2 px-2 text-xs">
+            <span className="text-sm">Coordinates</span>
+            <span className="font-mono">{lat || '—'}, {lon || '—'}</span>
+          </div>
         )}
       </div>
     );

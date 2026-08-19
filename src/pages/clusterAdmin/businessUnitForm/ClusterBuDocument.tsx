@@ -1,5 +1,5 @@
 import { Card } from '../../../components/ui/card';
-import { Badge } from '../../../components/ui/badge';
+import { badgeVariants } from '../../../components/ui/badge';
 import { InlineField, Group } from '../../businessUnitEdit/shared';
 import { AddressBlock } from './AddressBlock';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
@@ -81,7 +81,10 @@ export function ClusterBuDocument({
               onClick={() => onToggle('is_active', !f.is_active)}
               className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
             >
-              <Badge variant={f.is_active ? 'success' : 'secondary'}>{f.is_active ? 'Active' : 'Inactive'}</Badge>
+              {/* <span>, not <Badge> (a <div>) — a <button> may only contain phrasing content. */}
+              <span className={badgeVariants({ variant: f.is_active ? 'success' : 'secondary' })}>
+                {f.is_active ? 'Active' : 'Inactive'}
+              </span>
             </button>
             <button
               type="button"
@@ -90,7 +93,9 @@ export function ClusterBuDocument({
               onClick={() => onToggle('is_hq', !f.is_hq)}
               className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
             >
-              <Badge variant={f.is_hq ? 'default' : 'secondary'}>{f.is_hq ? 'HQ' : 'Not HQ'}</Badge>
+              <span className={badgeVariants({ variant: f.is_hq ? 'default' : 'secondary' })}>
+                {f.is_hq ? 'HQ' : 'Not HQ'}
+              </span>
             </button>
           </div>
         </div>

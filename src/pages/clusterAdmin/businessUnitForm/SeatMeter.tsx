@@ -48,7 +48,7 @@ export function SeatMeter({ used, cap, licensed }: SeatMeterProps) {
       </p>
       <p className={cn('text-xs', u.level === 'over' ? 'text-destructive' : 'text-muted-foreground')}>
         {overBy > 0
-          ? `over by ${overBy} — deactivate ${overBy} ${overBy === 1 ? 'user' : 'users'} to save`
+          ? `over by ${overBy} — deactivate ${overBy} ${overBy === 1 ? 'user' : 'users'} who ${overBy === 1 ? 'belongs' : 'belong'} to no other BU in this cluster to save`
           : u.level === 'over'
             ? 'at capacity — deactivate a user before adding another'
             : u.level === 'warn'

@@ -5,7 +5,18 @@ import clusterService from '../../services/clusterService';
 import { getErrorDetail } from '../../utils/errorParser';
 import type { BUUser, ClusterUser } from './types';
 
-export function useBusinessUnitUsers(id: string | undefined, clusterId: string, isNew: boolean) {
+export function useBusinessUnitUsers(
+  id: string | undefined,
+  clusterId: string,
+  isNew: boolean,
+  /**
+   * Called after a membership mutation (add/edit/delete) commits successfully. Optional and
+   * unused by the platform BusinessUnitEdit.tsx page — the cluster-admin page passes it to
+   * re-read the BU's cluster-wide seat count (`cluster_seat`), which this hook does not track
+   * and cannot derive locally: seats are cluster-wide, not scoped to this BU's `buUsers`.
+   */
+  onMutate?: () => void,
+) {
   const [buUsers, setBuUsers] = useState<BUUser[]>([]);
   const [editingUser, setEditingUser] = useState<BUUser | null>(null);
   const [editUserForm, setEditUserForm] = useState<{ role: string; is_active: boolean }>({ role: '', is_active: true });
@@ -57,6 +68,7 @@ export function useBusinessUnitUsers(id: string | undefined, clusterId: string, 
       toast.success('User removed from business unit');
       setBuUsers(prev => prev.filter(u => u.id !== deleteUser.id));
       setDeleteUser(null);
+      onMutate?.();
     } catch (err: unknown) {
       toast.error('Failed to remove user', { description: getErrorDetail(err) });
     }
@@ -75,6 +87,7 @@ export function useBusinessUnitUsers(id: string | undefined, clusterId: string, 
       toast.success('User role updated successfully');
       setBuUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editUserForm } : u));
       setEditingUser(null);
+      onMutate?.();
     } catch (err: unknown) {
       toast.error('Failed to update user', { description: getErrorDetail(err) });
     } finally {
@@ -113,6 +126,7 @@ export function useBusinessUnitUsers(id: string | undefined, clusterId: string, 
       setShowAddUser(false);
       toast.success('User added to business unit');
       await fetchBuUsers();
+      onMutate?.();
     } catch (err: unknown) {
       toast.error('Failed to add user', { description: getErrorDetail(err) });
     } finally {
