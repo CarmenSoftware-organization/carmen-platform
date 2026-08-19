@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Pencil, Save, X, Loader2, Copy } from 'lucide-react';
+import { Save, X, Loader2, Copy } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import ClusterAccessLost from './ClusterAccessLost';
 import { PageHeader } from '../../components/PageHeader';
@@ -89,7 +89,6 @@ const BusinessUnitForm: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [accessLost, setAccessLost] = useState(false);
@@ -102,12 +101,20 @@ const BusinessUnitForm: React.FC = () => {
   const users = useBusinessUnitUsers(buId, formData.cluster_id, false);
   const licenses = useBusinessUnitLicenses(buId);
 
-  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
+  // การเปลี่ยนขอบเขตสิทธิ์เป็นงานคนละชิ้นที่ต้องมีสเปกของตัวเอง — spec §5.3
+  const canEdit = !accessLost;
+
+  // นับเป็นราย key ไม่ใช่ JSON.stringify ทั้งก้อน เพราะแถบ Save ต้องบอกได้ว่า *กี่* ช่อง
+  const changedKeys = (Object.keys(formData) as (keyof BusinessUnitFormData)[]).filter(
+    (k) => JSON.stringify(formData[k]) !== JSON.stringify(savedFormData[k]),
+  );
+  const hasChanges = changedKeys.length > 0;
   useUnsavedChanges(hasChanges);
 
   useGlobalShortcuts({
     onSave: () => { if (!saving && hasChanges) void handleSave(); },
-    onCancel: () => { if (editing) handleCancel(); },
+    onCancel: () => { if (hasChanges) handleCancel(); },
   });
 
   useEffect(() => {
@@ -246,6 +253,21 @@ const BusinessUnitForm: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, [e.target.name]: '' }));
   };
 
+  // commit ลง formData เท่านั้น การบันทึกยังเป็น PUT ครั้งเดียวตอนกด Save
+  // (ท่าเดียวกับ BusinessUnitEdit.tsx:111-121 ของหน้า platform)
+  const handleInlineCommit = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    setError('');
+  };
+  const handleInlineToggle = (name: string, value: boolean) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+  const handleInlineValidate = (name: string, value: string) => {
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  };
+
   const handleConfigChange = (index: number, field: keyof BusinessUnitConfig, value: string) => {
     setFormData((prev) => {
       const updated = [...prev.config];
@@ -288,17 +310,11 @@ const BusinessUnitForm: React.FC = () => {
     }
   };
 
-  const handleEditToggle = () => {
-    setSavedFormData(formData);
-    setEditing(true);
-  };
-
-  // Discard edits and drop back to view mode.
+  // Discard edits, restoring the last-fetched values.
   const handleCancel = () => {
     setFormData(savedFormData);
     setFieldErrors({});
     setError('');
-    setEditing(false);
   };
 
   // Backend requires code + name; cluster_id is guaranteed by the route guard, not a
@@ -371,7 +387,6 @@ const BusinessUnitForm: React.FC = () => {
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       });
       toast.success('Changes saved successfully');
-      setEditing(false);
       await fetchBusinessUnit();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
@@ -387,7 +402,7 @@ const BusinessUnitForm: React.FC = () => {
     }
   };
 
-  const sectionField = { formData, editing, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
+  const sectionField = { formData, editing: canEdit, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
 
   // Generic edit/read-only renderer for the plain text fields (Form Field Pattern).
   const textField = (
@@ -401,9 +416,9 @@ const BusinessUnitForm: React.FC = () => {
       <div className="space-y-2">
         <Label htmlFor={name}>
           {label}
-          {opts?.required && editing && <span className="text-destructive ml-0.5">*</span>}
+          {opts?.required && canEdit && <span className="text-destructive ml-0.5">*</span>}
         </Label>
-        {editing ? (
+        {canEdit ? (
           opts?.textarea ? (
             <Textarea
               id={name}
@@ -438,13 +453,13 @@ const BusinessUnitForm: React.FC = () => {
   };
 
   const addrField = (id: TextFieldName, label: string) => (
-    <AddrField id={id} label={label} placeholder={label} value={formData[id]} editing={editing} onChange={handleChange} />
+    <AddrField id={id} label={label} placeholder={label} value={formData[id]} editing={canEdit} onChange={handleChange} />
   );
 
   const isHqField = (
     <div className="space-y-2">
       <Label htmlFor="is_hq">Headquarters</Label>
-      {editing ? (
+      {canEdit ? (
         <label className="flex min-h-11 items-center gap-2">
           <input type="checkbox" id="is_hq" name="is_hq" checked={formData.is_hq} onChange={handleChange} className="h-4 w-4 rounded border-input" />
           <span className="text-sm">This is the HQ business unit</span>
@@ -460,7 +475,7 @@ const BusinessUnitForm: React.FC = () => {
   const isActiveField = (
     <div className="space-y-2">
       <Label htmlFor="is_active">Status</Label>
-      {editing ? (
+      {canEdit ? (
         <label className="flex min-h-11 items-center gap-2">
           <input type="checkbox" id="is_active" name="is_active" checked={formData.is_active} onChange={handleChange} className="h-4 w-4 rounded border-input" />
           <span className="text-sm">Active</span>
@@ -507,30 +522,11 @@ const BusinessUnitForm: React.FC = () => {
 
   return (
     <ClusterAdminLayout>
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6 pb-20">
         <PageHeader
           backTo={`/cluster-admin/${clusterId}/business-units`}
           title={formData.name || '(unnamed business unit)'}
           subtitle="Manage this business unit's details"
-          actions={
-            editing ? (
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            )
-          }
         />
 
         {error && (
@@ -589,7 +585,7 @@ const BusinessUnitForm: React.FC = () => {
               <CardTitle>Company information</CardTitle>
               <CardDescription>Billing entity, tax details, and address</CardDescription>
             </div>
-            {editing && (
+            {canEdit && (
               <Button type="button" variant="ghost" size="sm" onClick={copyHotelAddressToCompany}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copy from hotel address
@@ -653,7 +649,7 @@ const BusinessUnitForm: React.FC = () => {
         <BusinessUnitBrandingCard
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}
-          editing={editing}
+          editing={canEdit}
           name={formData.name}
           code={formData.code}
           onUploadLogo={handleUploadLogo}
@@ -680,6 +676,24 @@ const BusinessUnitForm: React.FC = () => {
         />
           </>
         ))}
+
+        {hasChanges && (
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t p-3 md:left-16 lg:left-60">
+            <div className="mx-auto flex max-w-5xl items-center justify-end gap-3">
+              <span className="text-muted-foreground mr-auto text-sm" role="status">
+                {changedKeys.length} unsaved {changedKeys.length === 1 ? 'change' : 'changes'}
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save changes'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <DevDebugSheet
