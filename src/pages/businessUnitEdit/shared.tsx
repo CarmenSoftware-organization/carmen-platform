@@ -73,3 +73,28 @@ export const AddrField: React.FC<{
     )}
   </div>
 );
+
+/**
+ * หนึ่งกลุ่มของ document: หัวข้อ uppercase ตัวเล็ก + เส้นคั่นด้านบน
+ * ย้ายมาจาก BusinessUnitDocument.tsx (2026-08-19) เพราะหน้า cluster-admin
+ * ใช้กลุ่มหน้าตาเดียวกันแต่เรียงคนละลำดับ — แก้หน้าตาของกลุ่มต้องแก้ที่นี่ที่เดียว
+ */
+export function Group({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-t p-4 sm:px-6 sm:py-5">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
+        {action}
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}

@@ -5,7 +5,7 @@ import { Copy } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
 import { InlineField, type InlineOption } from './InlineField';
-import { ReadOnlyText } from './shared';
+import { ReadOnlyText, Group } from './shared';
 import CalculationSettingsSection from './sections/CalculationSettingsSection';
 import NumberFormatsSection from './sections/NumberFormatsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
@@ -46,26 +46,6 @@ interface BusinessUnitDocumentProps {
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
   licensesSlot?: React.ReactNode;
-}
-
-function Group({
-  label,
-  action,
-  children,
-}: {
-  label: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-t p-4 sm:px-6 sm:py-5">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
-        {action}
-      </div>
-      <div>{children}</div>
-    </div>
-  );
 }
 
 export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
