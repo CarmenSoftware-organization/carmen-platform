@@ -45,6 +45,19 @@ type TextFieldName = Exclude<
 >;
 
 /**
+ * ฟิลด์ที่ API ไม่ยอมให้ล้างค่า — ตรวจกับ BusinessUnitUpdateDto บน swagger 2026-08-19:
+ *   name, alias_name → minLength: 3   ·   hotel_email, company_email → format: email
+ * ส่ง '' ไปจะได้ 400 ไม่ใช่การล้างค่า จึงต้องกันที่ UI ไม่ใช่ปล่อยให้ผู้ใช้ไปเจอ error
+ * จาก backend การที่ API ล้าง alias/email ไม่ได้เป็นช่องว่างฝั่ง backend ที่ยังไม่แก้
+ */
+const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
+  name: 'Name is required',
+  alias_name: 'Alias cannot be cleared — it must be at least 3 characters',
+  hotel_email: 'Hotel email cannot be cleared',
+  company_email: 'Company email cannot be cleared',
+};
+
+/**
  * A cluster administrator's reach into one business unit — a narrowed Edit-only page (see
  * ClusterProfile.tsx for the canonical orchestration this mirrors, and BusinessUnitEdit.tsx +
  * businessUnitEdit/sections/ for the full platform-admin form this is scoped down from).
@@ -332,6 +345,12 @@ const BusinessUnitForm: React.FC = () => {
     if (!formData.code.trim()) errs.code = 'Code is required';
     else errs.code = validateField('code', formData.code);
     if (!formData.name.trim()) errs.name = 'Name is required';
+    // ล้างค่าฟิลด์กลุ่มนี้ = 400 จาก backend จับที่นี่ก่อนยิง
+    for (const [key, message] of Object.entries(NOT_CLEARABLE) as [keyof BusinessUnitFormData, string][]) {
+      const before = String(savedFormData[key] ?? '');
+      const after = String(formData[key] ?? '');
+      if (before !== '' && after.trim() === '') errs[key] = message;
+    }
     const active = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
@@ -345,12 +364,16 @@ const BusinessUnitForm: React.FC = () => {
   // database_pool_name) are never sent to the backend: cluster_id is immutable on update (the
   // record's cluster is fixed), and the pool fields are platform-only concerns gated on
   // platform roles — this page does not expose them.
-  const buildPayload = (data: BusinessUnitFormData): Record<string, unknown> => {
+  const buildPayload = (
+    data: BusinessUnitFormData,
+    changed: (keyof BusinessUnitFormData)[],
+  ): Record<string, unknown> => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
       try { return JSON.parse(val); } catch { return val; }
     };
 
+    const changedSet = new Set<string>(changed as string[]);
     const payload: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(data)) {
       if (
@@ -363,6 +386,10 @@ const BusinessUnitForm: React.FC = () => {
         payload[key] = val;
       } else if (val !== '' && val !== undefined && val !== null) {
         payload[key] = val;
+      } else if (val === '' && changedSet.has(key)) {
+        // ผู้ใช้ลบค่าออกเอง → ส่ง '' เพื่อล้างจริง (DTO ไม่มีฟิลด์ไหน nullable, null จึงไม่ใช่คำตอบ)
+        // ฟิลด์ที่ล้างไม่ได้ถูก validateRequired ดักไปแล้วก่อนถึงตรงนี้
+        payload[key] = '';
       }
     }
 
@@ -381,7 +408,7 @@ const BusinessUnitForm: React.FC = () => {
     if (!validateRequired()) return;
     setSaving(true);
     try {
-      const payload = buildPayload(formData);
+      const payload = buildPayload(formData, changedKeys);
       await businessUnitService.update(buId!, {
         ...payload,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
