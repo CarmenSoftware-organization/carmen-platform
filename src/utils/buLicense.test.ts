@@ -62,8 +62,8 @@ describe('isExpiringSoon', () => {
     expect(isExpiringSoon(lic({ end_date: '2025-12-31T00:00:00.000Z' }), NOW)).toBe(false);
   });
 
-  it('false สำหรับใบที่ยังไม่เริ่ม', () => {
-    expect(isExpiringSoon(lic({ start_date: '2026-10-01T00:00:00.000Z', end_date: '2026-10-05T00:00:00.000Z' }), NOW)).toBe(false);
+  it('false สำหรับใบที่ยังไม่เริ่ม แม้ end_date จะอยู่ในหน้าต่าง 30 วัน', () => {
+    expect(isExpiringSoon(lic({ start_date: '2026-09-01T00:00:00.000Z', end_date: '2026-09-10T00:00:00.000Z' }), NOW)).toBe(false);
   });
 });
 
@@ -74,6 +74,10 @@ describe('isMigratedPlaceholder', () => {
 
   it('ใบที่แอดมินพิมพ์ note เองไม่ถูกจับ', () => {
     expect(isMigratedPlaceholder(lic({ note: 'ซื้อเพิ่มรอบสอง' }))).toBe(false);
+  });
+
+  it('คำว่า migrated อยู่กลางข้อความไม่ถูกจับ — ต้องเป็น prefix เท่านั้น ไม่ใช่แค่มีคำนี้อยู่', () => {
+    expect(isMigratedPlaceholder(lic({ note: 'ระบบ migrated ไว้ก่อนหน้านี้' }))).toBe(false);
   });
 
   it('ไม่มี note ก็ไม่ใช่ placeholder', () => {
