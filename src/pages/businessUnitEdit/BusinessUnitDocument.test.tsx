@@ -122,7 +122,13 @@ describe('BusinessUnitDocument', () => {
 
     expect(screen.getByText('15')).toBeInTheDocument();
     expect(screen.getByText(/จาก 2 ใบที่ใช้ได้/)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Max users')).not.toBeInTheDocument();
+    // ไม่ใช่ queryByLabelText('Max users') — InlineField ใส่ aria-label ให้ตัวควบคุมเฉพาะตอน
+    // editing === true เท่านั้น โหมดอ่านเป็น <button> ล้วนไม่มี aria-label เลย ดังนั้น
+    // queryByLabelText จะผ่านเสมอไม่ว่าฟิลด์นี้จะยังเป็น InlineField ที่แก้ได้อยู่หรือไม่
+    // (ไม่มีใครคลิกเข้า edit mode ในเทสต์นี้) — ต้องเช็คปุ่มคลิกเข้าโหมดแก้ไขแทน ปุ่มนั้นคือปุ่มเดียว
+    // ที่ EDITABLE_FIELDS ด้านบนคลิกเพื่อเปิดทุกแถว (ชื่อปุ่ม "Set <label>…") ถ้าฟิลด์นี้ย้อนกลับไป
+    // เป็น InlineField ปุ่มนี้จะกลับมาปรากฏและ assertion นี้จะแดง (ดูหลักฐาน RED ใน task-3.5-report.md)
+    expect(screen.queryByRole('button', { name: /max users/i })).not.toBeInTheDocument();
   });
 
   it('lets the user set the required code on a new business unit', async () => {
