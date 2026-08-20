@@ -7,7 +7,6 @@ import businessUnitService from '../services/businessUnitService';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { JsonViewer } from '../components/ui/json-viewer';
 import { Save, X, Loader2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
@@ -27,8 +26,6 @@ import { SeatsCard } from './subscriptionEdit/SeatsCard';
 import { FeatureMatrixCard } from './subscriptionEdit/FeatureMatrixCard';
 import { toFeaturesPayload } from './subscriptionEdit/featureSelection';
 import type { BusinessUnit, SubscriptionBu, SubscriptionDetail } from '../types';
-
-const isDev = process.env.NODE_ENV === 'development';
 
 // ISO 8601 Z <-> the plain 'YYYY-MM-DD' an <input type="date"> wants.
 //
@@ -375,7 +372,6 @@ const SubscriptionEdit: React.FC = () => {
     { id: 'info', label: 'ข้อมูลสัญญา' },
     { id: 'bu-features', label: 'สิทธิ์ตาม BU', count: bus.length },
     { id: 'seats', label: 'ที่นั่ง' },
-    ...(isDev ? [{ id: 'debug', label: 'Debug' }] : []),
   ];
 
   return (
@@ -469,20 +465,6 @@ const SubscriptionEdit: React.FC = () => {
                 <section id="seats" className="scroll-mt-20">
                   {detail && <SeatsCard seat={detail.seat} bus={detail.bus} />}
                 </section>
-
-                {isDev && (
-                  <section id="debug" className="scroll-mt-20">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Debug</CardTitle>
-                        <CardDescription>{`GET /api-system/platform/subscriptions/${id}`}</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <JsonViewer data={rawResponse} />
-                      </CardContent>
-                    </Card>
-                  </section>
-                )}
               </div>
             </div>
           </>
