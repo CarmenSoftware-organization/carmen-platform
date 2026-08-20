@@ -3,6 +3,7 @@ import { badgeVariants } from '../../../components/ui/badge';
 import { InlineField, Group } from '../../businessUnitEdit/shared';
 import { AddressBlock } from './AddressBlock';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
+import { BU_ALIAS_MAX } from '../../businessUnitEdit/types';
 
 export interface ClusterBuDocumentProps {
   formData: BusinessUnitFormData;
@@ -30,7 +31,7 @@ export function ClusterBuDocument({
   const inline = (
     name: keyof BusinessUnitFormData,
     label: string,
-    opts?: { type?: 'text' | 'email' | 'textarea'; mono?: boolean; validate?: boolean },
+    opts?: { type?: 'text' | 'email' | 'textarea'; mono?: boolean; validate?: boolean; maxLength?: number },
   ) => (
     <InlineField
       key={name}
@@ -39,6 +40,7 @@ export function ClusterBuDocument({
       value={String(f[name] ?? '')}
       type={opts?.type}
       mono={opts?.mono}
+      maxLength={opts?.maxLength}
       error={fieldErrors[name]}
       disabled={!canEdit}
       onCommit={onCommit}
@@ -103,7 +105,7 @@ export function ClusterBuDocument({
         {/* ที่เหลือของการ์ด Details เดิม — name ขึ้นไปอยู่ title ของ PageHeader,
             is_hq/is_active อยู่ใน hero ข้างบน */}
         <Group label="Identity">
-          {inline('alias_name', 'Alias', { mono: true, validate: true })}
+          {inline('alias_name', 'Alias', { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
           {inline('description', 'Description', { type: 'textarea' })}
         </Group>
       </Card>

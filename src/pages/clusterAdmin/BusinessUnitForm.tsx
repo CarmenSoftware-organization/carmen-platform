@@ -20,7 +20,7 @@ import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
 import { ReadOnlyText, ReadOnlyTextarea, Group, CollapsibleSection } from '../businessUnitEdit/shared';
-import { initialFormData, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
+import { initialFormData, aliasBound, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
 import { HeroName } from '../businessUnitEdit/HeroName';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
@@ -302,7 +302,7 @@ const BusinessUnitForm: React.FC = () => {
     setError('');
   };
   const handleInlineValidate = (name: string, value: string) => {
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name)) }));
   };
 
   const handleConfigChange = (index: number, field: keyof BusinessUnitConfig, value: string) => {

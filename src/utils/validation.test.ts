@@ -78,6 +78,16 @@ describe('validateField', () => {
     expect(validateField('alias_name', 'abcd')).toBe('Alias must be 1-3 alphanumeric characters');
     expect(validateField('alias_name', 'ab')).toBe('');
   });
+  // สองตารางสะกดคอลัมน์เหมือนกันแต่กว้างไม่เท่ากัน: tb_cluster.alias_name เป็น VarChar(3)
+  // ส่วน tb_business_unit.alias_name เป็น VarChar(10) — validateField แยกตามชื่อฟิลด์อย่างเดียว
+  // กฎที่แคบกว่าจึงเคยกินความไปถึง BU ด้วย ทำให้ alias 6 ตัวอักษรที่ถูกกฎโดนปฏิเสธที่หน้าเว็บ
+  it('ยอมให้ alias ยาวขึ้นเมื่อผู้เรียกระบุเพดานของ business unit', () => {
+    expect(validateField('alias_name', 'RIVER', { maxLength: 10 })).toBe('');
+    expect(validateField('alias_name', 'RIVERSIDEXX', { maxLength: 10 }))
+      .toBe('Alias must be 1-10 alphanumeric characters');
+    // ไม่ส่ง option = เพดานเดิมของ cluster ไม่เปลี่ยนพฤติกรรมผู้เรียกที่มีอยู่
+    expect(validateField('alias_name', 'RIVER')).toBe('Alias must be 1-3 alphanumeric characters');
+  });
   it('validates license counts as non-negative integers', () => {
     expect(validateField('max_license_bu', '-1')).toBe('Must be a non-negative integer');
     expect(validateField('max_license_users', '5')).toBe('');

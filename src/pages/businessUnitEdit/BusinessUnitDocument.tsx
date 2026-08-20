@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Copy } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
+import { BU_ALIAS_MAX } from './types';
 import { InlineField, type InlineOption } from './InlineField';
 import { ReadOnlyText, Group } from './shared';
 import CalculationSettingsSection from './sections/CalculationSettingsSection';
@@ -173,7 +174,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             validateRequired() enforces — they are the only ones marked required. */}
         <Group label="Details">
           {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
-          {inline('alias_name', 'Alias', { validate: true, maxLength: 3 })}
+          {inline('alias_name', 'Alias', { validate: true, maxLength: BU_ALIAS_MAX })}
           {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
           {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
               this BU's dated license rows, edited only in the User Licenses card below. Not an
