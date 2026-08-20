@@ -24,6 +24,8 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import PermissionPicker from '../components/PermissionPicker';
+import { actionRank } from '../utils/permissionOrder';
+import { resourceRank } from '../components/nav/platformNav';
 import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { PermissionCatalogItem } from '../types';
 
@@ -238,21 +240,70 @@ const RoleEdit: React.FC = () => {
     }
   };
 
-  // Group read-only permissions by resource (part before first '.')
-  const readOnlyPermissionGroups = useMemo(() => {
-    const map = new Map<string, string[]>();
+  // The read-only view of the grant, derived in catalog order so it speaks the same
+  // vocabulary as PermissionPicker: resource as the heading, bare action verbs beside
+  // it, `granted/total` as the ratio. Repeating the resource inside every key (the old
+  // `cluster` heading over a `cluster.read` badge) said the same word twice and hid the
+  // only thing a reader wants — how much of each resource this role actually holds.
+  //
+  // The catalog can fail or still be loading, and the read-only view has to survive that:
+  // without it we can still show which actions were granted (the keys carry that), just
+  // not which ones were withheld. `complete` says which of the two we are rendering.
+  const grantView = useMemo(() => {
+    const granted = new Set(formData.permissions);
+
+    if (catalog.length > 0) {
+      const byResource = new Map<string, PermissionCatalogItem[]>();
+      for (const p of catalog) {
+        byResource.set(p.resource, [...(byResource.get(p.resource) ?? []), p]);
+      }
+      const rows = Array.from(byResource.entries())
+        .map(([resource, items]) => ({
+          resource,
+          // Only what this role actually holds. `total` still comes from the full catalog
+          // group, so the n/m badge stays the one signal of how much of the resource is held.
+          actions: items
+            .filter((p) => granted.has(p.key))
+            .map((p) => ({ action: p.action, description: p.description }))
+            .sort((a, b) => actionRank(a.action) - actionRank(b.action)),
+          total: items.length,
+        }))
+        .filter((r) => r.actions.length > 0)
+        .sort((a, b) => resourceRank(a.resource) - resourceRank(b.resource));
+      return { rows, complete: true, totalResources: byResource.size, untouched: byResource.size - rows.length };
+    }
+
+    const byResource = new Map<string, string[]>();
     for (const key of formData.permissions) {
       const dotIdx = key.indexOf('.');
       const resource = dotIdx >= 0 ? key.slice(0, dotIdx) : key;
-      const existing = map.get(resource);
-      if (existing) {
-        existing.push(key);
-      } else {
-        map.set(resource, [key]);
-      }
+      const action = dotIdx >= 0 ? key.slice(dotIdx + 1) : key;
+      byResource.set(resource, [...(byResource.get(resource) ?? []), action]);
     }
-    return Array.from(map.entries());
-  }, [formData.permissions]);
+    const rows = Array.from(byResource.entries())
+      .sort(([a], [b]) => resourceRank(a) - resourceRank(b))
+      .map(([resource, actions]) => ({
+      resource,
+      actions: actions
+        .map((action) => ({ action, description: undefined as string | undefined }))
+        .sort((a, b) => actionRank(a.action) - actionRank(b.action)),
+      total: actions.length,
+      }));
+    return { rows, complete: false, totalResources: byResource.size, untouched: 0 };
+  }, [formData.permissions, catalog]);
+
+  // One sentence saying what this role IS. 'read only' is claimed only when every granted
+  // action really is `read` — never inferred from the role's name or description.
+  const grantSummary = useMemo(() => {
+    const n = formData.permissions.length;
+    if (n === 0) return 'No permissions granted';
+    const parts = [`${n} permission${n === 1 ? '' : 's'}`];
+    if (grantView.complete) parts.push(`${grantView.rows.length} of ${grantView.totalResources} resources`);
+    const verbs = new Set(grantView.rows.flatMap((r) => r.actions.map((a) => a.action)));
+    if (verbs.size === 1 && verbs.has('read')) parts.push('read only');
+    else if (verbs.size > 1 && verbs.size <= 3) parts.push(Array.from(verbs).sort().join(' · '));
+    return parts.join(' · ');
+  }, [formData.permissions.length, grantView]);
 
   if (loading) {
     return (
@@ -363,11 +414,7 @@ const RoleEdit: React.FC = () => {
                 <CardHeader>
                   <CardTitle>Permissions</CardTitle>
                   <CardDescription>
-                    {editing
-                      ? 'Select the permissions this role grants.'
-                      : formData.permissions.length > 0
-                      ? `${formData.permissions.length} permission${formData.permissions.length === 1 ? '' : 's'} granted`
-                      : 'No permissions granted'}
+                    {editing ? 'Select the permissions this role grants.' : grantSummary}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -396,19 +443,41 @@ const RoleEdit: React.FC = () => {
                   ) : formData.permissions.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">No permissions granted.</p>
                   ) : (
-                    <div className="space-y-3">
-                      {readOnlyPermissionGroups.map(([resource, keys]) => (
-                        <div key={resource}>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{resource}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {keys.map((key) => (
-                              <Badge key={key} variant="secondary" className="text-xs font-mono">
-                                {key}
+                    <div>
+                      {/* One grid for the whole list: the tracks are the container's, so every
+                          row shares them. A grid per row would size its own resource column and
+                          stagger the verbs across rows. */}
+                      <div className="grid grid-cols-[minmax(0,max-content)_1fr_auto] items-baseline gap-x-4 gap-y-2">
+                      {grantView.rows.map((row) => (
+                        <React.Fragment key={row.resource}>
+                          <span className="font-mono text-sm">{row.resource}</span>
+                          <span className="flex flex-wrap gap-1.5">
+                            {row.actions.map((a) => (
+                              <Badge
+                                key={a.action}
+                                variant="secondary"
+                                title={a.description}
+                                className="border-transparent bg-primary/10 text-primary"
+                              >
+                                {a.action}
                               </Badge>
                             ))}
-                          </div>
-                        </div>
+                          </span>
+                          {grantView.complete ? (
+                            <Badge variant="secondary" className="text-xs tabular-nums">
+                              {row.actions.length}/{row.total}
+                            </Badge>
+                          ) : (
+                            <span />
+                          )}
+                        </React.Fragment>
                       ))}
+                      </div>
+                      {grantView.complete && grantView.untouched > 0 && (
+                        <p className="pt-3 text-xs text-muted-foreground">
+                          No access to {grantView.untouched} other resource{grantView.untouched === 1 ? '' : 's'}.
+                        </p>
+                      )}
                     </div>
                   )}
                 </CardContent>

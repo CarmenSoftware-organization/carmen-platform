@@ -35,6 +35,32 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/platform/database-pools', label: 'Database Pools', icon: Server, permission: 'database_pool.read', group: 'Platform' },
 ];
 
+/**
+ * The order the sidebar puts resources in, derived from the nav itself so the two can
+ * never drift: a role's permission list reads top-to-bottom in the same order as the menu
+ * the reader just came from. Several nav items share one resource (Clusters, Business
+ * Units and Tenant Migrations are all `cluster.read`) — first appearance wins.
+ */
+const NAV_RESOURCE_ORDER: string[] = (() => {
+  const order: string[] = [];
+  for (const item of ALL_PLATFORM_NAV_ITEMS) {
+    if (!item.permission) continue;
+    const resource = item.permission.split('.')[0];
+    if (!order.includes(resource)) order.push(resource);
+  }
+  return order;
+})();
+
+/**
+ * Sort rank for a permission resource. Resources with no menu entry of their own
+ * (`rbac`, `license`) rank after every menu-backed one and, because `Array.sort` is
+ * stable, keep catalog order among themselves.
+ */
+export const resourceRank = (resource: string): number => {
+  const i = NAV_RESOURCE_ORDER.indexOf(resource);
+  return i === -1 ? NAV_RESOURCE_ORDER.length : i;
+};
+
 /** The platform-administration navigation, filtered to what this user may reach. */
 export function buildPlatformNav(opts: {
   hasPermission: (key: string) => boolean;
