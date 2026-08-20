@@ -104,7 +104,9 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
     {
       accessorKey: 'cluster_role',
       header: 'Cluster Role',
-      meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
+      // กว้างเท่ากับคอลัมน์เดียวกันในตาราง Members — ของเดิม w-28 แคบไปจนหัวคอลัมน์ห่อสองบรรทัด
+      // มาตั้งแต่ก่อนหน้านี้ ไม่ได้เพิ่งเกิดจากการเปลี่ยนชื่อคอลัมน์ฝั่ง Members
+      meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
         <Badge variant="outline" className="text-xs capitalize">
           {row.original.cluster_role ?? 'user'}
