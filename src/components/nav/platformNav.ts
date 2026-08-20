@@ -28,7 +28,7 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/applications', label: 'Applications', icon: AppWindow, permission: 'application.read', group: 'Platform' },
   { path: '/platform/email-settings', label: 'Email Settings', icon: Mail, permission: 'email_setting.read', group: 'Platform' },
   { path: '/platform/configs', label: 'Platform Config', icon: Settings, permission: 'platform_config.read', group: 'Platform' },
-  { path: '/platform/roles', label: 'Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
+  { path: '/platform/roles', label: 'Platform Roles', icon: ShieldCheck, permission: 'role.read', group: 'Platform' },
   { path: '/platform/super-admins', label: 'Super Admins', icon: ShieldAlert, superAdminOnly: true, group: 'Platform' },
   { path: '/platform/user-platform', label: 'User Platform', icon: UserCog, permission: 'user_platform.read', group: 'Platform' },
   { path: '/sql-workbench', label: 'SQL Workbench', icon: Database, permission: 'sql_workbench.read', group: 'Platform' },
