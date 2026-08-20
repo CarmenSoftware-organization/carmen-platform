@@ -333,7 +333,7 @@ const RoleManagement: React.FC = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <Can permission="role.update">
+            <Can permission="platform_role.update">
               <DropdownMenuItem
                 onClick={() => navigate(`/platform/roles/${row.original.id}/edit`)}
                 className="cursor-pointer"
@@ -342,7 +342,7 @@ const RoleManagement: React.FC = () => {
                 Edit
               </DropdownMenuItem>
             </Can>
-            <Can permission="role.delete">
+            <Can permission="platform_role.delete">
               <DropdownMenuItem
                 onClick={() => handleDelete(row.original.id)}
                 className="cursor-pointer text-destructive focus:text-destructive"
@@ -366,16 +366,14 @@ const RoleManagement: React.FC = () => {
           subtitle="Manage platform roles and their permissions"
           actions={
             <>
-              <Can permission="rbac.read">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/platform/permissions')}
-                >
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  Permission Catalog
-                </Button>
-              </Can>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/platform/category-permissions')}
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                Permission Catalog
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -385,7 +383,7 @@ const RoleManagement: React.FC = () => {
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
-              <Can permission="role.create">
+              <Can permission="platform_role.create">
                 <Button onClick={() => navigate('/platform/roles/new')}>
                   <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Add Role</span>
@@ -519,7 +517,7 @@ const RoleManagement: React.FC = () => {
                 emptyTitle="No roles yet"
                 emptyDescription="Get started by creating your first role to manage platform permissions."
                 addAction={
-                  <Can permission="role.create">
+                  <Can permission="platform_role.create">
                     <Button size="sm" onClick={() => navigate('/platform/roles/new')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Role

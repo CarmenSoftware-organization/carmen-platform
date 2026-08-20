@@ -139,11 +139,12 @@ const RoleEdit: React.FC = () => {
       .catch((err: unknown) => {
         setCatalogFailed(true);
         devLog('Failed to load permission catalog:', err);
-        // 403 ที่นี่แปลว่าบัญชีนี้ไม่มี rbac.read ซึ่ง backend เพิ่งเริ่มบังคับ (PR #320)
+        // 403 ที่นี่แปลว่าบัญชีนี้ไม่มี platform_role.read — คีย์ที่ GET /api-system/platform/permissions
+        // บังคับจริง (platform-permissions.controller.ts). เคยเขียนว่า rbac.read ซึ่งผิด
         // แยกออกมาเพราะผู้ใช้แก้ชื่อ/สถานะ role ต่อได้ ต่างจาก error อื่นที่เป็นความผิดพลาดชั่วคราว
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 403) {
-          toast.error('ไม่มีสิทธิ์ rbac.read จึงโหลดรายการสิทธิ์ไม่ได้', {
+          toast.error('ไม่มีสิทธิ์ platform_role.read จึงโหลดรายการสิทธิ์ไม่ได้', {
             description: 'แก้ชื่อและสถานะของ role ได้ตามปกติ แต่เลือกสิทธิ์ไม่ได้',
           });
           return;
@@ -392,7 +393,7 @@ const RoleEdit: React.FC = () => {
           catalogSize={catalog.length}
           actions={
             !isNew && !editing && (
-              <Can permission="role.update">
+              <Can permission="platform_role.update">
                 <Button variant="outline" size="sm" onClick={handleEditToggle}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit

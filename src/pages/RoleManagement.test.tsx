@@ -125,7 +125,7 @@ describe('RoleManagement — row action gates (role.update / role.delete)', () =
   });
 
   it('shows Edit and Delete with full permissions (discriminating control)', async () => {
-    auth.hasPermission = (perm) => perm === 'role.update' || perm === 'role.delete';
+    auth.hasPermission = (perm) => perm === 'platform_role.update' || perm === 'platform_role.delete';
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('Admin');
@@ -137,7 +137,7 @@ describe('RoleManagement — row action gates (role.update / role.delete)', () =
   });
 
   it('gates Edit on role.update alone — Delete stays hidden', async () => {
-    auth.hasPermission = (perm) => perm === 'role.update';
+    auth.hasPermission = (perm) => perm === 'platform_role.update';
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('Admin');
@@ -149,7 +149,7 @@ describe('RoleManagement — row action gates (role.update / role.delete)', () =
   });
 
   it('gates Delete on role.delete alone — Edit stays hidden', async () => {
-    auth.hasPermission = (perm) => perm === 'role.delete';
+    auth.hasPermission = (perm) => perm === 'platform_role.delete';
     const user = userEvent.setup();
     renderPage();
     await screen.findByText('Admin');
@@ -171,7 +171,7 @@ describe('RoleManagement — Add Role gates (role.create)', () => {
   });
 
   it('shows the header Add Role button with role.create (discriminating control)', async () => {
-    auth.hasPermission = (perm) => perm === 'role.create';
+    auth.hasPermission = (perm) => perm === 'platform_role.create';
     renderPage();
     await screen.findByText('Admin');
 
@@ -189,7 +189,7 @@ describe('RoleManagement — Add Role gates (role.create)', () => {
 
   it('shows both the header and empty-state Add Role buttons with role.create (discriminating control)', async () => {
     setupGetAll(emptyResponse);
-    auth.hasPermission = (perm) => perm === 'role.create';
+    auth.hasPermission = (perm) => perm === 'platform_role.create';
     renderPage();
 
     expect(await screen.findByText('No roles yet')).toBeInTheDocument();
