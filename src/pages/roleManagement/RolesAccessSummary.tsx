@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
@@ -84,18 +85,18 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
             {(summary.top_roles ?? []).length === 0 ? (
               <p className="text-muted-foreground text-sm">No roles yet.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-[minmax(0,max-content)_1fr_auto] items-center gap-x-3 gap-y-2">
                 {(summary.top_roles ?? []).map((r) => (
-                  <div key={r.id} className="flex items-center gap-3">
+                  <Fragment key={r.id}>
                     <Link
                       to={`/platform/roles/${r.id}/edit`}
-                      className="hover:text-primary w-28 shrink-0 truncate text-sm hover:underline"
+                      className="hover:text-primary truncate text-sm hover:underline"
                       title={r.name}
                     >
                       {r.name}
                     </Link>
                     <div
-                      className="bg-muted h-2 flex-1 overflow-hidden rounded-full"
+                      className="bg-muted h-2 overflow-hidden rounded-full"
                       role="img"
                       aria-label={`${r.name}: ${r.permission_count} permission${r.permission_count === 1 ? '' : 's'}`}
                     >
@@ -104,8 +105,8 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
                         style={{ width: `${barScale > 0 ? (r.permission_count / barScale) * 100 : 0}%` }}
                       />
                     </div>
-                    <span className="w-8 shrink-0 text-right font-mono text-[13px] font-semibold tabular-nums">{r.permission_count}</span>
-                  </div>
+                    <span className="w-8 text-right font-mono text-[13px] font-semibold tabular-nums">{r.permission_count}</span>
+                  </Fragment>
                 ))}
               </div>
             )}
