@@ -101,8 +101,13 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
     },
     {
       accessorKey: 'role',
-      header: 'Role',
-      meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
+      // "Cluster Role" ไม่ใช่ "Role" เฉย ๆ เพราะผู้ใช้คนเดียวถือได้ทั้งบทบาทระดับ cluster
+      // (ตารางนี้) และบทบาทระดับ BU (คอลัมน์ "BU Role" ในหน้า Business Unit) — ตาราง
+      // Invitations ข้างกันใช้ชื่อนี้อยู่แล้ว สองตารางในหน้าเดียวกันจึงเรียกของอย่างเดียวกันเหมือนกัน
+      header: 'Cluster Role',
+      // w-36 ไม่ใช่ w-28: "Cluster Role" ต้องการ 95px + ไอคอน sort 13px แต่ w-28 (112px)
+      // หัก padding แล้วเหลือ 88px หัวคอลัมน์จึงห่อเป็นสองบรรทัด
+      meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
         <Badge variant="outline" className="text-xs capitalize">
           {row.original.role ?? 'user'}
