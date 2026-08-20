@@ -362,7 +362,7 @@ const RoleManagement: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {/* Header row */}
         <PageHeader
-          title="Roles"
+          title="Platform Roles"
           subtitle="Manage platform roles and their permissions"
           actions={
             <>
