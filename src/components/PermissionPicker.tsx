@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import type { PermissionCatalogItem } from '../types';
 import { Badge } from './ui/badge';
+import { actionRank } from '../utils/permissionOrder';
+import { resourceRank } from './nav/platformNav';
+import { cn } from '../lib/utils';
 
 interface PermissionPickerProps {
   catalog: PermissionCatalogItem[];
@@ -16,7 +19,14 @@ const PermissionPicker: React.FC<PermissionPickerProps> = ({ catalog, value, onC
     for (const p of catalog) {
       map.set(p.resource, [...(map.get(p.resource) ?? []), p]);
     }
-    return Array.from(map.entries());
+    // Same verb order as the read-only grant list, so a verb does not move when you
+    // press Edit.
+    return Array.from(map.entries())
+      .sort(([a], [b]) => resourceRank(a) - resourceRank(b))
+      .map(
+        ([resource, items]) =>
+          [resource, [...items].sort((a, b) => actionRank(a.action) - actionRank(b.action))] as const
+      );
   }, [catalog]);
 
   const selected = useMemo(() => new Set(value), [value]);
@@ -58,19 +68,32 @@ const PermissionPicker: React.FC<PermissionPickerProps> = ({ catalog, value, onC
                 </button>
               )}
             </summary>
-            <div className="grid grid-cols-2 gap-2 px-3 pb-3 sm:grid-cols-3">
-              {items.map((p) => (
-                <label key={p.key} className="flex items-center gap-2 text-sm" title={p.description}>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-input accent-primary"
-                    checked={selected.has(p.key)}
-                    onChange={() => toggle(p.key)}
+            <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+              {items.map((p) => {
+                const on = selected.has(p.key);
+                return (
+                  // A toggle button, not a checkbox: `aria-pressed` is what tells a screen
+                  // reader this is on or off, since the state is carried by colour alone.
+                  <button
+                    key={p.key}
+                    type="button"
+                    aria-pressed={on}
+                    title={p.description}
                     disabled={disabled}
-                  />
-                  <span>{p.action}</span>
-                </label>
-              ))}
+                    onClick={() => toggle(p.key)}
+                    className={cn(
+                      'inline-flex items-center rounded-md border border-transparent px-2.5 py-0.5 text-xs font-medium transition-colors',
+                      'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring',
+                      'disabled:pointer-events-none disabled:opacity-50',
+                      on
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/60'
+                    )}
+                  >
+                    {p.action}
+                  </button>
+                );
+              })}
             </div>
           </details>
         );
