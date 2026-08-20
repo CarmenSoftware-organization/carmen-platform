@@ -109,7 +109,7 @@ const handleSortChange = (sort: string) => setPaginate(p => ({ ...p, sort })); /
 <Route path="/items/new"      element={<PrivateRoute><ItemEdit /></PrivateRoute>} />
 <Route path="/items/:id/edit" element={<PrivateRoute><ItemEdit /></PrivateRoute>} />
 // Permission-guarded:
-<Route path="/x" element={<PrivateRoute requiredPermission="role.read"><X /></PrivateRoute>} />
+<Route path="/x" element={<PrivateRoute requiredPermission="platform_role.read"><X /></PrivateRoute>} />
 // Super-admin-only:
 <Route path="/x" element={<PrivateRoute requireSuperAdmin><X /></PrivateRoute>} />
 ```

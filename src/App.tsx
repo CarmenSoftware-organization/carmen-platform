@@ -306,7 +306,7 @@ function AppContent() {
             <Route
               path="/platform/roles"
               element={
-                <PrivateRoute requiredPermission="role.read">
+                <PrivateRoute requiredPermission="platform_role.read">
                   <RoleManagement />
                 </PrivateRoute>
               }
@@ -314,7 +314,7 @@ function AppContent() {
             <Route
               path="/platform/roles/new"
               element={
-                <PrivateRoute requiredPermission="role.create">
+                <PrivateRoute requiredPermission="platform_role.create">
                   <RoleEdit />
                 </PrivateRoute>
               }
@@ -322,15 +322,15 @@ function AppContent() {
             <Route
               path="/platform/roles/:id/edit"
               element={
-                <PrivateRoute requiredPermission="role.update">
+                <PrivateRoute requiredPermission="platform_role.update">
                   <RoleEdit />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/platform/permissions"
+              path="/platform/category-permissions"
               element={
-                <PrivateRoute requiredPermission="rbac.read">
+                <PrivateRoute>
                   <PermissionCatalog />
                 </PrivateRoute>
               }
