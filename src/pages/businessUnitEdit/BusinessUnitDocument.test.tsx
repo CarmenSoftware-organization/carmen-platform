@@ -121,7 +121,7 @@ describe('BusinessUnitDocument', () => {
     setup({ activeSeats: 15, activeLicenseCount: 2 });
 
     expect(screen.getByText('15')).toBeInTheDocument();
-    expect(screen.getByText(/จาก 2 ใบที่ใช้ได้/)).toBeInTheDocument();
+    expect(screen.getByText(/From 2 active licenses/)).toBeInTheDocument();
     // ไม่ใช่ queryByLabelText('Max users') — InlineField ใส่ aria-label ให้ตัวควบคุมเฉพาะตอน
     // editing === true เท่านั้น โหมดอ่านเป็น <button> ล้วนไม่มี aria-label เลย ดังนั้น
     // queryByLabelText จะผ่านเสมอไม่ว่าฟิลด์นี้จะยังเป็น InlineField ที่แก้ได้อยู่หรือไม่

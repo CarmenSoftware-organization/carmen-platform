@@ -26,7 +26,7 @@ export function useBusinessUnitLicenses(buId: string | undefined) {
       setLicenses(Array.isArray(rows) ? rows : []);
     } catch (err) {
       if (mine !== reqId.current) return;
-      toast.error('โหลดใบ license ไม่สำเร็จ', { description: getErrorDetail(err) });
+      toast.error('Could not load licenses', { description: getErrorDetail(err) });
       setLicenses([]);
     } finally {
       if (mine === reqId.current) setLoading(false);
@@ -40,10 +40,10 @@ export function useBusinessUnitLicenses(buId: string | undefined) {
     setSaving(true);
     try {
       await businessUnitLicenseService.create(buId, data);
-      toast.success('เพิ่มใบ license แล้ว');
+      toast.success('License added');
       await reload();
     } catch (err) {
-      toast.error('เพิ่มใบ license ไม่สำเร็จ', { description: getErrorDetail(err) });
+      toast.error('Could not add the license', { description: getErrorDetail(err) });
     } finally {
       setSaving(false);
     }
@@ -54,7 +54,7 @@ export function useBusinessUnitLicenses(buId: string | undefined) {
     setSaving(true);
     try {
       await businessUnitLicenseService.update(buId, id, data);
-      toast.success('บันทึกแล้ว');
+      toast.success('License saved');
       await reload();
     } catch (err) {
       // 409 ต้องตรวจก่อน branch ทั่วไปเสมอ — ไม่งั้นผู้ใช้เห็นข้อความผิดสาเหตุ
@@ -63,7 +63,7 @@ export function useBusinessUnitLicenses(buId: string | undefined) {
         await reload();
         return;
       }
-      toast.error('บันทึกไม่สำเร็จ', { description: getErrorDetail(err) });
+      toast.error('Could not save the license', { description: getErrorDetail(err) });
     } finally {
       setSaving(false);
     }
@@ -74,10 +74,10 @@ export function useBusinessUnitLicenses(buId: string | undefined) {
     setSaving(true);
     try {
       await businessUnitLicenseService.delete(buId, id);
-      toast.success('ลบใบ license แล้ว');
+      toast.success('License removed');
       await reload();
     } catch (err) {
-      toast.error('ลบไม่สำเร็จ', { description: getErrorDetail(err) });
+      toast.error('Could not remove the license', { description: getErrorDetail(err) });
     } finally {
       setSaving(false);
     }

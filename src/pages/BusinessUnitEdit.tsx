@@ -22,7 +22,7 @@ import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
 import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
-import { initialFormData } from './businessUnitEdit/types';
+import { initialFormData, aliasBound } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
 import { useBusinessUnitLicenses } from './businessUnitEdit/useBusinessUnitLicenses';
@@ -117,7 +117,7 @@ const BusinessUnitEdit: React.FC = () => {
     setError('');
   };
   const handleInlineValidate = (name: string, value: string) => {
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name)) }));
   };
 
   // One-way copy: hotel address -> company address. Goes through the same

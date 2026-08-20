@@ -4,8 +4,9 @@ import { Button } from '../../components/ui/button';
 import { Copy } from 'lucide-react';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
+import { BU_ALIAS_MAX } from './types';
 import { InlineField, type InlineOption } from './InlineField';
-import { ReadOnlyText } from './shared';
+import { ReadOnlyText, Group } from './shared';
 import CalculationSettingsSection from './sections/CalculationSettingsSection';
 import NumberFormatsSection from './sections/NumberFormatsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
@@ -46,26 +47,6 @@ interface BusinessUnitDocumentProps {
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
   licensesSlot?: React.ReactNode;
-}
-
-function Group({
-  label,
-  action,
-  children,
-}: {
-  label: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-t p-4 sm:px-6 sm:py-5">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
-        {action}
-      </div>
-      <div>{children}</div>
-    </div>
-  );
 }
 
 export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
@@ -193,7 +174,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             validateRequired() enforces — they are the only ones marked required. */}
         <Group label="Details">
           {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
-          {inline('alias_name', 'Alias', { validate: true, maxLength: 3 })}
+          {inline('alias_name', 'Alias', { validate: true, maxLength: BU_ALIAS_MAX })}
           {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
           {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
               this BU's dated license rows, edited only in the User Licenses card below. Not an
@@ -203,7 +184,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             <div className="min-w-0">
               <ReadOnlyText value={`${activeSeats}`} />
               <p className="text-muted-foreground mt-1 text-[11px]">
-                จาก {activeLicenseCount} ใบที่ใช้ได้ · แก้ที่การ์ด User Licenses
+                From {activeLicenseCount} active {activeLicenseCount === 1 ? 'license' : 'licenses'} · change these in the User Licenses card
               </p>
             </div>
           </div>

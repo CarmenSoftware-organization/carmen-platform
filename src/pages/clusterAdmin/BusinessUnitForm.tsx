@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Pencil, Save, X, Loader2, Copy } from 'lucide-react';
+import { Save, X, Loader2, Copy } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import ClusterAccessLost from './ClusterAccessLost';
 import { PageHeader } from '../../components/PageHeader';
@@ -9,22 +9,25 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Badge } from '../../components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import businessUnitService from '../../services/businessUnitService';
 import { validateField } from '../../utils/validation';
-import { getErrorDetail, parseApiError } from '../../utils/errorParser';
+import { devLog, getErrorDetail, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
-import { ReadOnlyText, ReadOnlyTextarea, AddrField } from '../businessUnitEdit/shared';
-import { initialFormData, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
+import { ReadOnlyText, ReadOnlyTextarea, Group, CollapsibleSection } from '../businessUnitEdit/shared';
+import { initialFormData, aliasBound, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
+import { HeroName } from '../businessUnitEdit/HeroName';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
+import { ClusterBuDocument } from './businessUnitForm/ClusterBuDocument';
+import { AddressBlock } from './businessUnitForm/AddressBlock';
+import { SeatMeter } from './businessUnitForm/SeatMeter';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
 import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
@@ -45,6 +48,19 @@ type TextFieldName = Exclude<
 >;
 
 /**
+ * ฟิลด์ที่ API ไม่ยอมให้ล้างค่า — ตรวจกับ BusinessUnitUpdateDto บน swagger 2026-08-19:
+ *   name, alias_name → minLength: 3   ·   hotel_email, company_email → format: email
+ * ส่ง '' ไปจะได้ 400 ไม่ใช่การล้างค่า จึงต้องกันที่ UI ไม่ใช่ปล่อยให้ผู้ใช้ไปเจอ error
+ * จาก backend การที่ API ล้าง alias/email ไม่ได้เป็นช่องว่างฝั่ง backend ที่ยังไม่แก้
+ */
+const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
+  name: 'Name is required',
+  alias_name: 'Alias cannot be cleared',
+  hotel_email: 'Hotel email cannot be cleared',
+  company_email: 'Company email cannot be cleared',
+};
+
+/**
  * A cluster administrator's reach into one business unit — a narrowed Edit-only page (see
  * ClusterProfile.tsx for the canonical orchestration this mirrors, and BusinessUnitEdit.tsx +
  * businessUnitEdit/sections/ for the full platform-admin form this is scoped down from).
@@ -59,10 +75,13 @@ type TextFieldName = Exclude<
  *   membership), so this view neither reads nor writes them.
  *
  * Licensing is read-only here too, consistent with the cluster page: the User Licenses card
- * below is rendered read-only because `<Can permission="subscription.manage">` inside the card
- * itself hides every write control for a cluster admin, so this page adds no parallel `canEdit`
- * gate. (There used to be a single `max_license_users` column on the BU row covering this same
- * decision — Task 6.1 dropped it now that `tb_business_unit_license` fully replaces it.)
+ * below is passed `readOnly` and no write callbacks, so seats can be read on this view and
+ * changed only on the platform Business Unit page. That used to rest on the card's internal
+ * `<Can permission="subscription.manage">` alone, which held for a cluster admin but not for a
+ * platform admin opening this same route — they hold the permission and got the full write
+ * surface on a view that is scoped not to have one. (There used to be a single
+ * `max_license_users` column on the BU row covering this same decision — Task 6.1 dropped it
+ * now that `tb_business_unit_license` fully replaces it.)
  *
  * The BU-users card lives here now. It was deliberately excluded when this page was written,
  * before seat enforcement existed: membership was purely an access question and the Users page
@@ -86,7 +105,6 @@ const BusinessUnitForm: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [accessLost, setAccessLost] = useState(false);
@@ -96,15 +114,44 @@ const BusinessUnitForm: React.FC = () => {
   // (Task 4b.1's `cluster_seat`). Optional and undefined until a deployed backend sends it.
   const [clusterSeat, setClusterSeat] = useState<{ used: number; cap: number } | undefined>(undefined);
 
-  const users = useBusinessUnitUsers(buId, formData.cluster_id, false);
+  // Re-reads only `cluster_seat`, not the whole record: fetchBusinessUnit() would also
+  // overwrite formData/savedFormData, discarding any edit in progress elsewhere on the page.
+  // The BU-users card mutates `buUsers` locally and never touches this figure, so without this
+  // the meter goes stale the moment the admin does the exact thing it told them to do — see
+  // useBusinessUnitUsers's `onMutate` below, called once per successful add/edit/delete, never
+  // from an effect, so this cannot loop.
+  const refreshClusterSeat = async () => {
+    try {
+      const data = await businessUnitService.getById(buId!);
+      const bu = data.data || data;
+      setClusterSeat(
+        bu.cluster_seat && typeof bu.cluster_seat.used === 'number' && typeof bu.cluster_seat.cap === 'number'
+          ? { used: bu.cluster_seat.used, cap: bu.cluster_seat.cap }
+          : undefined,
+      );
+    } catch (err: unknown) {
+      // Silent — the meter simply keeps showing its last known value.
+      devLog('refreshClusterSeat', err);
+    }
+  };
+
+  const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
   const licenses = useBusinessUnitLicenses(buId);
 
-  const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
+  // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
+  // การเปลี่ยนขอบเขตสิทธิ์เป็นงานคนละชิ้นที่ต้องมีสเปกของตัวเอง — spec §5.3
+  const canEdit = !accessLost;
+
+  // นับเป็นราย key ไม่ใช่ JSON.stringify ทั้งก้อน เพราะแถบ Save ต้องบอกได้ว่า *กี่* ช่อง
+  const changedKeys = (Object.keys(formData) as (keyof BusinessUnitFormData)[]).filter(
+    (k) => JSON.stringify(formData[k]) !== JSON.stringify(savedFormData[k]),
+  );
+  const hasChanges = changedKeys.length > 0;
   useUnsavedChanges(hasChanges);
 
   useGlobalShortcuts({
     onSave: () => { if (!saving && hasChanges) void handleSave(); },
-    onCancel: () => { if (editing) handleCancel(); },
+    onCancel: () => { if (hasChanges) handleCancel(); },
   });
 
   useEffect(() => {
@@ -243,6 +290,21 @@ const BusinessUnitForm: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, [e.target.name]: '' }));
   };
 
+  // commit ลง formData เท่านั้น การบันทึกยังเป็น PUT ครั้งเดียวตอนกด Save
+  // (ท่าเดียวกับ BusinessUnitEdit.tsx:111-121 ของหน้า platform)
+  const handleInlineCommit = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    setError('');
+  };
+  const handleInlineToggle = (name: string, value: boolean) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+  const handleInlineValidate = (name: string, value: string) => {
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name)) }));
+  };
+
   const handleConfigChange = (index: number, field: keyof BusinessUnitConfig, value: string) => {
     setFormData((prev) => {
       const updated = [...prev.config];
@@ -285,17 +347,11 @@ const BusinessUnitForm: React.FC = () => {
     }
   };
 
-  const handleEditToggle = () => {
-    setSavedFormData(formData);
-    setEditing(true);
-  };
-
-  // Discard edits and drop back to view mode.
+  // Discard edits, restoring the last-fetched values.
   const handleCancel = () => {
     setFormData(savedFormData);
     setFieldErrors({});
     setError('');
-    setEditing(false);
   };
 
   // Backend requires code + name; cluster_id is guaranteed by the route guard, not a
@@ -313,7 +369,18 @@ const BusinessUnitForm: React.FC = () => {
     if (!formData.code.trim()) errs.code = 'Code is required';
     else errs.code = validateField('code', formData.code);
     if (!formData.name.trim()) errs.name = 'Name is required';
-    const active = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
+    // ล้างค่าฟิลด์กลุ่มนี้ = 400 จาก backend จับที่นี่ก่อนยิง
+    for (const [key, message] of Object.entries(NOT_CLEARABLE) as [keyof BusinessUnitFormData, string][]) {
+      const before = String(savedFormData[key] ?? '');
+      const after = String(formData[key] ?? '');
+      if (before !== '' && after.trim() === '') errs[key] = message;
+    }
+    // fieldErrors already carries any standing onBlur error (e.g. "Alias must be 1-3
+    // alphanumeric characters" still showing under the field) — Save must not fire while one
+    // of those is on screen, even when this pass finds nothing new wrong. `errs` wins over a
+    // stale entry for the same key since it is the freshest check.
+    const combined: Record<string, string> = { ...fieldErrors, ...errs };
+    const active = Object.fromEntries(Object.entries(combined).filter(([, v]) => v));
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       toast.error('Please fix the highlighted fields', { description: Object.values(active).join(', ') });
@@ -326,12 +393,16 @@ const BusinessUnitForm: React.FC = () => {
   // database_pool_name) are never sent to the backend: cluster_id is immutable on update (the
   // record's cluster is fixed), and the pool fields are platform-only concerns gated on
   // platform roles — this page does not expose them.
-  const buildPayload = (data: BusinessUnitFormData): Record<string, unknown> => {
+  const buildPayload = (
+    data: BusinessUnitFormData,
+    changed: (keyof BusinessUnitFormData)[],
+  ): Record<string, unknown> => {
     const tryParseJson = (val: string): unknown => {
       if (!val) return undefined;
       try { return JSON.parse(val); } catch { return val; }
     };
 
+    const changedSet = new Set<string>(changed as string[]);
     const payload: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(data)) {
       if (
@@ -344,6 +415,10 @@ const BusinessUnitForm: React.FC = () => {
         payload[key] = val;
       } else if (val !== '' && val !== undefined && val !== null) {
         payload[key] = val;
+      } else if (val === '' && changedSet.has(key)) {
+        // ผู้ใช้ลบค่าออกเอง → ส่ง '' เพื่อล้างจริง (DTO ไม่มีฟิลด์ไหน nullable, null จึงไม่ใช่คำตอบ)
+        // ฟิลด์ที่ล้างไม่ได้ถูก validateRequired ดักไปแล้วก่อนถึงตรงนี้
+        payload[key] = '';
       }
     }
 
@@ -362,13 +437,12 @@ const BusinessUnitForm: React.FC = () => {
     if (!validateRequired()) return;
     setSaving(true);
     try {
-      const payload = buildPayload(formData);
+      const payload = buildPayload(formData, changedKeys);
       await businessUnitService.update(buId!, {
         ...payload,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       });
       toast.success('Changes saved successfully');
-      setEditing(false);
       await fetchBusinessUnit();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
@@ -384,7 +458,21 @@ const BusinessUnitForm: React.FC = () => {
     }
   };
 
-  const sectionField = { formData, editing, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
+  const sectionField = { formData, editing: canEdit, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
+
+  // preview ของกลุ่มที่ยุบ — หัวข้อเปล่า ๆ บังคับให้คลิกเพื่อรู้ว่าข้างในว่างหรือมีของ
+  // ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง" ที่การยุบกลุ่มมีไว้เพื่อไม่ให้บัง
+  const billingPreview =
+    [formData.company_name, formData.tax_no && `TAX ${formData.tax_no}`]
+      .filter(Boolean).join(' · ') || 'Not set';
+
+  const settingsPreview =
+    [
+      formData.timezone,
+      formData.config.length > 0
+        ? `${formData.config.length} config ${formData.config.length === 1 ? 'entry' : 'entries'}`
+        : '',
+    ].filter(Boolean).join(' · ') || 'Defaults';
 
   // Generic edit/read-only renderer for the plain text fields (Form Field Pattern).
   const textField = (
@@ -398,9 +486,9 @@ const BusinessUnitForm: React.FC = () => {
       <div className="space-y-2">
         <Label htmlFor={name}>
           {label}
-          {opts?.required && editing && <span className="text-destructive ml-0.5">*</span>}
+          {opts?.required && canEdit && <span className="text-destructive ml-0.5">*</span>}
         </Label>
-        {editing ? (
+        {canEdit ? (
           opts?.textarea ? (
             <Textarea
               id={name}
@@ -433,42 +521,6 @@ const BusinessUnitForm: React.FC = () => {
       </div>
     );
   };
-
-  const addrField = (id: TextFieldName, label: string) => (
-    <AddrField id={id} label={label} placeholder={label} value={formData[id]} editing={editing} onChange={handleChange} />
-  );
-
-  const isHqField = (
-    <div className="space-y-2">
-      <Label htmlFor="is_hq">Headquarters</Label>
-      {editing ? (
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" id="is_hq" name="is_hq" checked={formData.is_hq} onChange={handleChange} className="h-4 w-4 rounded border-input" />
-          <span className="text-sm">This is the HQ business unit</span>
-        </label>
-      ) : (
-        <div>
-          <Badge variant={formData.is_hq ? 'default' : 'secondary'}>{formData.is_hq ? 'HQ' : 'Not HQ'}</Badge>
-        </div>
-      )}
-    </div>
-  );
-
-  const isActiveField = (
-    <div className="space-y-2">
-      <Label htmlFor="is_active">Status</Label>
-      {editing ? (
-        <label className="flex min-h-11 items-center gap-2">
-          <input type="checkbox" id="is_active" name="is_active" checked={formData.is_active} onChange={handleChange} className="h-4 w-4 rounded border-input" />
-          <span className="text-sm">Active</span>
-        </label>
-      ) : (
-        <div>
-          <Badge variant={formData.is_active ? 'success' : 'secondary'}>{formData.is_active ? 'Active' : 'Inactive'}</Badge>
-        </div>
-      )}
-    </div>
-  );
 
   if (loading) {
     return (
@@ -504,30 +556,17 @@ const BusinessUnitForm: React.FC = () => {
 
   return (
     <ClusterAdminLayout>
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6 pb-20">
         <PageHeader
           backTo={`/cluster-admin/${clusterId}/business-units`}
-          title={formData.name || '(unnamed business unit)'}
-          subtitle="Manage this business unit's details"
-          actions={
-            editing ? (
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            )
+          title={
+            <HeroName
+              value={formData.name}
+              disabled={!canEdit}
+              onCommit={(v) => handleInlineCommit('name', v)}
+            />
           }
+          subtitle="Manage this business unit's details"
         />
 
         {error && (
@@ -536,144 +575,131 @@ const BusinessUnitForm: React.FC = () => {
 
         {!error && (accessLost ? <ClusterAccessLost /> : (
           <>
-        <Card>
-          <CardHeader>
-            <CardTitle>Details</CardTitle>
-            <CardDescription>Identity for this business unit</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('name', 'Name', { required: true })}
-              {textField('alias_name', 'Alias', { mono: true })}
-            </div>
-            {textField('description', 'Description', { textarea: true })}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {isHqField}
-              {isActiveField}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Hotel information</CardTitle>
-            <CardDescription>Property details and address</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('hotel_name', 'Hotel name')}
-              {textField('hotel_tel', 'Phone', { mono: true })}
-              {textField('hotel_email', 'Email', { type: 'email' })}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {addrField('hotel_address_line1', 'Address line 1')}
-              {addrField('hotel_address_line2', 'Address line 2')}
-              {addrField('hotel_sub_district', 'Sub-district')}
-              {addrField('hotel_district', 'District')}
-              {addrField('hotel_city', 'City')}
-              {addrField('hotel_province', 'Province')}
-              {addrField('hotel_postal_code', 'Postal code')}
-              {addrField('hotel_country', 'Country')}
-              {addrField('hotel_latitude', 'Latitude')}
-              {addrField('hotel_longitude', 'Longitude')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-2">
-            <div>
-              <CardTitle>Company information</CardTitle>
-              <CardDescription>Billing entity, tax details, and address</CardDescription>
-            </div>
-            {editing && (
-              <Button type="button" variant="ghost" size="sm" onClick={copyHotelAddressToCompany}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy from hotel address
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('company_name', 'Company name')}
-              {textField('company_tel', 'Phone', { mono: true })}
-              {textField('company_email', 'Email', { type: 'email' })}
-              {textField('tax_no', 'Tax ID', { mono: true })}
-              {textField('branch_no', 'Branch', { mono: true })}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {addrField('company_address_line1', 'Address line 1')}
-              {addrField('company_address_line2', 'Address line 2')}
-              {addrField('company_sub_district', 'Sub-district')}
-              {addrField('company_district', 'District')}
-              {addrField('company_city', 'City')}
-              {addrField('company_province', 'Province')}
-              {addrField('company_postal_code', 'Postal code')}
-              {addrField('company_country', 'Country')}
-              {addrField('company_latitude', 'Latitude')}
-              {addrField('company_longitude', 'Longitude')}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Date & time</CardTitle>
-            <CardDescription>Locale formatting for this business unit</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {textField('timezone', 'Timezone')}
-              {textField('date_format', 'Date format', { mono: true })}
-              {textField('date_time_format', 'Date-time format', { mono: true })}
-              {textField('time_format', 'Time format', { mono: true })}
-              {textField('long_time_format', 'Long time format', { mono: true })}
-              {textField('short_time_format', 'Short time format', { mono: true })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <CalculationSettingsSection
-          {...sectionField}
-          defaultCurrency={defaultCurrency}
-          getCalculationMethodLabel={getCalculationMethodLabel}
-          showCurrencyField={false}
-          canEditCalculationMethod={false}
-        />
-        <NumberFormatsSection {...sectionField} />
-        <ConfigurationSection
-          {...sectionField}
-          onConfigChange={handleConfigChange}
-          onAddConfigRow={addConfigRow}
-          onRemoveConfigRow={removeConfigRow}
-        />
-        <BusinessUnitBrandingCard
+        <ClusterBuDocument
+          formData={formData}
+          fieldErrors={fieldErrors}
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}
-          editing={editing}
-          name={formData.name}
-          code={formData.code}
-          onUploadLogo={handleUploadLogo}
-          onUploadAvatar={handleUploadAvatar}
-        />
+          canEdit={canEdit}
+          onCommit={handleInlineCommit}
+          onToggle={handleInlineToggle}
+          onValidate={handleInlineValidate}
+          onChange={handleChange}
+          brandingSlot={
+            <BusinessUnitBrandingCard
+              logoUrl={logoUrl}
+              avatarUrl={avatarUrl}
+              editing={canEdit}
+              name={formData.name}
+              code={formData.code}
+              onUploadLogo={handleUploadLogo}
+              onUploadAvatar={handleUploadAvatar}
+            />
+          }
+          seatsSlot={
+            <Card className="overflow-hidden p-0">
+              <Group label="People & seats">
+                {clusterSeat && (
+                  <div className="mb-4">
+                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={licenses.activeSeats} />
+                  </div>
+                )}
+                <BusinessUnitUsersCard users={users} canEdit={canEdit} />
+                {/* Read-only here by design, and enforced rather than assumed. The card's own
+                    <Can permission="subscription.manage"> is a check on the *viewer*, not on the
+                    page: a platform admin who holds that permission can open this cluster-admin
+                    route and used to get the full add/edit/delete surface on a view that is
+                    supposed to be a statement of entitlement, not a place to change one.
+                    `readOnly` answers the page-level question instead, so the answer no longer
+                    depends on who is looking. Deliberately still not a `canEdit` prop — see the
+                    note above the card component for why the two differ. No write callbacks are
+                    wired at all, so there is no reachable path from this page to
+                    businessUnitLicenseService. Licensing is changed on the platform Business
+                    Unit page. */}
+                <BusinessUnitLicensesCard
+                  licenses={licenses.licenses}
+                  loading={licenses.loading}
+                  saving={licenses.saving}
+                  readOnly
+                />
+              </Group>
+            </Card>
+          }
+          collapsedSlot={
+            <>
+              <CollapsibleSection title="Billing entity" description={billingPreview}>
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    {canEdit && (
+                      <Button type="button" variant="ghost" size="sm" onClick={copyHotelAddressToCompany}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy from hotel address
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {textField('company_name', 'Company name')}
+                    {textField('company_tel', 'Phone', { mono: true })}
+                    {textField('company_email', 'Email', { type: 'email' })}
+                    {textField('tax_no', 'Tax ID', { mono: true })}
+                    {textField('branch_no', 'Branch', { mono: true })}
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1 text-sm">Address</div>
+                    <AddressBlock prefix="company" formData={formData} disabled={!canEdit} onChange={handleChange} />
+                  </div>
+                </div>
+              </CollapsibleSection>
 
-        <BusinessUnitUsersCard users={users} canEdit clusterSeat={clusterSeat} />
-
-        {/* Read-only here by design — cluster admins don't hold `subscription.manage`, and the
-            card's own <Can permission="subscription.manage"> already hides every write control.
-            No parallel `canEdit` prop: two sources of truth for the same permission is how they
-            drift apart. */}
-        <BusinessUnitLicensesCard
-          licenses={licenses.licenses}
-          loading={licenses.loading}
-          saving={licenses.saving}
-          clusterSeat={clusterSeat}
-          onCreate={licenses.create}
-          onUpdate={licenses.update}
-          onRemove={licenses.remove}
+              <CollapsibleSection title="System settings" description={settingsPreview}>
+                <div className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {textField('timezone', 'Timezone')}
+                    {textField('date_format', 'Date format', { mono: true })}
+                    {textField('date_time_format', 'Date-time format', { mono: true })}
+                    {textField('time_format', 'Time format', { mono: true })}
+                    {textField('long_time_format', 'Long time format', { mono: true })}
+                    {textField('short_time_format', 'Short time format', { mono: true })}
+                  </div>
+                  <CalculationSettingsSection
+                    {...sectionField}
+                    defaultCurrency={defaultCurrency}
+                    getCalculationMethodLabel={getCalculationMethodLabel}
+                    showCurrencyField={false}
+                    canEditCalculationMethod={false}
+                  />
+                  <NumberFormatsSection {...sectionField} />
+                  <ConfigurationSection
+                    {...sectionField}
+                    onConfigChange={handleConfigChange}
+                    onAddConfigRow={addConfigRow}
+                    onRemoveConfigRow={removeConfigRow}
+                  />
+                </div>
+              </CollapsibleSection>
+            </>
+          }
         />
           </>
         ))}
+
+        {hasChanges && (
+          <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t p-3 md:left-16 lg:left-60">
+            <div className="mx-auto flex max-w-5xl items-center justify-end gap-3">
+              <span className="text-muted-foreground mr-auto text-sm" role="status">
+                {changedKeys.length} unsaved {changedKeys.length === 1 ? 'change' : 'changes'}
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? 'Saving...' : 'Save changes'}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <DevDebugSheet

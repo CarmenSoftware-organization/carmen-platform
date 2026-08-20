@@ -17,17 +17,20 @@ interface BusinessUnitLicensesCardProps {
   saving: boolean;
   /** pool ระดับ cluster ไม่ใช่ของ BU นี้ — การ์ดต้องพูดให้ชัดว่าเป็นของทั้ง cluster */
   clusterSeat?: { used: number; cap: number };
-  onCreate: (data: Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>) => void;
-  onUpdate: (id: string, data: Partial<BusinessUnitLicense> & { doc_version: number }) => void;
-  onRemove: (id: string) => void;
+  /** หน้าที่ไม่มีทางแก้ license ได้เลย ไม่ว่าใครเปิด — ดูหมายเหตุเหนือคอมโพเนนต์ */
+  readOnly?: boolean;
+  /** ไม่บังคับ เพราะหน้าที่ส่ง readOnly ไม่ควรมีสายเขียนต่ออยู่เลย */
+  onCreate?: (data: Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>) => void;
+  onUpdate?: (id: string, data: Partial<BusinessUnitLicense> & { doc_version: number }) => void;
+  onRemove?: (id: string) => void;
   /** ฉีดเวลาให้เทสต์เท่านั้น — production ไม่ส่ง */
   now?: Date;
 }
 
 const STATUS_BADGE: Record<BuLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; label: string }> = {
-  active: { variant: 'success', label: 'ใช้งาน' },
-  scheduled: { variant: 'secondary', label: 'ยังไม่เริ่ม' },
-  expired: { variant: 'destructive', label: 'หมดอายุ' },
+  active: { variant: 'success', label: 'Active' },
+  scheduled: { variant: 'secondary', label: 'Scheduled' },
+  expired: { variant: 'destructive', label: 'Expired' },
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -86,12 +89,21 @@ const canSubmitDraft = (d: LicenseDraft): boolean =>
   d.licensed_users !== '' && Number(d.licensed_users) > 0 && !!d.start_date && !!d.end_date;
 
 /**
- * ไม่มี prop `canEdit` โดยตั้งใจ — สิทธิ์คุมด้วย `<Can permission="subscription.manage">` ที่เดียว
+ * ไม่มี prop `canEdit` โดยตั้งใจ — *สิทธิ์* คุมด้วย `<Can permission="subscription.manage">` ที่เดียว
  * การมีทั้ง prop และ `<Can>` แปลว่ามีแหล่งความจริงสองแห่งที่เพี้ยนจากกันได้ และเทสต์ที่ส่ง
  * `canEdit={false}` จะผ่านทั้งที่ปุ่มยังโผล่จริงในเบราว์เซอร์
+ *
+ * `readOnly` ไม่ใช่ข้อยกเว้นของกฎนั้น เพราะมันตอบคนละคำถาม: `<Can>` ตอบว่า "ผู้ใช้คนนี้มีสิทธิ์ไหม"
+ * ส่วน `readOnly` ตอบว่า "หน้านี้เป็นพื้นผิวสำหรับเขียนไหม" — มุม cluster admin ตอบว่าไม่ ไม่ว่าใครเปิด
+ * (platform admin ที่ถือ subscription.manage ก็เปิดหน้านั้นได้ และเคยเห็นปุ่มครบทั้งที่หน้านั้น
+ * ไม่ควรมีทางเขียน) จึงไม่ใช่การสะท้อนสิทธิ์ซ้ำ และไม่มีทางเพี้ยนจาก `<Can>` เพราะมันไม่ได้อ่านสิทธิ์เลย
+ * เทียบได้กับ `canEditCalculationMethod={false}` ที่หน้าเดียวกันส่งให้ CalculationSettingsSection อยู่แล้ว
+ * หน้าที่ส่ง `readOnly` ต้องไม่ส่ง onCreate/onUpdate/onRemove ด้วย — ทำให้ "เขียนไม่ได้" เป็นข้อจริง
+ * เชิงโครงสร้าง ไม่ใช่แค่ปุ่มที่ถูกซ่อน
  */
 export default function BusinessUnitLicensesCard({
-  licenses, loading, saving, clusterSeat, onCreate, onUpdate, onRemove, now = new Date(),
+  licenses, loading, saving, clusterSeat, readOnly = false,
+  onCreate, onUpdate, onRemove, now = new Date(),
 }: BusinessUnitLicensesCardProps) {
   const [showExpired, setShowExpired] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,11 +116,15 @@ export default function BusinessUnitLicensesCard({
   const visible = showExpired ? licenses : licenses.filter((l) => licenseStatus(l, now) !== 'expired');
   const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
 
+  // ประตูเดียวที่เข้าโหมดแก้ไขได้ — ปิดที่นี่แปลว่าไม่มี state path ไหนเปิดแถวกรอกได้เลย
+  // ต่อให้มีปุ่มหลุดมาในอนาคต
   const startAdd = () => {
+    if (readOnly) return;
     setDraft(emptyDraft(now));
     setEditingId('new');
   };
   const startEdit = (l: BusinessUnitLicense) => {
+    if (readOnly) return;
     setDraft(draftFromLicense(l));
     setEditingId(l.id);
   };
@@ -116,7 +132,7 @@ export default function BusinessUnitLicensesCard({
 
   const submitCreate = async () => {
     if (!canSubmitDraft(draft)) return;
-    await onCreate({
+    await onCreate?.({
       licensed_users: Number(draft.licensed_users),
       start_date: toIsoStartOfDay(draft.start_date),
       end_date: toIsoEndOfDay(draft.end_date),
@@ -127,7 +143,7 @@ export default function BusinessUnitLicensesCard({
 
   const submitUpdate = async (l: BusinessUnitLicense) => {
     if (!canSubmitDraft(draft)) return;
-    await onUpdate(l.id, {
+    await onUpdate?.(l.id, {
       licensed_users: Number(draft.licensed_users),
       start_date: toIsoStartOfDay(draft.start_date),
       end_date: toIsoEndOfDay(draft.end_date),
@@ -143,37 +159,55 @@ export default function BusinessUnitLicensesCard({
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">User Licenses</h3>
           <p className="text-xs text-muted-foreground">
-            {activeSeats} ที่นั่ง (จาก {activeCount} ใบที่ใช้ได้)
+            {activeSeats} seats from {activeCount} active {activeCount === 1 ? 'license' : 'licenses'}
           </p>
           {clusterSeat && (
             <p className={`text-xs ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
-              ใช้ {clusterSeat.used} / {clusterSeat.cap} ที่นั่ง ทั้ง cluster
+              {/* ติดป้ายว่านี่คือ pool ไม่ใช่เลขของ BU นี้ — การ์ด Users ข้างบนแสดงตัวเลขชุดเดียวกัน
+                  ในบทบาท "ใช้ไปเท่าไร" ส่วนที่นี่คือเพดานที่บีบ license ด้านบนอีกที */}
+              Cluster pool: {clusterSeat.used} / {clusterSeat.cap} seats used
+            </p>
+          )}
+          {/* บอกครั้งเดียวว่าใครเป็นเจ้าของเรื่องนี้ — ปุ่มที่หายไปเฉยๆ อ่านเหมือนหน้าพัง
+              ส่วนประโยคนี้บอกด้วยว่าถ้าอยากได้ที่นั่งเพิ่มต้องไปหาใคร */}
+          {readOnly && (
+            <p className="text-xs text-muted-foreground">
+              Seats are set by the platform team. This page is read-only.
             </p>
           )}
         </div>
-        <Can permission="subscription.manage">
-          <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>
-            <Plus className="mr-2 h-4 w-4" />
-            เพิ่มใบ
-          </Button>
-        </Can>
+        {!readOnly && (
+          <Can permission="subscription.manage">
+            <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add license
+            </Button>
+          </Can>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-3">
         {loading && licenses.length === 0 ? (
           <TableSkeleton columns={6} rows={3} />
         ) : licenses.length === 0 && editingId !== 'new' ? (
+          // หน้าอ่านอย่างเดียวต้องเล่าสถานะ ไม่ใช่ชวนให้ลงมือ — คำเชิญที่กดไม่ได้แย่กว่าไม่มีคำเชิญ
           <EmptyState
             icon={Ticket}
-            title="ยังไม่มีใบ license"
-            description="เพิ่มใบแรกเพื่อกำหนดจำนวนผู้ใช้ที่ business unit นี้ซื้อไว้"
+            title="No licenses yet"
+            description={
+              readOnly
+                ? 'The platform team has not assigned seats to this business unit.'
+                : 'Add the first license to set how many users this business unit has bought.'
+            }
             action={
-              <Can permission="subscription.manage">
-                <Button size="sm" onClick={startAdd}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  เพิ่มใบ
-                </Button>
-              </Can>
+              readOnly ? undefined : (
+                <Can permission="subscription.manage">
+                  <Button size="sm" onClick={startAdd}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add license
+                  </Button>
+                </Can>
+              )
             }
           />
         ) : (
@@ -181,12 +215,15 @@ export default function BusinessUnitLicensesCard({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-muted-foreground">
-                  <th className="text-left px-2 py-1">จำนวน</th>
-                  <th className="text-left px-2 py-1">เริ่ม</th>
-                  <th className="text-left px-2 py-1">หมดอายุ</th>
-                  <th className="text-left px-2 py-1">สถานะ</th>
-                  <th className="text-left px-2 py-1">อ้างอิง</th>
-                  <th className="px-2 py-1" />
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Seats</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Start</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">End</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">Status</th>
+                  {/* readOnly ให้ "อ้างอิง" ดูดที่ว่างที่คอลัมน์ปุ่มเคยกินไว้ (w-full บนเซลล์ = ขอพื้นที่
+                      ที่เหลือทั้งหมด) คอลัมน์อื่นจึงหดชิดกันทางซ้ายแทนที่จะกระจายจนอ่านเหมือนตารางเพี้ยน */}
+                  <th className={`text-left px-2 py-1${readOnly ? ' w-full' : ''}`}>Reference</th>
+                  {/* ตัดทั้งคอลัมน์ ไม่ใช่แค่ปุ่มข้างใน — คอลัมน์ที่ว่างตลอดกาลคือที่ว่างเปล่าประโยชน์ */}
+                  {!readOnly && <th className="px-2 py-1" />}
                 </tr>
               </thead>
               <tbody>
@@ -198,7 +235,7 @@ export default function BusinessUnitLicensesCard({
                         min={1}
                         value={draft.licensed_users}
                         onChange={(e) => setDraft((d) => ({ ...d, licensed_users: e.target.value }))}
-                        aria-label="จำนวนที่นั่ง"
+                        aria-label="Seats"
                         className="h-8 w-20"
                       />
                     </td>
@@ -207,7 +244,7 @@ export default function BusinessUnitLicensesCard({
                         type="date"
                         value={draft.start_date}
                         onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value }))}
-                        aria-label="วันเริ่ม"
+                        aria-label="Start date"
                         className="h-8"
                       />
                     </td>
@@ -216,25 +253,25 @@ export default function BusinessUnitLicensesCard({
                         type="date"
                         value={draft.end_date}
                         onChange={(e) => setDraft((d) => ({ ...d, end_date: e.target.value }))}
-                        aria-label="วันหมดอายุ"
+                        aria-label="End date"
                         className="h-8"
                       />
                     </td>
-                    <td className="px-2 py-1 text-xs text-muted-foreground">ใหม่</td>
+                    <td className="px-2 py-1 text-xs text-muted-foreground">New</td>
                     <td className="px-2 py-1">
                       <Input
                         value={draft.reference_no}
                         onChange={(e) => setDraft((d) => ({ ...d, reference_no: e.target.value }))}
-                        aria-label="อ้างอิง"
+                        aria-label="Reference"
                         className="h-8"
                       />
                     </td>
                     <td className="px-2 py-1 text-right whitespace-nowrap">
                       <Button size="sm" onClick={submitCreate} disabled={saving || !canSubmitDraft(draft)}>
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {saving ? 'กำลังบันทึก...' : 'เพิ่ม'}
+                        {saving ? 'Saving...' : 'Add'}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>ยกเลิก</Button>
+                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
                     </td>
                   </tr>
                 )}
@@ -252,7 +289,7 @@ export default function BusinessUnitLicensesCard({
                               min={1}
                               value={draft.licensed_users}
                               onChange={(e) => setDraft((d) => ({ ...d, licensed_users: e.target.value }))}
-                              aria-label="จำนวนที่นั่ง"
+                              aria-label="Seats"
                               className="h-8 w-20"
                             />
                           </td>
@@ -261,7 +298,7 @@ export default function BusinessUnitLicensesCard({
                               type="date"
                               value={draft.start_date}
                               onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value }))}
-                              aria-label="วันเริ่ม"
+                              aria-label="Start date"
                               className="h-8"
                             />
                           </td>
@@ -270,7 +307,7 @@ export default function BusinessUnitLicensesCard({
                               type="date"
                               value={draft.end_date}
                               onChange={(e) => setDraft((d) => ({ ...d, end_date: e.target.value }))}
-                              aria-label="วันหมดอายุ"
+                              aria-label="End date"
                               className="h-8"
                             />
                           </td>
@@ -281,51 +318,55 @@ export default function BusinessUnitLicensesCard({
                             <Input
                               value={draft.reference_no}
                               onChange={(e) => setDraft((d) => ({ ...d, reference_no: e.target.value }))}
-                              aria-label="อ้างอิง"
+                              aria-label="Reference"
                               className="h-8"
                             />
                           </td>
                           <td className="px-2 py-1 text-right whitespace-nowrap">
                             <Button size="sm" onClick={() => submitUpdate(l)} disabled={saving || !canSubmitDraft(draft)}>
                               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+                              {saving ? 'Saving...' : 'Save'}
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>ยกเลิก</Button>
+                            <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="px-2 py-1 font-mono">{l.licensed_users}</td>
-                          <td className="px-2 py-1">{fmtDate(l.start_date)}</td>
-                          <td className="px-2 py-1">{fmtDate(l.end_date)}</td>
-                          <td className="px-2 py-1 space-x-1">
+                          <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_users}</td>
+                          <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
+                          <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.end_date)}</td>
+                          <td className="px-2 py-1 space-x-1 whitespace-nowrap">
                             <Badge variant={badge.variant}>{badge.label}</Badge>
                             {isExpiringSoon(l, now) && (
-                              <Badge variant="warning">เหลือ {daysLeft(l.end_date, now)} วัน</Badge>
+                              <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
                             )}
-                            {isMigratedPlaceholder(l) && <Badge variant="warning">ต้องระบุวันหมดอายุ</Badge>}
+                            {isMigratedPlaceholder(l) && <Badge variant="warning">End date required</Badge>}
                           </td>
-                          <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
-                          <td className="px-2 py-1 text-right whitespace-nowrap">
-                            <Can permission="subscription.manage">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => startEdit(l)}
-                                disabled={saving || (editingId !== null && editingId !== l.id)}
-                              >
-                                แก้
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setRemoveTarget(l)}
-                                disabled={saving}
-                              >
-                                ลบ
-                              </Button>
-                            </Can>
+                          <td className={`px-2 py-1 text-xs text-muted-foreground${readOnly ? ' w-full' : ''}`}>
+                            {l.reference_no || '-'}
                           </td>
+                          {!readOnly && (
+                            <td className="px-2 py-1 text-right whitespace-nowrap">
+                              <Can permission="subscription.manage">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => startEdit(l)}
+                                  disabled={saving || (editingId !== null && editingId !== l.id)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setRemoveTarget(l)}
+                                  disabled={saving}
+                                >
+                                  Remove
+                                </Button>
+                              </Can>
+                            </td>
+                          )}
                         </>
                       )}
                     </tr>
@@ -338,22 +379,26 @@ export default function BusinessUnitLicensesCard({
 
         {expired.length > 0 && !showExpired && (
           <Button variant="ghost" size="sm" onClick={() => setShowExpired(true)}>
-            แสดงใบที่หมดอายุแล้ว ({expired.length})
+            Show expired ({expired.length})
           </Button>
         )}
       </CardContent>
 
-      <ConfirmDialog
-        open={!!removeTarget}
-        onOpenChange={(o) => !o && setRemoveTarget(null)}
-        title="ลบใบ license"
-        description={`ลบใบ ${removeTarget?.licensed_users} ที่นั่ง — ที่นั่งจะหายจาก pool ทันทีถ้าใบนี้ยังคุ้มครองอยู่`}
-        confirmVariant="destructive"
-        onConfirm={async () => {
-          if (removeTarget) onRemove(removeTarget.id);
-          setRemoveTarget(null);
-        }}
-      />
+      {/* กันทั้ง dialog ไว้หลัง readOnly ตามแบบเดียวกับ BusinessUnitUsersCard — ไม่เหลือ state path ไหน
+          ที่ทำให้กล่องยืนยันการลบโผล่ขึ้นมาได้ */}
+      {!readOnly && (
+        <ConfirmDialog
+          open={!!removeTarget}
+          onOpenChange={(o) => !o && setRemoveTarget(null)}
+          title="Remove license"
+          description={`Remove the ${removeTarget?.licensed_users}-seat license. If it is still in force, those seats leave the cluster pool immediately.`}
+          confirmVariant="destructive"
+          onConfirm={async () => {
+            if (removeTarget) onRemove?.(removeTarget.id);
+            setRemoveTarget(null);
+          }}
+        />
+      )}
     </Card>
   );
 }
