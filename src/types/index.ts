@@ -30,6 +30,10 @@ export interface Cluster {
   logo?: PresignedImage | null;   // resolved presigned logo (list + detail)
   avatar?: PresignedImage | null; // resolved presigned avatar (list + detail)
   max_license_bu?: number;
+  /** โควตา BU จากใบที่ชนะ — 0 เมื่อไม่มีใบที่คุ้มครองอยู่ (ไม่ใช่ "ไม่จำกัด") */
+  bu_cap?: number;
+  /** จำนวน BU ที่ยังไม่ถูกลบ — รวม BU ที่ปิดใช้งาน */
+  bu_used?: number;
   info?: unknown;
   is_active: boolean;
   bu_count?: number;
@@ -1267,6 +1271,29 @@ export interface BusinessUnitLicense {
   business_unit_id: string;
   licensed_users: number;
   /** ISO 8601 พร้อม Z — แปลงเป็นเวลาท้องถิ่นตอนแสดงผลเท่านั้น */
+  start_date: string;
+  end_date: string;
+  reference_no?: string | null;
+  note?: string | null;
+  doc_version: number;
+}
+
+// ==================== Cluster BU License (tb_cluster_license) ====================
+
+/** สถานะของใบ — คำนวณจากวันที่ทุกครั้งที่อ่าน ไม่เก็บใน DB */
+export type ClusterLicenseStatus = 'active' | 'scheduled' | 'expired';
+
+/**
+ * ใบซื้อโควตาจำนวน BU หนึ่งใบของ cluster
+ *
+ * ต่างจาก `BusinessUnitLicense` ตรงที่ **ไม่บวกกัน** — โควตาที่มีผลคือใบที่ชนะใบเดียว
+ * (`activeLicense()` ใน `utils/clusterLicense.ts`) การบวกผลรวมที่นี่คือบั๊ก
+ */
+export interface ClusterLicense {
+  id: string;
+  cluster_id: string;
+  /** จำนวน BU ที่ใบนี้ให้สิทธิ์ — จำนวนเต็มเสมอ ไม่มีค่าที่แปลว่า "ไม่จำกัด" */
+  licensed_bus: number;
   start_date: string;
   end_date: string;
   reference_no?: string | null;
