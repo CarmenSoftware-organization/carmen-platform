@@ -141,9 +141,11 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                         {soon && <Badge variant="warning">Expiring soon</Badge>}
                       </td>
                       <td className="px-2 py-1 text-right whitespace-nowrap">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/licenses/subscriptions/${sub.id}/edit`}>Edit</Link>
-                        </Button>
+                        {canManage && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/licenses/subscriptions/${sub.id}/edit`}>Edit</Link>
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
