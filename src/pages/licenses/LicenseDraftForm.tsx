@@ -47,7 +47,7 @@ export const canSubmitDraft = (d: LicenseDraft, noExpiry = false): boolean =>
 interface LicenseDraftFormProps {
   draft: LicenseDraft;
   onChange: (next: LicenseDraft) => void;
-  /** ป้ายของช่องจำนวน — "Seats" หรือ "Business units" */
+  /** ป้ายของช่องจำนวน — `"Seats"` (SeatSection) หรือ `"Quota"` (BuQuotaSection) */
   amountLabel: string;
   /** แสดงสวิตช์ "ไม่มีวันหมดอายุ" ไหม — มีเฉพาะใบโควตา BU */
   showNoExpiry?: boolean;

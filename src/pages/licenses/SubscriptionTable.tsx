@@ -74,8 +74,10 @@ interface SubscriptionTableProps {
   /**
    * true เมื่อ render อยู่ใต้ License Center (`/licenses`) — เนื้อหาจะไม่ห่อ `<Layout>` ของตัวเอง
    * และไม่แสดง `PageHeader` ของตัวเอง เพราะหน้าแม่ห่อ Layout ให้แล้ว หน้าเดียวห่อ Layout สองชั้นจะ
-   * ได้ sidebar ซ้อนกัน ค่าเริ่มต้น false รักษาพฤติกรรมเดิมของหน้า `/licenses/subscriptions`
-   * (route เต็ม) ไว้ทุกอย่าง — เทสต์เดิม `SubscriptionTable.test.tsx` render แบบไม่ส่ง prop นี้อยู่
+   * ได้ sidebar ซ้อนกัน ค่าเริ่มต้น false รักษาพฤติกรรมเดิมของสมัยที่ยังมี route แบบเต็มหน้าไว้ทุก
+   * อย่าง — route นั้นถูกถอดออกไปแล้ว (ตอนนี้มุมมอง "By subscription" ของ `/licenses` เรียกด้วย
+   * `embedded` เสมอ) `embedded=false` จึงเหลือแค่เส้นทางที่เทสต์เดิม `SubscriptionTable.test.tsx`
+   * render แบบไม่ส่ง prop นี้ใช้อยู่ ไม่ใช่เส้นทางที่ผู้ใช้จริงเจอ
    */
   embedded?: boolean;
 }

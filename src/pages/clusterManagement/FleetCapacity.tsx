@@ -57,8 +57,10 @@ export function FleetCapacity({
   onExpiringSoonClick,
   expiringSoonActive,
   // ป้ายของสถิติ "expiring soon" — ค่าเริ่มต้นคงข้อความเดิมของหน้า /clusters ไว้ทุกตัวอักษร
-  // (ที่นั่นนับรวมทุกมิติที่มีวันหมดอายุ) ผู้เรียกที่ต้องการความหมายเฉพาะมิติ BU (เช่น License
-  // Center ซึ่ง `expiring_soon` นับเฉพาะใบโควตา BU — src/types/index.ts) ต้องส่ง label ของตัวเองมา
+  // `expiring_soon` นับเฉพาะมิติ BU quota เท่านั้นสำหรับ**ทุกผู้เรียก**ไม่มีข้อยกเว้น (ไม่รวมใบที่นั่ง/
+  // ใบสัญญา — ดูคอมเมนต์ที่ `FleetSummary.expiring_soon` ใน src/types/index.ts) ค่าเริ่มต้นนี้จึง
+  // ไม่ได้แปลว่า /clusters นับกว้างกว่า License Center — แค่ยังไม่เคยเปลี่ยนป้ายให้ระบุมิติชัดเจน
+  // ผู้เรียกที่ต้องการป้ายที่พูดถึงมิติ BU ตรง ๆ (เช่น License Center) ต้องส่ง label ของตัวเองมา
   expiringLabel = 'quota expiring',
 }: {
   summary: FleetSummary | null;

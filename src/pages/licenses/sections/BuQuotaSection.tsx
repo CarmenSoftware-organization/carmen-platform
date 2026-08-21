@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Building2, Plus, Ticket } from 'lucide-react';
+import { Building2, Plus, RefreshCw, Ticket } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -21,8 +21,9 @@ export interface BuQuotaSectionProps {
   /** ควบคุมทั้งปุ่ม Add/Edit/Remove — เพจแม่ (ClusterLicenseDetail) เป็นแหล่งความจริงเดียวของสิทธิ์นี้
    *  (มาจาก `subscription.manage`) จึงไม่ผูก `<Can>` ซ้ำที่นี่ ไม่งั้นจะมีสองแหล่งที่เพี้ยนจากกันได้ */
   canManage: boolean;
-  /** จำนวน BU ที่ใช้ไปแล้วของ cluster (รวม inactive) — มาจาก `businessUnits.length` ของเพจแม่
-   *  ไม่ใช่ query แยกของการ์ดนี้เอง */
+  /** จำนวน BU ที่ใช้ไปแล้วของ cluster — มาจาก `cluster.bu_used` (backend view) ที่เพจแม่โหลดมาแล้ว
+   *  ไม่ใช่นับ `businessUnits.length` เองฝั่ง client (ต้องอ่านแหล่งเดียวกับ ClusterEdit.tsx และ
+   *  ClusterLicenseTable.tsx ไม่งั้นสามหน้าจะแสดงเลขไม่ตรงกันเงียบ ๆ ถ้า backend กรอง/scope ต่างกัน) */
   buUsed: number;
   /** BU ทั้งหมดของ cluster (รวม inactive) — ใช้จัดอันดับ/ขึ้นป้าย Over limit ในตารางด้านล่าง
    *  ต้องเป็นลิสต์เต็ม ไม่ใช่ชุดที่กรอง/แบ่งหน้าแล้ว (ดูคอมเมนต์ของ `rankBusinessUnits`) */
@@ -48,7 +49,7 @@ const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'seconda
  * `BusinessUnitsSection`/`BusinessUnitList`) ห้ามเรียงเอง
  */
 export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: BuQuotaSectionProps) {
-  const { licenses, loading, saving, create, update, remove } =
+  const { licenses, loading, saving, loadFailed, reload, create, update, remove } =
     useLicenseLedger<ClusterLicense, ClusterLicenseCreate>(clusterId, clusterLicenseService);
   const now = new Date();
 
@@ -68,8 +69,11 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
   // never a filtered subset, so the badge lands on the same BU the backend would 403.
   const ranked = useMemo(() => rankBusinessUnits(businessUnits), [businessUnits]);
   // cap = 0 เมื่อไม่มีใบที่ชนะ ("ไม่มีใบคุ้มครอง") ไม่ใช่ "ไม่จำกัด" — ต่างจาก countOverLimit
-  // ที่ตัวมันเองรับ `null` แปลว่า unenforced; ที่นี่คือ 0 จริง ๆ ดังนั้นทุก BU จะขึ้น Over limit
-  const cap = winning?.licensed_bus ?? 0;
+  // ที่ตัวมันเองรับ `null` แปลว่า unenforced; ที่นี่คือ 0 จริง ๆ ดังนั้นทุก BU จะขึ้น Over limit ·
+  // ข้อยกเว้นเดียวคือตอนโหลดใบล้ม (`loadFailed`) — ตอนนั้น `licenses` ว่างเพราะ error ไม่ใช่เพราะ
+  // ไม่มีใบจริง ส่ง `null` ให้ countOverLimit อ่านว่า unenforced (review Important #2: cap ที่คำนวณ
+  // จากข้อมูลที่โหลดไม่ได้ ไม่ใช่ข้อเท็จจริง ห้ามขึ้นป้าย Over limit จากมัน)
+  const cap = loadFailed ? null : (winning?.licensed_bus ?? 0);
   const overCount = useMemo(() => countOverLimit(ranked, cap), [ranked, cap]);
 
   // ประตูเดียวที่เข้าโหมดแก้ไขได้ — ปิดที่นี่แปลว่าไม่มี state path ไหนเปิดแถวกรอกได้เลย ต่อให้มี
@@ -91,6 +95,9 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
   };
   const cancelEdit = () => setEditingId(null);
 
+  // `|| undefined` ที่นี่ตั้งใจ — ธรรมเนียมของใบโควตา BU ต่างจากใบที่นั่ง (SeatSection ใช้
+  // `|| null` เพราะ backend endpoint ของมันต้อง null จริง ๆ ถึงจะล้างค่าได้ผ่าน PATCH แบบ partial)
+  // สองชั้นนี้ใช้ธรรมเนียมต่างกันมาแต่ต้น ห้ามลอกสูตรข้ามชั้น
   const buildPayload = () => ({
     licensed_bus: Number(draft.amount),
     start_date: toIsoStartOfDay(draft.start_date),
@@ -121,12 +128,20 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
               BU Quota Licenses
             </CardTitle>
             <CardDescription>
-              {winning
+              {loadFailed
+                ? 'Could not load licenses for this cluster — the quota is unknown, not zero.'
+                : winning
                 ? `Quota: ${winning.licensed_bus} business units${
                     isPerpetual(winning.end_date) ? ' · no expiry' : ` · expires ${fmtDate(winning.end_date)}`
                   }`
                 : 'No licence in force — this cluster cannot create business units'}
             </CardDescription>
+            {loadFailed && (
+              <p className="text-xs text-destructive">
+                License data for this cluster could not be loaded — the quota and Over limit
+                figures below are unknown, not zero.
+              </p>
+            )}
             {winning && (
               <p className="text-xs text-muted-foreground">
                 Business units in use: {buUsed} / {winning.licensed_bus}
@@ -138,7 +153,7 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
               </p>
             )}
           </div>
-          {canManage && (
+          {canManage && !loadFailed && (
             <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>
               <Plus className="mr-2 h-4 w-4" />
               Add license
@@ -147,7 +162,17 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
         </CardHeader>
 
         <CardContent className="space-y-3">
-          {loading && licenses.length === 0 ? (
+          {loadFailed ? (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                License data for this cluster could not be loaded — it is unknown, not empty.
+              </p>
+              <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                Retry
+              </Button>
+            </div>
+          ) : loading && licenses.length === 0 ? (
             <TableSkeleton columns={6} rows={3} />
           ) : licenses.length === 0 && editingId !== 'new' ? (
             <EmptyState
@@ -293,7 +318,9 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
             Business units
           </CardTitle>
           <CardDescription>
-            {overCount > 0
+            {loadFailed
+              ? 'Quota unknown — the licence data above failed to load, so Over-limit status cannot be determined right now.'
+              : overCount > 0
               ? `${overCount} business unit${overCount === 1 ? '' : 's'} rank beyond the licensed quota of ${cap}. They are read-only until more quota is purchased.`
               : 'Ranked the same way the platform decides which units are covered — HQ first, then oldest.'}
           </CardDescription>
@@ -317,7 +344,9 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
                     .sort((a, b) => (ranked.get(a.id) ?? 0) - (ranked.get(b.id) ?? 0))
                     .map((bu) => {
                       const rank = ranked.get(bu.id) ?? 0;
-                      const over = rank > cap;
+                      // cap === null เมื่อโหลดใบล้ม (`loadFailed`) — ต้องเช็คก่อนเทียบเสมอ ไม่งั้น
+                      // `rank > null` จะถูกบังคับเป็น `rank > 0` แล้วขึ้น Over limit ทุกแถวผิด ๆ
+                      const over = cap !== null && rank > cap;
                       return (
                         <tr key={bu.id} className="border-b last:border-0">
                           <td className="px-2 py-1 font-mono whitespace-nowrap">{rank}</td>

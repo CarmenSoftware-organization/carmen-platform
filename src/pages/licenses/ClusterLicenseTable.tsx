@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import clusterService from '../../services/clusterService';
 import { getErrorDetail, devLog } from '../../utils/errorParser';
@@ -20,8 +20,26 @@ const PAGE_KEY = 'page_cluster_license';
 const SORT_KEY = 'sort_cluster_license';
 const DEFAULT_SORT = 'code:asc';
 
+export interface ClusterLicenseTableProps {
+  /**
+   * true = กรองเฉพาะ cluster ที่ใบโควตา BU ที่ชนะใกล้หมดอายุ — มาจากการกดสถิติ "BU quota expiring"
+   * ในแถบสรุปของ `LicenseCenter` (เทียบ `handleExpiringSoonToggle` ของ ClusterManagement.tsx)
+   * ค่าเริ่มต้น `false` = พฤติกรรมเดิมทุกประการ
+   */
+  expiringSoonFilter?: boolean;
+}
+
+// สร้าง advance filter จากตัวกรอง "โควตาใกล้หมดอายุ" — `bu_quota_expiring_soon` ไม่ใช่คอลัมน์จริง
+// backend ถอดคีย์นี้ออกแล้วแปลงเป็น id list ผ่าน view `v_cluster_bu_cap` (กติกาเดียวกับ
+// ClusterManagement.tsx buildAdvance) frontend จึงไม่มีสำเนาของกติกาให้เพี้ยนได้เลย
+const buildAdvance = (expiringSoon: boolean) => {
+  const where: Record<string, unknown> = { deleted_at: null };
+  if (expiringSoon) where.bu_quota_expiring_soon = true;
+  return JSON.stringify({ where });
+};
+
 /** ตารางสถานะ license รายคลัสเตอร์ — มุมมอง "By cluster" ของ License Center */
-const ClusterLicenseTable: React.FC = () => {
+const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonFilter = false }) => {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -35,8 +53,22 @@ const ClusterLicenseTable: React.FC = () => {
     perpage: Number(localStorage.getItem(PERPAGE_KEY)) || 10,
     sort: storedSort,
     // เห็นเฉพาะคลัสเตอร์ที่ยังไม่ถูกลบ — ตรงกับค่าเริ่มต้นของหน้า /clusters (showDeleted=false)
-    advance: JSON.stringify({ where: { deleted_at: null } }),
+    advance: buildAdvance(expiringSoonFilter),
   });
+
+  // `expiringSoonFilter` เป็น prop จากหน้าแม่ ไม่ใช่ state ภายในตารางเอง — sync เข้า paginate.advance
+  // ทุกครั้งที่ค่าเปลี่ยน (ข้าม mount แรกเพราะ initial state ข้างบนคำนวณตรงกันอยู่แล้ว ไม่งั้นหน้าที่
+  // จำ page ไว้จาก localStorage จะถูกรีเซ็ตกลับ 1 ทุกครั้งที่โหลดหน้าโดยไม่มีใครกด) แล้วรีเซ็ตกลับ
+  // หน้า 1 เหมือนตัวกรองอื่นทั้งหมดของ repo นี้เมื่อผู้ใช้กดจริง
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    localStorage.setItem(PAGE_KEY, '1');
+    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(expiringSoonFilter) }));
+  }, [expiringSoonFilter]);
 
   const fetchClusters = useCallback(async (params: PaginateParams) => {
     setLoading(true);

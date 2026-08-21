@@ -142,7 +142,12 @@ function SeatRowCard({ row, canManage, onChanged }: {
       licensed_users: Number(draft.amount),
       start_date: toIsoStartOfDay(draft.start_date),
       end_date: toIsoEndOfDay(draft.end_date),
-      reference_no: draft.reference_no || undefined,
+      // `|| null` ไม่ใช่ `|| undefined` — ต้องกลับไปตามของเดิม (BusinessUnitLicensesCard) เพราะ
+      // `undefined` ถูกตัดออกจาก JSON body ทำให้ PATCH แบบ partial เก็บค่าเดิมไว้: ผู้ใช้ลบช่อง
+      // Reference กด Save เห็น toast สำเร็จ แต่ reload แล้วค่าเก่ากลับมา ต้องส่ง `null` จริง ๆ เพื่อ
+      // ล้างค่าฝั่ง backend (BuQuotaSection ใช้ `|| undefined` ต่อไปตามธรรมเนียมเดิมของมันเอง — ดู
+      // คอมเมนต์ที่ buildPayload ของไฟล์นั้น สองชั้นนี้ไม่ได้ใช้ธรรมเนียมเดียวกันมาแต่ต้น)
+      reference_no: draft.reference_no || null,
     });
     setEditingId(null);
     onChanged();
@@ -154,7 +159,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
       licensed_users: Number(draft.amount),
       start_date: toIsoStartOfDay(draft.start_date),
       end_date: toIsoEndOfDay(draft.end_date),
-      reference_no: draft.reference_no || undefined,
+      reference_no: draft.reference_no || null,
       doc_version: l.doc_version,
     });
     setEditingId(null);

@@ -1,7 +1,7 @@
 import type { ClusterLicense, ClusterLicenseStatus } from '../types';
 import { isPerpetual, PERPETUAL_END_DATE, EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
 
-// re-export เพื่อไม่ให้ผู้เรียกเดิม (LicensesSection, ClusterEdit) และเทสต์เดิมพัง
+// re-export เพื่อไม่ให้ผู้เรียกเดิม (BuQuotaSection, ClusterEdit) และเทสต์เดิมพัง
 export { isPerpetual, PERPETUAL_END_DATE };
 
 /** สถานะของใบ ณ เวลาที่กำหนด */
@@ -21,7 +21,7 @@ export function licenseStatus(lic: ClusterLicense, now: Date = new Date()): Clus
  *
  * ลำดับ tie-break ต้องตรงกับ DB view `v_cluster_bu_cap` เป๊ะ:
  * `ORDER BY start_date DESC, created_at DESC, id DESC` — สามชั้น ไม่ใช่สองชั้น เพราะ
- * `LicensesSection` เขียน `start_date` ผ่าน `toIsoStartOfDay` ทำให้สองใบที่สร้างวันเดียวกันชนกันตรง ๆ
+ * `BuQuotaSection` เขียน `start_date` ผ่าน `toIsoStartOfDay` ทำให้สองใบที่สร้างวันเดียวกันชนกันตรง ๆ
  * บ่อยกว่าที่คิด `created_at` เป็น optional/nullable บนสาย (คอลัมน์ยอมให้เป็น null ได้ในทางทฤษฎี) —
  * เมื่อฝั่งใดฝั่งหนึ่งของคู่ที่เทียบขาด `created_at` หรือ parse ไม่ได้ ต้องตกไปที่ `id` เสมอ ห้ามให้
  * ผลลัพธ์เป็น NaN แล้วเทียบต่อ (NaN > x และ NaN < x เป็น false ทั้งคู่ — reduce จะเงียบ ๆ เลือกผิด)
@@ -41,11 +41,6 @@ export function activeLicense(list: ClusterLicense[], now: Date = new Date()): C
 
     return cur.id > best.id ? cur : best;
   });
-}
-
-/** โควตาที่มีผล — 0 เมื่อไม่มีใบ ไม่ใช่ "ไม่จำกัด" */
-export function effectiveCap(list: ClusterLicense[], now: Date = new Date()): number {
-  return activeLicense(list, now)?.licensed_bus ?? 0;
 }
 
 /** ใกล้หมดอายุใน 30 วันไหม — ใบ perpetual คืน false เสมอ */

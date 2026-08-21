@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
@@ -14,7 +14,7 @@ import { SeatSection } from './sections/SeatSection';
 import { SubscriptionSection } from './sections/SubscriptionSection';
 import type { BusinessUnit, Cluster } from '../../types';
 
-const SECTIONS: NavItem[] = [
+const ALL_SECTIONS: NavItem[] = [
   { id: 'quota', label: 'BU quota' },
   { id: 'seats', label: 'Seats' },
   { id: 'subscriptions', label: 'Subscriptions' },
@@ -54,6 +54,17 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
   const [bus, setBus] = useState<BusinessUnit[]>([]);
+
+  // เชลล์ cluster-admin ต้องไม่ยิง GET /api-system/platform/subscriptions เลย — backend บังคับ
+  // `subscription.read` ผ่าน PlatformPermissionGuard ซึ่งประกอบสิทธิ์จาก `tb_user_tb_platform_role`
+  // เท่านั้น cluster admin แบบสมาชิกภาพไม่มีสิทธิ์นี้ใน EffectivePermissions เลยเสมอ (403 ทุกครั้ง
+  // ไม่ใช่ edge case) endpoint ใบโควตา/ใบที่นั่งจงใจไม่ใส่ decorator นี้ด้วยเหตุผลเดียวกัน
+  // (platform_cluster-licenses.controller.ts:40-46) — ตัด section ออกทั้งจาก nav (ไม่งั้นเมนูจะชี้
+  // ไปที่ที่ไม่มี) และจาก render เพราะปัญหาไม่ใช่เรื่อง UI ที่ซ่อนปุ่มแล้วจบ
+  const SECTIONS = useMemo(
+    () => (readOnlyShell ? ALL_SECTIONS.filter((s) => s.id !== 'subscriptions') : ALL_SECTIONS),
+    [readOnlyShell],
+  );
 
   useEffect(() => {
     if (!clusterId) return;
@@ -102,7 +113,7 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
     if (!location.hash) return;
     const id = location.hash.slice(1);
     if (SECTIONS.some((s) => s.id === id)) scrollTo(id);
-  }, [location.hash, scrollTo]);
+  }, [location.hash, scrollTo, SECTIONS]);
 
   return (
     <Shell>
@@ -120,7 +131,11 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
               <BuQuotaSection
                 clusterId={clusterId!}
                 canManage={canManage}
-                buUsed={bus.length}
+                // ต้องอ่านจากแหล่งเดียวกับ ClusterEdit.tsx:637-639 และ ClusterLicenseTable.tsx:102
+                // (`cluster.bu_used` จาก backend view) ไม่ใช่นับ `bus.length` เองฝั่ง client —
+                // ถ้า backend กรอง soft-deleted หรือ scope ต่างจาก client เมื่อไร สามหน้านี้จะ
+                // แสดงเลขไม่ตรงกันเงียบ ๆ
+                buUsed={cluster?.bu_used ?? 0}
                 businessUnits={bus}
               />
             </section>
@@ -129,9 +144,11 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
               <SeatSection clusterId={clusterId!} businessUnits={bus} canManage={canManage} />
             </section>
 
-            <section id="subscriptions" className="scroll-mt-20">
-              <SubscriptionSection clusterId={clusterId!} canManage={canManage} />
-            </section>
+            {!readOnlyShell && (
+              <section id="subscriptions" className="scroll-mt-20">
+                <SubscriptionSection clusterId={clusterId!} canManage={canManage} />
+              </section>
+            )}
           </div>
         </div>
       </div>

@@ -3,7 +3,6 @@ import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import clusterService from '../../services/clusterService';
-import { summarizeFleet } from '../../utils/capacity';
 import { FleetCapacity } from '../clusterManagement/FleetCapacity';
 import ClusterLicenseTable from './ClusterLicenseTable';
 import SubscriptionTable from './SubscriptionTable';
@@ -22,36 +21,35 @@ const LicenseCenter: React.FC = () => {
   );
   const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
+  // ตัวกรอง "โควตาใกล้หมดอายุ" มาจากการกดสถิติ "BU quota expiring" ในแถบสรุป — กรองเฉพาะตาราง
+  // "By cluster" ด้านล่าง (แถบสรุปเองยังนับทั้ง fleet เสมอ ไม่ถูกกรองตามนี้)
+  const [expiringSoonFilter, setExpiringSoonFilter] = useState(false);
 
   const changeView = (v: LicenseView) => {
     setView(v);
     localStorage.setItem(VIEW_KEY, v);
   };
 
+  const toggleExpiringSoonFilter = () => setExpiringSoonFilter((v) => !v);
+
   // แถบสรุปต้องเห็นภาพรวมทั้ง fleet ไม่ใช่แค่หน้าปัจจุบันของตาราง cluster (ซึ่งเป็น serverSide
-  // จึงเห็นแค่หน้าเดียว) — ยิงคำขอเดียวแยกต่างหาก ไม่แบ่งหน้า เอาเฉพาะคลัสเตอร์ที่ยังไม่ถูกลบ
-  // ใช้ `summary` จาก backend ถ้ามี ไม่งั้น fallback คำนวณเองฝั่ง frontend (เหมือน ClusterManagement)
+  // จึงเห็นแค่หน้าเดียว) — ยิงคำขอเดียวแยกต่างหาก เอาเฉพาะคลัสเตอร์ที่ยังไม่ถูกลบ
+  //
+  // สเปก §3.2: แถบสรุปอ่านจาก `summary` ที่คำขอเดียวนี้คืนมา ไม่ใช่ยิงคำขอที่สองเพื่อลากทุกแถว —
+  // `perpage: -1` เป็นรูปแบบที่เลิกใช้แล้วสำหรับตัวเลขสรุปในหน้านี้ (ก่อนแก้: perpage:-1 ลากทุกแถว
+  // ทั้งที่ backend สรุปให้แล้วใน `summary` — เปิดหน้าหนึ่งครั้งเท่ากับยิง cluster สองคำขอโดยไม่จำเป็น)
+  // `perpage: 1` พอสำหรับให้ endpoint คำนวณและแนบ `summary` มาด้วย ไม่ต้องพึ่งแถวที่คืนมาเลย ·
+  // fallback คำนวณเองฝั่ง frontend (แบบที่ ClusterManagement ทำ) ใช้ไม่ได้อีกต่อไปเมื่อขอมาแค่ 1 แถว
+  // (จะได้ตัวเลขที่ผิดแทนที่จะไม่มีตัวเลข) จึงตัดทิ้ง — ถ้า `summary` ไม่มา แถบสรุปตกไปที่ skeleton
+  // แทนการเดาตัวเลขจากแถวเดียว
   const loadFleet = useCallback(async () => {
     setFleetLoading(true);
     try {
       const data = await clusterService.getAll({
-        perpage: -1,
+        perpage: 1,
         advance: JSON.stringify({ where: { deleted_at: null } }),
       });
-      if (data.summary) {
-        setFleet(data.summary);
-        return;
-      }
-      const items = ((data as { data?: unknown }).data ?? data) as Record<string, unknown>[];
-      const mapped = (Array.isArray(items) ? items : []).map((item) => ({
-        is_active: item.is_active as boolean | undefined,
-        bu_count: (item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
-        bu_cap: (item.bu_cap ?? 0) as number,
-        bu_used: (item.bu_used ?? item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
-        users_count: (item.users_count ?? (item._count as { tb_cluster_user?: number })?.tb_cluster_user ?? 0) as number,
-        total_max_license_users: item.total_max_license_users as number | null | undefined,
-      }));
-      setFleet(summarizeFleet(mapped));
+      setFleet(data.summary ?? null);
     } catch {
       setFleet(null); // แถบสรุปตกกลับไปที่ skeleton — ตารางด้านล่างยังทำงานได้ตามปกติ
     } finally {
@@ -73,7 +71,13 @@ const LicenseCenter: React.FC = () => {
 
         {/* expiring_soon นับเฉพาะใบโควตา BU ไม่รวมใบที่นั่งและใบสัญญา (src/types/index.ts) —
             ป้ายต้องระบุมิติชัดเจน ไม่เขียนกว้าง ๆ ว่า "Licenses expiring" */}
-        <FleetCapacity summary={fleet} loading={fleetLoading} expiringLabel="BU quota expiring" />
+        <FleetCapacity
+          summary={fleet}
+          loading={fleetLoading}
+          expiringLabel="BU quota expiring"
+          onExpiringSoonClick={toggleExpiringSoonFilter}
+          expiringSoonActive={expiringSoonFilter}
+        />
 
         <div className="flex gap-2">
           <Button
@@ -92,7 +96,11 @@ const LicenseCenter: React.FC = () => {
           </Button>
         </div>
 
-        {view === 'cluster' ? <ClusterLicenseTable /> : <SubscriptionTable embedded />}
+        {view === 'cluster' ? (
+          <ClusterLicenseTable expiringSoonFilter={expiringSoonFilter} />
+        ) : (
+          <SubscriptionTable embedded />
+        )}
       </div>
     </Layout>
   );
