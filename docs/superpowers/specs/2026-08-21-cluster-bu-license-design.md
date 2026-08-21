@@ -180,25 +180,54 @@ export const isPerpetual = (endDate: string) => Date.parse(endDate) >= PERPETUAL
 
 ---
 
-## 4. นิยามของ cap และ rank
+## 4. นิยามของ cap และ rank — VIEW ตัวเดียว
 
-ทั้งสองค่าคำนวณต่อ cluster ครั้งเดียวแล้วใช้ร่วมกันทุก BU ใน cluster นั้น
-(หลักเดียวกับ `ClusterSeat` ที่ทุก BU ถือสำเนาเหมือนกัน)
+ผู้อ่านค่านี้มี **3 จุดคนละแอป** (ด่านสร้าง BU ใน micro-cluster · summary band ใน micro-cluster ·
+interceptor ใน gateway) เท่ากับที่นั่งพอดี และที่นั่งแก้ปัญหานี้ไปแล้วด้วย **view ตัวเดียว**
+(`v_business_unit_seat`) ที่อ่านผ่าน helper กลาง `clusterSeatPools()` ใน
+`packages/prisma-shared-schema-platform/src/seat-pool.ts` โดยมีคอมเมนต์ในโค้ดย้ำว่า
+*"ห้ามมีนิยามที่สอง"* — BU quota เดินตามรอยนั้น ไม่คัดลอกเงื่อนไขไปเขียนซ้ำ
 
 ```sql
--- cap: ใบที่ชนะ (§3.2)
--- rank: อันดับของ BU ในคลัสเตอร์
-SELECT id,
+CREATE VIEW v_cluster_bu_quota AS
+WITH winning AS (
+  -- ใบที่ชนะต่อ cluster (§3.2) — DISTINCT ON คือ LIMIT 1 ต่อกลุ่มของ Postgres
+  SELECT DISTINCT ON (cluster_id) cluster_id, licensed_bus
+  FROM tb_cluster_license
+  WHERE deleted_at IS NULL AND start_date <= now() AND end_date > now()
+  ORDER BY cluster_id, start_date DESC, created_at DESC, id DESC
+)
+SELECT b.id                                   AS business_unit_id,
+       b.cluster_id,
        ROW_NUMBER() OVER (
-         ORDER BY COALESCE(is_hq, false) DESC, created_at ASC, id ASC
-       ) AS rank
-FROM tb_business_unit
-WHERE cluster_id = $1 AND deleted_at IS NULL
+         PARTITION BY b.cluster_id
+         ORDER BY COALESCE(b.is_hq, false) DESC, b.created_at ASC, b.id ASC
+       )                                      AS rank,
+       COALESCE(w.licensed_bus, 0)            AS cap
+FROM tb_business_unit b
+LEFT JOIN winning w ON w.cluster_id = b.cluster_id
+WHERE b.deleted_at IS NULL;
+```
+
+helper กลางที่ทุกแอปเรียก (ขนานกับ `clusterSeatPools`):
+
+```ts
+// packages/prisma-shared-schema-platform/src/bu-quota.ts
+export const BU_QUOTA_VIEW = 'v_cluster_bu_quota';
+/** cap + จำนวน BU ต่อ cluster — cluster ที่ไม่มีแถวเลย (ยังไม่มี BU) ต้องได้ค่าเสมอ ไม่ใช่หายไป */
+export async function clusterBuQuotas(prisma, clusterIds: string[]): Promise<Record<string, { cap: number; used: number }>>
+/** rank + cap ราย BU — ตัวที่ interceptor ใช้ */
+export async function buQuotaRanks(prisma, buIds: string[]): Promise<Record<string, { rank: number; cap: number }>>
 ```
 
 - `COALESCE(is_hq, false)` — คอลัมน์เป็น `Boolean?` ค่า `NULL` ต้องไม่ชนะ `true`
 - **ไม่กรอง `is_active`** — ข้อตกลง #6: BU ที่ปิดอยู่ก็ยังกินโควตา ผู้ใช้ต้องลบจริงเพื่อคืนโควตา
 - ลำดับต้อง deterministic ทุกครั้ง มิฉะนั้น BU ที่ถูกบล็อกจะสลับตัวไปมาและลูกค้าจะเจอ 403 แบบสุ่ม
+- **cluster ที่ยังไม่มี BU เลยจะไม่มีแถวใน view** — `clusterBuQuotas` ต้องเติม `{cap, used: 0}`
+  ให้ทุก cluster ที่ขอ (ข้อผูกพันเดียวกับที่ `clusterSeatPools` การันตีไว้) · cap ของ cluster
+  ที่ไม่มี BU ต้องอ่านจาก `tb_cluster_license` ตรง ๆ ไม่ใช่จาก view
+- ราคาที่ต้องรู้: `ROW_NUMBER()` ทำงานกับ **ทุก BU ของทุก cluster** ในทุกครั้งที่อ่าน view ·
+  ยอมรับได้เพราะอ่านผ่าน cache 60 วินาที (§5.3) และ `tb_business_unit` มีหลักร้อยแถว ไม่ใช่หลักล้าน
 
 ---
 
@@ -260,9 +289,14 @@ export function evaluateBuQuota(q: BuQuota | undefined, isWrite: boolean): 'BU_L
 
 ### 5.3 ต้นทุนและ cache
 
-`resolveBuQuotaBatch(clusterIds)` คืน `Map<business_unit_id, BuQuota>` — เกาะไปกับ
-`resolveSeatBatchCached` ที่ key ด้วย `cluster_id` และ cache 60 วินาทีอยู่แล้ว
-**ไม่เพิ่ม round-trip ต่อ request** แต่เพิ่มคิวรี 1 ครั้งต่อ cluster ต่อ 60 วินาที
+`LicenseService.resolveBuQuotaBatchCached(buIds)` ห่อ `buQuotaRanks()` (§4) แล้วคืน
+`Record<business_unit_id, BuQuota>` — cache 60 วินาที key ด้วย `cluster_id` ชุดเดียวกับ
+`resolveSeatBatchCached` · **ไม่เพิ่ม round-trip ต่อ request** แต่เพิ่มคิวรี 1 ครั้งต่อ cluster
+ต่อ 60 วินาที
+
+`resolveBuQuotaBatchCached` ต้องมี `try/catch` ของตัวเองที่จุดเรียกใน interceptor และ
+fail-open เป็น `{}` — เหตุผลเดียวกับที่ `resolveSeatBatchCached` ถูกครอบไว้ตรงนั้น
+(ปล่อย exception ทะลุ = ทุก write บน mapped route กลายเป็น 500 ทันทีที่ DB สะดุด)
 
 ผลข้างเคียงที่ต้องยอมรับ: หลังซื้อโควตาเพิ่ม ผู้ใช้อาจยังโดนบล็อกอีกไม่เกิน 60 วินาที
 ตรงกับพฤติกรรมของชั้นที่นั่งและ license วันนี้ — ไม่เพิ่มกลไก invalidate ในรอบนี้
