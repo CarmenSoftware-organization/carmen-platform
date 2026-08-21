@@ -16,6 +16,9 @@ export interface LicensesSectionProps {
   /** ควบคุมทั้งปุ่ม Add/Edit/Remove — เพจแม่ (ClusterEdit) เป็นแหล่งความจริงเดียวของสิทธิ์นี้
    *  (มาจาก `cluster.update`) จึงไม่ผูก `<Can>` ซ้ำที่นี่ ไม่งั้นจะมีสองแหล่งที่เพี้ยนจากกันได้ */
   canManage: boolean;
+  /** จำนวน BU ที่ใช้ไปแล้วของ cluster (รวม inactive) — มาจาก `clusterMeta.bu_used` ของเพจแม่
+   *  (ฟิลด์ `bu_used` บน response ของ cluster, Task 7) ไม่ใช่ query แยกของการ์ดนี้เอง */
+  buUsed: number;
 }
 
 const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; label: string }> = {
@@ -87,7 +90,7 @@ const canSubmitDraft = (d: LicenseDraft, noExpiry: boolean): boolean =>
  * ดึงข้อมูลเอง (เหมือน `SubscriptionCard`) แทนที่จะรับ props จากเพจแม่เหมือน
  * `BusinessUnitLicensesCard` — เพจแม่ส่งแค่ `clusterId` + `canManage`
  */
-export function LicensesSection({ clusterId, canManage }: LicensesSectionProps) {
+export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectionProps) {
   const { licenses, loading, saving, create, update, remove } = useClusterLicenses(clusterId);
   const now = new Date();
 
@@ -154,6 +157,16 @@ export function LicensesSection({ clusterId, canManage }: LicensesSectionProps) 
                 }`
               : 'No licence in force — this cluster cannot create business units'}
           </CardDescription>
+          {winning && (
+            <p className="text-xs text-muted-foreground">
+              Business units in use: {buUsed} / {winning.licensed_bus}
+              {buUsed > winning.licensed_bus && (
+                <span className="ml-2 text-destructive">
+                  {buUsed - winning.licensed_bus} over limit — those units are read-only
+                </span>
+              )}
+            </p>
+          )}
         </div>
         {canManage && (
           <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>

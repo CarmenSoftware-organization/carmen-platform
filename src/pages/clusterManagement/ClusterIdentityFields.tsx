@@ -7,8 +7,19 @@ export interface ClusterFormData {
   code: string;
   name: string;
   alias_name: string;
-  max_license_bu: string;
+  /**
+   * Superseded by dated licence rows (`bu_cap`/`bu_used` on the cluster response) — a bare
+   * cap number can no longer express "unlimited" (there is no unlimited any more) or an
+   * expiry date. Kept optional, and no longer read or rendered by this component or
+   * `DetailsSection`, purely so `clusterAdmin/ClusterProfile.tsx` — which still sends it to
+   * the backend for compatibility — keeps compiling against this shared type.
+   */
+  max_license_bu?: string;
   is_active: boolean;
+  /** Create-mode only: the quota issued as the cluster's first BU-quota licence. */
+  licensed_bus?: string;
+  license_end_date?: string;
+  license_no_expiry?: boolean;
 }
 
 interface ClusterIdentityFieldsProps {
@@ -19,6 +30,12 @@ interface ClusterIdentityFieldsProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
+  /**
+   * Create-mode only — toggles whether the first licence's quota expires. Optional: the
+   * licence block below only renders when this is supplied, so any other caller of this
+   * shared component is unaffected.
+   */
+  onNoExpiryChange?: (v: boolean) => void;
 }
 
 /**
@@ -34,6 +51,7 @@ export function ClusterIdentityFields({
   onChange,
   onBlur,
   onFocus,
+  onNoExpiryChange,
 }: ClusterIdentityFieldsProps) {
   return (
     <div className="space-y-4">
@@ -92,29 +110,49 @@ export function ClusterIdentityFields({
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="max_license_bu">Max licensed BUs</Label>
-        {editing ? (
-          <>
+      {onNoExpiryChange && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="licensed_bus">Licensed business units</Label>
             <Input
+              id="licensed_bus"
+              name="licensed_bus"
               type="number"
-              id="max_license_bu"
-              name="max_license_bu"
-              value={formData.max_license_bu}
+              min={1}
+              value={formData.licensed_bus}
               onChange={onChange}
-              onBlur={onBlur}
-              onFocus={onFocus}
-              placeholder="Unlimited"
-              min={0}
-              className={fieldErrors.max_license_bu ? 'border-destructive' : ''}
+              placeholder="e.g. 5"
+              required
             />
-            {fieldErrors.max_license_bu && <p className="text-destructive text-xs">{fieldErrors.max_license_bu}</p>}
-          </>
-        ) : (
-          // Empty means "no cap" here, not "no value" — so say so rather than showing ReadOnlyField's '-'.
-          <ReadOnlyField value={formData.max_license_bu || 'Unlimited'} className="tabular-nums" />
-        )}
-      </div>
+            <p className="text-xs text-muted-foreground">
+              Issued as the cluster's first quota licence. A cluster without one cannot create business units.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="license_end_date">Quota expires</Label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-input"
+                checked={formData.license_no_expiry}
+                onChange={(e) => onNoExpiryChange(e.target.checked)}
+                aria-label="No expiry"
+              />
+              No expiry
+            </label>
+            {!formData.license_no_expiry && (
+              <Input
+                id="license_end_date"
+                name="license_end_date"
+                type="date"
+                value={formData.license_end_date}
+                onChange={onChange}
+                required
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {editing ? (
         <div className="flex items-center gap-2">

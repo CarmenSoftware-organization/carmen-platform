@@ -34,6 +34,8 @@ export interface Cluster {
   bu_cap?: number;
   /** จำนวน BU ที่ยังไม่ถูกลบ — รวม BU ที่ปิดใช้งาน */
   bu_used?: number;
+  /** วันหมดอายุของใบที่ชนะ — null เมื่อไม่มีใบที่คุ้มครองอยู่ (ต่างจาก perpetual sentinel 2099) */
+  bu_cap_end_date?: string | null;
   info?: unknown;
   is_active: boolean;
   bu_count?: number;

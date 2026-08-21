@@ -4,11 +4,13 @@ import userEvent from '@testing-library/user-event';
 import { DetailsSection } from './DetailsSection';
 import type { ClusterFormData } from '../../clusterManagement/ClusterIdentityFields';
 
+// `max_license_bu` deliberately omitted — DetailsSection no longer renders it (Task 9); BU
+// quota moved to the "BU Quota Licenses" card. The field stays optional on ClusterFormData
+// only so clusterAdmin/ClusterProfile.tsx keeps compiling.
 const formData: ClusterFormData = {
   code: 'CLS1',
   name: 'Acme',
   alias_name: 'ACM',
-  max_license_bu: '5',
   is_active: true,
 };
 

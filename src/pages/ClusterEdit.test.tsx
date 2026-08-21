@@ -51,6 +51,7 @@ import clusterService from '../services/clusterService';
 import businessUnitService from '../services/businessUnitService';
 import userService from '../services/userService';
 import api from '../services/api';
+import { PERPETUAL_END_DATE } from '../utils/clusterLicense';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
@@ -59,7 +60,8 @@ const fakeCluster = {
   code: 'CLS1',
   name: 'Acme Cluster',
   alias_name: 'ACM',
-  max_license_bu: 5,
+  bu_cap: 5,
+  bu_used: 0,
   is_active: true,
 };
 
@@ -132,6 +134,10 @@ describe('ClusterEdit — create navigates to the new cluster\'s edit route', ()
 
     await user.type(await screen.findByPlaceholderText('Cluster code'), 'CLS9');
     await user.type(screen.getByPlaceholderText('Cluster name'), 'New Cluster');
+    // Task 9: the create form now also issues the cluster's first BU-quota licence —
+    // both fields are `required`, so the native form won't submit without them.
+    await user.type(screen.getByPlaceholderText('e.g. 5'), '5');
+    await user.click(screen.getByRole('checkbox', { name: /no expiry/i }));
     await user.click(screen.getByRole('button', { name: /create cluster/i }));
 
     // waitFor, not findByTestId: the probe is on screen from the first render, so
@@ -139,6 +145,13 @@ describe('ClusterEdit — create navigates to the new cluster\'s edit route', ()
     // wraps navigation in React.startTransition, so the location lands a tick later.
     await waitFor(() =>
       expect(screen.getByTestId('pathname')).toHaveTextContent('/clusters/c9/edit'),
+    );
+    // The cluster this create produced must actually be usable — no licence means it
+    // cannot ever have a business unit (Task 7/9).
+    expect(clusterService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initial_license: { licensed_bus: 5, end_date: PERPETUAL_END_DATE },
+      }),
     );
   });
 });
@@ -160,10 +173,19 @@ describe('ClusterEdit — edit-in-place details', () => {
     expect(await screen.findByDisplayValue('Acme Cluster')).toBeInTheDocument();
   });
 
-  it('reads an unset cap as "Unlimited"', async () => {
-    asMock(clusterService.getById).mockResolvedValue({ data: { ...fakeCluster, max_license_bu: null } });
+  // REGRESSION-PROOFING (Task 9). `max_license_bu: null` used to mean "unlimited" and the
+  // Details section showed the literal text "Unlimited". That field (and its UI) is gone —
+  // BU quota now comes from `bu_cap` on the cluster response, where an absent/null value
+  // means zero quota, never unlimited. A cluster with no covering licence must therefore
+  // disable "Add" business unit outright, not offer an "unlimited" affordance.
+  it('reads an absent bu_cap as zero, not "unlimited" — the Add Business Unit button is disabled outright', async () => {
+    asMock(clusterService.getById).mockResolvedValue({ data: { ...fakeCluster, bu_cap: undefined } });
     renderAt('/clusters/c1/edit');
-    expect(await screen.findByText('Unlimited')).toBeInTheDocument();
+
+    const addBuButton = await screen.findByRole('button', { name: /^add$/i });
+    expect(addBuButton).toBeDisabled();
+    expect(addBuButton).toHaveAttribute('title', 'License limit reached (0/0)');
+    expect(screen.queryByText('Unlimited')).toBeNull();
   });
 });
 

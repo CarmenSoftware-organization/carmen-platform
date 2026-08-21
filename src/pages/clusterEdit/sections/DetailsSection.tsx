@@ -8,9 +8,12 @@ export interface DetailsSectionProps {
   /**
    * Platform-only fields are a platform decision — the server silently strips
    * `max_license_bu`, `max_license_users`, `is_active`, and `info` from a membership admin's
-   * cluster update (no error, just a discarded write). This component only renders two of
-   * those (`max_license_bu`, `is_active`); both are gated behind this flag rather than plain
-   * `canEdit` so an admin never sees an editable control that the server will quietly ignore.
+   * cluster update (no error, just a discarded write). This component only renders one of
+   * those (`is_active`, gated behind this flag rather than plain `canEdit`) so an admin
+   * never sees an editable control that the server will quietly ignore. BU quota itself no
+   * longer lives here at all — it moved to the "BU Quota Licenses" card
+   * (`clusterEdit/sections/LicensesSection.tsx`), which reads/writes dated licence rows
+   * instead of the old bare `max_license_bu` integer.
    * Defaults to canEdit so existing call sites are unchanged.
    */
   canEditPlatformFields?: boolean;
@@ -79,18 +82,6 @@ export function DetailsSection({
         disabled={disabled}
         placeholder="Max 3 chars"
         error={fieldErrors.alias_name}
-        onCommit={onCommit}
-        onValidate={onValidate}
-      />
-      <InlineField
-        name="max_license_bu"
-        label="Max licensed BUs"
-        value={formData.max_license_bu}
-        type="number"
-        mono
-        disabled={platformFieldsDisabled}
-        placeholder="Unlimited"
-        error={fieldErrors.max_license_bu}
         onCommit={onCommit}
         onValidate={onValidate}
       />

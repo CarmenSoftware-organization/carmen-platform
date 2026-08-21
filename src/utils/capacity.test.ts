@@ -32,20 +32,25 @@ describe('isNearLimit', () => {
 
 describe('summarizeFleet', () => {
   const clusters = [
-    { is_active: true, bu_count: 14, max_license_bu: 20, users_count: 312, total_max_license_users: 400 }, // ok
-    { is_active: true, bu_count: 9, max_license_bu: 9, users_count: 88, total_max_license_users: 150 }, // bu over
-    { is_active: false, bu_count: 7, max_license_bu: 12, users_count: 95, total_max_license_users: 150 }, // ok, inactive
-    { is_active: true, bu_count: 17, max_license_bu: null, users_count: 210, total_max_license_users: null }, // uncapped
+    { is_active: true, bu_used: 14, bu_cap: 20, users_count: 312, total_max_license_users: 400 }, // bu ok
+    { is_active: true, bu_used: 9, bu_cap: 9, users_count: 88, total_max_license_users: 150 }, // bu over (at cap)
+    { is_active: false, bu_used: 7, bu_cap: 12, users_count: 95, total_max_license_users: 150 }, // bu ok, inactive
+    // No covering BU-quota licence at all. Under the seat rule this used to be read as
+    // "uncapped" (max_license_bu: null); it is now "over" instead — a cluster with zero
+    // quota and any business units is immediately over limit, never unlimited.
+    { is_active: true, bu_used: 17, bu_cap: 0, users_count: 210, total_max_license_users: null }, // bu over (no licence), users uncapped
   ];
 
-  it('sums capped totals and tracks uncapped separately', () => {
+  it('sums bu totals under seat rules (no uncapped state) and tracks uncapped users separately', () => {
     const s = summarizeFleet(clusters);
-    expect(s.bu.used).toBe(14 + 9 + 7);
-    expect(s.bu.cap).toBe(20 + 9 + 12);
-    expect(s.bu.uncapped_count).toBe(1);
-    expect(s.bu.uncapped_used).toBe(17);
+    expect(s.bu.used).toBe(14 + 9 + 7 + 17);
+    expect(s.bu.cap).toBe(20 + 9 + 12 + 0);
+    expect(s.bu.uncapped_count).toBe(0);
+    expect(s.bu.uncapped_used).toBe(0);
     expect(s.users.used).toBe(312 + 88 + 95);
     expect(s.users.cap).toBe(400 + 150 + 150);
+    expect(s.users.uncapped_count).toBe(1);
+    expect(s.users.uncapped_used).toBe(210);
   });
 
   it('counts total, active and near-limit clusters', () => {
@@ -53,7 +58,8 @@ describe('summarizeFleet', () => {
     expect(s.total).toBe(4);
     expect(s.active).toBe(3);
     expect(s.inactive).toBe(1);
-    expect(s.near_limit).toBe(1); // only the bu-over cluster
+    // Both the bu-at-cap cluster and the no-licence cluster are "over" under seat rules.
+    expect(s.near_limit).toBe(2);
   });
 });
 
