@@ -34,6 +34,8 @@ export interface Cluster {
   bu_cap?: number;
   /** จำนวน BU ที่ยังไม่ถูกลบ — รวม BU ที่ปิดใช้งาน */
   bu_used?: number;
+  /** วันหมดอายุของใบที่ชนะ — null เมื่อไม่มีใบที่คุ้มครองอยู่ (ต่างจาก perpetual sentinel 2099) */
+  bu_cap_end_date?: string | null;
   info?: unknown;
   is_active: boolean;
   bu_count?: number;
@@ -168,6 +170,12 @@ export interface BusinessUnit {
   updated_by_name?: string;
   deleted_at?: string;
   deleted_by_name?: string;
+  // `@EnrichAuditUsers()` on `GET /api-system/business-units` deletes the flat `created_at`
+  // (and the other audit-timestamp fields) off every list row and re-nests it here as
+  // `audit.created.at` instead — same rewrite as `PlatformUserRoleAssignment`/`SuperAdmin`
+  // above. Both `created_at` and `audit` are kept on this type because which shape a given
+  // response actually carries depends on the route; read `created_at ?? audit?.created?.at`.
+  audit?: Audit;
   doc_version?: number; // optimistic-lock token (read model)
 }
 
@@ -1299,4 +1307,6 @@ export interface ClusterLicense {
   reference_no?: string | null;
   note?: string | null;
   doc_version: number;
+  /** tie-break ลำดับที่สองของ "ใบที่ชนะ" รองจาก start_date (ดู `activeLicense` ใน utils/clusterLicense.ts) */
+  created_at?: string | null;
 }

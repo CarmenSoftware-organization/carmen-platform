@@ -7,6 +7,7 @@ import { CapacityMeter } from '../../clusterManagement/CapacityMeter';
 import { TableToolbar } from '../TableToolbar';
 import { cycleSort, sortRows, type SortState } from '../tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
+import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import type { BusinessUnit, ClusterUser } from '../../../types';
 
 export interface BusinessUnitsSectionProps {
@@ -48,6 +49,18 @@ export function BusinessUnitsSection({
 
   const atLimit = maxLicenseBu != null && businessUnits.length >= maxLicenseBu;
 
+  // Rank must match `v_cluster_bu_quota` exactly (HQ first, then oldest created_at, then id) —
+  // a badge that disagrees with the real gate is worse than no badge, because the user will
+  // trust it. Ranked over the full `businessUnits` list (inactive units included, same as the
+  // view), never the filtered/sorted `rows` below, so a search or filter never changes which
+  // unit shows as over limit. Shared with `BusinessUnitList` (cluster-admin view) via
+  // `utils/businessUnitRank.ts` — do not re-inline this comparator here.
+  const ranked = useMemo(() => rankBusinessUnits(businessUnits), [businessUnits]);
+
+  // null cap = unknown/unenforced, same convention as `atLimit` above — never coerced to 0,
+  // which would falsely mark every row as over limit.
+  const overLimitCount = useMemo(() => countOverLimit(ranked, maxLicenseBu), [ranked, maxLicenseBu]);
+
   return (
     <div>
       <TableToolbar
@@ -73,6 +86,11 @@ export function BusinessUnitsSection({
           </>
         }
       />
+      {overLimitCount > 0 && (
+        <p className="px-4 pb-3 text-xs text-destructive">
+          {overLimitCount} business units are beyond the licensed quota of {maxLicenseBu}. They are read-only until more quota is purchased.
+        </p>
+      )}
       {rows.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center text-sm">
           {businessUnits.length === 0 ? 'No business units found in this cluster.' : 'No business units match your filters.'}
@@ -99,7 +117,20 @@ export function BusinessUnitsSection({
               {rows.map((bu) => (
                 <tr key={bu.id} className="zebra-row border-b transition-colors last:border-0">
                   <td className="px-4 py-2"><Badge variant="outline" className="text-xs">{bu.code}</Badge></td>
-                  <td className="px-4 py-2">{bu.name}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{bu.name}</span>
+                      {maxLicenseBu != null && (ranked.get(bu.id) ?? 0) > maxLicenseBu && (
+                        <Badge
+                          variant="destructive"
+                          className="text-xs"
+                          title={`Quota ${maxLicenseBu} · this unit ranks ${ranked.get(bu.id)}`}
+                        >
+                          Over limit
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2">
                     {/* No per-BU cap any more (Task 3.5) — the license limit belongs to the
                         cluster as a whole, not to any one BU, so this is a plain uncapped

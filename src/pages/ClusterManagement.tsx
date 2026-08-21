@@ -24,6 +24,7 @@ import { BrandMark } from '../components/BrandMark';
 import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import { summarizeFleet } from '../utils/capacity';
+import { isPerpetual } from '../utils/clusterLicense';
 import type { FleetSummary } from '../types';
 import type { Cluster, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -35,6 +36,16 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
+};
+
+// วันที่ล้วน (yyyy-mm-dd) สำหรับคอลัมน์ Quota Expires — ตามแบบ inline formatter ของ repo
+// (ดูหมวด DateTime ใน CLAUDE.md) แต่ตัดส่วนเวลาออกเพราะ end_date ของใบเป็นวันที่ ไม่ใช่ timestamp
+// ที่ผู้ใช้สนใจนาที-วินาที
+const fmtDate = (v?: string | null): string => {
+  if (!v) return '-';
+  const d = new Date(v);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
 const ClusterManagement: React.FC = () => {
@@ -102,7 +113,9 @@ const ClusterManagement: React.FC = () => {
         ...item,
         bu_count: item.bu_count ?? item._count?.tb_business_unit ?? 0,
         users_count: item.users_count ?? item._count?.tb_cluster_user ?? 0,
-        max_license_bu: item.max_license_bu ?? undefined,
+        // โควตามาจากใบที่ชนะ (Task 7) — 0 คือศูนย์จริง ไม่ใช่ "ไม่จำกัด", แทนที่ max_license_bu เดิม
+        bu_cap: item.bu_cap ?? 0,
+        bu_used: item.bu_used ?? item.bu_count ?? 0,
         total_max_license_users: item.total_max_license_users ?? undefined,
         // Audit moved into a nested `audit` object; flatten for the date columns
         // (tolerate the older flat shape too).
@@ -148,7 +161,8 @@ const ClusterManagement: React.FC = () => {
       const mapped = (Array.isArray(items) ? items : []).map((item) => ({
         is_active: item.is_active as boolean | undefined,
         bu_count: (item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
-        max_license_bu: item.max_license_bu as number | null | undefined,
+        bu_cap: (item.bu_cap ?? 0) as number,
+        bu_used: (item.bu_used ?? item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
         users_count: (item.users_count ?? (item._count as { tb_cluster_user?: number })?.tb_cluster_user ?? 0) as number,
         total_max_license_users: item.total_max_license_users as number | null | undefined,
       }));
@@ -256,12 +270,23 @@ const ClusterManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(clusters, [
+    // ใบตลอดชีพ (sentinel ปี 2099) ต้องไม่โชว์ปี 2099 ในไฟล์ CSV เหมือนกับที่ตารางไม่โชว์ — ต้อง
+    // แปลงค่าก่อนส่งเข้า generateCSV เพราะมันอ่านฟิลด์ดิบตรง ๆ ไม่มี formatter ต่อคอลัมน์
+    // The perpetual sentinel (year 2099) must not leak into the CSV any more than it does into
+    // the table — generateCSV reads raw fields with no per-column formatter, so this pre-formats
+    // the value before handing rows to it.
+    const rows = clusters.map((c) => {
+      const d = c.bu_cap_end_date;
+      const buCapEndDate = !d ? '' : isPerpetual(d) ? 'No expiry' : fmtDate(d);
+      return { ...c, bu_cap_end_date: buCapEndDate };
+    });
+    const csv = generateCSV(rows, [
       { key: 'code', label: 'Code' },
       { key: 'name', label: 'Name' },
       { key: 'alias_name', label: 'Alias' },
       { key: 'is_active', label: 'Status' },
-      { key: 'max_license_bu', label: 'Max Licensed BUs' },
+      { key: 'bu_cap', label: 'BU Quota' },
+      { key: 'bu_cap_end_date', label: 'Quota Expires' },
       { key: 'users_count', label: 'Users' },
       { key: 'total_max_license_users', label: 'Max Licensed Users' },
       { key: 'created_at', label: 'Created' },
@@ -318,9 +343,26 @@ const ClusterManagement: React.FC = () => {
     {
       id: 'bu_count',
       header: 'Business units',
+      // โควตามาจากใบที่ชนะ (Task 7) — bu_cap เป็น 0 จริงเมื่อไม่มีใบ ไม่ใช่ "ไม่จำกัด" แทนที่
+      // max_license_bu เดิม
       cell: ({ row }) => (
-        <CapacityMeter used={row.original.bu_count} cap={row.original.max_license_bu} />
+        <CapacityMeter used={row.original.bu_used} cap={row.original.bu_cap} finite />
       ),
+      enableSorting: false,
+    },
+    {
+      id: 'bu_cap_end_date',
+      header: 'Quota Expires',
+      // ใบตลอดชีพ (sentinel ปี 2099) ต้องไม่โชว์ปี 2099 ให้ผู้ใช้เห็น
+      cell: ({ row }) => {
+        const d = row.original.bu_cap_end_date;
+        if (!d) return <span className="text-muted-foreground">—</span>;
+        return isPerpetual(d) ? (
+          <span className="text-muted-foreground">No expiry</span>
+        ) : (
+          <span className="text-xs">{fmtDate(d)}</span>
+        );
+      },
       enableSorting: false,
     },
     {

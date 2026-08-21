@@ -1,6 +1,8 @@
-// License-capacity math for clusters. A cluster caps its business units
-// (`max_license_bu`) and users (`total_max_license_users`); a cap of 0, null, or
-// undefined all mean "no cap" (matches ClusterManagement's existing rendering).
+// License-capacity math for clusters. A cluster caps its users
+// (`total_max_license_users`); a cap of 0, null, or undefined means "no cap" for that seat
+// pool. Business-unit quota does NOT follow this rule any more — a cluster's BU cap comes
+// from its dated licence view (`bu_cap`/`bu_used`), where there is no "unlimited" state at
+// all: no covering licence means quota 0, not infinity. See `seatUtilization` below.
 
 import type { FleetSummary } from '../types';
 
@@ -35,13 +37,13 @@ export function isNearLimit(used?: number | null, cap?: number | null): boolean 
 /**
  * Seat capacity math — a deliberate second implementation, not a variant of `utilization()`.
  *
- * `utilization()` above treats a cap of `0`/`null`/`undefined` as "uncapped" and is still used
- * (with tests pinning that behaviour) for `max_license_bu`, where that rule is correct. The
- * seat system's rule is the opposite (spec §6.4): there is no "unlimited" seat cap anymore —
- * `cap` is always a finite integer, and `0` means zero seats, not infinite ones. Flipping
- * `utilization()` itself would have to land in lockstep with the backend's `finiteCap()`
- * (a different repo), so this is a standalone function in the same file rather than a change
- * to the existing one.
+ * `utilization()` above treats a cap of `0`/`null`/`undefined` as "uncapped". That rule still
+ * holds for `total_max_license_users` (its last caller, until Task 13 removes it) but no
+ * longer applies to business-unit quota at all — see the file header. The seat system's rule
+ * is the opposite (spec §6.4): there is no "unlimited" seat cap anymore — `cap` is always a
+ * finite integer, and `0` means zero seats, not infinite ones. Flipping `utilization()` itself
+ * would have to land in lockstep with the backend's `finiteCap()` (a different repo), so this
+ * is a standalone function in the same file rather than a change to the existing one.
  */
 export interface SeatUtilization {
   used: number;
@@ -61,8 +63,9 @@ export function seatUtilization(used: number, cap: number): SeatUtilization {
 
 interface ClusterLike {
   is_active?: boolean;
-  bu_count?: number | null;
-  max_license_bu?: number | null;
+  // BU quota now comes from the cluster's licence view (Task 7) — see `seatUtilization` above.
+  bu_used?: number | null;
+  bu_cap?: number | null;
   users_count?: number | null;
   total_max_license_users?: number | null;
 }
@@ -95,14 +98,12 @@ export function summarizeFleet(clusters: ClusterLike[]): FleetSummary {
     if (c.is_active) summary.active += 1;
     else summary.inactive += 1;
 
-    const bu = utilization(c.bu_count, c.max_license_bu);
-    if (bu.cap == null) {
-      summary.bu.uncapped_count += 1;
-      summary.bu.uncapped_used += bu.used;
-    } else {
-      summary.bu.used += bu.used;
-      summary.bu.cap += bu.cap;
-    }
+    // Seat rules: `bu.cap` is always a finite integer, never "uncapped" — so the bu side of
+    // `summary` only ever adds to `used`/`cap`. `uncapped_count`/`uncapped_used` stay 0 for bu;
+    // they're left in place only because they're still part of the wire shape.
+    const bu = seatUtilization(c.bu_used ?? 0, c.bu_cap ?? 0);
+    summary.bu.used += bu.used;
+    summary.bu.cap += bu.cap;
 
     const users = utilization(c.users_count, c.total_max_license_users);
     if (users.cap == null) {
@@ -113,7 +114,7 @@ export function summarizeFleet(clusters: ClusterLike[]): FleetSummary {
       summary.users.cap += users.cap;
     }
 
-    if (isNearLimit(c.bu_count, c.max_license_bu) || isNearLimit(c.users_count, c.total_max_license_users)) {
+    if (bu.level === 'warn' || bu.level === 'over' || isNearLimit(c.users_count, c.total_max_license_users)) {
       summary.near_limit += 1;
     }
   }

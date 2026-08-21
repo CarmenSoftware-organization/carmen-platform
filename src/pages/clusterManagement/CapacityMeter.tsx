@@ -1,5 +1,5 @@
 import { cn } from '../../lib/utils';
-import { utilization, type CapLevel } from '../../utils/capacity';
+import { utilization, seatUtilization, type CapLevel } from '../../utils/capacity';
 
 const FILL: Record<CapLevel, string> = {
   ok: 'bg-success',
@@ -15,11 +15,19 @@ const TAG: Partial<Record<CapLevel, { text: string; cls: string }>> = {
 interface CapacityMeterProps {
   used?: number | null;
   cap?: number | null;
+  /**
+   * true = cap เป็นจำนวนเต็มเสมอ 0 คือศูนย์จริง ไม่ใช่ "ไม่จำกัด" (มิติโควตา BU ซึ่งมาจากใบซื้อ)
+   * ค่าเริ่มต้น false รักษาพฤติกรรมเดิมไว้ให้มิติผู้ใช้ ที่ null ยังแปลว่าไม่จำกัดจริง ๆ
+   * true = the cap is always a finite integer and 0 means zero, never "unlimited" (the BU-quota
+   * dimension, which comes from purchased licences). Default false keeps the old behaviour for the
+   * user dimension, where null really does mean uncapped.
+   */
+  finite?: boolean;
 }
 
 /** A cluster's license utilization: a bar coloured by headroom + `used / cap`. */
-export function CapacityMeter({ used, cap }: CapacityMeterProps) {
-  const u = utilization(used, cap);
+export function CapacityMeter({ used, cap, finite = false }: CapacityMeterProps) {
+  const u = finite ? seatUtilization(used ?? 0, cap ?? 0) : utilization(used, cap);
   const tag = TAG[u.level];
 
   return (

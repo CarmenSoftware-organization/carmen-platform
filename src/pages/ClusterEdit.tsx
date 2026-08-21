@@ -31,9 +31,21 @@ import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
 import { LicensesSection } from './clusterEdit/sections/LicensesSection';
+import { PERPETUAL_END_DATE } from '../utils/clusterLicense';
 import type { BusinessUnit } from '../types';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
+
+// วันที่จาก <input type="date"> (yyyy-mm-dd) แปลงเป็น ISO 8601 พร้อม Z สำหรับ end_date ของ
+// initial_license — คัดลอกมาจาก BusinessUnitLicensesCard.tsx / LicensesSection.tsx เหมือนกัน
+// (ดูคอมเมนต์ที่นั่นสำหรับเหตุผลที่ห้ามใช้ `new Date(v).toISOString()` ตรงๆ: yyyy-mm-dd ล้วนถูก
+// ตีความเป็นเที่ยงคืน UTC ทำให้ใบที่ควรหมดอายุสิ้นวันตามเวลาเครื่องผู้ใช้ หมดเร็วไปหลายชั่วโมง
+// สำหรับผู้ใช้ฝั่งตะวันออกของ UTC)
+const localIso = (dateStr: string, h: number, m: number, s: number, ms: number): string => {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  return new Date(y, mo - 1, d, h, m, s, ms).toISOString();
+};
+const toIsoEndOfDay = (dateStr: string): string => localIso(dateStr, 23, 59, 59, 999);
 
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -49,8 +61,11 @@ const ClusterEdit: React.FC = () => {
     code: '',
     name: '',
     alias_name: '',
-    max_license_bu: '',
     is_active: true,
+    // Create-mode only (ClusterIdentityFields) — the cluster's first BU-quota licence.
+    licensed_bus: '',
+    license_end_date: '',
+    license_no_expiry: false,
   });
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -70,6 +85,10 @@ const ClusterEdit: React.FC = () => {
     // see the `userCap`/`userUsed` derivation below.
     users_count?: number;
     total_max_license_users?: number;
+    // BU quota from the winning cluster licence (Task 7) — 0 is a real zero, never
+    // "unlimited". See the `buCap` derivation below.
+    bu_cap?: number;
+    bu_used?: number;
   }>({});
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
@@ -142,7 +161,6 @@ const ClusterEdit: React.FC = () => {
         code: cluster.code || '',
         name: cluster.name || '',
         alias_name: cluster.alias_name || '',
-        max_license_bu: cluster.max_license_bu != null ? String(cluster.max_license_bu) : '',
         is_active: cluster.is_active ?? true,
       };
       setFormData(loaded);
@@ -155,6 +173,8 @@ const ClusterEdit: React.FC = () => {
         updated_by_name: cluster.updated_by_name ?? cluster.audit?.updated?.name,
         users_count: cluster.users_count,
         total_max_license_users: cluster.total_max_license_users,
+        bu_cap: cluster.bu_cap,
+        bu_used: cluster.bu_used,
       });
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
@@ -229,12 +249,17 @@ const ClusterEdit: React.FC = () => {
     setSaving(true);
     setError('');
     try {
-      const payload: Record<string, unknown> = { ...formData };
-      if (formData.max_license_bu) {
-        payload.max_license_bu = Number(formData.max_license_bu);
-      } else {
-        delete payload.max_license_bu;
-      }
+      const { licensed_bus, license_end_date, license_no_expiry, ...rest } = formData;
+      const payload: Record<string, unknown> = {
+        ...rest,
+        // `POST /api-system/clusters` requires this now — a cluster created without it
+        // cannot create any business unit (quota 0 = zero, not unlimited).
+        initial_license: {
+          licensed_bus: Number(licensed_bus),
+          end_date: license_no_expiry ? PERPETUAL_END_DATE : toIsoEndOfDay(license_end_date ?? ''),
+        },
+      };
+      delete payload.max_license_bu;
       const result = await clusterService.create(payload);
       const created = result.data || result;
       toast.success('Cluster created successfully');
@@ -256,12 +281,9 @@ const ClusterEdit: React.FC = () => {
     setSaving(true);
     setError('');
     try {
+      // BU quota is no longer part of this payload at all — it's edited only through the
+      // BU Quota Licenses card (`LicensesSection`), which writes dated licence rows directly.
       const payload: Record<string, unknown> = { ...formData };
-      if (formData.max_license_bu) {
-        payload.max_license_bu = Number(formData.max_license_bu);
-      } else {
-        delete payload.max_license_bu;
-      }
       await clusterService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
       toast.success('Changes saved successfully');
       await fetchCluster();
@@ -453,14 +475,17 @@ const ClusterEdit: React.FC = () => {
   }
 
   const buUsed = businessUnits.length;
-  const buCap = formData.max_license_bu ? Number(formData.max_license_bu) : null;
+  // โควตามาจากใบที่ชนะ — 0 คือศูนย์จริง ไม่ใช่ "ไม่จำกัด" (ต่างจากกติกา max_license_bu เดิม)
+  const buCap = clusterMeta.bu_cap ?? 0;
   const buActive = businessUnits.filter((b) => b.is_active).length;
   const userUsed = users.clusterUsers.length;
   // Seat cap is the cluster's own aggregate now (backend-computed from the licence view,
   // per BU-scoped dated rows) — it can no longer be summed client-side from
   // `bu.max_license_users`, which no longer exists on the BU record at all (Task 3.5).
-  // 0/null/absent = uncapped, same convention as `buCap` above and ClusterManagement's
-  // CapacityMeter.
+  // 0/null/absent = uncapped, same convention as ClusterManagement's CapacityMeter — NOT the
+  // same convention as `buCap` above any more. `buCap` is now always a finite number (0 means
+  // "no covering licence", never "unlimited"); `userCap` still genuinely means "unlimited" when
+  // null, because per-BU seat licensing was untouched by this feature.
   const userCap = clusterMeta.total_max_license_users ? clusterMeta.total_max_license_users : null;
   const userActive = users.clusterUsers.filter((u) => u.is_active !== false).length;
 
@@ -505,6 +530,7 @@ const ClusterEdit: React.FC = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     onFocus={handleFocus}
+                    onNoExpiryChange={(v) => setFormData((prev) => ({ ...prev, license_no_expiry: v }))}
                   />
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" size="sm" disabled={saving}>
@@ -609,7 +635,7 @@ const ClusterEdit: React.FC = () => {
                 </section>
 
                 <section id="licenses" className="scroll-mt-20">
-                  <LicensesSection clusterId={id!} canManage={canEdit} />
+                  <LicensesSection clusterId={id!} canManage={canEdit} buUsed={clusterMeta.bu_used ?? 0} />
                 </section>
 
                 <section id="subscription" className="scroll-mt-20">

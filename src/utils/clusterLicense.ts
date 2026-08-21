@@ -28,16 +28,29 @@ export function licenseStatus(lic: ClusterLicense, now: Date = new Date()): Clus
  * ใบที่ชนะ — โควตาที่มีผลจริง
  *
  * **ไม่ใช่ผลรวม** ต่างจากที่นั่งของ BU โดยสิ้นเชิง: กติกาคือใบเดียวแทนที่ ใบที่ `start_date`
- * ล่าสุดชนะ (tie-break ด้วย `id` ให้ผลคงที่) เหตุผลคือการต่ออายุจริงคือ "ซื้อใบใหม่ที่เริ่มวันที่ X"
- * ใบใหม่ต้องชนะทันทีที่ถึงวันเริ่ม แม้ใบเก่าจะยังไม่หมด — เคสที่ต้องรองรับคือลดโควตากลางสัญญา
+ * ล่าสุดชนะ เหตุผลคือการต่ออายุจริงคือ "ซื้อใบใหม่ที่เริ่มวันที่ X" ใบใหม่ต้องชนะทันทีที่ถึงวันเริ่ม
+ * แม้ใบเก่าจะยังไม่หมด — เคสที่ต้องรองรับคือลดโควตากลางสัญญา
+ *
+ * ลำดับ tie-break ต้องตรงกับ DB view `v_cluster_bu_cap` เป๊ะ:
+ * `ORDER BY start_date DESC, created_at DESC, id DESC` — สามชั้น ไม่ใช่สองชั้น เพราะ
+ * `LicensesSection` เขียน `start_date` ผ่าน `toIsoStartOfDay` ทำให้สองใบที่สร้างวันเดียวกันชนกันตรง ๆ
+ * บ่อยกว่าที่คิด `created_at` เป็น optional/nullable บนสาย (คอลัมน์ยอมให้เป็น null ได้ในทางทฤษฎี) —
+ * เมื่อฝั่งใดฝั่งหนึ่งของคู่ที่เทียบขาด `created_at` หรือ parse ไม่ได้ ต้องตกไปที่ `id` เสมอ ห้ามให้
+ * ผลลัพธ์เป็น NaN แล้วเทียบต่อ (NaN > x และ NaN < x เป็น false ทั้งคู่ — reduce จะเงียบ ๆ เลือกผิด)
  * @returns ใบที่ชนะ หรือ null เมื่อไม่มีใบไหนคุ้มครองอยู่ (cap = 0)
  */
 export function activeLicense(list: ClusterLicense[], now: Date = new Date()): ClusterLicense | null {
   const covering = list.filter((l) => licenseStatus(l, now) === 'active');
   if (covering.length === 0) return null;
   return covering.reduce((best, cur) => {
-    const d = Date.parse(cur.start_date) - Date.parse(best.start_date);
-    if (d !== 0) return d > 0 ? cur : best;
+    const startDiff = Date.parse(cur.start_date) - Date.parse(best.start_date);
+    if (startDiff !== 0) return startDiff > 0 ? cur : best;
+
+    const curCreated = cur.created_at ? Date.parse(cur.created_at) : NaN;
+    const bestCreated = best.created_at ? Date.parse(best.created_at) : NaN;
+    const createdDiff = curCreated - bestCreated;
+    if (!Number.isNaN(createdDiff) && createdDiff !== 0) return createdDiff > 0 ? cur : best;
+
     return cur.id > best.id ? cur : best;
   });
 }

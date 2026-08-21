@@ -145,8 +145,9 @@ describe('BusinessUnitEdit (one-document)', () => {
   it('creates when required fields are present', async () => {
     const user = userEvent.setup();
     asMock(businessUnitService.create).mockResolvedValue({ data: { id: 'bu9' } });
-    // license pre-check reads the cluster; no limit set → create proceeds.
-    asMock(clusterService.getById).mockResolvedValue({ data: { id: 'c1', max_license_bu: null } });
+    // license pre-check reads the cluster's bu_cap/bu_used (Task 9 fix — a stale
+    // max_license_bu no longer drives this): quota covers this create, so it proceeds.
+    asMock(clusterService.getById).mockResolvedValue({ data: { id: 'c1', bu_cap: 5, bu_used: 0 } });
     renderAt('/business-units/new?cluster_id=c1');
 
     await user.click(await screen.findByRole('button', { name: /unnamed business unit/i }));

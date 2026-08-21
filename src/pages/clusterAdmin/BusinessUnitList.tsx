@@ -16,8 +16,10 @@ import { TableSkeleton } from '../../components/TableSkeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import businessUnitService from '../../services/businessUnitService';
+import clusterService from '../../services/clusterService';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { parseApiError } from '../../utils/errorParser';
+import { rankBusinessUnits, countOverLimit } from '../../utils/businessUnitRank';
 import type { BusinessUnit, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -59,6 +61,43 @@ const BusinessUnitList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
   const [showFilters, setShowFilters] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+
+  // Quota/rank data, fetched independently of the paginated table above. The "Over limit" badge
+  // needs to rank EVERY business unit in the cluster (see rankBusinessUnits), not just the
+  // current page, so this is a second, unpaginated fetch — same pattern as a summary band. It
+  // fails open: if either call fails, buCap stays null and the badge/banner simply don't render,
+  // same convention as CapacityMeter's "null cap = unknown/unenforced".
+  const [buCap, setBuCap] = useState<number | null>(null);
+  const [rankSource, setRankSource] = useState<BusinessUnit[]>([]);
+
+  useEffect(() => {
+    if (!clusterId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [clusterRes, buRes] = await Promise.all([
+          clusterService.getById(clusterId),
+          businessUnitService.getAll({
+            perpage: -1,
+            advance: JSON.stringify({ where: { cluster_id: clusterId } }),
+          }),
+        ]);
+        if (cancelled) return;
+        const cluster = clusterRes?.data || clusterRes;
+        setBuCap(cluster?.bu_cap ?? 0);
+        const list = buRes?.data || buRes;
+        setRankSource(Array.isArray(list) ? list : []);
+      } catch {
+        // Fail open — quota display is a courtesy, not a gate. The real 403 still comes from
+        // the backend either way.
+        if (!cancelled) { setBuCap(null); setRankSource([]); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [clusterId]);
+
+  const ranked = useMemo(() => rankBusinessUnits(rankSource), [rankSource]);
+  const overLimitCount = useMemo(() => countOverLimit(ranked, buCap), [ranked, buCap]);
 
   // Sent even though the server already scopes the caller to their administered clusters: an
   // admin of two clusters must see only the one this URL names, which is strictly narrower.
@@ -172,14 +211,25 @@ const BusinessUnitList: React.FC = () => {
       accessorKey: 'name',
       header: 'Name',
       meta: { card: 'title' },
-      cell: ({ row }) => (
-        <Link
-          to={`/cluster-admin/${clusterId}/business-units/${row.original.id}/edit`}
-          className="text-primary hover:underline whitespace-nowrap"
-        >
-          {row.original.name}
-        </Link>
-      ),
+      cell: ({ row }) => {
+        const rank = ranked.get(row.original.id);
+        const overLimit = buCap != null && (rank ?? 0) > buCap;
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to={`/cluster-admin/${clusterId}/business-units/${row.original.id}/edit`}
+              className="text-primary hover:underline whitespace-nowrap"
+            >
+              {row.original.name}
+            </Link>
+            {overLimit && (
+              <Badge variant="destructive" className="text-xs" title={`Quota ${buCap} · this unit ranks ${rank}`}>
+                Over limit
+              </Badge>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'is_hq',
@@ -208,7 +258,7 @@ const BusinessUnitList: React.FC = () => {
         </div>
       ),
     },
-  ], [clusterId]);
+  ], [clusterId, ranked, buCap]);
 
   return (
     <ClusterAdminLayout>
@@ -223,6 +273,13 @@ const BusinessUnitList: React.FC = () => {
             </Button>
           }
         />
+
+        {overLimitCount > 0 && (
+          <p className="text-destructive text-sm" role="alert">
+            {overLimitCount} business {overLimitCount === 1 ? 'unit is' : 'units are'} beyond the licensed
+            quota of {buCap}. They are read-only until more quota is purchased.
+          </p>
+        )}
 
         <Card>
           <CardHeader className="space-y-3">
