@@ -6,7 +6,7 @@
 
 **Architecture:** ตารางใหม่ระดับ cluster เก็บใบซื้อ (`licensed_bus`, `start_date`, `end_date`) · โควตาที่มีผล = ใบเดียวที่ชนะ (`start_date` ล่าสุด) ไม่ใช่ผลรวม · นิยาม cap + rank อยู่ใน **view เดียว** `v_cluster_bu_quota` ที่อ่านผ่าน helper กลางใน `@repo/prisma-shared-schema-platform` — ห้ามคัดลอกเงื่อนไขไปเขียนซ้ำ · บังคับใช้ 2 ด่าน: ตอนสร้าง BU (micro-cluster) และตอนเขียนของ BU ที่อันดับเกินโควตา (gateway interceptor, error code ใหม่ `BU_LIMIT_EXCEEDED`)
 
-**Tech Stack:** NestJS + Prisma (PostgreSQL) monorepo (Turborepo, pnpm) · React 19 + Vite + TypeScript + shadcn/ui + Tailwind (Bun)
+**Tech Stack:** NestJS + Prisma (PostgreSQL) monorepo (Turborepo, **Bun** — ไม่ใช่ pnpm) · React 19 + Vite + TypeScript + shadcn/ui + Tailwind (Bun)
 
 **Spec:** `docs/superpowers/specs/2026-08-21-cluster-bu-license-design.md` (ใน repo `carmen-platform`)
 
@@ -15,7 +15,9 @@
 - **สอง repo:** `~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2` (backend) และ `~/GitHub/carmensoftware-organize/carmen-platform` (frontend) — **ทุก task ระบุ repo ไว้ที่หัวข้อ Files เสมอ ห้ามเดา**
 - **Branch:** backend-v2 → `feature/cluster-bu-license` · carmen-platform → `feature/cluster-bu-license` · Task 13 ใช้กิ่งแยก `chore/drop-max-license-bu` · **สร้าง/checkout branch ก่อนแก้ไฟล์แรกเสมอ ห้าม commit ลง `main`**
 - **ข้ามขั้นเขียนเทสต์ใหม่** ตามแนวทางของเจ้าของ repo — ไม่สร้าง `*.spec.ts` / `*.test.ts` ใหม่ · **แต่เทสต์ที่มีอยู่ต้องเขียว** และ Task 9/13 มีขั้นแก้เทสต์เดิมที่จะแดงโดยเจตนา
-- **ด่านสถิตคือด่านหลัก:** backend-v2 → `pnpm check-types` · carmen-platform → `bun run typecheck` และ `bun run lint` — ทุก task จบด้วยด่านเหล่านี้ก่อน commit
+- **ด่านสถิตคือด่านหลัก:** backend-v2 → `bun run check-types` · carmen-platform → `bun run typecheck` และ `bun run lint` — ทุก task จบด้วยด่านเหล่านี้ก่อน commit
+- **backend-v2 ใช้ `bun` ไม่ใช่ `pnpm`** (`packageManager: bun@1.2.5`) · เทสต์ของ app หนึ่งรันด้วย `(cd apps/<app> && bun run test -- --runInBand --forceExit)` — `--runInBand --forceExit` จำเป็นเพราะ LokiTransport ทำให้ jest ค้าง
+- **raw SQL ทุกคิวรีที่ยิงไปที่ platform DB ต้องห่อชื่อตาราง/view ด้วย `Prisma.raw(systemTableRef(NAME))`** — ชื่อที่ไม่ qualify schema จะ `42P01` ผ่าน pgBouncer · ดูแบบอย่างที่ `packages/prisma-shared-schema-platform/src/seat-pool.ts:56,83` · ใช้ค่าคงที่ชื่อ view ไม่ใช่สตริงดิบ
 - **ไม่มีคำว่า "ไม่จำกัด"** — `cap` เป็นจำนวนเต็มเสมอ · ไม่มีใบที่คุ้มครองอยู่ = `cap = 0`
 - **sentinel ของ "ไม่มีวันหมดอายุ":** เขียน `2099-12-31T23:59:59.999Z` · อ่านด้วยเกณฑ์ `>= 2099-01-01T00:00:00Z` **ห้ามเทียบเท่ากันเป๊ะ** (Timestamptz + timezone ทำให้ค่าไม่ตรง)
 - **fail-open:** อ่านค่าไม่สำเร็จ = ไม่ตัดสิน ปล่อยผ่าน — ห้ามแปลงเป็น "เกินโควตา"
@@ -40,8 +42,8 @@
 **Interfaces:**
 - Consumes: `PrismaClient_SYSTEM` จาก `@repo/prisma-shared-schema-platform`
 - Produces:
-  - model `tb_cluster_license` · view `v_cluster_bu_quota`
-  - `BU_QUOTA_VIEW: string`
+  - model `tb_cluster_license` · view `v_cluster_bu_cap` + `v_cluster_bu_quota`
+  - `BU_CAP_VIEW: string` · `BU_QUOTA_VIEW: string`
   - `clusterBuQuotas(prisma, clusterIds: string[]): Promise<Record<string, { cap: number; used: number }>>`
   - `buQuotaRanks(prisma, buIds: string[]): Promise<Record<string, { rank: number; cap: number }>>`
   - `PERPETUAL_END_DATE: string` และ `isPerpetualEnd(d: Date | string): boolean`
@@ -128,26 +130,38 @@ ALTER TABLE "tb_cluster_license" ADD CONSTRAINT "tb_cluster_license_cluster_id_f
 ALTER TABLE "tb_cluster_license" ADD CONSTRAINT "cluster_license_bus_non_negative" CHECK ("licensed_bus" >= 0);
 ALTER TABLE "tb_cluster_license" ADD CONSTRAINT "cluster_license_range_valid" CHECK ("end_date" > "start_date");
 
--- CreateView: นิยามเดียวของ cap และ rank ทั้งระบบ
--- cap  = licensed_bus ของใบที่ชนะ (start_date ล่าสุด, tie-break created_at แล้ว id)
--- rank = อันดับของ BU ใน cluster (HQ ก่อน แล้ว created_at เก่าก่อน)
--- ไม่กรอง is_active โดยตั้งใจ: BU ที่ปิดอยู่ก็ยังกินโควตา
+-- CreateView #1: นิยามเดียวของ "ใบไหนชนะ" ทั้งระบบ — ทุก cluster มีแถวเสมอ แม้ยังไม่มี BU
+-- และแม้ไม่มีใบเลย (cap 0) การมีแถวครบทุก cluster คือสิ่งที่ทำให้โค้ดแอปไม่ต้องมี fallback
+-- ซึ่งเป็นจุดเดียวที่กติกานี้จะไปถูกเขียนซ้ำได้
+CREATE VIEW "v_cluster_bu_cap" AS
+SELECT c.id AS cluster_id,
+       COALESCE(w.licensed_bus, 0)::int AS cap
+FROM tb_cluster c
+LEFT JOIN LATERAL (
+  SELECT l.licensed_bus
+  FROM tb_cluster_license l
+  WHERE l.cluster_id = c.id
+    AND l.deleted_at IS NULL
+    AND l.start_date <= now()
+    AND l.end_date > now()
+  ORDER BY l.start_date DESC, l.created_at DESC, l.id DESC
+  LIMIT 1
+) w ON true
+WHERE c.deleted_at IS NULL;
+
+-- CreateView #2: rank ราย BU + cap ที่ยืมมาจาก view ข้างบน (ไม่คำนวณ cap ซ้ำ)
+-- rank = HQ ก่อน แล้ว created_at เก่าก่อน แล้ว id · ไม่กรอง is_active โดยตั้งใจ:
+-- BU ที่ปิดอยู่ก็ยังกินโควตา
 CREATE VIEW "v_cluster_bu_quota" AS
-WITH winning AS (
-  SELECT DISTINCT ON (cluster_id) cluster_id, licensed_bus
-  FROM tb_cluster_license
-  WHERE deleted_at IS NULL AND start_date <= now() AND end_date > now()
-  ORDER BY cluster_id, start_date DESC, created_at DESC, id DESC
-)
 SELECT b.id         AS business_unit_id,
        b.cluster_id AS cluster_id,
        ROW_NUMBER() OVER (
          PARTITION BY b.cluster_id
          ORDER BY COALESCE(b.is_hq, false) DESC, b.created_at ASC, b.id ASC
        )::int       AS rank,
-       COALESCE(w.licensed_bus, 0)::int AS cap
+       q.cap        AS cap
 FROM tb_business_unit b
-LEFT JOIN winning w ON w.cluster_id = b.cluster_id
+JOIN v_cluster_bu_cap q ON q.cluster_id = b.cluster_id
 WHERE b.deleted_at IS NULL;
 ```
 
@@ -156,7 +170,9 @@ WHERE b.deleted_at IS NULL;
 ```ts
 import type { PrismaClient_SYSTEM } from './index';
 
-/** ชื่อ view ที่ถือนิยามของ cap/rank — ห้ามเขียนเงื่อนไขซ้ำที่อื่น */
+/** view ที่ถือนิยามของ "ใบไหนชนะ" — ทุก cluster มีแถวเสมอ ห้ามเขียนเงื่อนไขซ้ำที่อื่น */
+export const BU_CAP_VIEW = 'v_cluster_bu_cap';
+/** view ที่ถือ rank ราย BU (cap ยืมมาจาก BU_CAP_VIEW) */
 export const BU_QUOTA_VIEW = 'v_cluster_bu_quota';
 
 /**
@@ -201,28 +217,26 @@ export async function clusterBuQuotas(
 ): Promise<Record<string, { cap: number; used: number }>> {
   const out: Record<string, { cap: number; used: number }> = {};
   if (clusterIds.length === 0) return out;
-  for (const id of clusterIds) out[id] = { cap: 0, used: 0 };
 
-  const rows = await prisma.$queryRaw<Array<{ cluster_id: string; cap: number; used: bigint }>>`
-    SELECT cluster_id, MAX(cap)::int AS cap, COUNT(*) AS used
-    FROM v_cluster_bu_quota
-    WHERE cluster_id = ANY(${clusterIds}::uuid[])
-    GROUP BY cluster_id
+  // v_cluster_bu_cap มีทุก cluster เสมอ จึงไม่ต้องมี fallback ในโค้ดแอป — และไม่มีที่ให้กติกา
+  // "ใบไหนชนะ" ไปเขียนซ้ำ · used นับจาก v_cluster_bu_quota ซึ่งมีเฉพาะ cluster ที่มี BU
+  // (COUNT ข้าม NULL ของ LEFT JOIN จึงได้ 0 ให้ cluster ที่ยังไม่มี BU โดยอัตโนมัติ)
+  const rows = await prisma.$queryRaw<
+    Array<{ cluster_id: string; cap: number; used: number | bigint | string }>
+  >`
+    SELECT c.cluster_id,
+           c.cap,
+           COUNT(q.business_unit_id) AS used
+    FROM ${Prisma.raw(systemTableRef(BU_CAP_VIEW))} c
+    LEFT JOIN ${Prisma.raw(systemTableRef(BU_QUOTA_VIEW))} q ON q.cluster_id = c.cluster_id
+    WHERE c.cluster_id = ANY(${clusterIds}::uuid[])
+    GROUP BY c.cluster_id, c.cap
   `;
-  for (const r of rows) out[r.cluster_id] = { cap: r.cap, used: Number(r.used) };
+  for (const r of rows) out[r.cluster_id] = { cap: r.cap, used: toNumber(r.used) };
 
-  // cluster ที่ไม่มี BU เลยไม่มีแถวใน view — cap ยังต้องมาจากใบที่ชนะ ไม่ใช่ 0
-  const missing = clusterIds.filter((id) => out[id].used === 0 && out[id].cap === 0);
-  if (missing.length > 0) {
-    const caps = await prisma.$queryRaw<Array<{ cluster_id: string; licensed_bus: number }>>`
-      SELECT DISTINCT ON (cluster_id) cluster_id, licensed_bus
-      FROM tb_cluster_license
-      WHERE deleted_at IS NULL AND start_date <= now() AND end_date > now()
-        AND cluster_id = ANY(${missing}::uuid[])
-      ORDER BY cluster_id, start_date DESC, created_at DESC, id DESC
-    `;
-    for (const c of caps) out[c.cluster_id] = { cap: c.licensed_bus, used: 0 };
-  }
+  // cluster id ที่ไม่มีอยู่จริง (ถูกลบ/ส่ง id มั่ว) ต้องยังมีคีย์ — คีย์ที่หายไปจะอ่านเป็น "ไม่มีขีดจำกัด"
+  // ต้องอยู่ **หลัง** การเติมจากคิวรี และใช้ ??= เพื่อไม่ทับแถวจริง
+  for (const id of clusterIds) out[id] ??= { cap: 0, used: 0 };
   return out;
 }
 
@@ -257,15 +271,15 @@ export async function buQuotaRanks(
 เพิ่มถัดจากบรรทัด 171 ของ `packages/prisma-shared-schema-platform/src/index.ts`:
 
 ```ts
-export { BU_QUOTA_VIEW, PERPETUAL_END_DATE, isPerpetualEnd, clusterBuQuotas, buQuotaRanks } from './bu-quota';
+export { BU_CAP_VIEW, BU_QUOTA_VIEW, PERPETUAL_END_DATE, isPerpetualEnd, clusterBuQuotas, buQuotaRanks } from './bu-quota';
 ```
 
 - [ ] **Step 6: generate + typecheck**
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm --filter @repo/prisma-shared-schema-platform prisma generate
-pnpm check-types
+(cd packages/prisma-shared-schema-platform && bunx prisma generate)
+bun run check-types
 ```
 
 Expected: ผ่านทั้งคู่ · ถ้า tsc ฟ้อง type ที่ควรจะมีอยู่แล้ว ให้ตรวจว่า `dist/` ของ package ค้างเก่าอยู่หรือไม่ (`rm -rf packages/prisma-shared-schema-platform/dist` แล้ว build ใหม่) — เป็นกับดักที่เคยเกิดจริง
@@ -381,7 +395,7 @@ ls -R
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm check-types
+bun run check-types
 ```
 
 - [ ] **Step 5: Commit**
@@ -517,9 +531,9 @@ grep -rn "businessUnitLicense.findAll" --include="*.ts" apps packages | grep -v 
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm check-types
-pnpm audit:rest-contract
-pnpm --filter @repo/prisma-shared-schema-platform exec tsx prisma/check.api-system-permission-coverage.ts
+bun run check-types
+bun run audit:rest-contract
+bun run audit:api-system-permission
 ```
 
 Expected: เขียวทั้งหมด · ถ้า `audit:rest-contract` ไม่มีในสคริปต์ ให้ `grep -n "audit" package.json` แล้วรันตัวที่มีจริง
@@ -966,7 +980,7 @@ main().finally(() => prisma.$disconnect());
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm check-types
+bun run check-types
 cd packages/prisma-shared-schema-platform
 bun prisma/backfill.cluster-license.ts | tee /tmp/backfill-plan.json
 ```
@@ -1088,8 +1102,8 @@ zod: `bu_cap: z.number().int().optional()` · `bu_used: z.number().int().optiona
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm check-types
-pnpm --filter micro-cluster test -- --runInBand --forceExit
+bun run check-types
+(cd apps/micro-cluster && bun run test -- --runInBand --forceExit)
 ```
 
 Expected: เขียว · `--runInBand --forceExit` จำเป็นเพราะ LokiTransport ทำให้ jest ค้าง
@@ -1176,8 +1190,8 @@ export class ClusterInitialLicenseDto {
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm check-types
-pnpm --filter micro-cluster test -- --runInBand --forceExit
+bun run check-types
+(cd apps/micro-cluster && bun run test -- --runInBand --forceExit)
 ```
 
 - [ ] **Step 4: Commit**
@@ -1520,9 +1534,9 @@ export function evaluateBuQuota(q: BuQuota | undefined, isWrite: boolean): 'BU_L
 
 ```bash
 cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-pnpm check-types
-pnpm --filter backend-gateway test -- --runInBand --forceExit
-pnpm boot-check
+bun run check-types
+(cd apps/backend-gateway && bun run test -- --runInBand --forceExit)
+bun run boot-check
 ```
 
 Expected: เขียว · `boot-check` สำคัญเป็นพิเศษ (ต้องมี Postgres/Keycloak/MinIO จริง) — guard/interceptor ที่ผูกผิดทำ gateway พังตอน boot โดย unit test มองไม่เห็น · เทสต์ `license.interceptor.spec.ts` ที่มีอยู่ต้องยังเขียว
@@ -1712,7 +1726,7 @@ ALTER TABLE "tb_cluster" DROP COLUMN "max_license_bu";
 - [ ] **Step 4: ด่านสถิต + เทสต์ทั้งสอง repo**
 
 ```bash
-cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2 && pnpm check-types
+cd ~/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2 && bun run check-types
 cd ~/GitHub/carmensoftware-organize/carmen-platform && bun run typecheck && bun run lint && bun run test
 ```
 

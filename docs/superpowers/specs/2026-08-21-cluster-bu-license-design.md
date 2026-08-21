@@ -188,24 +188,35 @@ interceptor ใน gateway) เท่ากับที่นั่งพอด�
 `packages/prisma-shared-schema-platform/src/seat-pool.ts` โดยมีคอมเมนต์ในโค้ดย้ำว่า
 *"ห้ามมีนิยามที่สอง"* — BU quota เดินตามรอยนั้น ไม่คัดลอกเงื่อนไขไปเขียนซ้ำ
 
+**สอง view ซ้อนกัน** — ตัวล่างถือกติกา "ใบไหนชนะ" ที่เดียวและมีแถวให้ **ทุก** cluster เสมอ
+(แม้ยังไม่มี BU และแม้ไม่มีใบ) ตัวบนยืม `cap` มาแล้วเติม `rank` ราย BU · รูปนี้ทำให้โค้ดแอป
+ไม่ต้องมี fallback สำหรับ cluster ที่ไม่มี BU ซึ่งเป็นจุดเดียวที่กติกาจะไปถูกเขียนซ้ำได้
+
 ```sql
+CREATE VIEW v_cluster_bu_cap AS
+SELECT c.id AS cluster_id,
+       COALESCE(w.licensed_bus, 0)::int AS cap
+FROM tb_cluster c
+LEFT JOIN LATERAL (
+  SELECT l.licensed_bus
+  FROM tb_cluster_license l
+  WHERE l.cluster_id = c.id AND l.deleted_at IS NULL
+    AND l.start_date <= now() AND l.end_date > now()
+  ORDER BY l.start_date DESC, l.created_at DESC, l.id DESC
+  LIMIT 1
+) w ON true
+WHERE c.deleted_at IS NULL;
+
 CREATE VIEW v_cluster_bu_quota AS
-WITH winning AS (
-  -- ใบที่ชนะต่อ cluster (§3.2) — DISTINCT ON คือ LIMIT 1 ต่อกลุ่มของ Postgres
-  SELECT DISTINCT ON (cluster_id) cluster_id, licensed_bus
-  FROM tb_cluster_license
-  WHERE deleted_at IS NULL AND start_date <= now() AND end_date > now()
-  ORDER BY cluster_id, start_date DESC, created_at DESC, id DESC
-)
-SELECT b.id                                   AS business_unit_id,
-       b.cluster_id,
+SELECT b.id         AS business_unit_id,
+       b.cluster_id AS cluster_id,
        ROW_NUMBER() OVER (
          PARTITION BY b.cluster_id
          ORDER BY COALESCE(b.is_hq, false) DESC, b.created_at ASC, b.id ASC
-       )                                      AS rank,
-       COALESCE(w.licensed_bus, 0)            AS cap
+       )::int       AS rank,
+       q.cap        AS cap
 FROM tb_business_unit b
-LEFT JOIN winning w ON w.cluster_id = b.cluster_id
+JOIN v_cluster_bu_cap q ON q.cluster_id = b.cluster_id
 WHERE b.deleted_at IS NULL;
 ```
 
@@ -213,19 +224,24 @@ helper กลางที่ทุกแอปเรียก (ขนานก�
 
 ```ts
 // packages/prisma-shared-schema-platform/src/bu-quota.ts
+export const BU_CAP_VIEW = 'v_cluster_bu_cap';
 export const BU_QUOTA_VIEW = 'v_cluster_bu_quota';
-/** cap + จำนวน BU ต่อ cluster — cluster ที่ไม่มีแถวเลย (ยังไม่มี BU) ต้องได้ค่าเสมอ ไม่ใช่หายไป */
+/** cap + จำนวน BU ต่อ cluster — อ่านจาก v_cluster_bu_cap LEFT JOIN v_cluster_bu_quota คิวรีเดียว */
 export async function clusterBuQuotas(prisma, clusterIds: string[]): Promise<Record<string, { cap: number; used: number }>>
 /** rank + cap ราย BU — ตัวที่ interceptor ใช้ */
 export async function buQuotaRanks(prisma, buIds: string[]): Promise<Record<string, { rank: number; cap: number }>>
 ```
 
+raw SQL ทุกคิวรีต้องห่อชื่อ view ด้วย `Prisma.raw(systemTableRef(NAME))` — ชื่อที่ไม่ qualify schema
+จะ `42P01` ผ่าน pgBouncer (แบบอย่าง: `seat-pool.ts:56,83`)
+
 - `COALESCE(is_hq, false)` — คอลัมน์เป็น `Boolean?` ค่า `NULL` ต้องไม่ชนะ `true`
 - **ไม่กรอง `is_active`** — ข้อตกลง #6: BU ที่ปิดอยู่ก็ยังกินโควตา ผู้ใช้ต้องลบจริงเพื่อคืนโควตา
 - ลำดับต้อง deterministic ทุกครั้ง มิฉะนั้น BU ที่ถูกบล็อกจะสลับตัวไปมาและลูกค้าจะเจอ 403 แบบสุ่ม
-- **cluster ที่ยังไม่มี BU เลยจะไม่มีแถวใน view** — `clusterBuQuotas` ต้องเติม `{cap, used: 0}`
-  ให้ทุก cluster ที่ขอ (ข้อผูกพันเดียวกับที่ `clusterSeatPools` การันตีไว้) · cap ของ cluster
-  ที่ไม่มี BU ต้องอ่านจาก `tb_cluster_license` ตรง ๆ ไม่ใช่จาก view
+- **cluster ที่ยังไม่มี BU เลยยังมีแถวใน `v_cluster_bu_cap`** จึงได้ `cap` ที่ถูกต้องโดยที่โค้ดแอป
+  ไม่ต้องอ่าน `tb_cluster_license` เอง — นี่คือเหตุผลที่แยกเป็นสอง view · `clusterBuQuotas` ยังต้อง
+  เติมคีย์ให้ cluster id ที่ไม่มีอยู่จริง (ถูกลบ/ส่ง id มั่ว) เพราะคีย์ที่หายไปจะอ่านเป็น "ไม่มีขีดจำกัด"
+  (ข้อผูกพันเดียวกับที่ `clusterSeatPools` การันตีไว้)
 - ราคาที่ต้องรู้: `ROW_NUMBER()` ทำงานกับ **ทุก BU ของทุก cluster** ในทุกครั้งที่อ่าน view ·
   ยอมรับได้เพราะอ่านผ่าน cache 60 วินาที (§5.3) และ `tb_business_unit` มีหลักร้อยแถว ไม่ใช่หลักล้าน
 
