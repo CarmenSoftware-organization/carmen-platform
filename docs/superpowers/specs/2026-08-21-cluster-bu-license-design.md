@@ -459,10 +459,11 @@ SELECT c.code,
          ORDER BY l.start_date DESC, l.created_at DESC, l.id DESC LIMIT 1) AS cap
 FROM tb_cluster c
 WHERE c.deleted_at IS NULL
-HAVING cap IS NULL OR cap < bu_count;
+-- cap IS NULL = ไม่มีแถว · cap = 0 = ไม่มีใบคุ้มครอง (สร้าง BU แรกไม่ได้ด้วยซ้ำ) · cap < bu_count = เกินโควตา
+HAVING cap IS NULL OR cap = 0 OR cap < bu_count;
 ```
 
-**ไม่ผ่านแม้แถวเดียว = ห้ามเปิดสวิตช์** — เพราะกติกาที่เลือกไว้รวมกันแล้วให้ผลนี้:
+**ไม่ผ่านแม้แถวเดียว = ห้ามเปิดสวิตช์** · `cap = 0` ต้องนับเป็นไม่ผ่านด้วย ไม่ใช่เฉพาะ `cap < bu_count` — cluster ที่ไม่มีใบและยังไม่มี BU เลย (เช่น `KF0001`) จะสร้าง BU แรกไม่ได้ทันทีที่เปิดใช้ — เพราะกติกาที่เลือกไว้รวมกันแล้วให้ผลนี้:
 
 > ไม่มีใบ → `cap = 0` · `rank > cap` → บล็อกเขียน
 > ⇒ **cluster ที่ตกหล่นจาก backfill จะเขียนไม่ได้ทั้งก้อน** (BU ตัวแรก `rank 1 > cap 0`)

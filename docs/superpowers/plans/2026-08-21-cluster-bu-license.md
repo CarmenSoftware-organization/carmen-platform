@@ -17,6 +17,10 @@
 - **ข้ามขั้นเขียนเทสต์ใหม่** ตามแนวทางของเจ้าของ repo — ไม่สร้าง `*.spec.ts` / `*.test.ts` ใหม่ · **แต่เทสต์ที่มีอยู่ต้องเขียว** และ Task 9/13 มีขั้นแก้เทสต์เดิมที่จะแดงโดยเจตนา
 - **ด่านสถิตคือด่านหลัก:** backend-v2 → `bun run check-types` · carmen-platform → `bun run typecheck` และ `bun run lint` — ทุก task จบด้วยด่านเหล่านี้ก่อน commit
 - **backend-v2 ใช้ `bun` ไม่ใช่ `pnpm`** (`packageManager: bun@1.2.5`) · เทสต์ของ app หนึ่งรันด้วย `(cd apps/<app> && bun run test -- --runInBand --forceExit)` — `--runInBand --forceExit` จำเป็นเพราะ LokiTransport ทำให้ jest ค้าง
+- **`@MessagePattern` ต้องอ้าง `@repo/rpc-contract` เสมอ ห้าม object literal** — `bun run audit:message-pattern-literal` บังคับข้อนี้และจะแดงทันที · ถ้ายังไม่มี entry ให้รัน `bun run gen:rpc-contract` ก่อนแล้วใช้ reference ที่ได้ (แบบอย่าง: `business-unit-license.controller.ts:38` → `@MessagePattern(BusinessUnitLicenses.findAll.pattern)`)
+- **รัน audit ที่เกี่ยวข้องก่อน commit ทุก task ของ backend:** `bun run audit:message-pattern-literal` · `bun run audit:rest-contract` (เฉพาะ task ที่แตะ REST) · `bun run audit:api-system-permission` (เฉพาะ task ที่เพิ่ม endpoint)
+- **carmen-platform ไม่มี `<Checkbox>` component และไม่มี radix checkbox** — ใช้ `<input type="checkbox">` ดิบพร้อม `aria-label` ตามที่ `ClusterManagement.tsx` / `BusinessUnitManagement.tsx` ทำ
+- **แปลงวันที่จาก `<input type="date">` ต้องใช้ helper ขอบเขตวัน (`toIsoStartOfDay` / `toIsoEndOfDay`) ไม่ใช่ `new Date(v).toISOString()` ดิบ** — ค่าจาก input เป็น `YYYY-MM-DD` ซึ่ง JS ตีความเป็น UTC เที่ยงคืน ทำให้ใบที่ "หมดวันนี้" กลายเป็นหมดอายุไปแล้วสำหรับผู้ใช้ที่อยู่ตะวันออกของ UTC
 - **raw SQL ทุกคิวรีที่ยิงไปที่ platform DB ต้องห่อชื่อตาราง/view ด้วย `Prisma.raw(systemTableRef(NAME))`** — ชื่อที่ไม่ qualify schema จะ `42P01` ผ่าน pgBouncer · ดูแบบอย่างที่ `packages/prisma-shared-schema-platform/src/seat-pool.ts:56,83` · ใช้ค่าคงที่ชื่อ view ไม่ใช่สตริงดิบ
 - **ไม่มีคำว่า "ไม่จำกัด"** — `cap` เป็นจำนวนเต็มเสมอ · ไม่มีใบที่คุ้มครองอยู่ = `cap = 0`
 - **sentinel ของ "ไม่มีวันหมดอายุ":** เขียน `2099-12-31T23:59:59.999Z` · อ่านด้วยเกณฑ์ `>= 2099-01-01T00:00:00Z` **ห้ามเทียบเท่ากันเป๊ะ** (Timestamptz + timezone ทำให้ค่าไม่ตรง)
@@ -24,6 +28,8 @@
 - **นิยามเดียว:** cap/rank อ่านจาก `v_cluster_bu_quota` ผ่าน `clusterBuQuotas()`/`buQuotaRanks()` เท่านั้น ห้ามเขียนเงื่อนไขซ้ำในแอปใด
 - **CREATE กับ DROP อยู่คนละกิ่ง** — Task 13 ห้ามรวมกับ Task 1
 - **ห้ามรัน migration กับ DEV DB ในแผนนี้** ยกเว้นขั้นที่ระบุชัด และให้เจ้าของเป็นผู้สั่ง — `deploy-gcp.yml` ของ backend มี job `migrate` อัตโนมัติ การ merge เข้า main จะลาก migration ไปด้วย
+- **ไฟล์ใน `packages/prisma-shared-schema-platform/prisma/` ไม่ถูก `bun run check-types` ตรวจเลย** — `tsconfig.json` ของ package ระบุ `"include": ["src/**/*"]` · สคริปต์ที่วางในโฟลเดอร์ `prisma/` (Task 6, Task 12) ต้อง typecheck แยกด้วย scratch tsconfig แล้ว `bunx tsc --noEmit -p <scratch>` · ห้ามถือว่า check-types เขียว = สคริปต์เหล่านี้ผ่าน
+- **`dist/` ของ workspace package ค้างเก่าได้ และทำให้ tsc ฟ้อง type ที่มีอยู่จริงว่าไม่มี** — เกิดแล้ว 2 ครั้งในแผนนี้ (`prisma-shared-schema-platform` ตอน Task 1, `rpc-contract` ตอน Task 2) · เจอ error แปลก ๆ ว่า symbol ที่เพิ่งสร้างไม่มีอยู่ ให้ rebuild package นั้นก่อนแก้โค้ด (`bun run build` / `bun run build:package` ในโฟลเดอร์ package) · `dist/` ถูก gitignore จึงไม่มี diff ให้เห็น
 
 ---
 
@@ -787,9 +793,11 @@ const [noExpiry, setNoExpiry] = useState(false);
 // ...ในฟอร์ม แทนที่ช่อง end_date เดิม:
 <div className="space-y-2">
   <label className="flex items-center gap-2 text-sm">
-    <Checkbox
+    <input
+      type="checkbox"
+      className="h-4 w-4 rounded border-input"
       checked={noExpiry}
-      onCheckedChange={(v) => setNoExpiry(v === true)}
+      onChange={(e) => setNoExpiry(e.target.checked)}
       aria-label="No expiry"
     />
     No expiry
@@ -1013,9 +1021,15 @@ git commit -m "chore(license): สคริปต์ backfill ใบซื้อ
 **Files:**
 - Modify: `apps/micro-cluster/src/cluster/business-unit/business-unit.service.ts:93-107` (ด่านโควตา)
 - Modify: `apps/micro-cluster/src/cluster/cluster/cluster.service.ts` (findAll ~409, findOne ~537, summary ~1260/1317)
-- Modify: `apps/micro-cluster/src/cluster/cluster/interface/cluster.interface.ts:11,26` (เพิ่ม `bu_cap`, `bu_used`)
-- Modify: `apps/micro-cluster/src/cluster/cluster/dto/cluster.serializer.ts:38,56`
-- Modify: `apps/backend-gateway/src/common/dto/cluster/cluster.serializer.ts:53,78` และ `cluster.dto.ts:32,91`
+- Modify: `apps/micro-cluster/src/cluster/cluster/dto/cluster.serializer.ts` — **response schema เท่านั้น**
+- Modify: `apps/backend-gateway/src/common/dto/cluster/cluster.serializer.ts` — **response schema เท่านั้น**
+- Modify: `apps/backend-gateway/src/platform/platform_clusters/swagger/response.ts` (`ClusterResponseDto`)
+
+> ⚠️ **ห้ามเพิ่มฟิลด์ทั้งสามลงใน request-payload types** (`IClusterCreate`/`IClusterUpdate` ใน
+> `cluster.interface.ts`, `ClusterCreateSchema`/`ClusterUpdateSchema` ใน `cluster.dto.ts`) —
+> types เหล่านั้นถูก spread เข้า `tb_cluster.create()`/`.update()` ตรง ๆ ฟิลด์ที่ไม่ใช่คอลัมน์จริง
+> จะทำให้ Prisma พังตอนรัน (มีคอมเมนต์เตือนเรื่องนี้อยู่ในโค้ดแล้ว) · `bu_cap`/`bu_used`/`bu_cap_end_date`
+> เป็นค่าอ่านอย่างเดียวที่คำนวณจาก view ไม่ใช่สิ่งที่ผู้เรียกส่งเข้ามา
 - Modify: `apps/micro-cluster/src/cluster/business-unit/business-unit.service.spec.ts:111,122` (แก้ mock ที่จะแดง)
 
 **Interfaces:**
@@ -1122,7 +1136,13 @@ git commit -m "feat(license): ด่านสร้าง BU และ cluster r
 **Repo:** `carmen-turborepo-backend-v2`
 
 **Files:**
-- Modify: `apps/backend-gateway/src/platform/platform_clusters/swagger/request.ts:18` (DTO สร้าง cluster)
+- Modify: `apps/backend-gateway/src/common/dto/cluster/cluster.dto.ts` (`ClusterCreateSchema`) — **DTO ที่บังคับใช้จริง**
+- Modify: `apps/backend-gateway/src/platform/platform_clusters/swagger/request.ts` (`ClusterCreateRequestDto`) — เอกสารเท่านั้น
+
+> ⚠️ **`ClusterCreateRequestDto` ใน `swagger/request.ts` เป็น dead code — ไม่มีใคร import เลย**
+> controller ใช้ `ClusterCreateDto` จาก `@/common` ซึ่งคือ zod `ClusterCreateSchema` ผูกผ่าน global
+> `ZodValidationPipe` · แก้แค่ไฟล์ swagger จะทำให้ `initial_license` ถูก strip ทิ้งทุก request
+> แล้ว `POST /api-system/clusters` จะ 422 ตลอดกาล · **ต้องแก้ทั้งสองไฟล์**
 - Modify: `apps/micro-cluster/src/cluster/cluster/cluster.service.ts` (เมธอด create)
 - Modify: `apps/micro-cluster/src/cluster/cluster/interface/cluster.interface.ts:11`
 
@@ -1244,9 +1264,11 @@ git commit -m "feat(license): ออกใบโควตา BU ใบแรก�
 <div className="space-y-2">
   <Label htmlFor="license_end_date">Quota expires</Label>
   <label className="flex items-center gap-2 text-sm">
-    <Checkbox
+    <input
+      type="checkbox"
+      className="h-4 w-4 rounded border-input"
       checked={formData.license_no_expiry}
-      onCheckedChange={(v) => onNoExpiryChange(v === true)}
+      onChange={(e) => onNoExpiryChange(e.target.checked)}
       aria-label="No expiry"
     />
     No expiry
@@ -1328,6 +1350,25 @@ cell: ({ row }) => {
 
 เพิ่ม `bu_cap_end_date?: string | null` ใน `interface Cluster` (`src/types/index.ts`) ด้วย —
 ฟิลด์นี้ไม่ได้อยู่ใน Task 4 เพราะตอนนั้น backend ยังไม่คืนค่ามา
+
+- [ ] **Step 4b: เติมแถบการใช้งานในการ์ด BU Quota**
+
+Task 5 สร้างการ์ดไว้ตอนที่ยังไม่มี `bu_used` จาก API จึงยังไม่มีบรรทัดบอกว่าใช้ไปเท่าไร ตอนนี้มีแล้ว —
+เพิ่มใต้ `<CardDescription>` ของ `LicensesSection.tsx` (รับ `buUsed` เป็น prop จาก `ClusterEdit.tsx`
+ซึ่งอ่านจาก `clusterMeta.bu_used`):
+
+```tsx
+{winning && (
+  <p className="text-xs text-muted-foreground">
+    Business units in use: {buUsed} / {winning.licensed_bus}
+    {buUsed > winning.licensed_bus && (
+      <span className="ml-2 text-destructive">
+        {buUsed - winning.licensed_bus} over limit — those units are read-only
+      </span>
+    )}
+  </p>
+)}
+```
 
 - [ ] **Step 5: capacity.ts**
 
@@ -1569,8 +1610,14 @@ const ranked = useMemo(() => {
   const sorted = [...businessUnits].sort((a, b) => {
     const hq = Number(b.is_hq ?? false) - Number(a.is_hq ?? false);
     if (hq !== 0) return hq;
-    const t = Date.parse(a.created_at ?? '') - Date.parse(b.created_at ?? '');
-    if (t !== 0) return t;
+    // NaN (created_at หาย) ต้องไม่ทำให้ comparator คืน NaN — sort จะได้ลำดับที่ไม่แน่นอน
+    // และป้าย Over limit จะสลับแถวไปมาระหว่างการเรนเดอร์ · null ไปท้ายสุดให้ตรงกับ
+    // ORDER BY created_at ASC ของ Postgres (NULLS LAST)
+    const ta = Date.parse(a.created_at ?? '');
+    const tb = Date.parse(b.created_at ?? '');
+    const bothValid = !Number.isNaN(ta) && !Number.isNaN(tb);
+    if (bothValid && ta !== tb) return ta - tb;
+    if (!bothValid && Number.isNaN(ta) !== Number.isNaN(tb)) return Number.isNaN(ta) ? 1 : -1;
     return a.id < b.id ? -1 : 1;
   });
   return new Map(sorted.map((bu, i) => [bu.id, i + 1]));
@@ -1640,7 +1687,9 @@ async function main() {
     FROM tb_cluster c
     WHERE c.deleted_at IS NULL
   `;
-  const bad = rows.filter((r) => r.cap === null || r.cap < Number(r.bu_count));
+  // cap = 0 ต้องนับเป็นไม่ผ่านด้วย: COALESCE ใน v_cluster_bu_cap ทำให้ "ไม่มีใบคุ้มครอง" โผล่มาเป็น 0
+  // ไม่ใช่ NULL · cluster แบบนั้นสร้าง BU แรกไม่ได้เลย แม้ตอนนี้จะยังไม่มี BU ก็ตาม
+  const bad = rows.filter((r) => r.cap === null || r.cap === 0 || r.cap < Number(r.bu_count));
   if (bad.length > 0) {
     console.error('PRE-FLIGHT ไม่ผ่าน — ห้ามเปิดใช้', bad);
     process.exit(1);
