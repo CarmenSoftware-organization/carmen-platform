@@ -235,7 +235,7 @@ const SubscriptionForm: React.FC = () => {
       if (created?.id) {
         navigate(`/licenses/subscriptions/${created.id}/edit`, { replace: true });
       } else {
-        navigate('/licenses/subscriptions');
+        navigate('/licenses');
       }
     } catch (err: unknown) {
       // 400 จาก backend เป็นได้สองอย่าง: BU ไม่อยู่ใน cluster ที่เลือก หรือช่วงวันไม่ถูกต้อง —
@@ -342,7 +342,7 @@ const SubscriptionForm: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/licenses/subscriptions" title="Subscription" />
+          <PageHeader backTo="/licenses" title="Subscription" />
           <Card>
             <CardContent className="p-0">
               <EmptyState
@@ -350,7 +350,7 @@ const SubscriptionForm: React.FC = () => {
                 title="Subscription not found"
                 description="This subscription doesn't exist, or it may have been deleted. Check the link, or pick one from the subscription list."
                 action={
-                  <Button size="sm" onClick={() => navigate('/licenses/subscriptions')}>
+                  <Button size="sm" onClick={() => navigate('/licenses')}>
                     Back to subscriptions
                   </Button>
                 }
@@ -373,7 +373,7 @@ const SubscriptionForm: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {isNew ? (
           <>
-            <PageHeader backTo="/licenses/subscriptions" title="Add Subscription" subtitle="Create a new subscription for a cluster" />
+            <PageHeader backTo="/licenses" title="Add Subscription" subtitle="Create a new subscription for a cluster" />
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
@@ -399,7 +399,7 @@ const SubscriptionForm: React.FC = () => {
                     {saving ? 'Creating...' : 'Create Subscription'}
                   </Button>
                 </Can>
-                <Button type="button" size="sm" variant="outline" onClick={() => navigate('/licenses/subscriptions')}>
+                <Button type="button" size="sm" variant="outline" onClick={() => navigate('/licenses')}>
                   <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
@@ -409,7 +409,7 @@ const SubscriptionForm: React.FC = () => {
         ) : (
           <>
             <PageHeader
-              backTo="/licenses/subscriptions"
+              backTo="/licenses"
               title={formData.subscription_number || '(unnamed subscription)'}
               subtitle={detail ? `Cluster: ${detail.cluster_name} (${detail.cluster_code})` : undefined}
             />
