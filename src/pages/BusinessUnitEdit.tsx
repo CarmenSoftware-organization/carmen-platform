@@ -637,11 +637,8 @@ const BusinessUnitEdit: React.FC = () => {
               <BusinessUnitLicensesCard
                 licenses={licenses.licenses}
                 loading={licenses.loading}
-                saving={licenses.saving}
                 clusterSeat={clusterSeat}
-                onCreate={licenses.create}
-                onUpdate={licenses.update}
-                onRemove={licenses.remove}
+                manageHref={formData.cluster_id ? `/licenses/${formData.cluster_id}#seats` : '/licenses'}
               />
             ) : null
           }
