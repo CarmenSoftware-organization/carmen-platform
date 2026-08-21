@@ -379,28 +379,37 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   // (never mutates) is redundant chrome, not a genuine menu — so it's gone rather than kept
   // as a one-item DropdownMenu.
 
+  // Export + Add Subscription — same buttons regardless of embedded: spec §3.2 requires the
+  // subscription view to keep every capability of the standalone `/subscriptions` page when
+  // hosted inside License Center, and CSV export is mandatory on every Management page
+  // (root CLAUDE.md). Only the `<PageHeader>` chrome around them (title/subtitle/Layout) is
+  // embedding-specific — the actions themselves render in both modes.
+  const actions = (
+    <>
+      <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
+        <Download className="mr-2 h-4 w-4" />
+        Export
+      </Button>
+      <Can permission="subscription.manage">
+        <Button onClick={() => navigate('/licenses/subscriptions/new')}>
+          <Plus className="mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">Add Subscription</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
+      </Can>
+    </>
+  );
+
   const content = (
     <div className="space-y-6 sm:space-y-8">
-        {!embedded && (
-        <PageHeader
-          title="Subscriptions"
-          subtitle="Manage cluster license subscriptions, seat pools, and feature entitlements."
-          actions={
-            <>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-              <Can permission="subscription.manage">
-                <Button onClick={() => navigate('/licenses/subscriptions/new')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Subscription</span>
-                  <span className="sm:hidden">Add</span>
-                </Button>
-              </Can>
-            </>
-          }
-        />
+        {embedded ? (
+          <div className="flex justify-end gap-3">{actions}</div>
+        ) : (
+          <PageHeader
+            title="Subscriptions"
+            subtitle="Manage cluster license subscriptions, seat pools, and feature entitlements."
+            actions={actions}
+          />
         )}
 
         <SubscriptionSummary
