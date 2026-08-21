@@ -1043,6 +1043,24 @@ import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRa
 ตรวจว่า `Ticket` (lucide-react) และ `Link` (react-router-dom) ถูก import ในไฟล์แล้ว · ถ้า `ClusterEdit.test.tsx`
 ยืนยันการมีอยู่ของฟอร์มใบโควตา ให้แก้ assertion เป็นการ์ดสรุปแทน — ไม่ลบเคสทิ้ง
 
+**และลบสำเนา helper ชุดที่สามในไฟล์เดียวกัน:**
+
+> **Ruling ของ controller (จากรีวิว Task 1):** `ClusterEdit.tsx:38-48` มี `localIso` กับ `toIsoEndOfDay`
+> เป็นสำเนาชุดที่สาม (คอมเมนต์ในไฟล์บอกเองว่า "คัดลอกมาจาก BusinessUnitLicensesCard.tsx /
+> LicensesSection.tsx เหมือนกัน") ใช้กับ `initial_license` ตอน**สร้าง** cluster ซึ่งเป็นคนละฟีเจอร์กับ
+> การ์ดโควตา จึงไม่หายไปเองตอนเปลี่ยนการ์ด · แผนตอนเขียนไม่รู้ว่ามีจุดนี้
+>
+> ปล่อยไว้แล้วเกิดอะไร: docstring ของ `licenseDates.ts` อ้างว่าเป็น "ที่เดียวในระบบ" ซึ่งจะเป็นเท็จ และวันหนึ่ง
+> ที่มีคนแก้กติกาวันที่ จะแก้สองที่แล้วลืมที่สาม — เพี้ยนเงียบโดยไม่มีเทสต์จับ
+
+ลบทั้งบล็อก (คอมเมนต์ 6 บรรทัด + `localIso` + `toIsoEndOfDay`) แล้วเพิ่ม:
+
+```ts
+import { toIsoEndOfDay } from './licenses/licenseDates';
+```
+
+พฤติกรรมเหมือนเดิมเป๊ะ — ฟังก์ชันในของกลางคือโค้ดชุดเดียวกันทุกตัวอักษร
+
 - [ ] **Step 3: SeatSection**
 
 สร้าง `src/pages/licenses/sections/SeatSection.tsx` — การ์ดหนึ่งใบต่อหนึ่ง BU วนตาม `SeatRow`
@@ -1259,8 +1277,11 @@ interface BusinessUnitLicensesCardProps {
   loading: boolean;
   /** pool ระดับ cluster ไม่ใช่ของ BU นี้ */
   clusterSeat?: { used: number; cap: number };
-  /** ไม่มี cluster (BU ลอย) = ลิงก์ไปหน้ารวมแทน — ห้ามประกอบ URL ที่มี undefined */
-  clusterId?: string;
+  /**
+   * ปลายทางของปุ่ม "Manage licences" — **ผู้เรียกเป็นคนตัดสิน ห้ามการ์ดประกอบ URL เอง**
+   * การ์ดนี้ถูกใช้สอง shell และ cluster admin ไม่มี `subscription.read` จึงเข้า `/licenses/*` ไม่ได้
+   */
+  manageHref: string;
   now?: Date;
 }
 
@@ -1269,7 +1290,7 @@ interface BusinessUnitLicensesCardProps {
  * เพื่อไม่ให้มีสองที่ที่เขียนของเดียวกันแล้วเพี้ยนจากกัน
  */
 export default function BusinessUnitLicensesCard({
-  licenses, loading, clusterSeat, clusterId, now = new Date(),
+  licenses, loading, clusterSeat, manageHref, now = new Date(),
 }: BusinessUnitLicensesCardProps) {
   const activeSeats = sumActiveLicenses(licenses, now);
   const activeCount = licenses.filter((l) => licenseStatus(l, now) === 'active').length;
@@ -1298,7 +1319,7 @@ export default function BusinessUnitLicensesCard({
           ))}
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to={clusterId ? `/licenses/${clusterId}#seats` : '/licenses'}>Manage licences</Link>
+          <Link to={manageHref}>Manage licences</Link>
         </Button>
       </CardHeader>
       <CardContent className="text-xs text-muted-foreground">
@@ -1316,12 +1337,31 @@ export default function BusinessUnitLicensesCard({
                 licenses={licenses.licenses}
                 loading={licenses.loading}
                 clusterSeat={clusterSeat}
-                clusterId={formData.cluster_id || undefined}
+                manageHref={formData.cluster_id ? `/licenses/${formData.cluster_id}#seats` : '/licenses'}
               />
 ```
 
 ลบการส่ง `saving` / `onCreate` / `onUpdate` / `onRemove` · ถ้า `licenses.create/update/remove` ไม่มีผู้ใช้เหลือแล้ว
 ให้คง hook ไว้เฉพาะส่วนอ่าน (`licenses`, `loading`) — ESLint จะฟ้องตัวแปรที่ไม่ได้ใช้ถ้าเหลือค้าง
+
+- [ ] **Step 2b: ปรับผู้เรียกรายที่สอง — `src/pages/clusterAdmin/BusinessUnitForm.tsx:625-629`**
+
+> **Ruling ของ controller (จาก Task 2):** ไฟล์นี้ใช้การ์ดเดียวกันพร้อม `readOnly` อยู่จริง — แผนตอนเขียน
+> ไม่รู้ว่ามีผู้เรียกรายนี้ (ผม grep ผิดโฟลเดอร์) · **cluster admin ไม่มี `subscription.read`** จึงผ่าน
+> `PrivateRoute` ของ `/licenses/*` ไม่ได้ ปุ่มต้องพาไปเชลล์ของตัวเอง
+
+```tsx
+                <BusinessUnitLicensesCard
+                  licenses={licenses.licenses}
+                  loading={licenses.loading}
+                  clusterSeat={clusterSeat}
+                  manageHref={`/cluster-admin/${clusterId}/licenses`}
+                />
+```
+
+ลบ `readOnly` และ callback การเขียนทั้งหมดที่ไฟล์นี้เคยส่ง (การ์ดใหม่อ่านอย่างเดียวถาวรอยู่แล้ว) ·
+ตรวจชื่อตัวแปร cluster id ที่ไฟล์นั้นใช้จริงก่อน (`grep -n "clusterId" src/pages/clusterAdmin/BusinessUnitForm.tsx`) ·
+ถ้ามีคอมเมนต์อธิบาย `readOnly` อยู่เหนือจุดเรียก ให้เขียนใหม่ให้ตรงความจริงแทนที่จะลบทิ้งเฉย ๆ
 
 - [ ] **Step 3: ยืนยันว่า `ClusterEdit.tsx` ถูกปรับไปแล้วใน Task 6**
 

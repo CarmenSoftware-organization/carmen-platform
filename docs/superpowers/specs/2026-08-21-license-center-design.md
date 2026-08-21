@@ -76,7 +76,7 @@
 
 | การ์ด | FE คุมด้วย | วิธี | backend ต้องการ |
 |---|---|---|---|
-| ใบที่นั่ง (`BusinessUnitLicensesCard`) | `subscription.manage` | `<Can>` ข้างในคอมโพเนนต์ + prop `readOnly` (ประกาศไว้แต่**ยังไม่มีใครส่ง**) | `subscription.manage` ✅ ตรง |
+| ใบที่นั่ง (`BusinessUnitLicensesCard`) | `subscription.manage` | `<Can>` ข้างในคอมโพเนนต์ + prop `readOnly` ที่ **`clusterAdmin/BusinessUnitForm.tsx:625-629` ส่งอยู่จริง** | `subscription.manage` ✅ ตรง |
 | ใบโควตา BU (`LicensesSection`) | **`cluster.update`** (`ClusterEdit.tsx:55`) | prop `canManage` | **`subscription.manage`** ❌ ไม่ตรง |
 
 `apps/backend-gateway/src/platform/platform_cluster-licenses/platform_cluster-licenses.controller.ts:119,157`
@@ -250,7 +250,16 @@ src/pages/licenses/
 | `/licenses*` | `hasPermission('subscription.manage')` ที่ระดับหน้า · อ่านหน้าได้ด้วย `subscription.read` ผ่าน `PrivateRoute` ตามเดิม |
 | `/cluster-admin/:clusterId/licenses` | `false` คงที่ — อยู่หลัง `ClusterAdminRoute` แล้ว ไม่เช็คสิทธิ์ซ้ำ (ธรรมเนียมเดียวกับ `buildClusterAdminNav`) |
 
-`readOnly` ที่ `BusinessUnitLicensesCard` ประกาศไว้แต่ไม่มีใครส่ง **ถูกลบทิ้ง** — `canManage={false}` ครอบเคสนั้นแล้ว
+`readOnly` ของ `BusinessUnitLicensesCard` ถูกลบทิ้งได้ **ไม่ใช่เพราะไม่มีใครส่ง** (`clusterAdmin/BusinessUnitForm.tsx`
+ส่งอยู่จริง) แต่เพราะการ์ดนั้นกลายเป็นการ์ดสรุปอ่านอย่างเดียวถาวรตาม §4.4 — ไม่มีพื้นผิวสำหรับเขียนให้ต้องปิดอีกต่อไป
+
+**การ์ดสรุปต้องรับปลายทางลิงก์เป็น prop (`manageHref`) ห้ามประกอบ URL เอง** — มันถูกใช้สอง shell
+และ cluster admin **ไม่มี `subscription.read`** จึงผ่าน `PrivateRoute` ของ `/licenses/*` ไม่ได้:
+
+| หน้าที่ใช้การ์ด | ส่ง `manageHref` เป็น |
+|---|---|
+| `BusinessUnitEdit` (platform) | `/licenses/${cluster_id}#seats` · ไม่มี `cluster_id` → `/licenses` |
+| `clusterAdmin/BusinessUnitForm` | `/cluster-admin/${clusterId}/licenses` |
 
 `Can` ห้ามถูก mock ในเทสต์ (กฎเดิมของเรพ) — เทสต์สิทธิ์ขับผ่าน `vi.hoisted` auth object
 
