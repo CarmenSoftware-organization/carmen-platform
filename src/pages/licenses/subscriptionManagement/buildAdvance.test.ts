@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildAdvance, type SubscriptionFilters } from './buildAdvance';
-import type { SubscriptionState } from '../../types';
+import type { SubscriptionState } from '../../../types';
 
 const NOW = new Date('2026-08-18T00:00:00.000Z');
 const ISO = NOW.toISOString();

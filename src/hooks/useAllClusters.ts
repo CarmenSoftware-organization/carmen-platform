@@ -23,8 +23,8 @@ export interface UseAllClustersResult {
 }
 
 /**
- * รายชื่อ cluster ทั้งหมดสำหรับ dropdown — ใช้ร่วมกันสองหน้า (ตัวกรองของ `/subscriptions` และ
- * ตัวเลือกตอนสร้างสัญญาใน `/subscriptions/new`) จึงอยู่ใน `src/hooks/` ตาม
+ * รายชื่อ cluster ทั้งหมดสำหรับ dropdown — ใช้ร่วมกันสองหน้า (ตัวกรองของ `/licenses/subscriptions` และ
+ * ตัวเลือกตอนสร้างสัญญาใน `/licenses/subscriptions/new`) จึงอยู่ใน `src/hooks/` ตาม
  * `agent-os/standards/hooks/hook-placement.md`
  *
  * โหลดครั้งเดียวตอน mount และกันผลลัพธ์ค้างด้วย `cancelled` flag (one-shot load ไม่ใช่ refetch

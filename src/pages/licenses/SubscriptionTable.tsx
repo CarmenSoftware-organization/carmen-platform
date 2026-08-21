@@ -1,30 +1,30 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import subscriptionService from '../services/subscriptionService';
-import { getErrorDetail, devLog } from '../utils/errorParser';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { DataTable } from '../components/ui/data-table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import Layout from '../../components/Layout';
+import { PageHeader } from '../../components/PageHeader';
+import subscriptionService from '../../services/subscriptionService';
+import { getErrorDetail, devLog } from '../../utils/errorParser';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
+import { DataTable } from '../../components/ui/data-table';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../../components/ui/sheet';
 import { Plus, Filter, X, CreditCard, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { SearchInput } from '../components/SearchInput';
-import { ListEmptyState } from '../components/ListEmptyState';
-import { generateCSV, downloadCSV } from '../utils/csvExport';
-import { TableSkeleton } from '../components/TableSkeleton';
-import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import Can from '../components/Can';
+import { SearchInput } from '../../components/SearchInput';
+import { ListEmptyState } from '../../components/ListEmptyState';
+import { generateCSV, downloadCSV } from '../../utils/csvExport';
+import { TableSkeleton } from '../../components/TableSkeleton';
+import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
+import Can from '../../components/Can';
 import { SubscriptionSummary } from './subscriptionManagement/SubscriptionSummary';
 import { buildAdvance, type SubscriptionFilters } from './subscriptionManagement/buildAdvance';
-import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../utils/subscriptionState';
-import { seatUtilization } from '../utils/capacity';
-import { useAuth } from '../context/AuthContext';
-import { useAllClusters } from '../hooks/useAllClusters';
-import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../types';
+import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../../utils/subscriptionState';
+import { seatUtilization } from '../../utils/capacity';
+import { useAuth } from '../../context/AuthContext';
+import { useAllClusters } from '../../hooks/useAllClusters';
+import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
 // สถานะที่แสดงผล (`state`) ชุดเดียวกับที่ badge ในตารางและการ์ด summary ใช้ — ไม่ใช่ `status` ดิบ
@@ -70,7 +70,7 @@ const fmtDate = (v?: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-const SubscriptionManagement: React.FC = () => {
+const SubscriptionTable: React.FC = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Subscription[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -268,7 +268,7 @@ const SubscriptionManagement: React.FC = () => {
       header: 'Subscription',
       meta: { card: 'title' },
       cell: ({ row }) => (
-        <Link to={`/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
+        <Link to={`/licenses/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.subscription_number}
         </Link>
       ),
@@ -382,7 +382,7 @@ const SubscriptionManagement: React.FC = () => {
                 Export
               </Button>
               <Can permission="subscription.manage">
-                <Button onClick={() => navigate('/subscriptions/new')}>
+                <Button onClick={() => navigate('/licenses/subscriptions/new')}>
                   <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Add Subscription</span>
                   <span className="sm:hidden">Add</span>
@@ -551,7 +551,7 @@ const SubscriptionManagement: React.FC = () => {
                 emptyDescription="Get started by creating your first subscription for a cluster."
                 addAction={
                   <Can permission="subscription.manage">
-                    <Button size="sm" onClick={() => navigate('/subscriptions/new')}>
+                    <Button size="sm" onClick={() => navigate('/licenses/subscriptions/new')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Subscription
                     </Button>
@@ -594,4 +594,4 @@ const SubscriptionManagement: React.FC = () => {
   );
 };
 
-export default SubscriptionManagement;
+export default SubscriptionTable;

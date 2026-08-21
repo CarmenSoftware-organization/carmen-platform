@@ -1,5 +1,5 @@
-import type { SubscriptionState } from '../../types';
-import { EXPIRING_SOON_DAYS } from '../../utils/subscriptionState';
+import type { SubscriptionState } from '../../../types';
+import { EXPIRING_SOON_DAYS } from '../../../utils/subscriptionState';
 
 /**
  * เงื่อนไข Prisma ที่เทียบเท่ากับ `state` หนึ่งค่า

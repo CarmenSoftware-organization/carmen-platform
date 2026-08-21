@@ -1,4 +1,4 @@
-import type { LicenseFeature } from '../../types';
+import type { LicenseFeature } from '../../../types';
 
 /**
  * Pure state-transition logic for `FeatureSelectionCard` — kept out of the component so it can be

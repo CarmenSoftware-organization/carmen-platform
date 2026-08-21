@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
 import PrivateRoute from "./components/PrivateRoute";
@@ -20,8 +20,9 @@ const ApplicationManagement = lazy(() => import("./pages/ApplicationManagement")
 const ApplicationEdit = lazy(() => import("./pages/ApplicationEdit"));
 const BusinessUnitManagement = lazy(() => import("./pages/BusinessUnitManagement"));
 const BusinessUnitEdit = lazy(() => import("./pages/BusinessUnitEdit"));
-const SubscriptionManagement = lazy(() => import("./pages/SubscriptionManagement"));
-const SubscriptionEdit = lazy(() => import("./pages/SubscriptionEdit"));
+const LicenseCenter = lazy(() => import("./pages/licenses/LicenseCenter"));
+const ClusterLicenseDetail = lazy(() => import("./pages/licenses/ClusterLicenseDetail"));
+const SubscriptionForm = lazy(() => import("./pages/licenses/SubscriptionForm"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -160,29 +161,41 @@ function AppContent() {
               }
             />
             <Route
-              path="/subscriptions"
+              path="/licenses"
               element={
                 <PrivateRoute requiredPermission="subscription.read">
-                  <SubscriptionManagement />
+                  <LicenseCenter />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/subscriptions/new"
+              path="/licenses/:clusterId"
+              element={
+                <PrivateRoute requiredPermission="subscription.read">
+                  <ClusterLicenseDetail />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/subscriptions/new"
               element={
                 <PrivateRoute requiredPermission="subscription.manage">
-                  <SubscriptionEdit />
+                  <SubscriptionForm />
                 </PrivateRoute>
               }
             />
             <Route
-              path="/subscriptions/:id/edit"
+              path="/licenses/subscriptions/:id/edit"
               element={
                 <PrivateRoute requiredPermission="subscription.read">
-                  <SubscriptionEdit />
+                  <SubscriptionForm />
                 </PrivateRoute>
               }
             />
+            {/* ลิงก์และบุ๊กมาร์กเก่าต้องไม่ตาย — `/subscriptions/:id/edit` แปลงเป็นปลายทางใหม่ที่มี id เดิม */}
+            <Route path="/subscriptions" element={<Navigate to="/licenses" replace />} />
+            <Route path="/subscriptions/new" element={<Navigate to="/licenses/subscriptions/new" replace />} />
+            <Route path="/subscriptions/:id/edit" element={<SubscriptionEditRedirect />} />
             <Route
               path="/tenant-migrations"
               element={
@@ -473,5 +486,11 @@ function AppContent() {
     </AuthProvider>
   );
 }
+
+/** เก็บ id จาก path เก่าแล้วส่งต่อไป path ใหม่ — บุ๊กมาร์กหน้าแก้ใบสัญญาจึงยังใช้ได้ */
+const SubscriptionEditRedirect: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/licenses/subscriptions/${id}/edit`} replace />;
+};
 
 export default App;

@@ -1,9 +1,9 @@
 import React from 'react';
-import { Card, CardContent } from '../../components/ui/card';
-import { Skeleton } from '../../components/ui/skeleton';
-import { cn } from '../../lib/utils';
-import { FetchErrorState } from '../../components/FetchErrorState';
-import type { SubscriptionSummary as SummaryType } from '../../types';
+import { Card, CardContent } from '../../../components/ui/card';
+import { Skeleton } from '../../../components/ui/skeleton';
+import { cn } from '../../../lib/utils';
+import { FetchErrorState } from '../../../components/FetchErrorState';
+import type { SubscriptionSummary as SummaryType } from '../../../types';
 
 interface SubscriptionSummaryProps {
   summary: SummaryType | null;

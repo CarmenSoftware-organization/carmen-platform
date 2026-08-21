@@ -9,12 +9,12 @@ const auth = vi.hoisted(() => ({
   isSuperAdmin: false,
   hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
 }));
-vi.mock('../../context/AuthContext', () => ({
+vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
 import { SeatsCard } from './SeatsCard';
-import type { SubscriptionBu, SubscriptionSeat } from '../../types';
+import type { SubscriptionBu, SubscriptionSeat } from '../../../types';
 
 beforeEach(() => {
   auth.isSuperAdmin = false;

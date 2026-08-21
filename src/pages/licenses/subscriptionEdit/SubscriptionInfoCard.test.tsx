@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './SubscriptionInfoCard';
-import type { Cluster } from '../../types';
+import type { Cluster } from '../../../types';
 
 const formData: SubscriptionFormData = {
   cluster_id: 'c1',

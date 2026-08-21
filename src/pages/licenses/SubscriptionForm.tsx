@@ -1,30 +1,30 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import subscriptionService from '../services/subscriptionService';
-import businessUnitService from '../services/businessUnitService';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import Layout from '../../components/Layout';
+import { PageHeader } from '../../components/PageHeader';
+import subscriptionService from '../../services/subscriptionService';
+import businessUnitService from '../../services/businessUnitService';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import { Save, X, Loader2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
-import { EmptyState } from '../components/EmptyState';
-import { Skeleton } from '../components/ui/skeleton';
-import Can from '../components/Can';
-import { validateField } from '../utils/validation';
-import { getErrorDetail, devLog, isNotFoundError, parseApiError } from '../utils/errorParser';
-import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
-import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
-import { useAllClusters } from '../hooks/useAllClusters';
-import { fetchAllPages } from '../utils/fetchAllPages';
-import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useAuth } from '../context/AuthContext';
-import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
+import { EmptyState } from '../../components/EmptyState';
+import { Skeleton } from '../../components/ui/skeleton';
+import Can from '../../components/Can';
+import { validateField } from '../../utils/validation';
+import { getErrorDetail, devLog, isNotFoundError, parseApiError } from '../../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
+import { useAllClusters } from '../../hooks/useAllClusters';
+import { fetchAllPages } from '../../utils/fetchAllPages';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { useAuth } from '../../context/AuthContext';
+import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { SeatsCard } from './subscriptionEdit/SeatsCard';
 import { FeatureSelectionCard } from './subscriptionEdit/FeatureSelectionCard';
-import type { BusinessUnit, SubscriptionDetail } from '../types';
+import type { BusinessUnit, SubscriptionDetail } from '../../types';
 
 // ISO 8601 Z <-> the plain 'YYYY-MM-DD' an <input type="date"> wants.
 //
@@ -70,7 +70,7 @@ const emptyFormData: SubscriptionFormData = {
   status: 'active',
 };
 
-const SubscriptionEdit: React.FC = () => {
+const SubscriptionForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -233,9 +233,9 @@ const SubscriptionEdit: React.FC = () => {
       const created = (result?.data || result) as { id?: string } | undefined;
       toast.success('Subscription created successfully');
       if (created?.id) {
-        navigate(`/subscriptions/${created.id}/edit`, { replace: true });
+        navigate(`/licenses/subscriptions/${created.id}/edit`, { replace: true });
       } else {
-        navigate('/subscriptions');
+        navigate('/licenses/subscriptions');
       }
     } catch (err: unknown) {
       // 400 จาก backend เป็นได้สองอย่าง: BU ไม่อยู่ใน cluster ที่เลือก หรือช่วงวันไม่ถูกต้อง —
@@ -342,7 +342,7 @@ const SubscriptionEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/subscriptions" title="Subscription" />
+          <PageHeader backTo="/licenses/subscriptions" title="Subscription" />
           <Card>
             <CardContent className="p-0">
               <EmptyState
@@ -350,7 +350,7 @@ const SubscriptionEdit: React.FC = () => {
                 title="Subscription not found"
                 description="This subscription doesn't exist, or it may have been deleted. Check the link, or pick one from the subscription list."
                 action={
-                  <Button size="sm" onClick={() => navigate('/subscriptions')}>
+                  <Button size="sm" onClick={() => navigate('/licenses/subscriptions')}>
                     Back to subscriptions
                   </Button>
                 }
@@ -373,7 +373,7 @@ const SubscriptionEdit: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {isNew ? (
           <>
-            <PageHeader backTo="/subscriptions" title="Add Subscription" subtitle="Create a new subscription for a cluster" />
+            <PageHeader backTo="/licenses/subscriptions" title="Add Subscription" subtitle="Create a new subscription for a cluster" />
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
@@ -399,7 +399,7 @@ const SubscriptionEdit: React.FC = () => {
                     {saving ? 'Creating...' : 'Create Subscription'}
                   </Button>
                 </Can>
-                <Button type="button" size="sm" variant="outline" onClick={() => navigate('/subscriptions')}>
+                <Button type="button" size="sm" variant="outline" onClick={() => navigate('/licenses/subscriptions')}>
                   <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
@@ -409,7 +409,7 @@ const SubscriptionEdit: React.FC = () => {
         ) : (
           <>
             <PageHeader
-              backTo="/subscriptions"
+              backTo="/licenses/subscriptions"
               title={formData.subscription_number || '(unnamed subscription)'}
               subtitle={detail ? `Cluster: ${detail.cluster_name} (${detail.cluster_code})` : undefined}
             />
@@ -507,4 +507,4 @@ const SubscriptionEdit: React.FC = () => {
   );
 };
 
-export default SubscriptionEdit;
+export default SubscriptionForm;

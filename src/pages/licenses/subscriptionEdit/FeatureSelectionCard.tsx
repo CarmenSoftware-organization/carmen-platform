@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Badge } from '../../components/ui/badge';
-import { EmptyState } from '../../components/EmptyState';
-import { HIT_SLOP_44 } from '../../lib/hitSlop';
-import { cn } from '../../lib/utils';
-import subscriptionService from '../../services/subscriptionService';
-import { devLog } from '../../utils/errorParser';
-import type { LicenseFeature } from '../../types';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Badge } from '../../../components/ui/badge';
+import { EmptyState } from '../../../components/EmptyState';
+import { HIT_SLOP_44 } from '../../../lib/hitSlop';
+import { cn } from '../../../lib/utils';
+import subscriptionService from '../../../services/subscriptionService';
+import { devLog } from '../../../utils/errorParser';
+import type { LicenseFeature } from '../../../types';
 import {
   filterGroups,
   groupCatalog,
