@@ -85,7 +85,7 @@ describe('SubscriptionCard — query shape', () => {
 });
 
 describe('SubscriptionCard — has data', () => {
-  it('shows the subscription number, backend state badge, expiry, and feature/BU/seat counts', async () => {
+  it('shows the subscription number, its BU, backend state badge, expiry, and feature/seat counts', async () => {
     asMock(subscriptionService.getAll).mockResolvedValue(listResponse([sub()]));
     renderCard();
 
@@ -93,7 +93,8 @@ describe('SubscriptionCard — has data', () => {
     expect(screen.getByText('active')).toBeInTheDocument();
     expect(screen.getByText(/Expires 2026-12-31/)).toBeInTheDocument();
     expect(screen.getByText(/3 features/)).toBeInTheDocument();
-    expect(screen.getByText(/2 BUs/)).toBeInTheDocument();
+    // ป้าย BU แทนตัวนับ — หนึ่งใบผูก BU เดียว ตัวนับจึงเป็น 1 ตลอดกาลและไม่บอกอะไร
+    expect(screen.getByText('BU1')).toBeInTheDocument();
     expect(screen.getByText(/8\/20 seats/)).toBeInTheDocument();
   });
 

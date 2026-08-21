@@ -68,8 +68,8 @@ describe('SubscriptionInfoCard — editing mode', () => {
     const user = userEvent.setup();
     render(<SubscriptionInfoCard {...base({ editing: true, onChange, onBlur })} />);
 
-    const numberInput = screen.getByDisplayValue('SUB-0001');
-    await user.click(numberInput);
+    const startInput = screen.getByLabelText(/start date/i);
+    await user.click(startInput);
     await user.tab();
     expect(onBlur).toHaveBeenCalled();
 
@@ -78,13 +78,20 @@ describe('SubscriptionInfoCard — editing mode', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
+  // เลขสัญญาไม่มีโหมดแก้ในทุกกรณี — ระบบออกให้ตอนสร้าง ผู้ใช้กรอกเองหรือแก้ทีหลังไม่ได้
+  it('never renders an editable subscription number, even with edit permission', () => {
+    render(<SubscriptionInfoCard {...base({ editing: true })} />);
+    expect(screen.queryByDisplayValue('SUB-2608-0001')).toBeNull();
+    expect(screen.getByText('SUB-2608-0001')).toBeInTheDocument();
+  });
+
   it('shows a field error message under the offending field', () => {
     render(
       <SubscriptionInfoCard
-        {...base({ editing: true, fieldErrors: { subscription_number: 'Subscription number is required' } })}
+        {...base({ editing: true, fieldErrors: { end_date: 'End date must be after start date' } })}
       />,
     );
-    expect(screen.getByText('Subscription number is required')).toBeInTheDocument();
+    expect(screen.getByText('End date must be after start date')).toBeInTheDocument();
   });
 });
 

@@ -216,9 +216,14 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
     asMock(businessUnitService.getAll).mockResolvedValue(buList);
   });
 
-  /** Expands the one module in `catalog` and ticks its child. */
+  /**
+   * Expands the one module in `catalog` and ticks its child.
+   *
+   * `expanded: false` แยกปุ่มกางโมดูลออกจากปุ่ม "ทั้งหมด/ไม่เอา" ที่อยู่แถวเดียวกัน — ทั้งคู่มีคำว่า
+   * Procurement อยู่ในชื่อ (ปุ่มหลังผ่าน aria-label) การจับด้วยชื่ออย่างเดียวจึงกำกวม
+   */
   async function tickPurchaseRequest(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(await screen.findByRole('button', { name: /Procurement/ }));
+    await user.click(await screen.findByRole('button', { name: /Procurement/, expanded: false }));
     await user.click(await screen.findByRole('button', { name: 'Purchase Request' }));
   }
 
@@ -227,7 +232,7 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    await screen.findByText('SUB-0001');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
     await tickPurchaseRequest(user);
 
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
@@ -250,7 +255,7 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    await screen.findByText('SUB-0001');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     await tickPurchaseRequest(user);
 
@@ -350,7 +355,7 @@ describe('SubscriptionEdit — cluster BU roster pagination (bounded, never perp
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
 
     renderAt('/subscriptions/sub1/edit');
-    await screen.findByText('SUB-0001');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
 
     await waitFor(() => expect(businessUnitService.getAll).toHaveBeenCalledTimes(2));
     expect(businessUnitService.getAll).toHaveBeenNthCalledWith(1, {
@@ -415,7 +420,7 @@ describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
 
     renderAt('/subscriptions/sub1/edit');
 
-    await screen.findByDisplayValue('SUB-0001');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
     expect(clusterService.getAll).not.toHaveBeenCalled();
   });
 });
