@@ -48,6 +48,31 @@ export function BusinessUnitsSection({
 
   const atLimit = maxLicenseBu != null && businessUnits.length >= maxLicenseBu;
 
+  // Rank must match `v_cluster_bu_quota` exactly (HQ first, then oldest created_at, then id) —
+  // a badge that disagrees with the real gate is worse than no badge, because the user will
+  // trust it. Ranked over the full `businessUnits` list (inactive units included, same as the
+  // view), never the filtered/sorted `rows` below, so a search or filter never changes which
+  // unit shows as over limit.
+  const ranked = useMemo(() => {
+    const sorted = [...businessUnits].sort((a, b) => {
+      const hq = Number(b.is_hq ?? false) - Number(a.is_hq ?? false);
+      if (hq !== 0) return hq;
+      const t = Date.parse(a.created_at ?? '') - Date.parse(b.created_at ?? '');
+      if (t !== 0) return t;
+      return a.id < b.id ? -1 : 1;
+    });
+    return new Map(sorted.map((bu, i) => [bu.id, i + 1]));
+  }, [businessUnits]);
+
+  // null cap = unknown/unenforced, same convention as `atLimit` above — never coerced to 0,
+  // which would falsely mark every row as over limit.
+  const overLimitCount = useMemo(() => {
+    if (maxLicenseBu == null) return 0;
+    let count = 0;
+    ranked.forEach((rank) => { if (rank > maxLicenseBu) count += 1; });
+    return count;
+  }, [ranked, maxLicenseBu]);
+
   return (
     <div>
       <TableToolbar
@@ -73,6 +98,11 @@ export function BusinessUnitsSection({
           </>
         }
       />
+      {overLimitCount > 0 && (
+        <p className="px-4 pb-3 text-xs text-destructive">
+          {overLimitCount} business units are beyond the licensed quota of {maxLicenseBu}. They are read-only until more quota is purchased.
+        </p>
+      )}
       {rows.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center text-sm">
           {businessUnits.length === 0 ? 'No business units found in this cluster.' : 'No business units match your filters.'}
@@ -99,7 +129,20 @@ export function BusinessUnitsSection({
               {rows.map((bu) => (
                 <tr key={bu.id} className="zebra-row border-b transition-colors last:border-0">
                   <td className="px-4 py-2"><Badge variant="outline" className="text-xs">{bu.code}</Badge></td>
-                  <td className="px-4 py-2">{bu.name}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{bu.name}</span>
+                      {maxLicenseBu != null && (ranked.get(bu.id) ?? 0) > maxLicenseBu && (
+                        <Badge
+                          variant="destructive"
+                          className="text-xs"
+                          title={`Quota ${maxLicenseBu} · this unit ranks ${ranked.get(bu.id)}`}
+                        >
+                          Over limit
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2">
                     {/* No per-BU cap any more (Task 3.5) — the license limit belongs to the
                         cluster as a whole, not to any one BU, so this is a plain uncapped
