@@ -1,4 +1,4 @@
-import { Building2, Network, Users } from 'lucide-react';
+import { Building2, KeyRound, Network, Users } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 
 /**
@@ -11,6 +11,7 @@ export function buildClusterAdminNav(clusterId: string): NavItem[] {
   return [
     { path: `${base}/cluster`, label: 'Cluster', icon: Network },
     { path: `${base}/business-units`, label: 'Business Units', icon: Building2 },
+    { path: `${base}/licenses`, label: 'Licenses', icon: KeyRound },
     { path: `${base}/users`, label: 'Users', icon: Users },
   ];
 }

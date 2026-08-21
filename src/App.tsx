@@ -473,6 +473,10 @@ function AppContent() {
               element={<ClusterAdminRoute><ClusterAdminUsers /></ClusterAdminRoute>}
             />
             <Route
+              path="/cluster-admin/:clusterId/licenses"
+              element={<ClusterAdminRoute><ClusterLicenseDetail readOnlyShell /></ClusterAdminRoute>}
+            />
+            <Route
               path="/cluster-admin/:clusterId/profile"
               element={<ClusterAdminRoute><Profile /></ClusterAdminRoute>}
             />

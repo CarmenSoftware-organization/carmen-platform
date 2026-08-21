@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import Layout from '../../components/Layout';
+import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import { PageHeader } from '../../components/PageHeader';
 import clusterService from '../../services/clusterService';
 import businessUnitService from '../../services/businessUnitService';
@@ -19,20 +20,36 @@ const SECTIONS: NavItem[] = [
   { id: 'subscriptions', label: 'Subscriptions' },
 ];
 
+interface ClusterLicenseDetailProps {
+  /**
+   * เปิดในเชลล์ cluster-admin — หน้านั้นไม่ใช่พื้นผิวสำหรับเขียนไม่ว่าใครเปิด และสิทธิ์ของ
+   * cluster admin ไม่ได้อยู่ใน EffectivePermissions เลย จึงตัดสินจากเชลล์ ไม่ใช่จากสิทธิ์
+   */
+  readOnlyShell?: boolean;
+}
+
 /**
- * `/licenses/:clusterId` — สาม "ชั้น" ของ license ของ cluster หนึ่งไว้ในหน้าเดียว: โควตา BU
+ * `/licenses/:clusterId` (platform admin) และ `/cluster-admin/:clusterId/licenses` (cluster
+ * admin, อ่านอย่างเดียว) — สาม "ชั้น" ของ license ของ cluster หนึ่งไว้ในหน้าเดียว: โควตา BU
  * (ใบที่ชนะใบเดียว) · ที่นั่ง (ผลรวมใบที่ active ต่อ BU) · สัญญา ใช้ scrollspy + nav แบบเดียวกับ
  * `ClusterEdit` (`useScrollSpy` + `ClusterEditNav` ที่ `../clusterEdit/`)
  *
  * `canManage` คำนวณจาก `subscription.manage` — **ไม่ใช่** `cluster.update` — เพราะ backend บังคับ
  * `subscription.manage` บนทั้งสอง endpoint license (`platform_cluster-licenses.controller.ts:119,157`)
  * ค่านี้ถูกส่งลงทั้งสาม section เป็น prop เดียว ไม่มี `<Can>` ซ้อนอยู่ในคอมโพเนนต์ร่วมเหล่านั้นเลย
+ *
+ * ในเชลล์ cluster-admin (`readOnlyShell`) `canManage` ถูกล็อกเป็น `false` เสมอ — ไม่ใช่
+ * `hasPermission(...)` — เพราะ cluster admin ไม่มีสิทธิ์ใดใน `EffectivePermissions` เลย (มาจาก
+ * ตารางสมาชิกคลัสเตอร์ ไม่ใช่ `tb_user_tb_platform_role`) และแม้ platform admin ที่ถือ
+ * `subscription.manage` จะเปิดหน้านี้ผ่านเชลล์ cluster-admin ได้ หน้านั้นก็ไม่ใช่พื้นผิวสำหรับ
+ * เขียนไม่ว่าใครเปิดอยู่ดี
  */
-const ClusterLicenseDetail: React.FC = () => {
+const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShell }) => {
   const { clusterId } = useParams<{ clusterId: string }>();
   const location = useLocation();
   const { hasPermission } = useAuth();
-  const canManage = hasPermission('subscription.manage');
+  const canManage = readOnlyShell ? false : hasPermission('subscription.manage');
+  const Shell = readOnlyShell ? ClusterAdminLayout : Layout;
 
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
@@ -88,10 +105,10 @@ const ClusterLicenseDetail: React.FC = () => {
   }, [location.hash, scrollTo]);
 
   return (
-    <Layout>
+    <Shell>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          backTo="/licenses"
+          backTo={readOnlyShell ? undefined : '/licenses'}
           title={clusterLoading ? 'Loading…' : (cluster?.name || '(unknown cluster)')}
           subtitle={cluster?.code ? `Licenses · ${cluster.code}` : 'Licenses'}
         />
@@ -118,7 +135,7 @@ const ClusterLicenseDetail: React.FC = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </Shell>
   );
 };
 
