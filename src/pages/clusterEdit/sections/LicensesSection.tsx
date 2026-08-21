@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Plus, Loader2, Ticket } from 'lucide-react';
+import { Plus, Ticket } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
@@ -11,6 +10,7 @@ import clusterLicenseService from '../../../services/clusterLicenseService';
 import { useLicenseLedger } from '../../licenses/useLicenseLedger';
 import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon, PERPETUAL_END_DATE } from '../../../utils/clusterLicense';
 import { fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '../../licenses/licenseDates';
+import { LicenseDraftForm, emptyDraft, draftFromLicense, canSubmitDraft, type LicenseDraft } from '../../licenses/LicenseDraftForm';
 import type { ClusterLicense, ClusterLicenseStatus } from '../../../types';
 
 type ClusterLicenseCreate = Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version'>;
@@ -30,33 +30,6 @@ const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'seconda
   scheduled: { variant: 'secondary', label: 'Scheduled' },
   expired: { variant: 'destructive', label: 'Expired' },
 };
-
-interface LicenseDraft {
-  licensed_bus: string;
-  start_date: string; // yyyy-mm-dd — ค่าดิบของ <input type="date">
-  end_date: string;
-  reference_no: string;
-  note: string;
-}
-
-const emptyDraft = (now: Date): LicenseDraft => ({
-  licensed_bus: '',
-  start_date: fmtDate(now.toISOString()),
-  end_date: '',
-  reference_no: '',
-  note: '',
-});
-
-const draftFromLicense = (l: ClusterLicense): LicenseDraft => ({
-  licensed_bus: String(l.licensed_bus),
-  start_date: fmtDate(l.start_date),
-  end_date: isPerpetual(l.end_date) ? '' : fmtDate(l.end_date),
-  reference_no: l.reference_no || '',
-  note: l.note || '',
-});
-
-const canSubmitDraft = (d: LicenseDraft, noExpiry: boolean): boolean =>
-  d.licensed_bus !== '' && Number(d.licensed_bus) > 0 && !!d.start_date && (noExpiry || !!d.end_date);
 
 /**
  * การ์ดจัดการใบซื้อโควตา BU ของ cluster (tb_cluster_license) — โควตาที่มีผลคือ **ใบที่ชนะใบเดียว**
@@ -93,14 +66,17 @@ export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectio
   };
   const startEdit = (l: ClusterLicense) => {
     if (!canManage) return;
-    setDraft(draftFromLicense(l));
-    setNoExpiry(isPerpetual(l.end_date));
+    const perpetual = isPerpetual(l.end_date);
+    // ใบเดิมไม่มีวันหมดอายุ — ช่อง end_date ไม่ควรถูก prefill ด้วย 2099-12-31 เผื่อผู้ใช้ติ๊กออกจาก
+    // "No expiry" แล้วเจอวันในอดีตโผล่มาเฉยๆ ต้องให้กรอกวันใหม่เอง เหมือนพฤติกรรมเดิมก่อนยุบฟอร์ม
+    setDraft({ ...draftFromLicense({ ...l, amount: l.licensed_bus }), end_date: perpetual ? '' : fmtDate(l.end_date) });
+    setNoExpiry(perpetual);
     setEditingId(l.id);
   };
   const cancelEdit = () => setEditingId(null);
 
   const buildPayload = () => ({
-    licensed_bus: Number(draft.licensed_bus),
+    licensed_bus: Number(draft.amount),
     start_date: toIsoStartOfDay(draft.start_date),
     end_date: noExpiry ? PERPETUAL_END_DATE : toIsoEndOfDay(draft.end_date),
     reference_no: draft.reference_no || undefined,
@@ -187,72 +163,19 @@ export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectio
               <tbody>
                 {editingId === 'new' && (
                   <tr className="border-b">
-                    <td className="px-2 py-1">
-                      <Input
-                        type="number"
-                        min={1}
-                        value={draft.licensed_bus}
-                        onChange={(e) => setDraft((d) => ({ ...d, licensed_bus: e.target.value }))}
-                        aria-label="Quota"
-                        className="h-8 w-20"
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Input
-                        type="date"
-                        value={draft.start_date}
-                        onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value }))}
-                        aria-label="Start date"
-                        className="h-8"
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-xs whitespace-nowrap">
-                          <input
-                            type="checkbox"
-                            checked={noExpiry}
-                            onChange={(e) => setNoExpiry(e.target.checked)}
-                            aria-label="No expiry"
-                            className="h-4 w-4 rounded border-input"
-                          />
-                          No expiry
-                        </label>
-                        {!noExpiry && (
-                          <Input
-                            type="date"
-                            value={draft.end_date}
-                            onChange={(e) => setDraft((d) => ({ ...d, end_date: e.target.value }))}
-                            aria-label="End date"
-                            className="h-8"
-                          />
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-2 py-1 text-xs text-muted-foreground">New</td>
-                    <td className="px-2 py-1">
-                      <Input
-                        value={draft.reference_no}
-                        onChange={(e) => setDraft((d) => ({ ...d, reference_no: e.target.value }))}
-                        aria-label="Reference"
-                        className="h-8"
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Input
-                        value={draft.note}
-                        onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
-                        aria-label="Note"
-                        className="h-8"
-                      />
-                    </td>
-                    <td className="px-2 py-1 text-right whitespace-nowrap">
-                      <Button size="sm" onClick={submitCreate} disabled={saving || !canSubmitDraft(draft, noExpiry)}>
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {saving ? 'Saving...' : 'Add'}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
-                    </td>
+                    <LicenseDraftForm
+                      draft={draft}
+                      onChange={setDraft}
+                      amountLabel="Business units"
+                      showNoExpiry
+                      noExpiry={noExpiry}
+                      onNoExpiryChange={setNoExpiry}
+                      showNote
+                      saving={saving}
+                      submitLabel="Add"
+                      onSubmit={submitCreate}
+                      onCancel={cancelEdit}
+                    />
                   </tr>
                 )}
                 {visible.map((l) => {
@@ -262,76 +185,19 @@ export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectio
                   return (
                     <tr key={l.id} className="border-b last:border-0">
                       {editing ? (
-                        <>
-                          <td className="px-2 py-1">
-                            <Input
-                              type="number"
-                              min={1}
-                              value={draft.licensed_bus}
-                              onChange={(e) => setDraft((d) => ({ ...d, licensed_bus: e.target.value }))}
-                              aria-label="Quota"
-                              className="h-8 w-20"
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input
-                              type="date"
-                              value={draft.start_date}
-                              onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value }))}
-                              aria-label="Start date"
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <div className="space-y-2">
-                              <label className="flex items-center gap-2 text-xs whitespace-nowrap">
-                                <input
-                                  type="checkbox"
-                                  checked={noExpiry}
-                                  onChange={(e) => setNoExpiry(e.target.checked)}
-                                  aria-label="No expiry"
-                                  className="h-4 w-4 rounded border-input"
-                                />
-                                No expiry
-                              </label>
-                              {!noExpiry && (
-                                <Input
-                                  type="date"
-                                  value={draft.end_date}
-                                  onChange={(e) => setDraft((d) => ({ ...d, end_date: e.target.value }))}
-                                  aria-label="End date"
-                                  className="h-8"
-                                />
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-2 py-1">
-                            <Badge variant={badge.variant}>{badge.label}</Badge>
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input
-                              value={draft.reference_no}
-                              onChange={(e) => setDraft((d) => ({ ...d, reference_no: e.target.value }))}
-                              aria-label="Reference"
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input
-                              value={draft.note}
-                              onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
-                              aria-label="Note"
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-2 py-1 text-right whitespace-nowrap">
-                            <Button size="sm" onClick={() => submitUpdate(l)} disabled={saving || !canSubmitDraft(draft, noExpiry)}>
-                              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              {saving ? 'Saving...' : 'Save'}
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
-                          </td>
-                        </>
+                        <LicenseDraftForm
+                          draft={draft}
+                          onChange={setDraft}
+                          amountLabel="Business units"
+                          showNoExpiry
+                          noExpiry={noExpiry}
+                          onNoExpiryChange={setNoExpiry}
+                          showNote
+                          saving={saving}
+                          submitLabel="Save"
+                          onSubmit={() => submitUpdate(l)}
+                          onCancel={cancelEdit}
+                        />
                       ) : (
                         <>
                           <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_bus}</td>

@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { Plus, Loader2, Ticket } from 'lucide-react';
+import { Plus, Ticket } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { EmptyState } from '../../components/EmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import Can from '../../components/Can';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon, isMigratedPlaceholder } from '../../utils/buLicense';
 import { fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '../licenses/licenseDates';
+import { LicenseDraftForm, emptyDraft, draftFromLicense, canSubmitDraft, type LicenseDraft } from '../licenses/LicenseDraftForm';
 import type { BusinessUnitLicense, BuLicenseStatus } from '../../types';
 
 interface BusinessUnitLicensesCardProps {
@@ -33,30 +33,6 @@ const STATUS_BADGE: Record<BuLicenseStatus, { variant: 'success' | 'secondary' |
   scheduled: { variant: 'secondary', label: 'Scheduled' },
   expired: { variant: 'destructive', label: 'Expired' },
 };
-
-interface LicenseDraft {
-  licensed_users: string;
-  start_date: string; // yyyy-mm-dd — ค่าดิบของ <input type="date">
-  end_date: string;
-  reference_no: string;
-}
-
-const emptyDraft = (now: Date): LicenseDraft => ({
-  licensed_users: '',
-  start_date: fmtDate(now.toISOString()),
-  end_date: '',
-  reference_no: '',
-});
-
-const draftFromLicense = (l: BusinessUnitLicense): LicenseDraft => ({
-  licensed_users: String(l.licensed_users),
-  start_date: fmtDate(l.start_date),
-  end_date: fmtDate(l.end_date),
-  reference_no: l.reference_no || '',
-});
-
-const canSubmitDraft = (d: LicenseDraft): boolean =>
-  d.licensed_users !== '' && Number(d.licensed_users) > 0 && !!d.start_date && !!d.end_date;
 
 /**
  * ไม่มี prop `canEdit` โดยตั้งใจ — *สิทธิ์* คุมด้วย `<Can permission="subscription.manage">` ที่เดียว
@@ -95,7 +71,7 @@ export default function BusinessUnitLicensesCard({
   };
   const startEdit = (l: BusinessUnitLicense) => {
     if (readOnly) return;
-    setDraft(draftFromLicense(l));
+    setDraft(draftFromLicense({ ...l, amount: l.licensed_users }));
     setEditingId(l.id);
   };
   const cancelEdit = () => setEditingId(null);
@@ -103,7 +79,7 @@ export default function BusinessUnitLicensesCard({
   const submitCreate = async () => {
     if (!canSubmitDraft(draft)) return;
     await onCreate?.({
-      licensed_users: Number(draft.licensed_users),
+      licensed_users: Number(draft.amount),
       start_date: toIsoStartOfDay(draft.start_date),
       end_date: toIsoEndOfDay(draft.end_date),
       reference_no: draft.reference_no || null,
@@ -114,7 +90,7 @@ export default function BusinessUnitLicensesCard({
   const submitUpdate = async (l: BusinessUnitLicense) => {
     if (!canSubmitDraft(draft)) return;
     await onUpdate?.(l.id, {
-      licensed_users: Number(draft.licensed_users),
+      licensed_users: Number(draft.amount),
       start_date: toIsoStartOfDay(draft.start_date),
       end_date: toIsoEndOfDay(draft.end_date),
       reference_no: draft.reference_no || null,
@@ -199,50 +175,15 @@ export default function BusinessUnitLicensesCard({
               <tbody>
                 {editingId === 'new' && (
                   <tr className="border-b">
-                    <td className="px-2 py-1">
-                      <Input
-                        type="number"
-                        min={1}
-                        value={draft.licensed_users}
-                        onChange={(e) => setDraft((d) => ({ ...d, licensed_users: e.target.value }))}
-                        aria-label="Seats"
-                        className="h-8 w-20"
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Input
-                        type="date"
-                        value={draft.start_date}
-                        onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value }))}
-                        aria-label="Start date"
-                        className="h-8"
-                      />
-                    </td>
-                    <td className="px-2 py-1">
-                      <Input
-                        type="date"
-                        value={draft.end_date}
-                        onChange={(e) => setDraft((d) => ({ ...d, end_date: e.target.value }))}
-                        aria-label="End date"
-                        className="h-8"
-                      />
-                    </td>
-                    <td className="px-2 py-1 text-xs text-muted-foreground">New</td>
-                    <td className="px-2 py-1">
-                      <Input
-                        value={draft.reference_no}
-                        onChange={(e) => setDraft((d) => ({ ...d, reference_no: e.target.value }))}
-                        aria-label="Reference"
-                        className="h-8"
-                      />
-                    </td>
-                    <td className="px-2 py-1 text-right whitespace-nowrap">
-                      <Button size="sm" onClick={submitCreate} disabled={saving || !canSubmitDraft(draft)}>
-                        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {saving ? 'Saving...' : 'Add'}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
-                    </td>
+                    <LicenseDraftForm
+                      draft={draft}
+                      onChange={setDraft}
+                      amountLabel="Seats"
+                      saving={saving}
+                      submitLabel="Add"
+                      onSubmit={submitCreate}
+                      onCancel={cancelEdit}
+                    />
                   </tr>
                 )}
                 {visible.map((l) => {
@@ -252,54 +193,15 @@ export default function BusinessUnitLicensesCard({
                   return (
                     <tr key={l.id} className="border-b last:border-0">
                       {editing ? (
-                        <>
-                          <td className="px-2 py-1">
-                            <Input
-                              type="number"
-                              min={1}
-                              value={draft.licensed_users}
-                              onChange={(e) => setDraft((d) => ({ ...d, licensed_users: e.target.value }))}
-                              aria-label="Seats"
-                              className="h-8 w-20"
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input
-                              type="date"
-                              value={draft.start_date}
-                              onChange={(e) => setDraft((d) => ({ ...d, start_date: e.target.value }))}
-                              aria-label="Start date"
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input
-                              type="date"
-                              value={draft.end_date}
-                              onChange={(e) => setDraft((d) => ({ ...d, end_date: e.target.value }))}
-                              aria-label="End date"
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-2 py-1">
-                            <Badge variant={badge.variant}>{badge.label}</Badge>
-                          </td>
-                          <td className="px-2 py-1">
-                            <Input
-                              value={draft.reference_no}
-                              onChange={(e) => setDraft((d) => ({ ...d, reference_no: e.target.value }))}
-                              aria-label="Reference"
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="px-2 py-1 text-right whitespace-nowrap">
-                            <Button size="sm" onClick={() => submitUpdate(l)} disabled={saving || !canSubmitDraft(draft)}>
-                              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              {saving ? 'Saving...' : 'Save'}
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>Cancel</Button>
-                          </td>
-                        </>
+                        <LicenseDraftForm
+                          draft={draft}
+                          onChange={setDraft}
+                          amountLabel="Seats"
+                          saving={saving}
+                          submitLabel="Save"
+                          onSubmit={() => submitUpdate(l)}
+                          onCancel={cancelEdit}
+                        />
                       ) : (
                         <>
                           <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_users}</td>
