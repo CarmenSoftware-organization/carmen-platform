@@ -32,10 +32,9 @@ const fmtDate = (v?: string | null): string => {
  * A cluster administrator's own reach into their cluster's identity and branding — a narrowed
  * Edit page (see ClusterEdit.tsx for the canonical orchestration this mirrors). No business-unit
  * section, no users section, no delete: those live on their own cluster-admin pages/routes.
- * Licensing (`max_license_bu`) and `is_active` are platform decisions, so both render read-only
- * even in edit mode (`canEditPlatformFields={false}`) — the backend strips `max_license_bu`,
- * `max_license_users`, `is_active`, and `info` from a membership admin's cluster update
- * silently (no error, just a discarded write).
+ * Licensing and `is_active` are platform decisions, so `is_active` renders read-only even in edit
+ * mode (`canEditPlatformFields={false}`) — the backend strips `max_license_users`, `is_active`,
+ * and `info` from a membership admin's cluster update silently (no error, just a discarded write).
  *
  * BU-quota licensing IS shown here, read-only (`buQuota` state, its own card below) — a cluster
  * admin who gets a 403 creating a business unit needs to see the quota that blocked them
@@ -51,7 +50,6 @@ const ClusterProfile: React.FC = () => {
     code: '',
     name: '',
     alias_name: '',
-    max_license_bu: '',
     is_active: true,
   });
   const [savedFormData, setSavedFormData] = useState<ClusterFormData>(formData);
@@ -89,7 +87,6 @@ const ClusterProfile: React.FC = () => {
         code: cluster.code || '',
         name: cluster.name || '',
         alias_name: cluster.alias_name || '',
-        max_license_bu: cluster.max_license_bu != null ? String(cluster.max_license_bu) : '',
         is_active: cluster.is_active ?? true,
       };
       setFormData(loaded);
@@ -158,11 +155,6 @@ const ClusterProfile: React.FC = () => {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { ...formData };
-      if (formData.max_license_bu) {
-        payload.max_license_bu = Number(formData.max_license_bu);
-      } else {
-        delete payload.max_license_bu;
-      }
       await clusterService.update(clusterId!, {
         ...payload,
         ...(docVersion != null ? { doc_version: docVersion } : {}),

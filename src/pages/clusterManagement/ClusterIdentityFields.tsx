@@ -7,14 +7,6 @@ export interface ClusterFormData {
   code: string;
   name: string;
   alias_name: string;
-  /**
-   * Superseded by dated licence rows (`bu_cap`/`bu_used` on the cluster response) — a bare
-   * cap number can no longer express "unlimited" (there is no unlimited any more) or an
-   * expiry date. Kept optional, and no longer read or rendered by this component or
-   * `DetailsSection`, purely so `clusterAdmin/ClusterProfile.tsx` — which still sends it to
-   * the backend for compatibility — keeps compiling against this shared type.
-   */
-  max_license_bu?: string;
   is_active: boolean;
   /** Create-mode only: the quota issued as the cluster's first BU-quota licence. */
   licensed_bus?: string;

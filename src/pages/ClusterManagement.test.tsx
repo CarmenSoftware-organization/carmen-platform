@@ -54,8 +54,8 @@ import clusterService from '../services/clusterService';
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
 const clusters = [
-  { id: 'c1', code: 'ACME', name: 'Acme Hotels', is_active: true, bu_count: 14, max_license_bu: 20, users_count: 100, total_max_license_users: 200, created_at: '2025-02-01T00:00:00Z' },
-  { id: 'c2', code: 'BETA', name: 'Beta Foods', is_active: true, bu_count: 0, max_license_bu: 10, users_count: 5, total_max_license_users: 50, created_at: '2025-03-01T00:00:00Z' },
+  { id: 'c1', code: 'ACME', name: 'Acme Hotels', is_active: true, bu_count: 14, users_count: 100, total_max_license_users: 200, created_at: '2025-02-01T00:00:00Z' },
+  { id: 'c2', code: 'BETA', name: 'Beta Foods', is_active: true, bu_count: 0, users_count: 5, total_max_license_users: 50, created_at: '2025-03-01T00:00:00Z' },
 ];
 
 beforeEach(() => {

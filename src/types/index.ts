@@ -29,7 +29,6 @@ export interface Cluster {
   alias_name?: string;
   logo?: PresignedImage | null;   // resolved presigned logo (list + detail)
   avatar?: PresignedImage | null; // resolved presigned avatar (list + detail)
-  max_license_bu?: number;
   /** โควตา BU จากใบที่ชนะ — 0 เมื่อไม่มีใบที่คุ้มครองอยู่ (ไม่ใช่ "ไม่จำกัด") */
   bu_cap?: number;
   /** จำนวน BU ที่ยังไม่ถูกลบ — รวม BU ที่ปิดใช้งาน */
