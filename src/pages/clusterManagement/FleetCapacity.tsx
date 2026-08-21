@@ -37,7 +37,9 @@ export function FleetCapacity({ summary, loading }: { summary: FleetSummary | nu
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
-          <CapacityGauge icon={Building2} label="Business units" used={summary.bu.used} cap={summary.bu.cap} note={uncappedNote(summary.bu)} />
+          {/* BU quota is seat-ruled now (fleet total of `bu_cap`) — 0 is a real zero, not
+              "unlimited"; `uncappedNote` is a no-op here since `uncapped_count` stays 0 for bu. */}
+          <CapacityGauge icon={Building2} label="Business units" used={summary.bu.used} cap={summary.bu.cap} finite note={uncappedNote(summary.bu)} />
           <CapacityGauge icon={Users} label="Users" used={summary.users.used} cap={summary.users.cap} note={uncappedNote(summary.users)} />
           <div className="flex gap-6 border-border sm:flex-col sm:gap-1.5 sm:border-l sm:pl-6">
             <Stat value={summary.total} label="clusters" />

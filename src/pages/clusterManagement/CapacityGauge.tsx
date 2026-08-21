@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { utilization, type CapLevel } from '../../utils/capacity';
+import { utilization, seatUtilization, type CapLevel } from '../../utils/capacity';
 
 export const GAUGE_FILL: Record<CapLevel, string> = {
   ok: 'bg-success',
@@ -19,13 +19,21 @@ interface CapacityGaugeProps {
   icon: LucideIcon;
   label: string;
   used: number;
-  cap: number | null; // null = uncapped
+  cap: number | null; // null = uncapped (ignored when `finite`)
   note?: React.ReactNode;
+  /**
+   * true = cap เป็นจำนวนเต็มเสมอ 0 คือศูนย์จริง ไม่ใช่ "ไม่จำกัด" (มิติโควตา BU ซึ่งมาจากใบซื้อ)
+   * ค่าเริ่มต้น false รักษาพฤติกรรมเดิมไว้ให้มิติผู้ใช้ ที่ null ยังแปลว่าไม่จำกัดจริง ๆ
+   * true = the cap is always a finite integer and 0 means zero, never "unlimited" (the BU-quota
+   * dimension, which comes from purchased licences). Default false keeps the old behaviour for the
+   * user dimension, where null really does mean uncapped.
+   */
+  finite?: boolean;
 }
 
 /** A labelled capacity gauge: `used / cap licensed`, a bar, an optional note. */
-export function CapacityGauge({ icon: Icon, label, used, cap, note }: CapacityGaugeProps) {
-  const u = utilization(used, cap);
+export function CapacityGauge({ icon: Icon, label, used, cap, note, finite = false }: CapacityGaugeProps) {
+  const u = finite ? seatUtilization(used, cap ?? 0) : utilization(used, cap);
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -37,9 +45,9 @@ export function CapacityGauge({ icon: Icon, label, used, cap, note }: CapacityGa
           <span className="text-foreground font-semibold">{used.toLocaleString()}</span>
           <span className="text-muted-foreground">
             {' / '}
-            {cap == null ? '∞ (no cap)' : `${cap.toLocaleString()} licensed`}
+            {u.cap == null ? '∞ (no cap)' : `${u.cap.toLocaleString()} licensed`}
           </span>
-          {cap != null && <span className={cn('ml-2', GAUGE_TEXT[u.level])}>{u.pct}%</span>}
+          {u.cap != null && <span className={cn('ml-2', GAUGE_TEXT[u.level])}>{u.pct}%</span>}
         </span>
       </div>
       <div className="bg-muted h-2.5 overflow-hidden rounded-full">

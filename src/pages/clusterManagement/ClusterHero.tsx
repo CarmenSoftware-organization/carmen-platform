@@ -92,6 +92,9 @@ export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, m
           label="Business units"
           used={bu.used}
           cap={bu.cap}
+          // BU quota comes from the cluster's licence view — 0 is a real zero, never
+          // "unlimited" (unlike the Users gauge below, which keeps the nullable-uncapped rule).
+          finite
           note={
             <>
               {bu.active} active{bu.used - bu.active > 0 ? ` · ${bu.used - bu.active} inactive` : ''}

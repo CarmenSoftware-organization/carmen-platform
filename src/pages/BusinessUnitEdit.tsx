@@ -401,18 +401,21 @@ const BusinessUnitEdit: React.FC = () => {
     try {
       const payload = buildPayload(formData);
       if (isNew) {
-        // Check cluster license limit before creating
+        // Check cluster license limit before creating. `bu_cap`/`bu_used` (Task 7's licence
+        // view) are the source of truth now — `max_license_bu` is a stale, unmaintained
+        // column that can disagree with the real quota. The backend still enforces this
+        // authoritatively on create, so this is a friendlier pre-flight message only; a
+        // second fetch of the business-unit list is no longer needed since the cluster
+        // response already carries `bu_used` (backend aggregate, includes inactive BUs).
         if (formData.cluster_id) {
           const clusterData = await clusterService.getById(formData.cluster_id);
           const cluster = clusterData.data || clusterData;
-          if (cluster.max_license_bu != null) {
-            const buData = await businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { cluster_id: formData.cluster_id } }) });
-            const currentCount = (Array.isArray(buData.data) ? buData.data : []).length;
-            if (currentCount >= cluster.max_license_bu) {
-              setError(`Cannot create business unit: cluster has reached its license limit (${currentCount}/${cluster.max_license_bu})`);
-              setSaving(false);
-              return;
-            }
+          const buCap = cluster.bu_cap ?? 0;
+          const buUsed = cluster.bu_used ?? 0;
+          if (buUsed >= buCap) {
+            setError(`Cannot create business unit: cluster has reached its license limit (${buUsed}/${buCap})`);
+            setSaving(false);
+            return;
           }
         }
         const result = await businessUnitService.create(payload);

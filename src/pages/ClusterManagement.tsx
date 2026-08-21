@@ -336,7 +336,7 @@ const ClusterManagement: React.FC = () => {
       // โควตามาจากใบที่ชนะ (Task 7) — bu_cap เป็น 0 จริงเมื่อไม่มีใบ ไม่ใช่ "ไม่จำกัด" แทนที่
       // max_license_bu เดิม
       cell: ({ row }) => (
-        <CapacityMeter used={row.original.bu_used} cap={row.original.bu_cap} />
+        <CapacityMeter used={row.original.bu_used} cap={row.original.bu_cap} finite />
       ),
       enableSorting: false,
     },
