@@ -30,6 +30,7 @@ import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSectio
 import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
+import { LicensesSection } from './clusterEdit/sections/LicensesSection';
 import type { BusinessUnit } from '../types';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
@@ -468,6 +469,7 @@ const ClusterEdit: React.FC = () => {
     { id: 'details', label: 'Details' },
     { id: 'branding', label: 'Branding' },
     { id: 'business-units', label: 'Business Units', count: businessUnits.length },
+    { id: 'licenses', label: 'BU Quota' },
     // `SubscriptionCard` renders nothing at all without `subscription.read` — it must not even
     // fire the request (review C1), so an unconditional entry here is a menu item that scrolls
     // to an empty stretch of page for every user who lacks the permission.
@@ -604,6 +606,10 @@ const ClusterEdit: React.FC = () => {
                       />
                     </CardContent>
                   </Card>
+                </section>
+
+                <section id="licenses" className="scroll-mt-20">
+                  <LicensesSection clusterId={id!} canManage={canEdit} />
                 </section>
 
                 <section id="subscription" className="scroll-mt-20">
