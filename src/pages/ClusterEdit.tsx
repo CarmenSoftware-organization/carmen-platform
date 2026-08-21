@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Building2, Users, X, UserPlus, Search, Loader2, SearchX } from 'lucide-react';
+import { Save, Building2, Users, X, UserPlus, Search, Loader2, SearchX, Ticket } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { validateField } from '../utils/validation';
@@ -30,22 +30,11 @@ import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSectio
 import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
-import { LicensesSection } from './clusterEdit/sections/LicensesSection';
 import { PERPETUAL_END_DATE } from '../utils/clusterLicense';
+import { toIsoEndOfDay } from './licenses/licenseDates';
 import type { BusinessUnit } from '../types';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
-
-// วันที่จาก <input type="date"> (yyyy-mm-dd) แปลงเป็น ISO 8601 พร้อม Z สำหรับ end_date ของ
-// initial_license — คัดลอกมาจาก BusinessUnitLicensesCard.tsx / LicensesSection.tsx เหมือนกัน
-// (ดูคอมเมนต์ที่นั่นสำหรับเหตุผลที่ห้ามใช้ `new Date(v).toISOString()` ตรงๆ: yyyy-mm-dd ล้วนถูก
-// ตีความเป็นเที่ยงคืน UTC ทำให้ใบที่ควรหมดอายุสิ้นวันตามเวลาเครื่องผู้ใช้ หมดเร็วไปหลายชั่วโมง
-// สำหรับผู้ใช้ฝั่งตะวันออกของ UTC)
-const localIso = (dateStr: string, h: number, m: number, s: number, ms: number): string => {
-  const [y, mo, d] = dateStr.split('-').map(Number);
-  return new Date(y, mo - 1, d, h, m, s, ms).toISOString();
-};
-const toIsoEndOfDay = (dateStr: string): string => localIso(dateStr, 23, 59, 59, 999);
 
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -280,8 +269,9 @@ const ClusterEdit: React.FC = () => {
     setSaving(true);
     setError('');
     try {
-      // BU quota is no longer part of this payload at all — it's edited only through the
-      // BU Quota Licenses card (`LicensesSection`), which writes dated licence rows directly.
+      // BU quota is no longer part of this payload at all — it's edited only in the License
+      // Center (`BuQuotaSection` at `/licenses/:clusterId`), which writes dated licence rows
+      // directly. This page only shows a read-only summary card that links there.
       const payload: Record<string, unknown> = { ...formData };
       await clusterService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
       toast.success('Changes saved successfully');
@@ -634,7 +624,24 @@ const ClusterEdit: React.FC = () => {
                 </section>
 
                 <section id="licenses" className="scroll-mt-20">
-                  <LicensesSection clusterId={id!} canManage={canEdit} buUsed={clusterMeta.bu_used ?? 0} />
+                  <Card>
+                    <CardHeader className="flex flex-row items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2">
+                          <Ticket className="h-5 w-5" />
+                          BU Quota
+                        </CardTitle>
+                        <CardDescription>
+                          {(clusterMeta.bu_cap ?? 0) === 0
+                            ? 'No licence in force — this cluster cannot create business units'
+                            : `${clusterMeta.bu_used ?? 0} / ${clusterMeta.bu_cap} business units`}
+                        </CardDescription>
+                      </div>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
+                      </Button>
+                    </CardHeader>
+                  </Card>
                 </section>
 
                 <section id="subscription" className="scroll-mt-20">

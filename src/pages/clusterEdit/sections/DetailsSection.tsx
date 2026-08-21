@@ -11,8 +11,10 @@ export interface DetailsSectionProps {
    * error, just a discarded write). This component only renders one of those (`is_active`,
    * gated behind this flag rather than plain `canEdit`) so an admin never sees an editable
    * control that the server will quietly ignore. BU quota itself no longer lives here at all —
-   * it moved to the "BU Quota Licenses" card (`clusterEdit/sections/LicensesSection.tsx`),
-   * which reads/writes dated licence rows instead of the old bare `max_license_bu` integer
+   * this page only shows a read-only summary card linking to the License Center
+   * (`licenses/sections/BuQuotaSection.tsx` at `/licenses/:clusterId`, formerly
+   * `clusterEdit/sections/LicensesSection.tsx` before the License Center task), which
+   * reads/writes dated licence rows instead of the old bare `max_license_bu` integer
    * (that column and every reference to it were dropped in Task 13 of the
    * 2026-08-21-cluster-bu-license plan — this component never rendered it).
    * Defaults to canEdit so existing call sites are unchanged.
