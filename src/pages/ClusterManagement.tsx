@@ -68,13 +68,21 @@ const ClusterManagement: React.FC = () => {
   const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
 
-  const buildAdvance = (filters: string[], includeDeleted: boolean) => {
+  const buildAdvance = (filters: string[], includeDeleted: boolean, expiringSoon = false) => {
     const where: Record<string, unknown> = {};
     if (filters.length === 1) {
       where.is_active = filters[0] === 'true';
     }
     if (!includeDeleted) {
       where.deleted_at = null;
+    }
+    if (expiringSoon) {
+      // ไม่ใช่คอลัมน์จริง — backend ถอดคีย์นี้ออกแล้วแปลงเป็น id list ผ่าน view v_cluster_bu_cap
+      // (เงื่อนไข "ใบไหนชนะ + เหลือกี่วัน" อยู่ในฐานข้อมูล ไม่ใช่ที่นี่) frontend จึงไม่มีสำเนา
+      // ของกติกาให้เพี้ยนได้เลย
+      // Not a real column: the backend strips this marker and resolves it through the view, so
+      // the frontend holds no copy of the rule that could drift.
+      where.bu_quota_expiring_soon = true;
     }
     return Object.keys(where).length > 0 ? JSON.stringify({ where }) : '';
   };
@@ -84,9 +92,31 @@ const ClusterManagement: React.FC = () => {
     perpage: Number(localStorage.getItem("perpage_clusters")) || 10,
     search: storedSearch,
     sort: storedSort,
-    advance: buildAdvance(storedFilters, getStoredJSON<boolean>('filter_clusters_deleted', false)),
+    advance: buildAdvance(
+      storedFilters,
+      getStoredJSON<boolean>('filter_clusters_deleted', false),
+      getStoredJSON<boolean>('filter_clusters_quota_expiring', false),
+    ),
     filter: {},
   });
+
+  // ตัวกรอง "โควตาใกล้หมดอายุ" — persist เหมือนตัวกรองอื่นของหน้านี้ เพื่อให้ผู้ใช้ที่กดไว้แล้ว
+  // รีเฟรชหน้ายังเห็นชุดเดิม (pattern เดียวกับ filter_subscription_expiring_soon)
+  const [expiringSoonFilter, setExpiringSoonFilter] = useState<boolean>(
+    getStoredJSON<boolean>('filter_clusters_quota_expiring', false),
+  );
+
+  const handleExpiringSoonToggle = () => {
+    const next = !expiringSoonFilter;
+    setExpiringSoonFilter(next);
+    localStorage.setItem('filter_clusters_quota_expiring', JSON.stringify(next));
+    localStorage.setItem('page_clusters', '1');
+    setPaginate(prev => ({
+      ...prev,
+      page: 1,
+      advance: buildAdvance(statusFilter, showDeleted, next),
+    }));
+  };
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -204,7 +234,7 @@ const ClusterManagement: React.FC = () => {
     setStatusFilter(next);
     localStorage.setItem('filters_clusters', JSON.stringify(next));
     localStorage.setItem('page_clusters', '1');
-    const advance = buildAdvance(next, showDeleted);
+    const advance = buildAdvance(next, showDeleted, expiringSoonFilter);
     setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
   };
 
@@ -213,7 +243,7 @@ const ClusterManagement: React.FC = () => {
     setShowDeleted(next);
     localStorage.setItem('filter_clusters_deleted', JSON.stringify(next));
     localStorage.setItem('page_clusters', '1');
-    const advance = buildAdvance(statusFilter, next);
+    const advance = buildAdvance(statusFilter, next, expiringSoonFilter);
     setPaginate(prev => ({ ...prev, page: 1, advance, filter: {} }));
   };
 
@@ -221,19 +251,27 @@ const ClusterManagement: React.FC = () => {
     setStatusFilter([]);
     localStorage.setItem('filters_clusters', JSON.stringify([]));
     localStorage.setItem('page_clusters', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], showDeleted), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], showDeleted, expiringSoonFilter), filter: {} }));
   };
 
   const handleClearAllFilters = () => {
     setStatusFilter([]);
     setShowDeleted(false);
+    // ตัวกรอง "โควตาใกล้หมดอายุ" ถูกล้างด้วย แม้จะกดมาจากแถบสรุปไม่ใช่จาก Sheet ตัวกรอง —
+    // สิ่งที่ผู้ใช้เห็นบนจอต้องเท่ากับสิ่งที่ส่งไป backend เสมอ ปล่อยไว้จะกลายเป็นตัวกรองที่ยัง
+    // ทำงานอยู่โดยไม่มีอะไรบนหน้าจอบอกว่ามันเปิดอยู่
+    // Cleared here too even though it is toggled from the summary band, not the filter Sheet:
+    // what the user sees must equal what is sent, or this becomes an invisible active filter.
+    setExpiringSoonFilter(false);
     localStorage.setItem('filters_clusters', JSON.stringify([]));
     localStorage.setItem('filter_clusters_deleted', JSON.stringify(false));
+    localStorage.setItem('filter_clusters_quota_expiring', JSON.stringify(false));
     localStorage.setItem('page_clusters', '1');
-    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], false), filter: {} }));
+    setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance([], false, false), filter: {} }));
   };
 
-  const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
+  const activeFilterCount =
+    (statusFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0) + (expiringSoonFilter ? 1 : 0);
 
   const handleSortChange = (sort: string) => {
     localStorage.setItem('sort_clusters', sort);
@@ -476,7 +514,12 @@ const ClusterManagement: React.FC = () => {
           }
         />
 
-        <FleetCapacity summary={fleet} loading={fleetLoading} />
+        <FleetCapacity
+          summary={fleet}
+          loading={fleetLoading}
+          onExpiringSoonClick={handleExpiringSoonToggle}
+          expiringSoonActive={expiringSoonFilter}
+        />
 
         <Card>
           <CardHeader className="space-y-3">

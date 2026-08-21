@@ -93,6 +93,11 @@ export function summarizeFleet(clusters: ClusterLike[]): FleetSummary {
     // source that can ever fill it truthfully.
     deleted: 0,
     near_limit: 0,
+    // `expiring_soon` จงใจไม่คำนวณที่นี่ — fallback ตัวนี้เห็นเฉพาะ cluster ในหน้าปัจจุบัน
+    // (ตารางเป็น serverSide) การนับจากชุดนั้นจะได้ตัวเลขที่ต่ำกว่าความจริงเสมอโดยไม่มีอะไรบอก
+    // ปล่อยเป็น undefined แล้วให้ UI แสดง 0 และปิดการคลิก ดีกว่าตัวเลขที่ผิดแบบดูน่าเชื่อ
+    // Deliberately not computed: this fallback only sees the current page, so any count here
+    // would silently understate. Leaving it undefined shows 0 and disables the filter instead.
     bu: { used: 0, cap: 0, uncapped_count: 0, uncapped_used: 0 },
     users: { used: 0, cap: 0, uncapped_count: 0, uncapped_used: 0 },
   };

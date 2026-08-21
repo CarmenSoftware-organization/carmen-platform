@@ -546,6 +546,13 @@ export interface FleetSummary {
   inactive: number;
   deleted: number;
   near_limit: number;
+  /**
+   * cluster ที่ใบโควตา BU ที่ชนะจะหมดอายุใน 30 วัน — คนละเรื่องกับ `near_limit` (ใกล้เต็มโควตา)
+   * และคนละเรื่องกับ `bu_cap = 0` (ไม่มีใบแล้ว = หมดไปแล้ว ไม่ใช่ "ใกล้หมด") · ใบตลอดชีพไม่นับ
+   * นับเฉพาะมิติ BU ไม่รวมใบที่นั่ง · backend คำนวณให้ frontend ห้ามคำนวณเองจากแถวในหน้าปัจจุบัน
+   * เพราะตารางเป็น serverSide จึงเห็นแค่หน้าเดียว
+   */
+  expiring_soon?: number;
   bu: FleetCapacityTotals;
   users: FleetCapacityTotals;
 }

@@ -10,19 +10,58 @@ function uncappedNote(t: FleetCapacityTotals): string | undefined {
   return `+ ${t.uncapped_count} cluster${t.uncapped_count > 1 ? 's' : ''} with no cap (${t.uncapped_used.toLocaleString()} in use)`;
 }
 
-function Stat({ value, label, alert }: { value: number; label: string; alert?: boolean }) {
+function Stat({
+  value,
+  label,
+  alert,
+  onClick,
+  active,
+}: {
+  value: number;
+  label: string;
+  alert?: boolean;
+  onClick?: () => void;
+  active?: boolean;
+}) {
   const hot = alert && value > 0;
-  return (
-    <div className={cn('flex items-baseline gap-2 text-xs', hot ? 'text-warning' : 'text-muted-foreground')}>
+  const body = (
+    <>
       <span className={cn('font-mono text-base font-semibold tabular-nums', hot ? 'text-warning' : 'text-foreground')}>
         {value}
       </span>
       {label}
-    </div>
+    </>
+  );
+  const base = cn('flex items-baseline gap-2 text-xs', hot ? 'text-warning' : 'text-muted-foreground');
+
+  if (!onClick) return <div className={base}>{body}</div>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        base,
+        'rounded px-1.5 py-0.5 -mx-1.5 transition-colors hover:bg-muted focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
+        active && 'bg-warning/15',
+      )}
+    >
+      {body}
+    </button>
   );
 }
 
-export function FleetCapacity({ summary, loading }: { summary: FleetSummary | null; loading: boolean }) {
+export function FleetCapacity({
+  summary,
+  loading,
+  onExpiringSoonClick,
+  expiringSoonActive,
+}: {
+  summary: FleetSummary | null;
+  loading: boolean;
+  onExpiringSoonClick?: () => void;
+  expiringSoonActive?: boolean;
+}) {
   return (
     <Card className="p-4 sm:p-5">
       <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">
@@ -45,6 +84,15 @@ export function FleetCapacity({ summary, loading }: { summary: FleetSummary | nu
             <Stat value={summary.total} label="clusters" />
             <Stat value={summary.active} label="active" />
             <Stat value={summary.near_limit} label="near limit" alert />
+            {/* คลิกได้เมื่อมีค่ามากกว่า 0 เท่านั้น — ปุ่มที่กดแล้วกรองได้ 0 แถวคือทางตัน
+                Clickable only when non-zero: a filter that yields nothing is a dead end. */}
+            <Stat
+              value={summary.expiring_soon ?? 0}
+              label="quota expiring"
+              alert
+              onClick={summary.expiring_soon ? onExpiringSoonClick : undefined}
+              active={expiringSoonActive}
+            />
           </div>
         </div>
       )}
