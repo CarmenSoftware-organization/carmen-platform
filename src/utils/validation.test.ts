@@ -88,8 +88,7 @@ describe('validateField', () => {
     // ไม่ส่ง option = เพดานเดิมของ cluster ไม่เปลี่ยนพฤติกรรมผู้เรียกที่มีอยู่
     expect(validateField('alias_name', 'RIVER')).toBe('Alias must be 1-3 alphanumeric characters');
   });
-  it('validates license counts as non-negative integers', () => {
-    expect(validateField('max_license_bu', '-1')).toBe('Must be a non-negative integer');
+  it('passes a valid max_license_users value', () => {
     expect(validateField('max_license_users', '5')).toBe('');
   });
   it('validates url/image fields', () => {

@@ -38,8 +38,11 @@ export function isNearLimit(used?: number | null, cap?: number | null): boolean 
  * Seat capacity math — a deliberate second implementation, not a variant of `utilization()`.
  *
  * `utilization()` above treats a cap of `0`/`null`/`undefined` as "uncapped". That rule still
- * holds for `total_max_license_users` (its last caller, until Task 13 removes it) but no
- * longer applies to business-unit quota at all — see the file header. The seat system's rule
+ * holds for `total_max_license_users` — its remaining caller (directly here, in `CapacityMeter`
+ * and `CapacityGauge`, and internally in `summarizeFleet` below) — and Task 13 (the `max_license_bu`
+ * column drop) confirmed it stays: `isNearLimit` and `utilization` are NOT dead code, they're
+ * scoped down to exactly this one dimension. It no longer applies to business-unit quota at
+ * all — see the file header. The seat system's rule
  * is the opposite (spec §6.4): there is no "unlimited" seat cap anymore — `cap` is always a
  * finite integer, and `0` means zero seats, not infinite ones. Flipping `utilization()` itself
  * would have to land in lockstep with the backend's `finiteCap()` (a different repo), so this

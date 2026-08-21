@@ -259,7 +259,6 @@ const ClusterEdit: React.FC = () => {
           end_date: license_no_expiry ? PERPETUAL_END_DATE : toIsoEndOfDay(license_end_date ?? ''),
         },
       };
-      delete payload.max_license_bu;
       const result = await clusterService.create(payload);
       const created = result.data || result;
       toast.success('Cluster created successfully');

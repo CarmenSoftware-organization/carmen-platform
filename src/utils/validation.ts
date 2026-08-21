@@ -82,7 +82,6 @@ export const validateField = (
         ? ''
         : `Alias must be 1-${max} alphanumeric characters`;
     }
-    case 'max_license_bu':
     case 'max_license_users':
       return /^\d+$/.test(value) && Number(value) >= 0 ? '' : 'Must be a non-negative integer';
     case 'url':
