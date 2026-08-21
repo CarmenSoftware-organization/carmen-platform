@@ -7,6 +7,7 @@ import { CapacityMeter } from '../../clusterManagement/CapacityMeter';
 import { TableToolbar } from '../TableToolbar';
 import { cycleSort, sortRows, type SortState } from '../tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
+import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import type { BusinessUnit, ClusterUser } from '../../../types';
 
 export interface BusinessUnitsSectionProps {
@@ -52,34 +53,13 @@ export function BusinessUnitsSection({
   // a badge that disagrees with the real gate is worse than no badge, because the user will
   // trust it. Ranked over the full `businessUnits` list (inactive units included, same as the
   // view), never the filtered/sorted `rows` below, so a search or filter never changes which
-  // unit shows as over limit.
-  const ranked = useMemo(() => {
-    const sorted = [...businessUnits].sort((a, b) => {
-      const hq = Number(b.is_hq ?? false) - Number(a.is_hq ?? false);
-      if (hq !== 0) return hq;
-      const ta = Date.parse(a.created_at ?? '');
-      const tb = Date.parse(b.created_at ?? '');
-      // A missing/unparseable created_at (NaN) must never make the comparator return NaN —
-      // sort()'s order is implementation-defined when it does, so the Over-limit badge could
-      // land on a different row between renders of the same data. Fall through to the id
-      // tie-break instead, and treat a missing created_at as sorting last (matches Postgres'
-      // `ORDER BY created_at ASC` default of NULLS LAST, so the FE and the view still agree).
-      const bothValid = !Number.isNaN(ta) && !Number.isNaN(tb);
-      if (bothValid && ta !== tb) return ta - tb;
-      if (!bothValid && Number.isNaN(ta) !== Number.isNaN(tb)) return Number.isNaN(ta) ? 1 : -1;
-      return a.id < b.id ? -1 : 1;
-    });
-    return new Map(sorted.map((bu, i) => [bu.id, i + 1]));
-  }, [businessUnits]);
+  // unit shows as over limit. Shared with `BusinessUnitList` (cluster-admin view) via
+  // `utils/businessUnitRank.ts` — do not re-inline this comparator here.
+  const ranked = useMemo(() => rankBusinessUnits(businessUnits), [businessUnits]);
 
   // null cap = unknown/unenforced, same convention as `atLimit` above — never coerced to 0,
   // which would falsely mark every row as over limit.
-  const overLimitCount = useMemo(() => {
-    if (maxLicenseBu == null) return 0;
-    let count = 0;
-    ranked.forEach((rank) => { if (rank > maxLicenseBu) count += 1; });
-    return count;
-  }, [ranked, maxLicenseBu]);
+  const overLimitCount = useMemo(() => countOverLimit(ranked, maxLicenseBu), [ranked, maxLicenseBu]);
 
   return (
     <div>

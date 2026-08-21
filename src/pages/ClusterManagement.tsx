@@ -270,7 +270,17 @@ const ClusterManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(clusters, [
+    // ใบตลอดชีพ (sentinel ปี 2099) ต้องไม่โชว์ปี 2099 ในไฟล์ CSV เหมือนกับที่ตารางไม่โชว์ — ต้อง
+    // แปลงค่าก่อนส่งเข้า generateCSV เพราะมันอ่านฟิลด์ดิบตรง ๆ ไม่มี formatter ต่อคอลัมน์
+    // The perpetual sentinel (year 2099) must not leak into the CSV any more than it does into
+    // the table — generateCSV reads raw fields with no per-column formatter, so this pre-formats
+    // the value before handing rows to it.
+    const rows = clusters.map((c) => {
+      const d = c.bu_cap_end_date;
+      const buCapEndDate = !d ? '' : isPerpetual(d) ? 'No expiry' : fmtDate(d);
+      return { ...c, bu_cap_end_date: buCapEndDate };
+    });
+    const csv = generateCSV(rows, [
       { key: 'code', label: 'Code' },
       { key: 'name', label: 'Name' },
       { key: 'alias_name', label: 'Alias' },

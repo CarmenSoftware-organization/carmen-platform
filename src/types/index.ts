@@ -1301,4 +1301,6 @@ export interface ClusterLicense {
   reference_no?: string | null;
   note?: string | null;
   doc_version: number;
+  /** tie-break ลำดับที่สองของ "ใบที่ชนะ" รองจาก start_date (ดู `activeLicense` ใน utils/clusterLicense.ts) */
+  created_at?: string | null;
 }

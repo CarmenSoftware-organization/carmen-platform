@@ -482,8 +482,10 @@ const ClusterEdit: React.FC = () => {
   // Seat cap is the cluster's own aggregate now (backend-computed from the licence view,
   // per BU-scoped dated rows) — it can no longer be summed client-side from
   // `bu.max_license_users`, which no longer exists on the BU record at all (Task 3.5).
-  // 0/null/absent = uncapped, same convention as `buCap` above and ClusterManagement's
-  // CapacityMeter.
+  // 0/null/absent = uncapped, same convention as ClusterManagement's CapacityMeter — NOT the
+  // same convention as `buCap` above any more. `buCap` is now always a finite number (0 means
+  // "no covering licence", never "unlimited"); `userCap` still genuinely means "unlimited" when
+  // null, because per-BU seat licensing was untouched by this feature.
   const userCap = clusterMeta.total_max_license_users ? clusterMeta.total_max_license_users : null;
   const userActive = users.clusterUsers.filter((u) => u.is_active !== false).length;
 

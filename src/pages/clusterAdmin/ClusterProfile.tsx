@@ -18,6 +18,15 @@ import { getErrorDetail, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { isPerpetual } from '../../utils/clusterLicense';
+
+/** วันที่ล้วน (yyyy-mm-dd) — ตามแบบ inline formatter ของ repo (ดูหมวด DateTime ใน CLAUDE.md) */
+const fmtDate = (v?: string | null): string => {
+  if (!v) return '-';
+  const d = new Date(v);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
 
 /**
  * A cluster administrator's own reach into their cluster's identity and branding — a narrowed
@@ -27,6 +36,13 @@ import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
  * even in edit mode (`canEditPlatformFields={false}`) — the backend strips `max_license_bu`,
  * `max_license_users`, `is_active`, and `info` from a membership admin's cluster update
  * silently (no error, just a discarded write).
+ *
+ * BU-quota licensing IS shown here, read-only (`buQuota` state, its own card below) — a cluster
+ * admin who gets a 403 creating a business unit needs to see the quota that blocked them
+ * *before* the click, not just after (spec principle 3). This mirrors `bu_cap`/`bu_used`/
+ * `bu_cap_end_date` off the same `GET /clusters/:id` response ClusterEdit.tsx's "BU Quota" card
+ * reads, but never lets the value be edited — the write gate stays `subscription.manage` at the
+ * gateway either way.
  */
 const ClusterProfile: React.FC = () => {
   const { clusterId } = useParams<{ clusterId: string }>();
@@ -49,6 +65,10 @@ const ClusterProfile: React.FC = () => {
   const [accessLost, setAccessLost] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  // โควตา BU ของ cluster — read-only เสมอ (แม้ตอน editing) เพราะเป็นสิทธิ์ระดับแพลตฟอร์ม
+  // (subscription.manage) ไม่ใช่ของ cluster admin ค่าเหล่านี้ไม่ผ่าน formData เลยเพื่อไม่ให้
+  // ปนกับฟิลด์ที่แก้ได้ — cluster admin ที่โดน 403 ต้องเห็นโควตาที่บล็อกตัวเองก่อนกดสร้าง BU
+  const [buQuota, setBuQuota] = useState<{ cap: number; used: number; endDate: string | null } | null>(null);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -75,6 +95,11 @@ const ClusterProfile: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(cluster));
+      setBuQuota({
+        cap: cluster.bu_cap ?? 0,
+        used: cluster.bu_used ?? 0,
+        endDate: cluster.bu_cap_end_date ?? null,
+      });
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
       setAccessLost(false);
@@ -261,6 +286,45 @@ const ClusterProfile: React.FC = () => {
                   />
                 </CardContent>
               </Card>
+
+              {buQuota && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Business unit quota</CardTitle>
+                    <CardDescription>
+                      Read-only — set by a platform administrator, not editable here
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground text-xs">Business units</dt>
+                        <dd className={buQuota.used >= buQuota.cap ? 'font-medium text-destructive' : 'font-medium'}>
+                          {buQuota.used} of {buQuota.cap} used
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground text-xs">Quota expires</dt>
+                        <dd className="font-medium">
+                          {!buQuota.endDate ? (
+                            <span className="text-muted-foreground">&mdash;</span>
+                          ) : isPerpetual(buQuota.endDate) ? (
+                            'No expiry'
+                          ) : (
+                            fmtDate(buQuota.endDate)
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                    {buQuota.used >= buQuota.cap && (
+                      <p className="text-destructive mt-3 text-xs">
+                        This cluster is at its business-unit quota. New business units cannot be
+                        created until more quota is purchased.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader>
