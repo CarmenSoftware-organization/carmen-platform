@@ -1010,6 +1010,39 @@ import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRa
 แถวที่ `(ranked.get(bu.id) ?? 0) > cap` ขึ้นป้าย Over limit — ลอกรูปแบบป้ายจาก
 `src/pages/clusterEdit/sections/BusinessUnitsSection.tsx:123-130` (มี `title` บอกอันดับกับโควตา)
 
+**ต้องทำในคอมมิตเดียวกัน — `ClusterEdit.tsx` จะพังทันทีที่ย้ายไฟล์:**
+
+> **Ruling ของ controller (pre-flight):** `ClusterEdit.tsx:33` import `LicensesSection` อยู่ การ `git mv`
+> โดยไม่แก้ผู้เรียกทำให้ typecheck ของ Task นี้แดง — ซึ่งขัดข้อบังคับ "ทุก task จบด้วย typecheck เขียว"
+> จึงย้ายงานนี้มาจาก Task 8 Step 3
+
+ใน `src/pages/ClusterEdit.tsx` ลบ import ของ `LicensesSection` แล้วแทน `<LicensesSection ... />` (บรรทัด ~637)
+ด้วยการ์ดสรุปที่ลิงก์ไป License Center:
+
+```tsx
+                  <Card>
+                    <CardHeader className="flex flex-row items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2">
+                          <Ticket className="h-5 w-5" />
+                          BU Quota
+                        </CardTitle>
+                        <CardDescription>
+                          {(clusterMeta.bu_cap ?? 0) === 0
+                            ? 'No licence in force — this cluster cannot create business units'
+                            : `${clusterMeta.bu_used ?? 0} / ${clusterMeta.bu_cap} business units`}
+                        </CardDescription>
+                      </div>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
+                      </Button>
+                    </CardHeader>
+                  </Card>
+```
+
+ตรวจว่า `Ticket` (lucide-react) และ `Link` (react-router-dom) ถูก import ในไฟล์แล้ว · ถ้า `ClusterEdit.test.tsx`
+ยืนยันการมีอยู่ของฟอร์มใบโควตา ให้แก้ assertion เป็นการ์ดสรุปแทน — ไม่ลบเคสทิ้ง
+
 - [ ] **Step 3: SeatSection**
 
 สร้าง `src/pages/licenses/sections/SeatSection.tsx` — การ์ดหนึ่งใบต่อหนึ่ง BU วนตาม `SeatRow`
@@ -1290,7 +1323,14 @@ export default function BusinessUnitLicensesCard({
 ลบการส่ง `saving` / `onCreate` / `onUpdate` / `onRemove` · ถ้า `licenses.create/update/remove` ไม่มีผู้ใช้เหลือแล้ว
 ให้คง hook ไว้เฉพาะส่วนอ่าน (`licenses`, `loading`) — ESLint จะฟ้องตัวแปรที่ไม่ได้ใช้ถ้าเหลือค้าง
 
-- [ ] **Step 3: ปรับ `ClusterEdit.tsx`**
+- [ ] **Step 3: ยืนยันว่า `ClusterEdit.tsx` ถูกปรับไปแล้วใน Task 6**
+
+> **Ruling ของ controller (pre-flight):** งานนี้ย้ายไปอยู่ใน **Task 6 Step 2** แล้ว เพราะ Task 6 ทำ
+> `git mv LicensesSection.tsx` ซึ่งทำให้ `ClusterEdit.tsx:33` import ไม่เจอทันที — ถ้าไม่แก้ในคอมมิตเดียวกัน
+> Task 6 จะ typecheck ไม่ผ่านตามข้อบังคับของตัวเอง
+>
+> ที่ Task นี้ให้ทำแค่: `grep -n "LicensesSection" src/pages/ClusterEdit.tsx` → ต้องว่างเปล่า
+> ถ้าไม่ว่าง แปลว่า Task 6 ทำไม่ครบ ให้ทำตามโค้ดด้านล่างให้จบ
 
 แทน `<LicensesSection ... />` (บรรทัด ~637) ด้วยการ์ดสรุปสั้น ๆ ในไฟล์เดียวกัน:
 
@@ -1317,11 +1357,16 @@ export default function BusinessUnitLicensesCard({
 
 ลบ import ของ `LicensesSection` ออก
 
-- [ ] **Step 4: ปรับ `SubscriptionCard` ให้ชี้ปลายทางใหม่**
+- [ ] **Step 4: ยืนยันลิงก์ใน `SubscriptionCard`**
 
-ใน `src/pages/clusterEdit/sections/SubscriptionCard.tsx` เปลี่ยนปุ่มทั้งสอง:
-`navigate('/licenses/subscriptions/new?cluster_id=' + clusterId)` และ
-`navigate('/licenses/subscriptions/' + sub.id + '/edit')`
+> **Ruling ของ controller (pre-flight):** Task 4 Step 5 ไล่ `grep` ลิงก์ `/subscriptions` ทั้งเรพอยู่แล้ว
+> จึงเป็นเจ้าของการแก้ไฟล์นี้ · ที่นี่ให้ยืนยันเท่านั้น
+
+```bash
+grep -n "subscriptions" src/pages/clusterEdit/sections/SubscriptionCard.tsx
+```
+Expected: ทุกบรรทัดขึ้นต้นด้วย `/licenses/subscriptions/` — ถ้าเจอ `/subscriptions/` เปล่า ๆ ให้แก้เป็น
+`navigate('/licenses/subscriptions/new?cluster_id=' + clusterId)` และ `navigate('/licenses/subscriptions/' + sub.id + '/edit')`
 
 - [ ] **Step 5: ปรับเทสต์เดิมที่พังจากการลดการ์ด**
 
@@ -1358,9 +1403,14 @@ Expected: ว่างเปล่า (เหลือเฉพาะ redirect �
 - [ ] **Step 2: ไม่มี `<Can>` ตกค้างในคอมโพเนนต์ร่วม**
 
 ```bash
-grep -rn "Can " src/pages/licenses/ | grep -v '\.test\.'
+grep -rn "Can " src/pages/licenses/sections/ src/pages/licenses/LicenseDraftForm.tsx \
+  src/pages/licenses/useLicenseLedger.ts src/pages/licenses/ClusterLicenseTable.tsx | grep -v '\.test\.'
 ```
-Expected: ว่างเปล่า — สิทธิ์ต้องมาจาก prop `canManage` ทางเดียว
+Expected: ว่างเปล่า — สิทธิ์ในคอมโพเนนต์ร่วมต้องมาจาก prop `canManage` ทางเดียว
+
+> **Ruling ของ controller (pre-flight):** ตรวจเฉพาะคอมโพเนนต์ร่วมข้างต้น **ไม่รวม** `SubscriptionTable.tsx`
+> และ `SubscriptionForm.tsx` — สองไฟล์นั้นเป็น **หน้าเต็ม** ที่ใช้ `<Can>` ตามธรรมเนียมเดิมของเรพมาก่อนงานนี้
+> และไม่ถูกใช้ในเชลล์ cluster-admin · กติกาใน §5 ของสเปกพูดถึงคอมโพเนนต์ที่ถูกใช้สอง shell เท่านั้น
 
 - [ ] **Step 3: ชุดตรวจเต็ม**
 
