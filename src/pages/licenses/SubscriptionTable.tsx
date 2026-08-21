@@ -70,7 +70,17 @@ const fmtDate = (v?: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-const SubscriptionTable: React.FC = () => {
+interface SubscriptionTableProps {
+  /**
+   * true เมื่อ render อยู่ใต้ License Center (`/licenses`) — เนื้อหาจะไม่ห่อ `<Layout>` ของตัวเอง
+   * และไม่แสดง `PageHeader` ของตัวเอง เพราะหน้าแม่ห่อ Layout ให้แล้ว หน้าเดียวห่อ Layout สองชั้นจะ
+   * ได้ sidebar ซ้อนกัน ค่าเริ่มต้น false รักษาพฤติกรรมเดิมของหน้า `/licenses/subscriptions`
+   * (route เต็ม) ไว้ทุกอย่าง — เทสต์เดิม `SubscriptionTable.test.tsx` render แบบไม่ส่ง prop นี้อยู่
+   */
+  embedded?: boolean;
+}
+
+const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false }) => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Subscription[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -369,9 +379,9 @@ const SubscriptionTable: React.FC = () => {
   // (never mutates) is redundant chrome, not a genuine menu — so it's gone rather than kept
   // as a one-item DropdownMenu.
 
-  return (
-    <Layout>
-      <div className="space-y-6 sm:space-y-8">
+  const content = (
+    <div className="space-y-6 sm:space-y-8">
+        {!embedded && (
         <PageHeader
           title="Subscriptions"
           subtitle="Manage cluster license subscriptions, seat pools, and feature entitlements."
@@ -391,6 +401,7 @@ const SubscriptionTable: React.FC = () => {
             </>
           }
         />
+        )}
 
         <SubscriptionSummary
           summary={summary}
@@ -587,9 +598,26 @@ const SubscriptionTable: React.FC = () => {
             ) : null}
           </CardContent>
         </Card>
-      </div>
+    </div>
+  );
 
-      <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/subscriptions" data={rawResponse} />
+  const debugSheet = (
+    <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/subscriptions" data={rawResponse} />
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {content}
+        {debugSheet}
+      </>
+    );
+  }
+
+  return (
+    <Layout>
+      {content}
+      {debugSheet}
     </Layout>
   );
 };

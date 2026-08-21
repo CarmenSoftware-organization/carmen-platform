@@ -56,11 +56,16 @@ export function FleetCapacity({
   loading,
   onExpiringSoonClick,
   expiringSoonActive,
+  // ป้ายของสถิติ "expiring soon" — ค่าเริ่มต้นคงข้อความเดิมของหน้า /clusters ไว้ทุกตัวอักษร
+  // (ที่นั่นนับรวมทุกมิติที่มีวันหมดอายุ) ผู้เรียกที่ต้องการความหมายเฉพาะมิติ BU (เช่น License
+  // Center ซึ่ง `expiring_soon` นับเฉพาะใบโควตา BU — src/types/index.ts) ต้องส่ง label ของตัวเองมา
+  expiringLabel = 'quota expiring',
 }: {
   summary: FleetSummary | null;
   loading: boolean;
   onExpiringSoonClick?: () => void;
   expiringSoonActive?: boolean;
+  expiringLabel?: string;
 }) {
   return (
     <Card className="p-4 sm:p-5">
@@ -88,7 +93,7 @@ export function FleetCapacity({
                 Clickable only when non-zero: a filter that yields nothing is a dead end. */}
             <Stat
               value={summary.expiring_soon ?? 0}
-              label="quota expiring"
+              label={expiringLabel}
               alert
               onClick={summary.expiring_soon ? onExpiringSoonClick : undefined}
               active={expiringSoonActive}
