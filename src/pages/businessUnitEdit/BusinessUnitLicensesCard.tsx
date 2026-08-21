@@ -179,6 +179,7 @@ export default function BusinessUnitLicensesCard({
                       draft={draft}
                       onChange={setDraft}
                       amountLabel="Seats"
+                      statusCell={<span className="text-xs text-muted-foreground">New</span>}
                       saving={saving}
                       submitLabel="Add"
                       onSubmit={submitCreate}
@@ -197,6 +198,7 @@ export default function BusinessUnitLicensesCard({
                           draft={draft}
                           onChange={setDraft}
                           amountLabel="Seats"
+                          statusCell={<Badge variant={badge.variant}>{badge.label}</Badge>}
                           saving={saving}
                           submitLabel="Save"
                           onSubmit={() => submitUpdate(l)}

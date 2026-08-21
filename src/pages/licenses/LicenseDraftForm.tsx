@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -54,6 +55,11 @@ interface LicenseDraftFormProps {
   onNoExpiryChange?: (v: boolean) => void;
   /** แสดงช่อง note ไหม — ใบที่นั่งวันนี้ไม่มีช่องนี้ */
   showNote?: boolean;
+  /**
+   * เซลล์คอลัมน์ Status — แถวสร้างใหม่ส่งข้อความ "New" ส่วนแถวแก้ใบเดิมส่ง <Badge> สถานะจริงของใบนั้น
+   * ใบที่ active อยู่ต้องไม่กลายเป็น "New" ระหว่างผู้ใช้กรอก
+   */
+  statusCell: ReactNode;
   saving: boolean;
   submitLabel: string;
   onSubmit: () => void;
@@ -66,7 +72,7 @@ interface LicenseDraftFormProps {
  */
 export function LicenseDraftForm({
   draft, onChange, amountLabel, showNoExpiry = false, noExpiry = false,
-  onNoExpiryChange, showNote = false, saving, submitLabel, onSubmit, onCancel,
+  onNoExpiryChange, showNote = false, statusCell, saving, submitLabel, onSubmit, onCancel,
 }: LicenseDraftFormProps) {
   const set = (patch: Partial<LicenseDraft>) => onChange({ ...draft, ...patch });
 
@@ -99,6 +105,7 @@ export function LicenseDraftForm({
               checked={noExpiry}
               onChange={(e) => onNoExpiryChange?.(e.target.checked)}
               aria-label="No expiry"
+              className="h-4 w-4 rounded border-input"
             />
             No expiry
           </label>
@@ -113,7 +120,7 @@ export function LicenseDraftForm({
           />
         )}
       </td>
-      <td className="px-2 py-1 text-xs text-muted-foreground">New</td>
+      <td className="px-2 py-1">{statusCell}</td>
       <td className="px-2 py-1">
         <Input
           value={draft.reference_no}

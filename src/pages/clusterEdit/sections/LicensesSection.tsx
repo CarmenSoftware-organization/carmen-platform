@@ -166,11 +166,12 @@ export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectio
                     <LicenseDraftForm
                       draft={draft}
                       onChange={setDraft}
-                      amountLabel="Business units"
+                      amountLabel="Quota"
                       showNoExpiry
                       noExpiry={noExpiry}
                       onNoExpiryChange={setNoExpiry}
                       showNote
+                      statusCell={<span className="text-xs text-muted-foreground">New</span>}
                       saving={saving}
                       submitLabel="Add"
                       onSubmit={submitCreate}
@@ -188,11 +189,12 @@ export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectio
                         <LicenseDraftForm
                           draft={draft}
                           onChange={setDraft}
-                          amountLabel="Business units"
+                          amountLabel="Quota"
                           showNoExpiry
                           noExpiry={noExpiry}
                           onNoExpiryChange={setNoExpiry}
                           showNote
+                          statusCell={<Badge variant={badge.variant}>{badge.label}</Badge>}
                           saving={saving}
                           submitLabel="Save"
                           onSubmit={() => submitUpdate(l)}
