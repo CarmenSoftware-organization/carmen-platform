@@ -72,7 +72,21 @@
 `BusinessUnitLicense.doc_version: number` และ `ClusterLicense.doc_version: number` — ไม่ใช่ optional
 (ต่างจากเอนทิตีอื่นในเรพที่เป็น `doc_version?`) ต้องส่งกลับตอน update เสมอ
 
-#### ฉ. cluster admin ไม่มีสิทธิ์อยู่ใน `EffectivePermissions` เลย
+#### ฉ. การ์ดสองใบใช้คีย์สิทธิ์คนละตัว และฝั่ง FE ไม่ตรงกับ backend
+
+| การ์ด | FE คุมด้วย | วิธี | backend ต้องการ |
+|---|---|---|---|
+| ใบที่นั่ง (`BusinessUnitLicensesCard`) | `subscription.manage` | `<Can>` ข้างในคอมโพเนนต์ + prop `readOnly` (ประกาศไว้แต่**ยังไม่มีใครส่ง**) | `subscription.manage` ✅ ตรง |
+| ใบโควตา BU (`LicensesSection`) | **`cluster.update`** (`ClusterEdit.tsx:55`) | prop `canManage` | **`subscription.manage`** ❌ ไม่ตรง |
+
+`apps/backend-gateway/src/platform/platform_cluster-licenses/platform_cluster-licenses.controller.ts:119,157`
+ประกาศ `@RequirePlatformPermission('subscription.manage')` บน POST และ PATCH
+
+→ วันนี้คนที่ถือ `cluster.update` แต่ไม่ถือ `subscription.manage` **เห็นปุ่ม Add license แล้วกดได้ 403**
+และคนที่ถือ `subscription.manage` อย่างเดียวมองไม่เห็นปุ่มทั้งที่ backend ยอมให้ทำ ·
+งานนี้ใช้ `subscription.manage` เป็นเกณฑ์เดียวทั้งหน้า จึงปิดช่องนี้ไปด้วย
+
+#### ช. cluster admin ไม่มีสิทธิ์อยู่ใน `EffectivePermissions` เลย
 
 `EffectivePermissions` สร้างจาก `tb_user_tb_platform_role` อย่างเดียว · cluster admin เข้าถึงหน้าได้
 ผ่าน `adminScope` + `ClusterAdminRoute` (ดู `AuthContext.tsx:272` `isClusterAdmin(clusterId)`)
@@ -80,7 +94,7 @@
 
 → คอมโพเนนต์ร่วมทุกตัวห้ามเรียก `<Can>` ข้างในตัวเอง ไม่งั้นหน้าฝั่ง cluster admin ว่างเปล่าทั้งหน้าโดยไม่มี error
 
-#### ช. `/subscriptions` ถูกอ้างใน 10 ไฟล์
+#### ซ. `/subscriptions` ถูกอ้างใน 10 ไฟล์
 
 `App.tsx` (3 route) · `nav/platformNav.ts` · `SubscriptionEdit.tsx` (6 จุด) ·
 `SubscriptionManagement.tsx` (3 จุด) · `clusterEdit/sections/SubscriptionCard.tsx` (2 จุด) ·
@@ -98,6 +112,7 @@
 6. **การ์ดในหน้า BU edit / Cluster edit เหลือการ์ดสรุป read-only + ลิงก์** ไม่ลบทิ้ง
 7. **ใบ 2099 แสดงคำเดียวกันทั้งสองชั้นว่า "ไม่มีวันหมดอายุ"** — ยก `PERPETUAL_THRESHOLD` ขึ้นเป็นของกลาง
 8. **ไม่มีคอลัมน์ "จำนวนสัญญา" ในตารางหน้าแรก** — ดูเหตุผล §3.2
+9. **`subscription.manage` เป็นคีย์สิทธิ์เดียวของทั้งหน้า** — ตรงกับ backend · ใบโควตา BU เลิกใช้ `cluster.update` (§1.1 ฉ, §5)
 
 ---
 
@@ -216,15 +231,26 @@ src/pages/licenses/
 
 ## 5. สิทธิ์
 
-**กติกาเดียวที่ห้ามผิด: คอมโพเนนต์ร่วมทุกตัวรับ `canManage` เป็น prop และห้ามเรียก `<Can>` ข้างในตัวเอง**
+**คีย์เดียวทั้งหน้า: `subscription.manage`** — ตรงกับที่ backend บังคับจริงบนทั้งสอง endpoint (§1.1 ฉ)
+`LicensesSection` ที่เคยใช้ `cluster.update` จึงเปลี่ยนเกณฑ์ ซึ่งเป็นการปิดช่องที่ปุ่มโผล่แล้วกดได้ 403
 
-เหตุผลอยู่ที่ §1.1 ฉ — cluster admin ไม่มีสิทธิ์ใน `EffectivePermissions` เลย ถ้าคอมโพเนนต์ร่วมห่อตัวเอง
-ด้วย `Can` หน้า `/cluster-admin/:id/licenses` จะว่างเปล่าทั้งหน้าโดยไม่มี error ให้เห็น
+**กติกาที่ห้ามผิด: คอมโพเนนต์ร่วมรับ `canManage` เป็น prop (ค่าเริ่มต้น `false`) และไม่เรียก `<Can>` ข้างในตัวเอง**
 
-| เส้นทาง | คุมด้วยอะไร |
+วันนี้มีสองธรรมเนียมอยู่จริง (§1.1 ฉ) — `LicensesSection` ใช้ prop ส่วน `BusinessUnitLicensesCard`
+ใช้ `<Can>` ข้างในคู่กับ `readOnly` การยุบต้องเลือกหนึ่ง · เลือก **prop** เพราะคอมโพเนนต์ร่วมต้องทำงาน
+ในสอง shell ที่ตอบคำถามสิทธิ์คนละทาง: platform อ่านจาก `EffectivePermissions` ส่วน cluster-admin
+ไม่มีสิทธิ์อยู่ในนั้นเลย (§1.1 ช) จึงตัดสินจาก `ClusterAdminRoute` ที่ผ่านมาแล้ว
+
+คอมเมนต์ที่ `BusinessUnitLicensesCard.tsx:92-102` เตือนว่า prop + `<Can>` พร้อมกันคือแหล่งความจริงสองแห่ง
+ที่เพี้ยนจากกันได้ — คำเตือนนั้นยังจริง และวิธีที่ทำให้มันไม่เกิดคือ **เหลือแหล่งเดียว**: ไม่มี `<Can>`
+ข้างในคอมโพเนนต์ร่วมเลย มีแต่ prop ที่หน้าเป็นคนคำนวณ
+
+| เส้นทาง | ค่า `canManage` มาจาก |
 |---|---|
-| `/licenses*` | `<Can permission="subscription.manage">` ที่ระดับหน้า แล้วส่งผลลงเป็น prop · อ่านด้วย `subscription.read` ผ่าน `PrivateRoute` ตามเดิม |
-| `/cluster-admin/:clusterId/licenses` | อยู่หลัง `ClusterAdminRoute` อยู่แล้ว → ส่ง `canManage={false}` ตรง ๆ ไม่เช็คสิทธิ์ซ้ำ (ธรรมเนียมเดียวกับ `buildClusterAdminNav`) |
+| `/licenses*` | `hasPermission('subscription.manage')` ที่ระดับหน้า · อ่านหน้าได้ด้วย `subscription.read` ผ่าน `PrivateRoute` ตามเดิม |
+| `/cluster-admin/:clusterId/licenses` | `false` คงที่ — อยู่หลัง `ClusterAdminRoute` แล้ว ไม่เช็คสิทธิ์ซ้ำ (ธรรมเนียมเดียวกับ `buildClusterAdminNav`) |
+
+`readOnly` ที่ `BusinessUnitLicensesCard` ประกาศไว้แต่ไม่มีใครส่ง **ถูกลบทิ้ง** — `canManage={false}` ครอบเคสนั้นแล้ว
 
 `Can` ห้ามถูก mock ในเทสต์ (กฎเดิมของเรพ) — เทสต์สิทธิ์ขับผ่าน `vi.hoisted` auth object
 
