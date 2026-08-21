@@ -14,6 +14,24 @@ export interface LicenseLedgerService<TLicense, TCreate> {
   delete(ownerId: string, id: string): Promise<unknown>;
 }
 
+export interface UseLicenseLedgerOptions<TLicense> {
+  /**
+   * ใช้ข้อมูลที่มีอยู่แล้วจากที่อื่น (เช่น batch load ของ parent) เป็นค่าตั้งต้นของ `licenses`
+   * แทนการเริ่มจาก `[]` เสมอ — ผู้เรียกที่ไม่ส่ง (undefined) ได้พฤติกรรมเดิมทุกประการ
+   */
+  initialLicenses?: TLicense[];
+  /** คู่กับ `initialLicenses` — ค่าตั้งต้นของ `loadFailed` (ดูคอมเมนต์ที่ field นั้น) */
+  initialLoadFailed?: boolean;
+  /**
+   * ข้าม GET อัตโนมัติตอน mount — ใช้เมื่อผู้เรียกส่ง `initialLicenses`/`initialLoadFailed` มาแล้ว
+   * และไม่ต้องการยิงคำขอซ้ำกับที่โหลดมาแล้วจากที่อื่น ค่าเริ่มต้น `false` (= พฤติกรรมเดิม: ยิงเสมอ
+   * ตอน mount) `create`/`update`/`remove` ยังคง `reload()` ตามปกติเสมอไม่ว่าค่านี้จะเป็นอะไร —
+   * ค่านี้กระทบแค่ effect อัตโนมัติตอน mount เท่านั้น อ่านครั้งเดียวตอน mount ผ่าน ref โดยตั้งใจ
+   * (ไม่อยู่ใน dependency array) เพราะผู้เรียกมักส่ง object literal สดทุก render
+   */
+  skipInitialLoad?: boolean;
+}
+
 /**
  * CRUD ของ "ใบ" หนึ่งชนิด — ใช้ร่วมทั้งใบที่นั่ง (ราย BU) และใบโควตา BU (ราย cluster)
  *
@@ -24,10 +42,16 @@ export interface LicenseLedgerService<TLicense, TCreate> {
 export function useLicenseLedger<TLicense extends { id: string }, TCreate>(
   ownerId: string | undefined,
   service: LicenseLedgerService<TLicense, TCreate>,
+  options?: UseLicenseLedgerOptions<TLicense>,
 ) {
-  const [licenses, setLicenses] = useState<TLicense[]>([]);
+  const [licenses, setLicenses] = useState<TLicense[]>(options?.initialLicenses ?? []);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // แยกจาก "licenses ว่าง" โดยตั้งใจ — `[]` มีสองความหมายที่ conflate กันไม่ได้: "ไม่มีใบจริง"
+  // กับ "โหลดไม่ได้" ผู้เรียกที่ต้องแยกสองเคสนี้ (เช่น `SeatRowCard`) อ่านค่านี้แทนการเดาจาก
+  // `licenses.length === 0` (review C1 ของ Task 6 — เดิม catch แล้ว setLicenses([]) เฉย ๆ ทำให้
+  // BU ที่โหลดไม่สำเร็จแสดงเป็น "ไม่มีใบ" พร้อมปุ่ม Add ที่กดได้จริง)
+  const [loadFailed, setLoadFailed] = useState(options?.initialLoadFailed ?? false);
   // กัน response ของคำขอเก่ามาทับของใหม่เมื่อ ownerId เปลี่ยนกลางคัน
   const reqId = useRef(0);
 
@@ -42,16 +66,24 @@ export function useLicenseLedger<TLicense extends { id: string }, TCreate>(
       // ตามรูปแบบเดียวกับ clusterService/subscriptionService ทั้ง repo
       const rows = Array.isArray(res) ? res : (res as { data?: unknown }).data;
       setLicenses(Array.isArray(rows) ? (rows as TLicense[]) : []);
+      setLoadFailed(false);
     } catch (err) {
       if (mine !== reqId.current) return;
       toast.error('Could not load licenses', { description: getErrorDetail(err) });
       setLicenses([]);
+      setLoadFailed(true);
     } finally {
       if (mine === reqId.current) setLoading(false);
     }
   }, [ownerId, service]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  // อ่าน `skipInitialLoad` ครั้งเดียวตอน mount ผ่าน ref — ไม่ใส่ใน dependency array เพราะ
+  // ผู้เรียกมักส่ง `options` เป็น object literal สดทุก render (ดูคอมเมนต์ที่ตัว option เอง)
+  const skipInitialLoadRef = useRef(options?.skipInitialLoad ?? false);
+  useEffect(() => {
+    if (skipInitialLoadRef.current) return;
+    void reload();
+  }, [reload]);
 
   const create = useCallback(async (data: TCreate) => {
     if (!ownerId) return;
@@ -101,5 +133,5 @@ export function useLicenseLedger<TLicense extends { id: string }, TCreate>(
     }
   }, [ownerId, reload, service]);
 
-  return { licenses, loading, saving, reload, create, update, remove };
+  return { licenses, loading, saving, loadFailed, reload, create, update, remove };
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Users } from 'lucide-react';
+import { Plus, RefreshCw, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -91,8 +91,17 @@ function SeatRowCard({ row, canManage, onChanged }: {
   canManage: boolean;
   onChanged: () => void;
 }) {
-  const { licenses, loading, saving, create, update, remove } =
-    useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(row.bu.id, businessUnitLicenseService);
+  // seed จาก batch ของ useClusterSeatLicenses แล้วข้าม GET ตอน mount (skipInitialLoad) — กัน
+  // ยิงคำขอซ้ำสองครั้งต่อ BU ทุกครั้งที่เปิดหน้า (review Critical ของ Task 6: การ์ดนี้เคยยิง GET
+  // ของตัวเองซ้อนกับ batch เสมอ ทำให้ error ที่ batch เจอไม่ถูกสะท้อนมาที่นี่เลยถ้าคำขอที่สองบังเอิญ
+  // สำเร็จ — ตอนนี้การ์ดใช้ผลของ batch ตรง ๆ เป็นค่าตั้งต้น ไม่ยิงซ้ำ) `loadFailed` (ไม่ใช่
+  // `licenses.length === 0`) คือสัญญาณเดียวที่บอกว่า "โหลดไม่ได้" ต่างจาก "ไม่มีใบจริง"
+  const { licenses, loading, saving, loadFailed, reload, create, update, remove } =
+    useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(row.bu.id, businessUnitLicenseService, {
+      initialLicenses: row.licenses,
+      initialLoadFailed: row.failed,
+      skipInitialLoad: true,
+    });
   const now = new Date();
 
   const [showExpired, setShowExpired] = useState(false);
@@ -101,11 +110,19 @@ function SeatRowCard({ row, canManage, onChanged }: {
   const [removeTarget, setRemoveTarget] = useState<BusinessUnitLicense | null>(null);
 
   // `licenses` ของ hook นี้คือแหล่งความจริงของการ์ดนี้ — `row.licenses` จาก useClusterSeatLicenses
-  // ใช้แค่ตอน mount ครั้งแรกก่อนที่ hook ตัวนี้จะโหลดเสร็จ
+  // ใช้แค่เป็นค่าตั้งต้นตอน mount เท่านั้น (ดูคอมเมนต์ที่ก้อน useLicenseLedger ด้านบน)
   const activeSeats = sumActiveLicenses(licenses, now);
   const activeCount = licenses.filter((l) => licenseStatus(l, now) === 'active').length;
   const expired = licenses.filter((l) => licenseStatus(l, now) === 'expired');
   const visible = showExpired ? licenses : licenses.filter((l) => licenseStatus(l, now) !== 'expired');
+
+  // ลองใหม่เฉพาะ BU นี้ (ไม่ยิงทั้ง batch) แล้วบอก section แม่ให้ reload() ทั้งชุดต่อ — ยอดรวมของ
+  // cluster (ใน SeatSection) นับจาก `rows` ของ batch ไม่ใช่จาก `licenses` ของการ์ดนี้ ถ้าไม่เรียก
+  // onChanged() ต่อ ยอดรวมจะยังนับ BU นี้เป็น "unknown" ต่อไปแม้การ์ดจะโหลดสำเร็จแล้วก็ตาม
+  const retry = async () => {
+    await reload();
+    onChanged();
+  };
 
   const startAdd = () => {
     if (!canManage) return;
@@ -153,15 +170,17 @@ function SeatRowCard({ row, canManage, onChanged }: {
             <Badge variant="outline" className="text-xs font-normal">{row.bu.code}</Badge>
           </CardTitle>
           <CardDescription>
-            {activeSeats} seat{activeSeats === 1 ? '' : 's'} from {activeCount} active {activeCount === 1 ? 'license' : 'licenses'}
+            {loadFailed
+              ? 'Seat count unavailable'
+              : `${activeSeats} seat${activeSeats === 1 ? '' : 's'} from ${activeCount} active ${activeCount === 1 ? 'license' : 'licenses'}`}
           </CardDescription>
-          {row.failed && (
+          {loadFailed && (
             <p className="text-xs text-destructive">
               Could not load licences for this business unit — the seat figures below are unknown, not zero.
             </p>
           )}
         </div>
-        {canManage && (
+        {canManage && !loadFailed && (
           <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>
             <Plus className="mr-2 h-4 w-4" />
             Add license
@@ -170,7 +189,17 @@ function SeatRowCard({ row, canManage, onChanged }: {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {loading && licenses.length === 0 ? (
+        {loadFailed ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              License data for this business unit could not be loaded — it is unknown, not empty.
+            </p>
+            <Button variant="outline" size="sm" onClick={retry} disabled={loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Retry
+            </Button>
+          </div>
+        ) : loading && licenses.length === 0 ? (
           <TableSkeleton columns={6} rows={2} />
         ) : licenses.length === 0 && editingId !== 'new' ? (
           <EmptyState
