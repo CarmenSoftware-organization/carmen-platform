@@ -27,7 +27,19 @@ const subscriptionService = {
     return response.data;
   },
 
-  create: async (data: Partial<Subscription>) => {
+  /**
+   * สร้างสัญญาให้ BU หนึ่งตัว — `business_unit_id` บังคับและต้องอยู่ใน `cluster_id` ที่ส่งมา
+   *
+   * ไม่ส่ง `subscription_number` — ระบบออกให้เอง (`SUB-YYMM-####` เลขวิ่งทั่วระบบต่อเดือน)
+   * ส่งไปก็ถูกเมิน
+   */
+  create: async (data: {
+    cluster_id: string;
+    business_unit_id: string;
+    start_date: string;
+    end_date: string;
+    status?: Subscription['status'];
+  }) => {
     const response = await api.post(BASE, data);
     return response.data;
   },
@@ -35,21 +47,32 @@ const subscriptionService = {
   // PATCH ไม่ใช่ PUT — แก้เฉพาะข้อมูลสัญญา (วันที่/status) ไม่แตะ feature
   // doc_version บังคับส่งเสมอ — backend คืน 400 ถ้าไม่ส่ง เหมือน platform_role
   // การป้องกันที่ข้ามได้เงียบๆ ไม่ใช่การป้องกัน
-  update: async (id: string, data: Partial<Subscription> & { doc_version: number }) => {
+  update: async (
+    id: string,
+    // ไม่มี `subscription_number` (ระบบออกให้) และไม่มี `business_unit_id` (แก้ไม่ได้หลังสร้าง)
+    data: Pick<Partial<Subscription>, 'start_date' | 'end_date' | 'status'> & {
+      doc_version: number;
+    },
+  ) => {
     const response = await api.patch(`${BASE}/${id}`, data);
     return response.data;
   },
 
   /**
    * แทนที่สิทธิ์ทั้งชุด — replace semantics ส่ง desired set ทั้งหมด ไม่ใช่ diff
-   * BU ที่ไม่อยู่ใน `bus` จะถูกถอดออกจากสัญญา
+   *
+   * ไม่มี BU ใน payload อีกแล้ว — หนึ่งสัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนไม่ได้
+   * (เดิม endpoint นี้ถอด/เพิ่ม BU ได้ด้วย ซึ่งทำให้ "แก้สิทธิ์" กับ "เปลี่ยนคู่สัญญา" เป็นการกระทำเดียวกัน)
    */
   setFeatures: async (
     id: string,
-    bus: { business_unit_id: string; feature_keys: string[] }[],
+    featureKeys: string[],
     docVersion: number, // บังคับ — backend คืน 400 ถ้าไม่ส่ง
   ): Promise<{ data: SubscriptionDetail }> => {
-    const response = await api.put(`${BASE}/${id}/features`, { bus, doc_version: docVersion });
+    const response = await api.put(`${BASE}/${id}/features`, {
+      feature_keys: featureKeys,
+      doc_version: docVersion,
+    });
     return response.data;
   },
 

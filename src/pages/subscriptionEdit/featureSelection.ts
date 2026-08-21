@@ -1,10 +1,14 @@
-import type { BusinessUnit, LicenseFeature, SubscriptionBu } from '../../types';
+import type { LicenseFeature } from '../../types';
 
 /**
- * Pure state-transition logic for `FeatureMatrixCard` — kept out of the component so it can be
+ * Pure state-transition logic for `FeatureSelectionCard` — kept out of the component so it can be
  * unit-tested directly rather than exercised only by clicking through the UI (task-B4
  * corrections §4). Every function here is a plain `(state, …args) => nextState` transform; none
  * of them call `onChange`, touch `useState`, or hit the network.
+ *
+ * สถานะที่ทุกฟังก์ชันแปลงคือ `string[]` ของ feature key ตรง ๆ — เดิมเป็น `SubscriptionBu[]`
+ * เพราะใบเดียวผูกได้หลาย BU ตอนนี้หนึ่งใบผูก BU เดียว แกน BU จึงหายไปทั้งแกน
+ * (`addBu` `removeBu` `copyFrom` `availableBus` `nextSelectedBuId` `toFeaturesPayload` ถูกลบ)
  */
 
 export interface FeatureGroup {
@@ -74,12 +78,8 @@ export function unknownFeatureKeys(featureKeys: string[], catalog: LicenseFeatur
  * ที่ไม่รู้จัก — `moduleOf('procurement.legacy')` คือ `'procurement'` ที่ยังใช้งานได้อยู่ การกด
  * "ถอด" คีย์ที่ตายแล้วต้องไม่ไปถอดโมดูลที่ยังมีชีวิตทิ้ง
  */
-export function removeFeatureKey(bus: SubscriptionBu[], buId: string, key: string): SubscriptionBu[] {
-  return bus.map((bu) =>
-    bu.business_unit_id === buId
-      ? { ...bu, feature_keys: bu.feature_keys.filter((k) => k !== key) }
-      : bu,
-  );
+export function removeFeatureKey(featureKeys: string[], key: string): string[] {
+  return featureKeys.filter((k) => k !== key);
 }
 
 /**
@@ -115,97 +115,33 @@ export function filterGroups(groups: FeatureGroup[], query: string): FeatureGrou
     .filter((g) => g.children.length > 0);
 }
 
-/** BUs of this cluster not yet on the contract — the candidate list for "+ เพิ่มหน่วยธุรกิจ". */
-export function availableBus(bus: SubscriptionBu[], clusterBus: BusinessUnit[]): BusinessUnit[] {
-  return clusterBus.filter((cb) => !bus.some((b) => b.business_unit_id === cb.id));
-}
-
 /**
- * Adds a BU to the contract with no features yet. `licensed_users` seeds at 0 — this is only a
- * client-side placeholder (task-B4-corrections.md §1 — `seat` was removed from `SubscriptionBu`
- * in phase A) and the real contribution to the pool is recomputed by the backend on refetch
- * after save. It used to seed from the BU's own `max_license_users`, but that field no longer
- * exists on `BusinessUnit` (carmen-platform Task 3.5 — seats moved to dated licence rows, summed
- * via a backend view); there is nothing left on the BU record itself to seed from. A no-op if
- * the BU is unknown or already on the contract, so a stray double-click can't produce a
- * duplicate row.
- */
-export function addBu(bus: SubscriptionBu[], clusterBus: BusinessUnit[], buId: string): SubscriptionBu[] {
-  const source = clusterBus.find((cb) => cb.id === buId);
-  if (!source) return bus;
-  if (bus.some((b) => b.business_unit_id === buId)) return bus;
-  return [
-    ...bus,
-    {
-      business_unit_id: source.id,
-      bu_code: source.code,
-      bu_name: source.name,
-      feature_keys: [],
-      licensed_users: 0,
-    },
-  ];
-}
-
-/**
- * Removes a BU from the contract entirely — every feature it had is dropped too (setFeatures is
- * replace semantics: a BU missing from the array is dropped from the contract on save).
- */
-export function removeBu(bus: SubscriptionBu[], buId: string): SubscriptionBu[] {
-  return bus.filter((b) => b.business_unit_id !== buId);
-}
-
-/**
- * What `selectedBuId` should become after removing `removedBuId`.
- *
- * Deliberately takes the POST-removal array (call `removeBu` first) — picking from the
- * pre-removal array would resolve `bus[0]` before filtering, which silently stays equal to
- * `removedBuId` whenever the removed BU was first in the list, leaving the selection pointed at
- * a BU that no longer exists (task-B4-corrections.md §4).
- */
-export function nextSelectedBuId(
-  nextBus: SubscriptionBu[],
-  removedBuId: string,
-  currentSelectedBuId: string,
-): string {
-  if (currentSelectedBuId !== removedBuId) return currentSelectedBuId;
-  return nextBus[0]?.business_unit_id ?? '';
-}
-
-/**
- * Toggle one feature on one BU, keeping the module-parent invariant: a child selected implies
- * its module is selected, and a module with no selected children is not selected either. Backend
- * re-derives the parent on save regardless, but the UI must agree with it the moment a box is
- * checked, or "procurement unchecked but Purchase Request checked" reads as broken.
+ * Toggle one feature, keeping the module-parent invariant: a child selected implies its module
+ * is selected, and a module with no selected children is not selected either. Backend re-derives
+ * the parent on save regardless, but the UI must agree with it the moment a box is checked, or
+ * "procurement unchecked but Purchase Request checked" reads as broken.
  *
  * The `startsWith(`${module}.`)` prefix (WITH the trailing dot) is load-bearing: without it,
  * clearing `procurement` would also clear an unrelated module named `procurement_extra`.
  */
-export function toggleFeature(
-  bus: SubscriptionBu[],
-  buId: string,
-  key: string,
-  checked: boolean,
-): SubscriptionBu[] {
-  return bus.map((bu) => {
-    if (bu.business_unit_id !== buId) return bu;
-    const next = new Set(bu.feature_keys);
-    const module = moduleOf(key);
-    const childPrefix = `${module}.`;
+export function toggleFeature(featureKeys: string[], key: string, checked: boolean): string[] {
+  const next = new Set(featureKeys);
+  const module = moduleOf(key);
+  const childPrefix = `${module}.`;
 
-    if (checked) {
-      next.add(key);
-      next.add(module);
+  if (checked) {
+    next.add(key);
+    next.add(module);
+  } else {
+    next.delete(key);
+    if (key === module) {
+      Array.from(next).forEach((k) => { if (k.startsWith(childPrefix)) next.delete(k); });
     } else {
-      next.delete(key);
-      if (key === module) {
-        Array.from(next).forEach((k) => { if (k.startsWith(childPrefix)) next.delete(k); });
-      } else {
-        const hasChild = Array.from(next).some((k) => k.startsWith(childPrefix));
-        if (!hasChild) next.delete(module);
-      }
+      const hasChild = Array.from(next).some((k) => k.startsWith(childPrefix));
+      if (!hasChild) next.delete(module);
     }
-    return { ...bu, feature_keys: Array.from(next).sort() };
-  });
+  }
+  return Array.from(next).sort();
 }
 
 /**
@@ -214,51 +150,18 @@ export function toggleFeature(
  * `checked: true` with `key === module` only adds the module key, not its children.
  */
 export function setModuleSelection(
-  bus: SubscriptionBu[],
-  buId: string,
+  featureKeys: string[],
   moduleKey: string,
   childKeys: string[],
   selected: boolean,
-): SubscriptionBu[] {
-  return bus.map((bu) => {
-    if (bu.business_unit_id !== buId) return bu;
-    const next = new Set(bu.feature_keys);
-    if (selected) {
-      next.add(moduleKey);
-      childKeys.forEach((k) => next.add(k));
-    } else {
-      next.delete(moduleKey);
-      childKeys.forEach((k) => next.delete(k));
-    }
-    return { ...bu, feature_keys: Array.from(next).sort() };
-  });
-}
-
-/**
- * Overwrites the target BU's `feature_keys` wholesale with the source BU's — a replace, not a
- * merge. A no-op if the source isn't on the contract (defensive; the UI only ever offers other
- * BUs already on `bus` as copy sources).
- */
-export function copyFrom(
-  bus: SubscriptionBu[],
-  sourceBuId: string,
-  targetBuId: string,
-): SubscriptionBu[] {
-  const source = bus.find((b) => b.business_unit_id === sourceBuId);
-  if (!source) return bus;
-  return bus.map((bu) =>
-    bu.business_unit_id === targetBuId ? { ...bu, feature_keys: [...source.feature_keys] } : bu,
-  );
-}
-
-/**
- * `PUT .../features` accepts only these two fields per BU (task-B4-corrections.md §2) —
- * `bu_code`/`bu_name`/`licensed_users` are server-composed read fields; sending them risks an
- * opaque validation error. Centralized here so the page-level save and any test assert against
- * one definition of "the allowed shape", not a payload built ad hoc at the call site.
- */
-export function toFeaturesPayload(
-  bus: SubscriptionBu[],
-): { business_unit_id: string; feature_keys: string[] }[] {
-  return bus.map((b) => ({ business_unit_id: b.business_unit_id, feature_keys: b.feature_keys }));
+): string[] {
+  const next = new Set(featureKeys);
+  if (selected) {
+    next.add(moduleKey);
+    childKeys.forEach((k) => next.add(k));
+  } else {
+    next.delete(moduleKey);
+    childKeys.forEach((k) => next.delete(k));
+  }
+  return Array.from(next).sort();
 }

@@ -23,9 +23,8 @@ import { useAuth } from '../context/AuthContext';
 import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { SeatsCard } from './subscriptionEdit/SeatsCard';
-import { FeatureMatrixCard } from './subscriptionEdit/FeatureMatrixCard';
-import { toFeaturesPayload } from './subscriptionEdit/featureSelection';
-import type { BusinessUnit, SubscriptionBu, SubscriptionDetail } from '../types';
+import { FeatureSelectionCard } from './subscriptionEdit/FeatureSelectionCard';
+import type { BusinessUnit, SubscriptionDetail } from '../types';
 
 // ISO 8601 Z <-> the plain 'YYYY-MM-DD' an <input type="date"> wants.
 //
@@ -62,14 +61,9 @@ function fetchAllClusterBus(clusterId: string): Promise<BusinessUnit[]> {
   );
 }
 
-// 409-not-a-version-conflict on this endpoint is always the unique(cluster_id,
-// subscription_number) constraint (phase-b-backend-contract.md §4/§6) — there is no other
-// 409 case on create or update.
-const isDuplicateSubscriptionNumber = (err: unknown): boolean =>
-  (err as { response?: { status?: number } })?.response?.status === 409 && !isVersionConflict(err);
-
 const emptyFormData: SubscriptionFormData = {
   cluster_id: '',
+  business_unit_id: '',
   subscription_number: '',
   start_date: '',
   end_date: '',
@@ -92,9 +86,9 @@ const SubscriptionEdit: React.FC = () => {
   const [detail, setDetail] = useState<SubscriptionDetail | null>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
-  // B4 (FeatureMatrixCard) reads/writes these; this task only prepares the state + layout.
-  const [bus, setBus] = useState<SubscriptionBu[]>([]);
-  const [savedBus, setSavedBus] = useState<SubscriptionBu[]>([]);
+  // สิทธิ์ของสัญญา — หนึ่งใบผูก BU เดียว จึงเป็น array ของ feature key ตรง ๆ ไม่ใช่ราย BU
+  const [featureKeys, setFeatureKeys] = useState<string[]>([]);
+  const [savedFeatureKeys, setSavedFeatureKeys] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -112,7 +106,7 @@ const SubscriptionEdit: React.FC = () => {
 
   const hasChanges = !isNew && (
     JSON.stringify(formData) !== JSON.stringify(savedFormData) ||
-    JSON.stringify(bus) !== JSON.stringify(savedBus)
+    JSON.stringify(featureKeys) !== JSON.stringify(savedFeatureKeys)
   );
   useUnsavedChanges(hasChanges);
 
@@ -132,6 +126,7 @@ const SubscriptionEdit: React.FC = () => {
       setDocVersion(getDocVersion(data));
       const loaded: SubscriptionFormData = {
         cluster_id: data.cluster_id,
+        business_unit_id: data.bu?.business_unit_id ?? '',
         subscription_number: data.subscription_number,
         start_date: toYmd(data.start_date),
         end_date: toYmd(data.end_date),
@@ -139,8 +134,8 @@ const SubscriptionEdit: React.FC = () => {
       };
       setFormData(loaded);
       setSavedFormData(loaded);
-      setBus(data.bus ?? []);
-      setSavedBus(data.bus ?? []);
+      setFeatureKeys(data.bu?.feature_keys ?? []);
+      setSavedFeatureKeys(data.bu?.feature_keys ?? []);
       setFieldErrors({});
     } catch (err: unknown) {
       if (isNotFoundError(err)) {
@@ -187,7 +182,7 @@ const SubscriptionEdit: React.FC = () => {
 
   const handleCancelEdit = () => {
     setFormData(savedFormData);
-    setBus(savedBus);
+    setFeatureKeys(savedFeatureKeys);
     setFieldErrors({});
     setError('');
   };
@@ -197,10 +192,9 @@ const SubscriptionEdit: React.FC = () => {
   const validateBeforeSubmit = (): boolean => {
     const next: Record<string, string> = {};
     if (isNew && !formData.cluster_id) next.cluster_id = 'Cluster is required';
-    const numberErr = validateField('subscription_number', formData.subscription_number, {
-      required: true, label: 'Subscription number',
-    });
-    if (numberErr) next.subscription_number = numberErr;
+    // BU บังคับเฉพาะตอนสร้าง — ใบที่มีอยู่แล้วเปลี่ยน BU ไม่ได้ ค่านี้จึงมาจาก detail เสมอ และ
+    // ใบเก่าที่ข้อมูลผิดรูป (ไม่มี BU) ต้องยังบันทึกสิทธิ์/วันที่ได้ ไม่ใช่ถูกล็อกด้วย validation
+    if (isNew && !formData.business_unit_id) next.business_unit_id = 'Business unit is required';
     const startErr = validateField('start_date', formData.start_date, {
       required: true, label: 'Start date',
     });
@@ -225,12 +219,12 @@ const SubscriptionEdit: React.FC = () => {
     setSaving(true);
     setError('');
     try {
-      // Built field-by-field, never `...formData` — create only accepts these five keys
-      // (phase-b-backend-contract.md §4); formData has no extra keys today, but a loose
-      // service signature (Partial<Subscription>) would happily let one slip through later.
+      // Built field-by-field, never `...formData` — create accepts exactly these five keys.
+      // `subscription_number` is NOT among them: the server issues it (`SUB-YYMM-####`), and
+      // formData carries it only to display an existing contract's number.
       const payload = {
         cluster_id: formData.cluster_id,
-        subscription_number: formData.subscription_number,
+        business_unit_id: formData.business_unit_id,
         start_date: fromYmd(formData.start_date),
         end_date: fromYmd(formData.end_date),
         status: formData.status,
@@ -244,8 +238,11 @@ const SubscriptionEdit: React.FC = () => {
         navigate('/subscriptions');
       }
     } catch (err: unknown) {
-      if (isDuplicateSubscriptionNumber(err)) {
-        setFieldErrors((prev) => ({ ...prev, subscription_number: parseApiError(err).message }));
+      // 400 จาก backend เป็นได้สองอย่าง: BU ไม่อยู่ใน cluster ที่เลือก หรือช่วงวันไม่ถูกต้อง —
+      // `parseApiError` แยกให้เป็นราย field เมื่อ backend ส่งมา ที่เหลือขึ้นเป็น banner
+      const { fields } = parseApiError(err);
+      if (fields && Object.keys(fields).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...fields }));
       } else {
         setError('Failed to create subscription: ' + getErrorDetail(err));
       }
@@ -262,7 +259,7 @@ const SubscriptionEdit: React.FC = () => {
       return;
     }
     const infoChanged = JSON.stringify(formData) !== JSON.stringify(savedFormData);
-    const busChanged = JSON.stringify(bus) !== JSON.stringify(savedBus);
+    const featuresChanged = JSON.stringify(featureKeys) !== JSON.stringify(savedFeatureKeys);
     setSaving(true);
     setError('');
     try {
@@ -273,7 +270,6 @@ const SubscriptionEdit: React.FC = () => {
       if (infoChanged) {
         const payload = {
           doc_version: currentDocVersion,
-          subscription_number: formData.subscription_number,
           start_date: fromYmd(formData.start_date),
           end_date: fromYmd(formData.end_date),
           status: formData.status,
@@ -286,10 +282,10 @@ const SubscriptionEdit: React.FC = () => {
           setDocVersion(nextVersion);
         }
       }
-      if (busChanged) {
-        // Replace semantics (phase-b-backend-contract.md §4) — send only the two fields the
-        // endpoint accepts; bu_code/bu_name/licensed_users are server-composed read fields.
-        await subscriptionService.setFeatures(id!, toFeaturesPayload(bus), currentDocVersion);
+      if (featuresChanged) {
+        // Replace semantics — the full desired key set, not a diff. ไม่มี BU ใน payload:
+        // สัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนที่นี่ไม่ได้
+        await subscriptionService.setFeatures(id!, featureKeys, currentDocVersion);
       }
       toast.success('Changes saved successfully');
       await load();
@@ -299,8 +295,6 @@ const SubscriptionEdit: React.FC = () => {
         await load();
       } else if (isNotFoundError(err)) {
         setNotFound(true);
-      } else if (isDuplicateSubscriptionNumber(err)) {
-        setFieldErrors((prev) => ({ ...prev, subscription_number: parseApiError(err).message }));
       } else {
         setError('Failed to save subscription: ' + getErrorDetail(err));
       }
@@ -370,7 +364,7 @@ const SubscriptionEdit: React.FC = () => {
 
   const navItems: NavItem[] = [
     { id: 'info', label: 'ข้อมูลสัญญา' },
-    { id: 'bu-features', label: 'สิทธิ์ตาม BU', count: bus.length },
+    { id: 'features', label: 'โมดูลที่ซื้อ', count: featureKeys.length },
     { id: 'seats', label: 'ที่นั่ง' },
   ];
 
@@ -392,6 +386,8 @@ const SubscriptionEdit: React.FC = () => {
                 clusters={clusters}
                 clustersLoading={clustersLoading}
                 clustersError={clustersError}
+                clusterBus={clusterBus}
+                clusterBusLoading={clusterBusLoading}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 onFocus={handleFocus}
@@ -432,38 +428,41 @@ const SubscriptionEdit: React.FC = () => {
                     editing={canEdit}
                     isNew={false}
                     clusterLabel={detail ? `${detail.cluster_name} (${detail.cluster_code})` : ''}
+                    buLabel={detail?.bu ? `${detail.bu.bu_code} - ${detail.bu.bu_name}` : ''}
                     state={detail?.state}
                     clusters={clusters}
                     clustersLoading={clustersLoading}
+                    clusterBus={clusterBus}
+                    clusterBusLoading={clusterBusLoading}
                     onChange={handleChange}
                     onBlur={handleBlur}
                     onFocus={handleFocus}
                   />
                 </section>
 
-                <section id="bu-features" className="scroll-mt-20">
+                <section id="features" className="scroll-mt-20">
                   <Card>
                     <CardHeader>
-                      <CardTitle>สิทธิ์ตาม BU</CardTitle>
-                      <CardDescription>Per-BU feature entitlements</CardDescription>
+                      <CardTitle>โมดูลที่ซื้อ</CardTitle>
+                      <CardDescription>
+                        {detail?.bu
+                          ? `Feature entitlements for ${detail.bu.bu_code}`
+                          : 'Feature entitlements for this contract'}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {clusterBusLoading ? (
-                        <p className="text-sm text-muted-foreground">Loading business units…</p>
-                      ) : (
-                        <FeatureMatrixCard
-                          bus={bus}
-                          clusterBus={clusterBus}
-                          onChange={setBus}
-                          readOnly={!canEdit}
-                        />
-                      )}
+                      <FeatureSelectionCard
+                        featureKeys={featureKeys}
+                        buName={detail?.bu?.bu_name ?? null}
+                        onChange={setFeatureKeys}
+                        readOnly={!canEdit}
+                      />
                     </CardContent>
                   </Card>
                 </section>
 
                 <section id="seats" className="scroll-mt-20">
-                  {detail && <SeatsCard seat={detail.seat} bus={detail.bus} />}
+                  {detail && <SeatsCard seat={detail.seat} bu={detail.bu} />}
                 </section>
               </div>
             </div>

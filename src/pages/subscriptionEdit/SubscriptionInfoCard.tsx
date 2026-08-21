@@ -3,10 +3,13 @@ import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { ReadOnlyField } from '../../components/ReadOnlyField';
-import type { Cluster, SubscriptionState, SubscriptionStatus } from '../../types';
+import type { BusinessUnit, Cluster, SubscriptionState, SubscriptionStatus } from '../../types';
 
 export interface SubscriptionFormData {
   cluster_id: string;
+  /** BU ที่ออกสัญญาให้ — เลือกได้ตอนสร้างเท่านั้น แก้ทีหลังไม่ได้ เหมือน `cluster_id` */
+  business_unit_id: string;
+  /** ระบบออกให้ (`SUB-YYMM-####`) — แสดงอย่างเดียว ว่างตอนสร้างเพราะยังไม่มีเลข */
   subscription_number: string;
   /** 'YYYY-MM-DD' — the raw <input type="date"> value, converted to/from ISO Z at the page level. */
   start_date: string;
@@ -33,6 +36,11 @@ export interface SubscriptionInfoCardProps {
   /** Candidate clusters for the picker — only rendered when `isNew`. */
   clusters: Cluster[];
   clustersLoading?: boolean;
+  /** BU ของ cluster ที่เลือก — ตัวเลือกของ picker ตอนสร้าง */
+  clusterBus: BusinessUnit[];
+  clusterBusLoading?: boolean;
+  /** Read-only display for the BU field on an existing subscription (`"CODE - name"`). */
+  buLabel?: string;
   /** Why the cluster list is empty, when it failed to load — shown under the picker so the
    * user isn't left staring at a dropdown with nothing in it and no explanation (M7). */
   clustersError?: string;
@@ -46,8 +54,11 @@ export interface SubscriptionInfoCardProps {
  * (edit control + `ReadOnlyField`) per CLAUDE.md's Form Field Pattern, gated on `editing`
  * (== `subscription.manage`), not a page-level Edit toggle.
  *
- * Cluster is the one exception: it is only ever editable when `isNew` — an existing
- * subscription's cluster is fixed, regardless of permission.
+ * Cluster and business unit are the exceptions: both are only ever editable when `isNew` — an
+ * existing contract's cluster and BU are fixed, regardless of permission. Reissuing to another
+ * BU means deleting the contract and creating a new one, which keeps the paper trail honest.
+ *
+ * Subscription number is never editable at all: the server issues it (`SUB-YYMM-####`).
  */
 export function SubscriptionInfoCard({
   formData,
@@ -59,11 +70,15 @@ export function SubscriptionInfoCard({
   clusters,
   clustersLoading,
   clustersError,
+  clusterBus,
+  clusterBusLoading,
+  buLabel,
   onChange,
   onBlur,
   onFocus,
 }: SubscriptionInfoCardProps) {
   const clusterEditable = editing && isNew;
+  const buEditable = editing && isNew;
   const selectedCluster = clusters.find((c) => c.id === formData.cluster_id);
   // A cluster the caller pre-selected (e.g. ?cluster_id=… from Cluster Edit) may not be in
   // `clusters` yet while the picker list is still loading — synthesize a placeholder option
@@ -115,25 +130,56 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subscription_number">Subscription Number{editing && ' *'}</Label>
-            {editing ? (
+            <Label htmlFor="business_unit_id">Business Unit{buEditable && ' *'}</Label>
+            {buEditable ? (
               <>
-                <Input
-                  id="subscription_number"
-                  name="subscription_number"
-                  value={formData.subscription_number}
+                <select
+                  id="business_unit_id"
+                  name="business_unit_id"
+                  value={formData.business_unit_id}
                   onChange={onChange}
-                  onBlur={onBlur}
-                  onFocus={onFocus}
-                  placeholder="SUB-2026-001"
-                  className={fieldErrors.subscription_number ? 'border-destructive' : ''}
-                />
-                {fieldErrors.subscription_number && (
-                  <p className="text-destructive text-xs">{fieldErrors.subscription_number}</p>
+                  disabled={!formData.cluster_id || clusterBusLoading}
+                  className={selectClassName}
+                >
+                  <option value="">
+                    {!formData.cluster_id
+                      ? 'เลือกคลัสเตอร์ก่อน'
+                      : clusterBusLoading
+                        ? 'Loading…'
+                        : 'Select a business unit'}
+                  </option>
+                  {clusterBus.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.code} - {b.name}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.business_unit_id && (
+                  <p className="text-destructive text-xs">{fieldErrors.business_unit_id}</p>
+                )}
+                {/* คลัสเตอร์ที่ไม่มี BU เลยสร้างสัญญาไม่ได้ — บอกตรงนี้ ดีกว่าปล่อยให้กด Create
+                    แล้วเจอ 400 จาก backend โดยไม่รู้ว่าติดอะไร */}
+                {formData.cluster_id && !clusterBusLoading && clusterBus.length === 0 && (
+                  <p className="text-destructive text-xs" role="alert">
+                    คลัสเตอร์นี้ยังไม่มีหน่วยธุรกิจ — สร้างหน่วยธุรกิจก่อนจึงจะออกสัญญาได้
+                  </p>
                 )}
               </>
             ) : (
-              <ReadOnlyField value={formData.subscription_number} className="font-mono" />
+              <ReadOnlyField value={buLabel} />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="subscription_number">Subscription Number</Label>
+            {/* ไม่มีโหมดแก้ — ระบบออกเลขให้ตอนสร้าง (`SUB-YYMM-####` เลขวิ่งทั่วระบบต่อเดือน)
+                และเลขนั้นอาจถูกอ้างในเอกสารที่ส่งออกไปแล้ว */}
+            <ReadOnlyField
+              value={isNew ? undefined : formData.subscription_number}
+              className="font-mono"
+            />
+            {isNew && (
+              <p className="text-muted-foreground text-xs">ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก</p>
             )}
           </div>
 

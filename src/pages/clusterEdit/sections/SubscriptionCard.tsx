@@ -118,13 +118,17 @@ export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-sm">{sub.subscription_number}</span>
+                      {/* BU ของสัญญาเด่นกว่าเลขที่สัญญาในบริบทนี้: หนึ่ง cluster มีหลาย BU และ
+                          หนึ่ง BU มีได้หลายใบ (ต่ออายุ/ซื้อโมดูลเพิ่ม) คนอ่านการ์ดนี้กำลังหาว่า
+                          "BU ไหนมีสัญญาอะไรอยู่" ไม่ใช่ไล่เลขที่สัญญา */}
+                      {sub.bu_code && <Badge variant="outline" className="text-xs">{sub.bu_code}</Badge>}
                       <Badge variant={sub.state === 'active' ? 'success' : 'secondary'} className="text-xs capitalize">
                         {sub.state}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground text-xs">
                       Expires {fmtDate(sub.end_date)} · {sub.feature_count} feature{sub.feature_count === 1 ? '' : 's'} ·{' '}
-                      {sub.bu_count} BU{sub.bu_count === 1 ? '' : 's'} · {seats.used}/{seats.cap} seats
+                      {seats.used}/{seats.cap} seats
                     </p>
                   </div>
                   <Button

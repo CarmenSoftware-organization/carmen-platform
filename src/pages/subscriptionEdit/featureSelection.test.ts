@@ -3,19 +3,13 @@ import {
   moduleOf,
   groupCatalog,
   filterGroups,
-  availableBus,
-  addBu,
-  removeBu,
-  nextSelectedBuId,
   toggleFeature,
   setModuleSelection,
-  copyFrom,
-  toFeaturesPayload,
   unknownFeatureKeys,
   removeFeatureKey,
   selectedChildCount,
 } from './featureSelection';
-import type { BusinessUnit, LicenseFeature, SubscriptionBu } from '../../types';
+import type { LicenseFeature } from '../../types';
 
 const feature = (over: Partial<LicenseFeature> = {}): LicenseFeature => ({
   key: 'procurement',
@@ -35,23 +29,6 @@ const catalog: LicenseFeature[] = [
   feature({ key: 'inventory', parent_key: null, label: 'Inventory', sort_order: 2 }),
   feature({ key: 'inventory.stock_count', parent_key: 'inventory', label: 'Stock Count', sort_order: 0 }),
 ];
-
-const bu = (over: Partial<SubscriptionBu> = {}): SubscriptionBu => ({
-  business_unit_id: 'bu1',
-  bu_code: 'BU1',
-  bu_name: 'Acme BU',
-  feature_keys: [],
-  licensed_users: 10,
-  ...over,
-});
-
-const businessUnit = (over: Partial<BusinessUnit> = {}): BusinessUnit => ({
-  id: 'bu1',
-  code: 'BU1',
-  name: 'Acme BU',
-  is_active: true,
-  ...over,
-});
 
 describe('moduleOf', () => {
   it('returns the text before the first dot', () => {
@@ -128,137 +105,54 @@ describe('filterGroups', () => {
   });
 });
 
-describe('availableBus', () => {
-  it('excludes BUs already on the contract', () => {
-    const cluster = [businessUnit({ id: 'bu1' }), businessUnit({ id: 'bu2', code: 'BU2', name: 'Beta BU' })];
-    const contract = [bu({ business_unit_id: 'bu1' })];
-    const result = availableBus(contract, cluster);
-    expect(result.map((b) => b.id)).toEqual(['bu2']);
-  });
-
-  it('returns every cluster BU when none are on the contract yet', () => {
-    const cluster = [businessUnit({ id: 'bu1' }), businessUnit({ id: 'bu2' })];
-    expect(availableBus([], cluster)).toHaveLength(2);
-  });
-});
-
-describe('addBu', () => {
-  // `BusinessUnit.max_license_users` no longer exists (carmen-platform Task 3.5 — seats moved
-  // to dated licence rows) so there is nothing left on the BU record for `addBu` to seed
-  // `licensed_users` from; it always seeds 0, a client-side placeholder the backend recomputes
-  // on refetch after save.
-  it('adds a new SubscriptionBu with empty feature_keys and licensed_users seeded to 0', () => {
-    const cluster = [businessUnit({ id: 'bu2', code: 'BU2', name: 'Beta BU' })];
-    const result = addBu([], cluster, 'bu2');
-    expect(result).toEqual([
-      { business_unit_id: 'bu2', bu_code: 'BU2', bu_name: 'Beta BU', feature_keys: [], licensed_users: 0 },
+describe('toggleFeature — module-parent invariant', () => {
+  it('checking a child adds the child and its parent module', () => {
+    expect(toggleFeature([], 'procurement.purchase_request', true)).toEqual([
+      'procurement',
+      'procurement.purchase_request',
     ]);
   });
 
-  it('is a no-op when the BU id is unknown', () => {
-    const result = addBu([bu()], [], 'missing');
-    expect(result).toEqual([bu()]);
-  });
-
-  it('is a no-op when the BU is already on the contract (never adds a duplicate)', () => {
-    const cluster = [businessUnit({ id: 'bu1' })];
-    const existing = [bu({ business_unit_id: 'bu1' })];
-    const result = addBu(existing, cluster, 'bu1');
-    expect(result).toEqual(existing);
-    expect(result).toHaveLength(1);
-  });
-});
-
-describe('removeBu', () => {
-  it('removes the matching BU and leaves the rest untouched', () => {
-    const bus = [bu({ business_unit_id: 'bu1' }), bu({ business_unit_id: 'bu2', bu_name: 'Beta' })];
-    const result = removeBu(bus, 'bu1');
-    expect(result.map((b) => b.business_unit_id)).toEqual(['bu2']);
-  });
-
-  it('is a no-op when the id is not present', () => {
-    const bus = [bu({ business_unit_id: 'bu1' })];
-    expect(removeBu(bus, 'nope')).toEqual(bus);
-  });
-});
-
-describe('nextSelectedBuId — must never leave selectedBuId pointed at a removed BU', () => {
-  it('keeps the current selection when a different BU was removed', () => {
-    const nextBus = [bu({ business_unit_id: 'bu2' })];
-    expect(nextSelectedBuId(nextBus, 'bu1', 'bu2')).toBe('bu2');
-  });
-
-  it('falls back to the new first BU when the selected BU was removed and one is first in the list', () => {
-    // Regression: computing bus[0] from the PRE-removal array would silently resolve back to
-    // the just-removed id whenever it happened to be first — this must use the POST-removal
-    // array instead.
-    const bus1 = bu({ business_unit_id: 'bu1' });
-    const bus2 = bu({ business_unit_id: 'bu2', bu_name: 'Beta' });
-    const nextBus = removeBu([bus1, bus2], 'bu1');
-    expect(nextSelectedBuId(nextBus, 'bu1', 'bu1')).toBe('bu2');
-  });
-
-  it('falls back to empty string when the removed BU was the last one on the contract', () => {
-    const bus1 = bu({ business_unit_id: 'bu1' });
-    const nextBus = removeBu([bus1], 'bu1');
-    expect(nextSelectedBuId(nextBus, 'bu1', 'bu1')).toBe('');
-  });
-});
-
-describe('toggleFeature — module-parent invariant', () => {
-  it('checking a child adds the child and its parent module', () => {
-    const bus = [bu({ feature_keys: [] })];
-    const result = toggleFeature(bus, 'bu1', 'procurement.purchase_request', true);
-    expect(result[0].feature_keys).toEqual(['procurement', 'procurement.purchase_request']);
-  });
-
   it('unchecking the last remaining child also removes the parent module', () => {
-    const bus = [bu({ feature_keys: ['procurement', 'procurement.purchase_request'] })];
-    const result = toggleFeature(bus, 'bu1', 'procurement.purchase_request', false);
-    expect(result[0].feature_keys).toEqual([]);
+    const result = toggleFeature(
+      ['procurement', 'procurement.purchase_request'],
+      'procurement.purchase_request',
+      false,
+    );
+    expect(result).toEqual([]);
   });
 
   it('unchecking one child while another sibling remains keeps the parent module', () => {
-    const bus = [bu({ feature_keys: ['procurement', 'procurement.purchase_request', 'procurement.purchase_order'] })];
-    const result = toggleFeature(bus, 'bu1', 'procurement.purchase_request', false);
-    expect(result[0].feature_keys).toEqual(['procurement', 'procurement.purchase_order']);
+    const result = toggleFeature(
+      ['procurement', 'procurement.purchase_request', 'procurement.purchase_order'],
+      'procurement.purchase_request',
+      false,
+    );
+    expect(result).toEqual(['procurement', 'procurement.purchase_order']);
   });
 
   it('unchecking the parent module removes every child of that module', () => {
-    const bus = [bu({ feature_keys: ['procurement', 'procurement.purchase_request', 'procurement.purchase_order'] })];
-    const result = toggleFeature(bus, 'bu1', 'procurement', false);
-    expect(result[0].feature_keys).toEqual([]);
+    const result = toggleFeature(
+      ['procurement', 'procurement.purchase_request', 'procurement.purchase_order'],
+      'procurement',
+      false,
+    );
+    expect(result).toEqual([]);
   });
 
   it('unchecking the parent module does NOT touch a similarly-prefixed module (startsWith trap)', () => {
-    const bus = [
-      bu({
-        feature_keys: [
-          'procurement',
-          'procurement.purchase_request',
-          'procurement_extra',
-          'procurement_extra.widget',
-        ],
-      }),
-    ];
-    const result = toggleFeature(bus, 'bu1', 'procurement', false);
-    expect(result[0].feature_keys).toEqual(['procurement_extra', 'procurement_extra.widget']);
+    const result = toggleFeature(
+      ['procurement', 'procurement.purchase_request', 'procurement_extra', 'procurement_extra.widget'],
+      'procurement',
+      false,
+    );
+    expect(result).toEqual(['procurement_extra', 'procurement_extra.widget']);
   });
 
-  it('only mutates the targeted BU, leaving other BUs untouched', () => {
-    const bus = [
-      bu({ business_unit_id: 'bu1', feature_keys: [] }),
-      bu({ business_unit_id: 'bu2', bu_name: 'Beta', feature_keys: ['inventory'] }),
-    ];
-    const result = toggleFeature(bus, 'bu1', 'inventory.stock_count', true);
-    expect(result[1].feature_keys).toEqual(['inventory']);
-  });
-
-  it('keeps feature_keys sorted after every mutation', () => {
-    const bus = [bu({ feature_keys: [] })];
-    const step1 = toggleFeature(bus, 'bu1', 'procurement.purchase_order', true);
-    const step2 = toggleFeature(step1, 'bu1', 'procurement.purchase_request', true);
-    expect(step2[0].feature_keys).toEqual([...step2[0].feature_keys].sort());
+  it('keeps the key list sorted after every mutation', () => {
+    const step1 = toggleFeature([], 'procurement.purchase_order', true);
+    const step2 = toggleFeature(step1, 'procurement.purchase_request', true);
+    expect(step2).toEqual([...step2].sort());
   });
 });
 
@@ -266,57 +160,21 @@ describe('setModuleSelection — backs the "ทั้งหมด / ไม่เ
   const childKeys = ['procurement.purchase_request', 'procurement.purchase_order'];
 
   it('selecting adds the module plus every given child', () => {
-    const bus = [bu({ feature_keys: [] })];
-    const result = setModuleSelection(bus, 'bu1', 'procurement', childKeys, true);
-    expect(result[0].feature_keys).toEqual(['procurement', 'procurement.purchase_order', 'procurement.purchase_request']);
+    expect(setModuleSelection([], 'procurement', childKeys, true)).toEqual([
+      'procurement',
+      'procurement.purchase_order',
+      'procurement.purchase_request',
+    ]);
   });
 
   it('deselecting removes the module and every given child, nothing else', () => {
-    const bus = [
-      bu({ feature_keys: ['procurement', ...childKeys, 'procurement_extra', 'procurement_extra.widget'] }),
-    ];
-    const result = setModuleSelection(bus, 'bu1', 'procurement', childKeys, false);
-    expect(result[0].feature_keys).toEqual(['procurement_extra', 'procurement_extra.widget']);
-  });
-});
-
-describe('copyFrom — replace, not merge', () => {
-  it('overwrites the target feature_keys wholesale with the source', () => {
-    const bus = [
-      bu({ business_unit_id: 'bu1', feature_keys: ['procurement', 'procurement.purchase_request'] }),
-      bu({ business_unit_id: 'bu2', bu_name: 'Beta', feature_keys: ['inventory', 'inventory.stock_count'] }),
-    ];
-    const result = copyFrom(bus, 'bu1', 'bu2');
-    const target = result.find((b) => b.business_unit_id === 'bu2')!;
-    // Replaced wholesale — the target's prior 'inventory*' keys are gone, not merged in.
-    expect(target.feature_keys).toEqual(['procurement', 'procurement.purchase_request']);
-  });
-
-  it('is a no-op when the source BU is not on the contract', () => {
-    const bus = [bu({ business_unit_id: 'bu2', feature_keys: ['inventory'] })];
-    const result = copyFrom(bus, 'missing', 'bu2');
-    expect(result).toEqual(bus);
-  });
-
-  it('does not mutate the source array reference for feature_keys (copies, not aliases)', () => {
-    const source = bu({ business_unit_id: 'bu1', feature_keys: ['procurement'] });
-    const target = bu({ business_unit_id: 'bu2', bu_name: 'Beta', feature_keys: [] });
-    const result = copyFrom([source, target], 'bu1', 'bu2');
-    const copiedTarget = result.find((b) => b.business_unit_id === 'bu2')!;
-    expect(copiedTarget.feature_keys).not.toBe(source.feature_keys);
-    expect(copiedTarget.feature_keys).toEqual(['procurement']);
-  });
-});
-
-describe('toFeaturesPayload — the only shape PUT .../features accepts', () => {
-  it('maps down to business_unit_id + feature_keys only, dropping bu_code/bu_name/licensed_users', () => {
-    const bus = [bu({ feature_keys: ['procurement'] })];
-    expect(toFeaturesPayload(bus)).toEqual([{ business_unit_id: 'bu1', feature_keys: ['procurement'] }]);
-  });
-
-  it('maps every BU in order', () => {
-    const bus = [bu({ business_unit_id: 'bu1' }), bu({ business_unit_id: 'bu2' })];
-    expect(toFeaturesPayload(bus).map((b) => b.business_unit_id)).toEqual(['bu1', 'bu2']);
+    const result = setModuleSelection(
+      ['procurement', ...childKeys, 'procurement_extra', 'procurement_extra.widget'],
+      'procurement',
+      childKeys,
+      false,
+    );
+    expect(result).toEqual(['procurement_extra', 'procurement_extra.widget']);
   });
 });
 
@@ -371,27 +229,22 @@ describe('unknownFeatureKeys', () => {
 });
 
 describe('removeFeatureKey', () => {
-  it('removes exactly that key from that BU and nothing else', () => {
-    const bus = [bu({ feature_keys: ['procurement', 'procurement.legacy', 'inventory'] })];
-    expect(removeFeatureKey(bus, 'bu1', 'procurement.legacy')[0].feature_keys)
-      .toEqual(['procurement', 'inventory']);
+  it('removes exactly that key and nothing else', () => {
+    expect(
+      removeFeatureKey(['procurement', 'procurement.legacy', 'inventory'], 'procurement.legacy'),
+    ).toEqual(['procurement', 'inventory']);
   });
 
   it('does NOT drop the module when its last surviving child is an unknown key', () => {
     // toggleFeature would clear `procurement` here (its parent invariant). That is right for a
     // catalog child and wrong for a dead key — the module is still a real, licensed feature.
-    const bus = [bu({ feature_keys: ['procurement', 'procurement.legacy'] })];
-    expect(removeFeatureKey(bus, 'bu1', 'procurement.legacy')[0].feature_keys).toEqual(['procurement']);
+    expect(removeFeatureKey(['procurement', 'procurement.legacy'], 'procurement.legacy')).toEqual([
+      'procurement',
+    ]);
   });
 
-  it('leaves other BUs untouched', () => {
-    const bus = [
-      bu({ business_unit_id: 'bu1', feature_keys: ['dead.key'] }),
-      bu({ business_unit_id: 'bu2', feature_keys: ['dead.key'] }),
-    ];
-    const result = removeFeatureKey(bus, 'bu1', 'dead.key');
-    expect(result[0].feature_keys).toEqual([]);
-    expect(result[1].feature_keys).toEqual(['dead.key']);
+  it('is a no-op for a key that is not there', () => {
+    expect(removeFeatureKey(['procurement'], 'dead.key')).toEqual(['procurement']);
   });
 });
 

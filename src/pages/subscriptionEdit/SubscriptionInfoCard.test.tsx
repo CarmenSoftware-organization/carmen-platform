@@ -7,7 +7,8 @@ import type { Cluster } from '../../types';
 
 const formData: SubscriptionFormData = {
   cluster_id: 'c1',
-  subscription_number: 'SUB-0001',
+  business_unit_id: 'b1',
+  subscription_number: 'SUB-2608-0001',
   start_date: '2026-01-01',
   end_date: '2026-12-31',
   status: 'active',
@@ -24,6 +25,7 @@ const base = (over: Record<string, unknown> = {}) => ({
   editing: false,
   isNew: false,
   clusters: [],
+  clusterBus: [],
   onChange: vi.fn(),
   onBlur: vi.fn(),
   onFocus: vi.fn(),
@@ -34,7 +36,7 @@ describe('SubscriptionInfoCard — read-only mode', () => {
   it('renders every field as read-only text, not inputs', () => {
     render(<SubscriptionInfoCard {...base({ clusterLabel: 'Acme Cluster (CLS1)' })} />);
     expect(screen.getByText('Acme Cluster (CLS1)')).toBeInTheDocument();
-    expect(screen.getByText('SUB-0001')).toBeInTheDocument();
+    expect(screen.getByText('SUB-2608-0001')).toBeInTheDocument();
     expect(screen.getByText('2026-01-01')).toBeInTheDocument();
     expect(screen.getByText('2026-12-31')).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
