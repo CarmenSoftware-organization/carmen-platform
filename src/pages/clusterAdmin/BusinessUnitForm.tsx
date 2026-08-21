@@ -30,10 +30,14 @@ import { AddressBlock } from './businessUnitForm/AddressBlock';
 import { SeatMeter } from './businessUnitForm/SeatMeter';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
-import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
+import businessUnitLicenseService from '../../services/businessUnitLicenseService';
+import { useLicenseLedger } from '../licenses/useLicenseLedger';
+import { sumActiveLicenses } from '../../utils/buLicense';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
-import type { BusinessUnitConfig } from '../../types';
+import type { BusinessUnitConfig, BusinessUnitLicense } from '../../types';
+
+type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
 // Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
@@ -136,7 +140,9 @@ const BusinessUnitForm: React.FC = () => {
   };
 
   const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
-  const licenses = useBusinessUnitLicenses(buId);
+  const licenses = useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(buId, businessUnitLicenseService);
+  // hook เดิมคืน activeSeats มาให้ SeatMeter ด้านล่าง — คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
+  const activeSeats = sumActiveLicenses(licenses.licenses);
 
   // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
   // การเปลี่ยนขอบเขตสิทธิ์เป็นงานคนละชิ้นที่ต้องมีสเปกของตัวเอง — spec §5.3
@@ -601,7 +607,7 @@ const BusinessUnitForm: React.FC = () => {
               <Group label="People & seats">
                 {clusterSeat && (
                   <div className="mb-4">
-                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={licenses.activeSeats} />
+                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={activeSeats} />
                   </div>
                 )}
                 <BusinessUnitUsersCard users={users} canEdit={canEdit} />

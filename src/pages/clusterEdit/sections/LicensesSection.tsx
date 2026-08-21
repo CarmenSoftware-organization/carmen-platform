@@ -7,10 +7,13 @@ import { Input } from '../../../components/ui/input';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
-import { useClusterLicenses } from './useClusterLicenses';
+import clusterLicenseService from '../../../services/clusterLicenseService';
+import { useLicenseLedger } from '../../licenses/useLicenseLedger';
 import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon, PERPETUAL_END_DATE } from '../../../utils/clusterLicense';
 import { fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '../../licenses/licenseDates';
 import type { ClusterLicense, ClusterLicenseStatus } from '../../../types';
+
+type ClusterLicenseCreate = Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version'>;
 
 export interface LicensesSectionProps {
   clusterId: string;
@@ -64,7 +67,8 @@ const canSubmitDraft = (d: LicenseDraft, noExpiry: boolean): boolean =>
  * `BusinessUnitLicensesCard` — เพจแม่ส่งแค่ `clusterId` + `canManage`
  */
 export function LicensesSection({ clusterId, canManage, buUsed }: LicensesSectionProps) {
-  const { licenses, loading, saving, create, update, remove } = useClusterLicenses(clusterId);
+  const { licenses, loading, saving, create, update, remove } =
+    useLicenseLedger<ClusterLicense, ClusterLicenseCreate>(clusterId, clusterLicenseService);
   const now = new Date();
 
   const [showExpired, setShowExpired] = useState(false);

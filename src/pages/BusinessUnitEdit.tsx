@@ -16,7 +16,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../types';
+import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
@@ -25,13 +25,17 @@ import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
 import { initialFormData, aliasBound } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
-import { useBusinessUnitLicenses } from './businessUnitEdit/useBusinessUnitLicenses';
+import businessUnitLicenseService from '../services/businessUnitLicenseService';
+import { useLicenseLedger } from './licenses/useLicenseLedger';
+import { sumActiveLicenses, licenseStatus } from '../utils/buLicense';
 import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCard';
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from './businessUnitEdit/BusinessUnitLicensesCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
+
+type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -65,7 +69,11 @@ const BusinessUnitEdit: React.FC = () => {
   const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
-  const licenses = useBusinessUnitLicenses(id);
+  const licenses = useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(id, businessUnitLicenseService);
+  // hook เดิมคืน activeSeats/activeLicenseCount มาให้ ส่วนหัวเอกสารใช้สองค่านี้ —
+  // คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
+  const activeSeats = sumActiveLicenses(licenses.licenses);
+  const activeLicenseCount = licenses.licenses.filter((l) => licenseStatus(l) === 'active').length;
 
   // Seat pool is the cluster's, not this BU's — `total_max_license_users` is a backend
   // aggregate across every BU in the cluster. Treat 0/null/absent as uncapped (no meter),
@@ -570,8 +578,8 @@ const BusinessUnitEdit: React.FC = () => {
           currenciesFailed={currenciesFailed}
           getCalculationMethodLabel={getCalculationMethodLabel}
           canEdit={canEdit}
-          activeSeats={licenses.activeSeats}
-          activeLicenseCount={licenses.activeLicenseCount}
+          activeSeats={activeSeats}
+          activeLicenseCount={activeLicenseCount}
           onCommit={handleInlineCommit}
           onToggle={handleInlineToggle}
           onValidate={handleInlineValidate}
