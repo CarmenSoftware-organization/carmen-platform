@@ -82,7 +82,8 @@ const sampleSub = {
   end_date: '2099-12-31T00:00:00.000Z',
   status: 'active',
   state: 'inactive',
-  bu_count: 2,
+  bu_code: 'BU1',
+  bu_name: 'Acme BU',
   feature_count: 5,
   seat_used: 10,
   seat_cap: 20,
@@ -374,24 +375,26 @@ describe('SubscriptionManagement — the State filter matches what the badge sho
   });
 });
 
-// Review M3: spec §8.1 lists BU, Features, and a cluster filter. The counts were already on
-// every row (they even shipped in the CSV export) — just never rendered.
+// Review M3: spec §8.1 lists BU, Features, and a cluster filter. The values were already on
+// every row (they even shipped in the CSV export) — just never rendered. The BU column now
+// names the contract's single business unit instead of counting them: one contract = one BU.
 describe('SubscriptionManagement — BU and Features columns', () => {
   it('renders both column headers with the row values', async () => {
     renderPage();
     await screen.findByText('SUB-0001');
 
-    expect(screen.getByText('BU')).toBeInTheDocument();
+    expect(screen.getByText('Business Unit')).toBeInTheDocument();
     expect(screen.getByText('Features')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();  // bu_count
-    expect(screen.getByText('5')).toBeInTheDocument();  // feature_count
+    expect(screen.getByText('BU1')).toBeInTheDocument();     // bu_code
+    expect(screen.getByText('Acme BU')).toBeInTheDocument(); // bu_name
+    expect(screen.getByText('5')).toBeInTheDocument();       // feature_count
   });
 
   it('does not offer sorting on either — they are backend aggregates, not columns (400)', async () => {
     renderPage();
     await screen.findByText('SUB-0001');
 
-    expect(screen.queryByRole('button', { name: /^BU$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Business Unit$/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Features$/ })).toBeNull();
   });
 });

@@ -60,12 +60,37 @@ const sampleDetail: SubscriptionDetail = {
   state: 'active',
   doc_version: 3,
   seat: { used: 8, cap: 10, pending_invites: 1 },
-  bus: [
-    { business_unit_id: 'bu1', bu_code: 'BU1', bu_name: 'Acme BU', feature_keys: [], licensed_users: 10 },
-  ],
+  bu: {
+    business_unit_id: 'bu1',
+    bu_code: 'BU1',
+    bu_name: 'Acme BU',
+    feature_keys: [],
+    licensed_users: 10,
+  },
 };
 
 const emptyBuList = { data: [], paginate: { total: 0, page: 1, perpage: 100 } };
+
+/** BU roster of `c1` — the picker's options in create mode. */
+const buList = {
+  data: [
+    { id: 'bu1', code: 'BU1', name: 'Acme BU', is_active: true },
+    { id: 'bu2', code: 'BU2', name: 'Beta BU', is_active: true },
+  ],
+  paginate: { total: 2, page: 1, perpage: 100 },
+};
+
+/** Smallest catalog that still has a module + one child, for the feature accordion. */
+const catalog = [
+  { key: 'procurement', parent_key: null, label: 'Procurement', description: null, sort_order: 0 },
+  {
+    key: 'procurement.purchase_request',
+    parent_key: 'procurement',
+    label: 'Purchase Request',
+    description: null,
+    sort_order: 0,
+  },
+];
 const emptyClusterList = { data: [], paginate: { total: 0, page: 1, perpage: 200 } };
 
 function renderAt(path: string) {
@@ -85,11 +110,10 @@ beforeEach(() => {
   auth.hasPermission = () => true;
   asMock(businessUnitService.getAll).mockResolvedValue(emptyBuList);
   asMock(clusterService.getAll).mockResolvedValue(emptyClusterList);
-  // FeatureMatrixCard (Task B4) fetches its own catalog on mount whenever an existing
-  // subscription renders — every test below that reaches that section needs this resolved,
-  // or the card's own catalogFailed state (tested separately in FeatureMatrixCard.test.tsx)
-  // would fire here and swallow unrelated assertions.
-  asMock(subscriptionService.getFeatureCatalog).mockResolvedValue({ data: [] });
+  // FeatureSelectionCard fetches its own catalog on mount whenever an existing subscription
+  // renders — every test below that reaches that section needs this resolved, or the card's
+  // own catalogFailed state would fire here and swallow unrelated assertions.
+  asMock(subscriptionService.getFeatureCatalog).mockResolvedValue({ data: catalog });
 });
 
 describe('SubscriptionEdit — create mode reads cluster_id from the query param', () => {
@@ -109,12 +133,13 @@ describe('SubscriptionEdit — create mode reads cluster_id from the query param
 });
 
 describe('SubscriptionEdit — create sends only the allowed fields', () => {
-  it('POSTs cluster_id/subscription_number/start_date/end_date/status only — no doc_version, no extras', async () => {
+  it('POSTs cluster_id/business_unit_id/start_date/end_date/status only — never a subscription_number (the server issues it)', async () => {
+    asMock(businessUnitService.getAll).mockResolvedValue(buList);
     asMock(subscriptionService.create).mockResolvedValue({ data: { id: 'new1' } });
     const user = userEvent.setup();
     renderAt('/subscriptions/new?cluster_id=c1');
 
-    await user.type(await screen.findByPlaceholderText('SUB-2026-001'), 'SUB-9999');
+    await user.selectOptions(await screen.findByLabelText(/business unit/i), 'bu1');
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-01-01' } });
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-31' } });
 
@@ -123,18 +148,34 @@ describe('SubscriptionEdit — create sends only the allowed fields', () => {
     await waitFor(() => expect(subscriptionService.create).toHaveBeenCalledTimes(1));
     expect(subscriptionService.create).toHaveBeenCalledWith({
       cluster_id: 'c1',
-      subscription_number: 'SUB-9999',
+      business_unit_id: 'bu1',
       start_date: '2026-01-01T00:00:00.000Z',
       end_date: '2026-12-31T00:00:00.000Z',
       status: 'active',
     });
   });
 
-  it('blocks submit and never calls the API when end_date is not after start_date', async () => {
+  it('blocks submit and never calls the API when no business unit is picked', async () => {
+    asMock(businessUnitService.getAll).mockResolvedValue(buList);
     const user = userEvent.setup();
     renderAt('/subscriptions/new?cluster_id=c1');
 
-    await user.type(await screen.findByPlaceholderText('SUB-2026-001'), 'SUB-9999');
+    await screen.findByLabelText(/business unit/i);
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-01-01' } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-12-31' } });
+
+    await user.click(screen.getByRole('button', { name: /create subscription/i }));
+
+    expect(await screen.findByText(/business unit is required/i)).toBeInTheDocument();
+    expect(subscriptionService.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks submit and never calls the API when end_date is not after start_date', async () => {
+    asMock(businessUnitService.getAll).mockResolvedValue(buList);
+    const user = userEvent.setup();
+    renderAt('/subscriptions/new?cluster_id=c1');
+
+    await user.selectOptions(await screen.findByLabelText(/business unit/i), 'bu1');
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-06-01' } });
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2026-01-01' } });
 
@@ -150,58 +191,57 @@ describe('SubscriptionEdit — update sends doc_version plus only the allowed fi
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
   });
 
-  it('PATCHes with doc_version always present, no extra keys like id/state/bu_count', async () => {
+  it('PATCHes with doc_version always present, and never a subscription_number or business_unit_id (both immutable)', async () => {
     asMock(subscriptionService.update).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    const numberInput = await screen.findByDisplayValue('SUB-0001');
-    await user.clear(numberInput);
-    await user.type(numberInput, 'SUB-0002');
+    await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
 
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(subscriptionService.update).toHaveBeenCalledTimes(1));
     expect(subscriptionService.update).toHaveBeenCalledWith('sub1', {
       doc_version: 3,
-      subscription_number: 'SUB-0002',
       start_date: '2026-01-01T00:00:00.000Z',
       end_date: '2026-12-31T00:00:00.000Z',
-      status: 'active',
+      status: 'inactive',
     });
   });
 });
 
-describe('SubscriptionEdit — Save persists FeatureMatrixCard (B4) bus edits too', () => {
+describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', () => {
   beforeEach(() => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
-    asMock(businessUnitService.getAll).mockResolvedValue({
-      data: [
-        { id: 'bu1', code: 'BU1', name: 'Acme BU', is_active: true },
-        { id: 'bu2', code: 'BU2', name: 'Beta BU', is_active: true },
-      ],
-      paginate: { total: 2, page: 1, perpage: 100 },
-    });
+    asMock(businessUnitService.getAll).mockResolvedValue(buList);
   });
 
-  it('bus-only change: calls setFeatures with the mapped payload + current doc_version, never touches update', async () => {
+  /**
+   * Expands the one module in `catalog` and ticks its child.
+   *
+   * `expanded: false` แยกปุ่มกางโมดูลออกจากปุ่ม "ทั้งหมด/ไม่เอา" ที่อยู่แถวเดียวกัน — ทั้งคู่มีคำว่า
+   * Procurement อยู่ในชื่อ (ปุ่มหลังผ่าน aria-label) การจับด้วยชื่ออย่างเดียวจึงกำกวม
+   */
+  async function tickPurchaseRequest(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: /Procurement/, expanded: false }));
+    await user.click(await screen.findByRole('button', { name: 'Purchase Request' }));
+  }
+
+  it('features-only change: calls setFeatures with the key list + current doc_version, never touches update', async () => {
     asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    await screen.findByText('SUB-0001');
-    await user.selectOptions(await screen.findByLabelText('เลือกหน่วยธุรกิจที่จะเพิ่ม'), 'bu2');
-    await user.click(screen.getByRole('button', { name: 'เพิ่ม' }));
+    await screen.findByRole('heading', { name: 'SUB-0001' });
+    await tickPurchaseRequest(user);
 
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(subscriptionService.setFeatures).toHaveBeenCalledTimes(1));
+    // ติ๊กลูกตัวเดียวได้สองคีย์ — โมดูลแม่ถูกเติมให้ตามกติกา child-implies-parent
     expect(subscriptionService.setFeatures).toHaveBeenCalledWith(
       'sub1',
-      [
-        { business_unit_id: 'bu1', feature_keys: [] },
-        { business_unit_id: 'bu2', feature_keys: [] },
-      ],
+      ['procurement', 'procurement.purchase_request'],
       3,
     );
     expect(subscriptionService.update).not.toHaveBeenCalled();
@@ -215,11 +255,9 @@ describe('SubscriptionEdit — Save persists FeatureMatrixCard (B4) bus edits to
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    const numberInput = await screen.findByDisplayValue('SUB-0001');
-    await user.clear(numberInput);
-    await user.type(numberInput, 'SUB-0002');
-    await user.selectOptions(await screen.findByLabelText('เลือกหน่วยธุรกิจที่จะเพิ่ม'), 'bu2');
-    await user.click(screen.getByRole('button', { name: 'เพิ่ม' }));
+    await screen.findByRole('heading', { name: 'SUB-0001' });
+    await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
+    await tickPurchaseRequest(user);
 
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
@@ -230,21 +268,17 @@ describe('SubscriptionEdit — Save persists FeatureMatrixCard (B4) bus edits to
     // ran in the same save.
     expect(subscriptionService.setFeatures).toHaveBeenCalledWith(
       'sub1',
-      [
-        { business_unit_id: 'bu1', feature_keys: [] },
-        { business_unit_id: 'bu2', feature_keys: [] },
-      ],
+      ['procurement', 'procurement.purchase_request'],
       4,
     );
   });
 
-  it('no bus change: Save never calls setFeatures at all', async () => {
+  it('no feature change: Save never calls setFeatures at all', async () => {
     asMock(subscriptionService.update).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    const numberInput = await screen.findByDisplayValue('SUB-0001');
-    await user.type(numberInput, 'X');
+    await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(subscriptionService.update).toHaveBeenCalledTimes(1));
@@ -252,45 +286,27 @@ describe('SubscriptionEdit — Save persists FeatureMatrixCard (B4) bus edits to
   });
 });
 
-describe('SubscriptionEdit — 409 version conflict vs. duplicate subscription number', () => {
+// เคส "เลขสัญญาซ้ำ" ถูกลบทิ้งพร้อมช่องกรอกเลข — ระบบออกเลขให้เอง (`SUB-YYMM-####`) และการชนกัน
+// ถูกจับที่ฐาน (`subscription_number_global_u`) แล้ว retry ในเซิร์ฟเวอร์ ไม่เคยโผล่มาถึงหน้าจอ
+// 409 ที่หน้านี้ยังเจอได้จึงเหลือความหมายเดียว: doc_version ชนกัน
+describe('SubscriptionEdit — 409 is always a version conflict now', () => {
   beforeEach(() => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
   });
 
-  it('a version-conflict 409 notifies + refetches (not a field error)', async () => {
+  it('a version-conflict 409 notifies + refetches', async () => {
     asMock(subscriptionService.update).mockRejectedValueOnce({
       response: { status: 409, data: { message: 'Record was modified by another request (model=Subscription, expected doc_version=3).' } },
     });
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    const numberInput = await screen.findByDisplayValue('SUB-0001');
-    await user.clear(numberInput);
-    await user.type(numberInput, 'SUB-0002');
+    await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     // Refetch happened: getById called again (initial load + the post-conflict refetch).
     await waitFor(() => expect(subscriptionService.getById).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText(/subscription number is already used|already used in this cluster/i)).toBeNull();
-  });
-
-  it('a duplicate-number 409 (different message, not a version conflict) sets fieldErrors.subscription_number, not a toast', async () => {
-    asMock(subscriptionService.update).mockRejectedValueOnce({
-      response: { status: 409, data: { message: 'subscription_number already exists for this cluster' } },
-    });
-    const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
-
-    const numberInput = await screen.findByDisplayValue('SUB-0001');
-    await user.clear(numberInput);
-    await user.type(numberInput, 'SUB-DUPLICATE');
-    await user.click(await screen.findByRole('button', { name: /save changes/i }));
-
-    expect(await screen.findByText('subscription_number already exists for this cluster')).toBeInTheDocument();
-    expect(toast.error).not.toHaveBeenCalled();
-    // Only the initial load — a duplicate-number rejection must not trigger a refetch.
-    expect(subscriptionService.getById).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -303,7 +319,7 @@ describe('SubscriptionEdit — permission gating', () => {
     expect(await screen.findByRole('heading', { name: 'SUB-0001' })).toBeInTheDocument();
     // Fields render read-only (no inputs), and nothing to save means no bottom bar at all.
     expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull();
-    expect(screen.queryByDisplayValue('SUB-0001')).toBeNull();
+    expect(screen.queryByLabelText(/^status$/i)).toBeNull();
   });
 
   it('a subscription.manage user sees editable fields and, once changed, a Save button', async () => {
@@ -312,8 +328,7 @@ describe('SubscriptionEdit — permission gating', () => {
     const user = userEvent.setup();
     renderAt('/subscriptions/sub1/edit');
 
-    const numberInput = await screen.findByDisplayValue('SUB-0001');
-    await user.type(numberInput, 'X');
+    await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
   });
 });
@@ -340,7 +355,7 @@ describe('SubscriptionEdit — cluster BU roster pagination (bounded, never perp
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
 
     renderAt('/subscriptions/sub1/edit');
-    await screen.findByText('SUB-0001');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
 
     await waitFor(() => expect(businessUnitService.getAll).toHaveBeenCalledTimes(2));
     expect(businessUnitService.getAll).toHaveBeenNthCalledWith(1, {
@@ -405,7 +420,7 @@ describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
 
     renderAt('/subscriptions/sub1/edit');
 
-    await screen.findByDisplayValue('SUB-0001');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
     expect(clusterService.getAll).not.toHaveBeenCalled();
   });
 });

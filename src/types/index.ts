@@ -1218,7 +1218,12 @@ export interface Subscription {
   end_date: string;
   status: SubscriptionStatus;
   state: SubscriptionState;
-  bu_count: number;
+  /**
+   * BU ที่สัญญานี้ออกให้ — หนึ่งใบผูกหนึ่ง BU เสมอ (backend บังคับด้วย partial unique index)
+   * แทนที่ `bu_count` เดิมซึ่งจะเป็น 1 ตลอดกาลแล้ว · สตริงว่าง = ข้อมูลผิดรูปจากยุคก่อน migration
+   */
+  bu_code: string;
+  bu_name: string;
   feature_count: number;
   seat_used: number;
   /** จำนวนเต็มเสมอ ไม่มี null — ไม่มีคำว่า "ไม่จำกัด" ในระบบที่นั่ง 0 คือศูนย์ที่นั่งจริงๆ */
@@ -1245,10 +1250,14 @@ export interface SubscriptionBu {
 }
 
 export interface SubscriptionDetail
-  extends Omit<Subscription, 'bu_count' | 'feature_count' | 'seat_used' | 'seat_cap'> {
-  /** ระดับ cluster — ย้ายขึ้นมาจาก bus[] เพราะ seat เป็น pool ร่วม ไม่ใช่ของราย BU */
+  extends Omit<Subscription, 'bu_code' | 'bu_name' | 'feature_count' | 'seat_used' | 'seat_cap'> {
+  /** ระดับ cluster — ไม่ใช่ของ BU ใด BU หนึ่ง เพราะ seat เป็น pool ร่วมทั้ง cluster */
   seat: SubscriptionSeat;
-  bus: SubscriptionBu[];
+  /**
+   * BU เดียวของสัญญา — เดิมเป็น `bus[]` สมัยที่หนึ่งใบผูกได้หลาย BU
+   * `null` เฉพาะข้อมูลผิดรูปจากยุคก่อน migration · ใบที่สร้างใหม่มี BU เสมอ
+   */
+  bu: SubscriptionBu | null;
 }
 
 export interface LicenseFeature {

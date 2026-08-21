@@ -7,7 +7,8 @@ import type { Cluster } from '../../types';
 
 const formData: SubscriptionFormData = {
   cluster_id: 'c1',
-  subscription_number: 'SUB-0001',
+  business_unit_id: 'b1',
+  subscription_number: 'SUB-2608-0001',
   start_date: '2026-01-01',
   end_date: '2026-12-31',
   status: 'active',
@@ -24,6 +25,7 @@ const base = (over: Record<string, unknown> = {}) => ({
   editing: false,
   isNew: false,
   clusters: [],
+  clusterBus: [],
   onChange: vi.fn(),
   onBlur: vi.fn(),
   onFocus: vi.fn(),
@@ -34,7 +36,7 @@ describe('SubscriptionInfoCard — read-only mode', () => {
   it('renders every field as read-only text, not inputs', () => {
     render(<SubscriptionInfoCard {...base({ clusterLabel: 'Acme Cluster (CLS1)' })} />);
     expect(screen.getByText('Acme Cluster (CLS1)')).toBeInTheDocument();
-    expect(screen.getByText('SUB-0001')).toBeInTheDocument();
+    expect(screen.getByText('SUB-2608-0001')).toBeInTheDocument();
     expect(screen.getByText('2026-01-01')).toBeInTheDocument();
     expect(screen.getByText('2026-12-31')).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
@@ -66,8 +68,8 @@ describe('SubscriptionInfoCard — editing mode', () => {
     const user = userEvent.setup();
     render(<SubscriptionInfoCard {...base({ editing: true, onChange, onBlur })} />);
 
-    const numberInput = screen.getByDisplayValue('SUB-0001');
-    await user.click(numberInput);
+    const startInput = screen.getByLabelText(/start date/i);
+    await user.click(startInput);
     await user.tab();
     expect(onBlur).toHaveBeenCalled();
 
@@ -76,13 +78,20 @@ describe('SubscriptionInfoCard — editing mode', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
+  // เลขสัญญาไม่มีโหมดแก้ในทุกกรณี — ระบบออกให้ตอนสร้าง ผู้ใช้กรอกเองหรือแก้ทีหลังไม่ได้
+  it('never renders an editable subscription number, even with edit permission', () => {
+    render(<SubscriptionInfoCard {...base({ editing: true })} />);
+    expect(screen.queryByDisplayValue('SUB-2608-0001')).toBeNull();
+    expect(screen.getByText('SUB-2608-0001')).toBeInTheDocument();
+  });
+
   it('shows a field error message under the offending field', () => {
     render(
       <SubscriptionInfoCard
-        {...base({ editing: true, fieldErrors: { subscription_number: 'Subscription number is required' } })}
+        {...base({ editing: true, fieldErrors: { end_date: 'End date must be after start date' } })}
       />,
     );
-    expect(screen.getByText('Subscription number is required')).toBeInTheDocument();
+    expect(screen.getByText('End date must be after start date')).toBeInTheDocument();
   });
 });
 

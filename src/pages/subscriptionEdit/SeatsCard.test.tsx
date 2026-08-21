@@ -21,10 +21,10 @@ beforeEach(() => {
   auth.hasPermission = () => true;
 });
 
-const renderCard = (seat: SubscriptionSeat, bus: SubscriptionBu[]) =>
+const renderCard = (seat: SubscriptionSeat, contractBu: SubscriptionBu | null) =>
   render(
     <MemoryRouter>
-      <SeatsCard seat={seat} bus={bus} />
+      <SeatsCard seat={seat} bu={contractBu} />
     </MemoryRouter>,
   );
 
@@ -39,56 +39,53 @@ const bu = (over: Partial<SubscriptionBu> = {}): SubscriptionBu => ({
 
 describe('SeatsCard — cluster-level pool, never "unlimited"', () => {
   it('shows used/cap even when cap is 0 (zero seats, not unlimited)', () => {
-    renderCard({ used: 0, cap: 0, pending_invites: 0 }, []);
+    renderCard({ used: 0, cap: 0, pending_invites: 0 }, null);
     expect(screen.getByText('0 / 0')).toBeInTheDocument();
     expect(screen.queryByText(/unlimited/i)).toBeNull();
     expect(screen.queryByText(/ไม่จำกัด/)).toBeNull();
   });
 
   it('applies the destructive style once used reaches cap', () => {
-    renderCard({ used: 10, cap: 10, pending_invites: 0 }, []);
+    renderCard({ used: 10, cap: 10, pending_invites: 0 }, null);
     expect(screen.getByText('10 / 10')).toHaveClass('text-destructive');
   });
 
   it('applies the warning style at 90%+ but under cap', () => {
-    renderCard({ used: 9, cap: 10, pending_invites: 0 }, []);
+    renderCard({ used: 9, cap: 10, pending_invites: 0 }, null);
     expect(screen.getByText('9 / 10')).toHaveClass('text-warning');
   });
 
   it('does not show a pending-invite line when there are none', () => {
-    renderCard({ used: 5, cap: 10, pending_invites: 0 }, []);
+    renderCard({ used: 5, cap: 10, pending_invites: 0 }, null);
     expect(screen.queryByText(/รอตอบรับ/)).toBeNull();
   });
 
   it('shows pending invites without a projected-overflow warning when they would not exceed cap', () => {
-    renderCard({ used: 5, cap: 10, pending_invites: 2 }, []);
+    renderCard({ used: 5, cap: 10, pending_invites: 2 }, null);
     expect(screen.getByText(/รอตอบรับ 2/)).toBeInTheDocument();
     expect(screen.queryByText(/อาจถึง/)).toBeNull();
   });
 
   it('warns with the projected total when pending invites would exceed cap', () => {
-    renderCard({ used: 9, cap: 10, pending_invites: 3 }, []);
+    renderCard({ used: 9, cap: 10, pending_invites: 3 }, null);
     const line = screen.getByText(/รอตอบรับ 3/);
     expect(line).toHaveTextContent('อาจถึง 12/10');
     expect(line).toHaveClass('text-warning');
   });
 
-  it('lists each BU with what it bought and a link to fix its cap on the BU edit page', () => {
+  it("shows the contract's BU with what it bought and a link to fix its cap on the BU edit page", () => {
     renderCard(
       { used: 15, cap: 15, pending_invites: 0 },
-      [bu({ business_unit_id: 'bu1', bu_name: 'Acme BU', licensed_users: 10 }), bu({ business_unit_id: 'bu2', bu_name: 'Beta BU', licensed_users: 5 })],
+      bu({ business_unit_id: 'bu1', bu_name: 'Acme BU', licensed_users: 10 }),
     );
     expect(screen.getByText('Acme BU · ซื้อ 10')).toBeInTheDocument();
-    expect(screen.getByText('Beta BU · ซื้อ 5')).toBeInTheDocument();
-    const links = screen.getAllByRole('link', { name: 'แก้เพดาน' });
-    expect(links).toHaveLength(2);
-    expect(links[0]).toHaveAttribute('href', '/business-units/bu1/edit');
-    expect(links[1]).toHaveAttribute('href', '/business-units/bu2/edit');
+    const link = screen.getByRole('link', { name: 'แก้เพดาน' });
+    expect(link).toHaveAttribute('href', '/business-units/bu1/edit');
   });
 
-  it('shows an empty note when the subscription has no BUs yet', () => {
-    renderCard({ used: 0, cap: 0, pending_invites: 0 }, []);
-    expect(screen.getByText(/no business units on this subscription yet/i)).toBeInTheDocument();
+  it('shows an explanatory note for a malformed contract with no BU link', () => {
+    renderCard({ used: 0, cap: 0, pending_invites: 0 }, null);
+    expect(screen.getByText(/ไม่ได้ผูกกับหน่วยธุรกิจใด/)).toBeInTheDocument();
   });
 
 });
@@ -101,17 +98,14 @@ describe('SeatsCard — cluster-level pool, never "unlimited"', () => {
 // `cap` to begin with. The replacement states the pool relationship unconditionally.
 describe('SeatsCard — pool explanation, not a mismatch warning', () => {
   it('explains the cluster-wide pool even when licensed_users does not sum to cap', () => {
-    renderCard({ used: 8, cap: 15, pending_invites: 0 }, [bu({ licensed_users: 10 })]);
+    renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu({ licensed_users: 10 }));
     expect(screen.getByText(/ที่นั่งเป็น pool ของทั้ง cluster/)).toBeInTheDocument();
     expect(screen.queryByText(/ไม่เท่ากับเพดานรวม/)).toBeNull();
     expect(screen.queryByText(/ปิดใช้งานหรือถูกลบ/)).toBeNull();
   });
 
-  it('shows the same explanation when licensed_users happens to sum to cap', () => {
-    renderCard(
-      { used: 8, cap: 15, pending_invites: 0 },
-      [bu({ business_unit_id: 'bu1', licensed_users: 10 }), bu({ business_unit_id: 'bu2', licensed_users: 5 })],
-    );
+  it('shows the same explanation when the BU alone accounts for the whole cap', () => {
+    renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu({ licensed_users: 15 }));
     expect(screen.getByText(/ที่นั่งเป็น pool ของทั้ง cluster/)).toBeInTheDocument();
   });
 });
@@ -122,7 +116,7 @@ describe('SeatsCard — pool explanation, not a mismatch warning', () => {
 describe('SeatsCard — "แก้เพดาน" is gated on cluster.update', () => {
   it('renders plain text instead of a link when the user lacks cluster.update', () => {
     auth.hasPermission = (perm) => perm === 'subscription.manage';
-    renderCard({ used: 8, cap: 15, pending_invites: 0 }, [bu()]);
+    renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu());
 
     expect(screen.queryByRole('link', { name: 'แก้เพดาน' })).toBeNull();
     expect(screen.getByText('แก้เพดานได้ที่หน้าหน่วยธุรกิจ')).toBeInTheDocument();
@@ -130,7 +124,7 @@ describe('SeatsCard — "แก้เพดาน" is gated on cluster.update', 
 
   it('renders the link when the user does hold cluster.update (discriminating control)', () => {
     auth.hasPermission = (perm) => perm === 'cluster.update';
-    renderCard({ used: 8, cap: 15, pending_invites: 0 }, [bu()]);
+    renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu());
 
     expect(screen.getByRole('link', { name: 'แก้เพดาน' })).toHaveAttribute(
       'href',

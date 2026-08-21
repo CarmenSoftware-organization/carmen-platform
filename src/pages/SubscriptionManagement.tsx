@@ -254,7 +254,8 @@ const SubscriptionManagement: React.FC = () => {
       { key: 'end_date', label: 'End Date' },
       { key: 'seat_used', label: 'Seats Used' },
       { key: 'seat_cap', label: 'Seats Cap' },
-      { key: 'bu_count', label: 'BU Count' },
+      { key: 'bu_code', label: 'Business Unit' },
+      { key: 'bu_name', label: 'Business Unit Name' },
       { key: 'feature_count', label: 'Feature Count' },
     ]);
     downloadCSV(csv, `subscriptions-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -312,15 +313,22 @@ const SubscriptionManagement: React.FC = () => {
       },
     },
     {
-      id: 'bu_count',
-      header: 'BU',
-      // bu_count/feature_count เป็นค่า aggregate ที่ backend คำนวณตอน compose แถว ไม่ใช่คอลัมน์จริง
-      // ของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
+      id: 'bu',
+      header: 'Business Unit',
+      // bu_code/bu_name มาจากความสัมพันธ์ tb_subscription_bu ที่ backend compose ตอนสร้างแถว
+      // ไม่ใช่คอลัมน์จริงของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
       enableSorting: false,
-      // ซ่อนบนการ์ดมือถือ: ตัวเลขล้วนสองบรรทัดที่ไม่มีบริบท ทำให้การ์ดยาวขึ้นโดยไม่ช่วยตัดสินใจ
-      // รายละเอียดครบอยู่ในหน้าแก้ไขสัญญาซึ่งกดจากหัวการ์ดได้อยู่แล้ว
-      meta: { card: 'hidden' },
-      cell: ({ row }) => <span className="tabular-nums">{row.original.bu_count}</span>,
+      // ต่างจาก bu_count เดิมที่ซ่อนบนมือถือ (ตัวเลขล้วนไม่มีบริบท): BU คือคู่สัญญา ไม่ใช่ตัวนับ
+      // การ์ดที่ไม่บอกว่าใบนี้ของใครทำให้ต้องเปิดทีละใบเพื่อหา
+      cell: ({ row }) =>
+        row.original.bu_code ? (
+          <div className="min-w-0">
+            <div className="truncate font-medium">{row.original.bu_code}</div>
+            <div className="text-muted-foreground truncate text-xs">{row.original.bu_name}</div>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        ),
     },
     {
       id: 'feature_count',
