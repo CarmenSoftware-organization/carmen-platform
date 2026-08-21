@@ -25,12 +25,28 @@ import type { BusinessUnit } from '../types';
  * @param businessUnits - Every business unit in the cluster — never a filtered/paginated subset / หน่วยธุรกิจทั้งหมดของคลัสเตอร์ ห้ามเป็นชุดที่กรองหรือแบ่งหน้าแล้ว
  * @returns Map of business-unit id to its 1-based rank / แมป id หน่วยธุรกิจไปยังอันดับ (เริ่มที่ 1)
  */
+// `GET /api-system/business-units` runs through the gateway's `@EnrichAuditUsers()`
+// (apps/backend-gateway/src/common/enrichment/audit-shape.ts, `mutateToAuditShape`), which
+// DELETES the flat `created_at` off every row and re-nests it as `audit.created.at` instead.
+// A comparator that only reads `bu.created_at` therefore silently loses its middle tie-break
+// tier on exactly the endpoint this file's callers use — the badge would then land on `id`
+// order instead of creation order for any two non-HQ business units, which is the ordinary
+// case in a cluster with more than one. Read both shapes; do not "simplify" this back to
+// `bu.created_at` alone.
+// `GET /api-system/business-units` วิ่งผ่าน `@EnrichAuditUsers()` ของ gateway ซึ่ง**ลบ**
+// `created_at` แบบแบนออกจากทุกแถวแล้วซ้อนใหม่เป็น `audit.created.at` แทน comparator ที่อ่านแค่
+// `bu.created_at` จึงเสียชั้น tie-break กลางไปเงียบ ๆ บน endpoint เดียวกับที่ผู้เรียกไฟล์นี้ใช้อยู่จริง
+// แบดจ์จะไปเรียงตาม `id` แทนลำดับการสร้างสำหรับ BU ที่ไม่ใช่ HQ สองหน่วยใด ๆ ซึ่งเป็นกรณีปกติของ
+// คลัสเตอร์ที่มีมากกว่าหนึ่งหน่วย ต้องอ่านทั้งสองรูปแบบ ห้าม "ทำให้ง่ายขึ้น" กลับไปเป็น
+// `bu.created_at` เดี่ยว ๆ
+const createdAtOf = (bu: BusinessUnit): string | null | undefined => bu.created_at ?? bu.audit?.created?.at;
+
 export function rankBusinessUnits(businessUnits: BusinessUnit[]): Map<string, number> {
   const sorted = [...businessUnits].sort((a, b) => {
     const hq = Number(b.is_hq ?? false) - Number(a.is_hq ?? false);
     if (hq !== 0) return hq;
-    const ta = Date.parse(a.created_at ?? '');
-    const tb = Date.parse(b.created_at ?? '');
+    const ta = Date.parse(createdAtOf(a) ?? '');
+    const tb = Date.parse(createdAtOf(b) ?? '');
     // A missing/unparseable created_at (NaN) must never make the comparator return NaN —
     // sort()'s order is implementation-defined when it does, so the Over-limit badge could
     // land on a different row between renders of the same data. Fall through to the id

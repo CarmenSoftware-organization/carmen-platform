@@ -170,6 +170,12 @@ export interface BusinessUnit {
   updated_by_name?: string;
   deleted_at?: string;
   deleted_by_name?: string;
+  // `@EnrichAuditUsers()` on `GET /api-system/business-units` deletes the flat `created_at`
+  // (and the other audit-timestamp fields) off every list row and re-nests it here as
+  // `audit.created.at` instead — same rewrite as `PlatformUserRoleAssignment`/`SuperAdmin`
+  // above. Both `created_at` and `audit` are kept on this type because which shape a given
+  // response actually carries depends on the route; read `created_at ?? audit?.created?.at`.
+  audit?: Audit;
   doc_version?: number; // optimistic-lock token (read model)
 }
 
