@@ -1,20 +1,8 @@
 import type { ClusterLicense, ClusterLicenseStatus } from '../types';
+import { isPerpetual, PERPETUAL_END_DATE, EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
 
-/** ค่า end_date ที่แปลว่า "ไม่มีวันหมดอายุ" — ค่าที่ส่งไปเขียนลง DB */
-export const PERPETUAL_END_DATE = '2099-12-31T23:59:59.999Z';
-
-/**
- * เกณฑ์ที่ใช้ **อ่าน** ว่าใบเป็น perpetual
- *
- * เทียบด้วยเกณฑ์ ห้ามเทียบเท่ากันเป๊ะ: คอลัมน์ฝั่ง backend เป็น Timestamptz ค่าที่เขียนจาก
- * เบราว์เซอร์ไทย (2099-12-31T00:00:00+07:00) กับที่ backfill เขียนจาก SQL (2099-12-31T00:00:00Z)
- * ต่างกัน 7 ชั่วโมง — `=== '2099-12-31'` จะทำให้ใบหนึ่งเป็น perpetual อีกใบไม่เป็นทั้งที่ผู้ใช้
- * ทำสิ่งเดียวกัน
- */
-const PERPETUAL_THRESHOLD = Date.parse('2099-01-01T00:00:00Z');
-
-/** ใบนี้ไม่มีวันหมดอายุไหม */
-export const isPerpetual = (endDate: string): boolean => Date.parse(endDate) >= PERPETUAL_THRESHOLD;
+// re-export เพื่อไม่ให้ผู้เรียกเดิม (LicensesSection, ClusterEdit) และเทสต์เดิมพัง
+export { isPerpetual, PERPETUAL_END_DATE };
 
 /** สถานะของใบ ณ เวลาที่กำหนด */
 export function licenseStatus(lic: ClusterLicense, now: Date = new Date()): ClusterLicenseStatus {
@@ -65,5 +53,5 @@ export function isExpiringSoon(lic: ClusterLicense, now: Date = new Date()): boo
   if (isPerpetual(lic.end_date)) return false;
   if (licenseStatus(lic, now) !== 'active') return false;
   const days = (Date.parse(lic.end_date) - now.getTime()) / 86_400_000;
-  return days <= 30;
+  return days <= EXPIRING_SOON_DAYS;
 }

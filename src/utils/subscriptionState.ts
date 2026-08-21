@@ -1,7 +1,9 @@
 import type { SubscriptionState } from '../types';
+import { EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
 
-/** ภายในกี่วันถือว่า "ใกล้หมดอายุ" — ตรงกับที่ backend ใช้คำนวณ summary.expiring_soon */
-export const EXPIRING_SOON_DAYS = 30;
+// ค่าเดียวกับใบชนิดอื่นทั้งระบบ — re-export ไว้เพราะ SubscriptionManagement, buildAdvance
+// และ subscriptionState.test.ts import จากที่นี่
+export { EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
 
 /**
  * true เมื่อสถานะที่แสดงผลยัง 'active' แต่เหลือไม่ถึง EXPIRING_SOON_DAYS วัน

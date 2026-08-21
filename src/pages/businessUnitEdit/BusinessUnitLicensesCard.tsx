@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import Can from '../../components/Can';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon, isMigratedPlaceholder } from '../../utils/buLicense';
+import { fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '../licenses/licenseDates';
 import type { BusinessUnitLicense, BuLicenseStatus } from '../../types';
 
 interface BusinessUnitLicensesCardProps {
@@ -33,20 +34,6 @@ const STATUS_BADGE: Record<BuLicenseStatus, { variant: 'success' | 'secondary' |
   expired: { variant: 'destructive', label: 'Expired' },
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** ตามแบบ inline formatter ของ repo (ดูหมวด DateTime ใน CLAUDE.md) — วันที่ท้องถิ่นล้วน (yyyy-mm-dd)
- *  ค่านี้ใช้ได้ทั้งแสดงผลอ่านอย่างเดียวและเป็นค่าเริ่มต้นของ <Input type="date"> ตอนแก้ไข */
-const fmtDate = (v?: string): string => {
-  if (!v) return '-';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
-
-const daysLeft = (end: string, now: Date): number =>
-  Math.ceil((new Date(end).getTime() - now.getTime()) / DAY_MS);
-
 interface LicenseDraft {
   licensed_users: string;
   start_date: string; // yyyy-mm-dd — ค่าดิบของ <input type="date">
@@ -67,23 +54,6 @@ const draftFromLicense = (l: BusinessUnitLicense): LicenseDraft => ({
   end_date: fmtDate(l.end_date),
   reference_no: l.reference_no || '',
 });
-
-// วันที่จาก <input type="date"> (yyyy-mm-dd) แปลงเป็น ISO 8601 พร้อม Z — backend รับ-ส่ง UTC เท่านั้น
-//
-// ขอบเขตเป็น "ทั้งวันตามเวลาผู้ใช้": วันเริ่มนับจากต้นวัน วันหมดอายุคุ้มครองจนสิ้นวัน
-// ใบที่กรอกว่าหมด 31 ธ.ค. จึงยังคุ้มครองถึง 23:59:59.999 ของวันนั้นตามเวลาเครื่องผู้ใช้
-// ไม่ใช่ตายตั้งแต่ 07:00 เช้าแบบที่ `new Date('2026-12-31')` ให้ (JS ตีความสตริง yyyy-mm-dd
-// ล้วนเป็นเที่ยงคืน **UTC** ตามสเปก ต่างจากสตริงที่มีเวลาซึ่งตีความเป็นเวลาท้องถิ่น)
-// จึงต้องแยกส่วนประกอบเองแล้วสร้างผ่าน `new Date(y, m, d, ...)` ซึ่งเป็นเวลาท้องถิ่นเสมอ
-//
-// ผลพลอยได้: ใบที่เริ่มและหมดวันเดียวกันบันทึกได้แล้ว เดิมทั้งสองค่าเท่ากันเป๊ะจึงชน
-// CHECK constraint `end_date > start_date` ของ DB
-const localIso = (dateStr: string, h: number, m: number, s: number, ms: number): string => {
-  const [y, mo, d] = dateStr.split('-').map(Number);
-  return new Date(y, mo - 1, d, h, m, s, ms).toISOString();
-};
-const toIsoStartOfDay = (dateStr: string): string => localIso(dateStr, 0, 0, 0, 0);
-const toIsoEndOfDay = (dateStr: string): string => localIso(dateStr, 23, 59, 59, 999);
 
 const canSubmitDraft = (d: LicenseDraft): boolean =>
   d.licensed_users !== '' && Number(d.licensed_users) > 0 && !!d.start_date && !!d.end_date;
