@@ -32,24 +32,47 @@ const STREETS = [
   'งามวงศ์วาน', 'ศรีนครินทร์', 'รามคำแหง', 'เอกมัย',
 ];
 
-/** [province, [sub-district/district pairs], postal code] */
+/**
+ * [province, sub-district, district, postal code].
+ *
+ * Held apart, not as the combined "ต.เชิงทะเล อ.ถลาง" string the raw source workbook uses:
+ * `tb_vendor_address` keeps `sub_district`, `district` and `city` as three typed columns,
+ * and the template now has a column for each. A file reaches the importer in this shape
+ * after `scripts/fill-vendor-address.mjs` has run over it.
+ * เก็บแยกกัน ไม่ใช่รวมเป็นสตริงเดียวแบบไฟล์ต้นฉบับดิบ เพราะตารางปลายทางมีคอลัมน์แยกอยู่แล้ว
+ *
+ * Provinces carry no `จ.` prefix, for the same reason: one spelling, not two.
+ * ชื่อจังหวัดไม่มีคำนำหน้า เพื่อให้มีรูปแบบเดียว
+ */
 const AREAS = [
-  ['กรุงเทพมหานคร', 'แขวงคลองเตย เขตคลองเตย', '10110'],
-  ['กรุงเทพมหานคร', 'แขวงสีลม เขตบางรัก', '10500'],
-  ['กรุงเทพมหานคร', 'แขวงสามเสนใน เขตพญาไท', '10400'],
-  ['กรุงเทพมหานคร', 'แขวงจตุจักร เขตจตุจักร', '10900'],
-  ['กรุงเทพมหานคร', 'แขวงบางกะปิ เขตห้วยขวาง', '10310'],
-  ['จ.ภูเก็ต', 'ต.ตลาดใหญ่ อ.เมืองภูเก็ต', '83000'],
-  ['จ.ภูเก็ต', 'ต.เชิงทะเล อ.ถลาง', '83110'],
-  ['จ.สมุทรปราการ', 'ต.บางเมือง อ.เมืองสมุทรปราการ', '10270'],
-  ['จ.นนทบุรี', 'ต.บางกระสอ อ.เมืองนนทบุรี', '11000'],
-  ['จ.ปทุมธานี', 'ต.คลองหนึ่ง อ.คลองหลวง', '12120'],
-  ['จ.ชลบุรี', 'ต.หนองปรือ อ.บางละมุง', '20150'],
-  ['จ.เชียงใหม่', 'ต.สุเทพ อ.เมืองเชียงใหม่', '50200'],
+  ['กรุงเทพมหานคร', 'คลองเตย', 'คลองเตย', '10110'],
+  ['กรุงเทพมหานคร', 'สีลม', 'บางรัก', '10500'],
+  ['กรุงเทพมหานคร', 'สามเสนใน', 'พญาไท', '10400'],
+  ['กรุงเทพมหานคร', 'จตุจักร', 'จตุจักร', '10900'],
+  ['กรุงเทพมหานคร', 'บางกะปิ', 'ห้วยขวาง', '10310'],
+  ['ภูเก็ต', 'ตลาดใหญ่', 'เมืองภูเก็ต', '83000'],
+  ['ภูเก็ต', 'เชิงทะเล', 'ถลาง', '83110'],
+  ['สมุทรปราการ', 'บางเมือง', 'เมืองสมุทรปราการ', '10270'],
+  ['นนทบุรี', 'บางกระสอ', 'เมืองนนทบุรี', '11000'],
+  ['ปทุมธานี', 'คลองหนึ่ง', 'คลองหลวง', '12120'],
+  ['ชลบุรี', 'หนองปรือ', 'บางละมุง', '20150'],
+  ['เชียงใหม่', 'สุเทพ', 'เมืองเชียงใหม่', '50200'],
 ];
 
-/** The four non-Thai vendors the source workbook also has. */
-const FOREIGN_COUNTRIES = ['Australia', 'England', 'Netherlands', 'China'];
+/**
+ * The four non-Thai vendors the source workbook also has, as [country, city].
+ *
+ * These are the only rows that fill `city`: the column exists for the city of a foreign
+ * address, so a Thai row leaves it empty and a foreign row leaves `sub_district`,
+ * `district` and `province` empty instead. One file therefore exercises both shapes.
+ * สี่รายนี้เป็นแถวเดียวที่ใส่ค่าในช่อง city เพราะช่องนี้มีไว้สำหรับที่อยู่ต่างประเทศ
+ */
+const FOREIGN = [
+  ['Australia', 'Sydney'],
+  ['England', 'London'],
+  ['Netherlands', 'Amsterdam'],
+  ['China', 'Shanghai'],
+];
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -82,9 +105,9 @@ export function buildVendorSheet(rng, { total = 999 } = {}) {
   // and TaxProfileCode is its one PascalCase exception.
   // หัวคอลัมน์ตามต้นฉบับ เป็นชีตเดียวที่ใช้ตัวพิมพ์เล็กแบบ snake_case
   const rows = [[
-    'code', 'name', 'active', 'payee', 'address_line1', 'address_line2', 'city', 'province',
-    'postal_code', 'country', 'telephone', 'fax', 'email', 'term', 'taxno', 'branchno',
-    'TaxProfileCode',
+    'code', 'name', 'active', 'payee', 'address_line1', 'address_line2', 'sub_district',
+    'district', 'city', 'province', 'postal_code', 'country', 'telephone', 'fax', 'email',
+    'term', 'taxno', 'latitude', 'longitude', 'branchno', 'TaxProfileCode',
   ]];
 
   const usedCodes = new Set();
@@ -121,9 +144,13 @@ export function buildVendorSheet(rng, { total = 999 } = {}) {
       usedTaxNos.add(taxno);
     }
 
-    const [province, city, postal] = rng.pick(AREAS);
+    const [province, subDistrict, district, postal] = rng.pick(AREAS);
     // Four vendors are foreign, as in the source. / มีผู้ขายต่างประเทศสี่รายเหมือนต้นฉบับ
-    const foreign = i < FOREIGN_COUNTRIES.length;
+    const foreign = i < FOREIGN.length;
+    // One roll decides the whole Thai locality block, so a row can never come out with a
+    // district but no sub-district — a shape no real address has.
+    // สุ่มครั้งเดียวสำหรับที่อยู่ทั้งชุด เพื่อไม่ให้เกิดแถวที่มีอำเภอแต่ไม่มีตำบล
+    const hasLocality = !foreign && rng.chance(0.95);
 
     // The empty rates below are load-bearing: `payee` gates the tb_vendor_contact
     // related-insert and `address_line1` gates tb_vendor_address, so one file exercises
@@ -137,12 +164,14 @@ export function buildVendorSheet(rng, { total = 999 } = {}) {
       rng.chance(0.95) ? payee : '',
       rng.chance(0.95) ? `${rng.int(1, 999)}/${rng.int(1, 99)}` : '',
       rng.chance(0.7) ? `ถ.${rng.pick(STREETS)}` : '',
-      rng.chance(0.95) ? city : '',
+      hasLocality ? subDistrict : '',
+      hasLocality ? district : '',
+      foreign ? FOREIGN[i][1] : '',
       // No trailing space — the source workbook has one on every province value.
       // ไม่มีช่องว่างท้ายค่า ต่างจากต้นฉบับ
-      rng.chance(0.95) ? province : '',
+      hasLocality ? province : '',
       rng.chance(0.92) ? postal : '',
-      foreign ? FOREIGN_COUNTRIES[i] : rng.chance(0.95) ? 'THAILAND' : '',
+      foreign ? FOREIGN[i][0] : rng.chance(0.95) ? 'THAILAND' : '',
       rng.chance(0.9) ? (rng.chance(0.5) ? `02-555-${String(rng.int(0, 9999)).padStart(4, '0')}`
         : `09-8555-${String(rng.int(0, 9999)).padStart(4, '0')}`) : '',
       rng.chance(0.25) ? `02-555-${String(rng.int(0, 9999)).padStart(4, '0')}` : '',
@@ -151,6 +180,11 @@ export function buildVendorSheet(rng, { total = 999 } = {}) {
       rng.chance(0.4) ? `${emailLocal(rng, i)}@example.com` : '',
       rng.chance(0.95) ? rng.pick(['0', '15', '30', '45']) : '',
       taxno,
+      // The template has the columns; the source workbook has no coordinate data at all,
+      // so emitting anything here would invent a location no vendor is at.
+      // เทมเพลตมีคอลัมน์ แต่ไฟล์ต้นฉบับไม่มีข้อมูลพิกัด จึงต้องปล่อยว่าง
+      '',
+      '',
       rng.chance(0.95) ? (rng.chance(0.9) ? '0' : String(rng.int(1, 12))) : '',
       rng.chance(0.95) ? (rng.chance(0.84) ? 'Vat 7%' : 'None') : '',
     ]);

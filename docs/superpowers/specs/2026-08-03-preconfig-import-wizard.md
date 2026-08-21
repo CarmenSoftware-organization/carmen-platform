@@ -362,8 +362,27 @@ Related: `tb_vendor_contact` (`payee` → `name`, `telephone` → `phone`, `emai
 
 > **Corrected against the live schema.** `tb_vendor_address` has **no `data` JSONB column** — it
 > is fully typed (`address_line1`, `address_line2`, `sub_district`, `district`, `city`,
-> `province`, `postal_code`, `country`, …) and those columns match the Vendor sheet headers
-> one-to-one. Map them as typed columns; do not assemble a JSON blob.
+> `province`, `postal_code`, `country`, …). Map them as typed columns; do not assemble a JSON
+> blob.
+
+> **Corrected again, 2026-08-21.** The paragraph above used to end "those columns match the
+> Vendor sheet headers one-to-one", which was never true. The original sheet had six address
+> headers against the table's ten, and it packed `ตำบล/แขวง` **and** `อำเภอ/เขต` into a single
+> `city` cell (`ต.เชิงทะเล อ.ถลาง`) — so `city`, a column meant for the city of a *foreign*
+> address, received a Thai tambon-plus-amphoe string while `sub_district` and `district` stayed
+> NULL on every row ever imported.
+>
+> The template now carries `sub_district`, `district`, `latitude` and `longitude` as their own
+> columns (21 headers, and `TaxProfileCode` has moved from index 16 to 20). Splitting the
+> combined value is **not** the importer's job: the catalog is declarative, one cell to one
+> column, and `RelatedSource` has no transform. A workbook is reshaped before upload by
+> `scripts/fill-vendor-address.mjs`, which also strips the `จ.` prefix so provinces have one
+> spelling. Rows it cannot parse keep their original `city` and are reported, never guessed at.
+>
+> `latitude`/`longitude` are mapped but no workbook carries coordinate data yet, so they import
+> as NULL. They target the **address's** coordinates; the same-named pair on `tb_vendor` is not
+> written by this step. Because related-insert columns are always declared optional
+> (`declaredSheetColumns`), an old 17-column file still checks as `ready` and imports as before.
 
 **`company-profile` → `tb_business_unit`** (platform, decision #3).
 

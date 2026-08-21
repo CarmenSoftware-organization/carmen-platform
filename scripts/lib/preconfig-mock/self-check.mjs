@@ -22,9 +22,9 @@ const EXPECTED_HEADERS = {
   'Store Location': ['Store Code', 'Store Name', 'Delivery Point', 'location Type',
     'Physical Counted type'],
   Department: ['Code', 'Description'],
-  Vendor: ['code', 'name', 'active', 'payee', 'address_line1', 'address_line2', 'city',
-    'province', 'postal_code', 'country', 'telephone', 'fax', 'email', 'term', 'taxno',
-    'branchno', 'TaxProfileCode'],
+  Vendor: ['code', 'name', 'active', 'payee', 'address_line1', 'address_line2',
+    'sub_district', 'district', 'city', 'province', 'postal_code', 'country', 'telephone',
+    'fax', 'email', 'term', 'taxno', 'latitude', 'longitude', 'branchno', 'TaxProfileCode'],
 };
 
 const SHEET_ORDER = [
@@ -150,7 +150,10 @@ export function selfCheck(sheets) {
   subset('Product list.Category', col('Product list', 4), categoryCodes, false);
   subset('Product list.Subcategory', col('Product list', 5), subcategoryCodes, false);
   subset('Product list.Tax profile', col('Product list', 12), taxes, false);
-  subset('Vendor.TaxProfileCode', col('Vendor', 16), taxes, true);
+  // Index 20, not 16: the four address columns added to the template pushed TaxProfileCode
+  // right. At 16 this would quietly grade `taxno` against the tax-profile list instead.
+  // ดัชนี 20 ไม่ใช่ 16 เพราะคอลัมน์ที่อยู่สี่ตัวที่เพิ่มเข้ามาดันตำแหน่งไปทางขวา
+  subset('Vendor.TaxProfileCode', col('Vendor', 20), taxes, true);
   subset('Store Location.Delivery Point', col('Store Location', 2), deliveryPoints, false);
 
   // 4. Duplicate keys are unique. Compared through normalizeKey, exactly as
