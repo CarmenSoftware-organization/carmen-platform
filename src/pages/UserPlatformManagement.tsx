@@ -28,6 +28,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { normalizeAudit } from '../utils/audit';
 import type { PaginateParams, PlatformUserRow, PlatformUserRegistrySummary } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -268,8 +269,8 @@ const UserPlatformManagement: React.FC = () => {
         scope: role.scope.type === 'platform'
           ? 'Platform'
           : (role.scope.cluster_name || role.scope.cluster_id),
-        granted_at: role.audit?.created?.at ?? '',
-        granted_by: role.audit?.created?.name ?? '',
+        granted_at: normalizeAudit(role).created?.at ?? '',
+        granted_by: normalizeAudit(role).created?.name ?? '',
       })),
     );
     const csv = generateCSV(flat, [
@@ -328,11 +329,12 @@ const UserPlatformManagement: React.FC = () => {
         // The grantor shown belongs to the most recent grant, which is the one the
         // "Granted" date refers to. Per-role attribution lives on the detail page.
         const newest = roles.reduce<typeof roles[number] | undefined>((acc, r) => {
-          const at = r.audit?.created?.at;
+          const at = normalizeAudit(r).created?.at;
           if (!at) return acc;
-          return !acc?.audit?.created?.at || at > acc.audit.created.at ? r : acc;
+          const accAt = acc ? normalizeAudit(acc).created?.at : undefined;
+          return !accAt || at > accAt ? r : acc;
         }, undefined);
-        const by = newest?.audit?.created?.name;
+        const by = newest ? normalizeAudit(newest).created?.name : undefined;
         return (
           <div className="text-muted-foreground space-y-0.5 text-[11px] leading-tight">
             <div>{fmtDateTime(row.original.last_granted_at ?? undefined)}</div>

@@ -20,6 +20,7 @@ import { ListEmptyState } from '../components/ListEmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { cn } from '../lib/utils';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { SuperAdmin, UserOption } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -80,14 +81,7 @@ const SuperAdminManagement: React.FC = () => {
     try {
       setLoading(true);
       const saData = await superAdminService.list();
-      // The gateway's @EnrichAuditUsers() moves the timestamp into `audit.created.at`;
-      // flatten it back to `created_at` here (tolerate the older flat shape too) — the
-      // same pattern as BusinessUnitManagement/RoleManagement — so both the Added column
-      // and the CSV export (which both read `created_at`) get a real value.
-      const items = extractArray<SuperAdmin>(saData).map((item) => ({
-        ...item,
-        created_at: item.created_at ?? item.audit?.created?.at,
-      }));
+      const items = extractArray<SuperAdmin>(saData);
       setRows(items);
       setRawResponse(saData);
       setError('');
@@ -176,14 +170,17 @@ const SuperAdminManagement: React.FC = () => {
       email: r.email || '',
       user_id: r.user_id,
       status: r.is_active !== false ? 'Active' : 'Inactive',
-      added: fmt(r.created_at),
+      ...auditCsvFields(normalizeAudit(r)),
     }));
     const csv = generateCSV(data, [
       { key: 'user', label: 'User' },
       { key: 'email', label: 'Email' },
       { key: 'user_id', label: 'User ID' },
       { key: 'status', label: 'Status' },
-      { key: 'added', label: 'Added' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `super-admins-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -230,11 +227,11 @@ const SuperAdminManagement: React.FC = () => {
     },
     {
       id: 'created_at',
-      accessorKey: 'created_at',
+      accessorFn: (row) => normalizeAudit(row).created?.at ?? '',
       header: 'Added',
       cell: ({ row }) => (
         <div className="text-[11px] leading-tight text-muted-foreground">
-          {fmt(row.original.created_at)}
+          {fmt(normalizeAudit(row.original).created?.at)}
         </div>
       ),
     },

@@ -15,6 +15,7 @@ import { ListEmptyState } from '../../components/ListEmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
+import { normalizeAudit } from '../../utils/audit';
 import type { ClusterInvitation } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -136,7 +137,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
       id: 'created_at',
       header: 'Invited',
       cell: ({ row }) => (
-        <div className="text-[11px] leading-tight text-muted-foreground">{fmt(row.original.created_at)}</div>
+        <div className="text-[11px] leading-tight text-muted-foreground">{fmt(normalizeAudit(row.original).created?.at)}</div>
       ),
     },
     {

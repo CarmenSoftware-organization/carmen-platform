@@ -28,6 +28,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { News, NewsStatus, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -330,11 +331,16 @@ const NewsManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(newsItems, [
+    const rows = newsItems.map((n) => ({ ...n, ...auditCsvFields(normalizeAudit(n)) }));
+    const csv = generateCSV(rows, [
       { key: 'title', label: 'Title' },
       { key: 'status', label: 'Status' },
       { key: 'url', label: 'URL' },
       { key: 'published_at', label: 'Published' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `news-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -419,7 +425,7 @@ const NewsManagement: React.FC = () => {
       header: 'Updated',
       enableSorting: false,
       cell: ({ row }) => {
-        const a = row.original.audit?.updated;
+        const a = normalizeAudit(row.original).updated;
         if (!a?.at) return <span className="text-muted-foreground">-</span>;
         return (
           <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">

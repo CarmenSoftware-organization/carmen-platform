@@ -20,6 +20,8 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { DatabasePool, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -30,14 +32,6 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
-};
-
-// Inline formatter per CLAUDE.md's DateTime section — no date library in this repo.
-const fmt = (v?: string | null): string => {
-  if (!v) return '-';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
 const DatabasePoolManagement: React.FC = () => {
@@ -156,7 +150,8 @@ const DatabasePoolManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(items, [
+    const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
+    const csv = generateCSV(rows, [
       { key: 'name', label: 'Name' },
       { key: 'host', label: 'Host' },
       { key: 'port', label: 'Port' },
@@ -164,6 +159,10 @@ const DatabasePoolManagement: React.FC = () => {
       { key: 'username', label: 'Username' },
       { key: 'is_active', label: 'Status' },
       { key: 'note', label: 'Note' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `database-pools-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -197,7 +196,7 @@ const DatabasePoolManagement: React.FC = () => {
         </Badge>
       ),
     },
-    { accessorKey: 'updated_at', header: 'Updated', cell: ({ row }) => fmt(row.original.updated_at) },
+    ...auditColumns<DatabasePool>(),
     {
       id: 'actions',
       header: '',
