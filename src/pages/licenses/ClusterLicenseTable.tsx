@@ -16,6 +16,7 @@ import { Filter, KeyRound, X } from 'lucide-react';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { CapacityMeter } from '../clusterManagement/CapacityMeter';
 import { isPerpetual, daysLeft, fmtDate, EXPIRING_SOON_DAYS } from './licenseDates';
+import { auditColumns } from '../../components/auditColumns';
 import type { Cluster, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -293,6 +294,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
         </Badge>
       ),
     },
+    ...auditColumns<Cluster>({ hideUpdatedOnCard: true }),
   ], []);
 
   return (

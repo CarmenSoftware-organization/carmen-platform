@@ -24,6 +24,8 @@ import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../../utils/subscriptionStat
 import { seatUtilization } from '../../utils/capacity';
 import { useAuth } from '../../context/AuthContext';
 import { useAllClusters } from '../../hooks/useAllClusters';
+import { auditColumns } from '../../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -257,7 +259,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   };
 
   const handleExport = () => {
-    const csv = generateCSV(items, [
+    const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
+    const csv = generateCSV(rows, [
       { key: 'subscription_number', label: 'Subscription Number' },
       { key: 'cluster_name', label: 'Cluster' },
       { key: 'cluster_code', label: 'Cluster Code' },
@@ -269,6 +272,10 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       { key: 'bu_code', label: 'Business Unit' },
       { key: 'bu_name', label: 'Business Unit Name' },
       { key: 'feature_count', label: 'Feature Count' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `subscriptions-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -373,6 +380,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         </div>
       ),
     },
+    ...auditColumns<Subscription>({ hideUpdatedOnCard: true }),
   ], []);
   // No actions column: with Delete removed (review B2#1 — the backend can never surface a
   // soft-deleted subscription, so a delete button nobody can verify or undo was worse than no

@@ -16,6 +16,8 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { devLog } from '../../utils/errorParser';
 import { fmtDate, isPerpetual } from './licenseDates';
+import { auditColumns } from '../../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
@@ -257,7 +259,8 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     // export เฉพาะหน้าปัจจุบันที่โหลดมาแล้ว (`rows`) ไม่ยิงคำขอ perpage:-1 แยกต่างหาก —
     // แพทเทิร์นเดิมเคยทำแบบนั้นแล้วเลิกใช้ (ดู memory: List summary block เลิก perpage:-1)
     // และตรงกับ SubscriptionTable.tsx ที่ export `items` ของหน้าปัจจุบันเช่นกัน
-    const csv = generateCSV(rows, [
+    const csvRows = rows.map((r) => ({ ...r, ...auditCsvFields(normalizeAudit(r)) }));
+    const csv = generateCSV(csvRows, [
       { key: 'license_number', label: 'License Number' },
       { key: 'owner_code', label: `${config.ownerLabel} Code` },
       { key: 'owner_name', label: `${config.ownerLabel} Name` },
@@ -266,6 +269,10 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       { key: 'end_date', label: 'End Date' },
       { key: 'status', label: 'Status' },
       { key: 'reference_no', label: 'Reference No' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `${config.kind}-licenses-${new Date().toISOString().slice(0, 10)}.csv`);
   };
@@ -344,6 +351,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       enableSorting: false,
       cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.reference_no}</span>,
     },
+    ...auditColumns<FleetLicenseRow>({ hideUpdatedOnCard: true }),
   ], [config]);
 
   return (
