@@ -1,6 +1,7 @@
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import { normalizeAudit } from '../../utils/audit';
 import type { BuSummaryData } from '../../types';
 
 interface BuLike {
@@ -27,7 +28,7 @@ export function summarizeBus(list: BuLike[], deleted = 0): BuSummaryData {
   let inactive = 0;
   const clusters = new Set<string>();
   for (const bu of list) {
-    if (bu.deleted_at ?? bu.audit?.deleted?.at) continue; // defensive: never count a deleted row
+    if (normalizeAudit(bu).deleted?.at) continue; // defensive: never count a deleted row
     if (bu.is_active) active += 1;
     else inactive += 1;
     const cluster = bu.cluster_id ?? bu.cluster_name;

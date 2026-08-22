@@ -7,6 +7,7 @@ const permissionService = {
     const body = response.data?.data ?? response.data;
     const items = Array.isArray(body) ? body : body?.data ?? [];
     return (items as Array<Partial<PermissionCatalogItem>>).map((p) => ({
+      ...p,
       key: p.key ?? `${p.resource}.${p.action}`,
       resource: p.resource ?? '',
       action: p.action ?? '',

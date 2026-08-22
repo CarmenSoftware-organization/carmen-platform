@@ -26,6 +26,7 @@ import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import { summarizeFleet } from '../utils/capacity';
 import { isPerpetual } from '../utils/clusterLicense';
 import { auditColumns } from '../components/auditColumns';
+import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { FleetSummary } from '../types';
 import type { Cluster, PaginateParams } from '../types';
@@ -141,19 +142,22 @@ const ClusterManagement: React.FC = () => {
       const data = await clusterService.getAll(params);
       setRawResponse(data);
       const items = data.data || data;
-      const mapped = (Array.isArray(items) ? items : []).map((item: any) => ({
-        ...item,
-        bu_count: item.bu_count ?? item._count?.tb_business_unit ?? 0,
-        users_count: item.users_count ?? item._count?.tb_cluster_user ?? 0,
-        // โควตามาจากใบที่ชนะ (Task 7) — 0 คือศูนย์จริง ไม่ใช่ "ไม่จำกัด", แทนที่ max_license_bu เดิม
-        bu_cap: item.bu_cap ?? 0,
-        bu_used: item.bu_used ?? item.bu_count ?? 0,
-        total_max_license_users: item.total_max_license_users ?? undefined,
-        // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles
-        // both the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
-        deleted_at: item.deleted_at ?? item.audit?.deleted?.at,
-        deleted_by_name: item.deleted_by_name ?? item.audit?.deleted?.name,
-      }));
+      // Created/Updated/Deleted are all read via `normalizeAudit`, which handles both the
+      // nested `audit.*` shape and the older flat shape itself — no hand-rolled fallback here.
+      const mapped = (Array.isArray(items) ? items : []).map((item: any) => {
+        const deleted = normalizeAudit(item).deleted;
+        return {
+          ...item,
+          bu_count: item.bu_count ?? item._count?.tb_business_unit ?? 0,
+          users_count: item.users_count ?? item._count?.tb_cluster_user ?? 0,
+          // โควตามาจากใบที่ชนะ (Task 7) — 0 คือศูนย์จริง ไม่ใช่ "ไม่จำกัด", แทนที่ max_license_bu เดิม
+          bu_cap: item.bu_cap ?? 0,
+          bu_used: item.bu_used ?? item.bu_count ?? 0,
+          total_max_license_users: item.total_max_license_users ?? undefined,
+          deleted_at: deleted?.at,
+          deleted_by_name: deleted?.name,
+        };
+      });
       setClusters(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
       // The band rides on this same response — no second request. `summary` is absent until
@@ -417,17 +421,13 @@ const ClusterManagement: React.FC = () => {
     ...(showDeleted ? [{
       id: 'deleted_at',
       header: 'Deleted',
-      cell: ({ row }: { row: { original: Cluster } }) => {
-        const d = row.original;
-        if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-destructive space-y-0.5">
-            <div>{fmt(d.deleted_at)}</div>
-            {d.deleted_by_name && <div>{d.deleted_by_name}</div>}
-          </div>
-        );
-      },
+      cell: ({ row }: { row: { original: Cluster } }) => (
+        <AuditMeta
+          variant="cell"
+          actor={normalizeAudit(row.original).deleted}
+          className="text-[11px] leading-tight text-destructive space-y-0.5"
+        />
+      ),
       enableSorting: false,
     } as ColumnDef<Cluster, unknown>] : []),
     {

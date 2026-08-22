@@ -31,7 +31,7 @@ export interface FaceItem {
 /** How many overlapping faces to show before collapsing the rest into "+N". */
 export const FACE_LIMIT = 6;
 
-const deletedAt = (u: UserLike) => u.deleted_at ?? u.audit?.deleted?.at ?? null;
+const deletedAt = (u: UserLike) => normalizeAudit(u).deleted?.at ?? null;
 const createdAt = (u: UserLike) => normalizeAudit(u).created?.at ?? '';
 
 /**

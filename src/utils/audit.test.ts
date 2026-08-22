@@ -114,6 +114,18 @@ describe('normalizeAudit — รูปแบบ actor เป็น object', () =
   });
 });
 
+describe('normalizeAudit — deleted', () => {
+  it('อ่าน audit.deleted แบบ nested', () => {
+    const a = normalizeAudit({ audit: { deleted: { at: UPDATED_AT, id: 'u3', name: 'ธมนูญ' } } });
+    expect(a.deleted).toEqual({ at: UPDATED_AT, id: 'u3', name: 'ธมนูญ' });
+  });
+
+  it('ประกอบจาก deleted_at / deleted_by_name แบบแบนเมื่อไม่มี audit', () => {
+    const a = normalizeAudit({ deleted_at: UPDATED_AT, deleted_by_name: 'ธมนูญ' });
+    expect(a.deleted).toEqual({ at: UPDATED_AT, name: 'ธมนูญ' });
+  });
+});
+
 describe('auditCsvFields', () => {
   it('คืน ISO เต็มไม่ใช่ relative และเติมสตริงว่างเมื่อไม่มีข้อมูล', () => {
     const a = normalizeAudit({ created_at: CREATED_AT, created_by_name: 'สมชาย' });
