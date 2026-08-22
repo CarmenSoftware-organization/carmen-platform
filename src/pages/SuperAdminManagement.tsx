@@ -20,16 +20,10 @@ import { ListEmptyState } from '../components/ListEmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { cn } from '../lib/utils';
+import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { SuperAdmin, UserOption } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
-
-const fmt = (v?: string) => {
-  if (!v) return '-';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-};
 
 // The name to show for a row. Falls back to email, then to nothing at all —
 // deliberately NOT to a phrase like "Unknown user": when the frontend is deployed
@@ -229,11 +223,7 @@ const SuperAdminManagement: React.FC = () => {
       id: 'created_at',
       accessorFn: (row) => normalizeAudit(row).created?.at ?? '',
       header: 'Added',
-      cell: ({ row }) => (
-        <div className="text-[11px] leading-tight text-muted-foreground">
-          {fmt(normalizeAudit(row.original).created?.at)}
-        </div>
-      ),
+      cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).created} />,
     },
     {
       id: 'actions',

@@ -28,6 +28,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { News, NewsStatus, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -424,16 +425,7 @@ const NewsManagement: React.FC = () => {
       id: 'updated_at',
       header: 'Updated',
       enableSorting: false,
-      cell: ({ row }) => {
-        const a = normalizeAudit(row.original).updated;
-        if (!a?.at) return <span className="text-muted-foreground">-</span>;
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmt(a.at)}</div>
-            {a.name && <div>{a.name}</div>}
-          </div>
-        );
-      },
+      cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).updated} />,
     },
     {
       id: 'actions',
