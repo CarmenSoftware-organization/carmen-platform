@@ -22,6 +22,8 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { BrandMark } from '../components/BrandMark';
 import { BuSummary, summarizeBus } from './businessUnitManagement/BuSummary';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { BuSummaryData } from '../types';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -90,14 +92,10 @@ const BusinessUnitManagement: React.FC = () => {
       const data = await businessUnitService.getAll(params);
       setRawResponse(data);
       const items = data.data || data;
-      // Audit moved into a nested `audit` object; flatten for the date columns
-      // (tolerate the older flat shape too).
+      // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles both
+      // the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
       const mapped = (Array.isArray(items) ? items : []).map((item: any) => ({
         ...item,
-        created_at: item.created_at ?? item.audit?.created?.at,
-        created_by_name: item.created_by_name ?? item.audit?.created?.name,
-        updated_at: item.updated_at ?? item.audit?.updated?.at,
-        updated_by_name: item.updated_by_name ?? item.audit?.updated?.name,
         deleted_at: item.deleted_at ?? item.audit?.deleted?.at,
         deleted_by_name: item.deleted_by_name ?? item.audit?.deleted?.name,
       }));
@@ -235,13 +233,17 @@ const BusinessUnitManagement: React.FC = () => {
     // computed aggregate the backend exposes is per-cluster (`Cluster.total_max_license_users`),
     // not per-BU. Rather than export the retired raw column (stale the moment any licence
     // changes) or a blank column, the column is dropped.
-    const csv = generateCSV(businessUnits, [
+    const rows = businessUnits.map((bu) => ({ ...bu, ...auditCsvFields(normalizeAudit(bu)) }));
+    const csv = generateCSV(rows, [
       { key: 'code', label: 'Code' },
       { key: 'name', label: 'Name' },
       { key: 'alias_name', label: 'Alias Name' },
       { key: 'cluster_name', label: 'Cluster' },
       { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -303,37 +305,7 @@ const BusinessUnitManagement: React.FC = () => {
         </Badge>
       ),
     },
-    {
-      accessorKey: 'created_at',
-      id: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => {
-        const d = row.original;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmt(d.created_at)}</div>
-            {d.created_by_name && <div>{d.created_by_name}</div>}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updated_at',
-      id: 'updated_at',
-      header: 'Updated',
-      cell: ({ row }) => {
-        const d = row.original;
-        if (d.updated_at === d.created_at) return null;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmt(d.updated_at)}</div>
-            {d.updated_by_name && <div>{d.updated_by_name}</div>}
-          </div>
-        );
-      },
-    },
+    ...auditColumns<BusinessUnit>(),
     ...(showDeleted ? [{
       id: 'deleted_at',
       header: 'Deleted',
