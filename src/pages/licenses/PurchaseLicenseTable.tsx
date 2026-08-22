@@ -78,10 +78,13 @@ interface FleetLicenseRow {
   status: StatusFilterValue;
   reference_no: string;
   /**
-   * มีค่าจริงเฉพาะใบโควตา BU (`ClusterLicense.created_at` — backend select มาให้แล้ว) ใบที่นั่ง
-   * (`BusinessUnitLicense`) ไม่มีคอลัมน์นี้ในฝั่ง backend เลยจึงเป็น `null` เสมอ — ไม่ใช่บั๊ก
+   * มีค่าจริงเฉพาะใบโควตา BU (อ่านผ่าน `normalizeAudit` ไม่ใช่ `quota.created_at` ตรง ๆ — ดู
+   * คอมเมนต์ที่ `toFleetRow`) ใบที่นั่ง (`BusinessUnitLicense`) ไม่มีคอลัมน์นี้ในฝั่ง backend เลย
+   * จึงเป็น `null` เสมอ — ไม่ใช่บั๊ก
    */
   created_at?: string | null;
+  /** ชื่อคนสร้างใบ — มีค่าจริงเฉพาะใบโควตา BU เช่นเดียวกับ `created_at` */
+  created_by_name?: string;
 }
 
 function toFleetRow(
@@ -96,6 +99,10 @@ function toFleetRow(
   // สูตรสถานะสองชนิดไม่เท่ากัน (ดูคอมเมนต์ใน utils/buLicense.ts กับ utils/clusterLicense.ts) —
   // ห้ามคิดสูตรใหม่ที่นี่ เรียกของเดิมเท่านั้น เหมือนที่ LicensePurchaseForm.tsx ทำ
   const status = isSeat ? buLicenseStatus(seat, now) : clusterLicenseStatus(quota, now);
+  // ใบที่นั่ง (BusinessUnitLicense) ไม่มี audit ในฝั่ง backend เลย — ใบโควตา BU มีจริงเพราะ
+  // cluster-license.service.ts select มาให้แล้ว อ่านผ่าน normalizeAudit ไม่ใช่ quota.created_at
+  // ตรง ๆ (เดิมทำแบบนั้นและไม่ได้ชื่อคนสร้างมาด้วย) เพื่อรองรับทั้งรูปแบนและรูป nested เหมือนทุกจุดอื่น
+  const quotaAudit = isSeat ? {} : normalizeAudit(quota);
   return {
     id: row.id,
     license_number: row.license_number,
@@ -106,9 +113,8 @@ function toFleetRow(
     end_date: showNoExpiry && isPerpetual(row.end_date) ? 'No expiry' : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
-    // ใบที่นั่ง (BusinessUnitLicense) ไม่มี created_at ในฝั่ง backend เลย — ใบโควตา BU
-    // (ClusterLicense.created_at) มีจริงเพราะ cluster-license.service.ts select มาให้แล้ว
-    created_at: isSeat ? null : (quota.created_at ?? null),
+    created_at: quotaAudit.created?.at ?? null,
+    created_by_name: quotaAudit.created?.name,
   };
 }
 
