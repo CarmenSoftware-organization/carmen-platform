@@ -418,4 +418,27 @@ describe('ClusterEdit — Add User dialog respects the cluster-wide license cap'
     expect(within(dialog).getByRole('button', { name: /add user/i })).toBeDisabled();
   });
 
+  // Both tests above feed the LIST endpoint's spelling — and stayed green while the guard was
+  // dead in the running app. This page reads the DETAIL endpoint, and the two disagree:
+  // `GET /api-system/clusters` returns the cap as `total_max_license_users`, while
+  // `GET /api-system/clusters/:id` returns the same number as `total_count_license_users` and
+  // omits the other key (captured off the dev backend, 2026-08-23; the subscription row for the
+  // same cluster independently reported the same 15 seats). Because the field is optional and
+  // absent reads as "uncapped", the drift was silent twice over: the hero rendered "∞ (no cap)"
+  // and `clusterAtLimit` could never be true. Pin the detail spelling so an aligned backend or
+  // a refactor cannot quietly bring the hole back.
+  it('reads the cap from the detail endpoint spelling, total_count_license_users', async () => {
+    asMock(clusterService.getById).mockResolvedValue({
+      data: { ...fakeCluster, total_count_license_users: 1 }, // detail key only — no total_max_*
+    });
+    const user = userEvent.setup();
+    renderAt('/clusters/c1/edit');
+
+    await user.click(await screen.findByRole('button', { name: /add user/i }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('button', { name: /newuser1/i }));
+
+    expect(screen.getByText(/cluster license limit reached \(1\/1\)/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /add user/i })).toBeDisabled();
+  });
 });
