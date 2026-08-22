@@ -379,7 +379,6 @@ export interface ClusterUser {
   id: string;          // tb_cluster_user.id (membership row id, NOT the user's id)
   user_id?: string;    // links to User.id
   cluster_id?: string;
-  parent_bu_id?: string | null;
   role?: string;
   is_active?: boolean;
   username?: string;

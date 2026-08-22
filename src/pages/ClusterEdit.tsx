@@ -93,7 +93,6 @@ const ClusterEdit: React.FC = () => {
   const [showAddUser, setShowAddUser] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SearchUser | null>(null);
   const [addUserRole, setAddUserRole] = useState('user');
-  const [addUserBuId, setAddUserBuId] = useState('');
   const [addingUser, setAddingUser] = useState(false);
   const userListRef = useRef<HTMLDivElement>(null);
 
@@ -290,7 +289,7 @@ const ClusterEdit: React.FC = () => {
 
   // Toast ownership: updateUser/removeUser are toast-free and rethrow — single-use
   // callers here must catch + toast. bulkRun owns the aggregate summary toast.
-  const handleUpdateUser = async (cuId: string, patch: { role?: string; parent_bu_id?: string | null }) => {
+  const handleUpdateUser = async (cuId: string, patch: { role?: string }) => {
     try {
       await users.updateUser(cuId, patch);
     } catch (err) {
@@ -307,7 +306,7 @@ const ClusterEdit: React.FC = () => {
   };
   // addUser toasts its own success and toasts+rethrows on failure — leave the dialog
   // open on failure so the user can retry.
-  const handleAddUser = async (input: { userId: string; role: string; parentBuId?: string }) => {
+  const handleAddUser = async (input: { userId: string; role: string }) => {
     try {
       await users.addUser(input);
       setShowAddUser(false);
@@ -318,14 +317,10 @@ const ClusterEdit: React.FC = () => {
   const handleBulkRemove = async (ids: string[]): Promise<void> => {
     await users.bulkRun(ids, (cuId) => users.removeUser(cuId), 'Remove users');
   };
-  const handleBulkMoveBu = async (ids: string[], buId: string): Promise<void> => {
-    await users.bulkRun(ids, (cuId) => users.updateUser(cuId, { parent_bu_id: buId }), 'Move users');
-  };
 
   const handleOpenAddUserDialog = () => {
     setSelectedUser(null);
     setAddUserRole('user');
-    setAddUserBuId('');
     users.resetSearch();
     setShowAddUser(true);
   };
@@ -334,7 +329,7 @@ const ClusterEdit: React.FC = () => {
     if (!selectedUser) return;
     setAddingUser(true);
     try {
-      await handleAddUser({ userId: selectedUser.id, role: addUserRole, parentBuId: addUserBuId || undefined });
+      await handleAddUser({ userId: selectedUser.id, role: addUserRole });
     } finally {
       setAddingUser(false);
     }
@@ -414,9 +409,9 @@ const ClusterEdit: React.FC = () => {
               <Skeleton className="h-4 w-40 mt-1" />
             </CardHeader>
             <CardContent className="p-0">
-              {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
-                  <th>: Code, Name, Users, Status, and a trailing blank actions column. */}
-              <TableSkeleton columns={5} rows={3} />
+              {/* Plain <table> below (not DataTable, so no auto `#` column) has 4
+                  <th>: Code, Name, Status, and a trailing blank actions column. */}
+              <TableSkeleton columns={4} rows={3} />
             </CardContent>
           </Card>
 
@@ -428,7 +423,7 @@ const ClusterEdit: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
               {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
-                  <th>: Name, Email, Parent Business Unit, Status, and a trailing blank actions column. */}
+                  <th>: Name, Email, Role, Status, and a trailing blank actions column. */}
               <TableSkeleton columns={5} rows={3} />
             </CardContent>
           </Card>
@@ -613,7 +608,6 @@ const ClusterEdit: React.FC = () => {
                       <BusinessUnitsSection
                         clusterId={id!}
                         businessUnits={businessUnits}
-                        clusterUsers={users.clusterUsers}
                         loading={buLoading}
                         maxLicenseBu={buCap}
                         onRefresh={fetchBusinessUnits}
@@ -662,7 +656,6 @@ const ClusterEdit: React.FC = () => {
                     <CardContent className="p-0">
                       <UsersSection
                         users={users.clusterUsers}
-                        businessUnits={businessUnits}
                         loading={users.usersLoading}
                         canEdit={canEdit}
                         onRefresh={users.fetchClusterUsers}
@@ -670,7 +663,6 @@ const ClusterEdit: React.FC = () => {
                         onUpdateUser={handleUpdateUser}
                         onRemoveUser={handleRemoveUser}
                         onBulkRemove={handleBulkRemove}
-                        onBulkMoveBu={handleBulkMoveBu}
                       />
                     </CardContent>
                   </Card>
@@ -802,39 +794,15 @@ const ClusterEdit: React.FC = () => {
               </select>
             </div>
 
-            {/* Business Unit select */}
-            <div className="space-y-2">
-              <Label htmlFor="add-user-bu">Business Unit</Label>
-              <select
-                id="add-user-bu"
-                value={addUserBuId}
-                onChange={(e) => setAddUserBuId(e.target.value)}
-                className={selectClassName}
-              >
-                <option value="">Select business unit</option>
-                {businessUnits.map((bu) => {
-                  // The license limit is the cluster's, not any one BU's (Task 3.5) —
-                  // a BU no longer carries its own ceiling, so there is nothing per-BU to
-                  // disable here; this count is informational only.
-                  const buUserCount = users.clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length;
-                  return (
-                    <option key={bu.id} value={bu.id}>
-                      {bu.code} - {bu.name} ({buUserCount} users)
-                    </option>
-                  );
-                })}
-              </select>
-              {/* Cluster-wide cap (Task 3.5) — shown once for the dialog, not tied to
-                  whichever BU happens to be selected: the seat pool is shared across every
-                  BU in the cluster, so the limit does not depend on that choice. */}
-              {userCap != null && (
-                <p className={`text-xs ${userUsed >= userCap ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {userUsed >= userCap
-                    ? `Cluster license limit reached (${userUsed}/${userCap})`
-                    : `${userUsed} of ${userCap} licensed users in this cluster`}
-                </p>
-              )}
-            </div>
+            {/* Cluster-wide seat cap (Task 3.5) — the seat pool is shared across every BU in
+                the cluster, so membership is a cluster-level fact with no BU to pick here. */}
+            {userCap != null && (
+              <p className={`text-xs ${userUsed >= userCap ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {userUsed >= userCap
+                  ? `Cluster license limit reached (${userUsed}/${userCap})`
+                  : `${userUsed} of ${userCap} licensed users in this cluster`}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>

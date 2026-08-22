@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshCw, UserPlus, Trash2, Building2 } from 'lucide-react';
+import { RefreshCw, UserPlus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
@@ -7,19 +7,17 @@ import { TableToolbar } from '../TableToolbar';
 import { BulkActionBar, type BulkAction } from '../BulkActionBar';
 import { InlineCell } from '../InlineCell';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
-import type { BusinessUnit, ClusterUser } from '../../../types';
+import type { ClusterUser } from '../../../types';
 
 export interface UsersSectionProps {
   users: ClusterUser[];
-  businessUnits: BusinessUnit[];
   loading: boolean;
   canEdit: boolean;
   onRefresh: () => void;
   onAddUser: () => void;
-  onUpdateUser: (id: string, patch: { role?: string; parent_bu_id?: string | null }) => Promise<void>;
+  onUpdateUser: (id: string, patch: { role?: string }) => Promise<void>;
   onRemoveUser: (id: string) => Promise<void>;
   onBulkRemove: (ids: string[]) => Promise<void>;
-  onBulkMoveBu: (ids: string[], buId: string) => Promise<void>;
 }
 
 const ROLE_OPTIONS = [{ value: 'admin', label: 'Admin' }, { value: 'user', label: 'User' }];
@@ -30,8 +28,8 @@ function displayName(u: ClusterUser): string {
 }
 
 export function UsersSection({
-  users, businessUnits, loading, canEdit,
-  onRefresh, onAddUser, onUpdateUser, onRemoveUser, onBulkRemove, onBulkMoveBu,
+  users, loading, canEdit,
+  onRefresh, onAddUser, onUpdateUser, onRemoveUser, onBulkRemove,
 }: UsersSectionProps) {
   const [search, setSearch] = useState('');
   const [activeOnly, setActiveOnly] = useState(false);
@@ -39,7 +37,6 @@ export function UsersSection({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
   const [confirmRemoveOne, setConfirmRemoveOne] = useState<ClusterUser | null>(null);
-  const [moveBuId, setMoveBuId] = useState('');
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -69,11 +66,8 @@ export function UsersSection({
   };
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rowIds));
 
-  const buOptions = businessUnits.map((bu) => ({ value: bu.id, label: `${bu.code} - ${bu.name}` }));
-
   const bulkActions: BulkAction[] = [
     { key: 'remove', label: 'Remove', icon: Trash2, variant: 'destructive', onClick: () => setConfirmBulkRemove(true) },
-    { key: 'move', label: 'Move to BU', icon: Building2, disabled: !moveBuId, onClick: () => { void onBulkMoveBu(Array.from(selected), moveBuId).then(resetSelection); } },
   ];
 
   return (
@@ -103,11 +97,6 @@ export function UsersSection({
 
       {canEdit && (
         <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
-          <select aria-label="Bulk: target business unit" value={moveBuId} onChange={(e) => setMoveBuId(e.target.value)}
-            className="h-8 rounded-md border border-input bg-background px-2 text-sm">
-            <option value="">Move target BU…</option>
-            {buOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
           <BulkActionBar count={selected.size} onClear={resetSelection} actions={bulkActions} />
         </div>
       )}
@@ -128,7 +117,6 @@ export function UsersSection({
                 )}
                 <th className="px-4 py-2 text-left font-medium">Name</th>
                 <th className="px-4 py-2 text-left font-medium">Email</th>
-                <th className="px-4 py-2 text-left font-medium">Parent Business Unit</th>
                 <th className="px-4 py-2 text-left font-medium">Role</th>
                 <th className="px-4 py-2 text-center font-medium">Status</th>
                 <th className="w-10" />
@@ -136,7 +124,6 @@ export function UsersSection({
             </thead>
             <tbody>
               {rows.map((u) => {
-                const bu = u.parent_bu_id ? businessUnits.find((b) => b.id === u.parent_bu_id) : null;
                 return (
                   <tr key={u.id} className="zebra-row border-b transition-colors last:border-0">
                     {canEdit && (
@@ -146,16 +133,6 @@ export function UsersSection({
                     )}
                     <td className="px-4 py-2">{displayName(u)}</td>
                     <td className="text-muted-foreground px-4 py-2">{u.email}</td>
-                    <td className="px-4 py-2">
-                      <InlineCell
-                        ariaLabel={`Parent business unit for ${displayName(u)}`}
-                        value={u.parent_bu_id ?? ''}
-                        disabled={!canEdit}
-                        options={[{ value: '', label: '-' }, ...buOptions]}
-                        display={bu ? <Badge variant="outline" className="text-xs">{bu.code} - {bu.name}</Badge> : <span className="text-muted-foreground text-xs">-</span>}
-                        onCommit={(v) => { void onUpdateUser(u.id, { parent_bu_id: v || null }); }}
-                      />
-                    </td>
                     <td className="px-4 py-2">
                       <InlineCell
                         ariaLabel={`Role for ${displayName(u)}`}

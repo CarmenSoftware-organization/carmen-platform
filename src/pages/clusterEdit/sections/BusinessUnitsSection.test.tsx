@@ -15,7 +15,7 @@ const bus: BusinessUnit[] = [
 function renderSection(extra?: Partial<React.ComponentProps<typeof BusinessUnitsSection>>) {
   return render(
     <BusinessUnitsSection
-      clusterId="c1" businessUnits={bus} clusterUsers={[]} loading={false}
+      clusterId="c1" businessUnits={bus} loading={false}
       maxLicenseBu={5} onRefresh={() => {}} onNavigate={() => {}} {...extra}
     />,
   );

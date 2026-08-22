@@ -115,7 +115,7 @@ export function useClusterUsers(clusterId: string | undefined) {
     fetchSearchUsers('', 1);
   }, [fetchSearchUsers]);
 
-  const addUser = useCallback(async (input: { userId: string; role: string; parentBuId?: string }) => {
+  const addUser = useCallback(async (input: { userId: string; role: string }) => {
     if (!clusterId) return;
     try {
       await api.post('/api-system/user/clusters', {
@@ -123,7 +123,6 @@ export function useClusterUsers(clusterId: string | undefined) {
         cluster_id: clusterId,
         role: input.role,
         is_active: true,
-        ...(input.parentBuId ? { parent_bu_id: input.parentBuId } : {}),
       });
     } catch (err) {
       toast.error('Failed to add user', { description: getErrorDetail(err) });
@@ -137,7 +136,7 @@ export function useClusterUsers(clusterId: string | undefined) {
   // Callers own error toasting — single-use callers toast, bulkRun aggregates a summary.
   const updateUser = useCallback(async (
     clusterUserId: string,
-    patch: { role?: string; parent_bu_id?: string | null; is_active?: boolean },
+    patch: { role?: string; is_active?: boolean },
   ) => {
     // Read the pre-change list off the ref (synchronous, not a deferred setState
     // callback), so when bulkRun invokes this repeatedly the rollback reverts only
