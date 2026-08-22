@@ -35,11 +35,12 @@ import BusinessUnitLicensesCard from './businessUnitEdit/BusinessUnitLicensesCar
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
+import { isBuTabId, tabsWithErrors, type BuTab, type BuTabId } from './businessUnitEdit/BusinessUnitTabs';
 
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isNew = !id;
   const { isSuperAdmin, hasPermission } = useAuth();
 
@@ -71,6 +72,12 @@ const BusinessUnitEdit: React.FC = () => {
   });
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
+  // Deep-linkable: ?tab= survives a reload and can be shared/bookmarked. Seeded from the URL
+  // once — the state is the authority afterwards, so an unknown value degrades to General.
+  const [activeTab, setActiveTab] = useState<BuTabId>(() => {
+    const fromUrl = searchParams.get('tab');
+    return isBuTabId(fromUrl) ? fromUrl : 'general';
+  });
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
   const licenses = useLicenseLedger<BusinessUnitLicense>(id, businessUnitLicenseService);
@@ -106,6 +113,32 @@ const BusinessUnitEdit: React.FC = () => {
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
 
+  // Users has nothing to show before the BU exists — its two cards are both `!isNew` slots.
+  const tabs: BuTab[] = (() => {
+    const errored = tabsWithErrors(fieldErrors);
+    const base: BuTab[] = [
+      { id: 'general', label: 'General' },
+      { id: 'location', label: 'Location' },
+      { id: 'formats', label: 'Formats' },
+      { id: 'technical', label: 'Technical' },
+    ];
+    if (!isNew) base.push({ id: 'users', label: 'Users', count: users.buUsers.length });
+    return base.map((t) => ({ ...t, hasError: errored.includes(t.id) }));
+  })();
+  // A ?tab=users deep link on the create form would otherwise render an empty page.
+  const currentTab: BuTabId = tabs.some((t) => t.id === activeTab) ? activeTab : 'general';
+
+  const handleTabChange = (tab: BuTabId) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    // General is the default: leave it out so the plain URL stays the canonical one.
+    if (tab === 'general') next.delete('tab');
+    else next.set('tab', tab);
+    // replace, not push — a tab switch is not a navigation step, and stacking them would
+    // make Back walk through every tab the user touched instead of leaving the page.
+    setSearchParams(next, { replace: true });
+  };
+
   useGlobalShortcuts({
     // The shortcut reaches handleSave without going through the Save button, so a
     // disabled button is no defence on its own — check canEdit here too.
@@ -117,6 +150,10 @@ const BusinessUnitEdit: React.FC = () => {
   const handleCancelEdit = () => {
     setFormData(savedFormData);
     setError('');
+    // Every value is back to the last saved snapshot, which passed validation on the way in,
+    // so the errors describe values that no longer exist. Leaving them behind leaves a red
+    // dot on a tab whose fields are all fine.
+    setFieldErrors({});
   };
 
   // Edit-in-place commits from InlineField / toggles.
@@ -400,6 +437,11 @@ const BusinessUnitEdit: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       setError('Please fix the highlighted fields: ' + Object.values(active).join(', '));
+      // db_schema lives in Technical while code/cluster live in General, so a failed Save
+      // can highlight a field on a tab the user cannot see. Jump to the first tab that
+      // holds one — without it, Save just looks like it did nothing.
+      const target = tabsWithErrors(active)[0];
+      if (target && target !== activeTab) handleTabChange(target);
       return false;
     }
     return true;
@@ -597,6 +639,9 @@ const BusinessUnitEdit: React.FC = () => {
           onAddConfigRow={addConfigRow}
           onRemoveConfigRow={removeConfigRow}
           onPoolChange={handlePoolChange}
+          tabs={tabs}
+          activeTab={currentTab}
+          onTabChange={handleTabChange}
           brandingSlot={
             !isNew ? (
               <BusinessUnitBrandingCard

@@ -11,6 +11,7 @@ import CalculationSettingsSection from './sections/CalculationSettingsSection';
 import NumberFormatsSection from './sections/NumberFormatsSection';
 import ConfigurationSection from './sections/ConfigurationSection';
 import DatabaseConnectionSection from './sections/DatabaseConnectionSection';
+import BusinessUnitTabs, { type BuTab, type BuTabId } from './BusinessUnitTabs';
 
 interface BusinessUnitDocumentProps {
   formData: BusinessUnitFormData;
@@ -43,6 +44,11 @@ interface BusinessUnitDocumentProps {
   onAddConfigRow: () => void;
   onRemoveConfigRow: (index: number) => void;
   onPoolChange: (field: 'database_pool_id' | 'db_schema', value: string) => void;
+  // Tab state is owned by the page, not by this component: Save has to be able to jump to
+  // the tab holding a failed field, and the page is what runs the validation.
+  tabs: BuTab[];
+  activeTab: BuTabId;
+  onTabChange: (tab: BuTabId) => void;
   brandingSlot?: React.ReactNode;
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
@@ -76,6 +82,9 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     onAddConfigRow,
     onRemoveConfigRow,
     onPoolChange,
+    tabs,
+    activeTab,
+    onTabChange,
     brandingSlot,
     advancedExtraSlot,
     usersSlot,
@@ -169,112 +178,142 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           </div>
         </div>
 
-        {/* inline fact groups */}
-        {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
-            validateRequired() enforces — they are the only ones marked required. */}
-        <Group label="Details">
-          {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
-          {inline('alias_name', 'Alias', { validate: true, maxLength: BU_ALIAS_MAX })}
-          {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
-          {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
-              this BU's dated license rows, edited only in the User Licenses card below. Not an
-              InlineField: there is nothing here to click into edit mode. */}
-          <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
-            <span className="text-muted-foreground pt-2 text-xs">Max users</span>
-            <div className="min-w-0">
-              <ReadOnlyText value={`${activeSeats}`} />
-              <p className="text-muted-foreground mt-1 text-[11px]">
-                From {activeLicenseCount} active {activeLicenseCount === 1 ? 'license' : 'licenses'} · change these in the User Licenses card
-              </p>
-            </div>
-          </div>
-          {inline('description', 'Description', { type: 'textarea', maxLength: 500 })}
-        </Group>
-
-        <Group label="Location">
-          {inline('hotel_name', 'Hotel name', { maxLength: 100 })}
-          {inline('hotel_address_line1', 'Address line 1')}
-          {inline('hotel_address_line2', 'Address line 2')}
-          {inline('hotel_sub_district', 'Sub-district')}
-          {inline('hotel_district', 'District')}
-          {inline('hotel_city', 'City')}
-          {inline('hotel_province', 'Province')}
-          {inline('hotel_postal_code', 'Postal code', { mono: true })}
-          {inline('hotel_country', 'Country')}
-          {inline('hotel_latitude', 'Latitude', { mono: true })}
-          {inline('hotel_longitude', 'Longitude', { mono: true })}
-        </Group>
-
-        <Group label="Contact">
-          {inline('hotel_tel', 'Phone', { mono: true })}
-          {inline('hotel_email', 'Email', { type: 'email' })}
-        </Group>
-
-        <Group
-          label="Company"
-          action={
-            canEdit && (
-              <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
-                <Copy className="mr-2 h-4 w-4" />
-                Copy from hotel address
-              </Button>
-            )
-          }
-        >
-          {inline('company_name', 'Company', { maxLength: 100 })}
-          {inline('company_tel', 'Company phone', { mono: true })}
-          {inline('company_email', 'Company email', { type: 'email' })}
-          {inline('company_address_line1', 'Company address line 1')}
-          {inline('company_address_line2', 'Company address line 2')}
-          {inline('company_sub_district', 'Company sub-district')}
-          {inline('company_district', 'Company district')}
-          {inline('company_city', 'Company city')}
-          {inline('company_province', 'Company province')}
-          {inline('company_postal_code', 'Company postal code', { mono: true })}
-          {inline('company_country', 'Company country')}
-          {inline('company_latitude', 'Company latitude', { mono: true })}
-          {inline('company_longitude', 'Company longitude', { mono: true })}
-        </Group>
-
-        <Group label="Tax">
-          {inline('tax_no', 'Tax ID', { mono: true })}
-          {inline('branch_no', 'Branch', { mono: true })}
-        </Group>
-
-        <Group label="Date & time">
-          {inline('timezone', 'Timezone')}
-          {inline('date_format', 'Date format', { mono: true })}
-          {inline('date_time_format', 'Date-time format', { mono: true })}
-          {inline('time_format', 'Time format', { mono: true })}
-          {inline('long_time_format', 'Long time format', { mono: true })}
-          {inline('short_time_format', 'Short time format', { mono: true })}
-        </Group>
+        {/* Tab strip sits inside the hero card: it switches the body below, and reading it as
+            part of the identity block makes that ownership obvious. */}
+        <div className="border-t px-2 sm:px-4">
+          <BusinessUnitTabs tabs={tabs} value={activeTab} onChange={onTabChange} />
+        </div>
       </Card>
 
-      {/* complex sections — always editable, in the same scroll */}
-      <CalculationSettingsSection
-        {...sectionField}
-        defaultCurrency={defaultCurrency}
-        getCalculationMethodLabel={getCalculationMethodLabel}
-        currencies={currencies}
-        currenciesLoading={currenciesLoading}
-        currenciesFailed={currenciesFailed}
-      />
-      <NumberFormatsSection {...sectionField} />
-      {brandingSlot}
-      <ConfigurationSection
-        {...sectionField}
-        onConfigChange={onConfigChange}
-        onAddConfigRow={onAddConfigRow}
-        onRemoveConfigRow={onRemoveConfigRow}
-      />
-      <DatabaseConnectionSection
-        {...sectionField}
-        onPoolChange={onPoolChange}
-      />
-      {advancedExtraSlot}
-      {usersSlot}
-      {licensesSlot}
+      {activeTab === 'general' && (
+        <>
+          <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
+            {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
+                validateRequired() enforces — they are the only ones marked required. */}
+            <Group label="Details">
+              {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
+              {inline('alias_name', 'Alias', { validate: true, maxLength: BU_ALIAS_MAX })}
+              {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
+              {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
+                  this BU's dated license rows, edited only in the User Licenses card. Not an
+                  InlineField: there is nothing here to click into edit mode. */}
+              <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
+                <span className="text-muted-foreground pt-2 text-xs">Max users</span>
+                <div className="min-w-0">
+                  <ReadOnlyText value={`${activeSeats}`} />
+                  <p className="text-muted-foreground mt-1 text-[11px]">
+                    From {activeLicenseCount} active {activeLicenseCount === 1 ? 'license' : 'licenses'} · change these in the Users tab
+                  </p>
+                </div>
+              </div>
+              {inline('description', 'Description', { type: 'textarea', maxLength: 500 })}
+            </Group>
+          </Card>
+
+          <CalculationSettingsSection
+            {...sectionField}
+            defaultCurrency={defaultCurrency}
+            getCalculationMethodLabel={getCalculationMethodLabel}
+            currencies={currencies}
+            currenciesLoading={currenciesLoading}
+            currenciesFailed={currenciesFailed}
+          />
+          {brandingSlot}
+        </>
+      )}
+
+      {activeTab === 'location' && (
+        <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
+          {/* Hotel first, company second: the company block copies from it, so the source has
+              to be the one already read. Phone and email belong to the hotel — they used to
+              sit in a "Contact" group of their own between the two addresses. */}
+          <Group label="Hotel">
+            {inline('hotel_name', 'Hotel name', { maxLength: 100 })}
+            {inline('hotel_address_line1', 'Address line 1')}
+            {inline('hotel_address_line2', 'Address line 2')}
+            {inline('hotel_sub_district', 'Sub-district')}
+            {inline('hotel_district', 'District')}
+            {inline('hotel_city', 'City')}
+            {inline('hotel_province', 'Province')}
+            {inline('hotel_postal_code', 'Postal code', { mono: true })}
+            {inline('hotel_country', 'Country')}
+            {inline('hotel_latitude', 'Latitude', { mono: true })}
+            {inline('hotel_longitude', 'Longitude', { mono: true })}
+            {inline('hotel_tel', 'Phone', { mono: true })}
+            {inline('hotel_email', 'Email', { type: 'email' })}
+          </Group>
+
+          <Group
+            label="Company"
+            action={
+              canEdit && (
+                <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy from hotel address
+                </Button>
+              )
+            }
+          >
+            {inline('company_name', 'Company', { maxLength: 100 })}
+            {inline('company_tel', 'Company phone', { mono: true })}
+            {inline('company_email', 'Company email', { type: 'email' })}
+            {inline('company_address_line1', 'Company address line 1')}
+            {inline('company_address_line2', 'Company address line 2')}
+            {inline('company_sub_district', 'Company sub-district')}
+            {inline('company_district', 'Company district')}
+            {inline('company_city', 'Company city')}
+            {inline('company_province', 'Company province')}
+            {inline('company_postal_code', 'Company postal code', { mono: true })}
+            {inline('company_country', 'Company country')}
+            {inline('company_latitude', 'Company latitude', { mono: true })}
+            {inline('company_longitude', 'Company longitude', { mono: true })}
+          </Group>
+
+          <Group label="Tax">
+            {inline('tax_no', 'Tax ID', { mono: true })}
+            {inline('branch_no', 'Branch', { mono: true })}
+          </Group>
+        </Card>
+      )}
+
+      {activeTab === 'formats' && (
+        <>
+          <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
+            <Group label="Date & time">
+              {inline('timezone', 'Timezone')}
+              {inline('date_format', 'Date format', { mono: true })}
+              {inline('date_time_format', 'Date-time format', { mono: true })}
+              {inline('time_format', 'Time format', { mono: true })}
+              {inline('long_time_format', 'Long time format', { mono: true })}
+              {inline('short_time_format', 'Short time format', { mono: true })}
+            </Group>
+          </Card>
+          <NumberFormatsSection {...sectionField} />
+        </>
+      )}
+
+      {activeTab === 'technical' && (
+        <>
+          <ConfigurationSection
+            {...sectionField}
+            onConfigChange={onConfigChange}
+            onAddConfigRow={onAddConfigRow}
+            onRemoveConfigRow={onRemoveConfigRow}
+          />
+          <DatabaseConnectionSection
+            {...sectionField}
+            onPoolChange={onPoolChange}
+          />
+          {advancedExtraSlot}
+        </>
+      )}
+
+      {activeTab === 'users' && (
+        <>
+          {usersSlot}
+          {licensesSlot}
+        </>
+      )}
     </div>
   );
 }

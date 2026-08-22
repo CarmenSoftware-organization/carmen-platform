@@ -64,6 +64,13 @@ import databasePoolService from '../services/databasePoolService';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
+// Sections sit behind tabs now: a control only exists in the DOM while its own tab is open.
+// Every "must not be reachable" assertion below therefore opens the tab that owns the control
+// first — otherwise it passes for the wrong reason, on an unmounted tab.
+const goToTab = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
+  await user.click(await screen.findByRole('tab', { name }));
+};
+
 const fakeBu = {
   id: 'bu1', cluster_id: 'c1', code: 'BU1', name: 'Test BU',
   is_active: true, is_hq: false, config: [], users: [],
@@ -185,34 +192,44 @@ describe('BusinessUnitEdit (one-document)', () => {
 // database credentials and persist them.
 describe('BusinessUnitEdit — write access is gated on canEdit', () => {
   it('offers no editable database-connection, calculation or config controls without cluster.update', async () => {
+    const user = userEvent.setup();
     auth.hasPermission = () => false;
     renderAt('/business-units/bu1/edit');
 
     // page has loaded
     expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
 
+    // General: calculation settings, and the branding card is handed the gate.
+    expect(screen.queryByRole('combobox', { name: /calculation method/i })).toBeNull();
+    expect(screen.getByTestId('branding-card')).toHaveAttribute('data-editing', 'false');
+
+    await goToTab(user, /^formats$/i);
+    expect(screen.queryByRole('textbox', { name: /amount format/i })).toBeNull();
+
     // DB connection: the pool selector must not be reachable at all.
+    await goToTab(user, /^technical$/i);
     expect(screen.queryByRole('combobox', { name: 'Database Pool' })).toBeNull();
     expect(screen.queryByLabelText('Schema')).toBeNull();
-
-    // Calculation settings / number formats / configuration.
-    expect(screen.queryByRole('combobox', { name: /calculation method/i })).toBeNull();
-    expect(screen.queryByRole('textbox', { name: /amount format/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /add config entry/i })).toBeNull();
 
-    // Slotted cards are handed the gate.
-    expect(screen.getByTestId('branding-card')).toHaveAttribute('data-editing', 'false');
+    await goToTab(user, /^users/i);
     expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'false');
   });
 
   it('keeps those controls when the user does hold cluster.update', async () => {
-    // Discriminating control: proves the assertions above are not vacuous.
+    // Discriminating control: proves the assertions above are not vacuous — same tab walk,
+    // opposite expectations.
+    const user = userEvent.setup();
     renderAt('/business-units/bu1/edit');
 
-    expect(await screen.findByRole('combobox', { name: 'Database Pool' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: /calculation method/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add config entry/i })).toBeInTheDocument();
+    expect(await screen.findByRole('combobox', { name: /calculation method/i })).toBeInTheDocument();
     expect(screen.getByTestId('branding-card')).toHaveAttribute('data-editing', 'true');
+
+    await goToTab(user, /^technical$/i);
+    expect(await screen.findByRole('combobox', { name: 'Database Pool' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add config entry/i })).toBeInTheDocument();
+
+    await goToTab(user, /^users/i);
     expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'true');
   });
 
@@ -261,10 +278,13 @@ describe('BusinessUnitEdit — canEdit fails closed on an empty cluster_id', () 
       if (ctx?.clusterId) return ctx.clusterId === 'some-other-cluster';
       return true;
     };
+    const user = userEvent.setup();
     renderAt('/business-units/bu1/edit');
 
     expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
+    await goToTab(user, /^technical$/i);
     expect(screen.queryByRole('combobox', { name: 'Database Pool' })).toBeNull();
+    await goToTab(user, /^users/i);
     expect(screen.getByTestId('users-card')).toHaveAttribute('data-can-edit', 'false');
   });
 });
@@ -308,6 +328,7 @@ describe('BusinessUnitEdit — save omits unchanged database pool fields', () =>
     asMock(businessUnitService.getById).mockResolvedValue({ data: fakeBu }); // no pool/schema set
     renderAt('/business-units/bu1/edit');
 
+    await goToTab(user, /^technical$/i);
     const schemaInput = await screen.findByLabelText('Schema');
     await user.type(schemaInput, 'cbr_prod');
     await user.tab();
@@ -335,6 +356,7 @@ describe('BusinessUnitEdit — copy hotel address to company', () => {
     renderAt('/business-units/bu1/edit');
 
     await screen.findByRole('heading', { name: /test bu/i });
+    await goToTab(user, /^location$/i);
     // Before copying, only the hotel field carries the value; no save bar yet.
     expect(screen.getAllByText('123 Hotel Street')).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull();
@@ -355,6 +377,7 @@ describe('BusinessUnitEdit — copy hotel address to company', () => {
     renderAt('/business-units/bu1/edit');
 
     await screen.findByRole('heading', { name: /test bu/i });
+    await goToTab(user, /^location$/i);
     await user.click(screen.getByRole('button', { name: /copy from hotel address/i }));
     expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
 
@@ -365,11 +388,14 @@ describe('BusinessUnitEdit — copy hotel address to company', () => {
   });
 
   it('hides the copy-from-hotel-address action without cluster.update', async () => {
+    const user = userEvent.setup();
     auth.hasPermission = () => false;
     asMock(businessUnitService.getById).mockResolvedValue({ data: buWithHotelAddress });
     renderAt('/business-units/bu1/edit');
 
     expect(await screen.findByRole('heading', { name: /test bu/i })).toBeInTheDocument();
+    // On the tab that owns the button — without this the assertion is about an unmounted tab.
+    await goToTab(user, /^location$/i);
     expect(screen.queryByRole('button', { name: /copy from hotel address/i })).toBeNull();
   });
 });
