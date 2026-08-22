@@ -186,7 +186,7 @@ Expected: ผ่านทั้งคู่ · ถ้า `check-types` ฟ้อ
 - [ ] **Step 6: ชุดเทสต์เดิมของ subscription ต้องยังเขียว**
 
 ```bash
-bun test apps/micro-business/src/subscription/subscription.service.spec.ts --runInBand --forceExit
+cd apps/micro-business && bunx jest src/subscription/subscription.service.spec.ts --runInBand --forceExit
 ```
 
 Expected: PASS ทุกเคส · ถ้าค้างไม่จบ ให้ใช้ `--forceExit` (LokiTransport ทำให้ jest ไม่ยอมปิด — ข้อจำกัดเดิมของเรพ ไม่ใช่ความผิดของโค้ดนี้)
@@ -607,14 +607,14 @@ async findOnePlatform(id: string, userId?: string): Promise<Result<IBusinessUnit
 เพิ่มสอง handler โดยใช้ object literal **ชั่วคราว** เพราะ contract reference ยังไม่มี:
 
 ```ts
-@MessagePattern({ cmd: 'business-unit-licenses.list-platform', service: 'micro-cluster' })
+@MessagePattern({ cmd: 'business-unit-licenses.list-platform', service: 'business-unit-licenses' })
 async listPlatform(@Payload() payload: MicroservicePayload): Promise<MicroserviceResponse> {
   this.logger.debug({ function: 'listPlatform', payload }, BusinessUnitLicenseController.name);
   const result = await this.service.listPlatform(payload.data?.paginate, payload.user_id);
-  return this.handleMultiPaginatedResult(result);
+  return this.handlePaginatedResult(result);
 }
 
-@MessagePattern({ cmd: 'business-unit-licenses.find-one-platform', service: 'micro-cluster' })
+@MessagePattern({ cmd: 'business-unit-licenses.find-one-platform', service: 'business-unit-licenses' })
 async findOnePlatform(@Payload() payload: MicroservicePayload): Promise<MicroserviceResponse> {
   this.logger.debug({ function: 'findOnePlatform', payload }, BusinessUnitLicenseController.name);
   const result = await this.service.findOnePlatform(payload.data?.id, payload.user_id);
@@ -622,7 +622,7 @@ async findOnePlatform(@Payload() payload: MicroservicePayload): Promise<Microser
 }
 ```
 
-> `handleResult` กับ `handleMultiPaginatedResult` เป็นคนละตัวและสลับกันไม่ได้ — ใช้ผิดแล้ว `summary`/`paginate` หายเงียบ ๆ ตรวจชื่อเมธอดที่ `BaseMicroserviceController` มีจริงก่อนใช้
+> `handleResult` กับ `handlePaginatedResult` เป็นคนละตัวและสลับกันไม่ได้ — ใช้ผิดแล้ว `summary`/`paginate` หายเงียบ ๆ ตรวจชื่อเมธอดที่ `BaseMicroserviceController` มีจริงก่อนใช้
 
 - [ ] **Step 7: generate contract (ขั้นที่ 2 และ 3)**
 
@@ -774,6 +774,47 @@ const created = await this.prisma.$transaction(async (tx) => {
 
 เพิ่ม import `nextLicenseNumber` จาก `@repo/prisma-shared-schema-platform` · ห่อด้วย retry รอบเดียวเมื่อเจอ `P2002` เหมือนฝั่งที่นั่ง (unique index เป็นด่านสุดท้าย รอบสองอ่านเลขที่รวมของอีกคนแล้ว)
 
+- [ ] **Step 2b: ปิด call site ที่สาม — ใบที่ออกพร้อมการสร้าง cluster**
+
+`apps/micro-cluster/src/cluster/cluster/cluster.service.ts:199` สร้าง `tb_cluster_license` ใบแรกให้
+cluster ใหม่ **ในทรานแซกชันเดียวกับการสร้าง cluster** (`note: 'ออกพร้อมการสร้าง cluster'`) — จุดนี้ก็ต้องออกเลข
+เช่นกัน ไม่งั้น `check-types` แดงค้างและสร้าง cluster ใหม่ไม่ได้เลย
+
+```ts
+await prisma.tb_cluster_license.create({
+  data: {
+    cluster_id: cluster.id,
+    licensed_bus: initial_license.licensed_bus,
+    start_date: new Date(),
+    end_date: new Date(initial_license.end_date),
+    reference_no: null,
+    note: 'ออกพร้อมการสร้าง cluster',
+    created_by_id: user_id,
+    license_number: await nextLicenseNumber('BUQ', async (withMonth) => {
+      const rows = await prisma.tb_cluster_license.findMany({
+        where: { license_number: { startsWith: withMonth } },
+        select: { license_number: true },
+      });
+      return rows.map((r) => r.license_number);
+    }),
+  },
+});
+```
+
+> `prisma` ในบล็อกนี้คือ tx client ของ `$transaction` ที่ครอบอยู่ ไม่ใช่ client ใบเต็ม — ใช้ตัวนั้นตามเดิม
+
+⚠️ **retry ต้องห่อทั้ง `$transaction` ไม่ใช่แค่ `create` ใบ** — ถ้าเลขชนกัน unique index จะทำให้
+ทรานแซกชันทั้งก้อน rollback รวมถึงการสร้าง cluster และ `tb_cluster_user` ด้วย การ retry เฉพาะ
+`create` ใบจึงเป็นไปไม่ได้โดยโครงสร้าง (ทรานแซกชันตายไปแล้ว) · ห่อทั้งก้อน:
+
+```ts
+const createCluster = await this.createWithNumberRetry(() =>
+  this.prismaSystem.$transaction(async (prisma) => { /* เดิมทั้งหมด */ }),
+);
+```
+
+การ retry ทั้งก้อนปลอดภัยเพราะทรานแซกชันที่ rollback แล้วไม่ทิ้ง cluster ค้างไว้ — รอบสองสร้างใหม่หมด
+
 - [ ] **Step 3: เมธอด `listPlatform`**
 
 ```ts
@@ -850,6 +891,14 @@ async listPlatform(paginate: any, userId?: string): Promise<Result<unknown>> {
 }
 ```
 
+> **ต้องมี default `orderBy` ด้วย (บทเรียนจาก Task 3):** `QueryParams.orderBy()` คืน `{}` เมื่อผู้เรียกไม่ส่ง `sort`
+> ทำให้ list ทั้ง fleet ไม่มีลำดับแน่นอน — แถวซ้ำหรือหายระหว่างหน้า 1 กับหน้า 2 และเฟส 2 จะ page ผ่าน
+> endpoint นี้จริง ใส่ fallback **เฉพาะเมื่อไม่มี sort จากผู้เรียก ห้ามทับของที่ผู้ใช้กด**:
+>
+> ```ts
+> orderBy: q.sort.length === 0 ? [{ license_number: 'desc' as const }] : q.findMany().orderBy,
+> ```
+
 > `created_at` ต้องคืนมาด้วยสำหรับชนิดนี้ — FE ใช้เป็น tie-break ลำดับที่สองของ "ใบที่ชนะ" (`activeLicense`) ฝั่งที่นั่งไม่ต้องเพราะบวกกันหมดอยู่แล้ว
 
 - [ ] **Step 4: เมธอด `findOnePlatform`**
@@ -857,7 +906,7 @@ async listPlatform(paginate: any, userId?: string): Promise<Result<unknown>> {
 ```ts
 /**
  * ใบเดียวจาก id ล้วน — หน้าฟอร์มแก้ไขเปิดจาก deep link ได้โดยไม่ต้องรู้ cluster ล่วงหน้า
- * fail-closed: ใบนอกขอบเขตตอบ 403 ไม่ใช่ 404 (ไม่บอกใบ้ว่ามีอยู่จริง)
+ * fail-closed: ใบนอกขอบเขตตอบ 403 ไม่ใช่การอำพรางเป็น 404 — ผู้เรียกที่อยู่ในขอบเขตจะได้รู้เหตุผลที่แท้จริงของการถูกปฏิเสธ
  */
 @TryCatch
 async findOnePlatform(id: string, userId?: string): Promise<Result<IClusterLicenseListRow>> {
@@ -912,14 +961,14 @@ async findOnePlatform(id: string, userId?: string): Promise<Result<IClusterLicen
 handler ชั่วคราวใน `cluster-license.controller.ts`:
 
 ```ts
-@MessagePattern({ cmd: 'cluster-licenses.list-platform', service: 'micro-cluster' })
+@MessagePattern({ cmd: 'cluster-licenses.list-platform', service: 'cluster-licenses' })
 async listPlatform(@Payload() payload: MicroservicePayload): Promise<MicroserviceResponse> {
   this.logger.debug({ function: 'listPlatform', payload }, ClusterLicenseController.name);
   const result = await this.service.listPlatform(payload.data?.paginate, payload.user_id);
-  return this.handleMultiPaginatedResult(result);
+  return this.handlePaginatedResult(result);
 }
 
-@MessagePattern({ cmd: 'cluster-licenses.find-one-platform', service: 'micro-cluster' })
+@MessagePattern({ cmd: 'cluster-licenses.find-one-platform', service: 'cluster-licenses' })
 async findOnePlatform(@Payload() payload: MicroservicePayload): Promise<MicroserviceResponse> {
   this.logger.debug({ function: 'findOnePlatform', payload }, ClusterLicenseController.name);
   const result = await this.service.findOnePlatform(payload.data?.id, payload.user_id);
@@ -928,6 +977,13 @@ async findOnePlatform(@Payload() payload: MicroservicePayload): Promise<Microser
 ```
 
 แล้ว `bun run gen:rpc-contract` แล้วแทน literal ด้วย contract reference ที่ generate ได้
+
+> **สามกับดักที่ Task 3 เจอมาแล้วตอนรันจริง — อย่าให้ซ้ำ:**
+> 1. `handleMultiPaginatedResult` **ทิ้ง envelope `paginate` เงียบ ๆ** — ตัวที่ถูกคือ `handlePaginatedResult` (ตัวเดียวกับที่ `subscription.service.ts` → `list()` ใช้)
+> 2. ฟิลด์ `service:` ใน literal ชั่วคราวคือ **ชื่อกลุ่มของ contract ไม่ใช่ชื่อแอป** — ใส่ `'micro-cluster'` แล้ว generator จะสร้าง service ปลอมชื่อ `MicroCluster` ขึ้นมาใหม่ทั้งก้อน ต้องใส่ชื่อกลุ่มจริง (`'cluster-licenses'`)
+> 3. **ต้อง register controller ใหม่เข้า module ของ gateway** — ไม่มีในรายการไฟล์ของแผน แต่ถ้าไม่ทำ endpoint ไม่ถูก wire เลย
+> นอกจากนี้ `@repo/rpc-contract` มี `dist/` ที่ gitignore ไว้ — ถ้า type error ดูเป็นไปไม่ได้ ให้ build package นั้นใหม่ก่อนเชื่อ
+
 
 gateway (`platform_cluster-licenses.controller.ts`) — **ไม่มี `@RequirePlatformPermission`** บนทั้งสองเส้น:
 
@@ -942,6 +998,21 @@ async findOnePlatform(@Param('id', ParseUUIDPipe) id: string, @Req() req: Authen
 ```
 
 พร้อมเพิ่มสองรายการเข้า allowlist ใน `check.api-system-permission-coverage.ts`
+
+- [ ] **Step 5b: regenerate app-api-catalog (ห้ามข้าม — CI ล้มถ้าลืม)**
+
+ทุกชื่อใน `new AppIdGuard('...')` ต้องอยู่ใน `apps/backend-gateway/src/platform/applications/app-api-catalog.generated.ts`
+ซึ่งเป็นไฟล์ generated:
+
+```bash
+bun run scripts/generate-app-api-catalog/run.ts
+bun run audit:app-api-catalog-drift   # ต้องผ่าน — CI รันตัวนี้ที่ pr-checks.yml:121-123
+```
+
+ไม่ทำแล้วเจอสองอย่าง: (1) CI ล้มที่ `audit:app-api-catalog-drift` (2) **route ใหม่ตอบ 401 ทุกแอปที่ไม่ได้ตั้ง
+`allow_all`** เพราะ `AppIdGuard` เช็ค `entry.allow_all || entry.apis.has(apiName)` และ catalog นี้ยังเป็น
+รายการที่หน้า admin ใช้แสดง api ที่ให้สิทธิ์ได้ — DEV ตั้ง `allow_all=true` จึงบังปัญหาไว้ แต่ UAT ใช้ app id
+คนละตัว **ห้ามแก้ไฟล์นี้ด้วยมือ** รัน generator อย่างเดียว
 
 - [ ] **Step 6: อย่าลอกกติกาการนับข้ามชนิด**
 
@@ -985,7 +1056,7 @@ Expected: (ก) หลาย cluster · (ข) **หนึ่ง cluster เท�
 - [ ] **Step 9: ชุดเทสต์เดิมของ micro-cluster ต้องยังเขียว**
 
 ```bash
-bun test apps/micro-cluster --runInBand --forceExit
+cd apps/micro-cluster && bunx jest --runInBand --forceExit
 ```
 
 - [ ] **Step 10: Commit แล้วเปิด PR**
@@ -1272,6 +1343,19 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
 ```
 
 คอลัมน์: เลขที่ใบ · เจ้าของ (BU หรือ cluster ตาม config) · จำนวน · ช่วงวันคุ้มครอง · สถานะ (`<Badge>`) · เลขอ้างอิง
+
+> ⚠️ **สัญญากับ backend ที่ห้ามผิด — สถานะไม่ใช่คอลัมน์ในฐาน**
+>
+> เฟส 1 **ไม่ได้** ทำฟิลด์สถานะและตัวกรองสถานะฝั่ง backend (ตัดสินไว้ว่าคำนวณที่ FE คุ้มกว่า เพราะ
+> `utils/buLicense.ts` กับ `utils/clusterLicense.ts` มีสูตรอยู่แล้ว) ดังนั้น:
+>
+> - **สถานะคำนวณที่ FE** จาก `start_date` / `end_date` ที่ endpoint คืนมาครบแล้ว — ใช้ `licenseStatus()`
+>   ของแต่ละชนิดตามเดิม ห้ามคาดหวังฟิลด์ `status` จากสาย
+> - **การกรองสถานะต้องส่งผ่าน `advance={"where":{...}}`** เป็นเงื่อนไขวันที่บนสองคอลัมน์นั้น
+>   (`QueryParams` รองรับอยู่แล้ว) — เช่น expired คือ `end_date < now`, scheduled คือ `start_date > now`
+> - **ห้ามส่ง `filter=status:active` เด็ดขาด** · `status` ไม่ใช่คอลัมน์ที่มีจริง ค่าจะไหลเข้า Prisma
+>   แล้วระเบิดเป็น **500 ไม่ใช่ 400** ซึ่งจะถูกวินิจฉัยผิดว่า "backend เพี้ยน" อยู่นาน
+
 
 ข้อบังคับ:
 - **ห้ามเพิ่มคอลัมน์ `#`** — `DataTable` เติมให้เอง
