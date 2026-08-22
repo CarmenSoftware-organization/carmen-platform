@@ -3,10 +3,12 @@ import { RefreshCw, Pencil, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import Can from '../../../components/Can';
+import { AuditMeta } from '../../../components/AuditMeta';
 import { TableToolbar } from '../TableToolbar';
 import { cycleSort, sortRows, type SortState } from '../tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
+import { normalizeAudit } from '../../../utils/audit';
 import type { BusinessUnit } from '../../../types';
 
 export interface BusinessUnitsSectionProps {
@@ -127,6 +129,10 @@ export function BusinessUnitsSection({
                         </Badge>
                       )}
                     </div>
+                    <AuditMeta
+                      variant="compact"
+                      actor={normalizeAudit(bu).updated ?? normalizeAudit(bu).created}
+                    />
                   </td>
                   <td className="px-4 py-2">
                     <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">

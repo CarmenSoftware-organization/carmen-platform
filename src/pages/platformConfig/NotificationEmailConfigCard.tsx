@@ -3,8 +3,10 @@ import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { AuditMeta } from '../../components/AuditMeta';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
+import { normalizeAudit } from '../../utils/audit';
 import type { NotificationEmailConfig, PlatformConfig } from '../../types';
 
 interface NotificationEmailConfigCardProps {
@@ -244,6 +246,11 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
             รหัสผ่าน) ไม่ได้อยู่ที่นี่ — ตั้งที่หน้า Email Setting
           </p>
         </div>
+
+        <AuditMeta
+          variant="compact"
+          actor={normalizeAudit(config).updated ?? normalizeAudit(config).created}
+        />
     </ConfigCardShell>
   );
 };
