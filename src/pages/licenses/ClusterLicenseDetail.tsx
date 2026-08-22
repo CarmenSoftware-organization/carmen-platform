@@ -130,6 +130,8 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
             <section id="quota" className="scroll-mt-20">
               <BuQuotaSection
                 clusterId={clusterId!}
+                clusterCode={cluster?.code ?? ''}
+                clusterName={cluster?.name ?? ''}
                 canManage={canManage}
                 // ต้องอ่านจากแหล่งเดียวกับ ClusterEdit.tsx:637-639 และ ClusterLicenseTable.tsx:102
                 // (`cluster.bu_used` จาก backend view) ไม่ใช่นับ `bus.length` เองฝั่ง client —

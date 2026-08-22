@@ -11,6 +11,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
+import { SEAT_CONFIG, BU_QUOTA_CONFIG } from "./pages/licenses/licenseKindConfig";
 import "./App.css";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -23,6 +24,7 @@ const BusinessUnitEdit = lazy(() => import("./pages/BusinessUnitEdit"));
 const LicenseCenter = lazy(() => import("./pages/licenses/LicenseCenter"));
 const ClusterLicenseDetail = lazy(() => import("./pages/licenses/ClusterLicenseDetail"));
 const SubscriptionForm = lazy(() => import("./pages/licenses/SubscriptionForm"));
+const LicensePurchaseForm = lazy(() => import("./pages/licenses/LicensePurchaseForm"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -189,6 +191,38 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="subscription.read">
                   <SubscriptionForm />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/seats/new"
+              element={
+                <PrivateRoute requiredPermission="subscription.manage">
+                  <LicensePurchaseForm config={SEAT_CONFIG} mode="create" />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/seats/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="subscription.read">
+                  <LicensePurchaseForm config={SEAT_CONFIG} mode="edit" />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/bu-quota/new"
+              element={
+                <PrivateRoute requiredPermission="subscription.manage">
+                  <LicensePurchaseForm config={BU_QUOTA_CONFIG} mode="create" />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/bu-quota/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="subscription.read">
+                  <LicensePurchaseForm config={BU_QUOTA_CONFIG} mode="edit" />
                 </PrivateRoute>
               }
             />

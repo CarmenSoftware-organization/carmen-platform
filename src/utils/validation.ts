@@ -84,6 +84,11 @@ export const validateField = (
     }
     case 'max_license_users':
       return /^\d+$/.test(value) && Number(value) >= 0 ? '' : 'Must be a non-negative integer';
+    // ใช้ร่วมกันโดยทั้งใบที่นั่งและใบโควตา BU (LicensePurchaseForm) — ชื่อฟิลด์บนสาย
+    // (licensed_users / licensed_bus) ต่างกัน แต่ชื่อ input ในฟอร์มเป็น 'amount' เสมอ
+    case 'amount':
+      if (!value.trim()) return options?.required ? `${options.label || 'Amount'} is required` : '';
+      return /^\d+$/.test(value) && Number(value) > 0 ? '' : 'Must be a positive whole number';
     case 'url':
     case 'image':
       return isValidUrl(value) ? '' : 'Must be a valid http(s) URL';

@@ -35,8 +35,6 @@ import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
 
-type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
-
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -69,7 +67,7 @@ const BusinessUnitEdit: React.FC = () => {
   const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
-  const licenses = useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(id, businessUnitLicenseService);
+  const licenses = useLicenseLedger<BusinessUnitLicense>(id, businessUnitLicenseService);
   // hook เดิมคืน activeSeats/activeLicenseCount มาให้ ส่วนหัวเอกสารใช้สองค่านี้ —
   // คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
   const activeSeats = sumActiveLicenses(licenses.licenses);
@@ -409,7 +407,7 @@ const BusinessUnitEdit: React.FC = () => {
     try {
       const payload = buildPayload(formData);
       if (isNew) {
-        // Check cluster license limit before creating. `bu_cap`/`bu_used` (Task 7's licence
+        // Check cluster license limit before creating. `bu_cap`/`bu_used` (Task 7's license
         // view) are the source of truth now — `max_license_bu` is a stale, unmaintained
         // column that can disagree with the real quota. The backend still enforces this
         // authoritatively on create, so this is a friendlier pre-flight message only; a

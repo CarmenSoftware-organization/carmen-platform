@@ -37,8 +37,6 @@ import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
 import type { BusinessUnitConfig, BusinessUnitLicense } from '../../types';
 
-type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
-
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
 // Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
 // page never exposes (cluster_id comes from the URL only; code is a system identifier this
@@ -139,7 +137,7 @@ const BusinessUnitForm: React.FC = () => {
   };
 
   const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
-  const licenses = useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(buId, businessUnitLicenseService);
+  const licenses = useLicenseLedger<BusinessUnitLicense>(buId, businessUnitLicenseService);
   // hook เดิมคืน activeSeats มาให้ SeatMeter ด้านล่าง — คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
   const activeSeats = sumActiveLicenses(licenses.licenses);
 
