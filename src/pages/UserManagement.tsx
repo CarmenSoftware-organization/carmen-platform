@@ -526,7 +526,10 @@ const UserManagement: React.FC = () => {
           </Badge>
         ),
       },
-      ...auditColumns<UserRecord>(),
+      // auditColumns() ไม่ส่ง meta.headerClassName มา — คอลัมน์ Created/Updated เดิมของหน้านี้มี
+      // w-40 (ดู git show 8efd263) การ spread ตรง ๆ เลยทำความกว้างเปลี่ยน map ทับ meta แต่คง
+      // property อื่น (cell, accessorFn, header, id) ของแต่ละคอลัมน์ไว้ทั้งหมด
+      ...auditColumns<UserRecord>().map((c) => ({ ...c, meta: { ...c.meta, headerClassName: 'w-40' } })),
       ...(showDeleted ? [{
         id: 'deleted_at',
         header: 'Deleted By',
