@@ -1,5 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
+import { normalizeAudit } from '../utils/audit';
 import type { PaginateParams, News, NewsResponse, NewsSummaryData, PaginateInfo } from '../types';
 
 const defaultSearchFields = ['title', 'contents'];
@@ -45,11 +46,10 @@ const newsService = {
     // rebuilds the response object rather than returning it, so anything not copied here is
     // dropped — silently, with the band simply staying empty.
     const summary = Array.isArray(payload) ? undefined : payload?.summary;
-    // The list endpoint includes soft-deleted records; hide them. The deletion flag
-    // is exposed as nested `audit.deleted.at` (older payloads used top-level
-    // `deleted_at`), so check both.
+    // The list endpoint includes soft-deleted records; hide them. `normalizeAudit` reads
+    // both the nested `audit.deleted.at` shape and the older top-level `deleted_at` shape.
     return {
-      data: list.filter((n) => !n.deleted_at && !n.audit?.deleted?.at),
+      data: list.filter((n) => !normalizeAudit(n).deleted?.at),
       paginate: paginateInfo,
       ...(summary !== undefined && { summary }),
     };
