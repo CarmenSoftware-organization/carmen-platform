@@ -84,12 +84,11 @@ describe('ApplicationEdit (integration)', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'mobile-app' })).toBeInTheDocument();
     expect(screen.getByText('a1', { selector: 'span' })).toBeInTheDocument();
-    // The audit fields the backend returns are now read and surfaced.
+    // The audit fields the backend returns are now read and surfaced via AuditMeta
+    // (relative time visible on screen; the absolute date lives in the `title` tooltip).
     expect(screen.getByText(/Created/)).toBeInTheDocument();
-    expect(screen.getByText(/5 Jan 2026/)).toBeInTheDocument();
     expect(screen.getByText(/by Ada Lovelace/)).toBeInTheDocument();
     expect(screen.getByText(/Updated/)).toBeInTheDocument();
-    expect(screen.getByText(/10 Feb 2026/)).toBeInTheDocument();
     expect(screen.getByText(/by Grace Hopper/)).toBeInTheDocument();
   });
 

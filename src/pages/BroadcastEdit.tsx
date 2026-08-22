@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import broadcastService from '../services/broadcastService';
@@ -13,10 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmptyState } from '../components/EmptyState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, ArrowLeft, SearchX } from 'lucide-react';
+import { Save, Pencil, X, Loader2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseApiError, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -307,28 +308,22 @@ const BroadcastEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        <Link
-          to="/broadcasts"
-          className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Broadcasts
-        </Link>
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{formData.title}</h1>
-            <Badge variant={statusVariants[rawResponse.status] || 'secondary'} className="capitalize">{rawResponse.status}</Badge>
-          </div>
-          {!editing && rawResponse.status !== 'deleted' && (
-            <Can permission="broadcast.update">
-              <Button variant="outline" size="sm" onClick={handleEditToggle}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-            </Can>
-          )}
-        </div>
+        <PageHeader
+          backTo="/broadcasts"
+          title={formData.title}
+          audit={normalizeAudit(rawResponse)}
+          actions={
+            !editing && rawResponse.status !== 'deleted' && (
+              <Can permission="broadcast.update">
+                <Button variant="outline" size="sm" onClick={handleEditToggle}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              </Can>
+            )
+          }
+        />
+        <Badge variant={statusVariants[rawResponse.status] || 'secondary'} className="capitalize">{rawResponse.status}</Badge>
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -353,14 +348,6 @@ const BroadcastEdit: React.FC = () => {
                   <div>
                     <Label className="text-xs text-muted-foreground">Event</Label>
                     <div className="mt-1 text-sm font-medium">{rawResponse.event} <span className="text-muted-foreground font-normal">(System generated)</span></div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Created by</Label>
-                    <div className="mt-1 text-sm font-medium">{rawResponse.created_by?.name || '-'}</div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Created at</Label>
-                    <div className="mt-1 text-sm font-medium">{formatDt(rawResponse.created_at)}</div>
                   </div>
                 </div>
               </CardContent>

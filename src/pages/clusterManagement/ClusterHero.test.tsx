@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ClusterHero } from './ClusterHero';
+import { normalizeAudit } from '../../utils/audit';
 
 const base = {
   name: 'Acme Hotels',
   code: 'ACME',
   alias: 'AH',
   isActive: true,
-  meta: { created_at: '2025-02-11T00:00:00Z', created_by_name: 'A. Wong', updated_at: '2025-07-08T00:00:00Z', updated_by_name: 'S. Chan' },
+  audit: normalizeAudit({
+    created_at: '2025-02-11T00:00:00Z', created_by_name: 'A. Wong',
+    updated_at: '2025-07-08T00:00:00Z', updated_by_name: 'S. Chan',
+  }),
   bu: { used: 14, cap: 20, active: 12 },
   users: { used: 312, cap: 400, active: 287 },
 };

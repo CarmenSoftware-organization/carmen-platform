@@ -113,8 +113,8 @@ describe('ReportTemplateEdit (integration)', () => {
     renderAt('/report-templates/rt1/edit');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'PR Summary' })).toBeInTheDocument();
+    // AuditMeta shows relative time on screen; the absolute date lives in the `title` tooltip.
     expect(screen.getByText(/Created/)).toBeInTheDocument();
-    expect(screen.getByText(/2026-01-05/)).toBeInTheDocument();
     expect(screen.getByText(/by Ada Lovelace/)).toBeInTheDocument();
     expect(screen.getByText(/Updated/)).toBeInTheDocument();
     expect(screen.getByText(/by Grace Hopper/)).toBeInTheDocument();

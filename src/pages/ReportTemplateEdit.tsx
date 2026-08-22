@@ -23,6 +23,7 @@ import Can from '../components/Can';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { countLines, type XmlValidation } from '../utils/xml';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -59,13 +60,6 @@ interface ReportTemplateFormData {
   source_params: SourceParamRow[];
 }
 
-interface MetadataFields {
-  created_at?: string;
-  created_by_name?: string;
-  updated_at?: string;
-  updated_by_name?: string;
-}
-
 const initialFormData: ReportTemplateFormData = {
   name: '',
   description: '',
@@ -100,14 +94,6 @@ function seedInitialFormData(
   };
 }
 
-const fmtDateTime = (v?: string) => {
-  if (!v) return '-';
-  const dt = new Date(v);
-  if (isNaN(dt.getTime())) return '-';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-};
-
 const ReportTemplateEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -116,7 +102,10 @@ const ReportTemplateEdit: React.FC = () => {
 
   const [formData, setFormData] = useState<ReportTemplateFormData>(() => seedInitialFormData(isNew, location.state));
   const [savedFormData, setSavedFormData] = useState<ReportTemplateFormData>(() => seedInitialFormData(isNew, location.state));
-  const [metadata, setMetadata] = useState<MetadataFields>({});
+  // Raw template record from the last successful fetch — kept separate from `formData` (the
+  // useUnsavedChanges diff target) so `normalizeAudit()` at the PageHeader call site has the
+  // full record (nested `audit.*` or flat `created_at`/`created_by_name`).
+  const [templateRecord, setTemplateRecord] = useState<unknown>(null);
   const [loading, setLoading] = useState(!isNew);
   const [editing, setEditing] = useState(isNew);
   const [saving, setSaving] = useState(false);
@@ -241,12 +230,7 @@ const ReportTemplateEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(template));
-      setMetadata({
-        created_at: template.created_at,
-        created_by_name: template.created_by_name,
-        updated_at: template.updated_at,
-        updated_by_name: template.updated_by_name,
-      });
+      setTemplateRecord(template);
     } catch (err: unknown) {
       // A bad/deleted id gates the whole shell (see the notFound branch below);
       // a transient failure keeps the retryable inline banner.
@@ -417,6 +401,7 @@ const ReportTemplateEdit: React.FC = () => {
             )
           }
           subtitle={isNew ? 'Create a new report template' : 'View and edit report template details'}
+          audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
           actions={!isNew && !loading && (
             editing ? (
               <Button variant="outline" size="sm" onClick={handleCancelEdit}>
@@ -739,25 +724,6 @@ const ReportTemplateEdit: React.FC = () => {
                   )}
                 </CardContent>
               </Card>
-
-              {!isNew && !loading && (metadata.created_at || metadata.updated_at) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Metadata</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-1 text-[11px] leading-tight text-muted-foreground">
-                    <div>
-                      <span className="font-medium">Created</span> {fmtDateTime(metadata.created_at)}
-                      {metadata.created_by_name && ` by ${metadata.created_by_name}`}
-                    </div>
-                    <div>
-                      <span className="font-medium">Updated</span> {fmtDateTime(metadata.updated_at)}
-                      {metadata.updated_by_name && ` by ${metadata.updated_by_name}`}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
 
               <Card>
                 <CardHeader>
