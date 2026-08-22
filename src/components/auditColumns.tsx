@@ -28,7 +28,7 @@ export function auditColumns<T>(opts: AuditColumnsOptions = {}): ColumnDef<T, un
   return [
     {
       id: 'created_at',
-      accessorKey: 'created_at',
+      accessorFn: (row: T) => normalizeAudit(row).created?.at ?? '',
       header: 'Created',
       cell: ({ row }) => (
         <AuditMeta variant="cell" actor={normalizeAudit(row.original).created} now={now} />
@@ -36,7 +36,7 @@ export function auditColumns<T>(opts: AuditColumnsOptions = {}): ColumnDef<T, un
     },
     {
       id: 'updated_at',
-      accessorKey: 'updated_at',
+      accessorFn: (row: T) => normalizeAudit(row).updated?.at ?? '',
       header: 'Updated',
       ...(hideUpdatedOnCard ? { meta: { card: 'hidden' } } : {}),
       cell: ({ row }) => (
