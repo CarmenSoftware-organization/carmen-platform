@@ -35,6 +35,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { auditColumns } from '../components/auditColumns';
+import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -144,16 +145,12 @@ const UserManagement: React.FC = () => {
       setRawResponse(data);
       const items = (data.data || data) as UserRecord[];
       // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles both
-      // the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
-      // `deleted_at`/`deleted_by_name` are still consumed directly by this page (Deleted
-      // badge + column), so those stay flattened.
+      // the nested `audit.*` shape and the older flat shape itself. `deleted_at`/
+      // `deleted_by_name` are still consumed directly by this page (Deleted badge + column),
+      // so those stay flattened here too — but via the same `normalizeAudit` reader.
       const mapped = (Array.isArray(items) ? items : []).map((item) => {
-        const audit = (item as { audit?: { deleted?: { at?: string; name?: string } } }).audit;
-        return {
-          ...item,
-          deleted_at: item.deleted_at ?? audit?.deleted?.at,
-          deleted_by_name: item.deleted_by_name ?? audit?.deleted?.name,
-        };
+        const deleted = normalizeAudit(item).deleted;
+        return { ...item, deleted_at: deleted?.at, deleted_by_name: deleted?.name };
       });
       setUsers(mapped);
       const pag = data.paginate as Record<string, number> | undefined;
@@ -534,17 +531,13 @@ const UserManagement: React.FC = () => {
         id: 'deleted_at',
         header: 'Deleted By',
         meta: { headerClassName: "w-40" },
-        cell: ({ row }: { row: { original: UserRecord } }) => {
-          const d = row.original;
-          if (!d.deleted_at) return <span className="text-muted-foreground">-</span>;
-          const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-          return (
-            <div className="text-[11px] leading-tight text-destructive space-y-0.5">
-              <div>{fmt(d.deleted_at)}</div>
-              {d.deleted_by_name && <div>{d.deleted_by_name}</div>}
-            </div>
-          );
-        },
+        cell: ({ row }: { row: { original: UserRecord } }) => (
+          <AuditMeta
+            variant="cell"
+            actor={normalizeAudit(row.original).deleted}
+            className="text-[11px] leading-tight text-destructive space-y-0.5"
+          />
+        ),
         enableSorting: false,
       } as ColumnDef<UserRecord, unknown>] : []),
       {

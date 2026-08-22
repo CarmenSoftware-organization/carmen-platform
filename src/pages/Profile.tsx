@@ -22,6 +22,8 @@ import { Skeleton } from '../components/ui/skeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ReadOnlyField } from '../components/ReadOnlyField';
 import { EmptyState } from '../components/EmptyState';
+import { AuditMeta } from '../components/AuditMeta';
+import { normalizeAudit } from '../utils/audit';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -407,7 +409,7 @@ const Profile: React.FC = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Member since</span>
-                    <span className="font-medium">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}</span>
+                    <AuditMeta variant="compact" actor={normalizeAudit(profile).created} className="font-medium" />
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account ID</span>

@@ -461,6 +461,14 @@ export interface PermissionCatalogItem {
   resource: string;
   action: string;
   description?: string;
+  // `tb_permission` is seed data today (created_by_id null throughout) so these are always
+  // absent in practice — kept optional so the mapper in permissionService can pass audit
+  // fields through instead of silently dropping them if the backend ever populates them.
+  created_at?: string;
+  created_by_name?: string;
+  updated_at?: string;
+  updated_by_name?: string;
+  audit?: unknown;
 }
 
 export interface UserRoleAssignment {
