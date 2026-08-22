@@ -43,9 +43,6 @@ const ClusterEdit: React.FC = () => {
   const isNew = !id;
   const { hasPermission } = useAuth();
   const canEdit = !isNew && hasPermission('cluster.update', { clusterId: id });
-  // `subscription.*` is platform-scoped (never per-cluster), so no clusterId context here —
-  // the same call `SubscriptionCard` makes to decide whether it renders at all.
-  const canReadSubscriptions = hasPermission('subscription.read');
 
   const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
@@ -474,19 +471,9 @@ const ClusterEdit: React.FC = () => {
 
   const navItems: NavItem[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'details', label: 'Details' },
-    { id: 'branding', label: 'Branding' },
+    { id: 'identity', label: 'Identity' },
+    { id: 'licensing', label: 'Licensing' },
     { id: 'business-units', label: 'Business Units', count: businessUnits.length },
-    { id: 'licenses', label: 'BU Quota' },
-    // `SubscriptionCard` renders nothing at all without `subscription.read` — it must not even
-    // fire the request (review C1), so an unconditional entry here is a menu item that scrolls
-    // to an empty stretch of page for every user who lacks the permission.
-    //
-    // Only the nav entry is conditional: the `<section id="subscription">` anchor below stays
-    // static markup on purpose. `useScrollSpy` observes elements by id, and an anchor that is
-    // always present is what keeps it from observing something that isn't there — an empty
-    // section costs nothing.
-    ...(canReadSubscriptions ? [{ id: 'subscription', label: 'Subscription' }] : []),
     { id: 'users', label: 'Users', count: users.clusterUsers.length },
   ];
 
@@ -554,11 +541,11 @@ const ClusterEdit: React.FC = () => {
                   />
                 </section>
 
-                <section id="details" className="scroll-mt-20">
+                <section id="identity" className="scroll-mt-20">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Cluster details</CardTitle>
-                      <CardDescription>Identity and licensing for this cluster</CardDescription>
+                      <CardTitle>Identity</CardTitle>
+                      <CardDescription>Name, code, status, and the marks shown across the platform</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <DetailsSection
@@ -568,26 +555,53 @@ const ClusterEdit: React.FC = () => {
                         onCommit={handleCommitField}
                         onValidate={handleValidateField}
                       />
+                      {/* Branding is two upload slots, not a subject of its own — it names the same
+                       *  cluster the fields above name. It rides in this card behind the same rule
+                       *  that separates the fields, so the seam reads as one more row rather than
+                       *  as a second card. */}
+                      <div className="border-t pt-4">
+                        <BrandingSection
+                          logoUrl={logoUrl}
+                          avatarUrl={avatarUrl}
+                          canEdit={canEdit}
+                          name={formData.name}
+                          code={formData.code}
+                          onUploadLogo={handleUploadLogo}
+                          onUploadAvatar={handleUploadAvatar}
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                 </section>
 
-                <section id="branding" className="scroll-mt-20">
+                <section id="licensing" className="scroll-mt-20">
                   <Card>
-                    <CardHeader>
-                      <CardTitle>Branding</CardTitle>
-                      <CardDescription>Logo and avatar shown across the platform</CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <CardTitle className="flex items-center gap-2">
+                          <Ticket className="h-5 w-5" />
+                          Licensing
+                        </CardTitle>
+                        <CardDescription>
+                          {buCap === 0
+                            ? 'No licence in force — this cluster cannot create business units'
+                            : `${clusterMeta.bu_used ?? 0} / ${buCap} business units`}
+                        </CardDescription>
+                      </div>
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
+                      </Button>
                     </CardHeader>
-                    <CardContent>
-                      <BrandingSection
-                        logoUrl={logoUrl}
-                        avatarUrl={avatarUrl}
-                        canEdit={canEdit}
-                        name={formData.name}
-                        code={formData.code}
-                        onUploadLogo={handleUploadLogo}
-                        onUploadAvatar={handleUploadAvatar}
-                      />
+                    {/* `SubscriptionCard` renders nothing at all — and fires no request — without
+                     *  `subscription.read` (review C1), and nothing again when its fetch fails. It
+                     *  used to own a whole section for that reason, which meant a nav entry that had
+                     *  to be conditional or it pointed at empty page. Embedded here it drops its own
+                     *  card chrome and this section keeps content either way, because the BU quota
+                     *  above it always renders — so the nav entry is unconditional again. `empty:`
+                     *  collapses the rule and the padding when the card yields nothing, which is the
+                     *  one state the parent cannot see: `failed` is private to that component. */}
+                    <CardContent className="border-t p-0 empty:hidden">
+                      <SubscriptionCard clusterId={id!} embedded />
                     </CardContent>
                   </Card>
                 </section>
@@ -614,31 +628,6 @@ const ClusterEdit: React.FC = () => {
                       />
                     </CardContent>
                   </Card>
-                </section>
-
-                <section id="licenses" className="scroll-mt-20">
-                  <Card>
-                    <CardHeader className="flex flex-row items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <CardTitle className="flex items-center gap-2">
-                          <Ticket className="h-5 w-5" />
-                          BU Quota
-                        </CardTitle>
-                        <CardDescription>
-                          {(clusterMeta.bu_cap ?? 0) === 0
-                            ? 'No licence in force — this cluster cannot create business units'
-                            : `${clusterMeta.bu_used ?? 0} / ${clusterMeta.bu_cap} business units`}
-                        </CardDescription>
-                      </div>
-                      <Button asChild size="sm" variant="outline">
-                        <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
-                      </Button>
-                    </CardHeader>
-                  </Card>
-                </section>
-
-                <section id="subscription" className="scroll-mt-20">
-                  <SubscriptionCard clusterId={id!} />
                 </section>
 
                 <section id="users" className="scroll-mt-20">

@@ -107,12 +107,12 @@ describe('SubscriptionCard — has data', () => {
     expect(await screen.findByText('expired')).toBeInTheDocument();
   });
 
-  it('navigates to the subscription edit route when "จัดการ →" is clicked', async () => {
+  it('navigates to the subscription edit route when "Manage" is clicked', async () => {
     asMock(subscriptionService.getAll).mockResolvedValue(listResponse([sub()]));
     const user = userEvent.setup();
     renderCard();
 
-    await user.click(await screen.findByRole('button', { name: /จัดการ/ }));
+    await user.click(await screen.findByRole('button', { name: 'Manage' }));
     expect(screen.getByTestId('path')).toHaveTextContent('/licenses/subscriptions/sub1/edit');
   });
 });
@@ -122,8 +122,8 @@ describe('SubscriptionCard — no data', () => {
     asMock(subscriptionService.getAll).mockResolvedValue(listResponse([]));
     renderCard();
 
-    expect(await screen.findByText('ยังไม่มีสัญญา')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'สร้างสัญญา' })).toBeInTheDocument();
+    expect(await screen.findByText('No subscriptions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create subscription' })).toBeInTheDocument();
   });
 
   it('navigates to /licenses/subscriptions/new?cluster_id=c1 when the create button is clicked', async () => {
@@ -131,7 +131,7 @@ describe('SubscriptionCard — no data', () => {
     const user = userEvent.setup();
     renderCard();
 
-    await user.click(await screen.findByRole('button', { name: 'สร้างสัญญา' }));
+    await user.click(await screen.findByRole('button', { name: 'Create subscription' }));
     expect(screen.getByTestId('path')).toHaveTextContent('/licenses/subscriptions/new?cluster_id=c1');
   });
 
@@ -141,8 +141,8 @@ describe('SubscriptionCard — no data', () => {
     asMock(subscriptionService.getAll).mockResolvedValue(listResponse([]));
     renderCard();
 
-    expect(await screen.findByText('ยังไม่มีสัญญา')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'สร้างสัญญา' })).toBeNull();
+    expect(await screen.findByText('No subscriptions')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create subscription' })).toBeNull();
   });
 });
 
@@ -184,6 +184,6 @@ describe('SubscriptionCard — load failure is non-fatal', () => {
     // Settles out of the loading state without ever showing the card at all.
     await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
     expect(screen.queryByText('Subscription')).toBeNull();
-    expect(screen.queryByText('ยังไม่มีสัญญา')).toBeNull();
+    expect(screen.queryByText('No subscriptions')).toBeNull();
   });
 });

@@ -312,10 +312,15 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
   });
 });
 
-// Follow-up to review C1: `SubscriptionCard` now renders nothing (and fires no request) for a
-// user without `subscription.read`. An unconditional nav entry then became a menu item that
-// scrolls to an empty stretch of page — for everyone, since the permission is not seeded yet.
-describe('ClusterEdit — the Subscription nav entry follows subscription.read', () => {
+// Follow-up to review C1: `SubscriptionCard` renders nothing — and fires no request — without
+// `subscription.read`; that gating is pinned in SubscriptionCard.test.tsx. It used to own a
+// whole section, so an unconditional nav entry was a menu item that scrolled to an empty stretch
+// of page and the entry had to follow the permission. It is now embedded in the `Licensing`
+// section, whose BU quota renders for everyone, so the entry is unconditional again. What
+// follows pins that: the same five stops either way.
+describe('ClusterEdit — the Licensing nav entry does not follow subscription.read', () => {
+  const SECTION_IDS = ['overview', 'identity', 'licensing', 'business-units', 'users'];
+
   const renderClusterEdit = async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
     renderAt('/clusters/c1/edit');
@@ -323,31 +328,35 @@ describe('ClusterEdit — the Subscription nav entry follows subscription.read',
     return screen.getByRole('navigation', { name: 'Cluster sections' });
   };
 
-  it('omits the menu item without subscription.read, leaving every other entry alone', async () => {
-    auth.hasPermission = (perm) => perm !== 'subscription.read';
-
-    const nav = await renderClusterEdit();
-
-    expect(within(nav).queryByRole('button', { name: 'Subscription' })).toBeNull();
+  const expectFullMenu = (nav: HTMLElement) => {
     expect(within(nav).getByRole('button', { name: 'Overview' })).toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: 'Identity' })).toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: 'Licensing' })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: /business units/i })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: /users/i })).toBeInTheDocument();
+    expect(within(nav).getAllByRole('button')).toHaveLength(SECTION_IDS.length);
+  };
+
+  it('keeps every menu item without subscription.read', async () => {
+    auth.hasPermission = (perm) => perm !== 'subscription.read';
+
+    expectFullMenu(await renderClusterEdit());
   });
 
-  it('shows the menu item with subscription.read (discriminating control)', async () => {
+  it('keeps every menu item with subscription.read (discriminating control)', async () => {
     auth.hasPermission = () => true;
 
-    const nav = await renderClusterEdit();
-
-    expect(within(nav).getByRole('button', { name: 'Subscription' })).toBeInTheDocument();
+    expectFullMenu(await renderClusterEdit());
   });
 
-  // The anchor is deliberately NOT conditional: useScrollSpy observes elements by id, and its
-  // safety comes from those anchors being static markup. An empty section costs nothing.
-  it('keeps the <section id="subscription"> anchor in the DOM either way', async () => {
+  // useScrollSpy observes elements by id, so its safety comes from every id the nav hands it
+  // existing in the DOM at observe time — the menu and the anchors must not drift apart.
+  it('renders an anchor for every menu item', async () => {
     auth.hasPermission = (perm) => perm !== 'subscription.read';
+
     await renderClusterEdit();
-    expect(document.getElementById('subscription')).toBeInTheDocument();
+
+    SECTION_IDS.forEach((sectionId) => expect(document.getElementById(sectionId)).toBeInTheDocument());
   });
 });
 
@@ -408,4 +417,5 @@ describe('ClusterEdit — Add User dialog respects the cluster-wide license cap'
     expect(screen.getByText(/cluster license limit reached \(1\/1\)/i)).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /add user/i })).toBeDisabled();
   });
+
 });

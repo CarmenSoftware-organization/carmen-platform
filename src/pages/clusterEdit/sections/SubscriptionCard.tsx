@@ -14,6 +14,12 @@ import type { Subscription } from '../../../types';
 
 export interface SubscriptionCardProps {
   clusterId: string;
+  /**
+   * Render the list only — no `<Card>`, no header. Cluster Edit folds this into its single
+   * `Licensing` card next to the BU quota, where the card chrome would nest one card inside
+   * another. Every other call site keeps the standalone card, so this defaults to `false`.
+   */
+  embedded?: boolean;
 }
 
 const fmtDate = (v?: string) => {
@@ -44,7 +50,7 @@ const fmtDate = (v?: string) => {
  * axios interceptor runs first. So the fetch is skipped entirely when the permission is
  * missing — the fourth gate on top of nav/route/`<Can>` (gating-a-page.md).
  */
-export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
+export function SubscriptionCard({ clusterId, embedded = false }: SubscriptionCardProps) {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const canRead = hasPermission('subscription.read');
@@ -82,6 +88,60 @@ export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
 
   if (!canRead || failed) return null;
 
+  const body = loading ? (
+    <p className="text-muted-foreground py-6 text-center text-sm" role="status">
+      Loading…
+    </p>
+  ) : items.length === 0 ? (
+    <EmptyState
+      icon={CreditCard}
+      title="No subscriptions"
+      description="Create a subscription to grant this cluster its features and seats."
+      action={
+        <Can permission="subscription.manage">
+          <Button size="sm" onClick={() => navigate(`/licenses/subscriptions/new?cluster_id=${clusterId}`)}>
+            Create subscription
+          </Button>
+        </Can>
+      }
+    />
+  ) : (
+    <ul className="divide-y">
+      {items.map((sub) => {
+        const seats = seatUtilization(sub.seat_used, sub.seat_cap);
+        return (
+          <li key={sub.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-sm">{sub.subscription_number}</span>
+                {/* BU ของสัญญาเด่นกว่าเลขที่สัญญาในบริบทนี้: หนึ่ง cluster มีหลาย BU และ
+                    หนึ่ง BU มีได้หลายใบ (ต่ออายุ/ซื้อโมดูลเพิ่ม) คนอ่านการ์ดนี้กำลังหาว่า
+                    "BU ไหนมีสัญญาอะไรอยู่" ไม่ใช่ไล่เลขที่สัญญา */}
+                {sub.bu_code && <Badge variant="outline" className="text-xs">{sub.bu_code}</Badge>}
+                <Badge variant={sub.state === 'active' ? 'success' : 'secondary'} className="text-xs capitalize">
+                  {sub.state}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Expires {fmtDate(sub.end_date)} · {sub.feature_count} feature{sub.feature_count === 1 ? '' : 's'} ·{' '}
+                {seats.used}/{seats.cap} seats
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/licenses/subscriptions/${sub.id}/edit`)}
+            >
+              Manage
+            </Button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (embedded) return body;
+
   return (
     <Card>
       <CardHeader>
@@ -91,59 +151,7 @@ export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
         </CardTitle>
         <CardDescription>License subscriptions for this cluster</CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
-        {loading ? (
-          <p className="text-muted-foreground py-6 text-center text-sm" role="status">
-            Loading…
-          </p>
-        ) : items.length === 0 ? (
-          <EmptyState
-            icon={CreditCard}
-            title="ยังไม่มีสัญญา"
-            description="สร้างสัญญาเพื่อกำหนดสิทธิ์และจำนวนที่นั่งให้ cluster นี้"
-            action={
-              <Can permission="subscription.manage">
-                <Button size="sm" onClick={() => navigate(`/licenses/subscriptions/new?cluster_id=${clusterId}`)}>
-                  สร้างสัญญา
-                </Button>
-              </Can>
-            }
-          />
-        ) : (
-          <ul className="divide-y">
-            {items.map((sub) => {
-              const seats = seatUtilization(sub.seat_used, sub.seat_cap);
-              return (
-                <li key={sub.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-sm">{sub.subscription_number}</span>
-                      {/* BU ของสัญญาเด่นกว่าเลขที่สัญญาในบริบทนี้: หนึ่ง cluster มีหลาย BU และ
-                          หนึ่ง BU มีได้หลายใบ (ต่ออายุ/ซื้อโมดูลเพิ่ม) คนอ่านการ์ดนี้กำลังหาว่า
-                          "BU ไหนมีสัญญาอะไรอยู่" ไม่ใช่ไล่เลขที่สัญญา */}
-                      {sub.bu_code && <Badge variant="outline" className="text-xs">{sub.bu_code}</Badge>}
-                      <Badge variant={sub.state === 'active' ? 'success' : 'secondary'} className="text-xs capitalize">
-                        {sub.state}
-                      </Badge>
-                    </div>
-                    <p className="text-muted-foreground text-xs">
-                      Expires {fmtDate(sub.end_date)} · {sub.feature_count} feature{sub.feature_count === 1 ? '' : 's'} ·{' '}
-                      {seats.used}/{seats.cap} seats
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/licenses/subscriptions/${sub.id}/edit`)}
-                  >
-                    จัดการ →
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </CardContent>
+      <CardContent className="p-0">{body}</CardContent>
     </Card>
   );
 }
