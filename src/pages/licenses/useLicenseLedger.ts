@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getErrorDetail } from '../../utils/errorParser';
-import { isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 
 /**
  * รูปของ service ที่ hook นี้ขับได้ — `clusterLicenseService` และ `businessUnitLicenseService`
  * มี signature ตรงนี้อยู่แล้วทั้งคู่ จึงส่งเข้ามาตรง ๆ ได้โดยไม่ต้องมี adapter
+ *
+ * มีแค่ `getAll`/`delete` — สร้าง/แก้ใบย้ายไปฟอร์มเต็มหน้าที่ `/licenses/{seats,bu-quota}/...`
+ * (Task 6, `LicensePurchaseForm.tsx`) แล้ว เรียก `config.service.create`/`.update` ตรง ๆ ไม่ผ่าน
+ * hook นี้ hook นี้เหลือหน้าที่แค่ทางอ่าน + ลบใบเท่านั้น (Task 8)
  */
-export interface LicenseLedgerService<TLicense, TCreate> {
+export interface LicenseLedgerService {
   getAll(ownerId: string): Promise<unknown>;
-  create(ownerId: string, data: TCreate): Promise<unknown>;
-  update(ownerId: string, id: string, data: Partial<TLicense> & { doc_version: number }): Promise<unknown>;
   delete(ownerId: string, id: string): Promise<unknown>;
 }
 
@@ -25,23 +26,28 @@ export interface UseLicenseLedgerOptions<TLicense> {
   /**
    * ข้าม GET อัตโนมัติตอน mount — ใช้เมื่อผู้เรียกส่ง `initialLicenses`/`initialLoadFailed` มาแล้ว
    * และไม่ต้องการยิงคำขอซ้ำกับที่โหลดมาแล้วจากที่อื่น ค่าเริ่มต้น `false` (= พฤติกรรมเดิม: ยิงเสมอ
-   * ตอน mount) `create`/`update`/`remove` ยังคง `reload()` ตามปกติเสมอไม่ว่าค่านี้จะเป็นอะไร —
-   * ค่านี้กระทบแค่ effect อัตโนมัติตอน mount เท่านั้น อ่านครั้งเดียวตอน mount ผ่าน ref โดยตั้งใจ
-   * (ไม่อยู่ใน dependency array) เพราะผู้เรียกมักส่ง object literal สดทุก render
+   * ตอน mount) `remove` ยังคง `reload()` ตามปกติเสมอไม่ว่าค่านี้จะเป็นอะไร — ค่านี้กระทบแค่ effect
+   * อัตโนมัติตอน mount เท่านั้น อ่านครั้งเดียวตอน mount ผ่าน ref โดยตั้งใจ (ไม่อยู่ใน dependency
+   * array) เพราะผู้เรียกมักส่ง object literal สดทุก render
    */
   skipInitialLoad?: boolean;
 }
 
 /**
- * CRUD ของ "ใบ" หนึ่งชนิด — ใช้ร่วมทั้งใบที่นั่ง (ราย BU) และใบโควตา BU (ราย cluster)
+ * ทางอ่าน + ลบของ "ใบ" หนึ่งชนิด — ใช้ร่วมทั้งใบที่นั่ง (ราย BU) และใบโควตา BU (ราย cluster)
+ *
+ * สร้าง/แก้ใบย้ายไปฟอร์มเต็มหน้าที่ `/licenses/{seats,bu-quota}/{new,:id/edit}` แล้ว (Task 6) —
+ * hook นี้ไม่มีทางเขียนใบใหม่/แก้ไขใบเดิมอีกต่อไป มีแค่ `reload` (อ่าน) กับ `remove` (ลบ) การเก็บ
+ * ทางลบไว้เป็นการตัดสินใจของ Task 8: ฟอร์มเต็มหน้าไม่มีปุ่มลบเลย ถ้าตัดทางนี้ออกด้วยจะไม่มีที่ไหน
+ * ในแอปลบใบได้อีกเลย
  *
  * hook นี้จงใจ **ไม่คำนวณยอดรวมใด ๆ** เพราะกติกาของสองชนิดต่างกันสิ้นเชิง: ที่นั่งเป็นผลรวม
  * ของทุกใบที่คุ้มครองอยู่ ส่วนโควตา BU เป็นใบที่ชนะใบเดียว · ผู้เรียกคำนวณเองจาก `licenses`
  * ด้วย `sumActiveLicenses` หรือ `activeLicense` ตามชนิดของตัวเอง
  */
-export function useLicenseLedger<TLicense extends { id: string }, TCreate>(
+export function useLicenseLedger<TLicense extends { id: string }>(
   ownerId: string | undefined,
-  service: LicenseLedgerService<TLicense, TCreate>,
+  service: LicenseLedgerService,
   options?: UseLicenseLedgerOptions<TLicense>,
 ) {
   const [licenses, setLicenses] = useState<TLicense[]>(options?.initialLicenses ?? []);
@@ -85,40 +91,6 @@ export function useLicenseLedger<TLicense extends { id: string }, TCreate>(
     void reload();
   }, [reload]);
 
-  const create = useCallback(async (data: TCreate) => {
-    if (!ownerId) return;
-    setSaving(true);
-    try {
-      await service.create(ownerId, data);
-      toast.success('License added');
-      await reload();
-    } catch (err) {
-      toast.error('Could not add the license', { description: getErrorDetail(err) });
-    } finally {
-      setSaving(false);
-    }
-  }, [ownerId, reload, service]);
-
-  const update = useCallback(async (id: string, data: Partial<TLicense> & { doc_version: number }) => {
-    if (!ownerId) return;
-    setSaving(true);
-    try {
-      await service.update(ownerId, id, data);
-      toast.success('License saved');
-      await reload();
-    } catch (err) {
-      // 409 ต้องตรวจก่อน branch ทั่วไปเสมอ — ไม่งั้นผู้ใช้เห็นข้อความผิดสาเหตุ
-      if (isVersionConflict(err)) {
-        notifyVersionConflict();
-        await reload();
-        return;
-      }
-      toast.error('Could not save the license', { description: getErrorDetail(err) });
-    } finally {
-      setSaving(false);
-    }
-  }, [ownerId, reload, service]);
-
   const remove = useCallback(async (id: string) => {
     if (!ownerId) return;
     setSaving(true);
@@ -133,5 +105,5 @@ export function useLicenseLedger<TLicense extends { id: string }, TCreate>(
     }
   }, [ownerId, reload, service]);
 
-  return { licenses, loading, saving, loadFailed, reload, create, update, remove };
+  return { licenses, loading, saving, loadFailed, reload, remove };
 }

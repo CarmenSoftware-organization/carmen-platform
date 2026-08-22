@@ -21,7 +21,6 @@ import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
 import { toIsoStartOfDay, toIsoEndOfDay, isPerpetual, fmtDate, PERPETUAL_END_DATE } from './licenseDates';
-import { emptyDraft, draftFromLicense, type LicenseDraft } from './LicenseDraftForm';
 import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
@@ -37,6 +36,45 @@ const STATUS_BADGE: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeIn
   scheduled: { variant: 'secondary', label: 'Scheduled' },
   expired: { variant: 'destructive', label: 'Expired' },
 };
+
+/**
+ * ฟอร์มกรอกของ "ใบ" หนึ่งใบ — เดิมอยู่ใน `LicenseDraftForm.tsx` ที่ใช้ร่วมกับแถวกรอก inline
+ * ของ `SeatSection`/`BuQuotaSection` แต่สองที่นั้นถูกยุบเหลืออ่านอย่างเดียวไปแล้ว (Task 8)
+ * ฟอร์มนี้เป็นผู้ใช้รายเดียวที่เหลืออยู่ จึงย้าย type + helper มาไว้ในไฟล์นี้แทนการคงไฟล์แยก
+ * ที่มีผู้ใช้แค่รายเดียวไว้
+ *
+ * ฟิลด์จำนวนชื่อกลาง ๆ ว่า `amount` เพราะสองชนิดเรียกคนละอย่างบนสาย (`licensed_users`
+ * กับ `licensed_bus`) — ดู `buildPayload`/`config.amountField` ที่แปลงกลับเป็นชื่อจริง
+ */
+interface LicenseDraft {
+  amount: string;
+  start_date: string; // yyyy-mm-dd — ค่าดิบของ <input type="date">
+  end_date: string;
+  reference_no: string;
+  note: string;
+}
+
+const emptyDraft = (now: Date): LicenseDraft => ({
+  amount: '',
+  start_date: fmtDate(now.toISOString()),
+  end_date: '',
+  reference_no: '',
+  note: '',
+});
+
+const draftFromLicense = (l: {
+  amount: number;
+  start_date: string;
+  end_date: string;
+  reference_no?: string | null;
+  note?: string | null;
+}): LicenseDraft => ({
+  amount: String(l.amount),
+  start_date: fmtDate(l.start_date),
+  end_date: fmtDate(l.end_date),
+  reference_no: l.reference_no || '',
+  note: l.note || '',
+});
 
 /**
  * เจ้าของใบ (id ใช้ประกอบ path ของ PATCH/DELETE nested + ป้ายแสดงผล) จากแถวที่ `getByIdPlatform` คืนมา

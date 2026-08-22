@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Building2, Plus, RefreshCw, Ticket } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
@@ -8,17 +9,18 @@ import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
 import clusterLicenseService from '../../../services/clusterLicenseService';
 import { useLicenseLedger } from '../useLicenseLedger';
-import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon, PERPETUAL_END_DATE } from '../../../utils/clusterLicense';
-import { fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '../licenseDates';
-import { LicenseDraftForm, emptyDraft, draftFromLicense, canSubmitDraft, type LicenseDraft } from '../LicenseDraftForm';
+import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon } from '../../../utils/clusterLicense';
+import { fmtDate, daysLeft } from '../licenseDates';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import type { BusinessUnit, ClusterLicense, ClusterLicenseStatus } from '../../../types';
 
-// license_number ระบบออกให้เอง (เหมือน subscription_number) — ไม่ใช่ฟิลด์ที่ฟอร์มนี้กรอก
-type ClusterLicenseCreate = Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version' | 'license_number'>;
-
 export interface BuQuotaSectionProps {
   clusterId: string;
+  /** ป้ายเจ้าของที่ผู้ใช้อ่านออก — ใช้ประกอบลิงก์ Add เท่านั้น (`?ownerLabel=`) ต้องตรงกับ
+   *  `ownerFromRow` ใน LicensePurchaseForm.tsx เป๊ะ (`${code} - ${name}`) ไม่งั้นโหมดสร้างกับ
+   *  โหมดแก้จะโชว์ป้ายคนละแบบสำหรับ cluster เดียวกัน */
+  clusterCode: string;
+  clusterName: string;
   /** ควบคุมทั้งปุ่ม Add/Edit/Remove — เพจแม่ (ClusterLicenseDetail) เป็นแหล่งความจริงเดียวของสิทธิ์นี้
    *  (มาจาก `subscription.manage`) จึงไม่ผูก `<Can>` ซ้ำที่นี่ ไม่งั้นจะมีสองแหล่งที่เพี้ยนจากกันได้ */
   canManage: boolean;
@@ -38,33 +40,34 @@ const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'seconda
 };
 
 /**
- * ส่วนจัดการใบซื้อโควตา BU ของ cluster (tb_cluster_license) — โควตาที่มีผลคือ **ใบที่ชนะใบเดียว**
+ * ส่วนอ่านใบซื้อโควตา BU ของ cluster (tb_cluster_license) — โควตาที่มีผลคือ **ใบที่ชนะใบเดียว**
  * (`activeLicense`) ไม่ใช่ผลรวมของทุกใบเหมือน User Licenses ของ BU ดังนั้นหัวการ์ดและตัวเลขทุกจุด
  * ในไฟล์นี้ต้องอ่านจากใบที่ชนะเท่านั้น ห้าม sum `licensed_bus` เด็ดขาด
  *
- * ดึงข้อมูลเอง (เหมือน `SubscriptionCard`) แทนที่จะรับ props จากเพจแม่เหมือน
+ * ดึงข้อมูลเอง (เหมือน `SubscriptionSection`) แทนที่จะรับ props จากเพจแม่เหมือน
  * `BusinessUnitLicensesCard` — เพจแม่ส่งแค่ `clusterId` + `canManage` + `businessUnits`
  *
- * มีสองการ์ด: (1) ตัวแก้ไขใบซื้อโควตาเดิม (2) ตาราง BU พร้อมอันดับและป้าย Over limit —
- * อันดับต้องตรงกับ DB view `v_cluster_bu_quota` เป๊ะ (ผ่าน `rankBusinessUnits` ที่ใช้ร่วมกับ
+ * มีสองการ์ด: (1) รายการใบซื้อโควตาเดิม อ่านอย่างเดียว + ลิงก์ไปฟอร์มเต็มหน้า (Task 6) เพื่อ
+ * สร้าง/แก้ (2) ตาราง BU พร้อมอันดับและป้าย Over limit — อันดับต้องตรงกับ DB view
+ * `v_cluster_bu_quota` เป๊ะ (ผ่าน `rankBusinessUnits` ที่ใช้ร่วมกับ
  * `BusinessUnitsSection`/`BusinessUnitList`) ห้ามเรียงเอง
  */
-export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: BuQuotaSectionProps) {
-  const { licenses, loading, saving, loadFailed, reload, create, update, remove } =
-    useLicenseLedger<ClusterLicense, ClusterLicenseCreate>(clusterId, clusterLicenseService);
+export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage, buUsed, businessUnits }: BuQuotaSectionProps) {
+  const { licenses, loading, saving, loadFailed, reload, remove } =
+    useLicenseLedger<ClusterLicense>(clusterId, clusterLicenseService);
   const now = new Date();
 
   const [showExpired, setShowExpired] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<LicenseDraft>(() => emptyDraft(now));
-  // state ของฟอร์ม — noExpiry คุมทั้งการซ่อนช่องและค่าที่ส่ง
-  const [noExpiry, setNoExpiry] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ClusterLicense | null>(null);
 
   // ใบที่ชนะ — ตัวเดียวกับที่ backend ใช้ตัดสิน ไม่ใช่ "ใบล่าสุดในรายการ"
   const winning = activeLicense(licenses, now);
   const expired = licenses.filter((l) => licenseStatus(l, now) === 'expired');
   const visible = showExpired ? licenses : licenses.filter((l) => licenseStatus(l, now) !== 'expired');
+
+  const addHref = `/licenses/bu-quota/new?cluster=${clusterId}&ownerLabel=${
+    encodeURIComponent(`${clusterCode} - ${clusterName}`)
+  }`;
 
   // จัดอันดับต้องตรงกับ DB view เป๊ะ (utils/businessUnitRank.ts) — ranked over the FULL list,
   // never a filtered subset, so the badge lands on the same BU the backend would 403.
@@ -76,48 +79,6 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
   // จากข้อมูลที่โหลดไม่ได้ ไม่ใช่ข้อเท็จจริง ห้ามขึ้นป้าย Over limit จากมัน)
   const cap = loadFailed ? null : (winning?.licensed_bus ?? 0);
   const overCount = useMemo(() => countOverLimit(ranked, cap), [ranked, cap]);
-
-  // ประตูเดียวที่เข้าโหมดแก้ไขได้ — ปิดที่นี่แปลว่าไม่มี state path ไหนเปิดแถวกรอกได้เลย ต่อให้มี
-  // ปุ่มหลุดมาในอนาคต
-  const startAdd = () => {
-    if (!canManage) return;
-    setDraft(emptyDraft(now));
-    setNoExpiry(false);
-    setEditingId('new');
-  };
-  const startEdit = (l: ClusterLicense) => {
-    if (!canManage) return;
-    const perpetual = isPerpetual(l.end_date);
-    // ใบเดิมไม่มีวันหมดอายุ — ช่อง end_date ไม่ควรถูก prefill ด้วย 2099-12-31 เผื่อผู้ใช้ติ๊กออกจาก
-    // "No expiry" แล้วเจอวันในอดีตโผล่มาเฉยๆ ต้องให้กรอกวันใหม่เอง เหมือนพฤติกรรมเดิมก่อนยุบฟอร์ม
-    setDraft({ ...draftFromLicense({ ...l, amount: l.licensed_bus }), end_date: perpetual ? '' : fmtDate(l.end_date) });
-    setNoExpiry(perpetual);
-    setEditingId(l.id);
-  };
-  const cancelEdit = () => setEditingId(null);
-
-  // `|| undefined` ที่นี่ตั้งใจ — ธรรมเนียมของใบโควตา BU ต่างจากใบที่นั่ง (SeatSection ใช้
-  // `|| null` เพราะ backend endpoint ของมันต้อง null จริง ๆ ถึงจะล้างค่าได้ผ่าน PATCH แบบ partial)
-  // สองชั้นนี้ใช้ธรรมเนียมต่างกันมาแต่ต้น ห้ามลอกสูตรข้ามชั้น
-  const buildPayload = () => ({
-    licensed_bus: Number(draft.amount),
-    start_date: toIsoStartOfDay(draft.start_date),
-    end_date: noExpiry ? PERPETUAL_END_DATE : toIsoEndOfDay(draft.end_date),
-    reference_no: draft.reference_no || undefined,
-    note: draft.note || undefined,
-  });
-
-  const submitCreate = async () => {
-    if (!canSubmitDraft(draft, noExpiry)) return;
-    await create(buildPayload());
-    setEditingId(null);
-  };
-
-  const submitUpdate = async (l: ClusterLicense) => {
-    if (!canSubmitDraft(draft, noExpiry)) return;
-    await update(l.id, { ...buildPayload(), doc_version: l.doc_version });
-    setEditingId(null);
-  };
 
   return (
     <div className="space-y-4">
@@ -155,9 +116,11 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
             )}
           </div>
           {canManage && !loadFailed && (
-            <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add license
+            <Button asChild size="sm">
+              <Link to={addHref}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add BU quota licence
+              </Link>
             </Button>
           )}
         </CardHeader>
@@ -175,16 +138,18 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
             </div>
           ) : loading && licenses.length === 0 ? (
             <TableSkeleton columns={6} rows={3} />
-          ) : licenses.length === 0 && editingId !== 'new' ? (
+          ) : licenses.length === 0 ? (
             <EmptyState
               icon={Ticket}
               title="No licences yet"
               description="The platform team has not issued a BU quota licence for this cluster."
               action={
                 canManage ? (
-                  <Button size="sm" onClick={startAdd}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add license
+                  <Button asChild size="sm">
+                    <Link to={addHref}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add BU quota licence
+                    </Link>
                   </Button>
                 ) : undefined
               }
@@ -204,83 +169,40 @@ export function BuQuotaSection({ clusterId, canManage, buUsed, businessUnits }: 
                   </tr>
                 </thead>
                 <tbody>
-                  {editingId === 'new' && (
-                    <tr className="border-b">
-                      <LicenseDraftForm
-                        draft={draft}
-                        onChange={setDraft}
-                        amountLabel="Quota"
-                        showNoExpiry
-                        noExpiry={noExpiry}
-                        onNoExpiryChange={setNoExpiry}
-                        showNote
-                        statusCell={<span className="text-xs text-muted-foreground">New</span>}
-                        saving={saving}
-                        submitLabel="Add"
-                        onSubmit={submitCreate}
-                        onCancel={cancelEdit}
-                      />
-                    </tr>
-                  )}
                   {visible.map((l) => {
                     const status = licenseStatus(l, now);
                     const badge = STATUS_BADGE[status];
-                    const editing = editingId === l.id;
                     return (
                       <tr key={l.id} className="border-b last:border-0">
-                        {editing ? (
-                          <LicenseDraftForm
-                            draft={draft}
-                            onChange={setDraft}
-                            amountLabel="Quota"
-                            showNoExpiry
-                            noExpiry={noExpiry}
-                            onNoExpiryChange={setNoExpiry}
-                            showNote
-                            statusCell={<Badge variant={badge.variant}>{badge.label}</Badge>}
-                            saving={saving}
-                            submitLabel="Save"
-                            onSubmit={() => submitUpdate(l)}
-                            onCancel={cancelEdit}
-                          />
-                        ) : (
-                          <>
-                            <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_bus}</td>
-                            <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
-                            <td className="px-2 py-1 whitespace-nowrap">
-                              {isPerpetual(l.end_date) ? <span className="text-muted-foreground">No expiry</span> : fmtDate(l.end_date)}
-                            </td>
-                            <td className="px-2 py-1 space-x-1 whitespace-nowrap">
-                              <Badge variant={badge.variant}>{badge.label}</Badge>
-                              {isExpiringSoon(l, now) && (
-                                <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
-                              )}
-                            </td>
-                            <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
-                            <td className="px-2 py-1 text-xs text-muted-foreground max-w-[200px] truncate" title={l.note || undefined}>
-                              {l.note || '-'}
-                            </td>
-                            {canManage && (
-                              <td className="px-2 py-1 text-right whitespace-nowrap">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => startEdit(l)}
-                                  disabled={saving || (editingId !== null && editingId !== l.id)}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setRemoveTarget(l)}
-                                  disabled={saving}
-                                >
-                                  Remove
-                                </Button>
-                              </td>
-                            )}
-                          </>
+                        <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_bus}</td>
+                        <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
+                        <td className="px-2 py-1 whitespace-nowrap">
+                          {isPerpetual(l.end_date) ? <span className="text-muted-foreground">No expiry</span> : fmtDate(l.end_date)}
+                        </td>
+                        <td className="px-2 py-1 space-x-1 whitespace-nowrap">
+                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          {isExpiringSoon(l, now) && (
+                            <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
+                          )}
+                        </td>
+                        <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
+                        <td className="px-2 py-1 text-xs text-muted-foreground max-w-[200px] truncate" title={l.note || undefined}>
+                          {l.note || '-'}
+                        </td>
+                        {canManage && (
+                          <td className="px-2 py-1 text-right whitespace-nowrap">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link to={`/licenses/bu-quota/${l.id}/edit`}>Edit</Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setRemoveTarget(l)}
+                              disabled={saving}
+                            >
+                              Remove
+                            </Button>
+                          </td>
                         )}
                       </tr>
                     );

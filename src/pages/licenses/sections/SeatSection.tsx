@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, RefreshCw, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
@@ -10,12 +11,8 @@ import businessUnitLicenseService from '../../../services/businessUnitLicenseSer
 import { useLicenseLedger } from '../useLicenseLedger';
 import { useClusterSeatLicenses, type SeatRow } from '../useClusterSeatLicenses';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon, isMigratedPlaceholder } from '../../../utils/buLicense';
-import { isPerpetual, fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '../licenseDates';
-import { LicenseDraftForm, emptyDraft, draftFromLicense, canSubmitDraft, type LicenseDraft } from '../LicenseDraftForm';
+import { isPerpetual, fmtDate, daysLeft } from '../licenseDates';
 import type { BusinessUnit, BusinessUnitLicense, BuLicenseStatus } from '../../../types';
-
-// license_number ระบบออกให้เอง (เหมือน subscription_number) — ไม่ใช่ฟิลด์ที่ฟอร์มนี้กรอก
-type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version' | 'license_number'>;
 
 export interface SeatSectionProps {
   clusterId: string;
@@ -85,8 +82,9 @@ export function SeatSection({ clusterId, businessUnits, canManage }: SeatSection
   );
 }
 
-/** ตัวเขียนของ BU เดียว — แยกเป็นคอมโพเนนต์เพราะ useLicenseLedger ผูกกับ ownerId หนึ่งค่า
- *  จะเรียก hook ในลูปไม่ได้ (กฎของ hooks) */
+/** การ์ดอ่านอย่างเดียวของ BU เดียว — แยกเป็นคอมโพเนนต์เพราะ useLicenseLedger ผูกกับ ownerId
+ *  หนึ่งค่า จะเรียก hook ในลูปไม่ได้ (กฎของ hooks) การสร้าง/แก้ใบย้ายไปฟอร์มเต็มหน้าที่
+ *  `/licenses/seats/{new,:id/edit}` (Task 6) แล้ว การ์ดนี้เหลือแค่แสดงผล + ลบ */
 function SeatRowCard({ row, canManage, onChanged }: {
   row: SeatRow;
   canManage: boolean;
@@ -97,8 +95,8 @@ function SeatRowCard({ row, canManage, onChanged }: {
   // ของตัวเองซ้อนกับ batch เสมอ ทำให้ error ที่ batch เจอไม่ถูกสะท้อนมาที่นี่เลยถ้าคำขอที่สองบังเอิญ
   // สำเร็จ — ตอนนี้การ์ดใช้ผลของ batch ตรง ๆ เป็นค่าตั้งต้น ไม่ยิงซ้ำ) `loadFailed` (ไม่ใช่
   // `licenses.length === 0`) คือสัญญาณเดียวที่บอกว่า "โหลดไม่ได้" ต่างจาก "ไม่มีใบจริง"
-  const { licenses, loading, saving, loadFailed, reload, create, update, remove } =
-    useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(row.bu.id, businessUnitLicenseService, {
+  const { licenses, loading, saving, loadFailed, reload, remove } =
+    useLicenseLedger<BusinessUnitLicense>(row.bu.id, businessUnitLicenseService, {
       initialLicenses: row.licenses,
       initialLoadFailed: row.failed,
       skipInitialLoad: true,
@@ -106,8 +104,6 @@ function SeatRowCard({ row, canManage, onChanged }: {
   const now = new Date();
 
   const [showExpired, setShowExpired] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<LicenseDraft>(() => emptyDraft(now));
   const [removeTarget, setRemoveTarget] = useState<BusinessUnitLicense | null>(null);
 
   // `licenses` ของ hook นี้คือแหล่งความจริงของการ์ดนี้ — `row.licenses` จาก useClusterSeatLicenses
@@ -125,47 +121,11 @@ function SeatRowCard({ row, canManage, onChanged }: {
     onChanged();
   };
 
-  const startAdd = () => {
-    if (!canManage) return;
-    setDraft(emptyDraft(now));
-    setEditingId('new');
-  };
-  const startEdit = (l: BusinessUnitLicense) => {
-    if (!canManage) return;
-    setDraft(draftFromLicense({ ...l, amount: l.licensed_users }));
-    setEditingId(l.id);
-  };
-  const cancelEdit = () => setEditingId(null);
-
-  const submitCreate = async () => {
-    if (!canSubmitDraft(draft)) return;
-    await create({
-      licensed_users: Number(draft.amount),
-      start_date: toIsoStartOfDay(draft.start_date),
-      end_date: toIsoEndOfDay(draft.end_date),
-      // `|| null` ไม่ใช่ `|| undefined` — ต้องกลับไปตามของเดิม (BusinessUnitLicensesCard) เพราะ
-      // `undefined` ถูกตัดออกจาก JSON body ทำให้ PATCH แบบ partial เก็บค่าเดิมไว้: ผู้ใช้ลบช่อง
-      // Reference กด Save เห็น toast สำเร็จ แต่ reload แล้วค่าเก่ากลับมา ต้องส่ง `null` จริง ๆ เพื่อ
-      // ล้างค่าฝั่ง backend (BuQuotaSection ใช้ `|| undefined` ต่อไปตามธรรมเนียมเดิมของมันเอง — ดู
-      // คอมเมนต์ที่ buildPayload ของไฟล์นั้น สองชั้นนี้ไม่ได้ใช้ธรรมเนียมเดียวกันมาแต่ต้น)
-      reference_no: draft.reference_no || null,
-    });
-    setEditingId(null);
-    onChanged();
-  };
-
-  const submitUpdate = async (l: BusinessUnitLicense) => {
-    if (!canSubmitDraft(draft)) return;
-    await update(l.id, {
-      licensed_users: Number(draft.amount),
-      start_date: toIsoStartOfDay(draft.start_date),
-      end_date: toIsoEndOfDay(draft.end_date),
-      reference_no: draft.reference_no || null,
-      doc_version: l.doc_version,
-    });
-    setEditingId(null);
-    onChanged();
-  };
+  // ป้ายเจ้าของที่ผู้ใช้อ่านออก — ต้องตรงกับ `ownerFromRow` ใน LicensePurchaseForm.tsx เป๊ะ
+  // (`${code} - ${name}`) ไม่งั้นโหมดสร้างกับโหมดแก้จะโชว์ป้ายคนละแบบสำหรับใบเดียวกัน
+  const addHref = `/licenses/seats/new?bu=${row.bu.id}&ownerLabel=${
+    encodeURIComponent(`${row.bu.code} - ${row.bu.name}`)
+  }`;
 
   return (
     <Card>
@@ -187,9 +147,11 @@ function SeatRowCard({ row, canManage, onChanged }: {
           )}
         </div>
         {canManage && !loadFailed && (
-          <Button size="sm" onClick={startAdd} disabled={saving || editingId !== null}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add license
+          <Button asChild size="sm">
+            <Link to={addHref}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add seat licence
+            </Link>
           </Button>
         )}
       </CardHeader>
@@ -207,16 +169,18 @@ function SeatRowCard({ row, canManage, onChanged }: {
           </div>
         ) : loading && licenses.length === 0 ? (
           <TableSkeleton columns={6} rows={2} />
-        ) : licenses.length === 0 && editingId !== 'new' ? (
+        ) : licenses.length === 0 ? (
           <EmptyState
             icon={Users}
             title="No licenses yet"
             description="Add the first license to set how many seats this business unit has bought."
             action={
               canManage ? (
-                <Button size="sm" onClick={startAdd}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add license
+                <Button asChild size="sm">
+                  <Link to={addHref}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add seat licence
+                  </Link>
                 </Button>
               ) : undefined
             }
@@ -235,75 +199,40 @@ function SeatRowCard({ row, canManage, onChanged }: {
                 </tr>
               </thead>
               <tbody>
-                {editingId === 'new' && (
-                  <tr className="border-b">
-                    <LicenseDraftForm
-                      draft={draft}
-                      onChange={setDraft}
-                      amountLabel="Seats"
-                      statusCell={<span className="text-xs text-muted-foreground">New</span>}
-                      saving={saving}
-                      submitLabel="Add"
-                      onSubmit={submitCreate}
-                      onCancel={cancelEdit}
-                    />
-                  </tr>
-                )}
                 {visible.map((l) => {
                   const status = licenseStatus(l, now);
                   const badge = STATUS_BADGE[status];
-                  const editing = editingId === l.id;
                   return (
                     <tr key={l.id} className="border-b last:border-0">
-                      {editing ? (
-                        <LicenseDraftForm
-                          draft={draft}
-                          onChange={setDraft}
-                          amountLabel="Seats"
-                          statusCell={<Badge variant={badge.variant}>{badge.label}</Badge>}
-                          saving={saving}
-                          submitLabel="Save"
-                          onSubmit={() => submitUpdate(l)}
-                          onCancel={cancelEdit}
-                        />
-                      ) : (
-                        <>
-                          <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_users}</td>
-                          <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
-                          <td className="px-2 py-1 whitespace-nowrap">
-                            {/* ใบ 2099 อ่านว่า "No expiry" เหมือนใบโควตา BU (ข้อตกลง §2 ข้อ 7) */}
-                            {isPerpetual(l.end_date) ? <span className="text-muted-foreground">No expiry</span> : fmtDate(l.end_date)}
-                          </td>
-                          <td className="px-2 py-1 space-x-1 whitespace-nowrap">
-                            <Badge variant={badge.variant}>{badge.label}</Badge>
-                            {isExpiringSoon(l, now) && (
-                              <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
-                            )}
-                            {/* ป้าย [migrated] จาก isMigratedPlaceholder — คนละเรื่องกับ perpetual */}
-                            {isMigratedPlaceholder(l) && <Badge variant="warning">End date required</Badge>}
-                          </td>
-                          <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
-                          {canManage && (
-                            <td className="px-2 py-1 text-right whitespace-nowrap">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => startEdit(l)}
-                                disabled={saving || (editingId !== null && editingId !== l.id)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setRemoveTarget(l)}
-                                disabled={saving}
-                              >
-                                Remove
-                              </Button>
-                            </td>
-                          )}
-                        </>
+                      <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_users}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        {/* ใบ 2099 อ่านว่า "No expiry" เหมือนใบโควตา BU (ข้อตกลง §2 ข้อ 7) */}
+                        {isPerpetual(l.end_date) ? <span className="text-muted-foreground">No expiry</span> : fmtDate(l.end_date)}
+                      </td>
+                      <td className="px-2 py-1 space-x-1 whitespace-nowrap">
+                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        {isExpiringSoon(l, now) && (
+                          <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
+                        )}
+                        {/* ป้าย [migrated] จาก isMigratedPlaceholder — คนละเรื่องกับ perpetual */}
+                        {isMigratedPlaceholder(l) && <Badge variant="warning">End date required</Badge>}
+                      </td>
+                      <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
+                      {canManage && (
+                        <td className="px-2 py-1 text-right whitespace-nowrap">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/licenses/seats/${l.id}/edit`}>Edit</Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setRemoveTarget(l)}
+                            disabled={saving}
+                          >
+                            Remove
+                          </Button>
+                        </td>
                       )}
                     </tr>
                   );

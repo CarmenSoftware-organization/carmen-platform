@@ -35,8 +35,6 @@ import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
 
-type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
-
 const BusinessUnitEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -69,7 +67,7 @@ const BusinessUnitEdit: React.FC = () => {
   const [poolChangeConfirm, setPoolChangeConfirm] = useState(false);
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
-  const licenses = useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(id, businessUnitLicenseService);
+  const licenses = useLicenseLedger<BusinessUnitLicense>(id, businessUnitLicenseService);
   // hook เดิมคืน activeSeats/activeLicenseCount มาให้ ส่วนหัวเอกสารใช้สองค่านี้ —
   // คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
   const activeSeats = sumActiveLicenses(licenses.licenses);
