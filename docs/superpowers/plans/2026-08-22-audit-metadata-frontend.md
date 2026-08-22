@@ -316,7 +316,7 @@ export function auditCsvFields(a: NormalizedAudit): {
 - [ ] **Step 4: รันเทสต์ให้ผ่าน**
 
 รัน: `bun run test src/utils/audit.test.ts`
-คาดหวัง: PASS ทั้ง 15 เคส
+คาดหวัง: PASS ทั้ง 12 เคส
 
 - [ ] **Step 5: static check**
 
@@ -794,7 +794,12 @@ git commit -m "refactor(audit): ตาราง Management ที่เหลื
 
 ---
 
-### Task 7: หน้า Edit 5 หน้าที่มี audit อยู่แล้ว
+### Task 7: หน้า Edit 5 หน้า + Hero 2 ตัวที่คู่กัน
+
+> **task นี้ถูกรวมจาก Task 7 และ Task 8 เดิมของแผน** ตามคำวินิจฉัยตอน pre-flight scan:
+> `ClusterHero` กับ `ApplicationIdentityHero` เปลี่ยน signature และ call site ของมันอยู่ใน
+> หน้า Edit ที่ task นี้แก้พอดี (`ClusterEdit.tsx:552`, `ApplicationEdit.tsx:375`)
+> ถ้าแยกเป็นสอง task จะมีสถานะกลางที่ `bun run typecheck` ไม่ผ่าน ซึ่งขัด Global Constraints ข้อ 2
 
 **Files:**
 - Modify: `src/pages/ClusterEdit.tsx`
@@ -802,115 +807,43 @@ git commit -m "refactor(audit): ตาราง Management ที่เหลื
 - Modify: `src/pages/ReportTemplateEdit.tsx`
 - Modify: `src/pages/NewsEdit.tsx`
 - Modify: `src/pages/BroadcastEdit.tsx`
-
-**Interfaces:**
-- Consumes: `normalizeAudit` (Task 1) · prop `audit` บน `PageHeader` (Task 4)
-- Produces: ไม่มี
-
-**สิ่งที่ต้องทำในแต่ละไฟล์:**
-
-1. เก็บ record ดิบที่ได้จาก API ไว้ใน state (หน้าส่วนใหญ่เก็บอยู่แล้ว)
-2. ส่ง `audit={normalizeAudit(record)}` เข้า `PageHeader`
-3. ลบวิธีแสดง audit แบบเดิมของหน้านั้นทิ้ง
-
-- [ ] **Step 1: แก้ ClusterEdit.tsx เป็นตัวอย่างเต็ม**
-
-เพิ่ม import:
-
-```ts
-import { normalizeAudit } from '../utils/audit';
-```
-
-ลบบล็อก normalize ที่ `ClusterEdit.tsx:158-161` และ field `created_by_name` / `updated_by_name`
-ในโครง state ที่ `ClusterEdit.tsx:70-72`
-
-ที่ `PageHeader` ของหน้า (มี 3 จุดในไฟล์ — บรรทัด 441, 499 และจุดหลักของหน้า edit)
-**เพิ่ม prop เฉพาะจุดที่เป็นหน้า edit ของ cluster จริง** ไม่ใช่จุด not-found หรือหน้า Add:
-
-```tsx
-<PageHeader
-  backTo="/clusters"
-  title={cluster.name}
-  audit={normalizeAudit(cluster)}
-/>
-```
-
-> จุด `title="Add Cluster"` (บรรทัด 499) **ห้ามใส่** — record ยังไม่มีตัวตน
-
-- [ ] **Step 2: แก้อีก 4 ไฟล์**
-
-| ไฟล์ | ของเดิมที่ต้องลบ |
-|---|---|
-| `ApplicationEdit.tsx` | บล็อกที่บรรทัด 148-150 และ field ใน interface บรรทัด 69-71 |
-| `ReportTemplateEdit.tsx` | การประกอบสตริงที่บรรทัด 751-755 (`by ${metadata.created_by_name}`) และ field บรรทัด 64-66 |
-| `NewsEdit.tsx` | ฟังก์ชัน `fmt()` และบล็อกวาดที่บรรทัด 470-474 |
-| `BroadcastEdit.tsx` | `<Label>Created by</Label>` และช่องที่คู่กัน บรรทัด 358 |
-
-ทุกไฟล์: หา `<PageHeader` ของหน้า edit จริง (ไม่ใช่หน้า not-found / Add) แล้วเติม `audit`
-
-- [ ] **Step 3: static check**
-
-รัน: `bun run typecheck && bun run lint`
-คาดหวัง: เขียวทั้งคู่
-
-- [ ] **Step 4: ตรวจว่าเทสต์เดิมยังผ่าน**
-
-รัน: `bun run test src/pages/ClusterEdit.test.tsx src/pages/ReportTemplateEdit.test.tsx src/pages/ApplicationEdit.test.tsx`
-คาดหวัง: PASS
-
-- [ ] **Step 5: ตรวจในเบราว์เซอร์**
-
-เปิดหน้า edit ของ cluster ตัวใดตัวหนึ่ง เช่น `/clusters/<id>`
-ตรวจ:
-- ใต้ชื่อ cluster มีบรรทัด `Created 5mo ago by ... · Updated 2h ago by ...`
-- hover ที่ข้อความนั้นแล้วขึ้นเวลาเต็ม
-- เข้าหน้า Add Cluster (`/clusters/new`) แล้ว **ต้องไม่มี** แถบนี้
-
-- [ ] **Step 6: commit**
-
-```bash
-git add src/pages/ClusterEdit.tsx src/pages/ApplicationEdit.tsx \
-        src/pages/ReportTemplateEdit.tsx src/pages/NewsEdit.tsx src/pages/BroadcastEdit.tsx
-git commit -m "refactor(audit): หน้า Edit 5 หน้าใช้แถบ meta บน PageHeader"
-```
-
----
-
-### Task 8: Hero / sub-list 6 ไฟล์ และแก้เทสต์ที่จะแดง
-
-**Files:**
 - Modify: `src/pages/clusterManagement/ClusterHero.tsx`
 - Modify: `src/pages/clusterManagement/ClusterHero.test.tsx`
 - Modify: `src/pages/applicationEdit/ApplicationIdentityHero.tsx`
 - Modify: `src/pages/applicationEdit/ApplicationIdentityHero.test.tsx`
-- Modify: `src/pages/userManagement/UserDirectorySummary.tsx`
-- Modify: `src/pages/roleEdit/RoleIdentityHero.tsx`
-- Modify: `src/pages/clusterEdit/sections/BusinessUnitsSection.tsx`
-- Modify: `src/pages/platformConfig/NotificationEmailConfigCard.tsx`
 
 **Interfaces:**
-- Consumes: `normalizeAudit` (Task 1) · `AuditMeta` (Task 2)
-- Produces: `ClusterHero` เปลี่ยน prop `meta` → `audit: NormalizedAudit`
+- Consumes: `normalizeAudit`, `NormalizedAudit` (Task 1) · `AuditMeta` (Task 2) · prop `audit` บน `PageHeader` (Task 4)
+- Produces:
+  - `ClusterHero` เปลี่ยน prop `meta: {...}` → `audit: NormalizedAudit`
+  - `ApplicationIdentityHero` เปลี่ยน prop `meta: {...}` → `audit: NormalizedAudit`
 
-**เตือนล่วงหน้า:** เทสต์ 2 ไฟล์จะแดงแน่นอนเพราะ signature เปลี่ยน — **นั่นถูกต้อง**
-ต้องแก้เทสต์ให้ส่ง prop แบบใหม่ ห้ามหลบด้วยการคง prop เดิมไว้คู่กัน
+**การตัดสินใจที่ต้องรู้ก่อนเริ่ม:**
+
+`ClusterEdit` และ `ApplicationEdit` **ไม่ต้องเพิ่ม prop `audit` บน `PageHeader`** — สองหน้านี้มี
+Hero ที่แสดง audit อยู่แล้วในตำแหน่งเดียวกัน (ใต้หัวข้อ) การใส่ทั้งสองที่จะแสดงข้อมูลเดียวกันซ้ำ
+ในหน้าเดียว ส่วนอีกสามหน้า (ReportTemplate, News, Broadcast) ไม่มี Hero จึงใช้ `PageHeader`
 
 - [ ] **Step 1: แก้ `ClusterHero.tsx`**
 
-ลบฟังก์ชัน `auditLine()` (บรรทัด 31-39) และ `fmtDate()` (บรรทัด 7-12) ถ้าไม่มีใครใช้แล้ว
-เปลี่ยน prop:
+ลบฟังก์ชัน `auditLine()` (บรรทัด 31-39) และ `fmtDate()` กับ `MONTHS` (บรรทัด 6-12)
+ถ้าไม่มีใครใช้แล้ว — `bun run lint` จะบอกถ้าเหลือตัวแปรที่ไม่ถูกใช้
+
+เปลี่ยน prop ใน `ClusterHeroProps` (บรรทัด 27):
 
 ```tsx
 // เดิม
-meta: { created_at?: string; created_by_name?: string; updated_at?: string; updated_by_name?: string };
+  meta: { created_at?: string; created_by_name?: string; updated_at?: string; updated_by_name?: string };
 // ใหม่
-audit: NormalizedAudit;
+  audit: NormalizedAudit;
 ```
 
-แทนที่สองบรรทัดที่เรียก `auditLine` (บรรทัด 83-84) ด้วย:
+เปลี่ยน destructure ที่บรรทัด 48 จาก `meta` เป็น `audit`
+
+แทนสองบรรทัดที่เรียก `auditLine` (บรรทัด 83-84) ด้วย:
 
 ```tsx
-<AuditMeta variant="header" audit={audit} className="text-muted-foreground text-[11px] leading-tight" />
+            <AuditMeta variant="header" audit={audit} className="text-muted-foreground text-[11px] leading-tight" />
 ```
 
 เพิ่ม import:
@@ -920,58 +853,169 @@ import { AuditMeta } from '../../components/AuditMeta';
 import type { NormalizedAudit } from '../../utils/audit';
 ```
 
-- [ ] **Step 2: แก้ `ClusterHero.test.tsx`**
+- [ ] **Step 2: แก้ call site ใน `ClusterEdit.tsx`**
+
+ที่บรรทัด 552 เปลี่ยน:
+
+```tsx
+                    meta={clusterMeta}
+```
+
+เป็น:
+
+```tsx
+                    audit={normalizeAudit(cluster)}
+```
+
+โดย `cluster` คือ object ดิบที่ได้จาก API — ถ้าหน้าไม่ได้เก็บไว้ ให้ดูว่าตัวแปรชื่ออะไรใน
+`fetchCluster` แล้วเก็บลง state ใหม่ **ห้ามเก็บใน `formData`** เพราะจะทำให้
+`useUnsavedChanges` เข้าใจผิดว่ามีการแก้
+
+ลบตัวแปร `clusterMeta` และบล็อก normalize ที่บรรทัด 158-161 พร้อมกับ field
+`created_by_name` / `updated_by_name` ในโครง state ที่บรรทัด 70-72
+
+เพิ่ม import: `import { normalizeAudit } from '../utils/audit';`
+
+- [ ] **Step 3: แก้ `ClusterHero.test.tsx`**
 
 เปลี่ยน prop ที่บรรทัด 10:
 
 ```ts
 // เดิม
-meta: { created_at: '2025-02-11T00:00:00Z', created_by_name: 'A. Wong', updated_at: '2025-07-08T00:00:00Z', updated_by_name: 'S. Chan' },
+  meta: { created_at: '2025-02-11T00:00:00Z', created_by_name: 'A. Wong', updated_at: '2025-07-08T00:00:00Z', updated_by_name: 'S. Chan' },
 // ใหม่
-audit: normalizeAudit({
-  created_at: '2025-02-11T00:00:00Z', created_by_name: 'A. Wong',
-  updated_at: '2025-07-08T00:00:00Z', updated_by_name: 'S. Chan',
-}),
+  audit: normalizeAudit({
+    created_at: '2025-02-11T00:00:00Z', created_by_name: 'A. Wong',
+    updated_at: '2025-07-08T00:00:00Z', updated_by_name: 'S. Chan',
+  }),
 ```
 
-เพิ่ม import `import { normalizeAudit } from '../../utils/audit';`
+เพิ่ม `import { normalizeAudit } from '../../utils/audit';`
 assertion เดิม `expect(screen.getByText(/Created/))` ยังใช้ได้ ไม่ต้องแก้
 
-- [ ] **Step 3: แก้ `ApplicationIdentityHero.tsx` และเทสต์ของมัน**
+- [ ] **Step 4: แก้ `ApplicationIdentityHero.tsx` + call site + เทสต์**
 
-pattern เดียวกับ Step 1-2 — เปลี่ยนมารับ `audit: NormalizedAudit` แล้ววาดด้วย
-`<AuditMeta variant="header">` เทสต์ที่บรรทัด 71-73 ส่ง `created_at` / `updated_at` แบบแบน
-ให้ห่อด้วย `normalizeAudit({...})` เหมือน Step 2
+pattern เดียวกับ Step 1-3 ทุกประการ:
+- component เปลี่ยน prop `meta` → `audit: NormalizedAudit` แล้ววาดด้วย `<AuditMeta variant="header">`
+  (ไฟล์นี้มีคอมเมนต์ที่บรรทัด 24 บอกว่า "Mirrors ClusterHero's auditLine" — ลบคอมเมนต์นั้นด้วย
+  เพราะของที่มัน mirror ถูกลบไปแล้ว)
+- call site ที่ `ApplicationEdit.tsx:375` เปลี่ยน `meta={applicationMeta}` เป็น `audit={normalizeAudit(app)}`
+- ลบบล็อก normalize ที่ `ApplicationEdit.tsx:148-150` และ field ใน interface บรรทัด 69-71
+- เทสต์ที่ `ApplicationIdentityHero.test.tsx:71-73` ส่ง `created_at` / `updated_at` แบบแบน
+  ให้ห่อด้วย `normalizeAudit({...})`
 
-- [ ] **Step 4: แก้อีก 4 ไฟล์ที่เหลือ**
+- [ ] **Step 5: แก้อีก 3 หน้า Edit ที่ไม่มี Hero**
 
-| ไฟล์ | ทำอะไร |
+สามหน้านี้ใช้ `<PageHeader audit={normalizeAudit(record)}>` ที่ `PageHeader` ของหน้า edit จริง
+(ไม่ใช่จุด not-found หรือหน้า Add — record ยังไม่มีตัวตน)
+
+| ไฟล์ | ของเดิมที่ต้องลบ |
 |---|---|
-| `userManagement/UserDirectorySummary.tsx:34` | มี `const createdAt = (u) => u.created_at ?? u.audit?.created?.at ?? ''` — เปลี่ยนเป็น `normalizeAudit(u).created?.at ?? ''` **คง logic การจัดกลุ่มที่ใช้ค่านี้ไว้เหมือนเดิม** |
-| `roleEdit/RoleIdentityHero.tsx` | เติม `<AuditMeta variant="compact" actor={normalizeAudit(role).updated} />` ในแถบ meta ของการ์ด |
-| `clusterEdit/sections/BusinessUnitsSection.tsx` | แต่ละแถว BU เติม `<AuditMeta variant="compact" actor={normalizeAudit(bu).updated} />` |
-| `platformConfig/NotificationEmailConfigCard.tsx` | เติม `<AuditMeta variant="compact" actor={normalizeAudit(config).updated} />` ท้ายการ์ด |
+| `ReportTemplateEdit.tsx` | การประกอบสตริงที่บรรทัด 751-755 (`` by ${metadata.created_by_name} ``) และ field บรรทัด 64-66 |
+| `NewsEdit.tsx` | ฟังก์ชัน `fmt()` และบล็อกวาดที่บรรทัด 470-474 |
+| `BroadcastEdit.tsx` | `<Label>Created by</Label>` และช่องที่คู่กัน บรรทัด 358 |
 
-- [ ] **Step 5: static check**
+- [ ] **Step 6: static check**
+
+รัน: `bun run typecheck && bun run lint`
+คาดหวัง: เขียวทั้งคู่ — ถ้า typecheck แดงที่ `ClusterEdit.tsx` หรือ `ApplicationEdit.tsx`
+แปลว่าแก้ call site ไม่ครบ
+
+- [ ] **Step 7: รันเทสต์ทั้งชุด**
+
+รัน: `bun run test`
+คาดหวัง: PASS ทั้งหมด — `ClusterHero.test.tsx` และ `ApplicationIdentityHero.test.tsx`
+จะแดงถ้ายังแก้ prop ในเทสต์ไม่ครบ
+
+- [ ] **Step 8: ตรวจในเบราว์เซอร์**
+
+รัน `bun run dev:dev` แล้วเปิด `/clusters/<id>`
+ตรวจ:
+- ในการ์ด Hero มีบรรทัด `Created 5mo ago by ... · Updated 2h ago by ...`
+- hover แล้วขึ้นเวลาเต็ม
+- **ไม่มี** แถบ audit ซ้ำใต้หัวข้อหน้า (เพราะหน้านี้ไม่ได้ใส่ PageHeader audit)
+- เข้า `/clusters/new` แล้ว Hero ต้องไม่แสดง audit
+
+เปิด `/report-templates/<id>` — ต้องมีแถบ `Created ... by ...` ใต้หัวข้อ
+
+- [ ] **Step 9: commit**
+
+```bash
+git add src/pages/ClusterEdit.tsx src/pages/ApplicationEdit.tsx \
+        src/pages/ReportTemplateEdit.tsx src/pages/NewsEdit.tsx src/pages/BroadcastEdit.tsx \
+        src/pages/clusterManagement/ClusterHero.tsx src/pages/clusterManagement/ClusterHero.test.tsx \
+        src/pages/applicationEdit/ApplicationIdentityHero.tsx \
+        src/pages/applicationEdit/ApplicationIdentityHero.test.tsx
+git commit -m "refactor(audit): หน้า Edit และ Hero ที่คู่กันใช้ AuditMeta"
+```
+
+---
+
+### Task 8: sub-list ที่เหลือ 3 ไฟล์
+
+> **`RoleIdentityHero` ถูกตัดออกจากงานนี้** ตามคำวินิจฉัยตอน pre-flight scan — component
+> ไม่มี prop ที่เป็น record ให้ normalize (`RoleIdentityHero.tsx:26-32` มีแค่
+> name/isActive/permissions/catalogSize/actions) การเพิ่มต้องแก้ทั้ง signature และ call site
+> ที่ `RoleEdit.tsx:389` เพียงเพื่อแสดงข้อมูลที่ Task 10 จะใส่บน `PageHeader` ของหน้าเดียวกันอยู่แล้ว
+
+**Files:**
+- Modify: `src/pages/userManagement/UserDirectorySummary.tsx`
+- Modify: `src/pages/clusterEdit/sections/BusinessUnitsSection.tsx`
+- Modify: `src/pages/platformConfig/NotificationEmailConfigCard.tsx`
+
+**Interfaces:**
+- Consumes: `normalizeAudit` (Task 1) · `AuditMeta` (Task 2)
+- Produces: ไม่มี
+
+- [ ] **Step 1: แก้ `UserDirectorySummary.tsx`**
+
+บรรทัด 34 ปัจจุบันคือ:
+
+```ts
+const createdAt = (u: UserLike) => u.created_at ?? u.audit?.created?.at ?? '';
+```
+
+เปลี่ยนเป็น:
+
+```ts
+const createdAt = (u: UserLike) => normalizeAudit(u).created?.at ?? '';
+```
+
+**คง logic การจัดกลุ่มที่ใช้ค่านี้ไว้เหมือนเดิมทุกประการ** — เปลี่ยนแค่วิธีอ่านค่า
+เพิ่ม import: `import { normalizeAudit } from '../../utils/audit';`
+
+- [ ] **Step 2: แก้ `BusinessUnitsSection.tsx`**
+
+ในแต่ละแถว BU เติมบรรทัด compact:
+
+```tsx
+<AuditMeta variant="compact" actor={normalizeAudit(bu).updated ?? normalizeAudit(bu).created} />
+```
+
+ใช้ `updated ?? created` เพราะแถวมีพื้นที่บรรทัดเดียว "แก้ล่าสุดเมื่อไหร่" มีค่ากว่า
+"สร้างเมื่อไหร่" และถ้ายังไม่เคยแก้ก็ถอยไปแสดงตอนสร้าง
+
+- [ ] **Step 3: แก้ `NotificationEmailConfigCard.tsx`**
+
+เติมบรรทัด compact ท้ายการ์ดด้วย pattern เดียวกับ Step 2
+
+- [ ] **Step 4: static check**
 
 รัน: `bun run typecheck && bun run lint`
 คาดหวัง: เขียวทั้งคู่
 
-- [ ] **Step 6: รันเทสต์ทั้งชุด**
+- [ ] **Step 5: รันเทสต์ทั้งชุด**
 
 รัน: `bun run test`
-คาดหวัง: PASS ทั้งหมด — ถ้า `ClusterHero.test.tsx` หรือ `ApplicationIdentityHero.test.tsx`
-ยังแดง แปลว่ายังแก้ prop ในเทสต์ไม่ครบ
+คาดหวัง: PASS ทั้งหมด รวม `UserDirectorySummary.test.tsx` ที่มีอยู่แล้ว
 
-- [ ] **Step 7: commit**
+- [ ] **Step 6: commit**
 
 ```bash
-git add src/pages/clusterManagement/ClusterHero.tsx src/pages/clusterManagement/ClusterHero.test.tsx \
-        src/pages/applicationEdit/ApplicationIdentityHero.tsx src/pages/applicationEdit/ApplicationIdentityHero.test.tsx \
-        src/pages/userManagement/UserDirectorySummary.tsx src/pages/roleEdit/RoleIdentityHero.tsx \
+git add src/pages/userManagement/UserDirectorySummary.tsx \
         src/pages/clusterEdit/sections/BusinessUnitsSection.tsx \
         src/pages/platformConfig/NotificationEmailConfigCard.tsx
-git commit -m "refactor(audit): Hero และ sub-list ใช้ AuditMeta แทนตัววาดของตัวเอง"
+git commit -m "refactor(audit): sub-list ใช้ AuditMeta variant compact"
 ```
 
 ---
@@ -1323,8 +1367,8 @@ BODY
 | 3.4 prop `audit` บน `PageHeader` | Task 4 |
 | 3.5 ไม่แตะ `data-table.tsx` | Global Constraints + Task 3 Step 2 |
 | เฟส B — Management 13 ไฟล์ | Task 5, 6 |
-| เฟส B — Edit 5 ไฟล์ | Task 7 |
-| เฟส B — Hero/sub-list 6 ไฟล์ | Task 8 |
+| เฟส B — Edit 5 ไฟล์ + Hero 2 ตัว (รวมตาม Ruling 1) | Task 7 |
+| เฟส B — sub-list 3 ไฟล์ (RoleIdentityHero ตัดออกตาม Ruling 3) | Task 8 |
 | เฟส B — PlatformConfig + broadcastColumns | Task 9 |
 | เฟส C — Edit 5 ไฟล์ | Task 10 |
 | เฟส C — Management 4 ไฟล์ | Task 11 |
