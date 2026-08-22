@@ -1,32 +1,86 @@
+import { ChevronRight, Copy } from 'lucide-react';
+import { BrandingImageUpload } from '../../../components/BrandingImageUpload';
 import { Card } from '../../../components/ui/card';
-import { badgeVariants } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { TabStrip } from '../../../components/TabStrip';
 import { InlineField, Group } from '../../businessUnitEdit/shared';
 import { AddressBlock } from './AddressBlock';
+import type { ClusterBuTab, ClusterBuTabId } from './ClusterBuTabs';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
 import { BU_ALIAS_MAX } from '../../businessUnitEdit/types';
+
+/** หนึ่งบรรทัดของรายการข้ามไป tab อื่น: ชื่อ tab + ค่าที่ตั้งไว้จริง */
+export interface TabSummary {
+  id: ClusterBuTabId;
+  label: string;
+  value: string;
+}
 
 export interface ClusterBuDocumentProps {
   formData: BusinessUnitFormData;
   fieldErrors: Record<string, string>;
-  logoUrl?: string;
-  avatarUrl?: string;
   canEdit: boolean;
   onCommit: (name: string, value: string) => void;
-  onToggle: (name: string, value: boolean) => void;
   onValidate: (name: string, value: string) => void;
   onChange: React.ChangeEventHandler<HTMLInputElement>;
-  /** BusinessUnitBrandingCard — the hero's logo/avatar stay display-only; this is
-   *  the real upload surface, same split as the platform BusinessUnitDocument.tsx. */
-  brandingSlot?: React.ReactNode;
-  /** People & seats — task 5 */
-  seatsSlot?: React.ReactNode;
-  /** Billing entity + System settings — task 6 */
-  collapsedSlot?: React.ReactNode;
+  /** hotel address → company address ทางเดียว เหมือนหน้า platform */
+  onCopyHotelAddress: () => void;
+  tabs: ClusterBuTab[];
+  activeTab: ClusterBuTabId;
+  onTabChange: (tab: ClusterBuTabId) => void;
+  /** สรุปของอีก 4 tab ที่แสดงใน Overview */
+  summaries: TabSummary[];
+  logoUrl: string;
+  avatarUrl: string;
+  onUploadLogo: (f: File) => Promise<void>;
+  onUploadAvatar: (f: File) => Promise<void>;
+  /** ตารางผู้ใช้ + สรุปใบอนุญาต (tab People) */
+  peopleSlot?: React.ReactNode;
+  /** timezone, รูปแบบตัวเลข/วันที่, config (tab Settings) */
+  settingsSlot?: React.ReactNode;
 }
 
+/**
+ * รายการข้ามไป tab อื่นพร้อมค่าที่ตั้งไว้ — หัวข้อเปล่า ๆ บังคับให้คลิกทีละ tab
+ * เพื่อรู้ว่าข้างในว่างหรือมีของ ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง"
+ */
+function TabJumpList({ summaries, onJump }: { summaries: TabSummary[]; onJump: (id: ClusterBuTabId) => void }) {
+  return (
+    <Card className="p-0">
+      <Group label="Elsewhere">
+        <ul className="-mx-2">
+          {summaries.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => onJump(s.id)}
+                className="hover:bg-primary/5 focus-visible:ring-ring flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left focus-visible:ring-1 focus-visible:outline-hidden"
+              >
+                <span className="w-20 shrink-0 text-sm font-medium">{s.label}</span>
+                <span className="text-muted-foreground min-w-0 flex-1 truncate text-sm">{s.value}</span>
+                <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Group>
+    </Card>
+  );
+}
+
+/**
+ * เอกสารของ BU หนึ่งใบ แบ่งเป็น 5 tab แทนการ์ด 6 ใบเรียงลงมา
+ *
+ * เดิมหน้านี้เป็นสกอลล์เดียวยาว 2,250px โดยตารางผู้ใช้ 10 แถวกินไปเกินครึ่ง ดันที่อยู่โรงแรม
+ * บิล และการตั้งค่าไปท้ายสุด — ทั้งที่ทั้งสามอย่างไม่เกี่ยวกับผู้ใช้เลย การแบ่ง tab ตรงนี้
+ * ใช้ชุด tab ของ cluster admin เอง (ดู ClusterBuTabs.tsx) ไม่ใช่ชุดของหน้า platform
+ *
+ * แผ่นป้ายด้านบน (BuPropertyPlate) อยู่นอก tab จึงเห็นชื่อ สถานะ และที่นั่งได้ตลอด
+ */
 export function ClusterBuDocument({
-  formData: f, fieldErrors, logoUrl, avatarUrl, canEdit,
-  onCommit, onToggle, onValidate, onChange, brandingSlot, seatsSlot, collapsedSlot,
+  formData: f, fieldErrors, canEdit, onCommit, onValidate, onChange, onCopyHotelAddress,
+  logoUrl, avatarUrl, onUploadLogo, onUploadAvatar,
+  tabs, activeTab, onTabChange, summaries, peopleSlot, settingsSlot,
 }: ClusterBuDocumentProps) {
   const inline = (
     name: keyof BusinessUnitFormData,
@@ -48,85 +102,88 @@ export function ClusterBuDocument({
     />
   );
 
+  const address = (prefix: 'hotel' | 'company') => (
+    <div className="mt-2">
+      <div className="text-muted-foreground mb-1 px-2 text-sm">Address</div>
+      <AddressBlock prefix={prefix} formData={f} disabled={!canEdit} onChange={onChange} />
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      <Card className="overflow-hidden p-0">
-        {/* hero — logo/avatar เป็น display-only แค่ให้เห็นเร็วๆ อัปโหลดจริงยังอยู่ที่
-            BusinessUnitBrandingCard (brandingSlot) เหมือนหน้า platform BusinessUnitDocument.tsx
-            ทุกประการ — สเปกเดิมของงานนี้เข้าใจผิดว่า hero ทำให้การ์ด Branding ซ้ำซ้อน ไม่ใช่
-            badge คลิกเพื่อสลับ */}
-        <div className="flex flex-wrap items-center gap-4 p-5 sm:p-6">
-          <div className="flex shrink-0 gap-2.5">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-11 w-16 rounded-lg border object-cover" />
-            ) : (
-              <div className="from-primary to-info grid h-11 w-16 place-items-center rounded-lg bg-linear-to-br text-[11px] font-bold text-white">
-                {f.code.slice(0, 8).toUpperCase() || 'BU'}
+      <TabStrip tabs={tabs} value={activeTab} onChange={onTabChange} />
+
+      {activeTab === 'overview' && (
+        <div className="space-y-4">
+          <Card className="p-0">
+            <Group label="Identity">
+              {inline('alias_name', 'Alias', { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
+              {inline('description', 'Description', { type: 'textarea' })}
+            </Group>
+            {/* ป้ายกลุ่มแบบเดียวกับที่เหลือของหน้า แทน BusinessUnitBrandingCard ซึ่งใช้หัวการ์ด
+                คนละแบบ (CardTitle + CardDescription) — การ์ดนั้นยังเป็นของหน้า platform ต่อไป */}
+            <Group label="Branding">
+              <div className="flex flex-col gap-6 pt-1 sm:flex-row sm:gap-10">
+                <BrandingImageUpload
+                  label="Logo"
+                  value={logoUrl}
+                  disabled={!canEdit}
+                  shape="rect"
+                  onUpload={onUploadLogo}
+                />
+                <BrandingImageUpload
+                  label="Avatar"
+                  value={avatarUrl}
+                  disabled={!canEdit}
+                  shape="square"
+                  fallbackName={f.name}
+                  fallbackCode={f.code}
+                  onUpload={onUploadAvatar}
+                />
               </div>
-            )}
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="size-11 rounded-lg border object-cover" />
-            ) : (
-              <div className="bg-primary/90 grid size-11 place-items-center rounded-lg text-lg font-bold text-white">
-                {(f.name || '?').slice(0, 1).toUpperCase()}
-              </div>
-            )}
-          </div>
-          {/* ไม่มีชื่อ cluster ใน hero โดยตั้งใจ — ClusterAdminLayout แสดงไว้แล้วทั้งใน
-              breadcrumb และ ClusterSwitcher ด้านบน การใส่ซ้ำคือ noise และจะต้องยิง API
-              เพิ่มเพื่อข้อมูลที่อยู่บนจออยู่แล้ว */}
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
-            <button
-              type="button"
-              disabled={!canEdit}
-              aria-pressed={f.is_active}
-              onClick={() => onToggle('is_active', !f.is_active)}
-              className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
-            >
-              {/* <span>, not <Badge> (a <div>) — a <button> may only contain phrasing content. */}
-              <span className={badgeVariants({ variant: f.is_active ? 'success' : 'secondary' })}>
-                {f.is_active ? 'Active' : 'Inactive'}
-              </span>
-            </button>
-            <button
-              type="button"
-              disabled={!canEdit}
-              aria-pressed={f.is_hq}
-              onClick={() => onToggle('is_hq', !f.is_hq)}
-              className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
-            >
-              <span className={badgeVariants({ variant: f.is_hq ? 'default' : 'secondary' })}>
-                {f.is_hq ? 'HQ' : 'Not HQ'}
-              </span>
-            </button>
-          </div>
+            </Group>
+          </Card>
+          <TabJumpList summaries={summaries} onJump={onTabChange} />
         </div>
+      )}
 
-        {/* ที่เหลือของการ์ด Details เดิม — name ขึ้นไปอยู่ title ของ PageHeader,
-            is_hq/is_active อยู่ใน hero ข้างบน */}
-        <Group label="Identity">
-          {inline('alias_name', 'Alias', { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
-          {inline('description', 'Description', { type: 'textarea' })}
-        </Group>
-      </Card>
+      {activeTab === 'people' && peopleSlot}
 
-      {brandingSlot}
+      {activeTab === 'property' && (
+        <Card className="p-0">
+          <Group label="Property">
+            {inline('hotel_name', 'Hotel name')}
+            {inline('hotel_tel', 'Phone', { mono: true, validate: true })}
+            {inline('hotel_email', 'Email', { type: 'email', validate: true })}
+            {address('hotel')}
+          </Group>
+        </Card>
+      )}
 
-      {seatsSlot}
+      {activeTab === 'billing' && (
+        <Card className="p-0">
+          <Group
+            label="Billing entity"
+            action={
+              canEdit && (
+                <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy from hotel address
+                </Button>
+              )
+            }
+          >
+            {inline('company_name', 'Company name')}
+            {inline('company_tel', 'Phone', { mono: true, validate: true })}
+            {inline('company_email', 'Email', { type: 'email', validate: true })}
+            {inline('tax_no', 'Tax ID', { mono: true })}
+            {inline('branch_no', 'Branch', { mono: true })}
+            {address('company')}
+          </Group>
+        </Card>
+      )}
 
-      <Card className="overflow-hidden p-0">
-        <Group label="Property">
-          {inline('hotel_name', 'Hotel name')}
-          {inline('hotel_tel', 'Phone', { mono: true, validate: true })}
-          {inline('hotel_email', 'Email', { type: 'email', validate: true })}
-          <div className="mt-2">
-            <div className="text-muted-foreground mb-1 px-2 text-sm">Address</div>
-            <AddressBlock prefix="hotel" formData={f} disabled={!canEdit} onChange={onChange} />
-          </div>
-        </Group>
-      </Card>
-
-      {collapsedSlot}
+      {activeTab === 'settings' && settingsSlot}
     </div>
   );
 }

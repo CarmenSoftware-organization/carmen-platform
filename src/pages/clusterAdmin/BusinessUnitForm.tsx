@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Save, X, Loader2, Copy } from 'lucide-react';
+import { Save, X, Loader2 } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import ClusterAccessLost from './ClusterAccessLost';
-import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -19,20 +18,22 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { cn } from '../../lib/utils';
-import { ReadOnlyText, ReadOnlyTextarea, Group, CollapsibleSection } from '../businessUnitEdit/shared';
+import { ReadOnlyText, ReadOnlyTextarea, Group } from '../businessUnitEdit/shared';
 import { initialFormData, aliasBound, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
-import { HeroName } from '../businessUnitEdit/HeroName';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
 import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
-import { ClusterBuDocument } from './businessUnitForm/ClusterBuDocument';
-import { AddressBlock } from './businessUnitForm/AddressBlock';
-import { SeatMeter } from './businessUnitForm/SeatMeter';
-import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
+import { ClusterBuDocument, type TabSummary } from './businessUnitForm/ClusterBuDocument';
+import { BuPropertyPlate } from './businessUnitForm/BuPropertyPlate';
+import {
+  clusterBuTabsWithErrors,
+  isClusterBuTabId,
+  type ClusterBuTab,
+  type ClusterBuTabId,
+} from './businessUnitForm/ClusterBuTabs';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
 import businessUnitLicenseService from '../../services/businessUnitLicenseService';
 import { useLicenseLedger } from '../licenses/useLicenseLedger';
-import { sumActiveLicenses } from '../../utils/buLicense';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
 import type { BusinessUnitConfig, BusinessUnitLicense } from '../../types';
@@ -115,6 +116,14 @@ const BusinessUnitForm: React.FC = () => {
   // (Task 4b.1's `cluster_seat`). Optional and undefined until a deployed backend sends it.
   const [clusterSeat, setClusterSeat] = useState<{ used: number; cap: number } | undefined>(undefined);
 
+  // Deep-linkable: ?tab= survives a reload and can be shared/bookmarked. Seeded from the URL
+  // once — the state is the authority afterwards, so an unknown value degrades to Overview.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<ClusterBuTabId>(() => {
+    const fromUrl = searchParams.get('tab');
+    return isClusterBuTabId(fromUrl) ? fromUrl : 'overview';
+  });
+
   // Re-reads only `cluster_seat`, not the whole record: fetchBusinessUnit() would also
   // overwrite formData/savedFormData, discarding any edit in progress elsewhere on the page.
   // The BU-users card mutates `buUsers` locally and never touches this figure, so without this
@@ -138,8 +147,6 @@ const BusinessUnitForm: React.FC = () => {
 
   const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
   const licenses = useLicenseLedger<BusinessUnitLicense>(buId, businessUnitLicenseService);
-  // hook เดิมคืน activeSeats มาให้ SeatMeter ด้านล่าง — คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
-  const activeSeats = sumActiveLicenses(licenses.licenses);
 
   // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
   // การเปลี่ยนขอบเขตสิทธิ์เป็นงานคนละชิ้นที่ต้องมีสเปกของตัวเอง — spec §5.3
@@ -151,6 +158,29 @@ const BusinessUnitForm: React.FC = () => {
   );
   const hasChanges = changedKeys.length > 0;
   useUnsavedChanges(hasChanges);
+
+  const tabs: ClusterBuTab[] = (() => {
+    const errored = clusterBuTabsWithErrors(fieldErrors);
+    const base: ClusterBuTab[] = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'people', label: 'People', count: users.buUsers.length },
+      { id: 'property', label: 'Property' },
+      { id: 'billing', label: 'Billing' },
+      { id: 'settings', label: 'Settings' },
+    ];
+    return base.map((t) => ({ ...t, hasError: errored.includes(t.id) }));
+  })();
+
+  const handleTabChange = (tab: ClusterBuTabId) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    // Overview is the default: leave it out so the plain URL stays the canonical one.
+    if (tab === 'overview') next.delete('tab');
+    else next.set('tab', tab);
+    // replace, not push — a tab switch is not a navigation step, and stacking them would
+    // make Back walk through every tab the user touched instead of leaving the page.
+    setSearchParams(next, { replace: true });
+  };
 
   useGlobalShortcuts({
     onSave: () => { if (!saving && hasChanges) void handleSave(); },
@@ -387,6 +417,12 @@ const BusinessUnitForm: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       toast.error('Please fix the highlighted fields', { description: Object.values(active).join(', ') });
+      // A failed Save can highlight a field on a tab the user cannot see — Billing's tax_no
+      // while they were reading Property, say. Jump to the first tab holding one; without it
+      // Save just looks like it did nothing. `name` maps to no tab (it lives in the plate,
+      // visible from everywhere), so a name-only failure leaves the current tab alone.
+      const target = clusterBuTabsWithErrors(active)[0];
+      if (target && target !== activeTab) handleTabChange(target);
       return false;
     }
     return true;
@@ -463,19 +499,41 @@ const BusinessUnitForm: React.FC = () => {
 
   const sectionField = { formData, editing: canEdit, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
 
-  // preview ของกลุ่มที่ยุบ — หัวข้อเปล่า ๆ บังคับให้คลิกเพื่อรู้ว่าข้างในว่างหรือมีของ
-  // ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง" ที่การยุบกลุ่มมีไว้เพื่อไม่ให้บัง
-  const billingPreview =
-    [formData.company_name, formData.tax_no && `TAX ${formData.tax_no}`]
-      .filter(Boolean).join(' · ') || 'Not set';
-
-  const settingsPreview =
-    [
-      formData.timezone,
-      formData.config.length > 0
-        ? `${formData.config.length} config ${formData.config.length === 1 ? 'entry' : 'entries'}`
-        : '',
-    ].filter(Boolean).join(' · ') || 'Defaults';
+  // สิ่งที่อีก 4 tab ถืออยู่จริง แสดงบน Overview — ชื่อ tab เปล่า ๆ บังคับให้คลิกทีละใบ
+  // เพื่อรู้ว่าข้างในว่างหรือมีของ ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง"
+  // Property ไม่ซ้ำกับแผ่นป้าย: ป้ายบอกว่าที่ไหน บรรทัดนี้บอกว่าติดต่อยังไง
+  const summaries: TabSummary[] = [
+    {
+      id: 'people',
+      label: 'People',
+      value: `${users.buUsers.length} ${users.buUsers.length === 1 ? 'user' : 'users'}`,
+    },
+    {
+      id: 'property',
+      label: 'Property',
+      value:
+        [formData.hotel_tel, formData.hotel_email].filter(Boolean).join(' · ') ||
+        'No contact details',
+    },
+    {
+      id: 'billing',
+      label: 'Billing',
+      value:
+        [formData.company_name, formData.tax_no && `TAX ${formData.tax_no}`]
+          .filter(Boolean).join(' · ') || 'Not set',
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      value:
+        [
+          formData.timezone,
+          formData.config.length > 0
+            ? `${formData.config.length} config ${formData.config.length === 1 ? 'entry' : 'entries'}`
+            : '',
+        ].filter(Boolean).join(' · ') || 'Defaults',
+    },
+  ];
 
   // Generic edit/read-only renderer for the plain text fields (Form Field Pattern).
   const textField = (
@@ -559,125 +617,91 @@ const BusinessUnitForm: React.FC = () => {
 
   return (
     <ClusterAdminLayout>
-      <div className="space-y-4 sm:space-y-6 pb-20">
-        <PageHeader
-          backTo={`/cluster-admin/${clusterId}/business-units`}
-          title={
-            <HeroName
-              value={formData.name}
-              disabled={!canEdit}
-              onCommit={(v) => handleInlineCommit('name', v)}
-            />
-          }
-          subtitle="Manage this business unit's details"
-        />
-
-        {error && (
-          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
-        )}
-
-        {!error && (accessLost ? <ClusterAccessLost /> : (
-          <>
-        <ClusterBuDocument
+      <div className="space-y-4 pb-20 sm:space-y-6">
+        <BuPropertyPlate
           formData={formData}
-          fieldErrors={fieldErrors}
           logoUrl={logoUrl}
           avatarUrl={avatarUrl}
           canEdit={canEdit}
+          backTo={`/cluster-admin/${clusterId}/business-units`}
+          licensesTo={`/cluster-admin/${clusterId}/licenses`}
+          clusterSeat={clusterSeat}
           onCommit={handleInlineCommit}
           onToggle={handleInlineToggle}
-          onValidate={handleInlineValidate}
-          onChange={handleChange}
-          brandingSlot={
-            <BusinessUnitBrandingCard
-              logoUrl={logoUrl}
-              avatarUrl={avatarUrl}
-              editing={canEdit}
-              name={formData.name}
-              code={formData.code}
-              onUploadLogo={handleUploadLogo}
-              onUploadAvatar={handleUploadAvatar}
-            />
-          }
-          seatsSlot={
-            <Card className="overflow-hidden p-0">
-              <Group label="People & seats">
-                {clusterSeat && (
-                  <div className="mb-4">
-                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={activeSeats} />
-                  </div>
-                )}
+        />
+
+        {error && (
+          <div className="text-destructive bg-destructive/10 rounded-md p-3 text-sm" role="alert">{error}</div>
+        )}
+
+        {!error && (accessLost ? <ClusterAccessLost /> : (
+          <ClusterBuDocument
+            formData={formData}
+            fieldErrors={fieldErrors}
+            canEdit={canEdit}
+            onCommit={handleInlineCommit}
+            onValidate={handleInlineValidate}
+            onChange={handleChange}
+            onCopyHotelAddress={copyHotelAddressToCompany}
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            summaries={summaries}
+            logoUrl={logoUrl}
+            avatarUrl={avatarUrl}
+            onUploadLogo={handleUploadLogo}
+            onUploadAvatar={handleUploadAvatar}
+            peopleSlot={
+              <div className="space-y-4">
                 <BusinessUnitUsersCard users={users} canEdit={canEdit} />
                 {/* The card is permanently read-only now — seats are issued and changed in the
                     License Center only, never here. `manageHref` points at this shell's own
                     licenses route because cluster admin does not hold `subscription.read` and
                     cannot pass `PrivateRoute` on `/licenses/*`; the platform Business Unit page
                     links to `/licenses/:clusterId` instead. */}
+                {/* ไม่ส่ง clusterSeat: แผ่นป้ายด้านบนบอก 11 / 15 ไปแล้วและเห็นจากทุก tab
+                    การพิมพ์ซ้ำในการ์ดนี้คือตัวเลขเดียวกันสองที่บนจอเดียว */}
                 <BusinessUnitLicensesCard
                   licenses={licenses.licenses}
                   loading={licenses.loading}
-                  clusterSeat={clusterSeat}
                   manageHref={`/cluster-admin/${clusterId}/licenses`}
                 />
-              </Group>
-            </Card>
-          }
-          collapsedSlot={
-            <>
-              <CollapsibleSection title="Billing entity" description={billingPreview}>
-                <div className="space-y-4">
-                  <div className="flex justify-end">
-                    {canEdit && (
-                      <Button type="button" variant="ghost" size="sm" onClick={copyHotelAddressToCompany}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy from hotel address
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {textField('company_name', 'Company name')}
-                    {textField('company_tel', 'Phone', { mono: true })}
-                    {textField('company_email', 'Email', { type: 'email' })}
-                    {textField('tax_no', 'Tax ID', { mono: true })}
-                    {textField('branch_no', 'Branch', { mono: true })}
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground mb-1 text-sm">Address</div>
-                    <AddressBlock prefix="company" formData={formData} disabled={!canEdit} onChange={handleChange} />
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              <CollapsibleSection title="System settings" description={settingsPreview}>
-                <div className="space-y-6">
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {textField('timezone', 'Timezone')}
-                    {textField('date_format', 'Date format', { mono: true })}
-                    {textField('date_time_format', 'Date-time format', { mono: true })}
-                    {textField('time_format', 'Time format', { mono: true })}
-                    {textField('long_time_format', 'Long time format', { mono: true })}
-                    {textField('short_time_format', 'Short time format', { mono: true })}
-                  </div>
-                  <CalculationSettingsSection
-                    {...sectionField}
-                    defaultCurrency={defaultCurrency}
-                    getCalculationMethodLabel={getCalculationMethodLabel}
-                    showCurrencyField={false}
-                    canEditCalculationMethod={false}
-                  />
-                  <NumberFormatsSection {...sectionField} />
-                  <ConfigurationSection
-                    {...sectionField}
-                    onConfigChange={handleConfigChange}
-                    onAddConfigRow={addConfigRow}
-                    onRemoveConfigRow={removeConfigRow}
-                  />
-                </div>
-              </CollapsibleSection>
-            </>
-          }
-        />
-          </>
+              </div>
+            }
+            settingsSlot={
+              /* Regional formats เป็นกลุ่มที่หน้านี้ประกอบเอง จึงใส่ป้าย Group ให้
+                 ส่วนอีกสาม section เป็น component ที่มีหัวการ์ดของตัวเองอยู่แล้ว
+                 (ใช้ร่วมกับหน้า platform) — ห่อ Group ทับจะได้หัวข้อซ้อนสองชั้น */
+              <div className="space-y-4">
+                <Card className="p-0">
+                  <Group label="Regional formats">
+                    <div className="grid gap-4 pt-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {textField('timezone', 'Timezone')}
+                      {textField('date_format', 'Date format', { mono: true })}
+                      {textField('date_time_format', 'Date-time format', { mono: true })}
+                      {textField('time_format', 'Time format', { mono: true })}
+                      {textField('long_time_format', 'Long time format', { mono: true })}
+                      {textField('short_time_format', 'Short time format', { mono: true })}
+                    </div>
+                  </Group>
+                </Card>
+                <CalculationSettingsSection
+                  {...sectionField}
+                  defaultCurrency={defaultCurrency}
+                  getCalculationMethodLabel={getCalculationMethodLabel}
+                  showCurrencyField={false}
+                  canEditCalculationMethod={false}
+                />
+                <NumberFormatsSection {...sectionField} />
+                <ConfigurationSection
+                  {...sectionField}
+                  onConfigChange={handleConfigChange}
+                  onAddConfigRow={addConfigRow}
+                  onRemoveConfigRow={removeConfigRow}
+                />
+              </div>
+            }
+          />
         ))}
 
         {hasChanges && (

@@ -1,60 +1,83 @@
+import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { seatUtilization } from '../../../utils/capacity';
 import { cn } from '../../../lib/utils';
+import { AllocationTicks } from '../AllocationTicks';
+import { GAUGE_TEXT } from '../../clusterManagement/CapacityGauge';
 
 interface SeatMeterProps {
   used: number;
   cap: number;
-  /** ที่นั่งที่ซื้อไว้ = ผลรวมใบ license ที่ยังคุ้มครองอยู่ */
-  licensed?: number;
+  /** License Center ของ cluster นี้ — ทางออกเดียวเมื่อที่นั่งตึง */
+  licensesTo: string;
 }
-
-const BAR_BY_LEVEL: Record<string, string> = {
-  ok: 'bg-primary',
-  warn: 'bg-warning',
-  over: 'bg-destructive',
-};
 
 /**
  * เพดานที่นั่งของทั้ง cluster — ตัวเลขที่มีผลมากที่สุดบนหน้านี้ เพราะเกินแล้ว
- * เขียนอะไรไม่ได้ทั้ง cluster และ cluster admin คือคนเดียวที่แก้ได้
+ * เขียนอะไรไม่ได้ทั้ง cluster และ cluster admin คือคนเดียวที่แก้ได้ จึงอยู่บนแผ่นป้าย
+ * ด้านบนสุด เห็นจากทุก tab ไม่ใช่รอให้เลื่อนไปเจอ
  *
  * สัดส่วนและเกณฑ์ทั้งหมดมาจาก seatUtilization() — ห้ามคำนวณเอง มันถือกฎ warn ที่ 90%
  * และกฎ "cap = 0 คือศูนย์ที่นั่ง ไม่ใช่ไม่จำกัด" ไว้ให้แล้ว
  *
- * แถบเป็นของแถม ตัวเลขเป็นตัวหลัก: แถบ aria-hidden, บรรทัดตัวเลข role="status"
- * คนที่อ่านด้วย screen reader จึงได้ข้อมูลเท่ากันทุกอย่าง
+ * ที่นี่ไม่พูดถึงใบอนุญาตของ BU นี้เลยโดยตั้งใจ — "15 licensed" คือเพดานของทั้ง cluster
+ * ส่วนใบที่ BU นี้ซื้อเป็นคนละ pool การวางสองตัวเลขไว้ในบล็อกเดียวทำให้คำว่า licensed
+ * มีสองความหมายพร้อมกัน ตัวเลขของ BU อยู่ที่ BusinessUnitLicensesCard ใน tab People แล้ว
+ *
+ * แถบเป็นของแถม ตัวเลขเป็นตัวหลัก: AllocationTicks เป็น role="img" มี label ของตัวเอง
+ * ส่วนบรรทัดตัวเลขเป็น role="status" คนที่อ่านด้วย screen reader จึงได้ข้อมูลเท่ากันทุกอย่าง
  */
-export function SeatMeter({ used, cap, licensed }: SeatMeterProps) {
+export function SeatMeter({ used, cap, licensesTo }: SeatMeterProps) {
   const u = seatUtilization(used, cap);
   const overBy = Math.max(0, u.used - u.cap);
   const seatsLeft = Math.max(0, u.cap - u.used);
-  // ส่วนที่ล้นวาดต่อท้ายโดยมีเส้นคั่น ไม่ใช่แถบเต็มสีแดง — ต้องเห็นว่าล้น *เท่าไร*
-  const fillPct = u.cap === 0 ? 0 : Math.min(100, (Math.min(u.used, u.cap) / u.cap) * 100);
-  const overPct = u.cap === 0 ? 0 : Math.min(40, (overBy / u.cap) * 100);
+  const pressured = u.level === 'warn' || u.level === 'over';
+
+  // สิ่งที่ cluster admin ต้องทำต่อในแต่ละสถานะ ไม่ใช่คำบรรยายว่าแถบยาวเท่าไร —
+  // ตัวเลขข้างบนบอกไปแล้ว บรรทัดนี้จึงเป็นของ "แล้วยังไงต่อ" อย่างเดียว
+  const note =
+    overBy > 0
+      ? `Over by ${overBy} — deactivate ${overBy} ${overBy === 1 ? 'user who belongs' : 'users who belong'} to no other BU in this cluster`
+      : u.level === 'over'
+        ? 'At capacity — deactivate a user before adding another'
+        : seatsLeft === 0
+          ? 'No seats open'
+          : `${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} open`;
 
   return (
-    <div className="space-y-1.5">
-      <div className="bg-muted flex h-2 w-full overflow-hidden rounded-full" aria-hidden="true">
-        <div className={cn('h-full', BAR_BY_LEVEL[u.level] ?? 'bg-primary')} style={{ width: `${fillPct}%` }} />
-        {overBy > 0 && (
-          <div className="bg-destructive border-background h-full border-l-2" style={{ width: `${overPct}%` }} />
-        )}
+    <div className="sm:min-w-56">
+      <div className="text-muted-foreground text-[11px] font-bold tracking-[0.13em] uppercase">
+        Cluster seats
       </div>
-      <p
-        className={cn('text-sm', u.level === 'over' ? 'text-destructive' : u.level === 'warn' ? 'text-warning' : '')}
-        role="status"
-      >
-        <span className="font-semibold tabular-nums">{u.used} / {u.cap}</span> seats
+
+      <div className="mt-1.5 flex items-baseline gap-1.5 font-mono tabular-nums">
+        <span className={cn('text-2xl font-semibold', pressured ? GAUGE_TEXT[u.level] : 'text-foreground')}>
+          {u.used.toLocaleString()}
+        </span>
+        <span className="text-muted-foreground text-sm">/ {u.cap.toLocaleString()} licensed</span>
+      </div>
+
+      <AllocationTicks
+        className="mt-2.5"
+        used={u.used}
+        cap={u.cap}
+        level={u.level}
+        label={`Cluster seats: ${u.used} of ${u.cap} licensed in use`}
+      />
+
+      <p className={cn('mt-2 text-xs', pressured ? GAUGE_TEXT[u.level] : 'text-muted-foreground')} role="status">
+        {note}
       </p>
-      <p className={cn('text-xs', u.level === 'over' ? 'text-destructive' : 'text-muted-foreground')}>
-        {overBy > 0
-          ? `over by ${overBy} — deactivate ${overBy} ${overBy === 1 ? 'user' : 'users'} who ${overBy === 1 ? 'belongs' : 'belong'} to no other BU in this cluster to save`
-          : u.level === 'over'
-            ? 'at capacity — deactivate a user before adding another'
-            : u.level === 'warn'
-              ? `nearing capacity — ${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left`
-              : `${licensed != null ? `licensed ${licensed} · ` : ''}used ${u.used} · cluster cap ${u.cap}`}
-      </p>
+
+      {pressured && (
+        <Link
+          to={licensesTo}
+          className="text-primary mt-1.5 inline-flex items-center gap-1 text-xs font-medium hover:underline"
+        >
+          View licenses
+          <ArrowRight className="size-3" />
+        </Link>
+      )}
     </div>
   );
 }
