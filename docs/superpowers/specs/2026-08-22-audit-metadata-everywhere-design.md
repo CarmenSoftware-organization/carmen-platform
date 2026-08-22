@@ -208,7 +208,9 @@ frozen-column กับ mobile-card ที่ซับซ้อน (CLAUDE.md �
 PlatformConfigManagement.tsx    7 จุด   ← เสี่ยงสุด
 DatabasePoolManagement.tsx      3 จุด
 EmailSettingManagement.tsx      0 จุด
-licenses/*.tsx (3 ไฟล์)          0 จุด
+licenses/*.tsx (3 ไฟล์)          2 จุด  ← utils/clusterLicense.ts (activeLicense tie-break)
+                                        และ pages/licenses/PurchaseLicenseTable.tsx (toFleetRow)
+                                        เคยอ่าน created_at ตรง ๆ แก้ให้อ่านผ่าน normalizeAudit แล้ว
 DatabasePoolEdit.tsx            0 จุด
 ```
 
@@ -294,8 +296,10 @@ audit ที่ว่างอยู่ในเฟส C **เต็มขึ้
 ### ตรวจแล้วว่า **ไม่ใช่** ปัญหา
 
 - `stickyLeftColumns` ตรึงคอลัมน์ **ซ้าย** (2–4 คอลัมน์แรก) คอลัมน์ audit อยู่ขวาสุด — ไม่ชนกัน
-- เทสต์เดิม 13 ไฟล์ที่แตะ audit assert แค่ `getByText(/Created/)` ไม่มีไฟล์ไหน assert สตริงวันที่
-  ที่ format แล้ว — เปลี่ยนเป็น relative time จะไม่ทำให้เทสต์ที่มีอยู่แดง
+- เทสต์เดิม 13 ไฟล์ที่แตะ audit ส่วนใหญ่ assert แค่ `getByText(/Created/)` ไม่ได้ assert สตริงวันที่
+  ที่ format แล้ว — เปลี่ยนเป็น relative time จึงไม่ทำให้แดง **ข้อยกเว้น 2 ไฟล์:**
+  `ApplicationEdit.test.tsx` และ `ReportTemplateEdit.test.tsx` เคย assert สตริงวันที่ absolute จริง
+  (แก้ไปแล้วระหว่างงานนี้ให้ assert รูปแบบของ `title` attribute แทน)
 
 ---
 
