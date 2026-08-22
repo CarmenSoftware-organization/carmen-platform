@@ -11,7 +11,7 @@ import type { BusinessUnitLicense } from '../../types';
 const NOW = new Date('2026-08-19T00:00:00.000Z');
 
 const lic = (o: Partial<BusinessUnitLicense>): BusinessUnitLicense => ({
-  id: 'l1', business_unit_id: 'bu1', licensed_users: 10,
+  id: 'l1', business_unit_id: 'bu1', license_number: 'SEAT-2601-0001', licensed_users: 10,
   start_date: '2026-01-01T00:00:00.000Z', end_date: '2026-12-31T00:00:00.000Z',
   doc_version: 0, ...o,
 });

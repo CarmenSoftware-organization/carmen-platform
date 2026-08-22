@@ -14,7 +14,8 @@ import { LicenseDraftForm, emptyDraft, draftFromLicense, canSubmitDraft, type Li
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import type { BusinessUnit, ClusterLicense, ClusterLicenseStatus } from '../../../types';
 
-type ClusterLicenseCreate = Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version'>;
+// license_number ระบบออกให้เอง (เหมือน subscription_number) — ไม่ใช่ฟิลด์ที่ฟอร์มนี้กรอก
+type ClusterLicenseCreate = Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version' | 'license_number'>;
 
 export interface BuQuotaSectionProps {
   clusterId: string;

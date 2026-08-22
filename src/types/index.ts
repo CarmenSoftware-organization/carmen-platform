@@ -1292,6 +1292,7 @@ export type BuLicenseStatus = 'active' | 'scheduled' | 'expired';
 export interface BusinessUnitLicense {
   id: string;
   business_unit_id: string;
+  license_number: string;
   licensed_users: number;
   /** ISO 8601 พร้อม Z — แปลงเป็นเวลาท้องถิ่นตอนแสดงผลเท่านั้น */
   start_date: string;
@@ -1315,6 +1316,7 @@ export type ClusterLicenseStatus = 'active' | 'scheduled' | 'expired';
 export interface ClusterLicense {
   id: string;
   cluster_id: string;
+  license_number: string;
   /** จำนวน BU ที่ใบนี้ให้สิทธิ์ — จำนวนเต็มเสมอ ไม่มีค่าที่แปลว่า "ไม่จำกัด" */
   licensed_bus: number;
   start_date: string;
@@ -1324,4 +1326,20 @@ export interface ClusterLicense {
   doc_version: number;
   /** tie-break ลำดับที่สองของ "ใบที่ชนะ" รองจาก start_date (ดู `activeLicense` ใน utils/clusterLicense.ts) */
   created_at?: string | null;
+}
+
+// ==================== Fleet-wide license views (platform, cross-BU/cross-cluster) ====================
+
+/** แถวในมุมมองรายใบทั้ง fleet — มีเจ้าของพ่วงมาเพราะผู้ดูอยู่นอกบริบทของ BU/cluster ใดตัวหนึ่ง */
+export interface SeatLicenseRow extends BusinessUnitLicense {
+  business_unit_code: string;
+  business_unit_name: string;
+  cluster_id: string;
+  cluster_code: string;
+  cluster_name: string;
+}
+
+export interface BuQuotaLicenseRow extends ClusterLicense {
+  cluster_code: string;
+  cluster_name: string;
 }

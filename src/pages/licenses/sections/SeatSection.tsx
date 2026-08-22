@@ -14,7 +14,8 @@ import { isPerpetual, fmtDate, daysLeft, toIsoStartOfDay, toIsoEndOfDay } from '
 import { LicenseDraftForm, emptyDraft, draftFromLicense, canSubmitDraft, type LicenseDraft } from '../LicenseDraftForm';
 import type { BusinessUnit, BusinessUnitLicense, BuLicenseStatus } from '../../../types';
 
-type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
+// license_number ระบบออกให้เอง (เหมือน subscription_number) — ไม่ใช่ฟิลด์ที่ฟอร์มนี้กรอก
+type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version' | 'license_number'>;
 
 export interface SeatSectionProps {
   clusterId: string;
