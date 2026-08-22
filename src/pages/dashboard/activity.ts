@@ -102,7 +102,7 @@ function extractCreated(r: RawRecord): string | undefined {
   return normalizeAudit(r).created?.at ?? undefined;
 }
 function extractWho(r: RawRecord): string | undefined {
-  return r.updated_by_name ?? r.audit?.updated?.name ?? undefined;
+  return normalizeAudit(r).updated?.name;
 }
 
 /** created vs updated from timestamp equality; News in published status reads as published. */
