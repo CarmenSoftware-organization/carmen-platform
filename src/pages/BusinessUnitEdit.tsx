@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense } from '../types';
@@ -56,6 +57,11 @@ const BusinessUnitEdit: React.FC = () => {
   const [currenciesFailed, setCurrenciesFailed] = useState(false);
   const [currenciesLoadedFor, setCurrenciesLoadedFor] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  // Unwrapped BU record from the last successful fetch — kept separate from `formData`
+  // (the useUnsavedChanges diff target, see doc_version rule in CLAUDE.md) purely so
+  // `normalizeAudit()` gets the real record. `rawResponse` above can be the `{ data }`
+  // envelope, not the record itself, so it isn't safe to feed straight into normalizeAudit.
+  const [buRecord, setBuRecord] = useState<unknown>(null);
   const [logoUrl, setLogoUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -202,6 +208,7 @@ const BusinessUnitEdit: React.FC = () => {
       const data = await businessUnitService.getById(id!);
       setRawResponse(data);
       const bu = data.data || data;
+      setBuRecord(bu);
       const defaultFormat = '{"locales":"th-TH","minimumIntegerDigits":2}';
       const loaded: BusinessUnitFormData = {
         cluster_id: bu.cluster_id || '',
@@ -557,6 +564,7 @@ const BusinessUnitEdit: React.FC = () => {
             />
           }
           subtitle={isNew ? 'Create a new business unit' : 'Business unit details'}
+          audit={normalizeAudit(buRecord)}
         />
 
         {error && (
