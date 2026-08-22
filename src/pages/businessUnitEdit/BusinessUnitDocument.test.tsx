@@ -21,11 +21,20 @@ vi.mock('../../services/databasePoolService', () => ({
 }));
 
 import BusinessUnitDocument from './BusinessUnitDocument';
+import { tabForField, type BuTab, type BuTabId } from './BusinessUnitTabs';
 import databasePoolService from '../../services/databasePoolService';
 
 beforeEach(() => {
   vi.mocked(databasePoolService.getAll).mockResolvedValue({ data: [] });
 });
+
+const TABS: BuTab[] = [
+  { id: 'general', label: 'General' },
+  { id: 'location', label: 'Location' },
+  { id: 'formats', label: 'Formats' },
+  { id: 'technical', label: 'Technical' },
+  { id: 'users', label: 'Users' },
+];
 
 const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocument>> = {}) => {
   const onCommit = vi.fn();
@@ -33,6 +42,9 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
   const noop = vi.fn();
   render(
     <BusinessUnitDocument
+      tabs={TABS}
+      activeTab="general"
+      onTabChange={noop}
       formData={initialFormData}
       fieldErrors={{}}
       clusterName="-"
@@ -104,9 +116,11 @@ const EDITABLE_FIELDS: [keyof BusinessUnitFormData, string][] = [
 ];
 
 describe('BusinessUnitDocument', () => {
+  // Each field is opened on the tab `tabForField()` claims owns it, so a field routed to the
+  // wrong tab fails here rather than silently disappearing from the page.
   it.each(EDITABLE_FIELDS)('lets the user edit %s', async (name, label) => {
     const user = userEvent.setup();
-    const { onCommit } = setup();
+    const { onCommit } = setup({ activeTab: tabForField(name) as BuTabId });
 
     await user.click(screen.getByRole('button', { name: new RegExp(`^set ${label}…$`, 'i') }));
     // getByLabelText resolves both <input type="text"> and type="number"; a
@@ -158,7 +172,7 @@ describe('BusinessUnitDocument — copy hotel address to company', () => {
   it('shows a "Copy from hotel address" action on the Company group when editable, and wires it through onCopyHotelAddress', async () => {
     const user = userEvent.setup();
     const onCopyHotelAddress = vi.fn();
-    setup({ onCopyHotelAddress });
+    setup({ onCopyHotelAddress, activeTab: 'location' });
 
     const button = screen.getByRole('button', { name: /copy from hotel address/i });
     expect(button).toBeInTheDocument();
@@ -169,7 +183,7 @@ describe('BusinessUnitDocument — copy hotel address to company', () => {
   });
 
   it('hides the copy-from-hotel-address action when not editable', () => {
-    setup({ canEdit: false });
+    setup({ canEdit: false, activeTab: 'location' });
 
     expect(screen.queryByRole('button', { name: /copy from hotel address/i })).not.toBeInTheDocument();
   });
