@@ -8,7 +8,7 @@ import { TableToolbar } from '../TableToolbar';
 import { cycleSort, sortRows, type SortState } from '../tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
-import { normalizeAudit } from '../../../utils/audit';
+import { latestActor } from '../../../utils/audit';
 import type { BusinessUnit } from '../../../types';
 
 export interface BusinessUnitsSectionProps {
@@ -113,7 +113,9 @@ export function BusinessUnitsSection({
               </tr>
             </thead>
             <tbody>
-              {rows.map((bu) => (
+              {rows.map((bu) => {
+                const latest = latestActor(bu);
+                return (
                 <tr key={bu.id} className="zebra-row border-b transition-colors last:border-0">
                   <td className="px-4 py-2"><Badge variant="outline" className="text-xs">{bu.code}</Badge></td>
                   <td className="px-4 py-2">
@@ -131,7 +133,8 @@ export function BusinessUnitsSection({
                     </div>
                     <AuditMeta
                       variant="compact"
-                      actor={normalizeAudit(bu).updated ?? normalizeAudit(bu).created}
+                      verb={latest?.verb}
+                      actor={latest?.actor}
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -146,7 +149,8 @@ export function BusinessUnitsSection({
                     </Button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

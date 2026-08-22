@@ -10,7 +10,7 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { AuditMeta } from '../components/AuditMeta';
-import { normalizeAudit } from '../utils/audit';
+import { latestActor } from '../utils/audit';
 import type { PermissionCatalogItem } from '../types';
 
 const PermissionCatalog: React.FC = () => {
@@ -96,7 +96,9 @@ const PermissionCatalog: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
-                    {perms.map((p) => (
+                    {perms.map((p) => {
+                      const latest = latestActor(p);
+                      return (
                       <li key={p.key} className="flex flex-col gap-0.5">
                         <Badge variant="outline" className="w-fit text-xs font-mono">
                           <code>{p.key}</code>
@@ -108,11 +110,13 @@ const PermissionCatalog: React.FC = () => {
                         )}
                         <AuditMeta
                           variant="compact"
-                          actor={normalizeAudit(p).updated ?? normalizeAudit(p).created}
+                          verb={latest?.verb}
+                          actor={latest?.actor}
                           className="text-muted-foreground pl-1 text-xs"
                         />
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 </CardContent>
               </Card>

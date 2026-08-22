@@ -12,7 +12,7 @@ import businessUnitLicenseService from '../../../services/businessUnitLicenseSer
 import { useLicenseLedger } from '../useLicenseLedger';
 import { useClusterSeatLicenses, type SeatRow } from '../useClusterSeatLicenses';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon, isMigratedPlaceholder } from '../../../utils/buLicense';
-import { normalizeAudit } from '../../../utils/audit';
+import { latestActor } from '../../../utils/audit';
 import { isPerpetual, fmtDate, daysLeft } from '../licenseDates';
 import type { BusinessUnit, BusinessUnitLicense, BuLicenseStatus } from '../../../types';
 
@@ -204,6 +204,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
                 {visible.map((l) => {
                   const status = licenseStatus(l, now);
                   const badge = STATUS_BADGE[status];
+                  const latest = latestActor(l);
                   return (
                     <tr key={l.id} className="border-b last:border-0">
                       <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_users}</td>
@@ -224,7 +225,8 @@ function SeatRowCard({ row, canManage, onChanged }: {
                         <div>{l.reference_no || '-'}</div>
                         <AuditMeta
                           variant="compact"
-                          actor={normalizeAudit(l).updated ?? normalizeAudit(l).created}
+                          verb={latest?.verb}
+                          actor={latest?.actor}
                           className="text-muted-foreground text-[11px]"
                         />
                       </td>

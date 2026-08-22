@@ -11,7 +11,7 @@ import { AuditMeta } from '../../../components/AuditMeta';
 import clusterLicenseService from '../../../services/clusterLicenseService';
 import { useLicenseLedger } from '../useLicenseLedger';
 import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon } from '../../../utils/clusterLicense';
-import { normalizeAudit } from '../../../utils/audit';
+import { latestActor } from '../../../utils/audit';
 import { fmtDate, daysLeft } from '../licenseDates';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import type { BusinessUnit, ClusterLicense, ClusterLicenseStatus } from '../../../types';
@@ -180,6 +180,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                   {visible.map((l) => {
                     const status = licenseStatus(l, now);
                     const badge = STATUS_BADGE[status];
+                    const latest = latestActor(l);
                     return (
                       <tr key={l.id} className="border-b last:border-0">
                         <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_bus}</td>
@@ -198,7 +199,8 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                           <div className="truncate" title={l.note || undefined}>{l.note || '-'}</div>
                           <AuditMeta
                             variant="compact"
-                            actor={normalizeAudit(l).updated ?? normalizeAudit(l).created}
+                            verb={latest?.verb}
+                            actor={latest?.actor}
                             className="text-muted-foreground text-[11px]"
                           />
                         </td>

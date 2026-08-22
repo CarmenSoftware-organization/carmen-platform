@@ -15,7 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
 import { AuditMeta } from '../components/AuditMeta';
-import { normalizeAudit } from '../utils/audit';
+import { latestActor } from '../utils/audit';
 import type { EmailSetting } from '../types';
 
 const EmailSettingManagement: React.FC = () => {
@@ -133,7 +133,9 @@ const EmailSettingManagement: React.FC = () => {
                   onSaved={() => { setAddingProfile(false); void handleSaved('new'); }}
                 />
               )}
-              {settings.map((setting) => (
+              {settings.map((setting) => {
+                const latest = latestActor(setting);
+                return (
                 // Keying on doc_version remounts the card whenever the stored row
                 // changes, which is exactly what the 409 path needs: the form resets
                 // to the freshly-fetched values while the page keeps it in edit mode.
@@ -156,11 +158,13 @@ const EmailSettingManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={normalizeAudit(setting).updated ?? normalizeAudit(setting).created}
+                    verb={latest?.verb}
+                    actor={latest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

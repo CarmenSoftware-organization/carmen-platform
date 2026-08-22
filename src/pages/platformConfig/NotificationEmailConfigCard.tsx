@@ -6,7 +6,7 @@ import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
 import { AuditMeta } from '../../components/AuditMeta';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
-import { normalizeAudit } from '../../utils/audit';
+import { latestActor } from '../../utils/audit';
 import type { NotificationEmailConfig, PlatformConfig } from '../../types';
 
 interface NotificationEmailConfigCardProps {
@@ -74,6 +74,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
   const [formData, setFormData] = useState<NotificationEmailFormData>(() => toForm(config));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const latest = latestActor(config);
 
   /**
    * ตรวจฝั่ง FE เพื่อ UX เท่านั้น — backend ตัดสินสุดท้ายด้วย z.string().email() เสมอ
@@ -249,7 +250,8 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
 
         <AuditMeta
           variant="compact"
-          actor={normalizeAudit(config).updated ?? normalizeAudit(config).created}
+          verb={latest?.verb}
+          actor={latest?.actor}
         />
     </ConfigCardShell>
   );

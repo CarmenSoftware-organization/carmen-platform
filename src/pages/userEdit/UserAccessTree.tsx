@@ -7,7 +7,7 @@ import Can from '../../components/Can';
 import { AuditMeta } from '../../components/AuditMeta';
 import { HIT_SLOP_44 } from '../../lib/hitSlop';
 import { UNRESOLVED_CLUSTER_ID } from '../../utils/permissions';
-import { normalizeAudit } from '../../utils/audit';
+import { latestActor } from '../../utils/audit';
 
 export interface AccessCluster {
   id: string;
@@ -82,6 +82,7 @@ export function groupAccessByCluster(clusters: AccessCluster[], bus: AccessBU[])
 
 function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => void }) {
   const unit = bu.business_unit;
+  const latest = latestActor(bu);
   return (
     <div className="flex items-center gap-2.5 py-2">
       <Building2 className="text-muted-foreground/70 size-3.5 shrink-0" />
@@ -96,7 +97,8 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
         {unit?.code && <span className="text-muted-foreground ml-2 font-mono text-[11px]">{unit.code}</span>}
         <AuditMeta
           variant="compact"
-          actor={normalizeAudit(bu).updated ?? normalizeAudit(bu).created}
+          verb={latest?.verb}
+          actor={latest?.actor}
           className="text-muted-foreground mt-0.5 block text-[11px]"
         />
       </div>

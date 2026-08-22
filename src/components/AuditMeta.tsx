@@ -19,7 +19,8 @@ const displayName = (name?: string): string | undefined => {
 
 type AuditMetaProps =
   | { variant: 'header'; audit: NormalizedAudit; now?: Date; className?: string }
-  | { variant: 'cell' | 'compact'; actor?: AuditActor; now?: Date; className?: string };
+  | { variant: 'cell'; actor?: AuditActor; now?: Date; className?: string }
+  | { variant: 'compact'; actor?: AuditActor; now?: Date; className?: string; verb?: string };
 
 /**
  * แสดง "ใครทำเมื่อไหร่" ด้วยรูปแบบเดียวกันทั้งแอป
@@ -46,14 +47,21 @@ export function AuditMeta(props: AuditMetaProps) {
   }
 
   const { actor } = props;
-  if (!actor?.at && !actor?.name) return null;
+  // ต่างจาก variant 'header': นี่คือเซลล์ในตาราง/การ์ด — `data-table.tsx` เรนเดอร์ label+cell
+  // ของทุกคอลัมน์แบบไม่มีเงื่อนไขบนการ์ดมือถือ และบางตาราง (SubscriptionTable) มีคอลัมน์ audit
+  // ที่ยังว่างสนิททุกแถวจนกว่ากิ่ง backend จะขึ้น — คืน '-' ตาม convention ของแอป ไม่ใช่ null
+  if (!actor?.at && !actor?.name) {
+    return <span className="text-muted-foreground">-</span>;
+  }
   const when = relativeTime(actor.at, now);
   const who = displayName(actor.name);
 
   if (props.variant === 'compact') {
     return (
       <span className={props.className ?? 'text-muted-foreground text-xs'} title={absolute(actor.at)}>
-        {when}
+        {props.verb && <span className="font-medium">{props.verb}</span>}
+        {props.verb && ' '}
+        {when || '-'}
         {who && ` · ${who}`}
       </span>
     );

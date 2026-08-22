@@ -89,6 +89,14 @@ export function normalizeAudit(record: unknown): NormalizedAudit {
   return out;
 }
 
+/** actor ล่าสุดพร้อมคำกริยาที่ตรงกับมัน — สำหรับที่ที่มีพื้นที่บรรทัดเดียว (variant `compact`) */
+export function latestActor(record: unknown): { verb: 'Created' | 'Updated'; actor: AuditActor } | null {
+  const a = normalizeAudit(record);
+  if (a.updated) return { verb: 'Updated', actor: a.updated };
+  if (a.created) return { verb: 'Created', actor: a.created };
+  return null;
+}
+
 /**
  * แปลงเป็นฟิลด์สำหรับ CSV — **absolute ISO เสมอ** ไฟล์ที่ export ออกไปต้องอ่านได้ในอีก 3 เดือน
  * ซึ่ง `5mo ago` ทำไม่ได้ merge ผลลัพธ์นี้เข้าแถวก่อนส่งให้ `generateCSV`

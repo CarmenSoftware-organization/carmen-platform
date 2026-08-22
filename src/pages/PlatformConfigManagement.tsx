@@ -16,7 +16,7 @@ import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
-import { normalizeAudit } from '../utils/audit';
+import { normalizeAudit, latestActor } from '../utils/audit';
 import type { PlatformConfig } from '../types';
 
 /** การ์ดหนึ่งใบในหน้านี้ — ไม่ใช่คีย์ของ config เพราะคีย์ `invitation` มีสองการ์ด */
@@ -84,6 +84,13 @@ const PlatformConfigManagement: React.FC = () => {
   const passwordResetAudit = normalizeAudit(passwordReset);
   const notificationEmailAudit = normalizeAudit(notificationEmail);
   const licenseAudit = normalizeAudit(license);
+  // ค่ากริยา+actor ล่าสุดต่อการ์ด สำหรับแสดงในแถบ compact (I2) — คำนวณแยกจาก *Audit ด้านบน
+  // ที่ยังต้องใช้เดิมสำหรับ remount key
+  const invitationLatest = latestActor(invitation);
+  const signupLatest = latestActor(signup);
+  const emailVerificationLatest = latestActor(emailVerification);
+  const passwordResetLatest = latestActor(passwordReset);
+  const licenseLatest = latestActor(license);
 
   return (
     <Layout>
@@ -137,7 +144,8 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={invitationAudit.updated ?? invitationAudit.created}
+                    verb={invitationLatest?.verb}
+                    actor={invitationLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>
@@ -154,7 +162,8 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={signupAudit.updated ?? signupAudit.created}
+                    verb={signupLatest?.verb}
+                    actor={signupLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>
@@ -175,7 +184,8 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={emailVerificationAudit.updated ?? emailVerificationAudit.created}
+                    verb={emailVerificationLatest?.verb}
+                    actor={emailVerificationLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>
@@ -196,7 +206,8 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={passwordResetAudit.updated ?? passwordResetAudit.created}
+                    verb={passwordResetLatest?.verb}
+                    actor={passwordResetLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>
@@ -219,7 +230,8 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={invitationAudit.updated ?? invitationAudit.created}
+                    verb={invitationLatest?.verb}
+                    actor={invitationLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>
@@ -258,7 +270,8 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    actor={licenseAudit.updated ?? licenseAudit.created}
+                    verb={licenseLatest?.verb}
+                    actor={licenseLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
                 </div>

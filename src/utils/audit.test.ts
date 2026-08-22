@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeAudit, isUnknownActor, auditCsvFields } from './audit';
+import { normalizeAudit, isUnknownActor, auditCsvFields, latestActor } from './audit';
 
 const CREATED_AT = '2026-03-12T14:22:07.000Z';
 const UPDATED_AT = '2026-08-22T09:15:00.000Z';
@@ -120,5 +120,25 @@ describe('auditCsvFields', () => {
     expect(auditCsvFields(a)).toEqual({
       created_at: CREATED_AT, created_by: 'สมชาย', updated_at: '', updated_by: '',
     });
+  });
+});
+
+describe('latestActor', () => {
+  it('คืน Updated เมื่อมีทั้ง updated และ created', () => {
+    const result = latestActor({
+      created_at: CREATED_AT, created_by_name: 'สมชาย',
+      updated_at: UPDATED_AT, updated_by_name: 'ธมนูญ',
+    });
+    expect(result).toEqual({ verb: 'Updated', actor: { at: UPDATED_AT, name: 'ธมนูญ' } });
+  });
+
+  it('คืน Created เมื่อมีแต่ created (ยังไม่เคยแก้)', () => {
+    const result = latestActor({ created_at: CREATED_AT, created_by_name: 'สมชาย' });
+    expect(result).toEqual({ verb: 'Created', actor: { at: CREATED_AT, name: 'สมชาย' } });
+  });
+
+  it('คืน null เมื่อไม่มีข้อมูล audit เลย', () => {
+    expect(latestActor({})).toBeNull();
+    expect(latestActor(null)).toBeNull();
   });
 });

@@ -11,7 +11,7 @@ import subscriptionService from '../../../services/subscriptionService';
 import { buildAdvance } from '../subscriptionManagement/buildAdvance';
 import { isExpiringSoon } from '../../../utils/subscriptionState';
 import { getErrorDetail, devLog } from '../../../utils/errorParser';
-import { normalizeAudit } from '../../../utils/audit';
+import { latestActor } from '../../../utils/audit';
 import { fmtDate } from '../licenseDates';
 import type { Subscription } from '../../../types';
 
@@ -121,6 +121,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
               <tbody>
                 {items.map((sub) => {
                   const soon = isExpiringSoon(sub.state, sub.end_date);
+                  const latest = latestActor(sub);
                   return (
                     <tr key={sub.id} className="border-b last:border-0">
                       <td className="px-2 py-1 font-mono whitespace-nowrap">{sub.subscription_number}</td>
@@ -145,7 +146,8 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                         </div>
                         <AuditMeta
                           variant="compact"
-                          actor={normalizeAudit(sub).updated ?? normalizeAudit(sub).created}
+                          verb={latest?.verb}
+                          actor={latest?.actor}
                           className="text-muted-foreground text-[11px]"
                         />
                       </td>
