@@ -44,7 +44,9 @@ const DatabasePoolManagement: React.FC = () => {
   const storedSearch = localStorage.getItem('search_database_pools') || '';
   const storedFilters = getStoredJSON<string[]>('filters_database_pools', []);
   const storedPage = Number(localStorage.getItem('page_database_pools')) || 1;
-  const storedSort = localStorage.getItem('sort_database_pools') || 'updated_at:desc';
+  // ค่าตั้งต้นคือ created_at ไม่ใช่ updated_at — normalizeAudit ตัด `updated` ทิ้งสำหรับ pool ที่
+  // ไม่เคยแก้ (ดู utils/audit.ts) เรียงตามคอลัมน์ที่ส่วนใหญ่ไม่มีค่าทำให้เปิดหน้ามาแล้วดูสุ่ม
+  const storedSort = localStorage.getItem('sort_database_pools') || 'created_at:desc';
 
   const [searchTerm, setSearchTerm] = useState(storedSearch);
   const [statusFilter, setStatusFilter] = useState<string[]>(storedFilters);
@@ -372,7 +374,7 @@ const DatabasePoolManagement: React.FC = () => {
                   perpage={paginate.perpage}
                   onPaginateChange={handlePaginateChange}
                   onSortChange={handleSortChange}
-                  defaultSort={{ id: 'updated_at', desc: true }}
+                  defaultSort={{ id: 'created_at', desc: true }}
                 />
                 </>
                 )}
