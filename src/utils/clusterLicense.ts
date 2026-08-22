@@ -1,5 +1,6 @@
 import type { ClusterLicense, ClusterLicenseStatus } from '../types';
 import { isPerpetual, PERPETUAL_END_DATE, EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
+import { normalizeAudit } from './audit';
 
 // re-export เพื่อไม่ให้ผู้เรียกเดิม (BuQuotaSection, ClusterEdit) และเทสต์เดิมพัง
 export { isPerpetual, PERPETUAL_END_DATE };
@@ -34,9 +35,14 @@ export function activeLicense(list: ClusterLicense[], now: Date = new Date()): C
     const startDiff = Date.parse(cur.start_date) - Date.parse(best.start_date);
     if (startDiff !== 0) return startDiff > 0 ? cur : best;
 
-    const curCreated = cur.created_at ? Date.parse(cur.created_at) : NaN;
-    const bestCreated = best.created_at ? Date.parse(best.created_at) : NaN;
-    const createdDiff = curCreated - bestCreated;
+    // อ่านผ่าน normalizeAudit ไม่ใช่ cur.created_at/best.created_at ตรง ๆ — เมื่อ gateway ติด
+    // decorator ลบฟิลด์แบน created_at ออก (กิ่ง backend ถัดไป) การอ่านตรงจะได้ undefined เงียบ ๆ
+    // ทั้งคู่กลายเป็น NaN แล้วตกไปที่ tie-break id ผิดใบ
+    const curCreated = normalizeAudit(cur).created?.at;
+    const bestCreated = normalizeAudit(best).created?.at;
+    const curCreatedMs = curCreated ? Date.parse(curCreated) : NaN;
+    const bestCreatedMs = bestCreated ? Date.parse(bestCreated) : NaN;
+    const createdDiff = curCreatedMs - bestCreatedMs;
     if (!Number.isNaN(createdDiff) && createdDiff !== 0) return createdDiff > 0 ? cur : best;
 
     return cur.id > best.id ? cur : best;
