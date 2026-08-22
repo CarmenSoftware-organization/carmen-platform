@@ -1,0 +1,644 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import Layout from '../../components/Layout';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Badge } from '../../components/ui/badge';
+import { ReadOnlyField } from '../../components/ReadOnlyField';
+import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
+import { Save, X, Loader2, SearchX, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import { EmptyState } from '../../components/EmptyState';
+import { Skeleton } from '../../components/ui/skeleton';
+import Can from '../../components/Can';
+import { validateField } from '../../utils/validation';
+import { getErrorDetail, isNotFoundError, parseApiError } from '../../utils/errorParser';
+import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { useAuth } from '../../context/AuthContext';
+import { toIsoStartOfDay, toIsoEndOfDay, isPerpetual, fmtDate, PERPETUAL_END_DATE } from './licenseDates';
+import { emptyDraft, draftFromLicense, type LicenseDraft } from './LicenseDraftForm';
+import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
+import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
+import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
+import type {
+  BusinessUnitLicense, ClusterLicense, SeatLicenseRow, BuQuotaLicenseRow, BuLicenseStatus, ClusterLicenseStatus,
+} from '../../types';
+
+type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow;
+type StatusBadgeInfo = { variant: 'success' | 'secondary' | 'destructive'; label: string };
+
+// เส้นทางแก้ไขหลังสร้างสำเร็จ — ต่างจาก `config.listPath` (เหมือนกันทั้งสองชนิด คือ '/licenses')
+// map นี้เป็นตัวเดียวที่ผูก `kind` เข้ากับ segment ของ URL ('seats' vs 'bu-quota')
+const EDIT_PATH_SEGMENT: Record<LicenseKind, string> = { seat: 'seats', 'bu-quota': 'bu-quota' };
+
+const STATUS_BADGE: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo> = {
+  active: { variant: 'success', label: 'Active' },
+  scheduled: { variant: 'secondary', label: 'Scheduled' },
+  expired: { variant: 'destructive', label: 'Expired' },
+};
+
+/**
+ * เจ้าของใบ (id ใช้ประกอบ path ของ PATCH/DELETE nested + ป้ายแสดงผล) จากแถวที่ `getByIdPlatform` คืนมา
+ *
+ * ใบที่นั่งมี `business_unit_id` (จาก `BusinessUnitLicense` ฐาน) ส่วนใบโควตา BU มี `cluster_id` —
+ * ชื่อฟิลด์เจ้าของต่างกันไปตามชนิด นี่คือหนึ่งในสองจุดในไฟล์นี้ที่ต้องรู้ความต่างนั้น
+ */
+function ownerFromRow(kind: LicenseKind, row: LicenseRow): { id: string; label: string } {
+  if (kind === 'seat') {
+    const r = row as SeatLicenseRow;
+    return { id: r.business_unit_id, label: `${r.business_unit_code} - ${r.business_unit_name}` };
+  }
+  const r = row as BuQuotaLicenseRow;
+  return { id: r.cluster_id, label: `${r.cluster_code} - ${r.cluster_name}` };
+}
+
+/** สถานะของแถวที่โหลดมา — เรียกฟังก์ชันคนละตัวกันตามชนิด ห้ามคิดสูตรใหม่ที่นี่ (ดูคอมเมนต์ config) */
+function statusOfRow(kind: LicenseKind, row: LicenseRow, now: Date): BuLicenseStatus | ClusterLicenseStatus {
+  return kind === 'seat'
+    ? buLicenseStatus(row as unknown as BusinessUnitLicense, now)
+    : clusterLicenseStatus(row as unknown as ClusterLicense, now);
+}
+
+interface LicenseFieldsCardProps {
+  config: LicenseKindConfig;
+  draft: LicenseDraft;
+  noExpiry: boolean;
+  fieldErrors: Record<string, string>;
+  /** false เฉพาะตอนดูอย่างเดียว (ไม่มี `subscription.manage`) — โหมดสร้างเป็น true เสมอ (route คุมสิทธิ์ไว้แล้ว) */
+  editing: boolean;
+  ownerText: string;
+  /** undefined ตอนสร้าง — ระบบยังไม่ออกเลขให้ */
+  licenseNumber?: string;
+  isNew: boolean;
+  statusBadge: StatusBadgeInfo | null;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onNoExpiryChange: (checked: boolean) => void;
+}
+
+/**
+ * การ์ดฟิลด์เดียวที่ใช้ทั้งโหมดสร้างและแก้ไข (ต่างกันแค่ `editing`) — เดิมสองโหมดมี JSX
+ * ของฟิลด์ชุดเดียวกันซ้ำกันเกือบทั้งหมด ต่างแค่ input vs ReadOnlyField ตามสิทธิ์ ยุบมาไว้ที่นี่
+ * ที่เดียวกันโค้ดซ้ำและกันสองจุดเพี้ยนจากกันโดยไม่ตั้งใจ (เหมือน `SubscriptionInfoCard` แต่เก็บไว้
+ * ในไฟล์เดียวกันเพราะ Task 6 สร้างแค่สองไฟล์ตามบรีฟ ไม่แยกไดเรกทอรีย่อยเพิ่ม)
+ */
+function LicenseFieldsCard({
+  config, draft, noExpiry, fieldErrors, editing, ownerText, licenseNumber, isNew, statusBadge,
+  onChange, onBlur, onFocus, onNoExpiryChange,
+}: LicenseFieldsCardProps) {
+  return (
+    <Card className={isNew ? undefined : 'pb-24'}>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <CardTitle>License details</CardTitle>
+          {statusBadge && <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>}
+        </div>
+        <CardDescription>{config.ownerLabel}, amount, and coverage period</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>{config.ownerLabel}</Label>
+            {/* เจ้าของแก้ไม่ได้ทั้งสองโหมด — ข้อความอ่านอย่างเดียวเสมอ ไม่ใช่ input disabled */}
+            <ReadOnlyField value={ownerText} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>License Number</Label>
+            {/* ระบบออกให้เอง (เหมือน subscription_number) — ไม่มีโหมดแก้ */}
+            <ReadOnlyField value={licenseNumber} className="font-mono" />
+            {isNew && <p className="text-muted-foreground text-xs">ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="amount">{config.amountLabel}{editing && ' *'}</Label>
+            {editing ? (
+              <>
+                <Input
+                  type="number"
+                  min={1}
+                  id="amount"
+                  name="amount"
+                  value={draft.amount}
+                  onChange={onChange}
+                  onBlur={onBlur}
+                  onFocus={onFocus}
+                  className={fieldErrors.amount ? 'border-destructive' : ''}
+                />
+                {fieldErrors.amount && <p className="text-destructive text-xs">{fieldErrors.amount}</p>}
+              </>
+            ) : (
+              <ReadOnlyField value={draft.amount} />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="start_date">Start Date{editing && ' *'}</Label>
+            {editing ? (
+              <>
+                <Input
+                  type="date"
+                  id="start_date"
+                  name="start_date"
+                  value={draft.start_date}
+                  onChange={onChange}
+                  onBlur={onBlur}
+                  onFocus={onFocus}
+                  className={fieldErrors.start_date ? 'border-destructive' : ''}
+                />
+                {fieldErrors.start_date && <p className="text-destructive text-xs">{fieldErrors.start_date}</p>}
+              </>
+            ) : (
+              <ReadOnlyField value={draft.start_date} />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="end_date">End Date{editing && !noExpiry && ' *'}</Label>
+            {editing ? (
+              <>
+                {config.showNoExpiry && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={noExpiry}
+                      onChange={(e) => onNoExpiryChange(e.target.checked)}
+                      aria-label="No expiry"
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    No expiry
+                  </label>
+                )}
+                {!noExpiry && (
+                  <>
+                    <Input
+                      type="date"
+                      id="end_date"
+                      name="end_date"
+                      value={draft.end_date}
+                      onChange={onChange}
+                      onBlur={onBlur}
+                      onFocus={onFocus}
+                      className={fieldErrors.end_date ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.end_date && <p className="text-destructive text-xs">{fieldErrors.end_date}</p>}
+                  </>
+                )}
+              </>
+            ) : (
+              <ReadOnlyField value={noExpiry ? 'No expiry' : draft.end_date} />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="reference_no">Reference No.</Label>
+            {editing ? (
+              <Input id="reference_no" name="reference_no" value={draft.reference_no} onChange={onChange} />
+            ) : (
+              <ReadOnlyField value={draft.reference_no} />
+            )}
+          </div>
+
+          {config.showNote && (
+            <div className="space-y-2">
+              <Label htmlFor="note">Note</Label>
+              {editing ? (
+                <Input id="note" name="note" value={draft.note} onChange={onChange} />
+              ) : (
+                <ReadOnlyField value={draft.note} />
+              )}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface LicensePurchaseFormProps {
+  config: LicenseKindConfig;
+  mode: 'create' | 'edit';
+}
+
+/**
+ * ฟอร์มเต็มหน้าของ "ใบ" หนึ่งใบ — ใช้ร่วมทั้งใบที่นั่งของ BU และใบโควตา BU ของ cluster
+ * ทุกอย่างที่ต่างกันมาจาก `config` (`licenseKindConfig.ts`) ตัวฟอร์มเองไม่ตัดสินใจตามชนิด
+ * นอกจากจุดที่ระบุไว้ชัดเจน (owner id/label ใน `ownerFromRow`, สูตรสถานะใน `statusOfRow`)
+ *
+ * โครงตาม `SubscriptionForm.tsx`: `docVersion` แยก state, `useUnsavedChanges`,
+ * `useGlobalShortcuts` (⌘S/Escape), `<Can permission="subscription.manage">` คลุมปุ่มบันทึก,
+ * `DevDebugSheet` เฉพาะ dev, และ 404/409 แยกจาก error ทั่วไปตามสัญญาเดิม
+ */
+const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode }) => {
+  const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isNew = mode === 'create';
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('subscription.manage');
+
+  // โหมดสร้าง: เจ้าของมาจาก query param เท่านั้น (ไม่มี picker ในฟอร์มนี้) — ลิงก์ที่พาเข้ามาต้อง
+  // รู้เจ้าของอยู่แล้วเสมอ (ปุ่ม Add license ใน SeatSection/BuQuotaSection ผูกกับ BU/cluster หนึ่งตัว)
+  const prefilledOwner = searchParams.get(config.ownerParam) ?? '';
+  const ownerMissing = isNew && !prefilledOwner;
+
+  const [ownerId, setOwnerId] = useState<string>(isNew ? prefilledOwner : '');
+  const [ownerLabel, setOwnerLabel] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  const [detail, setDetail] = useState<LicenseRow | null>(null);
+
+  const [draft, setDraft] = useState<LicenseDraft>(() => emptyDraft(new Date()));
+  const [savedDraft, setSavedDraft] = useState<LicenseDraft>(draft);
+  const [noExpiry, setNoExpiry] = useState(false);
+  const [savedNoExpiry, setSavedNoExpiry] = useState(false);
+
+  const [loading, setLoading] = useState(!isNew);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [rawResponse, setRawResponse] = useState<unknown>(null);
+
+  const hasChanges = !isNew && (
+    JSON.stringify(draft) !== JSON.stringify(savedDraft) || noExpiry !== savedNoExpiry
+  );
+  useUnsavedChanges(hasChanges);
+
+  const load = useCallback(async () => {
+    if (isNew) return;
+    try {
+      setLoading(true);
+      setNotFound(false);
+      const raw = await config.service.getByIdPlatform(id!);
+      setRawResponse(raw);
+      const data = ((raw as { data?: LicenseRow })?.data || raw) as LicenseRow | undefined;
+      if (!data?.id) {
+        setNotFound(true);
+        return;
+      }
+      setDetail(data);
+      const owner = ownerFromRow(config.kind, data);
+      setOwnerId(owner.id);
+      setOwnerLabel(owner.label);
+      setLicenseNumber(data.license_number);
+      setDocVersion(getDocVersion(data));
+
+      const amount = Number((data as unknown as Record<string, unknown>)[config.amountField]);
+      const perpetual = isPerpetual(data.end_date);
+      // ใบเดิมไม่มีวันหมดอายุ — ไม่ prefill end_date ด้วย 2099-12-31 เผื่อผู้ใช้ติ๊กออกจาก
+      // "No expiry" แล้วเจอวันในอดีตโผล่มาเฉย ๆ (เหมือน BuQuotaSection.startEdit เดิม)
+      const loaded: LicenseDraft = {
+        ...draftFromLicense({ ...data, amount }),
+        end_date: perpetual ? '' : fmtDate(data.end_date),
+      };
+      setDraft(loaded);
+      setSavedDraft(loaded);
+      setNoExpiry(perpetual);
+      setSavedNoExpiry(perpetual);
+      setFieldErrors({});
+    } catch (err: unknown) {
+      if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError('Failed to load license: ' + getErrorDetail(err));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [id, isNew, config]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setDraft((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+
+  const blurOptions = (name: string): { required?: boolean; label?: string } | undefined => {
+    if (name === 'amount') return { required: true, label: config.amountLabel };
+    if (name === 'start_date') return { required: true, label: 'Start date' };
+    if (name === 'end_date') return { required: !noExpiry, label: 'End date' };
+    return undefined;
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, blurOptions(name)) }));
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFieldErrors((prev) => ({ ...prev, [e.target.name]: '' }));
+  };
+
+  const handleNoExpiryChange = (checked: boolean) => {
+    setNoExpiry(checked);
+    // ปิดช่อง end_date แล้วก็ต้องปิด error ของมันด้วย ไม่งั้นแบนเนอร์ error ค้างอยู่ทั้งที่ช่องหายไป
+    if (checked) setFieldErrors((prev) => ({ ...prev, end_date: '' }));
+  };
+
+  const handleCancelEdit = () => {
+    setDraft(savedDraft);
+    setNoExpiry(savedNoExpiry);
+    setFieldErrors({});
+    setError('');
+  };
+
+  // กฎข้ามฟิลด์ (end_date หลัง start_date) อยู่ใน validateField ไม่ได้ เพราะมันเห็นทีละฟิลด์
+  // — เช็คตรงนี้ตอน submit เหมือน SubscriptionForm
+  const validateBeforeSubmit = (): boolean => {
+    const next: Record<string, string> = {};
+    const amountErr = validateField('amount', draft.amount, { required: true, label: config.amountLabel });
+    if (amountErr) next.amount = amountErr;
+    const startErr = validateField('start_date', draft.start_date, { required: true, label: 'Start date' });
+    if (startErr) next.start_date = startErr;
+    if (!noExpiry) {
+      const endErr = validateField('end_date', draft.end_date, { required: true, label: 'End date' });
+      if (endErr) next.end_date = endErr;
+      if (!next.start_date && !next.end_date && draft.start_date && draft.end_date) {
+        if (new Date(draft.end_date).getTime() <= new Date(draft.start_date).getTime()) {
+          next.end_date = 'End date must be after start date';
+        }
+      }
+    }
+    setFieldErrors((prev) => ({ ...prev, ...next }));
+    return Object.keys(next).length === 0;
+  };
+
+  // ชื่อฟิลด์จำนวนมาจาก config (`licensed_users` / `licensed_bus`) — payload เป็น
+  // Record<string, unknown> เพราะ config.service เป็น union ของสองสัญญา create/update ที่มี
+  // ชื่อฟิลด์จำนวนต่างกัน TS ตรวจ union ของ overload ให้ไม่ผ่านแม้ payload จะถูกต้องจริงเสมอตาม
+  // config.amountField ต้อง cast ตอนเรียกเพียงจุดเดียว (ดู handleCreateSubmit/handleSave)
+  const buildPayload = (): Record<string, unknown> => ({
+    [config.amountField]: Number(draft.amount),
+    start_date: toIsoStartOfDay(draft.start_date),
+    end_date: noExpiry ? PERPETUAL_END_DATE : toIsoEndOfDay(draft.end_date),
+    reference_no: draft.reference_no || null,
+    ...(config.showNote ? { note: draft.note || null } : {}),
+  });
+
+  const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!canEdit || ownerMissing) return;
+    if (!validateBeforeSubmit()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const create = config.service.create as unknown as (ownerId: string, data: Record<string, unknown>) => Promise<unknown>;
+      const result = await create(ownerId, buildPayload());
+      const created = ((result as { data?: { id?: string } })?.data || result) as { id?: string } | undefined;
+      toast.success('License created successfully');
+      if (created?.id) {
+        navigate(`/licenses/${EDIT_PATH_SEGMENT[config.kind]}/${created.id}/edit`, { replace: true });
+      } else {
+        navigate(config.listPath);
+      }
+    } catch (err: unknown) {
+      const { fields } = parseApiError(err);
+      if (fields && Object.keys(fields).length > 0) {
+        setFieldErrors((prev) => ({ ...prev, ...fields }));
+      } else {
+        setError('Failed to create license: ' + getErrorDetail(err));
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!canEdit || isNew) return;
+    if (!validateBeforeSubmit()) return;
+    if (docVersion == null) {
+      setError('Missing doc_version for this record — reload the page and try again.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const update = config.service.update as unknown as
+        (ownerId: string, id: string, data: Record<string, unknown>) => Promise<unknown>;
+      await update(ownerId, id!, { ...buildPayload(), doc_version: docVersion });
+      toast.success('Changes saved successfully');
+      await load();
+    } catch (err: unknown) {
+      if (isVersionConflict(err)) {
+        notifyVersionConflict();
+        await load();
+      } else if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        const { fields } = parseApiError(err);
+        if (fields && Object.keys(fields).length > 0) {
+          setFieldErrors((prev) => ({ ...prev, ...fields }));
+        } else {
+          setError('Failed to save license: ' + getErrorDetail(err));
+        }
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useGlobalShortcuts({
+    onSave: () => { if (!isNew && canEdit && hasChanges && !saving) void handleSave(); },
+    onCancel: () => { if (!isNew && hasChanges) handleCancelEdit(); },
+  });
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading license">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Skeleton className="h-9 w-9 rounded-md" />
+            <div className="flex-1">
+              <Skeleton className="h-8 w-40" />
+              <Skeleton className="h-4 w-56 mt-2" />
+            </div>
+          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48 mt-1" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo={config.listPath} title="License" />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={SearchX}
+                title="License not found"
+                description="This license doesn't exist, or it may have been deleted. Check the link, or pick one from the license list."
+                action={
+                  <Button size="sm" onClick={() => navigate(config.listPath)}>
+                    Back to licenses
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (ownerMissing) {
+    return (
+      <Layout>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader backTo={config.listPath} title={`Add ${config.amountLabel} License`} />
+          <Card>
+            <CardContent className="p-0">
+              <EmptyState
+                icon={AlertTriangle}
+                title={`Missing ${config.ownerLabel.toLowerCase()}`}
+                description={`This page needs a ${config.ownerLabel.toLowerCase()} to create a license for. Open it from a ${config.ownerLabel.toLowerCase()}'s page instead of typing this URL directly.`}
+                action={
+                  <Button size="sm" onClick={() => navigate(config.listPath)}>
+                    Back to licenses
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  const now = new Date();
+  const status = !isNew && detail ? statusOfRow(config.kind, detail, now) : null;
+  const statusBadge = status ? STATUS_BADGE[status] : null;
+  const ownerText = ownerLabel || ownerId;
+
+  return (
+    <Layout>
+      <div className="space-y-4 sm:space-y-6">
+        {isNew ? (
+          <>
+            <PageHeader
+              backTo={config.listPath}
+              title={`Add ${config.amountLabel} License`}
+              subtitle={`Issue a new license for this ${config.ownerLabel.toLowerCase()}`}
+            />
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+            )}
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <LicenseFieldsCard
+                config={config}
+                draft={draft}
+                noExpiry={noExpiry}
+                fieldErrors={fieldErrors}
+                editing={canEdit}
+                ownerText={ownerText}
+                isNew
+                statusBadge={null}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+                onNoExpiryChange={handleNoExpiryChange}
+              />
+              <div className="flex gap-3">
+                <Can permission="subscription.manage">
+                  <Button type="submit" size="sm" disabled={saving}>
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {saving ? 'Creating...' : 'Create License'}
+                  </Button>
+                </Can>
+                <Button type="button" size="sm" variant="outline" onClick={() => navigate(config.listPath)}>
+                  <X className="mr-2 h-4 w-4" />
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </>
+        ) : (
+          <>
+            <PageHeader
+              backTo={config.listPath}
+              title={licenseNumber || '(unnamed license)'}
+              subtitle={`${config.ownerLabel}: ${ownerText}`}
+            />
+
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+            )}
+
+            <LicenseFieldsCard
+              config={config}
+              draft={draft}
+              noExpiry={noExpiry}
+              fieldErrors={fieldErrors}
+              editing={canEdit}
+              ownerText={ownerText}
+              licenseNumber={licenseNumber}
+              isNew={false}
+              statusBadge={statusBadge}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={handleFocus}
+              onNoExpiryChange={handleNoExpiryChange}
+            />
+          </>
+        )}
+      </div>
+
+      {!isNew && hasChanges && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background md:left-16 lg:left-60">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
+              <span>Unsaved changes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
+              <Can permission="subscription.manage">
+                <Button type="button" size="sm" disabled={saving} onClick={() => void handleSave()}>
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </Can>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isNew && (
+        <DevDebugSheet
+          title="License Debug"
+          fabClassName={hasChanges ? 'bottom-20' : undefined}
+          data={rawResponse}
+        />
+      )}
+    </Layout>
+  );
+};
+
+export default LicensePurchaseForm;
