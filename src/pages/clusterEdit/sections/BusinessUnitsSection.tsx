@@ -3,17 +3,15 @@ import { RefreshCw, Pencil, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import Can from '../../../components/Can';
-import { CapacityMeter } from '../../clusterManagement/CapacityMeter';
 import { TableToolbar } from '../TableToolbar';
 import { cycleSort, sortRows, type SortState } from '../tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
-import type { BusinessUnit, ClusterUser } from '../../../types';
+import type { BusinessUnit } from '../../../types';
 
 export interface BusinessUnitsSectionProps {
   clusterId: string;
   businessUnits: BusinessUnit[];
-  clusterUsers: ClusterUser[];
   loading: boolean;
   maxLicenseBu: number | null;
   onRefresh: () => void;
@@ -28,7 +26,7 @@ const accessor = (bu: BusinessUnit, key: string): unknown => {
 };
 
 export function BusinessUnitsSection({
-  clusterId, businessUnits, clusterUsers, loading, maxLicenseBu, onRefresh, onNavigate,
+  clusterId, businessUnits, loading, maxLicenseBu, onRefresh, onNavigate,
 }: BusinessUnitsSectionProps) {
   const [search, setSearch] = useState('');
   const [activeOnly, setActiveOnly] = useState(false);
@@ -108,7 +106,6 @@ export function BusinessUnitsSection({
                     </button>
                   </th>
                 ))}
-                <th className="px-4 py-2 text-left font-medium">Users</th>
                 <th className="px-4 py-2 text-left font-medium">Status</th>
                 <th className="w-12 px-4 py-2" />
               </tr>
@@ -130,13 +127,6 @@ export function BusinessUnitsSection({
                         </Badge>
                       )}
                     </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    {/* No per-BU cap any more (Task 3.5) — the license limit belongs to the
-                        cluster as a whole, not to any one BU, so this is a plain uncapped
-                        count, matching CapacityMeter's own "0/null/absent = uncapped"
-                        convention. */}
-                    <CapacityMeter used={clusterUsers.filter((cu) => cu.parent_bu_id === bu.id).length} cap={null} />
                   </td>
                   <td className="px-4 py-2">
                     <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
