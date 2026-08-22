@@ -1343,3 +1343,13 @@ export interface BuQuotaLicenseRow extends ClusterLicense {
   cluster_code: string;
   cluster_name: string;
 }
+
+export interface SeatLicensesResponse {
+  data: SeatLicenseRow[];
+  paginate: { total: number; page: number; perpage: number; pages: number };
+}
+
+export interface BuQuotaLicensesResponse {
+  data: BuQuotaLicenseRow[];
+  paginate: { total: number; page: number; perpage: number; pages: number };
+}

@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { BusinessUnitLicense, PaginateParams } from '../types';
+import type { BusinessUnitLicense, PaginateParams, SeatLicensesResponse } from '../types';
 
 const BASE = (buId: string) => `/api-system/business-units/${buId}/licenses`;
 
@@ -21,7 +21,7 @@ const businessUnitLicenseService = {
   },
 
   // มุมมองรายใบทั้ง fleet (ไม่ผูก BU เดียว) — paginated ตัวเดียวกับ subscriptions/clusters
-  listPlatform: async (paginate: PaginateParams = {}) => {
+  listPlatform: async (paginate: PaginateParams = {}): Promise<SeatLicensesResponse> => {
     const response = await api.get(`${PLATFORM_BASE}?${buildQuery(paginate, defaultSearchFields)}`);
     return response.data;
   },
@@ -35,9 +35,10 @@ const businessUnitLicenseService = {
     return response.data;
   },
 
+  // license_number ระบบออกให้เอง (เหมือน subscription_number) — ไม่อยู่ใน create DTO ของ backend
   create: async (
     buId: string,
-    data: Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>,
+    data: Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version' | 'license_number'>,
   ) => {
     const response = await api.post(BASE(buId), data);
     return response.data;

@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { ClusterLicense, PaginateParams } from '../types';
+import type { ClusterLicense, PaginateParams, BuQuotaLicensesResponse } from '../types';
 
 const BASE = (clusterId: string) => `/api-system/clusters/${clusterId}/licenses`;
 
@@ -21,7 +21,7 @@ const clusterLicenseService = {
   },
 
   // มุมมองรายใบทั้ง fleet (ไม่ผูก cluster เดียว) — paginated ตัวเดียวกับ subscriptions/clusters
-  listPlatform: async (paginate: PaginateParams = {}) => {
+  listPlatform: async (paginate: PaginateParams = {}): Promise<BuQuotaLicensesResponse> => {
     const response = await api.get(`${PLATFORM_BASE}?${buildQuery(paginate, defaultSearchFields)}`);
     return response.data;
   },
@@ -35,9 +35,10 @@ const clusterLicenseService = {
     return response.data;
   },
 
+  // license_number ระบบออกให้เอง (เหมือน subscription_number) — ไม่อยู่ใน create DTO ของ backend
   create: async (
     clusterId: string,
-    data: Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version'>,
+    data: Omit<ClusterLicense, 'id' | 'cluster_id' | 'doc_version' | 'license_number'>,
   ) => {
     const response = await api.post(BASE(clusterId), data);
     return response.data;
