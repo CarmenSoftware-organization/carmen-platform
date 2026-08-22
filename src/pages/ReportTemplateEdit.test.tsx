@@ -113,9 +113,15 @@ describe('ReportTemplateEdit (integration)', () => {
     renderAt('/report-templates/rt1/edit');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'PR Summary' })).toBeInTheDocument();
+    // AuditMeta shows relative time on screen (locale/clock-dependent, so not asserted here);
+    // the absolute date lives in the `title` tooltip on the ancestor <span> — assert its
+    // *format* (YYYY-MM-DD HH:MM:SS), not an exact value, since `absolute()` renders in the
+    // test runner's local timezone and a hard-coded date would be flaky across machines.
     expect(screen.getByText(/Created/)).toBeInTheDocument();
-    expect(screen.getByText(/2026-01-05/)).toBeInTheDocument();
     expect(screen.getByText(/by Ada Lovelace/)).toBeInTheDocument();
+    const createdTitled = screen.getByText(/Created/).closest('[title]');
+    expect(createdTitled).not.toBeNull();
+    expect(createdTitled?.getAttribute('title')).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
     expect(screen.getByText(/Updated/)).toBeInTheDocument();
     expect(screen.getByText(/by Grace Hopper/)).toBeInTheDocument();
   });

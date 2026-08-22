@@ -25,6 +25,8 @@ import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import { summarizeFleet } from '../utils/capacity';
 import { isPerpetual } from '../utils/clusterLicense';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { FleetSummary } from '../types';
 import type { Cluster, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -147,12 +149,8 @@ const ClusterManagement: React.FC = () => {
         bu_cap: item.bu_cap ?? 0,
         bu_used: item.bu_used ?? item.bu_count ?? 0,
         total_max_license_users: item.total_max_license_users ?? undefined,
-        // Audit moved into a nested `audit` object; flatten for the date columns
-        // (tolerate the older flat shape too).
-        created_at: item.created_at ?? item.audit?.created?.at,
-        created_by_name: item.created_by_name ?? item.audit?.created?.name,
-        updated_at: item.updated_at ?? item.audit?.updated?.at,
-        updated_by_name: item.updated_by_name ?? item.audit?.updated?.name,
+        // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles
+        // both the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
         deleted_at: item.deleted_at ?? item.audit?.deleted?.at,
         deleted_by_name: item.deleted_by_name ?? item.audit?.deleted?.name,
       }));
@@ -316,7 +314,7 @@ const ClusterManagement: React.FC = () => {
     const rows = clusters.map((c) => {
       const d = c.bu_cap_end_date;
       const buCapEndDate = !d ? '' : isPerpetual(d) ? 'No expiry' : fmtDate(d);
-      return { ...c, bu_cap_end_date: buCapEndDate };
+      return { ...c, bu_cap_end_date: buCapEndDate, ...auditCsvFields(normalizeAudit(c)) };
     });
     const csv = generateCSV(rows, [
       { key: 'code', label: 'Code' },
@@ -327,7 +325,10 @@ const ClusterManagement: React.FC = () => {
       { key: 'bu_cap_end_date', label: 'Quota Expires' },
       { key: 'users_count', label: 'Users' },
       { key: 'total_max_license_users', label: 'Max Licensed Users' },
-      { key: 'created_at', label: 'Created' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `clusters-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -412,38 +413,7 @@ const ClusterManagement: React.FC = () => {
       ),
       enableSorting: false,
     },
-    {
-      accessorKey: 'created_at',
-      id: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => {
-        const d = row.original;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmt(d.created_at)}</div>
-            {d.created_by_name && <div>{d.created_by_name}</div>}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updated_at',
-      id: 'updated_at',
-      header: 'Updated',
-      meta: { card: 'hidden' },
-      cell: ({ row }) => {
-        const d = row.original;
-        if (d.updated_at === d.created_at) return null;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmt(d.updated_at)}</div>
-            {d.updated_by_name && <div>{d.updated_by_name}</div>}
-          </div>
-        );
-      },
-    },
+    ...auditColumns<Cluster>({ hideUpdatedOnCard: true }),
     ...(showDeleted ? [{
       id: 'deleted_at',
       header: 'Deleted',

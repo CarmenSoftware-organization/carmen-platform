@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -64,12 +65,10 @@ const ApplicationEdit: React.FC = () => {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogFailed, setCatalogFailed] = useState(false);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
-  const [applicationMeta, setApplicationMeta] = useState<{
-    created_at?: string;
-    created_by_name?: string;
-    updated_at?: string;
-    updated_by_name?: string;
-  }>({});
+  // Raw application record from the last successful fetch — kept separate from `formData`
+  // (the useUnsavedChanges diff target) so `normalizeAudit()` at the Hero call site has the
+  // full record (nested `audit.*` or flat `created_at`/`created_by_name`).
+  const [appRecord, setAppRecord] = useState<unknown>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [apiSearch, setApiSearch] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
@@ -143,12 +142,7 @@ const ApplicationEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(app));
-      setApplicationMeta({
-        created_at: app.created_at,
-        created_by_name: app.created_by_name,
-        updated_at: app.updated_at,
-        updated_by_name: app.updated_by_name,
-      });
+      setAppRecord(app);
     } catch (err: unknown) {
       // A bad/deleted id gates the whole shell (see the notFound branch below);
       // a transient failure keeps the retryable inline banner.
@@ -373,7 +367,7 @@ const ApplicationEdit: React.FC = () => {
               isActive={formData.is_active}
               allowAll={formData.allow_all}
               apiNames={formData.api_names}
-              meta={applicationMeta}
+              audit={normalizeAudit(appRecord)}
               actions={
                 !editing && (
                   <Can permission="application.update">

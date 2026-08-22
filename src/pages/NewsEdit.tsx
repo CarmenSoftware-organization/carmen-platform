@@ -18,13 +18,15 @@ import { NewsMasthead } from './newsEdit/NewsMasthead';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, parseApiError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
+import { AuditMeta } from '../components/AuditMeta';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { MarkdownEditor } from '../components/MarkdownEditor';
 import { BusinessUnitMultiSelect } from '../components/BusinessUnitMultiSelect';
 import { ImageUpload } from '../components/ImageUpload';
 import { ReadOnlyField } from '../components/ReadOnlyField';
-import type { Audit, NewsStatus } from '../types';
+import type { NewsStatus } from '../types';
 
 interface NewsFormData {
   title: string;
@@ -77,7 +79,10 @@ const NewsEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [rawResponse, setRawResponse] = useState<unknown>(null);
-  const [audit, setAudit] = useState<Audit | null>(null);
+  // Raw news record from the last successful fetch — kept separate from `formData` (the
+  // useUnsavedChanges diff target) so `normalizeAudit()` has the full record (nested
+  // `audit.*` or flat `created_at`/`created_by_name`) at the History card below.
+  const [newsRecord, setNewsRecord] = useState<unknown>(null);
   const [publishedAt, setPublishedAt] = useState<string | undefined>(undefined);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -141,7 +146,7 @@ const NewsEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(item));
-      setAudit(item.audit || null);
+      setNewsRecord(item);
       setPublishedAt(item.published_at || undefined);
     } catch (err: unknown) {
       setError('Failed to load news: ' + getErrorDetail(err));
@@ -268,6 +273,8 @@ const NewsEdit: React.FC = () => {
       </Layout>
     );
   }
+
+  const newsAudit = normalizeAudit(newsRecord);
 
   return (
     <Layout>
@@ -459,20 +466,13 @@ const NewsEdit: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {!isNew && audit && (
+              {!isNew && (newsAudit.created || newsAudit.updated) && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">History</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Created</div>
-                      <div>{fmt(audit.created?.at)}{audit.created?.name ? ` by ${audit.created.name}` : ''}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Last updated</div>
-                      <div>{fmt(audit.updated?.at)}{audit.updated?.name ? ` by ${audit.updated.name}` : ''}</div>
-                    </div>
+                  <CardContent className="text-sm">
+                    <AuditMeta variant="header" audit={newsAudit} className="text-muted-foreground text-xs" />
                   </CardContent>
                 </Card>
               )}

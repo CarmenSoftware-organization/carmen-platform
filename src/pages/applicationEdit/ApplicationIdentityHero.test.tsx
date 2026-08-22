@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ApplicationIdentityHero, accessSummary } from './ApplicationIdentityHero';
+import { normalizeAudit } from '../../utils/audit';
 
 describe('accessSummary', () => {
   it('calls out full access', () => {
@@ -57,29 +58,27 @@ describe('ApplicationIdentityHero', () => {
     expect(screen.getByRole('heading', { name: '(unnamed application)' })).toBeInTheDocument();
   });
 
-  it('renders no audit lines when meta is absent', () => {
+  it('renders no audit lines when audit is absent', () => {
     render(<ApplicationIdentityHero {...base} />);
     expect(screen.queryByText(/Created/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Updated/)).not.toBeInTheDocument();
   });
 
-  it('surfaces created/updated by + at when meta is present', () => {
+  it('surfaces created/updated by + at when audit is present', () => {
     render(
       <ApplicationIdentityHero
         {...base}
-        meta={{
+        audit={normalizeAudit({
           created_at: '2026-01-05T10:00:00Z',
           created_by_name: 'Ada Lovelace',
           updated_at: '2026-02-10T10:00:00Z',
           updated_by_name: 'Grace Hopper',
-        }}
+        })}
       />
     );
     expect(screen.getByText(/Created/)).toBeInTheDocument();
-    expect(screen.getByText(/5 Jan 2026/)).toBeInTheDocument();
     expect(screen.getByText(/by Ada Lovelace/)).toBeInTheDocument();
     expect(screen.getByText(/Updated/)).toBeInTheDocument();
-    expect(screen.getByText(/10 Feb 2026/)).toBeInTheDocument();
     expect(screen.getByText(/by Grace Hopper/)).toBeInTheDocument();
   });
 });

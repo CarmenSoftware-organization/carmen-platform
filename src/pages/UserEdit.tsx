@@ -22,6 +22,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
@@ -94,6 +95,10 @@ const UserEdit: React.FC = () => {
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  // Unwrapped user record from the last successful fetch — kept separate from `formData`
+  // (the useUnsavedChanges diff target) purely so `normalizeAudit()` gets the real record.
+  // `rawResponse` above can be the `{ data }` envelope, not the record itself.
+  const [userRecord, setUserRecord] = useState<unknown>(null);
   const [rawClusterBUsResponse, setRawClusterBUsResponse] = useState<unknown>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [businessUnits, setBusinessUnits] = useState<UserBusinessUnit[]>([]);
@@ -209,6 +214,7 @@ const UserEdit: React.FC = () => {
       setAvatarUrl(user.avatar_url || profile.avatar_url || "");
       setBusinessUnits(Array.isArray(user.business_units) ? user.business_units : []);
       setUserClusters(Array.isArray(user.clusters) ? user.clusters : []);
+      setUserRecord(user);
     } catch (err: unknown) {
       // Shared A4 not-found pattern (established on the ClusterEdit reference):
       // a bad/deleted id gates the whole shell; a transient failure keeps the
@@ -523,6 +529,7 @@ const UserEdit: React.FC = () => {
               isActive={formData.is_active}
               buCount={businessUnits.length}
               clusterCount={userClusters.length}
+              audit={normalizeAudit(userRecord)}
               actions={!editing && (
                 <div className="flex items-center gap-3">
                   <Can permission="user.update">

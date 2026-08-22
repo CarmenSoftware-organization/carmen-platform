@@ -20,6 +20,8 @@ import clusterService from '../../services/clusterService';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { parseApiError } from '../../utils/errorParser';
 import { rankBusinessUnits, countOverLimit } from '../../utils/businessUnitRank';
+import { auditColumns } from '../../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import type { BusinessUnit, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -30,13 +32,6 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
-};
-
-const fmt = (v?: string) => {
-  if (!v) return '-';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
 /**
@@ -196,11 +191,15 @@ const BusinessUnitList: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(items, [
+    const rows = items.map((bu) => ({ ...bu, ...auditCsvFields(normalizeAudit(bu)) }));
+    const csv = generateCSV(rows, [
       { key: 'name', label: 'Name' },
       { key: 'is_hq', label: 'HQ' },
       { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -248,16 +247,7 @@ const BusinessUnitList: React.FC = () => {
         </Badge>
       ),
     },
-    {
-      accessorKey: 'created_at',
-      id: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => (
-        <div className="text-[11px] leading-tight text-muted-foreground">
-          {fmt(row.original.created_at)}
-        </div>
-      ),
-    },
+    ...auditColumns<BusinessUnit>(),
   ], [clusterId, ranked, buCap]);
 
   return (

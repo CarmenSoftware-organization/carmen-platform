@@ -34,6 +34,8 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -54,9 +56,7 @@ interface UserRecord {
   middlename?: string;
   lastname?: string;
   created_at?: string;
-  created_by_name?: string;
   updated_at?: string;
-  updated_by_name?: string;
   deleted_at?: string;
   deleted_by_name?: string;
   business_unit?: UserBU[];
@@ -143,16 +143,14 @@ const UserManagement: React.FC = () => {
       const data = (await userService.getAll(params)) as unknown as Record<string, unknown>;
       setRawResponse(data);
       const items = (data.data || data) as UserRecord[];
-      // Audit moved into a nested `audit` object; flatten for the date columns
-      // (tolerate the older flat shape too).
+      // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles both
+      // the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
+      // `deleted_at`/`deleted_by_name` are still consumed directly by this page (Deleted
+      // badge + column), so those stay flattened.
       const mapped = (Array.isArray(items) ? items : []).map((item) => {
-        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string }; deleted?: { at?: string; name?: string } } }).audit;
+        const audit = (item as { audit?: { deleted?: { at?: string; name?: string } } }).audit;
         return {
           ...item,
-          created_at: item.created_at ?? audit?.created?.at,
-          created_by_name: item.created_by_name ?? audit?.created?.name,
-          updated_at: item.updated_at ?? audit?.updated?.at,
-          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
           deleted_at: item.deleted_at ?? audit?.deleted?.at,
           deleted_by_name: item.deleted_by_name ?? audit?.deleted?.name,
         };
@@ -397,11 +395,15 @@ const UserManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(users, [
+    const rows = users.map((u) => ({ ...u, ...auditCsvFields(normalizeAudit(u)) }));
+    const csv = generateCSV(rows, [
       { key: 'username', label: 'Username' },
       { key: 'email', label: 'Email' },
       { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `users-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -524,39 +526,10 @@ const UserManagement: React.FC = () => {
           </Badge>
         ),
       },
-      {
-        accessorKey: "created_at",
-        id: "created_at",
-        header: "Created",
-        meta: { headerClassName: "w-40" },
-        cell: ({ row }) => {
-          const d = row.original;
-          const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-          return (
-            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-              <div>{fmt(d.created_at)}</div>
-              {d.created_by_name && <div>{d.created_by_name}</div>}
-            </div>
-          );
-        },
-      },
-      {
-        accessorKey: "updated_at",
-        id: "updated_at",
-        header: "Updated",
-        meta: { headerClassName: "w-40" },
-        cell: ({ row }) => {
-          const d = row.original;
-          if (d.updated_at === d.created_at) return null;
-          const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-          return (
-            <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-              <div>{fmt(d.updated_at)}</div>
-              {d.updated_by_name && <div>{d.updated_by_name}</div>}
-            </div>
-          );
-        },
-      },
+      // auditColumns() ไม่ส่ง meta.headerClassName มา — คอลัมน์ Created/Updated เดิมของหน้านี้มี
+      // w-40 (ดู git show 8efd263) การ spread ตรง ๆ เลยทำความกว้างเปลี่ยน map ทับ meta แต่คง
+      // property อื่น (cell, accessorFn, header, id) ของแต่ละคอลัมน์ไว้ทั้งหมด
+      ...auditColumns<UserRecord>().map((c) => ({ ...c, meta: { ...c.meta, headerClassName: 'w-40' } })),
       ...(showDeleted ? [{
         id: 'deleted_at',
         header: 'Deleted By',

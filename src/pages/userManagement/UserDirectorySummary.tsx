@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import { normalizeAudit } from '../../utils/audit';
 import type { NewestUser, UserSummaryData } from '../../types';
 
 interface UserLike {
@@ -31,7 +32,7 @@ export interface FaceItem {
 export const FACE_LIMIT = 6;
 
 const deletedAt = (u: UserLike) => u.deleted_at ?? u.audit?.deleted?.at ?? null;
-const createdAt = (u: UserLike) => u.created_at ?? u.audit?.created?.at ?? '';
+const createdAt = (u: UserLike) => normalizeAudit(u).created?.at ?? '';
 
 /**
  * Build the display name from whatever the row carries.

@@ -8,6 +8,7 @@ import userRoleService from "../services/userRoleService";
 import roleService from "../services/roleService";
 import clusterService from "../services/clusterService";
 import { getErrorDetail, parseApiError } from "../utils/errorParser";
+import { normalizeAudit } from "../utils/audit";
 import { useUnsavedChanges } from "../hooks/useUnsavedChanges";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -32,6 +33,12 @@ const UserPlatformEdit: React.FC = () => {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  // Unwrapped user record from the last successful fetch — kept separate from the
+  // display-only userName/userEmail state (same reasoning as `doc_version`: this isn't
+  // something the user edits on this page, so it stays out of any diffed form state)
+  // purely so `normalizeAudit()` gets the real record instead of the `{ data }` envelope
+  // that `rawResponse` may hold.
+  const [userRecord, setUserRecord] = useState<unknown>(null);
 
   const [roleAssignments, setRoleAssignments] = useState<UserRoleAssignment[]>([]);
   const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
@@ -72,6 +79,7 @@ const UserPlatformEdit: React.FC = () => {
       const res = await userService.getById(userId);
       const user = res.data || res;
       setRawResponse(res);
+      setUserRecord(user);
       const info = user.user_info || {};
       const first = user.firstname || info.firstname || "";
       const last = user.lastname || info.lastname || "";
@@ -187,6 +195,7 @@ const UserPlatformEdit: React.FC = () => {
           backTo="/platform/user-platform"
           title={userName || "User"}
           subtitle={userEmail || "Manage roles and scope"}
+          audit={normalizeAudit(userRecord)}
         />
 
         {error && (

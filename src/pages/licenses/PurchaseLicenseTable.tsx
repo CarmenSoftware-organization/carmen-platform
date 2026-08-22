@@ -16,6 +16,8 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { devLog } from '../../utils/errorParser';
 import { fmtDate, isPerpetual } from './licenseDates';
+import { auditColumns } from '../../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
@@ -75,6 +77,14 @@ interface FleetLicenseRow {
   end_date: string;
   status: StatusFilterValue;
   reference_no: string;
+  /**
+   * มีค่าจริงเฉพาะใบโควตา BU (อ่านผ่าน `normalizeAudit` ไม่ใช่ `quota.created_at` ตรง ๆ — ดู
+   * คอมเมนต์ที่ `toFleetRow`) ใบที่นั่ง (`BusinessUnitLicense`) ไม่มีคอลัมน์นี้ในฝั่ง backend เลย
+   * จึงเป็น `null` เสมอ — ไม่ใช่บั๊ก
+   */
+  created_at?: string | null;
+  /** ชื่อคนสร้างใบ — มีค่าจริงเฉพาะใบโควตา BU เช่นเดียวกับ `created_at` */
+  created_by_name?: string;
 }
 
 function toFleetRow(
@@ -89,6 +99,10 @@ function toFleetRow(
   // สูตรสถานะสองชนิดไม่เท่ากัน (ดูคอมเมนต์ใน utils/buLicense.ts กับ utils/clusterLicense.ts) —
   // ห้ามคิดสูตรใหม่ที่นี่ เรียกของเดิมเท่านั้น เหมือนที่ LicensePurchaseForm.tsx ทำ
   const status = isSeat ? buLicenseStatus(seat, now) : clusterLicenseStatus(quota, now);
+  // ใบที่นั่ง (BusinessUnitLicense) ไม่มี audit ในฝั่ง backend เลย — ใบโควตา BU มีจริงเพราะ
+  // cluster-license.service.ts select มาให้แล้ว อ่านผ่าน normalizeAudit ไม่ใช่ quota.created_at
+  // ตรง ๆ (เดิมทำแบบนั้นและไม่ได้ชื่อคนสร้างมาด้วย) เพื่อรองรับทั้งรูปแบนและรูป nested เหมือนทุกจุดอื่น
+  const quotaAudit = isSeat ? {} : normalizeAudit(quota);
   return {
     id: row.id,
     license_number: row.license_number,
@@ -99,6 +113,8 @@ function toFleetRow(
     end_date: showNoExpiry && isPerpetual(row.end_date) ? 'No expiry' : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
+    created_at: quotaAudit.created?.at ?? null,
+    created_by_name: quotaAudit.created?.name,
   };
 }
 
@@ -257,7 +273,8 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     // export เฉพาะหน้าปัจจุบันที่โหลดมาแล้ว (`rows`) ไม่ยิงคำขอ perpage:-1 แยกต่างหาก —
     // แพทเทิร์นเดิมเคยทำแบบนั้นแล้วเลิกใช้ (ดู memory: List summary block เลิก perpage:-1)
     // และตรงกับ SubscriptionTable.tsx ที่ export `items` ของหน้าปัจจุบันเช่นกัน
-    const csv = generateCSV(rows, [
+    const csvRows = rows.map((r) => ({ ...r, ...auditCsvFields(normalizeAudit(r)) }));
+    const csv = generateCSV(csvRows, [
       { key: 'license_number', label: 'License Number' },
       { key: 'owner_code', label: `${config.ownerLabel} Code` },
       { key: 'owner_name', label: `${config.ownerLabel} Name` },
@@ -266,85 +283,99 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       { key: 'end_date', label: 'End Date' },
       { key: 'status', label: 'Status' },
       { key: 'reference_no', label: 'Reference No' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `${config.kind}-licenses-${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  const columns = useMemo<ColumnDef<FleetLicenseRow, unknown>[]>(() => [
-    {
-      accessorKey: 'license_number',
-      header: 'License Number',
-      meta: { card: 'title' },
-      cell: ({ row }) => (
-        <Link
-          to={`/licenses/${config.editPathSegment}/${row.original.id}/edit?ownerLabel=${
-            encodeURIComponent(`${row.original.owner_code} - ${row.original.owner_name}`)
-          }`}
-          className="text-primary hover:underline whitespace-nowrap"
-        >
-          {row.original.license_number}
-        </Link>
-      ),
-    },
-    {
-      id: 'owner',
-      header: config.ownerLabel,
-      // เจ้าของมาจาก join ผ่าน business_unit_id/cluster_id ไม่ใช่คอลัมน์ตรงบนตารางใบ — ไม่อยู่ใน
-      // รายการคอลัมน์ที่ design doc ยืนยันว่าเรียงได้ (license_number, start_date, end_date, จำนวน)
-      // ปิดการเรียงไว้ก่อนเพื่อความปลอดภัยแทนที่จะเดา
-      enableSorting: false,
-      meta: { card: 'title' },
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span>{row.original.owner_name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.owner_code}</span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: 'amount',
-      // id คือชื่อฟิลด์จริงบนสาย (`licensed_users`/`licensed_bus`) ไม่ใช่ `amount` ที่เป็นชื่อ
-      // ฟิลด์กลางในไฟล์นี้ — DataTable ส่ง id นี้ตรงไปเป็นค่า `sort` ให้ backend
-      id: config.amountField,
-      header: config.amountLabel,
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.amount}</span>,
-    },
-    {
-      id: 'coverage',
-      header: 'Coverage',
-      // ครอบคลุมสองคอลัมน์จริง (start_date, end_date) การเรียงคลิกเดียวไม่มีความหมายชัดเจนว่า
-      // เรียงด้วยฟิลด์ไหน จึงปิดไว้ — สองฟิลด์นั้นเรียงได้จริงถ้าจะเปิดคอลัมน์แยกในอนาคต
-      enableSorting: false,
-      cell: ({ row }) => (
-        <span className="text-xs whitespace-nowrap">
-          {row.original.start_date} – {row.original.end_date}
-        </span>
-      ),
-    },
-    {
-      id: 'status',
-      header: 'Status',
-      // คำนวณฝั่ง FE จากวันที่ ไม่ใช่คอลัมน์จริงบน backend (controller ruling R21) — เรียงไม่ได้
-      enableSorting: false,
-      // การ์ดมือถือ: เหมือน SubscriptionTable.tsx's `state` column — badge ไปโผล่ที่หัวการ์ดคู่กับ
-      // title แทนที่จะตกลงไปเป็นแถว "Status: [badge]" ใน <dl> เฉย ๆ — สองแท็บของหน้าเดียวกันต้อง
-      // เรนเดอร์การ์ดแบบเดียวกัน
-      meta: { card: 'badge' },
-      cell: ({ row }) => (
-        <Badge variant={STATUS_VARIANT[row.original.status]} className="capitalize">
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: 'reference_no',
-      header: 'Reference No',
-      // ค้นหาได้ (`license_number`/`reference_no` เป็นสอง searchfields เดียวที่ backend รับ)
-      // แต่ไม่อยู่ในรายการคอลัมน์ที่ยืนยันว่าเรียงได้
-      enableSorting: false,
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.reference_no}</span>,
-    },
-  ], [config]);
+  const columns = useMemo<ColumnDef<FleetLicenseRow, unknown>[]>(() => {
+    // FleetLicenseRow ไม่มี updated_at เลย และ toFleetRow() ก็ไม่มีทางเซ็ตให้ได้ เพราะ DTO
+    // ทั้งสองฝั่ง backend (BusinessUnitLicenseListRowDto, ClusterLicenseListRowDto) ไม่ส่ง
+    // updated_at มาเลยสักตัว — ต่างจาก created_at (ดูคอมเมนต์ที่ interface ด้านบน) ที่ใบโควตา
+    // BU มีข้อมูลจริง คอลัมน์ Updated ที่นี่จะว่างถาวรเพราะ mapping เป็นตัวกั้น ไม่ใช่รอ backend
+    // ส่งเพิ่มในอนาคตเหมือนตาราง licenses/ อื่น (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement
+    // และ broadcastColumns.tsx) จึงหยิบมาแค่คอลัมน์ Created ตัวเดียว
+    const [createdColumn] = auditColumns<FleetLicenseRow>();
+    return [
+      {
+        accessorKey: 'license_number',
+        header: 'License Number',
+        meta: { card: 'title' },
+        cell: ({ row }) => (
+          <Link
+            to={`/licenses/${config.editPathSegment}/${row.original.id}/edit?ownerLabel=${
+              encodeURIComponent(`${row.original.owner_code} - ${row.original.owner_name}`)
+            }`}
+            className="text-primary hover:underline whitespace-nowrap"
+          >
+            {row.original.license_number}
+          </Link>
+        ),
+      },
+      {
+        id: 'owner',
+        header: config.ownerLabel,
+        // เจ้าของมาจาก join ผ่าน business_unit_id/cluster_id ไม่ใช่คอลัมน์ตรงบนตารางใบ — ไม่อยู่ใน
+        // รายการคอลัมน์ที่ design doc ยืนยันว่าเรียงได้ (license_number, start_date, end_date, จำนวน)
+        // ปิดการเรียงไว้ก่อนเพื่อความปลอดภัยแทนที่จะเดา
+        enableSorting: false,
+        meta: { card: 'title' },
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span>{row.original.owner_name}</span>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.owner_code}</span>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'amount',
+        // id คือชื่อฟิลด์จริงบนสาย (`licensed_users`/`licensed_bus`) ไม่ใช่ `amount` ที่เป็นชื่อ
+        // ฟิลด์กลางในไฟล์นี้ — DataTable ส่ง id นี้ตรงไปเป็นค่า `sort` ให้ backend
+        id: config.amountField,
+        header: config.amountLabel,
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.amount}</span>,
+      },
+      {
+        id: 'coverage',
+        header: 'Coverage',
+        // ครอบคลุมสองคอลัมน์จริง (start_date, end_date) การเรียงคลิกเดียวไม่มีความหมายชัดเจนว่า
+        // เรียงด้วยฟิลด์ไหน จึงปิดไว้ — สองฟิลด์นั้นเรียงได้จริงถ้าจะเปิดคอลัมน์แยกในอนาคต
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="text-xs whitespace-nowrap">
+            {row.original.start_date} – {row.original.end_date}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        // คำนวณฝั่ง FE จากวันที่ ไม่ใช่คอลัมน์จริงบน backend (controller ruling R21) — เรียงไม่ได้
+        enableSorting: false,
+        // การ์ดมือถือ: เหมือน SubscriptionTable.tsx's `state` column — badge ไปโผล่ที่หัวการ์ดคู่กับ
+        // title แทนที่จะตกลงไปเป็นแถว "Status: [badge]" ใน <dl> เฉย ๆ — สองแท็บของหน้าเดียวกันต้อง
+        // เรนเดอร์การ์ดแบบเดียวกัน
+        meta: { card: 'badge' },
+        cell: ({ row }) => (
+          <Badge variant={STATUS_VARIANT[row.original.status]} className="capitalize">
+            {row.original.status}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: 'reference_no',
+        header: 'Reference No',
+        // ค้นหาได้ (`license_number`/`reference_no` เป็นสอง searchfields เดียวที่ backend รับ)
+        // แต่ไม่อยู่ในรายการคอลัมน์ที่ยืนยันว่าเรียงได้
+        enableSorting: false,
+        cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.reference_no}</span>,
+      },
+      createdColumn,
+    ];
+  }, [config]);
 
   return (
     <div className="space-y-3">

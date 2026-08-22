@@ -22,6 +22,8 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { ListEmptyState } from '../components/ListEmptyState';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -33,9 +35,7 @@ interface RoleRow {
   is_active?: boolean;
   permission_count?: number;
   created_at?: string;
-  created_by_name?: string;
   updated_at?: string;
-  updated_by_name?: string;
 }
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
@@ -45,13 +45,6 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
-};
-
-const fmtDateTime = (v?: string) => {
-  if (!v) return '-';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
 const RoleManagement: React.FC = () => {
@@ -103,18 +96,9 @@ const RoleManagement: React.FC = () => {
       const data = await roleService.getAll(params);
       setRawResponse(data);
       const raw = data.data || data;
-      // Timestamps may arrive nested under `audit`; flatten for the date columns
-      // (tolerate the older flat shape too).
-      const items: RoleRow[] = (Array.isArray(raw) ? raw : []).map((item: RoleRow & { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }) => {
-        const audit = item.audit;
-        return {
-          ...item,
-          created_at: item.created_at ?? audit?.created?.at,
-          created_by_name: item.created_by_name ?? audit?.created?.name,
-          updated_at: item.updated_at ?? audit?.updated?.at,
-          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
-        };
-      });
+      // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles both
+      // the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
+      const items: RoleRow[] = Array.isArray(raw) ? raw : [];
       setRoles(items);
       setTotalRows(data.paginate?.total ?? (Array.isArray(items) ? items.length : 0));
       // The band rides on this same response — no second request. `summary` is absent until
@@ -231,11 +215,16 @@ const RoleManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(roles, [
+    const rows = roles.map((r) => ({ ...r, ...auditCsvFields(normalizeAudit(r)) }));
+    const csv = generateCSV(rows, [
       { key: 'name', label: 'Name' },
       { key: 'description', label: 'Description' },
       { key: 'permission_count', label: 'Permissions' },
       { key: 'is_active', label: 'Active' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `roles-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -286,35 +275,7 @@ const RoleManagement: React.FC = () => {
         </Badge>
       ),
     },
-    {
-      accessorKey: 'created_at',
-      id: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => {
-        const d = row.original;
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmtDateTime(d.created_at)}</div>
-            {d.created_by_name && <div>{d.created_by_name}</div>}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updated_at',
-      id: 'updated_at',
-      header: 'Updated',
-      cell: ({ row }) => {
-        const d = row.original;
-        if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmtDateTime(d.updated_at)}</div>
-            {d.updated_by_name && <div>{d.updated_by_name}</div>}
-          </div>
-        );
-      },
-    },
+    ...auditColumns<RoleRow>(),
     {
       id: 'actions',
       header: '',

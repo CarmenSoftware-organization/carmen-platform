@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -89,6 +90,10 @@ const DatabasePoolEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  // Unwrapped pool record from the last successful fetch — kept separate from `formData`
+  // (the useUnsavedChanges diff target) purely so `normalizeAudit()` gets the real record.
+  // `rawResponse` above can be the `{ data }` envelope, not the record itself.
+  const [poolRecord, setPoolRecord] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [showPassword, setShowPassword] = useState(false);
@@ -146,6 +151,7 @@ const DatabasePoolEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(pool));
+      setPoolRecord(pool);
     } catch (err: unknown) {
       if (isNotFoundError(err)) {
         setNotFound(true);
@@ -342,6 +348,7 @@ const DatabasePoolEdit: React.FC = () => {
         <PageHeader
           title={isNew ? 'New Database Pool' : formData.name || 'Database Pool'}
           subtitle={isNew ? 'Create a shared database connection profile' : formData.host}
+          audit={normalizeAudit(poolRecord)}
           actions={
             !isNew && !editing && (
               <Can permission="database_pool.manage">

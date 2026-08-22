@@ -20,6 +20,8 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -196,13 +198,17 @@ const ReportTemplateManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(templates, [
+    const rows = templates.map((t) => ({ ...t, ...auditCsvFields(normalizeAudit(t)) }));
+    const csv = generateCSV(rows, [
       { key: 'name', label: 'Name' },
       { key: 'description', label: 'Description' },
       { key: 'report_group', label: 'Report Group' },
       { key: 'is_standard', label: 'Standard' },
       { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `report-templates-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');
@@ -270,35 +276,7 @@ const ReportTemplateManagement: React.FC = () => {
         </Badge>
       ),
     },
-    {
-      accessorKey: 'created_at',
-      id: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => {
-        const d = row.original;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground">
-            <div>{fmt(d.created_at)}</div>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updated_at',
-      id: 'updated_at',
-      header: 'Updated',
-      cell: ({ row }) => {
-        const d = row.original;
-        if (d.updated_at === d.created_at) return null;
-        const fmt = (v: string | undefined) => { if (!v) return '-'; const dt = new Date(v); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}:${String(dt.getSeconds()).padStart(2,'0')}`; };
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground">
-            <div>{fmt(d.updated_at)}</div>
-          </div>
-        );
-      },
-    },
+    ...auditColumns<ReportTemplate>(),
     {
       id: 'actions',
       header: '',

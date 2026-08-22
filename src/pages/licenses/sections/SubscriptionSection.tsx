@@ -6,10 +6,12 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
+import { AuditMeta } from '../../../components/AuditMeta';
 import subscriptionService from '../../../services/subscriptionService';
 import { buildAdvance } from '../subscriptionManagement/buildAdvance';
 import { isExpiringSoon } from '../../../utils/subscriptionState';
 import { getErrorDetail, devLog } from '../../../utils/errorParser';
+import { latestActor } from '../../../utils/audit';
 import { fmtDate } from '../licenseDates';
 import type { Subscription } from '../../../types';
 
@@ -119,6 +121,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
               <tbody>
                 {items.map((sub) => {
                   const soon = isExpiringSoon(sub.state, sub.end_date);
+                  const latest = latestActor(sub);
                   return (
                     <tr key={sub.id} className="border-b last:border-0">
                       <td className="px-2 py-1 font-mono whitespace-nowrap">{sub.subscription_number}</td>
@@ -134,11 +137,19 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                       </td>
                       <td className="px-2 py-1 whitespace-nowrap">{fmtDate(sub.start_date)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{fmtDate(sub.end_date)}</td>
-                      <td className="px-2 py-1 space-x-1 whitespace-nowrap">
-                        <Badge variant={sub.state === 'active' ? 'success' : 'secondary'} className="capitalize">
-                          {sub.state}
-                        </Badge>
-                        {soon && <Badge variant="warning">Expiring soon</Badge>}
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        <div className="space-x-1">
+                          <Badge variant={sub.state === 'active' ? 'success' : 'secondary'} className="capitalize">
+                            {sub.state}
+                          </Badge>
+                          {soon && <Badge variant="warning">Expiring soon</Badge>}
+                        </div>
+                        <AuditMeta
+                          variant="compact"
+                          verb={latest?.verb}
+                          actor={latest?.actor}
+                          className="text-muted-foreground text-[11px]"
+                        />
                       </td>
                       <td className="px-2 py-1 text-right whitespace-nowrap">
                         {canManage && (

@@ -2,14 +2,8 @@ import { Building2, Users } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { CapacityGauge } from './CapacityGauge';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const fmtDate = (v?: string) => {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-};
+import { AuditMeta } from '../../components/AuditMeta';
+import type { NormalizedAudit } from '../../utils/audit';
 
 interface CapacityInput {
   used: number;
@@ -24,20 +18,9 @@ interface ClusterHeroProps {
   isActive: boolean;
   logoUrl?: string;
   avatarUrl?: string;
-  meta: { created_at?: string; created_by_name?: string; updated_at?: string; updated_by_name?: string };
+  audit: NormalizedAudit;
   bu: CapacityInput;
   users: CapacityInput;
-}
-
-function auditLine(verb: string, at?: string, by?: string) {
-  const date = fmtDate(at);
-  if (!date) return null;
-  return (
-    <div>
-      <span className="text-muted-foreground font-medium">{verb}</span> {date}
-      {by ? ` by ${by}` : ''}
-    </div>
-  );
 }
 
 /**
@@ -47,7 +30,7 @@ function auditLine(verb: string, at?: string, by?: string) {
  * back button, the cluster name (the page's only `h1`) and the Edit toggle, per the
  * A4 anatomy. This card is the identity/capacity summary that sits under it.
  */
-export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, meta, bu, users }: ClusterHeroProps) {
+export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, audit, bu, users }: ClusterHeroProps) {
   const initials = code.slice(0, 4).toUpperCase();
   const buFree = bu.cap != null ? Math.max(0, bu.cap - bu.used) : null;
   const usersFree = users.cap != null ? Math.max(0, users.cap - users.used) : null;
@@ -80,8 +63,7 @@ export function ClusterHero({ name, code, alias, isActive, logoUrl, avatarUrl, m
           </div>
           <div className="text-muted-foreground mt-2 space-y-0.5 text-[11px] leading-tight">
             <div>Tenant group</div>
-            {auditLine('Created', meta.created_at, meta.created_by_name)}
-            {auditLine('Updated', meta.updated_at, meta.updated_by_name)}
+            <AuditMeta variant="header" audit={audit} className="text-muted-foreground text-[11px] leading-tight" />
           </div>
         </div>
       </div>

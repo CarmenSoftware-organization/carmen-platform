@@ -16,6 +16,7 @@ import { ListEmptyState } from '../../components/ListEmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import clusterService from '../../services/clusterService';
 import { parseApiError } from '../../utils/errorParser';
+import { auditColumns } from '../../components/auditColumns';
 import type { ClusterUser } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -114,6 +115,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
         </Badge>
       ),
     },
+    ...auditColumns<ClusterUser>(),
     {
       id: 'actions',
       header: '',

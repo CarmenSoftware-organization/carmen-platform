@@ -6,6 +6,7 @@ import applicationService from '../../services/applicationService';
 import newsService from '../../services/newsService';
 import reportTemplateService from '../../services/reportTemplateService';
 import type { ApiListResponse, Audit, PaginateParams } from '../../types';
+import { normalizeAudit } from '../../utils/audit';
 
 export type ActivityVerb = 'created' | 'updated' | 'published';
 
@@ -94,13 +95,14 @@ export function unwrapTotal(res: unknown): number {
 
 /** Best-available "when" for a record: updated, else created, flat or nested. */
 export function extractAt(r: RawRecord): string | undefined {
-  return r.updated_at ?? r.audit?.updated?.at ?? r.created_at ?? r.audit?.created?.at ?? undefined;
+  const a = normalizeAudit(r);
+  return a.updated?.at ?? a.created?.at ?? undefined;
 }
 function extractCreated(r: RawRecord): string | undefined {
-  return r.created_at ?? r.audit?.created?.at ?? undefined;
+  return normalizeAudit(r).created?.at ?? undefined;
 }
 function extractWho(r: RawRecord): string | undefined {
-  return r.updated_by_name ?? r.audit?.updated?.name ?? undefined;
+  return normalizeAudit(r).updated?.name;
 }
 
 /** created vs updated from timestamp equality; News in published status reads as published. */

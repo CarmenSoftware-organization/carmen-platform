@@ -1,4 +1,5 @@
 import type { BusinessUnit } from '../types';
+import { normalizeAudit } from './audit';
 
 /**
  * Rank business units within their cluster — must match the DB view `v_cluster_bu_quota`
@@ -31,15 +32,16 @@ import type { BusinessUnit } from '../types';
 // A comparator that only reads `bu.created_at` therefore silently loses its middle tie-break
 // tier on exactly the endpoint this file's callers use — the badge would then land on `id`
 // order instead of creation order for any two non-HQ business units, which is the ordinary
-// case in a cluster with more than one. Read both shapes; do not "simplify" this back to
-// `bu.created_at` alone.
+// case in a cluster with more than one. Read through `normalizeAudit()` — the app-wide single
+// point of truth for every shape the backend sends `created_at` in (flat, nested, or absent
+// once the gateway drops the flat field) — do not "simplify" this back to `bu.created_at` alone.
 // `GET /api-system/business-units` วิ่งผ่าน `@EnrichAuditUsers()` ของ gateway ซึ่ง**ลบ**
 // `created_at` แบบแบนออกจากทุกแถวแล้วซ้อนใหม่เป็น `audit.created.at` แทน comparator ที่อ่านแค่
 // `bu.created_at` จึงเสียชั้น tie-break กลางไปเงียบ ๆ บน endpoint เดียวกับที่ผู้เรียกไฟล์นี้ใช้อยู่จริง
 // แบดจ์จะไปเรียงตาม `id` แทนลำดับการสร้างสำหรับ BU ที่ไม่ใช่ HQ สองหน่วยใด ๆ ซึ่งเป็นกรณีปกติของ
-// คลัสเตอร์ที่มีมากกว่าหนึ่งหน่วย ต้องอ่านทั้งสองรูปแบบ ห้าม "ทำให้ง่ายขึ้น" กลับไปเป็น
-// `bu.created_at` เดี่ยว ๆ
-const createdAtOf = (bu: BusinessUnit): string | null | undefined => bu.created_at ?? bu.audit?.created?.at;
+// คลัสเตอร์ที่มีมากกว่าหนึ่งหน่วย อ่านผ่าน `normalizeAudit()` ซึ่งเป็นจุดเดียวที่รู้ทุกรูปแบบที่
+// backend ส่ง created_at มา ห้าม "ทำให้ง่ายขึ้น" กลับไปเป็น `bu.created_at` เดี่ยว ๆ
+const createdAtOf = (bu: BusinessUnit): string | undefined => normalizeAudit(bu).created?.at;
 
 export function rankBusinessUnits(businessUnits: BusinessUnit[]): Map<string, number> {
   const sorted = [...businessUnits].sort((a, b) => {

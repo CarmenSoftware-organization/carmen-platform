@@ -17,6 +17,8 @@ import { Save, Pencil, X, Loader2, ArrowLeft, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseApiError, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
+import { AuditMeta } from '../components/AuditMeta';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -314,7 +316,7 @@ const BroadcastEdit: React.FC = () => {
           <ArrowLeft className="h-4 w-4" />
           Broadcasts
         </Link>
-        
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{formData.title}</h1>
@@ -329,6 +331,7 @@ const BroadcastEdit: React.FC = () => {
             </Can>
           )}
         </div>
+        <AuditMeta variant="header" audit={normalizeAudit(rawResponse)} />
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -353,14 +356,6 @@ const BroadcastEdit: React.FC = () => {
                   <div>
                     <Label className="text-xs text-muted-foreground">Event</Label>
                     <div className="mt-1 text-sm font-medium">{rawResponse.event} <span className="text-muted-foreground font-normal">(System generated)</span></div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Created by</Label>
-                    <div className="mt-1 text-sm font-medium">{rawResponse.created_by?.name || '-'}</div>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Created at</Label>
-                    <div className="mt-1 text-sm font-medium">{formatDt(rawResponse.created_at)}</div>
                   </div>
                 </div>
               </CardContent>

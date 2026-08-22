@@ -15,6 +15,8 @@ import { ListEmptyState } from '../../components/ListEmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
+import { AuditMeta } from '../../components/AuditMeta';
+import { normalizeAudit } from '../../utils/audit';
 import type { ClusterInvitation } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -135,9 +137,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
       accessorKey: 'created_at',
       id: 'created_at',
       header: 'Invited',
-      cell: ({ row }) => (
-        <div className="text-[11px] leading-tight text-muted-foreground">{fmt(row.original.created_at)}</div>
-      ),
+      cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).created} />,
     },
     {
       id: 'actions',

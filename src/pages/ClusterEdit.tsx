@@ -16,6 +16,7 @@ import { EmptyState } from '../components/EmptyState';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useAuth } from '../context/AuthContext';
@@ -65,11 +66,12 @@ const ClusterEdit: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  // Raw cluster record from the last successful fetch — kept separate from `formData` (the
+  // useUnsavedChanges diff target) and separate from `clusterMeta` below, purely so
+  // `normalizeAudit()` has the full record (it reads both nested `audit.*` and flat
+  // `created_at`/`created_by_name` shapes) at the ClusterHero call site.
+  const [clusterRecord, setClusterRecord] = useState<unknown>(null);
   const [clusterMeta, setClusterMeta] = useState<{
-    created_at?: string;
-    created_by_name?: string;
-    updated_at?: string;
-    updated_by_name?: string;
     // Seat pool is the cluster's own aggregate (backend-computed from the license view) —
     // see the `userCap`/`userUsed` derivation below.
     users_count?: number;
@@ -154,11 +156,8 @@ const ClusterEdit: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(cluster));
+      setClusterRecord(cluster);
       setClusterMeta({
-        created_at: cluster.created_at ?? cluster.audit?.created?.at,
-        created_by_name: cluster.created_by_name ?? cluster.audit?.created?.name,
-        updated_at: cluster.updated_at ?? cluster.audit?.updated?.at,
-        updated_by_name: cluster.updated_by_name ?? cluster.audit?.updated?.name,
         users_count: cluster.users_count,
         total_max_license_users: cluster.total_max_license_users,
         bu_cap: cluster.bu_cap,
@@ -549,7 +548,7 @@ const ClusterEdit: React.FC = () => {
                     isActive={formData.is_active}
                     logoUrl={logoUrl}
                     avatarUrl={avatarUrl}
-                    meta={clusterMeta}
+                    audit={normalizeAudit(clusterRecord)}
                     bu={{ used: buUsed, cap: buCap, active: buActive }}
                     users={{ used: userUsed, cap: userCap, active: userActive }}
                   />

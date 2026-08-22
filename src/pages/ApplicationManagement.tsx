@@ -22,6 +22,8 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { auditColumns } from '../components/auditColumns';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { Application, PaginateParams } from '../types';
 import { DEVICE_OPTIONS } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -33,13 +35,6 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
-};
-
-const fmtDateTime = (v?: string) => {
-  if (!v) return '-';
-  const d = new Date(v);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 };
 
 const ApplicationManagement: React.FC = () => {
@@ -97,18 +92,9 @@ const ApplicationManagement: React.FC = () => {
       const data = await applicationService.getAll(params);
       setRawResponse(data);
       const raw = data.data || data;
-      // Timestamps arrive nested under `audit`; flatten for the date columns
-      // (tolerate the older flat shape too).
-      const items: Application[] = (Array.isArray(raw) ? raw : []).map((item) => {
-        const audit = (item as { audit?: { created?: { at?: string; name?: string }; updated?: { at?: string; name?: string } } }).audit;
-        return {
-          ...item,
-          created_at: item.created_at ?? audit?.created?.at,
-          created_by_name: item.created_by_name ?? audit?.created?.name,
-          updated_at: item.updated_at ?? audit?.updated?.at,
-          updated_by_name: item.updated_by_name ?? audit?.updated?.name,
-        };
-      });
+      // Created/Updated are read by `auditColumns` via `normalizeAudit`, which handles both
+      // the nested `audit.*` shape and the older flat shape itself — no pre-flatten here.
+      const items: Application[] = Array.isArray(raw) ? raw : [];
       setApplications(items);
       setTotalRows(data.paginate?.total ?? (data as { total?: number }).total ?? (Array.isArray(items) ? items.length : 0));
       // The band rides on this same response — no second request. `summary` is absent until
@@ -244,6 +230,7 @@ const ApplicationManagement: React.FC = () => {
         description: a.description ?? '',
         access: a.allow_all ? 'All APIs' : String(a.api_names?.length ?? 0) + ' APIs',
         is_active: a.is_active ? 'Active' : 'Inactive',
+        ...auditCsvFields(normalizeAudit(a)),
       })),
       [
         { key: 'name', label: 'Name' },
@@ -251,6 +238,10 @@ const ApplicationManagement: React.FC = () => {
         { key: 'description', label: 'Description' },
         { key: 'access', label: 'Access' },
         { key: 'is_active', label: 'Status' },
+        { key: 'created_at', label: 'Created at' },
+        { key: 'created_by', label: 'Created by' },
+        { key: 'updated_at', label: 'Updated at' },
+        { key: 'updated_by', label: 'Updated by' },
       ],
     );
     downloadCSV(csv, `applications-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -325,35 +316,7 @@ const ApplicationManagement: React.FC = () => {
         </Badge>
       ),
     },
-    {
-      accessorKey: 'created_at',
-      id: 'created_at',
-      header: 'Created',
-      cell: ({ row }) => {
-        const d = row.original;
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmtDateTime(d.created_at)}</div>
-            {d.created_by_name && <div>{d.created_by_name}</div>}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'updated_at',
-      id: 'updated_at',
-      header: 'Updated',
-      cell: ({ row }) => {
-        const d = row.original;
-        if (d.updated_at && d.updated_at === d.created_at) return <span className="text-[11px] text-muted-foreground">-</span>;
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{fmtDateTime(d.updated_at)}</div>
-            {d.updated_by_name && <div>{d.updated_by_name}</div>}
-          </div>
-        );
-      },
-    },
+    ...auditColumns<Application>(),
     {
       id: 'actions',
       header: '',

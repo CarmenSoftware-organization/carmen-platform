@@ -11,6 +11,8 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu';
 import { EmptyState } from '../../components/EmptyState';
+import { AuditMeta } from '../../components/AuditMeta';
+import { latestActor } from '../../utils/audit';
 import { Plus, Pencil, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
 
 export interface GroupCardProps {
@@ -74,6 +76,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
             {templates.map((t) => {
               const disableRadio = !canWrite || !t.is_active || busy;
               const lockDeactivate = t.is_default && t.is_active;
+              const latest = latestActor(t);
               return (
                 <div
                   key={t.id}
@@ -96,6 +99,12 @@ export const GroupCard: React.FC<GroupCardProps> = ({
 
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">{t.name}</div>
+                    <AuditMeta
+                      variant="compact"
+                      verb={latest?.verb}
+                      actor={latest?.actor}
+                      className="text-muted-foreground text-[11px]"
+                    />
                   </div>
 
                   <Badge variant={t.is_active ? 'success' : 'secondary'}>

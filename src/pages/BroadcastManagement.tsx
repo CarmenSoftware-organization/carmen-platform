@@ -18,6 +18,7 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { normalizeAudit, auditCsvFields } from '../utils/audit';
 
 import { BroadcastSummary } from './broadcastManagement/BroadcastSummary';
 import { BroadcastFilters } from './broadcastManagement/BroadcastFilters';
@@ -192,7 +193,8 @@ const BroadcastManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    const csv = generateCSV(items, [
+    const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
+    const csv = generateCSV(rows, [
       { key: 'title', label: 'Title' },
       { key: 'message', label: 'Message' },
       { key: 'scope', label: 'Scope' },
@@ -201,7 +203,10 @@ const BroadcastManagement: React.FC = () => {
       { key: 'status', label: 'Status' },
       { key: 'scheduled_at', label: 'Scheduled At' },
       { key: 'end_at', label: 'Expires At' },
-      { key: 'created_at', label: 'Created At' },
+      { key: 'created_at', label: 'Created at' },
+      { key: 'created_by', label: 'Created by' },
+      { key: 'updated_at', label: 'Updated at' },
+      { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `broadcasts-${new Date().toISOString().slice(0, 10)}.csv`);
     toast.success('Data exported successfully');

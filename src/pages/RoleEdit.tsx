@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
+import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import PermissionPicker from '../components/PermissionPicker';
@@ -54,6 +55,10 @@ const RoleEdit: React.FC = () => {
   const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+  // Unwrapped role record from the last successful fetch — kept separate from `formData`
+  // (the useUnsavedChanges diff target) purely so `normalizeAudit()` gets the real record.
+  // `rawResponse` above can be the `{ data }` envelope, not the record itself.
+  const [roleRecord, setRoleRecord] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
@@ -115,6 +120,7 @@ const RoleEdit: React.FC = () => {
       setSavedFormData(loaded);
       setDocVersion(getDocVersion(r));
       setOriginalPermissions(r.permissions ?? []);
+      setRoleRecord(r);
     } catch (err: unknown) {
       // A bad/deleted id gates the whole shell (see the notFound branch below); a
       // transient failure keeps the retryable inline banner.
@@ -391,6 +397,7 @@ const RoleEdit: React.FC = () => {
           isActive={formData.is_active}
           permissions={formData.permissions}
           catalogSize={catalog.length}
+          audit={normalizeAudit(roleRecord)}
           actions={
             !isNew && !editing && (
               <Can permission="platform_role.update">

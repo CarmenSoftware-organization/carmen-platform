@@ -1,6 +1,8 @@
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { AuditMeta } from '../../components/AuditMeta';
+import type { NormalizedAudit } from '../../utils/audit';
 
 interface UserIdentityHeroProps {
   name: string;
@@ -12,6 +14,7 @@ interface UserIdentityHeroProps {
   isActive: boolean;
   buCount: number;
   clusterCount: number;
+  audit?: NormalizedAudit;
   actions?: React.ReactNode;
 }
 
@@ -26,6 +29,7 @@ export function UserIdentityHero({
   isActive,
   buCount,
   clusterCount,
+  audit,
   actions,
 }: UserIdentityHeroProps) {
   const hasAccess = buCount > 0 || clusterCount > 0;
@@ -73,6 +77,7 @@ export function UserIdentityHero({
               'No access assigned yet'
             )}
           </div>
+          <AuditMeta variant="header" audit={audit ?? {}} className="text-muted-foreground mt-2 text-[11px] leading-tight" />
         </div>
 
         {actions && <div className="shrink-0">{actions}</div>}

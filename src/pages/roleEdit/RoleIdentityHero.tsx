@@ -1,6 +1,8 @@
 import { ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { AuditMeta } from '../../components/AuditMeta';
+import type { NormalizedAudit } from '../../utils/audit';
 
 const resourceOf = (key: string) => {
   const i = key.indexOf('.');
@@ -28,11 +30,12 @@ interface RoleIdentityHeroProps {
   isActive: boolean;
   permissions: string[];
   catalogSize: number;
+  audit?: NormalizedAudit;
   actions?: React.ReactNode;
 }
 
 /** Read-first identity header for a platform role: who it is + how much it can do. */
-export function RoleIdentityHero({ name, isActive, permissions, catalogSize, actions }: RoleIdentityHeroProps) {
+export function RoleIdentityHero({ name, isActive, permissions, catalogSize, audit, actions }: RoleIdentityHeroProps) {
   const reach = permissionSummary(permissions, catalogSize);
 
   return (
@@ -53,6 +56,7 @@ export function RoleIdentityHero({ name, isActive, permissions, catalogSize, act
             {reach.full && <AlertTriangle className="size-3.5 shrink-0" />}
             {reach.text}
           </div>
+          <AuditMeta variant="header" audit={audit ?? {}} className="text-muted-foreground mt-2 text-[11px] leading-tight" />
         </div>
 
         {actions && <div className="shrink-0">{actions}</div>}
