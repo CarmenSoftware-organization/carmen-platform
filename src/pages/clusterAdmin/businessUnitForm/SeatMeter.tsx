@@ -42,7 +42,11 @@ export function SeatMeter({ used, cap, licensesTo }: SeatMeterProps) {
         ? 'At capacity — deactivate a user before adding another'
         : seatsLeft === 0
           ? 'No seats open'
-          : `${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} open`;
+          : u.level === 'warn'
+            ? // 90% ขึ้นไปแต่ยังไม่เต็ม — เตือนล่วงหน้าเพื่อให้ซื้อที่นั่งเพิ่มทันก่อนจะเขียนอะไร
+              // ไม่ได้ทั้ง cluster ลิงก์ View licenses ด้านล่างขึ้นเองแล้วเพราะ pressured เป็นจริง
+              `Nearing capacity — ${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} left`
+            : `${seatsLeft} ${seatsLeft === 1 ? 'seat' : 'seats'} open`;
 
   return (
     <div className="sm:min-w-56">
