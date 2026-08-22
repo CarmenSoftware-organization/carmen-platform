@@ -32,10 +32,6 @@ import type {
 type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow;
 type StatusBadgeInfo = { variant: 'success' | 'secondary' | 'destructive'; label: string };
 
-// เส้นทางแก้ไขหลังสร้างสำเร็จ — ต่างจาก `config.listPath` (เหมือนกันทั้งสองชนิด คือ '/licenses')
-// map นี้เป็นตัวเดียวที่ผูก `kind` เข้ากับ segment ของ URL ('seats' vs 'bu-quota')
-const EDIT_PATH_SEGMENT: Record<LicenseKind, string> = { seat: 'seats', 'bu-quota': 'bu-quota' };
-
 const STATUS_BADGE: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo> = {
   active: { variant: 'success', label: 'Active' },
   scheduled: { variant: 'secondary', label: 'Scheduled' },
@@ -71,7 +67,11 @@ interface LicenseFieldsCardProps {
   fieldErrors: Record<string, string>;
   /** false เฉพาะตอนดูอย่างเดียว (ไม่มี `subscription.manage`) — โหมดสร้างเป็น true เสมอ (route คุมสิทธิ์ไว้แล้ว) */
   editing: boolean;
+  /** ป้ายที่โชว์เป็นหลัก — ชื่ออ่านง่ายถ้ามี ไม่งั้น fallback เป็น `ownerId` ดิบ */
   ownerText: string;
+  /** id ดิบ — โชว์เป็นบรรทัดเล็กใต้ป้ายเสมอที่ `ownerText` ไม่ใช่ id ดิบอยู่แล้ว เผื่อ query param
+   *  ที่พาเข้ามาผิด/เพี้ยน ยังเห็น id จริงเทียบกับที่ควรจะเป็นได้ (review Important #2) */
+  ownerId: string;
   /** undefined ตอนสร้าง — ระบบยังไม่ออกเลขให้ */
   licenseNumber?: string;
   isNew: boolean;
@@ -89,7 +89,7 @@ interface LicenseFieldsCardProps {
  * ในไฟล์เดียวกันเพราะ Task 6 สร้างแค่สองไฟล์ตามบรีฟ ไม่แยกไดเรกทอรีย่อยเพิ่ม)
  */
 function LicenseFieldsCard({
-  config, draft, noExpiry, fieldErrors, editing, ownerText, licenseNumber, isNew, statusBadge,
+  config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, licenseNumber, isNew, statusBadge,
   onChange, onBlur, onFocus, onNoExpiryChange,
 }: LicenseFieldsCardProps) {
   return (
@@ -107,6 +107,9 @@ function LicenseFieldsCard({
             <Label>{config.ownerLabel}</Label>
             {/* เจ้าของแก้ไม่ได้ทั้งสองโหมด — ข้อความอ่านอย่างเดียวเสมอ ไม่ใช่ input disabled */}
             <ReadOnlyField value={ownerText} />
+            {ownerText !== ownerId && (
+              <p className="text-muted-foreground text-xs font-mono">{ownerId}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -246,10 +249,14 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // โหมดสร้าง: เจ้าของมาจาก query param เท่านั้น (ไม่มี picker ในฟอร์มนี้) — ลิงก์ที่พาเข้ามาต้อง
   // รู้เจ้าของอยู่แล้วเสมอ (ปุ่ม Add license ใน SeatSection/BuQuotaSection ผูกกับ BU/cluster หนึ่งตัว)
   const prefilledOwner = searchParams.get(config.ownerParam) ?? '';
+  // `?ownerLabel=` เป็น query param เดียวกันทุก kind (ไม่ผ่าน config) — ผู้เรียกส่งชื่ออ่านง่ายมาด้วย
+  // เป็นทางเลือก ถ้าไม่ส่งมาฟอร์มยัง fallback ไปโชว์ ownerId ดิบได้ (ดู ownerText ด้านล่าง) ไม่ต้องยิง
+  // API เพิ่มมาแปลงจาก id เป็นชื่อ (review Important #2 — ทางเลือกที่ถูกที่สุด ไม่ผูก kind)
+  const prefilledOwnerLabel = searchParams.get('ownerLabel') ?? '';
   const ownerMissing = isNew && !prefilledOwner;
 
   const [ownerId, setOwnerId] = useState<string>(isNew ? prefilledOwner : '');
-  const [ownerLabel, setOwnerLabel] = useState('');
+  const [ownerLabel, setOwnerLabel] = useState(isNew ? prefilledOwnerLabel : '');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [detail, setDetail] = useState<LicenseRow | null>(null);
@@ -291,7 +298,12 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       setDocVersion(getDocVersion(data));
 
       const amount = Number((data as unknown as Record<string, unknown>)[config.amountField]);
-      const perpetual = isPerpetual(data.end_date);
+      // `config.showNoExpiry &&` เป็นส่วนบังคับ ไม่ใช่แค่กันเหนียว — ใบที่นั่ง (showNoExpiry: false)
+      // ไม่มีสวิตช์ "No expiry" ในฟอร์มเลย ถ้าคำนวณ perpetual จาก isPerpetual() เฉย ๆ โดยไม่เช็ค
+      // config ก่อน ใบที่นั่งที่บังเอิญมี end_date เป็น 2099 (เช่นจาก migration) จะเข้าโหมด perpetual
+      // ทั้งที่ไม่มีทางออกจากโหมดนั้นได้ (ไม่มีช่อง end_date ให้กรอกเลย) แล้วทุกครั้งที่ Save
+      // buildPayload() จะปักหมุด end_date กลับเป็น 2099 ซ้ำเงียบ ๆ (review Important #1)
+      const perpetual = config.showNoExpiry && isPerpetual(data.end_date);
       // ใบเดิมไม่มีวันหมดอายุ — ไม่ prefill end_date ด้วย 2099-12-31 เผื่อผู้ใช้ติ๊กออกจาก
       // "No expiry" แล้วเจอวันในอดีตโผล่มาเฉย ๆ (เหมือน BuQuotaSection.startEdit เดิม)
       const loaded: LicenseDraft = {
@@ -376,6 +388,14 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // Record<string, unknown> เพราะ config.service เป็น union ของสองสัญญา create/update ที่มี
   // ชื่อฟิลด์จำนวนต่างกัน TS ตรวจ union ของ overload ให้ไม่ผ่านแม้ payload จะถูกต้องจริงเสมอตาม
   // config.amountField ต้อง cast ตอนเรียกเพียงจุดเดียว (ดู handleCreateSubmit/handleSave)
+  //
+  // `|| null` (ไม่ใช่ `|| undefined`) สำหรับ reference_no/note ทั้งสอง kind — ตรวจกับ backend ที่ deploy
+  // จริงแล้ว (business-unit-license.service.ts / cluster-license.service.ts): ทั้งคู่เขียนด้วย
+  // `data.x ?? current.x` และ DTO ทั้งสองไม่มี class-validator decorator เลย ดังนั้น null กับ
+  // undefined ให้ผลเหมือนกันเป๊ะทั้งสอง kind — คอมเมนต์เดิมใน BuQuotaSection.tsx ที่ว่าใช้
+  // `|| undefined` เพราะ "ห้ามลอกสูตรข้ามชั้น" ล้าสมัยแล้ว (Task 8 เป็นคนลบไฟล์นั้น ไม่ใช่ที่นี่)
+  // ผลข้างเคียงที่ตรวจเจอไปด้วย (นอกขอบเขตงานนี้ แต่บันทึกไว้ให้เจ้าของระบบ): เพราะ `??` ปฏิบัติกับ
+  // null และ undefined เหมือนกัน ฟิลด์ reference_no/note จึง **ล้างค่าที่เคยตั้งไว้ไม่ได้เลย** ไม่ว่า kind ไหน
   const buildPayload = (): Record<string, unknown> => ({
     [config.amountField]: Number(draft.amount),
     start_date: toIsoStartOfDay(draft.start_date),
@@ -396,7 +416,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       const created = ((result as { data?: { id?: string } })?.data || result) as { id?: string } | undefined;
       toast.success('License created successfully');
       if (created?.id) {
-        navigate(`/licenses/${EDIT_PATH_SEGMENT[config.kind]}/${created.id}/edit`, { replace: true });
+        navigate(`/licenses/${config.editPathSegment}/${created.id}/edit`, { replace: true });
       } else {
         navigate(config.listPath);
       }
@@ -415,8 +435,10 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   const handleSave = async () => {
     if (!canEdit || isNew) return;
     if (!validateBeforeSubmit()) return;
-    if (docVersion == null) {
-      setError('Missing doc_version for this record — reload the page and try again.');
+    // ownerId ว่างไม่ควรเกิดได้ (load() เซ็ตจาก getByIdPlatform เสมอ) แต่ถ้าเกิดขึ้นจริงต้อง fail
+    // ให้เห็นชัดตรงนี้ ไม่ใช่ปล่อยให้ PATCH ไปที่ .../undefined/licenses/:id แล้วได้ 404 งง ๆ กลับมา
+    if (docVersion == null || !ownerId) {
+      setError('Missing doc_version or owner id for this record — reload the page and try again.');
       return;
     }
     setSaving(true);
@@ -555,6 +577,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 fieldErrors={fieldErrors}
                 editing={canEdit}
                 ownerText={ownerText}
+                ownerId={ownerId}
                 isNew
                 statusBadge={null}
                 onChange={handleChange}
@@ -595,6 +618,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               fieldErrors={fieldErrors}
               editing={canEdit}
               ownerText={ownerText}
+              ownerId={ownerId}
               licenseNumber={licenseNumber}
               isNew={false}
               statusBadge={statusBadge}

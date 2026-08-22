@@ -26,6 +26,10 @@ export interface LicenseKindConfig {
   showNote: boolean;
   /** เส้นทางกลับของ `PageHeader backTo` */
   listPath: string;
+  /** segment ของ route แก้ไข ('seats' | 'bu-quota') — ใช้ประกอบ path ตอน navigate หลังสร้างสำเร็จ
+   *  (`/licenses/${editPathSegment}/${id}/edit`) — เดิมเคยเป็น lookup table แยกอยู่ใน
+   *  LicensePurchaseForm.tsx ซึ่งเป็นความต่างตาม kind ที่ควรอยู่ในไฟล์นี้ตั้งแต่แรก */
+  editPathSegment: string;
   service: typeof businessUnitLicenseService | typeof clusterLicenseService;
 }
 
@@ -38,6 +42,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
   showNoExpiry: false,
   showNote: false,
   listPath: '/licenses',
+  editPathSegment: 'seats',
   service: businessUnitLicenseService,
 };
 
@@ -50,5 +55,6 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   showNoExpiry: true,
   showNote: true,
   listPath: '/licenses',
+  editPathSegment: 'bu-quota',
   service: clusterLicenseService,
 };
