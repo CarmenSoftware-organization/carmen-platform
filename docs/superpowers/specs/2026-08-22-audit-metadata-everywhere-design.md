@@ -251,7 +251,7 @@ memory ของโปรเจกต์บันทึกไว้หลาย�
 
 **อื่น (2):** `PlatformConfigManagement` · `broadcastManagement/broadcastColumns`
 
-### เฟส C — เติมหน้าที่ยังไม่มี (~15 ไฟล์)
+### เฟส C — เติมหน้าที่ยังไม่มี (17 ไฟล์)
 
 หน้ากลุ่ม licenses กับ EmailSetting จะยัง **ว่าง** เพราะ backend ยังไม่ส่ง — และว่างแบบเงียบ
 ตามนโยบายข้อ 5 ไม่พัง
@@ -263,7 +263,7 @@ memory ของโปรเจกต์บันทึกไว้หลาย�
 
 **Config (3):** `EmailSettingManagement` · `ReportFormGroupManagement` · `PermissionCatalog`
 
-**sub-list (3):** `userEdit/UserAccessTree` · `licenses/sections/{SeatSection,BuQuotaSection,SubscriptionSection}` · `reportFormGroups/GroupCard`
+**sub-list (5):** `userEdit/UserAccessTree` · `licenses/sections/{SeatSection,BuQuotaSection,SubscriptionSection}` · `reportFormGroups/GroupCard`
 
 > `PermissionCatalog` คาดว่าจะว่างถาวรเพราะ `tb_permission` เป็น seed data ที่ `created_by_id` เป็น null
 > ใส่ไว้เพื่อความสม่ำเสมอ ไม่ใช่เพื่อผลลัพธ์
