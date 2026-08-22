@@ -84,12 +84,22 @@ describe('ApplicationEdit (integration)', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'mobile-app' })).toBeInTheDocument();
     expect(screen.getByText('a1', { selector: 'span' })).toBeInTheDocument();
-    // The audit fields the backend returns are now read and surfaced via AuditMeta
-    // (relative time visible on screen; the absolute date lives in the `title` tooltip).
+    // The audit fields the backend returns are now read and surfaced via AuditMeta.
+    // The visible text is relative time (locale/clock-dependent, so not asserted here);
+    // the absolute date lives in the `title` tooltip on the ancestor <span> — assert its
+    // *format* (YYYY-MM-DD HH:MM:SS), not an exact value, since `absolute()` renders in the
+    // test runner's local timezone and a hard-coded date would be flaky across machines.
+    const ABSOLUTE_TITLE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
     expect(screen.getByText(/Created/)).toBeInTheDocument();
     expect(screen.getByText(/by Ada Lovelace/)).toBeInTheDocument();
+    const createdTitled = screen.getByText(/Created/).closest('[title]');
+    expect(createdTitled).not.toBeNull();
+    expect(createdTitled?.getAttribute('title')).toMatch(ABSOLUTE_TITLE);
     expect(screen.getByText(/Updated/)).toBeInTheDocument();
     expect(screen.getByText(/by Grace Hopper/)).toBeInTheDocument();
+    const updatedTitled = screen.getByText(/Updated/).closest('[title]');
+    expect(updatedTitled).not.toBeNull();
+    expect(updatedTitled?.getAttribute('title')).toMatch(ABSOLUTE_TITLE);
   });
 
   it('starts a new application in edit mode without calling getById, using PageHeader', async () => {
