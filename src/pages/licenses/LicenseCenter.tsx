@@ -97,7 +97,10 @@ const LicenseCenter: React.FC = () => {
         </div>
 
         {view === 'cluster' ? (
-          <ClusterLicenseTable expiringSoonFilter={expiringSoonFilter} />
+          <ClusterLicenseTable
+            expiringSoonFilter={expiringSoonFilter}
+            onExpiringSoonChange={setExpiringSoonFilter}
+          />
         ) : (
           <SubscriptionTable embedded />
         )}

@@ -3,11 +3,17 @@ import { Link } from 'react-router-dom';
 import clusterService from '../../services/clusterService';
 import { getErrorDetail, devLog } from '../../utils/errorParser';
 import { Badge } from '../../components/ui/badge';
-import { Card } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { DataTable } from '../../components/ui/data-table';
 import { EmptyState } from '../../components/EmptyState';
+import { SearchInput } from '../../components/SearchInput';
 import { TableSkeleton } from '../../components/TableSkeleton';
-import { KeyRound } from 'lucide-react';
+import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger,
+} from '../../components/ui/sheet';
+import { Filter, KeyRound, X } from 'lucide-react';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { CapacityMeter } from '../clusterManagement/CapacityMeter';
 import { isPerpetual, daysLeft, fmtDate, EXPIRING_SOON_DAYS } from './licenseDates';
 import type { Cluster, PaginateParams } from '../../types';
@@ -18,42 +24,91 @@ import type { ColumnDef } from '@tanstack/react-table';
 const PERPAGE_KEY = 'perpage_cluster_license';
 const PAGE_KEY = 'page_cluster_license';
 const SORT_KEY = 'sort_cluster_license';
+const SEARCH_KEY = 'search_cluster_license';
+const STATUS_KEY = 'filters_cluster_license_status';
+const LICENSE_KEY = 'filters_cluster_license_state';
 const DEFAULT_SORT = 'code:asc';
+
+/**
+ * ตัวกรองสถานะ license — ค่าแต่ละตัวคือ **คีย์พิเศษที่ backend รู้จัก** ไม่ใช่คอลัมน์จริง
+ * (`cluster.service.ts` ถอดคีย์ออกจาก where แล้วแปลงเป็น id list ผ่าน view เดียวกับที่หน้าจอแสดงผล
+ * ตัวกรองกับตัวเลขในตารางจึงมาจากนิยามเดียวกันเสมอ)
+ *
+ * **ส่งคีย์เหล่านี้ไปยัง backend ที่ยังไม่รู้จักมันไม่ได้** — มันจะกลายเป็นคอลัมน์ที่ไม่มีจริงแล้ว
+ * Prisma โยน error ทันที นี่คือเหตุผลที่ frontend ต้อง deploy ตามหลัง backend เสมอ
+ */
+const LICENSE_FILTERS = [
+  { key: 'bu_quota_missing', label: 'No licence' },
+  { key: 'bu_over_limit', label: 'Over BU limit' },
+  { key: 'seats_full', label: 'Seats full' },
+] as const;
+
+type LicenseFilterKey = (typeof LICENSE_FILTERS)[number]['key'];
+
+const getStoredJSON = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 export interface ClusterLicenseTableProps {
   /**
-   * true = กรองเฉพาะ cluster ที่ใบโควตา BU ที่ชนะใกล้หมดอายุ — มาจากการกดสถิติ "BU quota expiring"
-   * ในแถบสรุปของ `LicenseCenter` (เทียบ `handleExpiringSoonToggle` ของ ClusterManagement.tsx)
-   * ค่าเริ่มต้น `false` = พฤติกรรมเดิมทุกประการ
+   * true = กรองเฉพาะ cluster ที่ใบโควตา BU ที่ชนะใกล้หมดอายุ — เจ้าของ state คือ `LicenseCenter`
+   * เพราะสถิติ "BU quota expiring" ในแถบสรุปกดกรองได้ด้วย · ตัวกรองใน Sheet ของตารางนี้จึงเป็น
+   * controlled ไม่ใช่ state ของตัวเอง ไม่งั้นจะมีสองแหล่งความจริงที่เพี้ยนจากกันได้
    */
   expiringSoonFilter?: boolean;
+  /** ให้ Sheet ปรับตัวกรองเดียวกันได้โดยไม่ต้องถือ state ซ้ำ — ไม่ส่งมา = Sheet ไม่แสดงตัวเลือกนั้น */
+  onExpiringSoonChange?: (next: boolean) => void;
 }
 
-// สร้าง advance filter จากตัวกรอง "โควตาใกล้หมดอายุ" — `bu_quota_expiring_soon` ไม่ใช่คอลัมน์จริง
-// backend ถอดคีย์นี้ออกแล้วแปลงเป็น id list ผ่าน view `v_cluster_bu_cap` (กติกาเดียวกับ
-// ClusterManagement.tsx buildAdvance) frontend จึงไม่มีสำเนาของกติกาให้เพี้ยนได้เลย
-const buildAdvance = (expiringSoon: boolean) => {
+/**
+ * สร้าง `advance.where` — คีย์สถานะ license ทุกตัวไม่ใช่คอลัมน์จริง backend เป็นคนถอดออกและ
+ * แปลงเป็น id list เอง frontend จึงไม่มีสำเนาของกติกาให้เพี้ยนได้เลย · เปิดพร้อมกันหลายตัว = AND
+ */
+const buildAdvance = (
+  statuses: string[],
+  licenseKeys: LicenseFilterKey[],
+  expiringSoon: boolean,
+) => {
   const where: Record<string, unknown> = { deleted_at: null };
+  if (statuses.length === 1) where.is_active = statuses[0] === 'true';
+  for (const key of licenseKeys) where[key] = true;
   if (expiringSoon) where.bu_quota_expiring_soon = true;
   return JSON.stringify({ where });
 };
 
 /** ตารางสถานะ license รายคลัสเตอร์ — มุมมอง "By cluster" ของ License Center */
-const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonFilter = false }) => {
+const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
+  expiringSoonFilter = false,
+  onExpiringSoonChange,
+}) => {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const storedPage = Number(localStorage.getItem(PAGE_KEY)) || 1;
   const storedSort = localStorage.getItem(SORT_KEY) || DEFAULT_SORT;
+  const storedSearch = localStorage.getItem(SEARCH_KEY) || '';
+  const storedStatus = getStoredJSON<string[]>(STATUS_KEY, []);
+  const storedLicense = getStoredJSON<LicenseFilterKey[]>(LICENSE_KEY, []);
+
+  const [searchTerm, setSearchTerm] = useState(storedSearch);
+  const [statusFilter, setStatusFilter] = useState<string[]>(storedStatus);
+  const [licenseFilter, setLicenseFilter] = useState<LicenseFilterKey[]>(storedLicense);
 
   const [paginate, setPaginate] = useState<PaginateParams>({
     page: storedPage,
     perpage: Number(localStorage.getItem(PERPAGE_KEY)) || 10,
     sort: storedSort,
+    search: storedSearch,
     // เห็นเฉพาะคลัสเตอร์ที่ยังไม่ถูกลบ — ตรงกับค่าเริ่มต้นของหน้า /clusters (showDeleted=false)
-    advance: buildAdvance(expiringSoonFilter),
+    advance: buildAdvance(storedStatus, storedLicense, expiringSoonFilter),
   });
 
   // `expiringSoonFilter` เป็น prop จากหน้าแม่ ไม่ใช่ state ภายในตารางเอง — sync เข้า paginate.advance
@@ -67,7 +122,14 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonF
       return;
     }
     localStorage.setItem(PAGE_KEY, '1');
-    setPaginate((prev) => ({ ...prev, page: 1, advance: buildAdvance(expiringSoonFilter) }));
+    setPaginate((prev) => ({
+      ...prev,
+      page: 1,
+      advance: buildAdvance(statusFilter, licenseFilter, expiringSoonFilter),
+    }));
+    // ตัวกรองในเครื่อง (status/license) เรียก setPaginate เองตอนกดอยู่แล้ว — effect นี้มีไว้ตาม
+    // prop จากหน้าแม่เท่านั้น จึงไม่ใส่สองตัวนั้นใน deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expiringSoonFilter]);
 
   const fetchClusters = useCallback(async (params: PaginateParams) => {
@@ -98,6 +160,54 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonF
     fetchClusters(paginate);
   }, [fetchClusters, paginate]);
 
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    localStorage.setItem(SEARCH_KEY, value);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchTimeout.current = setTimeout(() => {
+      localStorage.setItem(PAGE_KEY, '1');
+      setPaginate((prev) => ({ ...prev, page: 1, search: value }));
+    }, 400);
+  };
+
+  const applyFilters = (statuses: string[], licenses: LicenseFilterKey[]) => {
+    localStorage.setItem(STATUS_KEY, JSON.stringify(statuses));
+    localStorage.setItem(LICENSE_KEY, JSON.stringify(licenses));
+    localStorage.setItem(PAGE_KEY, '1');
+    setPaginate((prev) => ({
+      ...prev,
+      page: 1,
+      advance: buildAdvance(statuses, licenses, expiringSoonFilter),
+    }));
+  };
+
+  const handleStatusFilter = (status: string) => {
+    const next = statusFilter.includes(status)
+      ? statusFilter.filter((s) => s !== status)
+      : [...statusFilter, status];
+    setStatusFilter(next);
+    applyFilters(next, licenseFilter);
+  };
+
+  const handleLicenseFilter = (key: LicenseFilterKey) => {
+    const next = licenseFilter.includes(key)
+      ? licenseFilter.filter((k) => k !== key)
+      : [...licenseFilter, key];
+    setLicenseFilter(next);
+    applyFilters(statusFilter, next);
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter([]);
+    setLicenseFilter([]);
+    applyFilters([], []);
+    onExpiringSoonChange?.(false);
+  };
+
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     localStorage.setItem(PERPAGE_KEY, String(perpage));
     localStorage.setItem(PAGE_KEY, String(page));
@@ -113,6 +223,9 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonF
     setPaginate(prev => ({ ...prev, sort: next, page: 1 }));
   };
 
+  const activeFilterCount =
+    statusFilter.length + licenseFilter.length + (expiringSoonFilter ? 1 : 0);
+
   const columns = useMemo<ColumnDef<Cluster, unknown>[]>(() => [
     {
       accessorKey: 'code',
@@ -124,10 +237,13 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonF
         </Link>
       ),
     },
-    { accessorKey: 'name', header: 'Name', meta: { card: 'title' }, enableSorting: false },
+    // เรียงได้เพราะเป็นคอลัมน์จริงของ tb_cluster — backend แปลง `sort` เป็น orderBy ของ Prisma ตรง ๆ
+    { accessorKey: 'name', header: 'Name', meta: { card: 'title' } },
     {
       id: 'bu_quota',
       header: 'BU quota',
+      // เรียงไม่ได้: `bu_cap`/`bu_used` มาจาก view ไม่ใช่คอลัมน์ของ tb_cluster — `orderBy` ของ Prisma
+      // จึงอ้างถึงไม่ได้ (ตัวกรองทำได้เพราะแปลงเป็น id list ก่อน แต่ `id: { in }` ไม่รักษาลำดับ)
       enableSorting: false,
       cell: ({ row }) => {
         const cap = row.original.bu_cap ?? 0;
@@ -171,7 +287,6 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonF
     {
       accessorKey: 'is_active',
       header: 'Status',
-      enableSorting: false,
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
           {row.original.is_active ? 'Active' : 'Inactive'}
@@ -182,38 +297,171 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({ expiringSoonF
 
   return (
     <Card>
-      {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
+      <CardHeader className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <SearchInput
+            ref={searchInputRef}
+            value={searchTerm}
+            onValueChange={handleSearchChange}
+            placeholder="Search clusters..."
+            className="flex-1 sm:max-w-sm"
+          />
+          <Sheet open={showFilters} onOpenChange={setShowFilters}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="shrink-0">
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+                <SheetDescription>Filter clusters by status and licence state</SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-6 px-1">
+                <div className="space-y-3">
+                  <span className="text-sm font-medium">Status</span>
+                  <div className="flex flex-wrap gap-1">
+                    {[['true', 'Active'], ['false', 'Inactive']].map(([value, label]) => (
+                      <Button
+                        key={value}
+                        variant={statusFilter.includes(value) ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleStatusFilter(value)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
 
-      {!error && (
-        loading && clusters.length === 0 ? (
-          // +1 เผื่อคอลัมน์ลำดับแถวที่ DataTable ใส่ให้เองเสมอ
-          <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
-        ) : clusters.length === 0 ? (
-          <EmptyState icon={KeyRound} title="No clusters" description="ยังไม่มีคลัสเตอร์ในระบบ" />
-        ) : (
-          <div className="relative">
-            {loading && (
-              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
-                   role="status" aria-label="Loading clusters">
-                <div className="text-muted-foreground">Loading...</div>
+                <div className="space-y-3">
+                  <span className="text-sm font-medium">Licence state</span>
+                  <div className="flex flex-wrap gap-1">
+                    {LICENSE_FILTERS.map(({ key, label }) => (
+                      <Button
+                        key={key}
+                        variant={licenseFilter.includes(key) ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleLicenseFilter(key)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                    {onExpiringSoonChange && (
+                      <Button
+                        variant={expiringSoonFilter ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => onExpiringSoonChange(!expiringSoonFilter)}
+                      >
+                        Quota expiring
+                      </Button>
+                    )}
+                  </div>
+                  {/* เปิดหลายตัวพร้อมกันได้ ผลคือ AND — บอกไว้เพราะ "ไม่มีใบ" กับ "เกินโควตา"
+                      ทับซ้อนกันโดยธรรมชาติ (cap 0 ทำให้ทุก BU เกินอันดับ) ผู้ใช้จึงอาจงงว่าทำไม
+                      เปิดสองอันแล้วผลไม่ใช่ผลรวม */}
+                  <p className="text-xs text-muted-foreground">
+                    Selecting more than one narrows the list — a cluster must match every choice.
+                  </p>
+                </div>
+
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleClearFilters}>
+                    <X className="mr-1 h-3 w-3" />
+                    Clear all filters
+                  </Button>
+                )}
               </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {statusFilter.map((s) => (
+              <Badge key={s} variant="secondary" className="gap-1">
+                {s === 'true' ? 'Active' : 'Inactive'}
+                <button type="button" onClick={() => handleStatusFilter(s)} aria-label={`Remove ${s === 'true' ? 'Active' : 'Inactive'} filter`}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {licenseFilter.map((key) => (
+              <Badge key={key} variant="secondary" className="gap-1">
+                {LICENSE_FILTERS.find((f) => f.key === key)?.label ?? key}
+                <button type="button" onClick={() => handleLicenseFilter(key)} aria-label={`Remove ${key} filter`}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {expiringSoonFilter && onExpiringSoonChange && (
+              <Badge variant="secondary" className="gap-1">
+                Quota expiring
+                <button type="button" onClick={() => onExpiringSoonChange(false)} aria-label="Remove quota expiring filter">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
             )}
-            <DataTable
-              columns={columns}
-              data={clusters}
-              serverSide
-              tableLayout="auto"
-              stickyLeftColumns={3}
-              totalRows={totalRows}
-              page={paginate.page}
-              perpage={paginate.perpage}
-              onPaginateChange={handlePaginateChange}
-              onSortChange={handleSortChange}
-              defaultSort={{ id: 'code', desc: false }}
-            />
           </div>
-        )
-      )}
+        )}
+      </CardHeader>
+
+      <CardContent>
+        {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>}
+
+        {!error && (
+          loading && clusters.length === 0 ? (
+            // +1 เผื่อคอลัมน์ลำดับแถวที่ DataTable ใส่ให้เองเสมอ
+            <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
+          ) : clusters.length === 0 ? (
+            <EmptyState
+              icon={KeyRound}
+              title="No clusters"
+              description={
+                searchTerm || activeFilterCount > 0
+                  ? 'No cluster matches the current search and filters.'
+                  : 'There are no clusters yet.'
+              }
+              action={
+                searchTerm || activeFilterCount > 0 ? (
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>Clear filters</Button>
+                ) : undefined
+              }
+            />
+          ) : (
+            <div className="relative">
+              {loading && (
+                <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
+                     role="status" aria-label="Loading clusters">
+                  <div className="text-muted-foreground">Loading...</div>
+                </div>
+              )}
+              <DataTable
+                columns={columns}
+                data={clusters}
+                serverSide
+                tableLayout="auto"
+                stickyLeftColumns={3}
+                totalRows={totalRows}
+                page={paginate.page}
+                perpage={paginate.perpage}
+                onPaginateChange={handlePaginateChange}
+                onSortChange={handleSortChange}
+                defaultSort={{ id: 'code', desc: false }}
+              />
+            </div>
+          )
+        )}
+      </CardContent>
     </Card>
   );
 };
