@@ -159,7 +159,18 @@ const ClusterEdit: React.FC = () => {
       setClusterRecord(cluster);
       setClusterMeta({
         users_count: cluster.users_count,
-        total_max_license_users: cluster.total_max_license_users,
+        // Backend contract drift, captured off the dev backend on 2026-08-23: the LIST endpoint
+        // (`GET /api-system/clusters`) returns this cap as `total_max_license_users`, but the
+        // DETAIL endpoint this page reads (`GET /api-system/clusters/:id`) returns the same
+        // number as `total_count_license_users` and omits the other key entirely. The field is
+        // optional and an absent cap reads as "uncapped", so the drift failed silently in two
+        // places at once: the hero rendered "∞ (no cap)" beside a subscription row reporting
+        // 8/15 seats, and `clusterAtLimit` further down could never be true — the Add User seat
+        // guard was dead. Every other reader of this cap (ClusterManagement, ClusterLicenseTable,
+        // BusinessUnitEdit) goes through the list endpoint, which is why only this page was hit.
+        // The list spelling is preferred, so aligning the backend detail response retires the
+        // fallback without touching this line. Pinned by ClusterEdit.test.tsx.
+        total_max_license_users: cluster.total_max_license_users ?? cluster.total_count_license_users,
         bu_cap: cluster.bu_cap,
         bu_used: cluster.bu_used,
       });
