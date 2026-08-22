@@ -1,7 +1,9 @@
 // จุดเดียวของแอปที่รู้ว่า backend ส่ง audit มาได้กี่รูปแบบ — หน้าเว็บทุกหน้าอ่านผ่านที่นี่
 // เท่านั้น เพราะ gateway ติด `@EnrichAuditUsers()` ไม่ครบทุก route: route ที่ติดแล้วจะคืน
-// `audit.created.at` ส่วนที่ยังไม่ติดจะคืนฟิลด์แบน `created_at` การอ่านได้ทั้งสองรูปแบบทำให้
-// deploy FE กับ BE สลับลำดับกันได้โดยหน้าไม่พัง
+// `audit.created.at` (nested), route ที่ยังไม่ติดจะคืนฟิลด์แบน `created_at` + `created_by_name`
+// (สตริง), และบาง endpoint (เช่น broadcasts) คืนฟิลด์แบนที่ตัวตนคนทำเป็น object
+// `created_by: { id, name }` แทนที่จะเป็นสตริง `created_by_name` — การอ่านได้ทั้งสามรูปแบบทำให้
+// deploy FE กับ BE สลับลำดับกันได้โดยหน้าไม่พัง และไม่ต้องเขียน adapter แยกรายหน้า
 
 export interface AuditActor {
   at?: string;      // ISO timestamp
@@ -42,12 +44,20 @@ function fromNested(entry: unknown): AuditActor | undefined {
   return actor.at || actor.name || actor.id ? actor : undefined;
 }
 
-/** อ่านรูปแบบแบน — `created_at` + `created_by_name` ที่ route ยังไม่ enrich คืนมา */
-function fromFlat(at: unknown, name: unknown): AuditActor | undefined {
+/** ดึงตัวตนคนทำจากฟิลด์ `*_by_name` (สตริง) หรือ `*_by` (object `{ id, name }`) */
+function actorIdentity(byName: unknown, byObject: unknown): { id?: string; name?: string } {
+  const n = str(byName);
+  if (n) return { name: n };
+  if (isRecord(byObject)) return { id: str(byObject.id), name: str(byObject.name) };
+  return {};
+}
+
+/** อ่านรูปแบน — `created_at` คู่กับ `created_by_name` (สตริง) หรือ `created_by` (object) */
+function fromFlat(at: unknown, byName: unknown, byObject?: unknown): AuditActor | undefined {
   const a = str(at);
-  const n = str(name);
-  if (!a && !n) return undefined;
-  return { at: a, name: n };
+  const { id, name } = actorIdentity(byName, byObject);
+  if (!a && !name && !id) return undefined;
+  return { at: a, id, name };
 }
 
 /**
@@ -64,11 +74,11 @@ export function normalizeAudit(record: unknown): NormalizedAudit {
   const nested = isRecord(record.audit) ? record.audit : undefined;
 
   const created =
-    fromNested(nested?.created) ?? fromFlat(record.created_at, record.created_by_name);
+    fromNested(nested?.created) ?? fromFlat(record.created_at, record.created_by_name, record.created_by);
   const updatedRaw =
-    fromNested(nested?.updated) ?? fromFlat(record.updated_at, record.updated_by_name);
+    fromNested(nested?.updated) ?? fromFlat(record.updated_at, record.updated_by_name, record.updated_by);
   const deleted =
-    fromNested(nested?.deleted) ?? fromFlat(record.deleted_at, record.deleted_by_name);
+    fromNested(nested?.deleted) ?? fromFlat(record.deleted_at, record.deleted_by_name, record.deleted_by);
 
   const everEdited = Boolean(updatedRaw && (updatedRaw.name || updatedRaw.at !== created?.at));
 

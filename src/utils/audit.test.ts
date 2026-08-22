@@ -94,6 +94,26 @@ describe('isUnknownActor', () => {
   });
 });
 
+describe('normalizeAudit — รูปแบบ actor เป็น object', () => {
+  it('อ่าน created_by ที่เป็น object { id, name }', () => {
+    const a = normalizeAudit({ created_at: CREATED_AT, created_by: { id: 'u1', name: 'สมชาย' } });
+    expect(a.created).toEqual({ at: CREATED_AT, id: 'u1', name: 'สมชาย' });
+  });
+
+  it('created_by_name แบบสตริงชนะ created_by แบบ object เมื่อมีทั้งคู่', () => {
+    const a = normalizeAudit({
+      created_at: CREATED_AT, created_by_name: 'จากสตริง', created_by: { id: 'u1', name: 'จาก object' },
+    });
+    expect(a.created?.name).toBe('จากสตริง');
+  });
+
+  it('เก็บ id ไว้แม้ object จะไม่มี name', () => {
+    const a = normalizeAudit({ created_at: CREATED_AT, created_by: { id: 'u1' } });
+    expect(a.created?.id).toBe('u1');
+    expect(a.created?.name).toBeUndefined();
+  });
+});
+
 describe('auditCsvFields', () => {
   it('คืน ISO เต็มไม่ใช่ relative และเติมสตริงว่างเมื่อไม่มีข้อมูล', () => {
     const a = normalizeAudit({ created_at: CREATED_AT, created_by_name: 'สมชาย' });
