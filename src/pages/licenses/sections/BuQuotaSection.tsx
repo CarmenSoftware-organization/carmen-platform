@@ -7,9 +7,11 @@ import { Button } from '../../../components/ui/button';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
+import { AuditMeta } from '../../../components/AuditMeta';
 import clusterLicenseService from '../../../services/clusterLicenseService';
 import { useLicenseLedger } from '../useLicenseLedger';
 import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon } from '../../../utils/clusterLicense';
+import { normalizeAudit } from '../../../utils/audit';
 import { fmtDate, daysLeft } from '../licenseDates';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import type { BusinessUnit, ClusterLicense, ClusterLicenseStatus } from '../../../types';
@@ -192,8 +194,13 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                           )}
                         </td>
                         <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
-                        <td className="px-2 py-1 text-xs text-muted-foreground max-w-[200px] truncate" title={l.note || undefined}>
-                          {l.note || '-'}
+                        <td className="px-2 py-1 text-xs text-muted-foreground max-w-[200px]">
+                          <div className="truncate" title={l.note || undefined}>{l.note || '-'}</div>
+                          <AuditMeta
+                            variant="compact"
+                            actor={normalizeAudit(l).updated ?? normalizeAudit(l).created}
+                            className="text-muted-foreground text-[11px]"
+                          />
                         </td>
                         {canManage && (
                           <td className="px-2 py-1 text-right whitespace-nowrap">

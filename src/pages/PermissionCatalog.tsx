@@ -9,6 +9,8 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
+import { AuditMeta } from '../components/AuditMeta';
+import { normalizeAudit } from '../utils/audit';
 import type { PermissionCatalogItem } from '../types';
 
 const PermissionCatalog: React.FC = () => {
@@ -104,6 +106,11 @@ const PermissionCatalog: React.FC = () => {
                             {p.description}
                           </span>
                         )}
+                        <AuditMeta
+                          variant="compact"
+                          actor={normalizeAudit(p).updated ?? normalizeAudit(p).created}
+                          className="text-muted-foreground pl-1 text-xs"
+                        />
                       </li>
                     ))}
                   </ul>

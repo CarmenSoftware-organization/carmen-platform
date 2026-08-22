@@ -7,10 +7,12 @@ import { Button } from '../../../components/ui/button';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
 import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
+import { AuditMeta } from '../../../components/AuditMeta';
 import businessUnitLicenseService from '../../../services/businessUnitLicenseService';
 import { useLicenseLedger } from '../useLicenseLedger';
 import { useClusterSeatLicenses, type SeatRow } from '../useClusterSeatLicenses';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon, isMigratedPlaceholder } from '../../../utils/buLicense';
+import { normalizeAudit } from '../../../utils/audit';
 import { isPerpetual, fmtDate, daysLeft } from '../licenseDates';
 import type { BusinessUnit, BusinessUnitLicense, BuLicenseStatus } from '../../../types';
 
@@ -218,7 +220,14 @@ function SeatRowCard({ row, canManage, onChanged }: {
                         {/* ป้าย [migrated] จาก isMigratedPlaceholder — คนละเรื่องกับ perpetual */}
                         {isMigratedPlaceholder(l) && <Badge variant="warning">End date required</Badge>}
                       </td>
-                      <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
+                      <td className="px-2 py-1 text-xs text-muted-foreground">
+                        <div>{l.reference_no || '-'}</div>
+                        <AuditMeta
+                          variant="compact"
+                          actor={normalizeAudit(l).updated ?? normalizeAudit(l).created}
+                          className="text-muted-foreground text-[11px]"
+                        />
+                      </td>
                       {canManage && (
                         <td className="px-2 py-1 text-right whitespace-nowrap">
                           <Button variant="ghost" size="sm" asChild>

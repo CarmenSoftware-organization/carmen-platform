@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import Can from '../../components/Can';
+import { AuditMeta } from '../../components/AuditMeta';
 import { HIT_SLOP_44 } from '../../lib/hitSlop';
 import { UNRESOLVED_CLUSTER_ID } from '../../utils/permissions';
+import { normalizeAudit } from '../../utils/audit';
 
 export interface AccessCluster {
   id: string;
@@ -92,6 +94,11 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
           <span className="text-sm font-medium">-</span>
         )}
         {unit?.code && <span className="text-muted-foreground ml-2 font-mono text-[11px]">{unit.code}</span>}
+        <AuditMeta
+          variant="compact"
+          actor={normalizeAudit(bu).updated ?? normalizeAudit(bu).created}
+          className="text-muted-foreground mt-0.5 block text-[11px]"
+        />
       </div>
       <Badge variant="outline" className="shrink-0 text-[11px] capitalize">{bu.role}</Badge>
       {bu.is_default && (

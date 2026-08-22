@@ -14,6 +14,8 @@ import emailSettingService from '../services/emailSettingService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
+import { AuditMeta } from '../components/AuditMeta';
+import { normalizeAudit } from '../utils/audit';
 import type { EmailSetting } from '../types';
 
 const EmailSettingManagement: React.FC = () => {
@@ -132,23 +134,32 @@ const EmailSettingManagement: React.FC = () => {
                 />
               )}
               {settings.map((setting) => (
-                <EmailSettingCard
-                  // Keying on doc_version remounts the card whenever the stored row
-                  // changes, which is exactly what the 409 path needs: the form resets
-                  // to the freshly-fetched values while the page keeps it in edit mode.
-                  key={`${setting.id}-${setting.doc_version ?? 'new'}`}
-                  profileKey={setting.id}
-                  label={setting.name}
-                  description={setting.note ?? 'โปรไฟล์ผู้ส่งอีเมล'}
-                  setting={setting}
-                  canManage={canManage}
-                  isEditing={editingPurpose === setting.id}
-                  shortcutsEnabled={pendingSwitch === null}
-                  callerIdentity={user?.email ?? ''}
-                  onRequestEdit={() => requestEdit(setting.id)}
-                  onCancelEdit={() => setEditingPurpose(null)}
-                  onSaved={(opts) => handleSaved(setting.id, opts)}
-                />
+                // Keying on doc_version remounts the card whenever the stored row
+                // changes, which is exactly what the 409 path needs: the form resets
+                // to the freshly-fetched values while the page keeps it in edit mode.
+                // Wrapped in a div (EmailSettingCard itself is a self-contained Card
+                // from a file outside this task's scope) so the compact audit line can
+                // sit just below the card without touching EmailSettingCard.tsx.
+                <div key={`${setting.id}-${setting.doc_version ?? 'new'}`} className="space-y-1.5">
+                  <EmailSettingCard
+                    profileKey={setting.id}
+                    label={setting.name}
+                    description={setting.note ?? 'โปรไฟล์ผู้ส่งอีเมล'}
+                    setting={setting}
+                    canManage={canManage}
+                    isEditing={editingPurpose === setting.id}
+                    shortcutsEnabled={pendingSwitch === null}
+                    callerIdentity={user?.email ?? ''}
+                    onRequestEdit={() => requestEdit(setting.id)}
+                    onCancelEdit={() => setEditingPurpose(null)}
+                    onSaved={(opts) => handleSaved(setting.id, opts)}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={normalizeAudit(setting).updated ?? normalizeAudit(setting).created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
               ))}
             </div>
           </div>
