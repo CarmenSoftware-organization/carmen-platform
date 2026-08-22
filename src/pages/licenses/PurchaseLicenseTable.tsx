@@ -77,6 +77,11 @@ interface FleetLicenseRow {
   end_date: string;
   status: StatusFilterValue;
   reference_no: string;
+  /**
+   * มีค่าจริงเฉพาะใบโควตา BU (`ClusterLicense.created_at` — backend select มาให้แล้ว) ใบที่นั่ง
+   * (`BusinessUnitLicense`) ไม่มีคอลัมน์นี้ในฝั่ง backend เลยจึงเป็น `null` เสมอ — ไม่ใช่บั๊ก
+   */
+  created_at?: string | null;
 }
 
 function toFleetRow(
@@ -101,6 +106,9 @@ function toFleetRow(
     end_date: showNoExpiry && isPerpetual(row.end_date) ? 'No expiry' : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
+    // ใบที่นั่ง (BusinessUnitLicense) ไม่มี created_at ในฝั่ง backend เลย — ใบโควตา BU
+    // (ClusterLicense.created_at) มีจริงเพราะ cluster-license.service.ts select มาให้แล้ว
+    created_at: isSeat ? null : (quota.created_at ?? null),
   };
 }
 
