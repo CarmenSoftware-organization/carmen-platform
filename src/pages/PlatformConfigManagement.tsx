@@ -5,6 +5,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Skeleton } from '../components/ui/skeleton';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import { AuditMeta } from '../components/AuditMeta';
 import { InvitationConfigCard } from './platformConfig/InvitationConfigCard';
 import { InvitationLimitsCard } from './platformConfig/InvitationLimitsCard';
 import { SignupConfigCard } from './platformConfig/SignupConfigCard';
@@ -15,6 +16,7 @@ import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
+import { normalizeAudit } from '../utils/audit';
 import type { PlatformConfig } from '../types';
 
 /** การ์ดหนึ่งใบในหน้านี้ — ไม่ใช่คีย์ของ config เพราะคีย์ `invitation` มีสองการ์ด */
@@ -74,6 +76,15 @@ const PlatformConfigManagement: React.FC = () => {
   const notificationEmail = configs.find((c) => c.key === 'notification_email') ?? null;
   const license = configs.find((c) => c.key === 'license') ?? null;
 
+  // ที่มาเดียวของ audit ต่อ config — การ์ดแต่ละใบไม่รู้จัก normalizeAudit เอง (อยู่นอกขอบเขต
+  // ของ task นี้) ตัว key เดิมของแต่ละการ์ดก็อ่านผ่านค่าเหล่านี้ด้วย แทนฟิลด์แบนตรง ๆ
+  const invitationAudit = normalizeAudit(invitation);
+  const signupAudit = normalizeAudit(signup);
+  const emailVerificationAudit = normalizeAudit(emailVerification);
+  const passwordResetAudit = normalizeAudit(passwordReset);
+  const notificationEmailAudit = normalizeAudit(notificationEmail);
+  const licenseAudit = normalizeAudit(license);
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -113,70 +124,105 @@ const PlatformConfigManagement: React.FC = () => {
                 Email links &amp; lifetimes
               </h2>
               <div className="grid gap-4 lg:grid-cols-2">
-                <InvitationConfigCard
-                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-                  key={`invitation-${invitation?.updated_at ?? 'default'}`}
-                  config={invitation}
-                  canManage={canManage}
-                  isEditing={editingCard === 'invitation'}
-                  onRequestEdit={() => setEditingCard('invitation')}
-                  onCancelEdit={() => setEditingCard(null)}
-                  onSaved={handleSaved}
-                />
-                <SignupConfigCard
-                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-                  key={`signup-${signup?.updated_at ?? 'default'}`}
-                  config={signup}
-                  canManage={canManage}
-                  isEditing={editingCard === 'signup'}
-                  onRequestEdit={() => setEditingCard('signup')}
-                  onCancelEdit={() => setEditingCard(null)}
-                  onSaved={handleSaved}
-                />
-                <LinkConfigCard
-                  key={`email_verification-${emailVerification?.updated_at ?? 'default'}`}
-                  configKey="email_verification"
-                  title="Email Verification"
-                  description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
-                  urlExample="https://inventory.carmen.io/verify-email"
-                  defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
-                  config={emailVerification}
-                  canManage={canManage}
-                  isEditing={editingCard === 'email_verification'}
-                  onRequestEdit={() => setEditingCard('email_verification')}
-                  onCancelEdit={() => setEditingCard(null)}
-                  onSaved={handleSaved}
-                />
-                <LinkConfigCard
-                  key={`password_reset-${passwordReset?.updated_at ?? 'default'}`}
-                  configKey="password_reset"
-                  title="Password Reset"
-                  description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
-                  urlExample="https://inventory.carmen.io/reset-password"
-                  defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
-                  config={passwordReset}
-                  canManage={canManage}
-                  isEditing={editingCard === 'password_reset'}
-                  onRequestEdit={() => setEditingCard('password_reset')}
-                  onCancelEdit={() => setEditingCard(null)}
-                  onSaved={handleSaved}
-                />
+                <div className="space-y-1">
+                  <InvitationConfigCard
+                    // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                    key={`invitation-${invitationAudit.updated?.at ?? invitationAudit.created?.at ?? 'default'}`}
+                    config={invitation}
+                    canManage={canManage}
+                    isEditing={editingCard === 'invitation'}
+                    onRequestEdit={() => setEditingCard('invitation')}
+                    onCancelEdit={() => setEditingCard(null)}
+                    onSaved={handleSaved}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={invitationAudit.updated ?? invitationAudit.created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <SignupConfigCard
+                    // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                    key={`signup-${signupAudit.updated?.at ?? signupAudit.created?.at ?? 'default'}`}
+                    config={signup}
+                    canManage={canManage}
+                    isEditing={editingCard === 'signup'}
+                    onRequestEdit={() => setEditingCard('signup')}
+                    onCancelEdit={() => setEditingCard(null)}
+                    onSaved={handleSaved}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={signupAudit.updated ?? signupAudit.created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <LinkConfigCard
+                    key={`email_verification-${emailVerificationAudit.updated?.at ?? emailVerificationAudit.created?.at ?? 'default'}`}
+                    configKey="email_verification"
+                    title="Email Verification"
+                    description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
+                    urlExample="https://inventory.carmen.io/verify-email"
+                    defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
+                    config={emailVerification}
+                    canManage={canManage}
+                    isEditing={editingCard === 'email_verification'}
+                    onRequestEdit={() => setEditingCard('email_verification')}
+                    onCancelEdit={() => setEditingCard(null)}
+                    onSaved={handleSaved}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={emailVerificationAudit.updated ?? emailVerificationAudit.created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <LinkConfigCard
+                    key={`password_reset-${passwordResetAudit.updated?.at ?? passwordResetAudit.created?.at ?? 'default'}`}
+                    configKey="password_reset"
+                    title="Password Reset"
+                    description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
+                    urlExample="https://inventory.carmen.io/reset-password"
+                    defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
+                    config={passwordReset}
+                    canManage={canManage}
+                    isEditing={editingCard === 'password_reset'}
+                    onRequestEdit={() => setEditingCard('password_reset')}
+                    onCancelEdit={() => setEditingCard(null)}
+                    onSaved={handleSaved}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={passwordResetAudit.updated ?? passwordResetAudit.created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground">Invitation limits</h2>
               <div className="grid gap-4 lg:grid-cols-2">
-                <InvitationLimitsCard
-                  // remount เมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-                  key={`invitation-limits-${invitation?.updated_at ?? 'default'}`}
-                  config={invitation}
-                  canManage={canManage}
-                  isEditing={editingCard === 'invitation_limits'}
-                  onRequestEdit={() => setEditingCard('invitation_limits')}
-                  onCancelEdit={() => setEditingCard(null)}
-                  onSaved={handleSaved}
-                />
+                <div className="space-y-1">
+                  <InvitationLimitsCard
+                    // remount เมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                    key={`invitation-limits-${invitationAudit.updated?.at ?? invitationAudit.created?.at ?? 'default'}`}
+                    config={invitation}
+                    canManage={canManage}
+                    isEditing={editingCard === 'invitation_limits'}
+                    onRequestEdit={() => setEditingCard('invitation_limits')}
+                    onCancelEdit={() => setEditingCard(null)}
+                    onSaved={handleSaved}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={invitationAudit.updated ?? invitationAudit.created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
               </div>
             </div>
 
@@ -184,7 +230,9 @@ const PlatformConfigManagement: React.FC = () => {
               <h2 className="text-sm font-semibold text-muted-foreground">Notifications</h2>
               <div className="grid gap-4 lg:grid-cols-2">
                 <NotificationEmailConfigCard
-                  key={`notification_email-${notificationEmail?.updated_at ?? 'default'}`}
+                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา —
+                  // การ์ดนี้วาด AuditMeta compact ของตัวเองอยู่แล้ว (Task 8) จึงไม่เติมซ้ำที่นี่
+                  key={`notification_email-${notificationEmailAudit.updated?.at ?? notificationEmailAudit.created?.at ?? 'default'}`}
                   config={notificationEmail}
                   canManage={canManage}
                   isEditing={editingCard === 'notification_email'}
@@ -198,15 +246,22 @@ const PlatformConfigManagement: React.FC = () => {
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground">Licensing</h2>
               <div className="grid gap-4 lg:grid-cols-2">
-                <LicenseEnforcementCard
-                  key={`license-${license?.updated_at ?? 'default'}`}
-                  config={license}
-                  canManage={canManageLicense}
-                  isEditing={editingCard === 'license'}
-                  onRequestEdit={() => setEditingCard('license')}
-                  onCancelEdit={() => setEditingCard(null)}
-                  onSaved={handleSaved}
-                />
+                <div className="space-y-1">
+                  <LicenseEnforcementCard
+                    key={`license-${licenseAudit.updated?.at ?? licenseAudit.created?.at ?? 'default'}`}
+                    config={license}
+                    canManage={canManageLicense}
+                    isEditing={editingCard === 'license'}
+                    onRequestEdit={() => setEditingCard('license')}
+                    onCancelEdit={() => setEditingCard(null)}
+                    onSaved={handleSaved}
+                  />
+                  <AuditMeta
+                    variant="compact"
+                    actor={licenseAudit.updated ?? licenseAudit.created}
+                    className="text-muted-foreground px-1 text-xs"
+                  />
+                </div>
               </div>
             </div>
           </div>

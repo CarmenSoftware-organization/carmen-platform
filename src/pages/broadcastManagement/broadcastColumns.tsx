@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../components/ui/dropdown-menu';
 import { MoreHorizontal, Pencil, Trash2, Clock } from 'lucide-react';
 import Can from '../../components/Can';
+import { auditColumns } from '../../components/auditColumns';
 
 interface BroadcastColumnsProps {
   showDeleted: boolean;
@@ -39,6 +40,11 @@ export const createBroadcastColumns = ({
   onDelete,
   onExpireNow,
 }: BroadcastColumnsProps): ColumnDef<BroadcastListItem, unknown>[] => {
+  // BroadcastListItem ไม่มี updated_at/updated_by เลย (src/types/index.ts:827) — สเปรดคู่เต็มของ
+  // auditColumns จะได้คอลัมน์ Updated ที่ว่างถาวร (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement)
+  // จึงหยิบมาแค่คอลัมน์ Created ตัวเดียว
+  const [createdColumn] = auditColumns<BroadcastListItem>();
+
   const columns: ColumnDef<BroadcastListItem, unknown>[] = [
     {
       accessorKey: 'title',
@@ -124,20 +130,12 @@ export const createBroadcastColumns = ({
         );
       },
     },
+    // เดิมเขียนเองอ่าน created_at/created_by ตรง ๆ — เปลี่ยนมาใช้ของกลาง (normalizeAudit รองรับ
+    // created_by แบบ object { id, name } ของ BroadcastListItem อยู่แล้วตั้งแต่ Task 6) คง
+    // headerClassName/cellClassName/card: 'hidden' ของเดิมไว้ — คอลัมน์นี้ไม่เคยแสดงบนการ์ดมือถือ
     {
-      id: 'created_by',
-      header: 'Created by',
-      meta: { headerClassName: 'w-32', cellClassName: 'w-32', card: 'hidden' },
-      enableSorting: false,
-      cell: ({ row }) => {
-        const d = row.original;
-        return (
-          <div className="text-[11px] leading-tight text-muted-foreground space-y-0.5">
-            <div>{formatDt(d.created_at)}</div>
-            {d.created_by?.name && <div>{d.created_by.name}</div>}
-          </div>
-        );
-      },
+      ...createdColumn,
+      meta: { ...createdColumn.meta, headerClassName: 'w-32', cellClassName: 'w-32', card: 'hidden' },
     },
   ];
 
