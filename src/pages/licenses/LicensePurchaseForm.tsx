@@ -427,19 +427,19 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // ชื่อฟิลด์จำนวนต่างกัน TS ตรวจ union ของ overload ให้ไม่ผ่านแม้ payload จะถูกต้องจริงเสมอตาม
   // config.amountField ต้อง cast ตอนเรียกเพียงจุดเดียว (ดู handleCreateSubmit/handleSave)
   //
-  // `|| null` (ไม่ใช่ `|| undefined`) สำหรับ reference_no/note ทั้งสอง kind — ตรวจกับ backend ที่ deploy
-  // จริงแล้ว (business-unit-license.service.ts / cluster-license.service.ts): ทั้งคู่เขียนด้วย
-  // `data.x ?? current.x` และ DTO ทั้งสองไม่มี class-validator decorator เลย ดังนั้น null กับ
-  // undefined ให้ผลเหมือนกันเป๊ะทั้งสอง kind — คอมเมนต์เดิมใน BuQuotaSection.tsx ที่ว่าใช้
-  // `|| undefined` เพราะ "ห้ามลอกสูตรข้ามชั้น" ล้าสมัยแล้ว (Task 8 เป็นคนลบไฟล์นั้น ไม่ใช่ที่นี่)
-  // ผลข้างเคียงที่ตรวจเจอไปด้วย (นอกขอบเขตงานนี้ แต่บันทึกไว้ให้เจ้าของระบบ): เพราะ `??` ปฏิบัติกับ
-  // null และ undefined เหมือนกัน ฟิลด์ reference_no/note จึง **ล้างค่าที่เคยตั้งไว้ไม่ได้เลย** ไม่ว่า kind ไหน
+  // ส่ง reference_no/note เป็น string ดิบตรง ๆ (ไม่ coerce เป็น `|| null`) ทั้งสอง kind — ตรวจกับ
+  // backend ที่ deploy จริงแล้ว (business-unit-license.service.ts:289-290 / cluster-license.service.ts:315-316):
+  // ทั้งคู่ merge ด้วย `data.x ?? current.x` ซึ่ง `??` มองแค่ null/undefined ว่า nullish — `''`
+  // (empty string) ไม่ใช่ nullish เลยไหลผ่านไปเขียนคอลัมน์จริง ส่วน `null`/`undefined` จะถูก `??`
+  // "กลืน" กลับไปเป็นค่าเดิมของ current เงียบ ๆ ก่อนหน้านี้คอมเมนต์ตรงนี้เขียนว่า `null` กับ
+  // `undefined` "ให้ผลเหมือนกันเป๊ะ" ซึ่งถูก — แต่สรุปผิดว่านั่นแปลว่าล้างค่าไม่ได้เลย (ลืมเช็ค `''`
+  // เทียบกับ `??`) จริง ๆ แล้วแค่เลิกส่ง `null` แล้วส่ง `''` ตรง ๆ ก็ล้างค่าได้ปกติ — ไม่ต้องแก้ backend
   const buildPayload = (): Record<string, unknown> => ({
     [config.amountField]: Number(draft.amount),
     start_date: toIsoStartOfDay(draft.start_date),
     end_date: noExpiry ? PERPETUAL_END_DATE : toIsoEndOfDay(draft.end_date),
-    reference_no: draft.reference_no || null,
-    ...(config.showNote ? { note: draft.note || null } : {}),
+    reference_no: draft.reference_no,
+    ...(config.showNote ? { note: draft.note } : {}),
   });
 
   const handleCreateSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -569,7 +569,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo={config.listPath} title={`Add ${config.amountLabel} License`} />
+          <PageHeader backTo={config.listPath} title={config.newPageTitle} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
@@ -601,7 +601,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
           <>
             <PageHeader
               backTo={config.listPath}
-              title={`Add ${config.amountLabel} License`}
+              title={config.newPageTitle}
               subtitle={`Issue a new license for this ${config.ownerLabel.toLowerCase()}`}
             />
             {error && (

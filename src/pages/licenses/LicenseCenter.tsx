@@ -17,7 +17,7 @@ const VIEWS: LicenseView[] = ['cluster', 'subscription', 'seat', 'bu-quota'];
 const VIEW_OPTIONS: { value: LicenseView; label: string }[] = [
   { value: 'cluster', label: 'By cluster' },
   { value: 'subscription', label: 'By subscription' },
-  { value: 'seat', label: 'By seat licence' },
+  { value: 'seat', label: 'By seat license' },
   { value: 'bu-quota', label: 'By BU quota' },
 ];
 
@@ -34,7 +34,7 @@ const readStoredView = (): LicenseView => {
 /**
  * หน้าแรกของ License Center (`/licenses`) — แถบสรุป fleet capacity ด้านบน + สี่มุมมองสลับกันได้
  * ("By cluster" ตารางสถานะ license รายคลัสเตอร์ · "By subscription" ตารางใบสัญญาเดิมจาก Task 4 ·
- * "By seat licence"/"By BU quota" ตารางรายใบทั้ง fleet จาก Task 7)
+ * "By seat license"/"By BU quota" ตารางรายใบทั้ง fleet จาก Task 7)
  */
 const LicenseCenter: React.FC = () => {
   const [view, setView] = useState<LicenseView>(readStoredView);
@@ -85,7 +85,7 @@ const LicenseCenter: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Licenses"
-          subtitle="Fleet-wide license status by cluster, subscription, seat licence, or BU quota."
+          subtitle="Fleet-wide license status by cluster, subscription, seat license, or BU quota."
         />
 
         {/* expiring_soon นับเฉพาะใบโควตา BU ไม่รวมใบที่นั่งและใบสัญญา (src/types/index.ts) —

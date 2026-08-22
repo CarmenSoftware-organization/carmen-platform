@@ -65,9 +65,15 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
   const expired = licenses.filter((l) => licenseStatus(l, now) === 'expired');
   const visible = showExpired ? licenses : licenses.filter((l) => licenseStatus(l, now) !== 'expired');
 
-  const addHref = `/licenses/bu-quota/new?cluster=${clusterId}&ownerLabel=${
-    encodeURIComponent(`${clusterCode} - ${clusterName}`)
-  }`;
+  // ต่อ `&ownerLabel=` เฉพาะตอนมีทั้งสองส่วนจริง — ตอน cluster ยังโหลดไม่เสร็จ ClusterLicenseDetail
+  // ส่ง clusterCode/clusterName มาเป็น `''` ทั้งคู่ (`cluster?.code ?? ''`) ถ้ายัง encode ต่อท้ายอยู่ดี
+  // จะได้ ownerLabel เป็น `" - "` ซึ่ง **truthy** แล้วไปบัง fallback ที่ฟอร์มปลายทางตั้งใจไว้
+  // (`ownerText = ownerLabel || ownerId`) ผู้ใช้จะเห็น " - " แทนที่จะเห็น cluster id ดิบที่ยังอ่านได้
+  const addHref = clusterCode && clusterName
+    ? `/licenses/bu-quota/new?cluster=${clusterId}&ownerLabel=${
+        encodeURIComponent(`${clusterCode} - ${clusterName}`)
+      }`
+    : `/licenses/bu-quota/new?cluster=${clusterId}`;
 
   // จัดอันดับต้องตรงกับ DB view เป๊ะ (utils/businessUnitRank.ts) — ranked over the FULL list,
   // never a filtered subset, so the badge lands on the same BU the backend would 403.
@@ -96,7 +102,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                 ? `Quota: ${winning.licensed_bus} business units${
                     isPerpetual(winning.end_date) ? ' · no expiry' : ` · expires ${fmtDate(winning.end_date)}`
                   }`
-                : 'No licence in force — this cluster cannot create business units'}
+                : 'No license in force — this cluster cannot create business units'}
             </CardDescription>
             {loadFailed && (
               <p className="text-xs text-destructive">
@@ -119,7 +125,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
             <Button asChild size="sm">
               <Link to={addHref}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add BU quota licence
+                Add BU quota license
               </Link>
             </Button>
           )}
@@ -141,14 +147,14 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
           ) : licenses.length === 0 ? (
             <EmptyState
               icon={Ticket}
-              title="No licences yet"
-              description="The platform team has not issued a BU quota licence for this cluster."
+              title="No licenses yet"
+              description="The platform team has not issued a BU quota license for this cluster."
               action={
                 canManage ? (
                   <Button asChild size="sm">
                     <Link to={addHref}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add BU quota licence
+                      Add BU quota license
                     </Link>
                   </Button>
                 ) : undefined
@@ -224,7 +230,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
             open={!!removeTarget}
             onOpenChange={(o) => !o && setRemoveTarget(null)}
             title="Remove license"
-            description={`Remove the ${removeTarget?.licensed_bus}-BU license. If it is still in force, this cluster immediately loses the ability to create new business units until another licence takes over.`}
+            description={`Remove the ${removeTarget?.licensed_bus}-BU license. If it is still in force, this cluster immediately loses the ability to create new business units until another license takes over.`}
             confirmVariant="destructive"
             onConfirm={async () => {
               if (removeTarget) await remove(removeTarget.id);
@@ -242,7 +248,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
           </CardTitle>
           <CardDescription>
             {loadFailed
-              ? 'Quota unknown — the licence data above failed to load, so Over-limit status cannot be determined right now.'
+              ? 'Quota unknown — the license data above failed to load, so Over-limit status cannot be determined right now.'
               : overCount > 0
               ? `${overCount} business unit${overCount === 1 ? '' : 's'} rank beyond the licensed quota of ${cap}. They are read-only until more quota is purchased.`
               : 'Ranked the same way the platform decides which units are covered — HQ first, then oldest.'}

@@ -200,7 +200,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       setRows([]);
       setTotalRows(0);
       setLoadFailed(true);
-      devLog(`Failed to load ${config.kind} licences:`, err);
+      devLog(`Failed to load ${config.kind} licenses:`, err);
     } finally {
       setLoading(false);
     }
@@ -326,6 +326,10 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       header: 'Status',
       // คำนวณฝั่ง FE จากวันที่ ไม่ใช่คอลัมน์จริงบน backend (controller ruling R21) — เรียงไม่ได้
       enableSorting: false,
+      // การ์ดมือถือ: เหมือน SubscriptionTable.tsx's `state` column — badge ไปโผล่ที่หัวการ์ดคู่กับ
+      // title แทนที่จะตกลงไปเป็นแถว "Status: [badge]" ใน <dl> เฉย ๆ — สองแท็บของหน้าเดียวกันต้อง
+      // เรนเดอร์การ์ดแบบเดียวกัน
+      meta: { card: 'badge' },
       cell: ({ row }) => (
         <Badge variant={STATUS_VARIANT[row.original.status]} className="capitalize">
           {row.original.status}
@@ -377,7 +381,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
               <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                 <SheetHeader>
                   <SheetTitle>Filters</SheetTitle>
-                  <SheetDescription>Filter by licence status</SheetDescription>
+                  <SheetDescription>Filter by license status</SheetDescription>
                 </SheetHeader>
                 <div className="mt-6 space-y-6 px-1">
                   <div className="space-y-3">
@@ -424,7 +428,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           {loadFailed ? (
             <EmptyState
               icon={AlertTriangle}
-              title="Could not load licences"
+              title="Could not load licenses"
               description="The list could not be loaded — this does not mean there are none."
               action={
                 <Button variant="outline" size="sm" onClick={() => fetchRows()} disabled={loading}>
@@ -439,11 +443,11 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           ) : rows.length === 0 ? (
             <EmptyState
               icon={FileText}
-              title="No licences"
+              title="No licenses"
               description={
                 search || activeFilterCount > 0
-                  ? 'No licence matches the current search and filters.'
-                  : 'No licences have been issued yet.'
+                  ? 'No license matches the current search and filters.'
+                  : 'No licenses have been issued yet.'
               }
               action={
                 search || activeFilterCount > 0 ? (
@@ -457,7 +461,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
             <div className="relative">
               {loading && (
                 <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
-                     role="status" aria-label="Loading licences">
+                     role="status" aria-label="Loading licenses">
                   <div className="text-muted-foreground">Loading...</div>
                 </div>
               )}
@@ -472,7 +476,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
                 perpage={paginate.perpage}
                 onPaginateChange={handlePaginateChange}
                 onSortChange={handleSortChange}
-                defaultSort={{ id: 'license_number', desc: false }}
+                defaultSort={{ id: DEFAULT_SORT_ID, desc: DEFAULT_SORT_DESC }}
               />
             </div>
           )}

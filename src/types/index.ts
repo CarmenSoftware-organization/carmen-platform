@@ -525,7 +525,7 @@ export interface PlatformUsersResponse extends ApiListResponse<PlatformUserRow> 
   summary?: PlatformUserRegistrySummary;
 }
 
-/** Capped/uncapped rollup for one licence dimension of the fleet. A cap of 0/null/absent all mean uncapped. */
+/** Capped/uncapped rollup for one license dimension of the fleet. A cap of 0/null/absent all mean uncapped. */
 export interface FleetCapacityTotals {
   used: number;
   cap: number;

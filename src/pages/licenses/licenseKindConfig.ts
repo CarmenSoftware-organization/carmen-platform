@@ -14,6 +14,11 @@ export interface LicenseKindConfig {
   kind: LicenseKind;
   /** ป้ายช่องจำนวนที่ผู้ใช้เห็น */
   amountLabel: string;
+  /** หัวข้อหน้าโหมดสร้าง (`PageHeader title`) — เขียนตรง ๆ แยกจาก amountLabel แทนที่จะ compose
+   *  ด้วย `Add ${amountLabel} License` เพราะ amountLabel เป็นป้ายของ "ช่องจำนวน" (สั้น ห้วน พอดี
+   *  label ของ input) ไม่ใช่สำนวนหัวข้อหน้า สอง kind สะกด/เรียงคำต่างกันได้ตามธรรมชาติของภาษา
+   *  (`Add seat license` vs `Add BU quota license`) โดยไม่ต้องพึ่งสูตร string เดียวที่บังคับให้เหมือนกัน */
+  newPageTitle: string;
   /** ชื่อฟิลด์จำนวนบนสาย */
   amountField: 'licensed_users' | 'licensed_bus';
   /** ป้ายชนิดเจ้าของ */
@@ -36,6 +41,7 @@ export interface LicenseKindConfig {
 export const SEAT_CONFIG: LicenseKindConfig = {
   kind: 'seat',
   amountLabel: 'Seats',
+  newPageTitle: 'Add seat license',
   amountField: 'licensed_users',
   ownerLabel: 'Business Unit',
   ownerParam: 'bu',
@@ -49,6 +55,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
 export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   kind: 'bu-quota',
   amountLabel: 'BU quota',
+  newPageTitle: 'Add BU quota license',
   amountField: 'licensed_bus',
   ownerLabel: 'Cluster',
   ownerParam: 'cluster',

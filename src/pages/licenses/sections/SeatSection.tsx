@@ -142,7 +142,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
           </CardDescription>
           {loadFailed && (
             <p className="text-xs text-destructive">
-              Could not load licences for this business unit — the seat figures below are unknown, not zero.
+              Could not load licenses for this business unit — the seat figures below are unknown, not zero.
             </p>
           )}
         </div>
@@ -150,7 +150,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
           <Button asChild size="sm">
             <Link to={addHref}>
               <Plus className="mr-2 h-4 w-4" />
-              Add seat licence
+              Add seat license
             </Link>
           </Button>
         )}
@@ -179,7 +179,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
                 <Button asChild size="sm">
                   <Link to={addHref}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add seat licence
+                    Add seat license
                   </Link>
                 </Button>
               ) : undefined

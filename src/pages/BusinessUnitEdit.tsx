@@ -407,7 +407,7 @@ const BusinessUnitEdit: React.FC = () => {
     try {
       const payload = buildPayload(formData);
       if (isNew) {
-        // Check cluster license limit before creating. `bu_cap`/`bu_used` (Task 7's licence
+        // Check cluster license limit before creating. `bu_cap`/`bu_used` (Task 7's license
         // view) are the source of truth now — `max_license_bu` is a stale, unmaintained
         // column that can disagree with the real quota. The backend still enforces this
         // authoritatively on create, so this is a friendlier pre-flight message only; a
