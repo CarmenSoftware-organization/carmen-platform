@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Download, FileText, Filter, X } from 'lucide-react';
+import { AlertTriangle, Download, FileText, Filter, Loader2, RotateCw, X } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
@@ -36,7 +36,28 @@ const STATUS_VARIANT: Record<StatusFilterValue, 'success' | 'secondary' | 'destr
   expired: 'destructive',
 };
 
-const DEFAULT_SORT = 'license_number:asc';
+const DEFAULT_SORT_ID = 'license_number';
+const DEFAULT_SORT_DESC = false;
+// tiebreaker เดียวกับที่ SubscriptionTable.tsx ใช้แก้บั๊กนี้มาก่อน — `license_number` เดี่ยว ๆ
+// unique อยู่แล้วเลยปลอดภัย แต่ `start_date`/`end_date`/จำนวน (ที่ผู้ใช้เรียงได้จริงจาก header)
+// ไม่มีตัวไหน unique เลย ค่าเท่ากันหลายแถวทำให้ backend orderBy ไม่นิ่งข้ามหน้า (แถวซ้ำ/หายเงียบ ๆ
+// โดยไม่มี error — ดูคอมเมนต์ `withTiebreaker` ใน SubscriptionTable.tsx) `id` เป็น primary key
+// จริงของ tb_business_unit_license/tb_cluster_license จึง unique เสมอและตัดเสมอทุกกรณี
+const SORT_TIEBREAKER = 'id:asc';
+const DEFAULT_SORT = `${DEFAULT_SORT_ID}:${DEFAULT_SORT_DESC ? 'desc' : 'asc'},${SORT_TIEBREAKER}`;
+
+/**
+ * ต่อ tiebreaker ให้ค่า sort **ทุกค่า** ที่ `DataTable` ส่งมา ไม่ใช่เฉพาะค่าเริ่มต้น — เรียงตาม
+ * `start_date`/`end_date`/จำนวนก็มีค่าซ้ำได้เหมือนกัน · ค่าว่าง (header toggle วนกลับมาที่
+ * "ไม่เรียง") ตกกลับไปเป็น DEFAULT_SORT ไม่ใช่ส่งสตริงว่างให้ backend · ค่าที่อ่านจาก localStorage
+ * (อาจเป็นสตริงเก่าก่อนแก้บั๊กนี้ที่ยังไม่มี tiebreaker) ก็ต้องผ่านฟังก์ชันนี้ก่อนใช้เสมอ
+ */
+const withTiebreaker = (sort: string): string => {
+  const s = sort.trim();
+  if (!s) return DEFAULT_SORT;
+  const alreadyHasId = s.split(/[;,]/).some((part) => part.trim().startsWith('id:'));
+  return alreadyHasId ? s : `${s},${SORT_TIEBREAKER}`;
+};
 
 /**
  * แถวกลางที่ใช้ทั้งแสดงผลและ export — จุดเดียวในไฟล์นี้ที่ต้องรู้ว่าแถวดิบมาจากชนิดไหน
@@ -140,7 +161,9 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
   const [paginate, setPaginate] = useState(() => ({
     page: Number(localStorage.getItem(pageKey)) || 1,
     perpage: Number(localStorage.getItem(perpageKey)) || 20,
-    sort: localStorage.getItem(sortKey) || DEFAULT_SORT,
+    // ผ่าน withTiebreaker เสมอแม้ค่าที่อ่านมาจาก localStorage เพราะอาจเป็นค่าที่บันทึกไว้ก่อน
+    // แก้บั๊กนี้ (ยังไม่มี `,id:asc` ต่อท้าย)
+    sort: withTiebreaker(localStorage.getItem(sortKey) || ''),
   }));
 
   const resetPage = useCallback(() => {
@@ -206,7 +229,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
   };
 
   const handleSortChange = (sort: string) => {
-    const next = sort || DEFAULT_SORT;
+    const next = withTiebreaker(sort);
     localStorage.setItem(sortKey, next);
     localStorage.setItem(pageKey, '1');
     setPaginate((p) => ({ ...p, sort: next, page: 1 }));
@@ -403,7 +426,12 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
               icon={AlertTriangle}
               title="Could not load licences"
               description="The list could not be loaded — this does not mean there are none."
-              action={<Button variant="outline" size="sm" onClick={() => fetchRows()}>Retry</Button>}
+              action={
+                <Button variant="outline" size="sm" onClick={() => fetchRows()} disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
+                  {loading ? 'Retrying...' : 'Retry'}
+                </Button>
+              }
             />
           ) : loading && rows.length === 0 ? (
             // +1 เผื่อคอลัมน์ลำดับแถวที่ DataTable ใส่ให้เองเสมอ
