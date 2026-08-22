@@ -30,10 +30,14 @@ import { AddressBlock } from './businessUnitForm/AddressBlock';
 import { SeatMeter } from './businessUnitForm/SeatMeter';
 import BusinessUnitBrandingCard from '../businessUnitEdit/BusinessUnitBrandingCard';
 import { useBusinessUnitUsers } from '../businessUnitEdit/useBusinessUnitUsers';
-import { useBusinessUnitLicenses } from '../businessUnitEdit/useBusinessUnitLicenses';
+import businessUnitLicenseService from '../../services/businessUnitLicenseService';
+import { useLicenseLedger } from '../licenses/useLicenseLedger';
+import { sumActiveLicenses } from '../../utils/buLicense';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
-import type { BusinessUnitConfig } from '../../types';
+import type { BusinessUnitConfig, BusinessUnitLicense } from '../../types';
+
+type BuLicenseCreate = Omit<BusinessUnitLicense, 'id' | 'business_unit_id' | 'doc_version'>;
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
 // Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
@@ -74,14 +78,13 @@ const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
  *   write that touches `database_pool_id`/`db_schema` on a platform role (not on cluster
  *   membership), so this view neither reads nor writes them.
  *
- * Licensing is read-only here too, consistent with the cluster page: the User Licenses card
- * below is passed `readOnly` and no write callbacks, so seats can be read on this view and
- * changed only on the platform Business Unit page. That used to rest on the card's internal
- * `<Can permission="subscription.manage">` alone, which held for a cluster admin but not for a
- * platform admin opening this same route — they hold the permission and got the full write
- * surface on a view that is scoped not to have one. (There used to be a single
- * `max_license_users` column on the BU row covering this same decision — Task 6.1 dropped it
- * now that `tb_business_unit_license` fully replaces it.)
+ * Licensing has been read-only everywhere since the License Center shipped: the User Licenses
+ * card is a permanent summary now (no `readOnly` prop, no write callbacks, no internal `<Can>`
+ * at all — see the note above `BusinessUnitLicensesCard`) and its "Manage licences" link points
+ * at `/cluster-admin/:clusterId/licenses` here, because cluster admin does not hold
+ * `subscription.read` and cannot pass `PrivateRoute` on the platform `/licenses/*` routes.
+ * (There used to be a single `max_license_users` column on the BU row covering this same
+ * decision — Task 6.1 dropped it now that `tb_business_unit_license` fully replaces it.)
  *
  * The BU-users card lives here now. It was deliberately excluded when this page was written,
  * before seat enforcement existed: membership was purely an access question and the Users page
@@ -136,7 +139,9 @@ const BusinessUnitForm: React.FC = () => {
   };
 
   const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
-  const licenses = useBusinessUnitLicenses(buId);
+  const licenses = useLicenseLedger<BusinessUnitLicense, BuLicenseCreate>(buId, businessUnitLicenseService);
+  // hook เดิมคืน activeSeats มาให้ SeatMeter ด้านล่าง — คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
+  const activeSeats = sumActiveLicenses(licenses.licenses);
 
   // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
   // การเปลี่ยนขอบเขตสิทธิ์เป็นงานคนละชิ้นที่ต้องมีสเปกของตัวเอง — spec §5.3
@@ -601,26 +606,20 @@ const BusinessUnitForm: React.FC = () => {
               <Group label="People & seats">
                 {clusterSeat && (
                   <div className="mb-4">
-                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={licenses.activeSeats} />
+                    <SeatMeter used={clusterSeat.used} cap={clusterSeat.cap} licensed={activeSeats} />
                   </div>
                 )}
                 <BusinessUnitUsersCard users={users} canEdit={canEdit} />
-                {/* Read-only here by design, and enforced rather than assumed. The card's own
-                    <Can permission="subscription.manage"> is a check on the *viewer*, not on the
-                    page: a platform admin who holds that permission can open this cluster-admin
-                    route and used to get the full add/edit/delete surface on a view that is
-                    supposed to be a statement of entitlement, not a place to change one.
-                    `readOnly` answers the page-level question instead, so the answer no longer
-                    depends on who is looking. Deliberately still not a `canEdit` prop — see the
-                    note above the card component for why the two differ. No write callbacks are
-                    wired at all, so there is no reachable path from this page to
-                    businessUnitLicenseService. Licensing is changed on the platform Business
-                    Unit page. */}
+                {/* The card is permanently read-only now — seats are issued and changed in the
+                    License Center only, never here. `manageHref` points at this shell's own
+                    licenses route because cluster admin does not hold `subscription.read` and
+                    cannot pass `PrivateRoute` on `/licenses/*`; the platform Business Unit page
+                    links to `/licenses/:clusterId` instead. */}
                 <BusinessUnitLicensesCard
                   licenses={licenses.licenses}
                   loading={licenses.loading}
-                  saving={licenses.saving}
-                  readOnly
+                  clusterSeat={clusterSeat}
+                  manageHref={`/cluster-admin/${clusterId}/licenses`}
                 />
               </Group>
             </Card>

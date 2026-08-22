@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import Can from '../../components/Can';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { seatUtilization } from '../../utils/capacity';
-import type { SubscriptionBu, SubscriptionSeat } from '../../types';
-import { cn } from '../../lib/utils';
+import Can from '../../../components/Can';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { seatUtilization } from '../../../utils/capacity';
+import type { SubscriptionBu, SubscriptionSeat } from '../../../types';
+import { cn } from '../../../lib/utils';
 
 export interface SeatsCardProps {
   seat: SubscriptionSeat;

@@ -103,7 +103,7 @@ export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
             description="สร้างสัญญาเพื่อกำหนดสิทธิ์และจำนวนที่นั่งให้ cluster นี้"
             action={
               <Can permission="subscription.manage">
-                <Button size="sm" onClick={() => navigate(`/subscriptions/new?cluster_id=${clusterId}`)}>
+                <Button size="sm" onClick={() => navigate(`/licenses/subscriptions/new?cluster_id=${clusterId}`)}>
                   สร้างสัญญา
                 </Button>
               </Can>
@@ -134,7 +134,7 @@ export function SubscriptionCard({ clusterId }: SubscriptionCardProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate(`/subscriptions/${sub.id}/edit`)}
+                    onClick={() => navigate(`/licenses/subscriptions/${sub.id}/edit`)}
                   >
                     จัดการ →
                   </Button>

@@ -113,7 +113,7 @@ describe('SubscriptionCard — has data', () => {
     renderCard();
 
     await user.click(await screen.findByRole('button', { name: /จัดการ/ }));
-    expect(screen.getByTestId('path')).toHaveTextContent('/subscriptions/sub1/edit');
+    expect(screen.getByTestId('path')).toHaveTextContent('/licenses/subscriptions/sub1/edit');
   });
 });
 
@@ -126,13 +126,13 @@ describe('SubscriptionCard — no data', () => {
     expect(screen.getByRole('button', { name: 'สร้างสัญญา' })).toBeInTheDocument();
   });
 
-  it('navigates to /subscriptions/new?cluster_id=c1 when the create button is clicked', async () => {
+  it('navigates to /licenses/subscriptions/new?cluster_id=c1 when the create button is clicked', async () => {
     asMock(subscriptionService.getAll).mockResolvedValue(listResponse([]));
     const user = userEvent.setup();
     renderCard();
 
     await user.click(await screen.findByRole('button', { name: 'สร้างสัญญา' }));
-    expect(screen.getByTestId('path')).toHaveTextContent('/subscriptions/new?cluster_id=c1');
+    expect(screen.getByTestId('path')).toHaveTextContent('/licenses/subscriptions/new?cluster_id=c1');
   });
 
   it('hides the create-subscription action without subscription.manage', async () => {

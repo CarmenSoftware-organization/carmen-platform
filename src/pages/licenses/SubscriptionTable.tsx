@@ -1,30 +1,30 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
-import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import subscriptionService from '../services/subscriptionService';
-import { getErrorDetail, devLog } from '../utils/errorParser';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { DataTable } from '../components/ui/data-table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
+import Layout from '../../components/Layout';
+import { PageHeader } from '../../components/PageHeader';
+import subscriptionService from '../../services/subscriptionService';
+import { getErrorDetail, devLog } from '../../utils/errorParser';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
+import { DataTable } from '../../components/ui/data-table';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../../components/ui/sheet';
 import { Plus, Filter, X, CreditCard, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import { SearchInput } from '../components/SearchInput';
-import { ListEmptyState } from '../components/ListEmptyState';
-import { generateCSV, downloadCSV } from '../utils/csvExport';
-import { TableSkeleton } from '../components/TableSkeleton';
-import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import Can from '../components/Can';
+import { SearchInput } from '../../components/SearchInput';
+import { ListEmptyState } from '../../components/ListEmptyState';
+import { generateCSV, downloadCSV } from '../../utils/csvExport';
+import { TableSkeleton } from '../../components/TableSkeleton';
+import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
+import Can from '../../components/Can';
 import { SubscriptionSummary } from './subscriptionManagement/SubscriptionSummary';
 import { buildAdvance, type SubscriptionFilters } from './subscriptionManagement/buildAdvance';
-import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../utils/subscriptionState';
-import { seatUtilization } from '../utils/capacity';
-import { useAuth } from '../context/AuthContext';
-import { useAllClusters } from '../hooks/useAllClusters';
-import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../types';
+import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../../utils/subscriptionState';
+import { seatUtilization } from '../../utils/capacity';
+import { useAuth } from '../../context/AuthContext';
+import { useAllClusters } from '../../hooks/useAllClusters';
+import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
 // สถานะที่แสดงผล (`state`) ชุดเดียวกับที่ badge ในตารางและการ์ด summary ใช้ — ไม่ใช่ `status` ดิบ
@@ -70,7 +70,19 @@ const fmtDate = (v?: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
-const SubscriptionManagement: React.FC = () => {
+interface SubscriptionTableProps {
+  /**
+   * true เมื่อ render อยู่ใต้ License Center (`/licenses`) — เนื้อหาจะไม่ห่อ `<Layout>` ของตัวเอง
+   * และไม่แสดง `PageHeader` ของตัวเอง เพราะหน้าแม่ห่อ Layout ให้แล้ว หน้าเดียวห่อ Layout สองชั้นจะ
+   * ได้ sidebar ซ้อนกัน ค่าเริ่มต้น false รักษาพฤติกรรมเดิมของสมัยที่ยังมี route แบบเต็มหน้าไว้ทุก
+   * อย่าง — route นั้นถูกถอดออกไปแล้ว (ตอนนี้มุมมอง "By subscription" ของ `/licenses` เรียกด้วย
+   * `embedded` เสมอ) `embedded=false` จึงเหลือแค่เส้นทางที่เทสต์เดิม `SubscriptionTable.test.tsx`
+   * render แบบไม่ส่ง prop นี้ใช้อยู่ ไม่ใช่เส้นทางที่ผู้ใช้จริงเจอ
+   */
+  embedded?: boolean;
+}
+
+const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false }) => {
   const navigate = useNavigate();
   const [items, setItems] = useState<Subscription[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -268,7 +280,7 @@ const SubscriptionManagement: React.FC = () => {
       header: 'Subscription',
       meta: { card: 'title' },
       cell: ({ row }) => (
-        <Link to={`/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
+        <Link to={`/licenses/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
           {row.original.subscription_number}
         </Link>
       ),
@@ -369,28 +381,38 @@ const SubscriptionManagement: React.FC = () => {
   // (never mutates) is redundant chrome, not a genuine menu — so it's gone rather than kept
   // as a one-item DropdownMenu.
 
-  return (
-    <Layout>
-      <div className="space-y-6 sm:space-y-8">
-        <PageHeader
-          title="Subscriptions"
-          subtitle="Manage cluster license subscriptions, seat pools, and feature entitlements."
-          actions={
-            <>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </Button>
-              <Can permission="subscription.manage">
-                <Button onClick={() => navigate('/subscriptions/new')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Subscription</span>
-                  <span className="sm:hidden">Add</span>
-                </Button>
-              </Can>
-            </>
-          }
-        />
+  // Export + Add Subscription — same buttons regardless of embedded: spec §3.2 requires the
+  // subscription view to keep every capability of the standalone `/subscriptions` page when
+  // hosted inside License Center, and CSV export is mandatory on every Management page
+  // (root CLAUDE.md). Only the `<PageHeader>` chrome around them (title/subtitle/Layout) is
+  // embedding-specific — the actions themselves render in both modes.
+  const actions = (
+    <>
+      <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
+        <Download className="mr-2 h-4 w-4" />
+        Export
+      </Button>
+      <Can permission="subscription.manage">
+        <Button onClick={() => navigate('/licenses/subscriptions/new')}>
+          <Plus className="mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">Add Subscription</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
+      </Can>
+    </>
+  );
+
+  const content = (
+    <div className="space-y-6 sm:space-y-8">
+        {embedded ? (
+          <div className="flex justify-end gap-3">{actions}</div>
+        ) : (
+          <PageHeader
+            title="Subscriptions"
+            subtitle="Manage cluster license subscriptions, seat pools, and feature entitlements."
+            actions={actions}
+          />
+        )}
 
         <SubscriptionSummary
           summary={summary}
@@ -551,7 +573,7 @@ const SubscriptionManagement: React.FC = () => {
                 emptyDescription="Get started by creating your first subscription for a cluster."
                 addAction={
                   <Can permission="subscription.manage">
-                    <Button size="sm" onClick={() => navigate('/subscriptions/new')}>
+                    <Button size="sm" onClick={() => navigate('/licenses/subscriptions/new')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Subscription
                     </Button>
@@ -587,11 +609,28 @@ const SubscriptionManagement: React.FC = () => {
             ) : null}
           </CardContent>
         </Card>
-      </div>
+    </div>
+  );
 
-      <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/subscriptions" data={rawResponse} />
+  const debugSheet = (
+    <DevDebugSheet title="API Response" endpoint="GET /api-system/platform/subscriptions" data={rawResponse} />
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {content}
+        {debugSheet}
+      </>
+    );
+  }
+
+  return (
+    <Layout>
+      {content}
+      {debugSheet}
     </Layout>
   );
 };
 
-export default SubscriptionManagement;
+export default SubscriptionTable;

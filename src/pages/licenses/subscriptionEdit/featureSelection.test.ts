@@ -9,7 +9,7 @@ import {
   removeFeatureKey,
   selectedChildCount,
 } from './featureSelection';
-import type { LicenseFeature } from '../../types';
+import type { LicenseFeature } from '../../../types';
 
 const feature = (over: Partial<LicenseFeature> = {}): LicenseFeature => ({
   key: 'procurement',

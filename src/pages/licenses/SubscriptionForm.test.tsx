@@ -4,7 +4,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-vi.mock('../components/Layout', () => ({
+vi.mock('../../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
@@ -15,14 +15,14 @@ const auth = vi.hoisted(() => ({
   isSuperAdmin: false,
   hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
 }));
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 
-vi.mock('../services/subscriptionService', () => ({
+vi.mock('../../services/subscriptionService', () => ({
   default: {
     getAll: vi.fn(),
     getById: vi.fn(),
@@ -33,18 +33,18 @@ vi.mock('../services/subscriptionService', () => ({
     getFeatureCatalog: vi.fn(),
   },
 }));
-vi.mock('../services/businessUnitService', () => ({
+vi.mock('../../services/businessUnitService', () => ({
   default: { getAll: vi.fn() },
 }));
-vi.mock('../services/clusterService', () => ({
+vi.mock('../../services/clusterService', () => ({
   default: { getAll: vi.fn() },
 }));
 
-import SubscriptionEdit from './SubscriptionEdit';
-import subscriptionService from '../services/subscriptionService';
-import businessUnitService from '../services/businessUnitService';
-import clusterService from '../services/clusterService';
-import type { SubscriptionDetail } from '../types';
+import SubscriptionForm from './SubscriptionForm';
+import subscriptionService from '../../services/subscriptionService';
+import businessUnitService from '../../services/businessUnitService';
+import clusterService from '../../services/clusterService';
+import type { SubscriptionDetail } from '../../types';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
@@ -97,8 +97,8 @@ function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/subscriptions/new" element={<SubscriptionEdit />} />
-        <Route path="/subscriptions/:id/edit" element={<SubscriptionEdit />} />
+        <Route path="/licenses/subscriptions/new" element={<SubscriptionForm />} />
+        <Route path="/licenses/subscriptions/:id/edit" element={<SubscriptionForm />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -116,7 +116,7 @@ beforeEach(() => {
   asMock(subscriptionService.getFeatureCatalog).mockResolvedValue({ data: catalog });
 });
 
-describe('SubscriptionEdit — create mode reads cluster_id from the query param', () => {
+describe('SubscriptionForm — create mode reads cluster_id from the query param', () => {
   it('prefills the cluster picker from ?cluster_id=', async () => {
     asMock(clusterService.getAll).mockResolvedValue({
       data: [
@@ -125,19 +125,19 @@ describe('SubscriptionEdit — create mode reads cluster_id from the query param
       ],
       paginate: { total: 2, page: 1, perpage: 200 },
     });
-    renderAt('/subscriptions/new?cluster_id=c1');
+    renderAt('/licenses/subscriptions/new?cluster_id=c1');
 
     const select = (await screen.findByLabelText(/cluster/i)) as HTMLSelectElement;
     expect(select.value).toBe('c1');
   });
 });
 
-describe('SubscriptionEdit — create sends only the allowed fields', () => {
+describe('SubscriptionForm — create sends only the allowed fields', () => {
   it('POSTs cluster_id/business_unit_id/start_date/end_date/status only — never a subscription_number (the server issues it)', async () => {
     asMock(businessUnitService.getAll).mockResolvedValue(buList);
     asMock(subscriptionService.create).mockResolvedValue({ data: { id: 'new1' } });
     const user = userEvent.setup();
-    renderAt('/subscriptions/new?cluster_id=c1');
+    renderAt('/licenses/subscriptions/new?cluster_id=c1');
 
     await user.selectOptions(await screen.findByLabelText(/business unit/i), 'bu1');
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-01-01' } });
@@ -158,7 +158,7 @@ describe('SubscriptionEdit — create sends only the allowed fields', () => {
   it('blocks submit and never calls the API when no business unit is picked', async () => {
     asMock(businessUnitService.getAll).mockResolvedValue(buList);
     const user = userEvent.setup();
-    renderAt('/subscriptions/new?cluster_id=c1');
+    renderAt('/licenses/subscriptions/new?cluster_id=c1');
 
     await screen.findByLabelText(/business unit/i);
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-01-01' } });
@@ -173,7 +173,7 @@ describe('SubscriptionEdit — create sends only the allowed fields', () => {
   it('blocks submit and never calls the API when end_date is not after start_date', async () => {
     asMock(businessUnitService.getAll).mockResolvedValue(buList);
     const user = userEvent.setup();
-    renderAt('/subscriptions/new?cluster_id=c1');
+    renderAt('/licenses/subscriptions/new?cluster_id=c1');
 
     await user.selectOptions(await screen.findByLabelText(/business unit/i), 'bu1');
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2026-06-01' } });
@@ -186,7 +186,7 @@ describe('SubscriptionEdit — create sends only the allowed fields', () => {
   });
 });
 
-describe('SubscriptionEdit — update sends doc_version plus only the allowed fields', () => {
+describe('SubscriptionForm — update sends doc_version plus only the allowed fields', () => {
   beforeEach(() => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
   });
@@ -194,7 +194,7 @@ describe('SubscriptionEdit — update sends doc_version plus only the allowed fi
   it('PATCHes with doc_version always present, and never a subscription_number or business_unit_id (both immutable)', async () => {
     asMock(subscriptionService.update).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
 
@@ -210,7 +210,7 @@ describe('SubscriptionEdit — update sends doc_version plus only the allowed fi
   });
 });
 
-describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', () => {
+describe('SubscriptionForm — Save persists FeatureSelectionCard edits too', () => {
   beforeEach(() => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
     asMock(businessUnitService.getAll).mockResolvedValue(buList);
@@ -230,7 +230,7 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
   it('features-only change: calls setFeatures with the key list + current doc_version, never touches update', async () => {
     asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await screen.findByRole('heading', { name: 'SUB-0001' });
     await tickPurchaseRequest(user);
@@ -253,7 +253,7 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
     });
     asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await screen.findByRole('heading', { name: 'SUB-0001' });
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
@@ -276,7 +276,7 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
   it('no feature change: Save never calls setFeatures at all', async () => {
     asMock(subscriptionService.update).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
@@ -289,7 +289,7 @@ describe('SubscriptionEdit — Save persists FeatureSelectionCard edits too', ()
 // เคส "เลขสัญญาซ้ำ" ถูกลบทิ้งพร้อมช่องกรอกเลข — ระบบออกเลขให้เอง (`SUB-YYMM-####`) และการชนกัน
 // ถูกจับที่ฐาน (`subscription_number_global_u`) แล้ว retry ในเซิร์ฟเวอร์ ไม่เคยโผล่มาถึงหน้าจอ
 // 409 ที่หน้านี้ยังเจอได้จึงเหลือความหมายเดียว: doc_version ชนกัน
-describe('SubscriptionEdit — 409 is always a version conflict now', () => {
+describe('SubscriptionForm — 409 is always a version conflict now', () => {
   beforeEach(() => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
   });
@@ -299,7 +299,7 @@ describe('SubscriptionEdit — 409 is always a version conflict now', () => {
       response: { status: 409, data: { message: 'Record was modified by another request (model=Subscription, expected doc_version=3).' } },
     });
     const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
@@ -310,11 +310,11 @@ describe('SubscriptionEdit — 409 is always a version conflict now', () => {
   });
 });
 
-describe('SubscriptionEdit — permission gating', () => {
+describe('SubscriptionForm — permission gating', () => {
   it('a subscription.read-only user can open an existing subscription but sees no Save button', async () => {
     auth.hasPermission = (perm) => perm === 'subscription.read';
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     expect(await screen.findByRole('heading', { name: 'SUB-0001' })).toBeInTheDocument();
     // Fields render read-only (no inputs), and nothing to save means no bottom bar at all.
@@ -326,17 +326,17 @@ describe('SubscriptionEdit — permission gating', () => {
     auth.hasPermission = () => true;
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
     expect(await screen.findByRole('button', { name: /save changes/i })).toBeInTheDocument();
   });
 });
 
-describe('SubscriptionEdit — Seats card (cluster-level pool, never "unlimited")', () => {
+describe('SubscriptionForm — Seats card (cluster-level pool, never "unlimited")', () => {
   it('always shows used/cap and warns when pending invites would exceed cap', async () => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     expect(await screen.findByText('8 / 10')).toBeInTheDocument();
     expect(screen.queryByText(/unlimited/i)).toBeNull();
@@ -347,14 +347,14 @@ describe('SubscriptionEdit — Seats card (cluster-level pool, never "unlimited"
   });
 });
 
-describe('SubscriptionEdit — cluster BU roster pagination (bounded, never perpage: -1)', () => {
+describe('SubscriptionForm — cluster BU roster pagination (bounded, never perpage: -1)', () => {
   it('pages through businessUnitService.getAll with perpage: 100 until paginate.total is reached', async () => {
     const page1 = { data: Array.from({ length: 100 }, (_, i) => ({ id: `bu${i}`, code: `B${i}`, name: `BU ${i}`, is_active: true })), paginate: { total: 150, page: 1, perpage: 100 } };
     const page2 = { data: Array.from({ length: 50 }, (_, i) => ({ id: `bu${100 + i}`, code: `B${100 + i}`, name: `BU ${100 + i}`, is_active: true })), paginate: { total: 150, page: 2, perpage: 100 } };
     asMock(businessUnitService.getAll).mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
 
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
     await screen.findByRole('heading', { name: 'SUB-0001' });
 
     await waitFor(() => expect(businessUnitService.getAll).toHaveBeenCalledTimes(2));
@@ -371,10 +371,10 @@ describe('SubscriptionEdit — cluster BU roster pagination (bounded, never perp
   });
 });
 
-describe('SubscriptionEdit — not found', () => {
+describe('SubscriptionForm — not found', () => {
   it('gates the whole shell behind a not-found state on a 404', async () => {
     asMock(subscriptionService.getById).mockRejectedValue({ response: { status: 404 } });
-    renderAt('/subscriptions/nope/edit');
+    renderAt('/licenses/subscriptions/nope/edit');
 
     expect(await screen.findByText('Subscription not found')).toBeInTheDocument();
     expect(screen.queryByText('ที่นั่ง')).toBeNull();
@@ -384,7 +384,7 @@ describe('SubscriptionEdit — not found', () => {
 // Review M7: the picker used a flat `perpage: 200`, so cluster #201 was simply unreachable —
 // no error, no hint, while the BU roster in this very same file already paged properly. Both
 // now go through `fetchAllPages`.
-describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
+describe('SubscriptionForm — the cluster picker is paged, not capped', () => {
   it('keeps fetching pages until paginate.total is covered', async () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ({
       id: `c${i}`, code: `C${i}`, name: `Cluster ${i}`, is_active: true,
@@ -395,7 +395,7 @@ describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
       paginate: { total: 101, page, perpage: 100 },
     }));
 
-    renderAt('/subscriptions/new');
+    renderAt('/licenses/subscriptions/new');
 
     const select = (await screen.findByLabelText(/cluster/i)) as HTMLSelectElement;
     // The 101st cluster is selectable — under the old flat request it never arrived.
@@ -410,7 +410,7 @@ describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
   it('says why the picker is empty when the cluster list fails to load', async () => {
     asMock(clusterService.getAll).mockRejectedValue(new Error('network down'));
 
-    renderAt('/subscriptions/new');
+    renderAt('/licenses/subscriptions/new');
 
     expect(await screen.findByText(/โหลดรายชื่อ cluster ไม่สำเร็จ/)).toBeInTheDocument();
   });
@@ -418,7 +418,7 @@ describe('SubscriptionEdit — the cluster picker is paged, not capped', () => {
   it('does not fetch clusters at all when editing an existing subscription', async () => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
 
-    renderAt('/subscriptions/sub1/edit');
+    renderAt('/licenses/subscriptions/sub1/edit');
 
     await screen.findByRole('heading', { name: 'SUB-0001' });
     expect(clusterService.getAll).not.toHaveBeenCalled();

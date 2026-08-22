@@ -1,7 +1,6 @@
 import type { BusinessUnitLicense, BuLicenseStatus } from '../types';
+import { EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
 
-/** เกณฑ์ "ใกล้หมดอายุ" — ต้องตรงกับฝั่ง backend และ inventory FE */
-const EXPIRING_SOON_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** prefix ที่สคริปต์ backfill เขียนไว้ใน note — FE ใช้ขึ้นป้ายเตือน "ยังไม่ระบุวันจริง" */

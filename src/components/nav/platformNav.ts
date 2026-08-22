@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet,
-  BarChart3, MousePointerClick, Settings, Server, CreditCard,
+  BarChart3, MousePointerClick, Settings, Server, KeyRound,
 } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 
@@ -10,7 +10,7 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Organization
   { path: '/clusters', label: 'Clusters', icon: Network, permission: 'cluster.read', group: 'Organization' },
   { path: '/business-units', label: 'Business Units', icon: Building2, permission: 'cluster.read', group: 'Organization' },
-  { path: '/subscriptions', label: 'Subscriptions', icon: CreditCard, permission: 'subscription.read', group: 'Organization' },
+  { path: '/licenses', label: 'Licenses', icon: KeyRound, permission: 'subscription.read', group: 'Organization' },
   { path: '/tenant-migrations', label: 'Tenant Migrations', icon: DatabaseZap, permission: 'cluster.read', group: 'Organization' },
   { path: '/tenant-imports', label: 'Data Import', icon: FileSpreadsheet, permission: 'data_import.manage', group: 'Organization' },
   { path: '/users', label: 'Users', icon: Users, permission: 'user.read', group: 'Organization' },

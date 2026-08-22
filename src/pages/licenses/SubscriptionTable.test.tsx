@@ -26,7 +26,7 @@ const makeLocalStorage = () => {
   };
 };
 
-vi.mock('../components/Layout', () => ({
+vi.mock('../../components/Layout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
@@ -39,18 +39,18 @@ const auth = vi.hoisted(() => ({
   isSuperAdmin: false,
   hasPermission: (() => true) as (perm: string, ctx?: { clusterId?: string }) => boolean,
 }));
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() }));
 vi.mock('sonner', () => ({ toast }));
 
-vi.mock('../services/clusterService', () => ({
+vi.mock('../../services/clusterService', () => ({
   default: { getAll: vi.fn() },
 }));
 
-vi.mock('../services/subscriptionService', () => ({
+vi.mock('../../services/subscriptionService', () => ({
   default: {
     getAll: vi.fn(),
     getById: vi.fn(),
@@ -62,9 +62,9 @@ vi.mock('../services/subscriptionService', () => ({
   },
 }));
 
-import SubscriptionManagement from './SubscriptionManagement';
-import subscriptionService from '../services/subscriptionService';
-import clusterService from '../services/clusterService';
+import SubscriptionTable from './SubscriptionTable';
+import subscriptionService from '../../services/subscriptionService';
+import clusterService from '../../services/clusterService';
 
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
@@ -123,11 +123,11 @@ const lastCall = () => asMock(subscriptionService.getAll).mock.calls.at(-1)?.[0]
 const renderPage = () =>
   render(
     <MemoryRouter>
-      <SubscriptionManagement />
+      <SubscriptionTable />
     </MemoryRouter>,
   );
 
-describe('SubscriptionManagement — reads state, never recomputes it', () => {
+describe('SubscriptionTable — reads state, never recomputes it', () => {
   it('shows the backend-supplied state badge, not one derived from status/end_date', async () => {
     renderPage();
     await screen.findByText('SUB-0001');
@@ -139,7 +139,7 @@ describe('SubscriptionManagement — reads state, never recomputes it', () => {
   });
 });
 
-describe('SubscriptionManagement — summary band', () => {
+describe('SubscriptionTable — summary band', () => {
   it('renders all 5 cards (total/active/expired/expiring soon/deleted)', async () => {
     renderPage();
     await screen.findByText('SUB-0001');
@@ -152,7 +152,7 @@ describe('SubscriptionManagement — summary band', () => {
   });
 });
 
-describe('SubscriptionManagement — Add Subscription gate (subscription.manage)', () => {
+describe('SubscriptionTable — Add Subscription gate (subscription.manage)', () => {
   it('hides the header Add Subscription button without subscription.manage', async () => {
     auth.hasPermission = () => false;
     renderPage();
@@ -186,7 +186,7 @@ describe('SubscriptionManagement — Add Subscription gate (subscription.manage)
 // no dropdown/menu exists, and the links it would have duplicated still reach the edit route
 // on their own — for every caller regardless of permission, since the route itself only
 // requires subscription.read (a read-only user must still be able to open it).
-describe('SubscriptionManagement — no row actions menu; links go straight to the edit route', () => {
+describe('SubscriptionTable — no row actions menu; links go straight to the edit route', () => {
   it('has no "Actions" trigger and no Delete anywhere on the row, even with subscription.manage', async () => {
     auth.hasPermission = () => true;
     renderPage();
@@ -197,19 +197,19 @@ describe('SubscriptionManagement — no row actions menu; links go straight to t
     expect(screen.queryByText(/^delete$/i)).toBeNull();
   });
 
-  it('the Subscription number links straight to /subscriptions/:id/edit for a read-only user', async () => {
+  it('the Subscription number links straight to /licenses/subscriptions/:id/edit for a read-only user', async () => {
     auth.hasPermission = (perm) => perm === 'subscription.read';
     renderPage();
 
     const subLink = await screen.findByRole('link', { name: 'SUB-0001' });
-    expect(subLink).toHaveAttribute('href', '/subscriptions/sub1/edit');
+    expect(subLink).toHaveAttribute('href', '/licenses/subscriptions/sub1/edit');
   });
 });
 
 // Review B2#4/#6: buildAdvance forces status=active and ignores any status the user picked
 // once "Expiring soon" is on, so the UI must not leave a stale, silently-ineffective status
 // selection visible — the toggle now disables the status buttons AND clears the selection.
-describe('SubscriptionManagement — "Expiring soon" locks and clears the status filter', () => {
+describe('SubscriptionTable — "Expiring soon" locks and clears the status filter', () => {
   it('disables the status buttons, shows the lock message, and clears a status picked beforehand', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -252,7 +252,7 @@ describe('SubscriptionManagement — "Expiring soon" locks and clears the status
   });
 });
 
-describe('SubscriptionManagement — search folds into `advance`, never `search`', () => {
+describe('SubscriptionTable — search folds into `advance`, never `search`', () => {
   it('debounces the search box into paginate.advance as a subscription_number contains clause, and never sets paginate.search', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -279,7 +279,7 @@ describe('SubscriptionManagement — search folds into `advance`, never `search`
 // contract with the same far-future end_date — so on day one every row ties. Postgres is free
 // to return tied rows in a different order per query, which makes rows repeat or vanish across
 // pages with no error at all. `id` is the primary key, so it breaks every tie.
-describe('SubscriptionManagement — sort always carries a unique tiebreaker', () => {
+describe('SubscriptionTable — sort always carries a unique tiebreaker', () => {
   it('sends end_date:desc,id:asc on the first request', async () => {
     renderPage();
     await screen.findByText('SUB-0001');
@@ -321,7 +321,7 @@ describe('SubscriptionManagement — sort always carries a unique tiebreaker', (
 // Review I1: the filter sent raw `status`, while the badge and the summary cards both show
 // `state`. Ticking Expired has to catch rows whose status is still 'active' but whose end_date
 // has passed — those are exactly the rows the table labels "expired".
-describe('SubscriptionManagement — the State filter matches what the badge shows', () => {
+describe('SubscriptionTable — the State filter matches what the badge shows', () => {
   const openFilters = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('button', { name: /filters/i }));
   };
@@ -378,7 +378,7 @@ describe('SubscriptionManagement — the State filter matches what the badge sho
 // Review M3: spec §8.1 lists BU, Features, and a cluster filter. The values were already on
 // every row (they even shipped in the CSV export) — just never rendered. The BU column now
 // names the contract's single business unit instead of counting them: one contract = one BU.
-describe('SubscriptionManagement — BU and Features columns', () => {
+describe('SubscriptionTable — BU and Features columns', () => {
   it('renders both column headers with the row values', async () => {
     renderPage();
     await screen.findByText('SUB-0001');
@@ -399,7 +399,7 @@ describe('SubscriptionManagement — BU and Features columns', () => {
   });
 });
 
-describe('SubscriptionManagement — cluster filter', () => {
+describe('SubscriptionTable — cluster filter', () => {
   it('sends cluster_id in advance and shows a removable badge', async () => {
     const user = userEvent.setup();
     renderPage();
