@@ -5,9 +5,7 @@ import { Save, X, Loader2 } from 'lucide-react';
 import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import ClusterAccessLost from './ClusterAccessLost';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Textarea } from '../../components/ui/textarea';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
@@ -22,7 +20,6 @@ import { ReadOnlyText, ReadOnlyTextarea, Group } from '../businessUnitEdit/share
 import { initialFormData, aliasBound, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
 import CalculationSettingsSection from '../businessUnitEdit/sections/CalculationSettingsSection';
 import NumberFormatsSection from '../businessUnitEdit/sections/NumberFormatsSection';
-import ConfigurationSection from '../businessUnitEdit/sections/ConfigurationSection';
 import { ClusterBuDocument, type TabSummary } from './businessUnitForm/ClusterBuDocument';
 import { BuPropertyPlate } from './businessUnitForm/BuPropertyPlate';
 import {
@@ -36,7 +33,7 @@ import businessUnitLicenseService from '../../services/businessUnitLicenseServic
 import { useLicenseLedger } from '../licenses/useLicenseLedger';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
-import type { BusinessUnitConfig, BusinessUnitLicense } from '../../types';
+import type { BusinessUnitLicense } from '../../types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
 // Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
@@ -72,7 +69,12 @@ const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
  * `max_license_bu`, which is a platform decision — see the 2026-08-05 cluster-admin-layout
  * spec's B5 and the 2026-08-06 addendum removing BU create from this view.
  *
- * One thing is still deliberately absent:
+ * Two things are deliberately absent:
+ * - The config table (`ConfigurationSection`): key-value entries are set up once when the BU is
+ *   provisioned and read by the apps, not something a cluster admin tunes. It stays on the
+ *   platform form. `config` still loads into formData and still ships in the save payload —
+ *   same treatment as `code` — so a save from this page cannot wipe entries it never showed.
+ *
  * - The database-pool section: pools are a platform-wide resource and the backend gates any
  *   write that touches `database_pool_id`/`db_schema` on a platform role (not on cluster
  *   membership), so this view neither reads nor writes them.
@@ -338,22 +340,6 @@ const BusinessUnitForm: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name)) }));
   };
 
-  const handleConfigChange = (index: number, field: keyof BusinessUnitConfig, value: string) => {
-    setFormData((prev) => {
-      const updated = [...prev.config];
-      updated[index] = { ...updated[index], [field]: value };
-      return { ...prev, config: updated };
-    });
-  };
-
-  const addConfigRow = () => {
-    setFormData((prev) => ({ ...prev, config: [...prev.config, { key: '', label: '', datatype: '', value: '' }] }));
-  };
-
-  const removeConfigRow = (index: number) => {
-    setFormData((prev) => ({ ...prev, config: prev.config.filter((_, i) => i !== index) }));
-  };
-
   // One-way copy: hotel address -> company address, same as the platform page.
   const copyHotelAddressToCompany = () => {
     setFormData((prev) => ({
@@ -497,7 +483,9 @@ const BusinessUnitForm: React.FC = () => {
     }
   };
 
-  const sectionField = { formData, editing: canEdit, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
+  // editing: false เสมอ — tab Configuration เป็นของอ่านอย่างเดียวทั้งใบ ไม่ใช่ตาม canEdit
+  // handler ยังส่งไปเพราะ SectionFieldProps บังคับให้มี ตัว section จะไม่เรียกมันในโหมดอ่าน
+  const sectionField = { formData, editing: false, fieldErrors, onChange: handleChange, onBlur: handleBlur, onFocus: handleFocus };
 
   // สิ่งที่อีก 4 tab ถืออยู่จริง แสดงบน Overview — ชื่อ tab เปล่า ๆ บังคับให้คลิกทีละใบ
   // เพื่อรู้ว่าข้างในว่างหรือมีของ ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง"
@@ -525,59 +513,34 @@ const BusinessUnitForm: React.FC = () => {
     {
       id: 'configuration',
       label: 'Configuration',
-      value:
-        [
-          formData.timezone,
-          formData.config.length > 0
-            ? `${formData.config.length} config ${formData.config.length === 1 ? 'entry' : 'entries'}`
-            : '',
-        ].filter(Boolean).join(' · ') || 'Defaults',
+      // ไม่นับ config: หน้านี้ไม่แสดงตาราง config แล้ว การบอกจำนวนของที่กดเข้าไปดูไม่ได้
+      // คือคำเชิญให้คลิกหาสิ่งที่ไม่มี
+      value: [formData.timezone, formData.calculation_method && getCalculationMethodLabel(formData.calculation_method)]
+        .filter(Boolean).join(' · ') || 'Defaults',
     },
   ];
 
-  // Generic edit/read-only renderer for the plain text fields (Form Field Pattern).
-  const textField = (
+  /**
+   * Read-only renderer for the Configuration tab's plain text fields.
+   *
+   * ไม่มีโหมดแก้: ทั้ง tab เป็นของอ่านอย่างเดียว (ดูหมายเหตุที่ configurationSlot) จึงไม่รับ
+   * canEdit และไม่ผูก onChange/onBlur เลย — ช่องที่พิมพ์ได้แต่บันทึกไม่ได้แย่กว่าช่องที่บอก
+   * ตรง ๆ ว่าอ่านได้อย่างเดียว fieldErrors ยังแสดงอยู่เพราะ backend ยังตอบ error รายฟิลด์
+   * กลับมาได้แม้ค่าจะไม่ได้มาจากหน้านี้
+   */
+  const readOnlyField = (
     name: TextFieldName,
     label: string,
-    opts?: { type?: 'text' | 'email'; mono?: boolean; required?: boolean; textarea?: boolean },
+    opts?: { mono?: boolean; textarea?: boolean },
   ) => {
     const value = formData[name];
     const err = fieldErrors[name];
     return (
       <div className="space-y-2">
-        <Label htmlFor={name}>
-          {label}
-          {opts?.required && canEdit && <span className="text-destructive ml-0.5">*</span>}
-        </Label>
-        {canEdit ? (
-          opts?.textarea ? (
-            <Textarea
-              id={name}
-              name={name}
-              value={value}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              onFocus={handleFocus}
-              rows={3}
-              className={err ? 'border-destructive' : ''}
-            />
-          ) : (
-            <Input
-              type={opts?.type ?? 'text'}
-              id={name}
-              name={name}
-              value={value}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              onFocus={handleFocus}
-              className={cn(err && 'border-destructive', opts?.mono && 'font-mono')}
-            />
-          )
-        ) : opts?.textarea ? (
-          <ReadOnlyTextarea value={value} />
-        ) : (
-          <ReadOnlyText value={value} />
-        )}
+        <Label htmlFor={name}>{label}</Label>
+        <div className={cn(opts?.mono && 'font-mono')}>
+          {opts?.textarea ? <ReadOnlyTextarea value={value} /> : <ReadOnlyText value={value} />}
+        </div>
         {err && <p className="text-xs text-destructive">{err}</p>}
       </div>
     );
@@ -669,19 +632,24 @@ const BusinessUnitForm: React.FC = () => {
               </div>
             }
             configurationSlot={
-              /* Regional formats เป็นกลุ่มที่หน้านี้ประกอบเอง จึงใส่ป้าย Group ให้
-                 ส่วนอีกสาม section เป็น component ที่มีหัวการ์ดของตัวเองอยู่แล้ว
-                 (ใช้ร่วมกับหน้า platform) — ห่อ Group ทับจะได้หัวข้อซ้อนสองชั้น */
+              /* ทั้ง tab เป็นของอ่านอย่างเดียว: รูปแบบวันที่ เวลา ตัวเลข และวิธีคิดต้นทุน
+                 ถูกตั้งตอน provision BU และมีระบบอื่นอ่านค่าเหล่านี้ไปใช้ การแก้จึงเป็นงาน
+                 ของ platform admin ไม่ใช่ของ cluster admin — ค่าทั้งหมดยังโหลดและยังถูกส่ง
+                 กลับไปใน payload ตอน Save เหมือนเดิม การบันทึกจากหน้านี้จึงไม่ล้างของที่ไม่ได้แก้
+
+                 Regional formats เป็นกลุ่มที่หน้านี้ประกอบเอง จึงใส่ป้าย Group ให้ ส่วนอีกสอง
+                 section มีหัวการ์ดของตัวเองอยู่แล้ว (ใช้ร่วมกับหน้า platform) — ห่อ Group ทับ
+                 จะได้หัวข้อซ้อนสองชั้น */
               <div className="space-y-4">
                 <Card className="p-0">
                   <Group label="Regional formats">
                     <div className="grid gap-4 pt-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {textField('timezone', 'Timezone')}
-                      {textField('date_format', 'Date format', { mono: true })}
-                      {textField('date_time_format', 'Date-time format', { mono: true })}
-                      {textField('time_format', 'Time format', { mono: true })}
-                      {textField('long_time_format', 'Long time format', { mono: true })}
-                      {textField('short_time_format', 'Short time format', { mono: true })}
+                      {readOnlyField('timezone', 'Timezone')}
+                      {readOnlyField('date_format', 'Date format', { mono: true })}
+                      {readOnlyField('date_time_format', 'Date-time format', { mono: true })}
+                      {readOnlyField('time_format', 'Time format', { mono: true })}
+                      {readOnlyField('long_time_format', 'Long time format', { mono: true })}
+                      {readOnlyField('short_time_format', 'Short time format', { mono: true })}
                     </div>
                   </Group>
                 </Card>
@@ -693,12 +661,6 @@ const BusinessUnitForm: React.FC = () => {
                   canEditCalculationMethod={false}
                 />
                 <NumberFormatsSection {...sectionField} />
-                <ConfigurationSection
-                  {...sectionField}
-                  onConfigChange={handleConfigChange}
-                  onAddConfigRow={addConfigRow}
-                  onRemoveConfigRow={removeConfigRow}
-                />
               </div>
             }
           />
