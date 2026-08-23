@@ -54,7 +54,7 @@ function StatusToggle({
  * ทั้งสองรูปพร้อมป้ายกำกับยังอยู่ที่ BusinessUnitBrandingCard ใน tab Overview เหมือนเดิม
  *
  * บรรทัดรองเป็นชื่อโรงแรมจริง ไม่ใช่คำอธิบายหน้าจอ — แฟ้มนี้ต้องบอกได้ว่ามันคือที่ไหน
- * โดยไม่ต้องเปิด tab Property
+ * โดยไม่ต้องเปิด tab Hotel
  */
 export function BuPropertyPlate({
   formData: f, logoUrl, avatarUrl, canEdit, backTo, licensesTo,
@@ -94,7 +94,7 @@ export function BuPropertyPlate({
               </h1>
 
               <p className="text-muted-foreground mt-0.5 truncate text-sm">
-                {property || 'No property name set — add one under Property'}
+                {property || 'No hotel name set — add one under Hotel'}
               </p>
 
               <div className="mt-2.5 flex flex-wrap items-center gap-2 text-sm">

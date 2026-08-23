@@ -164,9 +164,9 @@ const BusinessUnitForm: React.FC = () => {
     const base: ClusterBuTab[] = [
       { id: 'overview', label: 'Overview' },
       { id: 'people', label: 'People', count: users.buUsers.length },
-      { id: 'property', label: 'Property' },
-      { id: 'billing', label: 'Billing' },
-      { id: 'settings', label: 'Settings' },
+      { id: 'hotel', label: 'Hotel' },
+      { id: 'company', label: 'Company' },
+      { id: 'configuration', label: 'Configuration' },
     ];
     return base.map((t) => ({ ...t, hasError: errored.includes(t.id) }));
   })();
@@ -417,8 +417,8 @@ const BusinessUnitForm: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       toast.error('Please fix the highlighted fields', { description: Object.values(active).join(', ') });
-      // A failed Save can highlight a field on a tab the user cannot see — Billing's tax_no
-      // while they were reading Property, say. Jump to the first tab holding one; without it
+      // A failed Save can highlight a field on a tab the user cannot see — Company's tax_no
+      // while they were reading Hotel, say. Jump to the first tab holding one; without it
       // Save just looks like it did nothing. `name` maps to no tab (it lives in the plate,
       // visible from everywhere), so a name-only failure leaves the current tab alone.
       const target = clusterBuTabsWithErrors(active)[0];
@@ -501,7 +501,7 @@ const BusinessUnitForm: React.FC = () => {
 
   // สิ่งที่อีก 4 tab ถืออยู่จริง แสดงบน Overview — ชื่อ tab เปล่า ๆ บังคับให้คลิกทีละใบ
   // เพื่อรู้ว่าข้างในว่างหรือมีของ ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง"
-  // Property ไม่ซ้ำกับแผ่นป้าย: ป้ายบอกว่าที่ไหน บรรทัดนี้บอกว่าติดต่อยังไง
+  // Hotel ไม่ซ้ำกับแผ่นป้าย: ป้ายบอกว่าที่ไหน บรรทัดนี้บอกว่าติดต่อยังไง
   const summaries: TabSummary[] = [
     {
       id: 'people',
@@ -509,22 +509,22 @@ const BusinessUnitForm: React.FC = () => {
       value: `${users.buUsers.length} ${users.buUsers.length === 1 ? 'user' : 'users'}`,
     },
     {
-      id: 'property',
-      label: 'Property',
+      id: 'hotel',
+      label: 'Hotel',
       value:
         [formData.hotel_tel, formData.hotel_email].filter(Boolean).join(' · ') ||
         'No contact details',
     },
     {
-      id: 'billing',
-      label: 'Billing',
+      id: 'company',
+      label: 'Company',
       value:
         [formData.company_name, formData.tax_no && `TAX ${formData.tax_no}`]
           .filter(Boolean).join(' · ') || 'Not set',
     },
     {
-      id: 'settings',
-      label: 'Settings',
+      id: 'configuration',
+      label: 'Configuration',
       value:
         [
           formData.timezone,
@@ -668,7 +668,7 @@ const BusinessUnitForm: React.FC = () => {
                 />
               </div>
             }
-            settingsSlot={
+            configurationSlot={
               /* Regional formats เป็นกลุ่มที่หน้านี้ประกอบเอง จึงใส่ป้าย Group ให้
                  ส่วนอีกสาม section เป็น component ที่มีหัวการ์ดของตัวเองอยู่แล้ว
                  (ใช้ร่วมกับหน้า platform) — ห่อ Group ทับจะได้หัวข้อซ้อนสองชั้น */

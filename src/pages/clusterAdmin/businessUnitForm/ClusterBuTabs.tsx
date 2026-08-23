@@ -1,13 +1,13 @@
 import type { TabStripItem } from '../../../components/TabStrip';
 
-export type ClusterBuTabId = 'overview' | 'people' | 'property' | 'billing' | 'settings';
+export type ClusterBuTabId = 'overview' | 'people' | 'hotel' | 'company' | 'configuration';
 
 export const CLUSTER_BU_TAB_IDS: ClusterBuTabId[] = [
   'overview',
   'people',
-  'property',
-  'billing',
-  'settings',
+  'hotel',
+  'company',
+  'configuration',
 ];
 
 export const isClusterBuTabId = (v: string | null): v is ClusterBuTabId =>
@@ -22,15 +22,16 @@ export type ClusterBuTab = TabStripItem<ClusterBuTabId>;
  * deliberately: there, hotel and company addresses share one "Location" tab because a platform
  * admin reads them together as the record's geography. A cluster admin does not — the hotel is
  * the property they run, the company is who invoices for it, and those are two different jobs
- * on two different days. So `hotel_*` and `company_*` part ways here.
+ * on two different days. So `hotel_*` and `company_*` part ways here, and each tab is named
+ * after the field prefix it owns rather than after an abstraction over it.
  *
  * `name` returns null on purpose: it lives in the property plate above the strip, visible from
  * every tab, so a name error must not steal a tab switch.
  */
 export function tabForClusterBuField(field: string): ClusterBuTabId | null {
   if (field === 'name') return null;
-  if (field.startsWith('hotel_')) return 'property';
-  if (field.startsWith('company_') || field === 'tax_no' || field === 'branch_no') return 'billing';
+  if (field.startsWith('hotel_')) return 'hotel';
+  if (field.startsWith('company_') || field === 'tax_no' || field === 'branch_no') return 'company';
   if (
     field === 'timezone' ||
     field === 'calculation_method' ||
@@ -38,7 +39,7 @@ export function tabForClusterBuField(field: string): ClusterBuTabId | null {
     field.endsWith('_format') ||
     field.startsWith('config')
   )
-    return 'settings';
+    return 'configuration';
   return 'overview';
 }
 
