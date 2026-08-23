@@ -433,7 +433,7 @@ bun run audit:rest-contract
 bun run swagger:verify
 ```
 
-Expected: PASS ทั้งคู่ · `audit:rest-contract` เทียบ `.rest('GET', '/clusters/summary')` ใน contract กับ route จริง ถ้าแดงแปลว่า path ในสองที่ไม่ตรงกัน
+Expected: PASS ทั้งคู่ · entry นี้เป็น `.restTodo()` ไม่ใช่ `.rest()` (Task 1 Step 4) เพราะ `proposeRest()` เป็นฟังก์ชันของ cmd string ล้วน ไม่ได้อ่าน route ของ gateway — `audit:rest-contract` จึงไม่ได้เทียบ path นี้กับ route จริง แค่ยอมรับว่ามี `.restTodo()` อยู่ ถ้าแดงแปลว่า entry ไม่มีทั้ง `.rest()` และ `.restTodo()` หรือ path ที่ decided แล้วชนกัน
 
 - [ ] **Step 6: rebuild `rpc-contract` แล้ว type-check gateway**
 
