@@ -36,8 +36,8 @@ export interface ClusterBuDocumentProps {
   onUploadAvatar: (f: File) => Promise<void>;
   /** ตารางผู้ใช้ + สรุปใบอนุญาต (tab People) */
   peopleSlot?: React.ReactNode;
-  /** timezone, รูปแบบตัวเลข/วันที่, config (tab Settings) */
-  settingsSlot?: React.ReactNode;
+  /** timezone, รูปแบบตัวเลข/วันที่, config (tab Configuration) */
+  configurationSlot?: React.ReactNode;
 }
 
 /**
@@ -80,7 +80,7 @@ function TabJumpList({ summaries, onJump }: { summaries: TabSummary[]; onJump: (
 export function ClusterBuDocument({
   formData: f, fieldErrors, canEdit, onCommit, onValidate, onChange, onCopyHotelAddress,
   logoUrl, avatarUrl, onUploadLogo, onUploadAvatar,
-  tabs, activeTab, onTabChange, summaries, peopleSlot, settingsSlot,
+  tabs, activeTab, onTabChange, summaries, peopleSlot, configurationSlot,
 }: ClusterBuDocumentProps) {
   const inline = (
     name: keyof BusinessUnitFormData,
@@ -149,9 +149,9 @@ export function ClusterBuDocument({
 
       {activeTab === 'people' && peopleSlot}
 
-      {activeTab === 'property' && (
+      {activeTab === 'hotel' && (
         <Card className="p-0">
-          <Group label="Property">
+          <Group label="Hotel">
             {inline('hotel_name', 'Hotel name')}
             {inline('hotel_tel', 'Phone', { mono: true, validate: true })}
             {inline('hotel_email', 'Email', { type: 'email', validate: true })}
@@ -160,10 +160,10 @@ export function ClusterBuDocument({
         </Card>
       )}
 
-      {activeTab === 'billing' && (
+      {activeTab === 'company' && (
         <Card className="p-0">
           <Group
-            label="Billing entity"
+            label="Company"
             action={
               canEdit && (
                 <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
@@ -183,7 +183,7 @@ export function ClusterBuDocument({
         </Card>
       )}
 
-      {activeTab === 'settings' && settingsSlot}
+      {activeTab === 'configuration' && configurationSlot}
     </div>
   );
 }
