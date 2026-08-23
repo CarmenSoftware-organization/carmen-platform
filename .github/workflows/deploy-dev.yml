@@ -86,8 +86,8 @@ jobs:
             mv "$ROOT.new" "$ROOT"
 
             # ไม่ต้อง reload nginx — เสิร์ฟไฟล์ static ตรง ๆ ไม่ได้ cache path ไว้
-            code=$(wget -qS -O /dev/null http://localhost:60002/ 2>&1 | grep -m1 HTTP | awk '{print $2}')
-            spa=$(wget -qS -O /dev/null http://localhost:60002/cluster/list 2>&1 | grep -m1 HTTP | awk '{print $2}')
+            code=$(wget -qS -O /dev/null http://localhost:9902/ 2>&1 | grep -m1 HTTP | awk '{print $2}')
+            spa=$(wget -qS -O /dev/null http://localhost:9902/cluster/list 2>&1 | grep -m1 HTTP | awk '{print $2}')
             echo "health: / -> $code | /cluster/list -> $spa"
             if [ "$code" != "200" ] || [ "$spa" != "200" ]; then
               echo "::error::เสิร์ฟไม่ผ่าน — ย้อนกลับของเดิม"
