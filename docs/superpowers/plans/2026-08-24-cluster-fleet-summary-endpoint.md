@@ -167,9 +167,9 @@ grep -n "fleetSummary" packages/rpc-contract/src/contracts/clusters.ts
 
 Expected: เจอบรรทัดหน้าตาประมาณ `fleetSummary: rpc('clusters.fleet-summary', 'micro-cluster').restTodo(),`
 
-- [ ] **Step 4: แทนที่ literal ด้วย contract reference และผูก REST mapping**
+- [ ] **Step 4: แทนที่ literal ด้วย contract reference**
 
-4a. ใน `cluster.controller.ts` เปลี่ยน:
+ใน `cluster.controller.ts` เปลี่ยน:
 
 ```ts
   @MessagePattern({ cmd: 'clusters.fleet-summary', service: 'micro-cluster' })
@@ -183,11 +183,21 @@ Expected: เจอบรรทัดหน้าตาประมาณ `fleet
 
 (`Clusters` import อยู่แล้วที่บรรทัด 13)
 
-4b. ใน `packages/rpc-contract/src/contracts/clusters.ts` เปลี่ยน `.restTodo()` ของ entry `fleetSummary` เป็น REST mapping จริง ให้ตรงกับ route ที่ Task 2 จะสร้าง:
+**ห้ามแก้ `packages/rpc-contract/src/contracts/clusters.ts` ด้วยมือเด็ดขาด** — ปล่อยให้ entry เป็น `.restTodo()` ตามที่ generator เขียนให้ เหตุผล:
 
-```ts
-  fleetSummary: rpc('clusters.fleet-summary', 'micro-cluster').rest('GET', '/clusters/summary'),
+- generator ทำ `rmSync` ทั้งไดเรกทอรีแล้วเขียนใหม่ทุกครั้ง และค่า `.rest()` มาจาก `proposeRest(cmd, service)` ใน `scripts/rest-path-rules.ts` ซึ่งเป็นฟังก์ชันของ **ชื่อ cmd ล้วน** ไม่ได้อ่าน route ของ gateway เลย — การแก้มือจะถูกลบทิ้งเงียบๆ ครั้งถัดไปที่ใครรัน `gen:rpc-contract`
+- `audit:rest-contract` ยอมรับ `.restTodo()` (ฟ้องเฉพาะ entry ที่ไม่มีทั้ง `.rest()` และ `.restTodo()` หรือ path ที่ decided แล้วชนกัน)
+- 6 entry พี่น้องใน `Clusters` (`adminScope`, `createUser`, `deleteUser`, `getAllUser`, `getUserById`, `updateUser`) เป็น `.restTodo()` อยู่แล้ว หลายตัวมี route จริงบน gateway
+- `.rest()` เป็นเอกสารประกอบ ไม่ใช่พฤติกรรม — endpoint ทำงานเหมือนกันทั้งสองแบบ
+
+**ตรวจว่า diff จำกัดอยู่ที่ไฟล์เดียว:**
+
+```bash
+cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
+git diff --stat -- packages/rpc-contract/src/contracts/
 ```
+
+Expected: มีแค่ `clusters.ts` เปลี่ยน และเปลี่ยนแค่ 1 บรรทัด (entry ใหม่) · ยืนยันแล้วว่า repo ตรงกับ generator อยู่ก่อนเริ่มงาน ถ้าเห็นไฟล์อื่นเปลี่ยนให้หยุดและรายงาน
 
 - [ ] **Step 5: ตรวจว่าไม่เหลือ `@MessagePattern` แบบ literal**
 

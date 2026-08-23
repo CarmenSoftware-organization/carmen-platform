@@ -100,8 +100,16 @@
 
 entry ที่ได้:
 ```ts
-fleetSummary: rpc('clusters.fleet-summary', 'micro-cluster').rest('GET', '/clusters/summary'),
+fleetSummary: rpc('clusters.fleet-summary', 'micro-cluster').restTodo(),
 ```
+
+> **แก้ตอน execute (2026-08-24, ruling PF-1):** ร่างแรกของ spec เขียนว่า entry จะเป็น
+> `.rest('GET', '/clusters/summary')` ซึ่ง **ผิด** — generator ทำ `rmSync` ทั้งไดเรกทอรีแล้วเขียนใหม่
+> และค่า `.rest()` มาจาก `proposeRest(cmd, service)` (`scripts/rest-path-rules.ts`) ซึ่งเป็นฟังก์ชัน
+> ของชื่อ cmd ล้วน ไม่ได้อ่าน route ของ gateway เลย · `fleet-summary` ไม่ตรงกฎไหนจึงได้ `.restTodo()`
+> เสมอ การแก้มือให้เป็น `.rest(...)` จะถูกลบทิ้งเงียบๆ ครั้งถัดไปที่ใครรัน `gen:rpc-contract`
+> · `audit:rest-contract` ยอมรับ `.restTodo()` และ 6 entry พี่น้องใน `Clusters` ก็เป็นแบบนั้นอยู่แล้ว
+> · ผลต่อ endpoint: ไม่มี — `.rest()` เป็นเอกสารประกอบ ไม่ใช่พฤติกรรม
 
 ### 3.2 `micro-cluster`
 
