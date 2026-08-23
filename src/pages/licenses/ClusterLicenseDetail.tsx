@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import Layout from '../../components/Layout';
-import ClusterAdminLayout from '../../components/ClusterAdminLayout';
 import { PageHeader } from '../../components/PageHeader';
 import clusterService from '../../services/clusterService';
 import businessUnitService from '../../services/businessUnitService';
@@ -20,51 +19,28 @@ const ALL_SECTIONS: NavItem[] = [
   { id: 'subscriptions', label: 'Subscriptions' },
 ];
 
-interface ClusterLicenseDetailProps {
-  /**
-   * เปิดในเชลล์ cluster-admin — หน้านั้นไม่ใช่พื้นผิวสำหรับเขียนไม่ว่าใครเปิด และสิทธิ์ของ
-   * cluster admin ไม่ได้อยู่ใน EffectivePermissions เลย จึงตัดสินจากเชลล์ ไม่ใช่จากสิทธิ์
-   */
-  readOnlyShell?: boolean;
-}
-
 /**
- * `/licenses/:clusterId` (platform admin) และ `/cluster-admin/:clusterId/licenses` (cluster
- * admin, อ่านอย่างเดียว) — สาม "ชั้น" ของ license ของ cluster หนึ่งไว้ในหน้าเดียว: โควตา BU
- * (ใบที่ชนะใบเดียว) · ที่นั่ง (ผลรวมใบที่ active ต่อ BU) · สัญญา ใช้ scrollspy + nav แบบเดียวกับ
- * `ClusterEdit` (`useScrollSpy` + `ClusterEditNav` ที่ `../clusterEdit/`)
+ * `/licenses/:clusterId` (platform admin) — สาม "ชั้น" ของ license ของ cluster หนึ่งไว้ในหน้าเดียว:
+ * โควตา BU (ใบที่ชนะใบเดียว) · ที่นั่ง (ผลรวมใบที่ active ต่อ BU) · สัญญา ใช้ scrollspy + nav
+ * แบบเดียวกับ `ClusterEdit` (`useScrollSpy` + `ClusterEditNav` ที่ `../clusterEdit/`)
  *
  * `canManage` คำนวณจาก `subscription.manage` — **ไม่ใช่** `cluster.update` — เพราะ backend บังคับ
  * `subscription.manage` บนทั้งสอง endpoint license (`platform_cluster-licenses.controller.ts:119,157`)
  * ค่านี้ถูกส่งลงทั้งสาม section เป็น prop เดียว ไม่มี `<Can>` ซ้อนอยู่ในคอมโพเนนต์ร่วมเหล่านั้นเลย
  *
- * ในเชลล์ cluster-admin (`readOnlyShell`) `canManage` ถูกล็อกเป็น `false` เสมอ — ไม่ใช่
- * `hasPermission(...)` — เพราะ cluster admin ไม่มีสิทธิ์ใดใน `EffectivePermissions` เลย (มาจาก
- * ตารางสมาชิกคลัสเตอร์ ไม่ใช่ `tb_user_tb_platform_role`) และแม้ platform admin ที่ถือ
- * `subscription.manage` จะเปิดหน้านี้ผ่านเชลล์ cluster-admin ได้ หน้านั้นก็ไม่ใช่พื้นผิวสำหรับ
- * เขียนไม่ว่าใครเปิดอยู่ดี
+ * เชลล์ cluster-admin เคยยืมหน้านี้ผ่านธง `readOnlyShell` ตอนนี้มีหน้าของตัวเองแล้ว
+ * (`clusterAdmin/ClusterAdminLicenses.tsx`) เพราะสองบทบาทถามคนละคำถาม — ที่นั่นคือ "พอไหม"
+ * ที่นี่คือ "ออกใบไหนไปแล้วบ้าง" ธงนั้นจึงถูกถอดทิ้งพร้อมกิ่งของมันทั้งหมด
  */
-const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShell }) => {
+const ClusterLicenseDetail: React.FC = () => {
   const { clusterId } = useParams<{ clusterId: string }>();
   const location = useLocation();
   const { hasPermission } = useAuth();
-  const canManage = readOnlyShell ? false : hasPermission('subscription.manage');
-  const Shell = readOnlyShell ? ClusterAdminLayout : Layout;
+  const canManage = hasPermission('subscription.manage');
 
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
   const [bus, setBus] = useState<BusinessUnit[]>([]);
-
-  // เชลล์ cluster-admin ต้องไม่ยิง GET /api-system/platform/subscriptions เลย — backend บังคับ
-  // `subscription.read` ผ่าน PlatformPermissionGuard ซึ่งประกอบสิทธิ์จาก `tb_user_tb_platform_role`
-  // เท่านั้น cluster admin แบบสมาชิกภาพไม่มีสิทธิ์นี้ใน EffectivePermissions เลยเสมอ (403 ทุกครั้ง
-  // ไม่ใช่ edge case) endpoint ใบโควตา/ใบที่นั่งจงใจไม่ใส่ decorator นี้ด้วยเหตุผลเดียวกัน
-  // (platform_cluster-licenses.controller.ts:40-46) — ตัด section ออกทั้งจาก nav (ไม่งั้นเมนูจะชี้
-  // ไปที่ที่ไม่มี) และจาก render เพราะปัญหาไม่ใช่เรื่อง UI ที่ซ่อนปุ่มแล้วจบ
-  const SECTIONS = useMemo(
-    () => (readOnlyShell ? ALL_SECTIONS.filter((s) => s.id !== 'subscriptions') : ALL_SECTIONS),
-    [readOnlyShell],
-  );
 
   useEffect(() => {
     if (!clusterId) return;
@@ -107,25 +83,25 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
 
   // เรียก useScrollSpy เองอีกชุด (แยกจากตัวที่ ClusterEditNav ใช้ภายใน) เพื่อเอา `scrollTo` มารองรับ
   // deep-link ผ่าน hash (#seats, #subscriptions) — ลิงก์ "Manage licences" จาก BU/Cluster edit ใช้รูปนี้
-  const { scrollTo } = useScrollSpy(SECTIONS.map((s) => s.id));
+  const { scrollTo } = useScrollSpy(ALL_SECTIONS.map((s) => s.id));
 
   useEffect(() => {
     if (!location.hash) return;
     const id = location.hash.slice(1);
-    if (SECTIONS.some((s) => s.id === id)) scrollTo(id);
-  }, [location.hash, scrollTo, SECTIONS]);
+    if (ALL_SECTIONS.some((s) => s.id === id)) scrollTo(id);
+  }, [location.hash, scrollTo]);
 
   return (
-    <Shell>
+    <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          backTo={readOnlyShell ? undefined : '/licenses'}
+          backTo="/licenses"
           title={clusterLoading ? 'Loading…' : (cluster?.name || '(unknown cluster)')}
           subtitle={cluster?.code ? `Licenses · ${cluster.code}` : 'Licenses'}
         />
 
         <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-6 pb-24">
-          <ClusterEditNav items={SECTIONS} />
+          <ClusterEditNav items={ALL_SECTIONS} />
           <div className="space-y-6">
             <section id="quota" className="scroll-mt-20">
               <BuQuotaSection
@@ -146,15 +122,13 @@ const ClusterLicenseDetail: React.FC<ClusterLicenseDetailProps> = ({ readOnlyShe
               <SeatSection clusterId={clusterId!} businessUnits={bus} canManage={canManage} />
             </section>
 
-            {!readOnlyShell && (
-              <section id="subscriptions" className="scroll-mt-20">
-                <SubscriptionSection clusterId={clusterId!} canManage={canManage} />
-              </section>
-            )}
+            <section id="subscriptions" className="scroll-mt-20">
+              <SubscriptionSection clusterId={clusterId!} canManage={canManage} />
+            </section>
           </div>
         </div>
       </div>
-    </Shell>
+    </Layout>
   );
 };
 
