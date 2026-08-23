@@ -24,6 +24,8 @@ interface BusinessUnitUsersCardProps {
 
 const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, canEdit = false, clusterSeat }) => {
   const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
+  // ผู้ใช้ที่ปิดแล้วไม่คืนที่นั่ง — นับไว้เพื่อตัดสินว่าต้องอธิบายป้าย Shared หรือไม่
+  const sharedCount = users.buUsers.filter((u) => u.is_active && u.frees_seat === false).length;
 
   return (
   <Card>
@@ -58,6 +60,12 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
         <p className="text-sm text-muted-foreground">No users assigned yet.</p>
       ) : (
         <div className="overflow-x-auto">
+          {sharedCount > 0 && (
+            <p className="text-muted-foreground mb-2 text-xs">
+              <span className="text-foreground font-medium">Shared</span> — also active in another
+              business unit in this cluster, so deactivating here frees no seat.
+            </p>
+          )}
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b-2 border-border bg-muted">
@@ -97,17 +105,25 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                       {u.role || '-'}
                     </Badge>
                   </td>
-                  <td className="px-4 py-2 text-center">
-                    <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
-                      {u.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                    {/* frees_seat มาจาก backend เท่านั้น (optional — Task 4b.1) — undefined ต้องไม่ขึ้น
-                        หมายเหตุนี้ เพราะยังตัดสินไม่ได้ว่าปิดแล้วคืนที่นั่งหรือเปล่า */}
-                    {u.is_active && u.frees_seat === false && (
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Also in another BU — deactivating frees no seat
-                      </p>
-                    )}
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
+                        {u.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                      {/* frees_seat มาจาก backend เท่านั้น (optional — Task 4b.1) — undefined ต้องไม่ขึ้น
+                          ป้ายนี้ เพราะยังตัดสินไม่ได้ว่าปิดแล้วคืนที่นั่งหรือเปล่า
+                          ป้ายสั้นแทนประโยคเต็ม: ความหมายเหมือนกันทุกแถว การพิมพ์ซ้ำ 10 รอบจึงเป็น
+                          เสียงรบกวน — คำอธิบายอยู่เหนือตารางครั้งเดียว (sharedCount ด้านบน) */}
+                      {u.is_active && u.frees_seat === false && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                          title="Also active in another business unit in this cluster"
+                        >
+                          Shared
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   {canEdit && (
                     <td className="px-4 py-2 text-center">
