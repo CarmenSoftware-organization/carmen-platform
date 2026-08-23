@@ -3,8 +3,9 @@
 // pool. Business-unit quota does NOT follow this rule any more — a cluster's BU cap comes
 // from its dated licence view (`bu_cap`/`bu_used`), where there is no "unlimited" state at
 // all: no covering licence means quota 0, not infinity. See `seatUtilization` below.
-
-import type { FleetSummary } from '../types';
+//
+// Fleet-wide capacity totals come from the backend's `GET /clusters/summary` endpoint —
+// there is no local fallback computation in this file any more.
 
 export type CapLevel = 'none' | 'ok' | 'warn' | 'over';
 
@@ -28,21 +29,14 @@ export function utilization(used?: number | null, cap?: number | null): Utilizat
   return { used: u, cap: c, ratio, level, pct: Math.round(ratio * 100) };
 }
 
-/** True when a finite cap is 90%+ used (or exceeded). Uncapped is never "near". */
-export function isNearLimit(used?: number | null, cap?: number | null): boolean {
-  const level = utilization(used, cap).level;
-  return level === 'warn' || level === 'over';
-}
-
 /**
  * Seat capacity math — a deliberate second implementation, not a variant of `utilization()`.
  *
  * `utilization()` above treats a cap of `0`/`null`/`undefined` as "uncapped". That rule still
- * holds for `total_max_license_users` — its remaining caller (directly here, in `CapacityMeter`
- * and `CapacityGauge`, and internally in `summarizeFleet` below) — and Task 13 (the `max_license_bu`
- * column drop) confirmed it stays: `isNearLimit` and `utilization` are NOT dead code, they're
- * scoped down to exactly this one dimension. It no longer applies to business-unit quota at
- * all — see the file header. The seat system's rule
+ * holds for `total_max_license_users` — its remaining callers (`CapacityMeter`, `CapacityGauge`,
+ * `ClusterPlate`, `CapacityStrip`) — and Task 13 (the `max_license_bu` column drop) confirmed
+ * it stays: `utilization` is NOT dead code, it's scoped down to exactly this one dimension. It
+ * no longer applies to business-unit quota at all — see the file header. The seat system's rule
  * is the opposite (spec §6.4): there is no "unlimited" seat cap anymore — `cap` is always a
  * finite integer, and `0` means zero seats, not infinite ones. Flipping `utilization()` itself
  * would have to land in lockstep with the backend's `finiteCap()` (a different repo), so this
@@ -62,70 +56,4 @@ export function seatUtilization(used: number, cap: number): SeatUtilization {
   const ratio = c === 0 ? (u > 0 ? 1 : 0) : u / c;
   const level: CapLevel = ratio >= 1 ? 'over' : ratio >= NEAR ? 'warn' : 'ok';
   return { used: u, cap: c, ratio, level, pct: Math.round(ratio * 100) };
-}
-
-interface ClusterLike {
-  is_active?: boolean;
-  // BU quota now comes from the cluster's licence view (Task 7) — see `seatUtilization` above.
-  bu_used?: number | null;
-  bu_cap?: number | null;
-  users_count?: number | null;
-  total_max_license_users?: number | null;
-}
-
-/**
- * TEMPORARY FALLBACK — roll a set of clusters up into fleet-wide capacity + a near-limit count.
- *
- * The backend now returns this shape as the list endpoint's `summary` block; this only fills
- * the gap for a frontend deployed ahead of its backend. Delete it (and `isNearLimit`, whose
- * last caller is right here) once the `summary` block is live everywhere.
- *
- * Returns the wire shape from `src/types` so both sources are interchangeable — a caller
- * must never have to know which one produced the value it is holding.
- */
-export function summarizeFleet(clusters: ClusterLike[]): FleetSummary {
-  const summary: FleetSummary = {
-    total: clusters.length,
-    active: 0,
-    inactive: 0,
-    // The caller fetches with `deleted_at: null`, so this path genuinely cannot know the
-    // archived count. Nothing renders it today; the backend `summary` block is the only
-    // source that can ever fill it truthfully.
-    deleted: 0,
-    near_limit: 0,
-    // `expiring_soon` จงใจไม่คำนวณที่นี่ — fallback ตัวนี้เห็นเฉพาะ cluster ในหน้าปัจจุบัน
-    // (ตารางเป็น serverSide) การนับจากชุดนั้นจะได้ตัวเลขที่ต่ำกว่าความจริงเสมอโดยไม่มีอะไรบอก
-    // ปล่อยเป็น undefined แล้วให้ UI แสดง 0 และปิดการคลิก ดีกว่าตัวเลขที่ผิดแบบดูน่าเชื่อ
-    // Deliberately not computed: this fallback only sees the current page, so any count here
-    // would silently understate. Leaving it undefined shows 0 and disables the filter instead.
-    bu: { used: 0, cap: 0, uncapped_count: 0, uncapped_used: 0 },
-    users: { used: 0, cap: 0, uncapped_count: 0, uncapped_used: 0 },
-  };
-
-  for (const c of clusters) {
-    if (c.is_active) summary.active += 1;
-    else summary.inactive += 1;
-
-    // Seat rules: `bu.cap` is always a finite integer, never "uncapped" — so the bu side of
-    // `summary` only ever adds to `used`/`cap`. `uncapped_count`/`uncapped_used` stay 0 for bu;
-    // they're left in place only because they're still part of the wire shape.
-    const bu = seatUtilization(c.bu_used ?? 0, c.bu_cap ?? 0);
-    summary.bu.used += bu.used;
-    summary.bu.cap += bu.cap;
-
-    const users = utilization(c.users_count, c.total_max_license_users);
-    if (users.cap == null) {
-      summary.users.uncapped_count += 1;
-      summary.users.uncapped_used += users.used;
-    } else {
-      summary.users.used += users.used;
-      summary.users.cap += users.cap;
-    }
-
-    if (bu.level === 'warn' || bu.level === 'over' || isNearLimit(c.users_count, c.total_max_license_users)) {
-      summary.near_limit += 1;
-    }
-  }
-
-  return summary;
 }
