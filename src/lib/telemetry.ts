@@ -123,10 +123,71 @@ export function initTelemetry(version: string): void {
   installErrorHandlers();
 }
 
+/**
+ * error ที่เกิด **ก่อนล็อกอิน** ส่งผ่านช่อง anonymous ที่ gateway จำกัดหนัก
+ *
+ * ตอนนั้นไม่มี token ช่องปกติจึงตอบ 401 แล้ว error หายเงียบ — ครอบทั้งหน้า login
+ * ซึ่งเป็นกลุ่มบั๊กที่กระทบหนักที่สุด ใช้ fetch ตรงไม่ผ่าน SDK เพราะหลายเคสที่พัง
+ * ตั้งแต่ต้น SDK ยัง init ไม่ได้
+ */
+export async function reportPreLoginError(
+  message: string,
+  stack?: string,
+): Promise<void> {
+  try {
+    const nowNano = `${Date.now()}000000`;
+    await fetch(`${backendBase()}/telemetry/v1/anonymous/logs`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        resourceLogs: [
+          {
+            resource: {
+              attributes: [
+                { key: 'service.name', value: { stringValue: SERVICE_NAME } },
+                { key: 'service.namespace', value: { stringValue: 'carmen' } },
+                { key: 'deployment.environment', value: { stringValue: 'dev' } },
+              ],
+            },
+            scopeLogs: [
+              {
+                scope: { name: LOGGER_NAME },
+                logRecords: [
+                  {
+                    timeUnixNano: nowNano,
+                    severityNumber: 17,
+                    severityText: 'ERROR',
+                    body: { stringValue: message },
+                    attributes: [
+                      { key: 'carmen.source', value: { stringValue: 'pre-login' } },
+                      { key: 'carmen.url', value: { stringValue: window.location.pathname } },
+                      ...(stack
+                        ? [{ key: 'exception.stacktrace', value: { stringValue: stack } }]
+                        : []),
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    });
+  } catch {
+    // เงียบเสมอ — ส่ง error ไม่ได้ก็ไม่ควรสร้าง error ใหม่ทับ
+  }
+}
+
 export function reportError(
   message: string,
   detail?: { stack?: string; source?: string },
 ): void {
+  // ไม่มี token = gateway ตอบ 401 แล้ว error หายเงียบ ส่งเข้าช่อง anonymous แทน
+  if (!localStorage.getItem('token')) {
+    void reportPreLoginError(message, detail?.stack);
+    return;
+  }
   try {
     logs.getLogger(LOGGER_NAME).emit({
       severityNumber: SeverityNumber.ERROR,
