@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '../../../components/ui/card';
-import { badgeVariants } from '../../../components/ui/badge';
+import { StatusToggle } from '../../../components/StatusToggle';
 import { HeroName } from '../../businessUnitEdit/HeroName';
 import { SeatMeter } from './SeatMeter';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
@@ -16,33 +16,6 @@ export interface BuPropertyPlateProps {
   clusterSeat?: { used: number; cap: number };
   onCommit: (name: string, value: string) => void;
   onToggle: (name: string, value: boolean) => void;
-}
-
-/** สถานะที่สลับได้ด้วยการคลิกป้ายเอง ไม่ต้องเข้าโหมดแก้ */
-function StatusToggle({
-  on, onLabel, offLabel, variant, disabled, onClick,
-}: {
-  on: boolean;
-  onLabel: string;
-  offLabel: string;
-  variant: 'success' | 'default';
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      aria-pressed={on}
-      onClick={onClick}
-      className="focus-visible:ring-ring relative -my-2 rounded-full py-2 before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] focus-visible:ring-1 focus-visible:outline-hidden"
-    >
-      {/* <span>, not <Badge> (a <div>) — a <button> may only contain phrasing content. */}
-      <span className={badgeVariants({ variant: on ? variant : 'secondary' })}>
-        {on ? onLabel : offLabel}
-      </span>
-    </button>
-  );
 }
 
 /**

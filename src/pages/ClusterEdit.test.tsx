@@ -84,6 +84,12 @@ function renderAt(path: string) {
   );
 }
 
+// Only the open tab's body is mounted, so a test that reaches into Business Units or Users
+// has to open that tab first. Licensing is the default tab.
+const openTab = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => {
+  await user.click(await screen.findByRole('tab', { name }));
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   auth.isSuperAdmin = false;
@@ -95,17 +101,16 @@ beforeEach(() => {
 });
 
 describe('ClusterEdit (integration)', () => {
-  it('loads an existing cluster into the overview hub, then reveals a field input on click', async () => {
+  it('loads an existing cluster into the plate, then reveals a field input on click', async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
     const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
 
-    // The hub hero leads with the cluster name (h1) and its code. Scoped to the
-    // overview section — the Details section below now also renders "CLS1" as its
-    // own read-mode field text.
+    // The plate leads with the cluster name (h1) and carries the code exactly once — as the
+    // control that edits it. The separate Identity card that used to repeat both is gone, so
+    // this no longer needs scoping to a section to avoid the duplicate.
     expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
-    const overviewSection = document.getElementById('overview') as HTMLElement;
-    expect(within(overviewSection).getByText('CLS1', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'CLS1' })).toHaveLength(1);
 
     // Edit-in-place: the field is read-only text until clicked, then reveals its input.
     expect(screen.queryByDisplayValue('Acme Cluster')).toBeNull();
@@ -180,7 +185,9 @@ describe('ClusterEdit — edit-in-place details', () => {
   // disable "Add" business unit outright, not offer an "unlimited" affordance.
   it('reads an absent bu_cap as zero, not "unlimited" — the Add Business Unit button is disabled outright', async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: { ...fakeCluster, bu_cap: undefined } });
+    const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
+    await openTab(user, /business units/i);
 
     const addBuButton = await screen.findByRole('button', { name: /^add$/i });
     expect(addBuButton).toBeDisabled();
@@ -283,10 +290,12 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
 
   it('hides every write surface without cluster.update / cluster.create', async () => {
     auth.hasPermission = () => false;
+    const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' })).toBeInTheDocument();
-    // Edit-in-place: with no permission, the Details fields are read-only (no edit trigger),
+    await openTab(user, /users/i);
+    // Edit-in-place: with no permission, the plate's fields are read-only (no edit trigger),
     // and the user write surfaces are absent.
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /^add$/i })).toBeNull();
@@ -303,7 +312,9 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
     // (the exact regression this suite exists to catch); this mock only grants
     // cluster.update when the real `checkPermission` scoping context matches cluster c1.
     auth.hasPermission = (perm, ctx) => perm === 'cluster.update' && ctx?.clusterId === 'c1';
+    const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
+    await openTab(user, /users/i);
 
     expect(await screen.findByRole('button', { name: /add user/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /remove jane doe/i })).toBeInTheDocument();
@@ -314,49 +325,45 @@ describe('ClusterEdit — cluster-user write surfaces are gated', () => {
 
 // Follow-up to review C1: `SubscriptionCard` renders nothing — and fires no request — without
 // `subscription.read`; that gating is pinned in SubscriptionCard.test.tsx. It used to own a
-// whole section, so an unconditional nav entry was a menu item that scrolled to an empty stretch
-// of page and the entry had to follow the permission. It is now embedded in the `Licensing`
-// section, whose BU quota renders for everyone, so the entry is unconditional again. What
-// follows pins that: the same five stops either way.
-describe('ClusterEdit — the Licensing nav entry does not follow subscription.read', () => {
-  const SECTION_IDS = ['overview', 'identity', 'licensing', 'business-units', 'users'];
-
+// whole section, so an unconditional nav entry was a menu item that scrolled to an empty
+// stretch of page, and the entry had to follow the permission. It is now the Licensing tab,
+// whose body always carries the Manage licences action, so the tab keeps content either way
+// and stays unconditional. What follows pins that: the same three tabs either way.
+describe('ClusterEdit — the Licensing tab does not follow subscription.read', () => {
   const renderClusterEdit = async () => {
     asMock(clusterService.getById).mockResolvedValue({ data: fakeCluster });
     renderAt('/clusters/c1/edit');
     await screen.findByRole('heading', { level: 1, name: 'Acme Cluster' });
-    return screen.getByRole('navigation', { name: 'Cluster sections' });
+    return screen.getByRole('tablist');
   };
 
-  const expectFullMenu = (nav: HTMLElement) => {
-    expect(within(nav).getByRole('button', { name: 'Overview' })).toBeInTheDocument();
-    expect(within(nav).getByRole('button', { name: 'Identity' })).toBeInTheDocument();
-    expect(within(nav).getByRole('button', { name: 'Licensing' })).toBeInTheDocument();
-    expect(within(nav).getByRole('button', { name: /business units/i })).toBeInTheDocument();
-    expect(within(nav).getByRole('button', { name: /users/i })).toBeInTheDocument();
-    expect(within(nav).getAllByRole('button')).toHaveLength(SECTION_IDS.length);
+  const expectFullStrip = (strip: HTMLElement) => {
+    expect(within(strip).getByRole('tab', { name: /licensing/i })).toBeInTheDocument();
+    expect(within(strip).getByRole('tab', { name: /business units/i })).toBeInTheDocument();
+    expect(within(strip).getByRole('tab', { name: /users/i })).toBeInTheDocument();
+    expect(within(strip).getAllByRole('tab')).toHaveLength(3);
   };
 
-  it('keeps every menu item without subscription.read', async () => {
+  it('keeps every tab without subscription.read', async () => {
     auth.hasPermission = (perm) => perm !== 'subscription.read';
 
-    expectFullMenu(await renderClusterEdit());
+    expectFullStrip(await renderClusterEdit());
   });
 
-  it('keeps every menu item with subscription.read (discriminating control)', async () => {
+  it('keeps every tab with subscription.read (discriminating control)', async () => {
     auth.hasPermission = () => true;
 
-    expectFullMenu(await renderClusterEdit());
+    expectFullStrip(await renderClusterEdit());
   });
 
-  // useScrollSpy observes elements by id, so its safety comes from every id the nav hands it
-  // existing in the DOM at observe time — the menu and the anchors must not drift apart.
-  it('renders an anchor for every menu item', async () => {
+  // What makes the unconditional tab safe: its body is never empty, even for a user who
+  // cannot read subscriptions at all. That is the property the old nav entry lacked.
+  it('keeps the Licensing body populated without subscription.read', async () => {
     auth.hasPermission = (perm) => perm !== 'subscription.read';
 
     await renderClusterEdit();
 
-    SECTION_IDS.forEach((sectionId) => expect(document.getElementById(sectionId)).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /manage licences/i })).toBeInTheDocument();
   });
 });
 
@@ -394,6 +401,7 @@ describe('ClusterEdit — Add User dialog respects the cluster-wide license cap'
     });
     const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
+    await openTab(user, /users/i);
 
     await user.click(await screen.findByRole('button', { name: /add user/i }));
     const dialog = await screen.findByRole('dialog');
@@ -409,6 +417,7 @@ describe('ClusterEdit — Add User dialog respects the cluster-wide license cap'
     });
     const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
+    await openTab(user, /users/i);
 
     await user.click(await screen.findByRole('button', { name: /add user/i }));
     const dialog = await screen.findByRole('dialog');
@@ -433,6 +442,7 @@ describe('ClusterEdit — Add User dialog respects the cluster-wide license cap'
     });
     const user = userEvent.setup();
     renderAt('/clusters/c1/edit');
+    await openTab(user, /users/i);
 
     await user.click(await screen.findByRole('button', { name: /add user/i }));
     const dialog = await screen.findByRole('dialog');

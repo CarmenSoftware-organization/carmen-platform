@@ -13,6 +13,13 @@ interface BrandingImageUploadProps {
   value?: string; // current presigned URL (empty when none)
   disabled?: boolean;
   shape?: 'rect' | 'square';
+  /**
+   * Slot-only rendering: the preview *is* the button, with the label carried on `aria-label`
+   * and the format/size help dropped. Built for the cluster identity plate, where the two
+   * marks sit beside the cluster's name and a labelled 20px-tall upload card each would turn
+   * a one-line plate into a form. Every other call site keeps the full slot.
+   */
+  compact?: boolean;
   maxSizeMB?: number;
   accept?: string[];
   /** Entity name behind this branding — feeds the square slot's initials fallback. */
@@ -28,6 +35,7 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
   value,
   disabled = false,
   shape = 'rect',
+  compact = false,
   maxSizeMB = 5,
   accept = DEFAULT_ACCEPT,
   fallbackName,
@@ -65,7 +73,13 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
     }
   };
 
-  const frameClass = shape === 'square' ? 'h-20 w-20 rounded-full' : 'h-20 w-auto max-w-[160px] rounded-md';
+  const frameClass = compact
+    ? shape === 'square'
+      ? 'h-12 w-12 rounded-full'
+      : 'h-12 w-20 rounded-md'
+    : shape === 'square'
+      ? 'h-20 w-20 rounded-full'
+      : 'h-20 w-auto max-w-[160px] rounded-md';
   const fitClass = shape === 'square' ? 'object-cover' : 'object-contain';
 
   /* Two different empty states, on purpose. A square slot falls back to initials — a real
@@ -86,14 +100,71 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
       );
     }
     if (shape === 'square') {
-      return <BrandMark size="lg" shape="circle" name={fallbackName} code={fallbackCode} />;
+      return (
+        <BrandMark
+          size="lg"
+          shape="circle"
+          name={fallbackName}
+          code={fallbackCode}
+          className={cn(compact && 'h-12 w-12 text-base')}
+        />
+      );
     }
     return (
-      <div className="flex h-20 w-[160px] shrink-0 items-center justify-center rounded-md border border-dashed bg-muted/30">
-        <ImagePlus className="h-5 w-5 text-muted-foreground/70" aria-hidden />
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-center rounded-md border border-dashed bg-muted/30',
+          compact ? 'h-12 w-20' : 'h-20 w-[160px]',
+        )}
+      >
+        <ImagePlus className={cn('text-muted-foreground/70', compact ? 'h-4 w-4' : 'h-5 w-5')} aria-hidden />
       </div>
     );
   };
+
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept={accept.join(',')}
+      className="hidden"
+      onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); }}
+    />
+  );
+
+  if (compact) {
+    if (disabled) return <div className="shrink-0">{renderPreview()}</div>;
+    return (
+      <div className="shrink-0">
+        {fileInput}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+          aria-label={value ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
+          className="group focus-visible:ring-ring relative block rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
+        >
+          {renderPreview()}
+          {/* The affordance is the overlay, not a separate button: it only has to appear on the
+              way to the click, and a permanent "Replace" caption under each mark would be more
+              chrome than the marks themselves. focus-visible keeps it reachable by keyboard. */}
+          <span
+            className={cn(
+              'bg-foreground/55 absolute inset-0 grid place-items-center transition-opacity',
+              shape === 'square' ? 'rounded-full' : 'rounded-md',
+              busy ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
+            )}
+          >
+            {busy ? (
+              <Loader2 className="text-background h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="text-background h-4 w-4" />
+            )}
+          </span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -102,13 +173,7 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
         {renderPreview()}
         {!disabled && (
           <div className="space-y-1.5">
-            <input
-              ref={inputRef}
-              type="file"
-              accept={accept.join(',')}
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); }}
-            />
+            {fileInput}
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
               {busy ? 'Uploading…' : value ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
