@@ -130,7 +130,7 @@
    * @param payload - Microservice payload carrying the requesting user / ข้อมูล payload จาก microservice ที่มีผู้ใช้ที่ร้องขอ
    * @returns Microservice response with the fleet summary / การตอบกลับ microservice พร้อมค่าสรุปทั้งกอง
    */
-  @MessagePattern({ cmd: 'clusters.fleet-summary', service: 'micro-cluster' })
+  @MessagePattern({ cmd: 'clusters.fleet-summary', service: 'clusters' })
   async fleetSummary(@Payload() payload: MicroservicePayload): Promise<MicroserviceResponse> {
     this.logger.debug(
       { function: 'fleetSummary', payload: payload },
@@ -151,6 +151,8 @@
 ```
 
 **หมายเหตุ:** literal `{ cmd: ..., service: ... }` เป็นของชั่วคราวตาม 3 ขั้นที่หัวไฟล์ `packages/rpc-contract/src/contracts/clusters.ts` บังคับ จะถูกแทนที่ใน Step 4
+
+**⚠️ ฟิลด์ `service` ต้องเป็น `'clusters'` ไม่ใช่ `'micro-cluster'`** — generator จัดกลุ่ม entry ตามค่าในฟิลด์นี้ แล้วใช้เป็นชื่อไฟล์ contract (`defineService('clusters', …)` → `clusters.ts`) ส่วนชื่อ **app** (`'micro-cluster'` ที่เป็นอาร์กิวเมนต์ที่สองของ `rpc()`) generator อนุมานจาก path ของไฟล์ handler เอง · ถ้าใส่ `'micro-cluster'` ตรงนี้จะได้ไฟล์ `micro-cluster.ts` ใหม่โผล่มาแทนที่จะเพิ่มบรรทัดใน `clusters.ts` · เทียบกับ literal เดิมของ `createCluster` ใน git history เพื่อยืนยันรูปแบบได้
 
 - [ ] **Step 3: รัน generator เพื่อสร้าง contract entry**
 

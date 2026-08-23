@@ -94,7 +94,10 @@
 `packages/rpc-contract/src/contracts/clusters.ts` เป็นไฟล์ **generated** หัวไฟล์บังคับลำดับ 3 ขั้น
 ทำผิดลำดับจะ compile ไม่ผ่าน:
 
-1. เขียน handler ด้วย literal ชั่วคราว `@MessagePattern({ cmd: 'clusters.fleet-summary', service: 'micro-cluster' })`
+1. เขียน handler ด้วย literal ชั่วคราว `@MessagePattern({ cmd: 'clusters.fleet-summary', service: 'clusters' })`
+   — ฟิลด์ `service` คือ **ชื่อกลุ่ม contract** ที่กลายเป็นชื่อไฟล์ ไม่ใช่ชื่อ app (ruling PF-2 ตอน execute:
+   ร่างแรกเขียน `'micro-cluster'` ซึ่งทำให้ generator สร้างไฟล์ `micro-cluster.ts` ใหม่แทนที่จะเพิ่ม
+   บรรทัดใน `clusters.ts` — ชื่อ app generator อนุมานจาก path ของ handler เอง)
 2. `bun run gen:rpc-contract`
 3. แทนที่ literal ด้วย `Clusters.fleetSummary.pattern`
 
