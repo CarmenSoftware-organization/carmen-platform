@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import clusterService from '../services/clusterService';
@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Building2, Users, X, UserPlus, Search, Loader2, SearchX, Ticket } from 'lucide-react';
+import { Save, X, UserPlus, Search, Loader2, SearchX } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { validateField } from '../utils/validation';
@@ -22,11 +22,9 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useAuth } from '../context/AuthContext';
 import { Skeleton } from '../components/ui/skeleton';
 import { TableSkeleton } from '../components/TableSkeleton';
-import { ClusterHero } from './clusterManagement/ClusterHero';
 import { ClusterIdentityFields, type ClusterFormData } from './clusterManagement/ClusterIdentityFields';
-import { ClusterEditNav, type NavItem } from './clusterEdit/ClusterEditNav';
-import { DetailsSection } from './clusterEdit/sections/DetailsSection';
-import { BrandingSection } from './clusterEdit/sections/BrandingSection';
+import { ClusterPlate } from './clusterEdit/ClusterPlate';
+import { isClusterTabId, type ClusterTab, type ClusterTabId } from './clusterEdit/clusterTabs';
 import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSection';
 import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
@@ -66,7 +64,7 @@ const ClusterEdit: React.FC = () => {
   // Raw cluster record from the last successful fetch — kept separate from `formData` (the
   // useUnsavedChanges diff target) and separate from `clusterMeta` below, purely so
   // `normalizeAudit()` has the full record (it reads both nested `audit.*` and flat
-  // `created_at`/`created_by_name` shapes) at the ClusterHero call site.
+  // `created_at`/`created_by_name` shapes) at the ClusterPlate call site.
   const [clusterRecord, setClusterRecord] = useState<unknown>(null);
   const [clusterMeta, setClusterMeta] = useState<{
     // Seat pool is the cluster's own aggregate (backend-computed from the license view) —
@@ -80,6 +78,15 @@ const ClusterEdit: React.FC = () => {
   }>({});
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buLoading, setBuLoading] = useState(false);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Deep-linkable: ?tab= survives a reload and can be shared or bookmarked. Seeded from the
+  // URL once — the state is the authority afterwards, so an unknown value degrades to
+  // Licensing, the first tab.
+  const [activeTab, setActiveTab] = useState<ClusterTabId>(() => {
+    const fromUrl = searchParams.get('tab');
+    return isClusterTabId(fromUrl) ? fromUrl : 'licensing';
+  });
 
   const [savedFormData, setSavedFormData] = useState<ClusterFormData>(formData);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -103,6 +110,17 @@ const ClusterEdit: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: name === 'is_active' ? value === 'true' : value }));
     setError('');
   };
+  const handleTabChange = (tab: ClusterTabId) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    // Licensing is the default: leave it out so the plain URL stays the canonical one.
+    if (tab === 'licensing') next.delete('tab');
+    else next.set('tab', tab);
+    // replace, not push — a tab switch is not a navigation step, and stacking them would make
+    // Back walk through every tab the user touched instead of leaving the page.
+    setSearchParams(next, { replace: true });
+  };
+
   const handleValidateField = (name: string, value: string) => {
     setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
@@ -360,79 +378,41 @@ const ClusterEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading cluster">
-          {/* Header skeleton */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Skeleton className="h-9 w-9 rounded-md" />
-            <div className="flex-1">
-              <Skeleton className="h-8 w-40" />
-              <Skeleton className="h-4 w-56 mt-2" />
-            </div>
-          </div>
-
-          {/* Hero skeleton */}
+          {/* Plate skeleton — marks, name, identifiers, the two licence rails, the strip. */}
+          <Skeleton className="h-5 w-24" />
           <Card className="overflow-hidden p-0">
-            <div className="flex flex-wrap items-start gap-4 p-5 sm:p-6">
-              <div className="flex shrink-0 gap-2.5">
-                <Skeleton className="h-11 w-16 rounded-lg" />
-                <Skeleton className="size-11 rounded-lg" />
+            <div className="flex gap-4 p-4 sm:p-5">
+              <div className="flex shrink-0 items-center gap-2.5">
+                <Skeleton className="h-12 w-20 rounded-md" />
+                <Skeleton className="h-12 w-12 rounded-full" />
               </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-3 w-64" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-64" />
                 <Skeleton className="h-3 w-56" />
               </div>
             </div>
-            <div className="bg-muted/30 grid gap-6 border-t p-5 sm:grid-cols-2 sm:p-6">
+            <div className="bg-muted/30 grid gap-x-8 gap-y-4 border-t p-4 sm:grid-cols-2 sm:p-5">
               {Array.from({ length: 2 }).map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-8 w-20" />
+                <div key={i} className="space-y-1.5">
+                  <Skeleton className="h-3 w-28" />
+                  <Skeleton className="h-2.5 w-full" />
                   <Skeleton className="h-3 w-40" />
                 </div>
               ))}
             </div>
-          </Card>
-
-          {/* Cluster Details Card */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-48 mt-1" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-9 w-full" />
-                </div>
+            <div className="flex gap-6 border-t px-4 py-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-4 w-24" />
               ))}
-            </CardContent>
+            </div>
           </Card>
 
-          {/* Business Units Card */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-40 mt-1" />
-            </CardHeader>
-            <CardContent className="p-0">
-              {/* Plain <table> below (not DataTable, so no auto `#` column) has 4
-                  <th>: Code, Name, Status, and a trailing blank actions column. */}
-              <TableSkeleton columns={4} rows={3} />
-            </CardContent>
-          </Card>
-
-          {/* Users Card */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-4 w-36 mt-1" />
-            </CardHeader>
-            <CardContent className="p-0">
-              {/* Plain <table> below (not DataTable, so no auto `#` column) has 5
-                  <th>: Name, Email, Role, Status, and a trailing blank actions column. */}
-              <TableSkeleton columns={5} rows={3} />
-            </CardContent>
+          {/* One tab body, not four stacked cards — only the open tab renders. */}
+          <Card className="p-0">
+            {/* Plain <table> (not DataTable, so no auto `#` column): Code, Name, Status and a
+                trailing blank actions column. */}
+            <TableSkeleton columns={4} rows={3} />
           </Card>
         </div>
       </Layout>
@@ -480,9 +460,7 @@ const ClusterEdit: React.FC = () => {
   const userCap = clusterMeta.total_max_license_users ? clusterMeta.total_max_license_users : null;
   const userActive = users.clusterUsers.filter((u) => u.is_active !== false).length;
 
-  const navItems: NavItem[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'identity', label: 'Identity' },
+  const tabs: ClusterTab[] = [
     { id: 'licensing', label: 'Licensing' },
     { id: 'business-units', label: 'Business Units', count: businessUnits.length },
     { id: 'users', label: 'Users', count: users.clusterUsers.length },
@@ -490,7 +468,8 @@ const ClusterEdit: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
+      {/* pb-24 clears the sticky save bar, which only exists on the edit surface. */}
+      <div className={`space-y-4 sm:space-y-6 ${isNew ? '' : 'pb-24'}`}>
         {isNew ? (
           <>
             <PageHeader backTo="/clusters" title="Add Cluster" subtitle="Create a new cluster" />
@@ -529,145 +508,79 @@ const ClusterEdit: React.FC = () => {
           </>
         ) : (
           <>
-            <PageHeader backTo="/clusters" title={formData.name || '(unnamed cluster)'} subtitle="Cluster details" />
+            <ClusterPlate
+              formData={formData}
+              fieldErrors={fieldErrors}
+              canEdit={canEdit}
+              logoUrl={logoUrl}
+              avatarUrl={avatarUrl}
+              audit={normalizeAudit(clusterRecord)}
+              backTo="/clusters"
+              bu={{ used: buUsed, cap: buCap, active: buActive }}
+              users={{ used: userUsed, cap: userCap, active: userActive }}
+              tabs={tabs}
+              activeTab={activeTab}
+              onCommit={handleCommitField}
+              onValidate={handleValidateField}
+              onUploadLogo={handleUploadLogo}
+              onUploadAvatar={handleUploadAvatar}
+              onTabChange={handleTabChange}
+            />
 
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
 
-            <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-6 pb-24">
-              <ClusterEditNav items={navItems} />
-              <div className="space-y-6">
-                <section id="overview" className="scroll-mt-20">
-                  <ClusterHero
-                    name={formData.name}
-                    code={formData.code}
-                    alias={formData.alias_name}
-                    isActive={formData.is_active}
-                    logoUrl={logoUrl}
-                    avatarUrl={avatarUrl}
-                    audit={normalizeAudit(clusterRecord)}
-                    bu={{ used: buUsed, cap: buCap, active: buActive }}
-                    users={{ used: userUsed, cap: userCap, active: userActive }}
-                  />
-                </section>
+            {activeTab === 'licensing' && (
+              <Card className="p-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+                  <div>
+                    <h2 className="text-sm font-medium">Subscriptions</h2>
+                    <p className="text-muted-foreground text-xs">
+                      The latest licences covering this cluster, newest expiry first
+                    </p>
+                  </div>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
+                  </Button>
+                </div>
+                {/* `SubscriptionCard` renders nothing at all — and fires no request — without
+                 *  `subscription.read` (review C1), and nothing again when its fetch fails.
+                 *  `failed` is private to that component, so `empty:` is the only way this
+                 *  parent can drop the rule instead of hanging a hairline over blank space. */}
+                <div className="border-t empty:hidden">
+                  <SubscriptionCard clusterId={id!} embedded />
+                </div>
+              </Card>
+            )}
 
-                <section id="identity" className="scroll-mt-20">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Identity</CardTitle>
-                      <CardDescription>Name, code, status, and the marks shown across the platform</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <DetailsSection
-                        formData={formData}
-                        fieldErrors={fieldErrors}
-                        canEdit={canEdit}
-                        onCommit={handleCommitField}
-                        onValidate={handleValidateField}
-                      />
-                      {/* Branding is two upload slots, not a subject of its own — it names the same
-                       *  cluster the fields above name. It rides in this card behind the same rule
-                       *  that separates the fields, so the seam reads as one more row rather than
-                       *  as a second card. */}
-                      <div className="border-t pt-4">
-                        <BrandingSection
-                          logoUrl={logoUrl}
-                          avatarUrl={avatarUrl}
-                          canEdit={canEdit}
-                          name={formData.name}
-                          code={formData.code}
-                          onUploadLogo={handleUploadLogo}
-                          onUploadAvatar={handleUploadAvatar}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </section>
+            {activeTab === 'business-units' && (
+              <Card className="p-0">
+                <BusinessUnitsSection
+                  clusterId={id!}
+                  businessUnits={businessUnits}
+                  loading={buLoading}
+                  maxLicenseBu={buCap}
+                  onRefresh={fetchBusinessUnits}
+                  onNavigate={navigate}
+                />
+              </Card>
+            )}
 
-                <section id="licensing" className="scroll-mt-20">
-                  <Card>
-                    <CardHeader className="flex flex-row items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <CardTitle className="flex items-center gap-2">
-                          <Ticket className="h-5 w-5" />
-                          Licensing
-                        </CardTitle>
-                        <CardDescription>
-                          {buCap === 0
-                            ? 'No licence in force — this cluster cannot create business units'
-                            : `${clusterMeta.bu_used ?? 0} / ${buCap} business units`}
-                        </CardDescription>
-                      </div>
-                      <Button asChild size="sm" variant="outline">
-                        <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
-                      </Button>
-                    </CardHeader>
-                    {/* `SubscriptionCard` renders nothing at all — and fires no request — without
-                     *  `subscription.read` (review C1), and nothing again when its fetch fails. It
-                     *  used to own a whole section for that reason, which meant a nav entry that had
-                     *  to be conditional or it pointed at empty page. Embedded here it drops its own
-                     *  card chrome and this section keeps content either way, because the BU quota
-                     *  above it always renders — so the nav entry is unconditional again. `empty:`
-                     *  collapses the rule and the padding when the card yields nothing, which is the
-                     *  one state the parent cannot see: `failed` is private to that component. */}
-                    <CardContent className="border-t p-0 empty:hidden">
-                      <SubscriptionCard clusterId={id!} embedded />
-                    </CardContent>
-                  </Card>
-                </section>
-
-                <section id="business-units" className="scroll-mt-20">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5" />
-                        Business Units
-                      </CardTitle>
-                      <CardDescription>
-                        {buLoading ? 'Loading…' : `${businessUnits.length} total · ${buActive} active`}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <BusinessUnitsSection
-                        clusterId={id!}
-                        businessUnits={businessUnits}
-                        loading={buLoading}
-                        maxLicenseBu={buCap}
-                        onRefresh={fetchBusinessUnits}
-                        onNavigate={navigate}
-                      />
-                    </CardContent>
-                  </Card>
-                </section>
-
-                <section id="users" className="scroll-mt-20">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5" />
-                        Users
-                      </CardTitle>
-                      <CardDescription>
-                        {users.usersLoading ? 'Loading…' : `${users.clusterUsers.length} total · ${userActive} active`}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <UsersSection
-                        users={users.clusterUsers}
-                        loading={users.usersLoading}
-                        canEdit={canEdit}
-                        onRefresh={users.fetchClusterUsers}
-                        onAddUser={handleOpenAddUserDialog}
-                        onUpdateUser={handleUpdateUser}
-                        onRemoveUser={handleRemoveUser}
-                        onBulkRemove={handleBulkRemove}
-                      />
-                    </CardContent>
-                  </Card>
-                </section>
-              </div>
-            </div>
+            {activeTab === 'users' && (
+              <Card className="p-0">
+                <UsersSection
+                  users={users.clusterUsers}
+                  loading={users.usersLoading}
+                  canEdit={canEdit}
+                  onRefresh={users.fetchClusterUsers}
+                  onAddUser={handleOpenAddUserDialog}
+                  onUpdateUser={handleUpdateUser}
+                  onRemoveUser={handleRemoveUser}
+                  onBulkRemove={handleBulkRemove}
+                />
+              </Card>
+            )}
           </>
         )}
       </div>
