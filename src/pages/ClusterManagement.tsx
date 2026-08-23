@@ -23,7 +23,6 @@ import Can from '../components/Can';
 import { BrandMark } from '../components/BrandMark';
 import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
-import { summarizeFleet } from '../utils/capacity';
 import { isPerpetual } from '../utils/clusterLicense';
 import { auditColumns } from '../components/auditColumns';
 import { AuditMeta } from '../components/AuditMeta';
@@ -70,6 +69,7 @@ const ClusterManagement: React.FC = () => {
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
+  const [fleetError, setFleetError] = useState(false);
 
   const buildAdvance = (filters: string[], includeDeleted: boolean, expiringSoon = false) => {
     const where: Record<string, unknown> = {};
@@ -160,9 +160,6 @@ const ClusterManagement: React.FC = () => {
       });
       setClusters(mapped);
       setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
-      // The band rides on this same response — no second request. `summary` is absent until
-      // the backend deploys, and `loadFleet` below still fills the gap in the meantime.
-      if (data.summary) setFleet(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load clusters: ' + getErrorDetail(err));
@@ -176,34 +173,25 @@ const ClusterManagement: React.FC = () => {
     fetchClusters(paginate);
   }, [fetchClusters, paginate]);
 
-  // Fleet-capacity strip: summarise the whole (non-deleted) set, not just the
-  // current page. Clusters are few, so a single full-list read is cheap.
+  // แถบความจุอ่านจาก endpoint เฉพาะทางที่ไม่รับตัวกรองเลย ตัวเลขจึงเป็นของทั้ง fleet เสมอ
+  // ไม่ขยับตามช่องค้นหาหรือ filter ของตารางด้านล่าง — ซึ่งเป็นสิ่งที่ปุ่มสถิติ "quota expiring"
+  // ต้องการ เพราะมันมีไว้ *เปิด* filter ถ้าตัวเลขมาจากผลที่ filter แล้วปุ่มจะดับเมื่อค้นหาอย่างอื่น
+  //
+  // The band reads a dedicated endpoint that takes no filter, so the numbers always describe
+  // the whole fleet. That is what the "quota expiring" stat needs: it exists to APPLY a filter,
+  // so a count derived from an already-filtered set makes the button a dead end.
+  //
+  // จงใจไม่มี fallback ไปที่ `getAll({ perpage: 1 })` — fallback แบบนั้นคือสิ่งที่ทำให้หน้านี้
+  // มีสามแหล่งข้อมูลตั้งแต่แรก ถ้า endpoint ยังไม่ deploy ให้แถบบอกตรงๆ ว่าโหลดไม่ได้
   const loadFleet = useCallback(async () => {
     setFleetLoading(true);
     try {
-      // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
-      // environment (see docs/superpowers/plans/2026-08-10-list-summary-block-cluster.md,
-      // Task 5). Until then this keeps the gauges filled for a frontend deployed ahead of
-      // its backend.
-      const data = await clusterService.getAll({
-        perpage: -1,
-        advance: JSON.stringify({ where: { deleted_at: null } }),
-      });
-      const items = ((data as { data?: unknown }).data ?? data) as Record<string, unknown>[];
-      const mapped = (Array.isArray(items) ? items : []).map((item) => ({
-        is_active: item.is_active as boolean | undefined,
-        bu_count: (item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
-        bu_cap: (item.bu_cap ?? 0) as number,
-        bu_used: (item.bu_used ?? item.bu_count ?? (item._count as { tb_business_unit?: number })?.tb_business_unit ?? 0) as number,
-        users_count: (item.users_count ?? (item._count as { tb_cluster_user?: number })?.tb_cluster_user ?? 0) as number,
-        total_max_license_users: item.total_max_license_users as number | null | undefined,
-      }));
-      // `loadFleet` and `fetchClusters` race on mount. Writing unconditionally would let
-      // the locally-computed value clobber a real `summary` in one interleaving but not the
-      // other — an intermittent wrong number rather than a reproducible bug.
-      setFleet((current) => current ?? summarizeFleet(mapped));
-    } catch {
-      setFleet(null); // strip falls back to its skeleton; the table still works
+      const summary = await clusterService.getFleetSummary();
+      setFleet(summary);
+      setFleetError(false);
+    } catch (err: unknown) {
+      devLog('Error loading fleet summary:', err);
+      setFleetError(true);
     } finally {
       setFleetLoading(false);
     }
@@ -487,6 +475,7 @@ const ClusterManagement: React.FC = () => {
         <FleetCapacity
           summary={fleet}
           loading={fleetLoading}
+          error={fleetError}
           onExpiringSoonClick={handleExpiringSoonToggle}
           expiringSoonActive={expiringSoonFilter}
         />

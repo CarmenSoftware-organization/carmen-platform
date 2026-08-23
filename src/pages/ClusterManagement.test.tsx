@@ -45,7 +45,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(
 vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../services/clusterService', () => ({
-  default: { getAll: vi.fn(), delete: vi.fn() },
+  default: { getAll: vi.fn(), delete: vi.fn(), getFleetSummary: vi.fn() },
 }));
 
 import ClusterManagement from './ClusterManagement';
@@ -64,6 +64,11 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   asMock(clusterService.getAll).mockResolvedValue({ data: clusters, paginate: { total: 2, page: 1, perpage: 10 } });
+  asMock(clusterService.getFleetSummary).mockResolvedValue({
+    total: 2, active: 2, inactive: 0, deleted: 0, near_limit: 0, expiring_soon: 0,
+    bu: { used: 14, cap: 20, uncapped_count: 0, uncapped_used: 0 },
+    users: { used: 105, cap: 250, uncapped_count: 0, uncapped_used: 0 },
+  });
   // Default every test to desktop (table). The mobile-card test below overrides
   // this within its own body; this line resets it for the following tests.
   vi.stubGlobal('matchMedia', (q: string) => ({
