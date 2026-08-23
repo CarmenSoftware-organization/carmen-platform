@@ -120,7 +120,8 @@ describe('ClusterEdit (integration)', () => {
 
   it('starts a new cluster in edit mode without calling getById', async () => {
     renderAt('/clusters/new');
-    expect(await screen.findByText('Add Cluster')).toBeInTheDocument();
+    // The draft plate carries the <h1>, and an unnamed draft titles itself.
+    expect(await screen.findByRole('heading', { name: 'New cluster' })).toBeInTheDocument();
     expect(clusterService.getById).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText('Cluster code')).toBeInTheDocument();
   });
@@ -142,7 +143,7 @@ describe('ClusterEdit — create navigates to the new cluster\'s edit route', ()
     // Task 9: the create form now also issues the cluster's first BU-quota licence —
     // both fields are `required`, so the native form won't submit without them.
     await user.type(screen.getByPlaceholderText('e.g. 5'), '5');
-    await user.click(screen.getByRole('checkbox', { name: /no expiry/i }));
+    await user.click(screen.getByRole('checkbox', { name: /never expires/i }));
     await user.click(screen.getByRole('button', { name: /create cluster/i }));
 
     // waitFor, not findByTestId: the probe is on screen from the first render, so

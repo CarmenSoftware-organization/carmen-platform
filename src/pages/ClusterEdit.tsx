@@ -7,7 +7,7 @@ import businessUnitService from '../services/businessUnitService';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { Save, X, UserPlus, Search, Loader2, SearchX } from 'lucide-react';
@@ -22,8 +22,10 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useAuth } from '../context/AuthContext';
 import { Skeleton } from '../components/ui/skeleton';
 import { TableSkeleton } from '../components/TableSkeleton';
-import { ClusterIdentityFields, type ClusterFormData } from './clusterManagement/ClusterIdentityFields';
+import type { ClusterFormData } from './clusterManagement/ClusterIdentityFields';
+import { ClusterCreateForm } from './clusterManagement/ClusterCreateForm';
 import { ClusterPlate } from './clusterEdit/ClusterPlate';
+import { ClusterDraftPlate } from './clusterEdit/ClusterDraftPlate';
 import { isClusterTabId, type ClusterTab, type ClusterTabId } from './clusterEdit/clusterTabs';
 import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSection';
 import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
@@ -134,7 +136,15 @@ const ClusterEdit: React.FC = () => {
   };
 
   useGlobalShortcuts({
-    onSave: () => { if (hasChanges && !saving) void handleSaveCluster(); },
+    // Create goes through the form element so its native `required` checks still run and the
+    // browser focuses the first empty field; the edit surface has no form to submit and writes
+    // straight through the service. Without this branch `formRef` was wired to nothing and
+    // Ctrl/⌘+S did nothing at all on /clusters/new (rule 14).
+    onSave: () => {
+      if (saving) return;
+      if (isNew) formRef.current?.requestSubmit();
+      else if (hasChanges) void handleSaveCluster();
+    },
     onCancel: () => { if (hasChanges) handleCancelEdit(); },
   });
 
@@ -468,43 +478,37 @@ const ClusterEdit: React.FC = () => {
 
   return (
     <Layout>
-      {/* pb-24 clears the sticky save bar, which only exists on the edit surface. */}
-      <div className={`space-y-4 sm:space-y-6 ${isNew ? '' : 'pb-24'}`}>
+      {/* pb-24 clears the sticky save bar, which only exists on the edit surface. The create
+       *  surface takes a measure instead: six fields stretched across a 1360px content area
+       *  is a form you have to hunt across, and the plate above it has nothing to fill the
+       *  width with either. */}
+      <div className={`space-y-4 sm:space-y-6 ${isNew ? 'max-w-3xl' : 'pb-24'}`}>
         {isNew ? (
           <>
-            <PageHeader backTo="/clusters" title="Add Cluster" subtitle="Create a new cluster" />
+            {/* No PageHeader: the draft plate carries the <h1>, and what it carries is the
+             *  cluster's own name as you type it rather than the name of the operation. */}
+            <ClusterDraftPlate
+              formData={formData}
+              backTo="/clusters"
+              onToggleActive={() =>
+                setFormData((prev) => ({ ...prev, is_active: !prev.is_active }))
+              }
+            />
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
-            <Card>
-              <CardHeader>
-                <CardTitle>Cluster details</CardTitle>
-                <CardDescription>Fill in the details for the new cluster</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form ref={formRef} onSubmit={handleCreateSubmit} className="space-y-4">
-                  <ClusterIdentityFields
-                    formData={formData}
-                    fieldErrors={fieldErrors}
-                    editing
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    onFocus={handleFocus}
-                    onNoExpiryChange={(v) => setFormData((prev) => ({ ...prev, license_no_expiry: v }))}
-                  />
-                  <div className="flex gap-3 pt-4">
-                    <Button type="submit" size="sm" disabled={saving}>
-                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      {saving ? 'Creating...' : 'Create Cluster'}
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => navigate('/clusters')}>
-                      <X className="mr-2 h-4 w-4" />
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+            <ClusterCreateForm
+              formData={formData}
+              fieldErrors={fieldErrors}
+              saving={saving}
+              formRef={formRef}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={handleFocus}
+              onNoExpiryChange={(v) => setFormData((prev) => ({ ...prev, license_no_expiry: v }))}
+              onSubmit={handleCreateSubmit}
+              onCancel={() => navigate('/clusters')}
+            />
           </>
         ) : (
           <>
