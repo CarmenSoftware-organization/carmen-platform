@@ -21,7 +21,8 @@ interface PoolProps {
   cap: number | null;
   level: CapLevel;
   note: string;
-  /** Rendered only when the pool is at or over its cap — the point where the admin needs a route out. */
+  /** Rendered only when the pool is at or over its cap — the point where the admin needs a route out.
+   *  Absent on the licences page itself, which is where that link would have pointed. */
   licensesTo?: string;
 }
 
@@ -78,7 +79,8 @@ export interface CapacityStripProps {
   bu: { used: number; cap: number; endDate: string | null };
   /** Seat pool. `cap` of null means genuinely uncapped, per `total_max_license_users`. */
   seats: { used: number; cap: number | null };
-  licensesTo: string;
+  /** ปล่อยว่างได้เมื่อหน้าที่วางแถบนี้คือหน้า licences เอง — ลิงก์ไปตัวเองไม่ได้พาไปไหน */
+  licensesTo?: string;
 }
 
 /**

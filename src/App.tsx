@@ -23,6 +23,7 @@ const BusinessUnitManagement = lazy(() => import("./pages/BusinessUnitManagement
 const BusinessUnitEdit = lazy(() => import("./pages/BusinessUnitEdit"));
 const LicenseCenter = lazy(() => import("./pages/licenses/LicenseCenter"));
 const ClusterLicenseDetail = lazy(() => import("./pages/licenses/ClusterLicenseDetail"));
+const ClusterAdminLicenses = lazy(() => import("./pages/clusterAdmin/ClusterAdminLicenses"));
 const SubscriptionForm = lazy(() => import("./pages/licenses/SubscriptionForm"));
 const LicensePurchaseForm = lazy(() => import("./pages/licenses/LicensePurchaseForm"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
@@ -508,7 +509,7 @@ function AppContent() {
             />
             <Route
               path="/cluster-admin/:clusterId/licenses"
-              element={<ClusterAdminRoute><ClusterLicenseDetail readOnlyShell /></ClusterAdminRoute>}
+              element={<ClusterAdminRoute><ClusterAdminLicenses /></ClusterAdminRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/profile"
