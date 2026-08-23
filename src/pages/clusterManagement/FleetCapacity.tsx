@@ -54,6 +54,7 @@ function Stat({
 export function FleetCapacity({
   summary,
   loading,
+  error = false,
   onExpiringSoonClick,
   expiringSoonActive,
   // ป้ายของสถิติ "expiring soon" — ค่าเริ่มต้นคงข้อความเดิมของหน้า /clusters ไว้ทุกตัวอักษร
@@ -65,6 +66,12 @@ export function FleetCapacity({
 }: {
   summary: FleetSummary | null;
   loading: boolean;
+  /**
+   * true = โหลดค่าสรุปไม่สำเร็จ (ต่างจาก loading ที่แปลว่ากำลังโหลด)
+   * ไม่มี fallback สำหรับ endpoint นี้โดยตั้งใจ ความล้มเหลวจึงต้องมองเห็นได้ ไม่ใช่ปลอมตัวเป็น
+   * skeleton ที่หมุนไม่จบ ซึ่งบอกผู้ใช้ว่า "กำลังโหลด" ทั้งที่จริงคือ "โหลดไม่ได้"
+   */
+  error?: boolean;
   onExpiringSoonClick?: () => void;
   expiringSoonActive?: boolean;
   expiringLabel?: string;
@@ -75,7 +82,9 @@ export function FleetCapacity({
         Fleet capacity
       </div>
 
-      {loading || !summary ? (
+      {error && !summary ? (
+        <p className="text-muted-foreground text-xs">Capacity unavailable</p>
+      ) : loading || !summary ? (
         <div className="grid gap-6 sm:grid-cols-[1fr_1fr_auto]">
           <Skeleton className="h-12" />
           <Skeleton className="h-12" />
