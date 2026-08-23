@@ -1,0 +1,99 @@
+name: Deploy carmen-platform (Dev)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# การ deploy สลับทั้งไดเรกทอรี ปล่อยให้สอง run ทับกันแปลว่า swap ของคนละ build
+# อาจสลับกัน — ต่อคิวแทน ไม่ยกเลิกตัวที่กำลังรัน
+concurrency:
+  group: deploy-dev-carmen-platform
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: development
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # build:dev อ่าน .env.dev ซึ่ง gitignore ไว้ — CI จึงต้องส่งค่าเข้ามาทาง
+      # process env แทน (loadEnv ใน vite.config.ts รวม REACT_APP_* จาก process ให้)
+      #
+      # REACT_APP_OTEL_ENABLED เป็น **build-time** ไม่ใช่ runtime: Vite แทนค่าตอน
+      # build ถ้าไม่ตั้งตรงนี้ dynamic import ของ telemetry จะถูกตัดทิ้งทั้งก้อน
+      # และไม่มี chunk ออกมาเลย — เปิดทีหลังต้อง build ใหม่ ไม่ใช่แก้ config
+      - name: Build (mode=dev)
+        env:
+          REACT_APP_API_BASE_URL: https://dev.blueledgers.com:4001
+          REACT_APP_API_APP_ID: ${{ vars.DEV_API_APP_ID }}
+          REACT_APP_OTEL_ENABLED: 'true'
+        run: |
+          set -euo pipefail
+          bun run build:dev
+
+          # กันพลาดเงียบ: ถ้าสวิตช์ไม่ติด chunk จะหายไปโดย build ยัง "สำเร็จ"
+          if ! ls build/assets/telemetry-*.js >/dev/null 2>&1; then
+            echo "::error::ไม่พบ telemetry chunk — REACT_APP_OTEL_ENABLED ไม่ได้ถูกอ่านตอน build"
+            exit 1
+          fi
+          echo "telemetry chunk: $(ls -1 build/assets/telemetry-*.js)"
+          tar czf /tmp/carmen-platform-build.tgz -C build .
+
+      - name: Upload bundle
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_SSH_PORT }}
+          source: /tmp/carmen-platform-build.tgz
+          target: /tmp
+          strip_components: 1
+
+      - name: Swap into place and verify
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEV_SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_SSH_PORT }}
+          command_timeout: 10m
+          script: |
+            set -e
+            ROOT=/var/www/carmen-platform
+
+            # แตกลงโฟลเดอร์ใหม่แล้วค่อยสลับ ไม่แตกทับของเดิม
+            # ถ้าแตกทับ ระหว่างนั้นผู้ใช้จะเจอ index.html ใหม่ที่ชี้ไป chunk ที่ยังไม่ถูกเขียน
+            rm -rf "$ROOT.new"
+            mkdir -p "$ROOT.new"
+            tar xzf /tmp/carmen-platform-build.tgz -C "$ROOT.new"
+            rm -f /tmp/carmen-platform-build.tgz
+
+            test -f "$ROOT.new/index.html"   # กันกรณี tarball เสีย
+
+            rm -rf "$ROOT.old"
+            [ -d "$ROOT" ] && mv "$ROOT" "$ROOT.old"
+            mv "$ROOT.new" "$ROOT"
+
+            # ไม่ต้อง reload nginx — เสิร์ฟไฟล์ static ตรง ๆ ไม่ได้ cache path ไว้
+            code=$(wget -qS -O /dev/null http://localhost:60002/ 2>&1 | grep -m1 HTTP | awk '{print $2}')
+            spa=$(wget -qS -O /dev/null http://localhost:60002/cluster/list 2>&1 | grep -m1 HTTP | awk '{print $2}')
+            echo "health: / -> $code | /cluster/list -> $spa"
+            if [ "$code" != "200" ] || [ "$spa" != "200" ]; then
+              echo "::error::เสิร์ฟไม่ผ่าน — ย้อนกลับของเดิม"
+              rm -rf "$ROOT"
+              mv "$ROOT.old" "$ROOT"
+              exit 1
+            fi
+            rm -rf "$ROOT.old"
+            echo "DONE OK"
