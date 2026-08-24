@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, Cluster, ClustersResponse } from '../types';
+import type { PaginateParams, Cluster, ClustersResponse, FleetSummary } from '../types';
 
 const defaultSearchFields = ['name', 'code'];
 
@@ -10,6 +10,16 @@ const clusterService = {
       `/api-system/clusters?${buildQuery(paginate, defaultSearchFields)}`,
     );
     return response.data;
+  },
+
+  /**
+   * ค่าสรุปความจุทั้ง fleet — endpoint นี้ไม่รับตัวกรองใดๆ ตัวเลขจึงไม่ขยับตามช่องค้นหาของตาราง
+   * ต่างจาก `summary` ที่แนบมากับ `getAll` ซึ่งผูกกับ query ของคำขอนั้น (ถูกสำหรับรายการ
+   * แต่ผิดสำหรับแถบสรุปที่อยู่เหนือตัวกรอง) อย่าสลับสองแหล่งนี้แทนกัน
+   */
+  getFleetSummary: async (): Promise<FleetSummary> => {
+    const response = await api.get('/api-system/clusters/summary');
+    return response.data.data || response.data;
   },
 
   getById: async (id: string) => {

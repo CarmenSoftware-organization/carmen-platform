@@ -541,11 +541,12 @@ export interface FleetCapacityTotals {
 }
 
 /**
- * Fleet aggregate from `GET /api-system/clusters` → `summary`.
- *
- * Filter-consistent: it counts every cluster matching the active `advance`/`search` and the
- * caller's platform scope — not the whole registry. Field names are the API's `snake_case`
- * on purpose; this is a wire type, not a view model.
+ * Fleet aggregate from `GET /api-system/clusters/summary` — the unfiltered, fleet-wide endpoint.
+ * It takes no `search`/`advance` params; it counts every cluster in the caller's platform scope,
+ * period. (The `summary` block that `GET /api-system/clusters` also attaches to its list
+ * response shares this same shape but is filter-scoped to that request — no frontend code reads
+ * it any more; see `ClustersResponse.summary` below.) Field names are the API's `snake_case` on
+ * purpose; this is a wire type, not a view model.
  */
 export interface FleetSummary {
   total: number;
@@ -566,6 +567,13 @@ export interface FleetSummary {
 
 /** Response shape for `GET /api-system/clusters` — `ApiListResponse` plus the `summary` block. */
 export interface ClustersResponse extends ApiListResponse<Cluster> {
+  /**
+   * The backend still sends this — it is filter-scoped to `search`/`advance` on this request,
+   * NOT fleet-wide — but no frontend code reads it any more. Fleet capacity bands call
+   * `clusterService.getFleetSummary()` (`GET /api-system/clusters/summary`) instead, which is
+   * unfiltered. Do NOT wire this field into a capacity band; typing in the search box would
+   * change its numbers, which is the exact bug that endpoint was added to fix.
+   */
   summary?: FleetSummary;
 }
 
