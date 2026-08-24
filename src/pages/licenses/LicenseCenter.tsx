@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import clusterService from '../../services/clusterService';
+import { devLog } from '../../utils/errorParser';
 import { FleetCapacity } from '../clusterManagement/FleetCapacity';
 import ClusterLicenseTable from './ClusterLicenseTable';
 import SubscriptionTable from './SubscriptionTable';
@@ -65,7 +66,8 @@ const LicenseCenter: React.FC = () => {
       const summary = await clusterService.getFleetSummary();
       setFleet(summary);
       setFleetError(false);
-    } catch {
+    } catch (err: unknown) {
+      devLog('Error loading fleet summary:', err);
       setFleetError(true); // แถบบอกว่าโหลดไม่ได้ — ตารางด้านล่างยังทำงานได้ตามปกติ
     } finally {
       setFleetLoading(false);
