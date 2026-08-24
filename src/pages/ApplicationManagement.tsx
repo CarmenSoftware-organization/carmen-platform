@@ -97,9 +97,6 @@ const ApplicationManagement: React.FC = () => {
       const items: Application[] = Array.isArray(raw) ? raw : [];
       setApplications(items);
       setTotalRows(data.paginate?.total ?? (data as { total?: number }).total ?? (Array.isArray(items) ? items.length : 0));
-      // The band rides on this same response — no second request. `summary` is absent until
-      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
-      if (data.summary) setSummary(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load applications: ' + getErrorDetail(err));
@@ -125,12 +122,13 @@ const ApplicationManagement: React.FC = () => {
       // its backend.
       const data = await applicationService.getAll({ perpage: -1 });
       const raw = data.data || data;
-      // `loadSummary` and the table fetch race on mount. Writing unconditionally would let
-      // the locally-computed value clobber a real `summary` in one interleaving but not the
-      // other — an intermittent wrong number rather than a reproducible bug.
-      setSummary((current) =>
-        current ?? summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []),
-      );
+      // แหล่งเดียวของแถบแล้ว — การดึงรายการเลิกเขียน `summary` ที่ผูก filter ทับ (ดูบล็อกที่ถูกลบ
+      // ใน fetchApplications) เรซที่ guard `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง ไม่ใช่ถูกปะทับ
+      // และการเขียนตรง ๆ คือสิ่งที่ทำให้ `loadSummary()` หลัง mutation ทำงานจริงเป็นครั้งแรก
+      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
+      // so the race the old `current ??` guard existed for is structurally gone. Writing
+      // unconditionally is also what makes the post-mutation `loadSummary()` call work at all.
+      setSummary(summarizeApplications(Array.isArray(raw) ? (raw as Parameters<typeof summarizeApplications>[0]) : []));
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

@@ -152,9 +152,6 @@ const NewsManagement: React.FC = () => {
       const list = Array.isArray(items) ? (items as News[]) : [];
       setNewsItems(list);
       setTotalRows(data.paginate?.total ?? data.total ?? list.length);
-      // The band rides on this same response — no second request. `summary` is absent until
-      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
-      if (data.summary) setSummary(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load news: ' + getErrorDetail(err));
@@ -184,12 +181,13 @@ const NewsManagement: React.FC = () => {
       // request beats four (agent-os/standards/pages/summary-band.md).
       const data = await newsService.getAll({ perpage: -1, sort: 'published_at:desc' });
       const items = data.data || data;
-      // `loadSummary` and the table fetch race on mount. Writing unconditionally would let
-      // the locally-computed value clobber a real `summary` in one interleaving but not the
-      // other — an intermittent wrong number rather than a reproducible bug.
-      setSummary((current) =>
-        current ?? summarizeNews(Array.isArray(items) ? (items as Parameters<typeof summarizeNews>[0]) : []),
-      );
+      // แหล่งเดียวของแถบแล้ว — การดึงรายการเลิกเขียน `summary` ที่ผูก filter ทับ (ดูบล็อกที่ถูกลบ
+      // ใน fetchNews) เรซที่ guard `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ
+      // คือสิ่งที่ทำให้ `loadSummary()` หลัง mutation ทำงานจริงเป็นครั้งแรก
+      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
+      // so the race the old guard existed for is structurally gone — and writing unconditionally
+      // is what makes the post-mutation `loadSummary()` calls work at all.
+      setSummary(summarizeNews(Array.isArray(items) ? (items as Parameters<typeof summarizeNews>[0]) : []));
     } catch {
       setSummary(null); // masthead swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

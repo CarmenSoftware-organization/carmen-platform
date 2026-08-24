@@ -155,12 +155,6 @@ const UserManagement: React.FC = () => {
       setUsers(mapped);
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
-      // The band rides on this same response — no second request. `summary` is absent until
-      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
-      // `data` is deliberately widened to Record<string, unknown> above (the row mapping
-      // tolerates two historic shapes), so the block needs its type restated here.
-      const wireSummary = data.summary as UserSummaryData | undefined;
-      if (wireSummary) setSummary(wireSummary);
       setError("");
     } catch (err: unknown) {
       setError("Failed to load users: " + getErrorDetail(err));
@@ -192,10 +186,13 @@ const UserManagement: React.FC = () => {
       const list = Array.isArray(items) ? items : [];
       const deletedRows = deletedRes as { paginate?: { total?: number }; total?: number };
       const deletedCount = deletedRows.paginate?.total ?? deletedRows.total ?? 0;
-      // `loadSummary` and `fetchUsers` race on mount. Writing unconditionally would let the
-      // locally-computed value clobber a real `summary` in one interleaving but not the
-      // other — an intermittent wrong number rather than a reproducible bug.
-      setSummary((current) => current ?? summarizeUsers(list, deletedCount));
+      // แหล่งเดียวของแถบแล้ว — `fetchUsers` เลิกเขียน `summary` ที่ผูก filter ทับ เรซที่ guard
+      // `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ คือสิ่งที่ทำให้
+      // `loadSummary()` ทั้ง 6 จุดหลัง mutation ทำงานจริงเป็นครั้งแรก
+      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
+      // so the race the old guard existed for is structurally gone — and writing unconditionally
+      // is what makes all six post-mutation `loadSummary()` calls work at all.
+      setSummary(summarizeUsers(list, deletedCount));
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);
