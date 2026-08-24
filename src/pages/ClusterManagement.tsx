@@ -379,7 +379,9 @@ const ClusterManagement: React.FC = () => {
       cell: ({ row }) => (
         <CapacityMeter used={row.original.bu_used} cap={row.original.bu_cap} finite />
       ),
-      enableSorting: false,
+      // เรียงตาม **used** (ตัวเลขตัวแรกที่หัวคอลัมน์แสดง) ไม่ใช่ cap — backend ทำใน SQL
+      // ผ่านคิวรีที่ join view (`sortedClusterIdsByViewColumn`) เพราะค่าไม่ได้อยู่ใน tb_cluster
+      enableSorting: true,
     },
     {
       id: 'bu_cap_end_date',
@@ -394,7 +396,9 @@ const ClusterManagement: React.FC = () => {
           <span className="text-xs">{fmtDate(d)}</span>
         );
       },
-      enableSorting: false,
+      // cluster ที่ไม่มีใบโควตาจะอยู่ท้ายเสมอทั้งสองทิศ (NULLS LAST ฝั่ง SQL) — "ไม่มีใบ"
+      // ไม่ใช่ "หมดอายุเร็วที่สุด"
+      enableSorting: true,
     },
     {
       id: 'user_count',
@@ -403,7 +407,9 @@ const ClusterManagement: React.FC = () => {
       cell: ({ row }) => (
         <CapacityMeter used={row.original.users_count} cap={row.original.total_max_license_users} />
       ),
-      enableSorting: false,
+      // เรียงตามจำนวนผู้ถือที่นั่งจริง (`users_count`) ด้วยนิยามเดียวกับที่ตัวเลขในช่องใช้ —
+      // backend อ่านจาก `clusterHeadsSubquery()` ตัวเดียวกับ `countClusterHeads`
+      enableSorting: true,
     },
     ...auditColumns<Cluster>({ hideUpdatedOnCard: true }),
     ...(showDeleted ? [{
