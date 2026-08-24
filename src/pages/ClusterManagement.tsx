@@ -373,6 +373,10 @@ const ClusterManagement: React.FC = () => {
     },
     {
       id: 'bu_count',
+      // TanStack ให้ `getCanSort()` เป็น false เสมอถ้าคอลัมน์ไม่มี accessor — `enableSorting: true`
+      // อย่างเดียวไม่พอ หัวคอลัมน์จะไม่กลายเป็นปุ่มด้วยซ้ำ · การเรียงจริงทำที่ backend (server-side)
+      // ค่าที่ accessor คืนจึงไม่ได้ถูกใช้เรียง แต่ต้องมีเพื่อปลดล็อกปุ่ม
+      accessorFn: (row) => row.bu_used,
       header: 'Business units',
       // โควตามาจากใบที่ชนะ (Task 7) — bu_cap เป็น 0 จริงเมื่อไม่มีใบ ไม่ใช่ "ไม่จำกัด" แทนที่
       // max_license_bu เดิม
@@ -385,6 +389,8 @@ const ClusterManagement: React.FC = () => {
     },
     {
       id: 'bu_cap_end_date',
+      // ดูเหตุผลที่ต้องมี accessor ในคอลัมน์ bu_count ด้านบน
+      accessorFn: (row) => row.bu_cap_end_date,
       header: 'Quota Expires',
       // ใบตลอดชีพ (sentinel ปี 2099) ต้องไม่โชว์ปี 2099 ให้ผู้ใช้เห็น
       cell: ({ row }) => {
@@ -402,6 +408,8 @@ const ClusterManagement: React.FC = () => {
     },
     {
       id: 'user_count',
+      // ดูเหตุผลที่ต้องมี accessor ในคอลัมน์ bu_count ด้านบน
+      accessorFn: (row) => row.users_count,
       header: 'Users',
       // `total_max_license_users` = backend aggregate of per-BU caps; 0 / null / absent = no cap.
       cell: ({ row }) => (
