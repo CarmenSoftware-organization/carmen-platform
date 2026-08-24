@@ -19,9 +19,8 @@ const rank = (d: string) => {
 /**
  * Order the histogram by platform, not by count.
  *
- * Applied at render so it governs both sources — the endpoint's `summary.devices` arrives
- * busiest-first and the fallback below builds its own order. One display rule, one place;
- * otherwise the bars reshuffle the moment the backend starts answering.
+ * Applied at render rather than baked into `summarizeApplications` below, so there is one
+ * display rule in one place instead of two copies that could drift.
  */
 const byPlatform = (devices: DeviceCount[]): DeviceCount[] =>
   [...devices].sort((a, b) => rank(a.device) - rank(b.device) || a.device.localeCompare(b.device));

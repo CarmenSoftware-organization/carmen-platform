@@ -37,10 +37,11 @@ const createdAt = (u: UserLike) => normalizeAudit(u).created?.at ?? '';
 /**
  * Build the display name from whatever the row carries.
  *
- * Takes the wire shape (`NewestUser`) rather than a full user row, because the band now
- * receives only the six fields the endpoint sends for the presence stack. `middlename` is
- * absent from that projection on purpose — the stack shows an 8px avatar with the name in a
- * tooltip, so a middle name adds nothing and would cost a column on every summary query.
+ * Takes the wire shape (`NewestUser`) rather than a full user row, because `summarizeUsers`
+ * below deliberately narrows each of its `newest` picks down to just these six fields before
+ * returning them, so this function only ever sees that shape. `middlename` is absent from that
+ * projection on purpose — the stack shows an 8px avatar with the name in a tooltip, so a middle
+ * name adds nothing and would cost a field on every row of the client-side aggregate.
  */
 function displayName(u: NewestUser): string {
   const full = [u.firstname, u.lastname].filter(Boolean).join(' ');
@@ -103,11 +104,11 @@ export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
     .slice(0, FACE_LIMIT)
     .map(({ u }) => ({
       id: u.id,
-      // `u.name` is a legacy display field on list rows that the endpoint's `summary` block
-      // has no counterpart for — tb_user has username/email and the profile has
-      // firstname/lastname, nothing named `name`. Folding it into the username slot keeps
-      // this fallback rendering exactly what it rendered before, without inventing a wire
-      // field the backend will never send. It disappears with the fallback itself.
+      // `u.name` is a legacy display field on list rows that has no counterpart in
+      // `NewestUser` — tb_user has username/email and the profile has firstname/lastname,
+      // nothing named `name`. Folding it into the username slot lets this permanent
+      // client-side aggregate render the same thing the old wire-sourced band did, without
+      // inventing a `name` field on the `NewestUser` type the backend will never send.
       username: u.username ?? u.name ?? null,
       email: u.email ?? null,
       firstname: u.firstname ?? null,
