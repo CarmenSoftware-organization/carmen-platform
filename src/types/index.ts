@@ -645,18 +645,25 @@ export interface TopRole {
 }
 
 /**
- * RBAC aggregate from the platform role list → `summary`.
+ * RBAC aggregate for the `/platform-roles` band.
  *
- * This endpoint has no per-caller scope — everyone past the permission gate reads the same
- * registry — so the counts describe the active `advance`/`search` and nothing else. The bar
- * scale (`maxCount` in the old client-side shape) is `top_roles[0].permission_count`, derived
- * at render time rather than sent twice.
+ * Same shape whether it arrives on the wire (`RolesResponse.summary`, filter-scoped — this
+ * endpoint has no per-caller scope, so that block describes the active `advance`/`search`) or
+ * is built locally by `summarizeRoles`. The page currently uses the local one: the band sits
+ * above the filter and must describe the whole registry, which the wire block cannot do. See
+ * `agent-os/standards/pages/summary-band.md`. The bar scale (`maxCount` in the old client-side
+ * shape) is `top_roles[0].permission_count`, derived at render time rather than sent twice.
  */
 export interface RolesSummaryData {
   total: number;
   active: number;
   inactive: number;
-  /** Soft-deleted roles matching the same filter. */
+  /**
+   * On the wire this is soft-deleted roles matching the filter. The band doesn't use the wire
+   * value, though — it renders `summarizeRoles`'s local aggregate, which hardcodes this to `0`
+   * because the list feed it reads never includes soft-deleted rows. Nothing on `/platform-roles`
+   * renders this field either way.
+   */
   deleted: number;
   /** Broadest first, at most three entries. */
   top_roles: TopRole[];
@@ -674,17 +681,25 @@ export interface DeviceCount {
 }
 
 /**
- * Registry aggregate from `GET /api-system/applications` → `summary`.
+ * Registry aggregate for the `/applications` band.
  *
- * `devices` arrives busiest-first; that is NOT the display order. The band applies its own
- * platform ranking at render, so the same rule governs both this block and the client-side
- * fallback — there is one ordering rule, in one place.
+ * Same shape whether it arrives on the wire (`ApplicationsResponse.summary`, filter-scoped) or
+ * is built locally by `summarizeApplications`. The page currently uses the local one: the band
+ * sits above the filter and must describe the whole registry, which the wire block cannot do.
+ * See `agent-os/standards/pages/summary-band.md`. Either way `devices` arrives busiest-first;
+ * that is NOT the display order — `ApplicationRegistrySummary.byPlatform` applies its own
+ * platform ranking at render, in one place, regardless of which source filled this object.
  */
 export interface ApplicationSummaryData {
   total: number;
   active: number;
   inactive: number;
-  /** Soft-deleted rows matching the same filter. */
+  /**
+   * On the wire this is soft-deleted rows matching the filter. The band doesn't use the wire
+   * value, though — it renders `summarizeApplications`'s local aggregate, which hardcodes this
+   * to `0` because the list feed it reads never includes soft-deleted rows. Nothing on
+   * `/applications` renders this field either way.
+   */
   deleted: number;
   /** allow_all — can call every endpoint (audit-worthy). */
   full_access: number;
@@ -718,7 +733,12 @@ export interface LatestNews {
  */
 export interface NewsSummaryData {
   total: number;
-  /** Soft-deleted articles matching the same filter. */
+  /**
+   * On the wire this is soft-deleted articles matching the filter. The `/news` band doesn't
+   * use the wire value, though — it renders `summarizeNews`'s local aggregate, which hardcodes
+   * this to `0` because the list feed it reads never includes soft-deleted rows. Nothing on
+   * `/news` renders this field either way.
+   */
   deleted: number;
   draft: number;
   published: number;

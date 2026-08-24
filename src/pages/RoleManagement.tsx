@@ -101,9 +101,6 @@ const RoleManagement: React.FC = () => {
       const items: RoleRow[] = Array.isArray(raw) ? raw : [];
       setRoles(items);
       setTotalRows(data.paginate?.total ?? (Array.isArray(items) ? items.length : 0));
-      // The band rides on this same response — no second request. `summary` is absent until
-      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
-      if (data.summary) setSummary(data.summary);
       setError('');
     } catch (err: unknown) {
       setError('Failed to load roles: ' + getErrorDetail(err));
@@ -123,18 +120,27 @@ const RoleManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
-      // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
-      // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
-      // Task 6). Until then this keeps the band filled for a frontend deployed ahead of
-      // its backend.
+      // perpage: -1 คือแหล่งเดียวที่ถูกต้องของแถบตอนนี้ — `summary` ที่ backend ส่งมาคำนวณจาก
+      // `where` ชุดเดียวกับตาราง จึงผูกกับ search/advance เอามาใช้ตรงนี้จะทำให้บั๊กที่เพิ่งถอด
+      // ออกไปกลับมา เฟส 2 คือให้ backend เพิ่ม aggregate ที่ไม่ผูก filter มาแทนการอ่านทั้งลิสต์
+      // ไม่ใช่กลับไปใช้ summary block เดิม — ดู
+      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+      //
+      // perpage: -1 is the band's only correct source right now. The `summary` block the
+      // backend returns is computed from the same `where` the table uses, so it follows
+      // search/advance — using it here would bring back the bug this branch just removed.
+      // Phase 2 means giving the backend an aggregate that ignores filters, not switching
+      // back to that block. See
+      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
       const data = await roleService.getAll({ perpage: -1 });
       const raw = data.data || data;
-      // `loadSummary` and the table fetch race on mount. Writing unconditionally would let
-      // the locally-computed value clobber a real `summary` in one interleaving but not the
-      // other — an intermittent wrong number rather than a reproducible bug.
-      setSummary((current) =>
-        current ?? summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []),
-      );
+      // แหล่งเดียวของแถบแล้ว — การดึงรายการเลิกเขียน `summary` ที่ผูก filter ทับ (ดูบล็อกที่ถูกลบ
+      // ใน fetchRoles) เรซที่ guard `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ
+      // คือสิ่งที่ทำให้ `loadSummary()` หลัง mutation ทำงานจริงเป็นครั้งแรก
+      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
+      // so the race the old guard existed for is structurally gone — and writing unconditionally
+      // is what makes the post-mutation `loadSummary()` call work at all.
+      setSummary(summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []));
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

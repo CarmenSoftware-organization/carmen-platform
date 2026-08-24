@@ -17,12 +17,19 @@ interface NewsLike {
 }
 
 /**
- * TEMPORARY FALLBACK — roll the (non-deleted) news list into pipeline counts and pick the
+ * Roll the (non-deleted) news list into pipeline counts and pick the
  * lead story, the most recently published article that anchors the masthead.
  *
- * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
- * frontend deployed ahead of its backend. Delete it once the block is live everywhere
- * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
+ * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
+ * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
+ * ตอนนั้นนี่คือทางเดียว — ดู
+ * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+ *
+ * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
+ * computed from the same `where` the table uses, so it follows search/advance and makes a band
+ * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
+ * `perpage: -1` read that feeds this; until then this is the only path.
  *
  * `deleted` always reports 0 here: the list feed excludes soft-deleted rows entirely, so this
  * path cannot see them. Note that `archived` is a STATUS, not a deletion — the two are
