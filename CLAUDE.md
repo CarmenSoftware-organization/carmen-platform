@@ -66,7 +66,7 @@ Static SPA. `.github/workflows/` holds **three** workflows that ship to **three 
 |---|---|---|---|
 | `deploy-dev.yml` | **push to `main` — automatic** | `/var/www/carmen-platform` on the DEV host, served at `dev.blueledgers.com:9902` | `dev` → `dev.blueledgers.com:4001` |
 | `deploy-gcs.yml` | `workflow_dispatch` **only** | GCS bucket behind Cloud CDN + global HTTPS LB (Terraform in `infra/gcp/`), keyless via Workload Identity Federation (`gcloud storage rsync` + CDN invalidation) | `prod` |
-| `verify.yml` | PRs to `main`/`DEV`/`UAT`; pushes to every branch **except** those three — note `vercel` is **not** in that ignore list, so pushing the deploy branch re-runs CI on an already-verified commit | nothing — `bun run test` then `bun run build` (ESLint + tsc + Vite); a second job repeats the build under `npm ci` to mirror Vercel's install | `prod` |
+| `verify.yml` | PRs to `main`/`DEV`/`UAT`; pushes to every branch **except** `main`/`DEV`/`UAT`/`vercel` | nothing — `bun run test` then `bun run build` (ESLint + tsc + Vite); a second job repeats the build under `npm ci` to mirror Vercel's install | `prod` |
 
 **So a push to `main` DOES deploy — to DEV, automatically, since 2026-08-23 (`ae64f0c`).** It touches neither GCS nor Vercel. Before claiming anything about what deploys when, run `ls .github/workflows/` and `gh run list --branch main` — this paragraph claimed the opposite for a while after `deploy-dev.yml` landed, and a session acted on it.
 
@@ -78,7 +78,7 @@ Static SPA. `.github/workflows/` holds **three** workflows that ship to **three 
 git push origin main:vercel      # fast-forward the deploy branch → Vercel builds
 ```
 
-`vercel --prod` from the CLI still works and bypasses the branch entirely — use it only when you deliberately want to ship a working tree that is not on `vercel`. Between 2026-08-23 and 2026-08-24 this target silently shipped nothing at all, because Production tracked a `DEV` branch that did not exist in the repo; if deployments stop appearing again, check Settings → Environments → Branch Tracking **first** — neither `vercel project inspect` nor the Vercel MCP tools expose that field, only the dashboard does.
+`verify.yml` skips the `vercel` branch on purpose: every commit that reaches it already passed CI as a PR into `main`, and the push is always a fast-forward from `main`. `vercel --prod` from the CLI still works and bypasses the branch entirely — use it only when you deliberately want to ship a working tree that is not on `vercel`. Between 2026-08-23 and 2026-08-24 this target silently shipped nothing at all, because Production tracked a `DEV` branch that did not exist in the repo; if deployments stop appearing again, check Settings → Environments → Branch Tracking **first** — neither `vercel project inspect` nor the Vercel MCP tools expose that field, only the dashboard does.
 
 `deploy-gcs.yml`'s only run on `main` (2026-08-22) failed uploading assets with `GcsApiError('')` — no message, no retry; the last successful GCS deploy was from `GCP-POC` in July 2026.
 
