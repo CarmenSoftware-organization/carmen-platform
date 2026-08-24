@@ -14,7 +14,7 @@
 
 - **repo เดียว:** `/Users/samutpra/GitHub/carmensoftware-organize/carmen-platform` — **ห้ามแตะ `carmen-turborepo-backend-v2`** เฟสนี้เป็น FE ล้วนตามการตัดสินใจ #1 ของ spec
 - **ห้ามเขียนเทสต์ใหม่** — ห้ามสร้างไฟล์ `*.test.ts` / `*.test.tsx` ใหม่ และห้ามเพิ่ม test case ใหม่ (preference ของผู้ใช้ overrides TDD) ชุดเดิมทุกชุดต้องเขียว
-- **ห้ามลบจุดเรียก `loadSummary()` จุดใดจุดหนึ่ง** — มี 15 จุดรวมทุกหน้า ทุกจุดต้องอยู่ครบหลังแก้ หลังถอด guard แล้วจุดที่อยู่หลัง mutation จะทำงานจริงเป็นครั้งแรก การเห็นว่ามัน "ซ้ำซ้อน" แล้วลบทิ้งคือการทำลายฟีเจอร์ที่กำลังจะได้ทำงาน
+- **ห้ามลบจุดเรียก `loadSummary()` จุดใดจุดหนึ่ง** — มี 15 จุดรวมทุกหน้า (5 จุดเป็น mount effect หน้าละหนึ่ง + 10 จุดอยู่หลัง mutation) ทุกจุดต้องอยู่ครบหลังแก้ หลังถอด guard แล้วจุดที่อยู่หลัง mutation จะทำงานจริงเป็นครั้งแรก การเห็นว่ามัน "ซ้ำซ้อน" แล้วลบทิ้งคือการทำลายฟีเจอร์ที่กำลังจะได้ทำงาน
 - **ห้ามตัด `perpage: -1`** — เป็นแหล่งเดียวที่เหลือของแถบในเฟสนี้ ตัดออกในเฟส 2
 - **ห้ามแก้ `src/components/ui/`** — shadcn primitives
 - **ห้ามแตะไฟล์ `*Summary.tsx` ใน Task 1** — Task 2 เป็นเจ้าของ
@@ -234,10 +234,10 @@
 ```tsx
       // แหล่งเดียวของแถบแล้ว — `fetchUsers` เลิกเขียน `summary` ที่ผูก filter ทับ เรซที่ guard
       // `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ คือสิ่งที่ทำให้
-      // `loadSummary()` ทั้ง 6 จุดหลัง mutation ทำงานจริงเป็นครั้งแรก
+      // `loadSummary()` ทั้ง 5 จุดหลัง mutation ทำงานจริงเป็นครั้งแรก
       // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
       // so the race the old guard existed for is structurally gone — and writing unconditionally
-      // is what makes all six post-mutation `loadSummary()` calls work at all.
+      // is what makes all five post-mutation `loadSummary()` calls work at all.
       setSummary(summarizeUsers(list, deletedCount));
 ```
 
@@ -293,7 +293,7 @@ search/advance การเอามาเขียนทับแถบทำ�
 
 ถอด guard current ?? ออกด้วย เพราะเมื่อเหลือผู้เขียนคนเดียวแล้วเรซที่ guard นั้น
 มีไว้กันก็หายไปเชิงโครงสร้าง และมันคือตัวที่ทำให้ loadSummary() หลัง mutation
-ทั้ง 15 จุดเป็น no-op มาตลอด"
+ทั้ง 10 จุดเป็น no-op มาตลอด"
 ```
 
 ---
