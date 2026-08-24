@@ -5,7 +5,7 @@ import { PageHeader } from '../../components/PageHeader';
 import clusterService from '../../services/clusterService';
 import businessUnitService from '../../services/businessUnitService';
 import { useAuth } from '../../context/AuthContext';
-import { devLog } from '../../utils/errorParser';
+import { devLog, isNotFoundError } from '../../utils/errorParser';
 import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { useScrollSpy } from '../clusterEdit/useScrollSpy';
 import { BuQuotaSection } from './sections/BuQuotaSection';
@@ -40,12 +40,15 @@ const ClusterLicenseDetail: React.FC = () => {
 
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
+  /** true = backend ตอบ 404 (ถูกลบหรือไม่เคยมี) · false = โหลดไม่สำเร็จด้วยเหตุอื่น */
+  const [clusterMissing, setClusterMissing] = useState(false);
   const [bus, setBus] = useState<BusinessUnit[]>([]);
 
   useEffect(() => {
     if (!clusterId) return;
     let cancelled = false;
     setClusterLoading(true);
+    setClusterMissing(false);
     clusterService.getById(clusterId)
       .then((res) => {
         if (cancelled) return;
@@ -56,6 +59,10 @@ const ClusterLicenseDetail: React.FC = () => {
         if (cancelled) return;
         devLog('Failed to load cluster:', err);
         setCluster(null);
+        // 404 กับความล้มเหลวอื่นต้องพูดคนละอย่าง: detail endpoint กรอง `deleted_at: null` ขณะที่
+        // รายการ cluster ตั้งใจแสดงตัวที่ถูกลบด้วย (แถบสรุปมีตัวนับ deleted) การคลิกจากรายการนั้น
+        // จึงลงเอยที่ 404 ตามปกติ ไม่ใช่ความผิดพลาด — ส่วน network/403 คือคนละเรื่องและแก้คนละทาง
+        setClusterMissing(isNotFoundError(err));
       })
       .finally(() => {
         if (!cancelled) setClusterLoading(false);
@@ -96,7 +103,9 @@ const ClusterLicenseDetail: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           backTo="/licenses"
-          title={clusterLoading ? 'Loading…' : (cluster?.name || '(unknown cluster)')}
+          title={clusterLoading
+            ? 'Loading…'
+            : (cluster?.name || (clusterMissing ? 'Cluster not found or deleted' : 'Cluster unavailable'))}
           subtitle={cluster?.code ? `Licenses · ${cluster.code}` : 'Licenses'}
         />
 
