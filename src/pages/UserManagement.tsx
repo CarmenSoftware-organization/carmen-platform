@@ -155,12 +155,6 @@ const UserManagement: React.FC = () => {
       setUsers(mapped);
       const pag = data.paginate as Record<string, number> | undefined;
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
-      // The band rides on this same response — no second request. `summary` is absent until
-      // the backend deploys, and `loadSummary` below still fills the gap in the meantime.
-      // `data` is deliberately widened to Record<string, unknown> above (the row mapping
-      // tolerates two historic shapes), so the block needs its type restated here.
-      const wireSummary = data.summary as UserSummaryData | undefined;
-      if (wireSummary) setSummary(wireSummary);
       setError("");
     } catch (err: unknown) {
       setError("Failed to load users: " + getErrorDetail(err));
@@ -181,10 +175,18 @@ const UserManagement: React.FC = () => {
     setSummaryError(false);
     try {
       const [allRes, deletedRes] = await Promise.all([
-        // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
-        // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
-        // Task 6). Until then this keeps the band filled for a frontend deployed ahead of
-        // its backend.
+        // perpage: -1 คือแหล่งเดียวที่ถูกต้องของแถบตอนนี้ — `summary` ที่ backend ส่งมาคำนวณจาก
+        // `where` ชุดเดียวกับตาราง จึงผูกกับ search/advance เอามาใช้ตรงนี้จะทำให้บั๊กที่เพิ่งถอด
+        // ออกไปกลับมา เฟส 2 คือให้ backend เพิ่ม aggregate ที่ไม่ผูก filter มาแทนการอ่านทั้งลิสต์
+        // ไม่ใช่กลับไปใช้ summary block เดิม — ดู
+        // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+        //
+        // perpage: -1 is the band's only correct source right now. The `summary` block the
+        // backend returns is computed from the same `where` the table uses, so it follows
+        // search/advance — using it here would bring back the bug this branch just removed.
+        // Phase 2 means giving the backend an aggregate that ignores filters, not switching
+        // back to that block. See
+        // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
         userService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
         userService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
       ]);
@@ -192,10 +194,13 @@ const UserManagement: React.FC = () => {
       const list = Array.isArray(items) ? items : [];
       const deletedRows = deletedRes as { paginate?: { total?: number }; total?: number };
       const deletedCount = deletedRows.paginate?.total ?? deletedRows.total ?? 0;
-      // `loadSummary` and `fetchUsers` race on mount. Writing unconditionally would let the
-      // locally-computed value clobber a real `summary` in one interleaving but not the
-      // other — an intermittent wrong number rather than a reproducible bug.
-      setSummary((current) => current ?? summarizeUsers(list, deletedCount));
+      // แหล่งเดียวของแถบแล้ว — `fetchUsers` เลิกเขียน `summary` ที่ผูก filter ทับ เรซที่ guard
+      // `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ คือสิ่งที่ทำให้
+      // `loadSummary()` ทั้ง 5 จุดหลัง mutation ทำงานจริงเป็นครั้งแรก
+      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
+      // so the race the old guard existed for is structurally gone — and writing unconditionally
+      // is what makes all five post-mutation `loadSummary()` calls work at all.
+      setSummary(summarizeUsers(list, deletedCount));
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
       setSummaryError(true);

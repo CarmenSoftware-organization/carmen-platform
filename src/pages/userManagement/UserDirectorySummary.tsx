@@ -37,10 +37,11 @@ const createdAt = (u: UserLike) => normalizeAudit(u).created?.at ?? '';
 /**
  * Build the display name from whatever the row carries.
  *
- * Takes the wire shape (`NewestUser`) rather than a full user row, because the band now
- * receives only the six fields the endpoint sends for the presence stack. `middlename` is
- * absent from that projection on purpose — the stack shows an 8px avatar with the name in a
- * tooltip, so a middle name adds nothing and would cost a column on every summary query.
+ * Takes the wire shape (`NewestUser`) rather than a full user row, because `summarizeUsers`
+ * below deliberately narrows each of its `newest` picks down to just these six fields before
+ * returning them, so this function only ever sees that shape. `middlename` is absent from that
+ * projection on purpose — the stack shows an 8px avatar with the name in a tooltip, so a middle
+ * name adds nothing and would cost a field on every row of the client-side aggregate.
  */
 function displayName(u: NewestUser): string {
   const full = [u.firstname, u.lastname].filter(Boolean).join(' ');
@@ -66,15 +67,24 @@ export function toFace(u: NewestUser): FaceItem {
 }
 
 /**
- * TEMPORARY FALLBACK — roll a (non-deleted) user list up into directory overview counts.
+ * Roll a (non-deleted) user list up into directory overview counts.
  *
- * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
- * frontend deployed ahead of its backend. Delete it once the block is live everywhere
- * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
+ * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
+ * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
+ * ตอนนั้นนี่คือทางเดียว — ดู
+ * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+ *
+ * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
+ * computed from the same `where` the table uses, so it follows search/advance and makes a band
+ * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
+ * `perpage: -1` read that feeds this; until then this is the only path.
  *
  * `deleted` is passed in separately because soft-deleted rows never reach the list feed.
- * Returns the wire shape so both sources are interchangeable — a caller must never have to
- * know which one produced the value it is holding.
+ * คืนรูปเดียวกับที่ backend ส่งมาบนสาย เพื่อให้ชนิดข้อมูลตรงกัน — แต่ **ค่าใช้แทนกันไม่ได้**
+ * ตัวที่ backend ส่งมาผูกกับ filter ตัวนี้ไม่ผูก
+ * Returns the same wire shape so the types line up — but the VALUES are not interchangeable:
+ * the backend's is filter-scoped, this one is not.
  */
 export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
   let active = 0;
@@ -94,11 +104,11 @@ export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
     .slice(0, FACE_LIMIT)
     .map(({ u }) => ({
       id: u.id,
-      // `u.name` is a legacy display field on list rows that the endpoint's `summary` block
-      // has no counterpart for — tb_user has username/email and the profile has
-      // firstname/lastname, nothing named `name`. Folding it into the username slot keeps
-      // this fallback rendering exactly what it rendered before, without inventing a wire
-      // field the backend will never send. It disappears with the fallback itself.
+      // `u.name` is a legacy display field on list rows that has no counterpart in
+      // `NewestUser` — tb_user has username/email and the profile has firstname/lastname,
+      // nothing named `name`. Folding it into the username slot lets this permanent
+      // client-side aggregate render the same thing the old wire-sourced band did, without
+      // inventing a `name` field on the `NewestUser` type the backend will never send.
       username: u.username ?? u.name ?? null,
       email: u.email ?? null,
       firstname: u.firstname ?? null,
