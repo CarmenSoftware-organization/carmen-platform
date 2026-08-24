@@ -22,7 +22,7 @@
 - **ห้าม merge หรือ push** — commit ลง branch เท่านั้น
 - **branch:** `fix/summary-band-ignores-filter`
 - **ถ้าเจอหน้าที่ `summarizeX` คำนวณฟิลด์ที่แถบ render อยู่ไม่ได้ ให้หยุดและรายงาน** — ตรวจครบทั้ง 5 หน้าแล้วว่าไม่มี (spec §4.2) แต่ถ้าเจอ ห้ามปล่อยให้ค่าเป็น 0 ผ่านไป ตัวเลข 0 ที่ดูปกติคือโหมดพังที่แย่ที่สุดของงานประเภทนี้
-- คำสั่งตรวจ: `bun run typecheck` · `bun run lint` · `bun run test` — ต้องผ่านครบ และ `test` ต้องเขียวเต็ม baseline **144 ไฟล์ / 1241 เทสต์**
+- คำสั่งตรวจ: `bun run typecheck` · `bun run lint` · `bun run test` — ต้องผ่านครบ และ `test` ต้องเขียวเต็ม baseline **144 ไฟล์ / 1244 เทสต์**
 - คอมเมนต์ในโค้ดเป็นภาษาไทย (บางจุดสองภาษา) ตาม convention ของ repo
 
 ---
@@ -245,10 +245,11 @@
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform
-echo "--- ต้องไม่เหลือเลย ---"
-grep -n "data.summary\|wireSummary\|current ??" src/pages/{ApplicationManagement,BusinessUnitManagement,NewsManagement,RoleManagement,UserManagement}.tsx || echo "CLEAN"
+P="src/pages/{ApplicationManagement,BusinessUnitManagement,NewsManagement,RoleManagement,UserManagement}.tsx"
+echo "--- ต้องไม่เหลือ CODE เลย ---"
+eval grep -nE "'^\\s*(if \\(data\\.summary\\)|const wireSummary|if \\(wireSummary\\))|setSummary\\(\\(current\\)'" $P || echo "CLEAN"
 echo "--- ต้องได้ 15 พอดี ---"
-grep -c "loadSummary()" src/pages/{ApplicationManagement,BusinessUnitManagement,NewsManagement,RoleManagement,UserManagement}.tsx | awk -F: '{s+=$2; print} END {print "TOTAL:", s}'
+eval grep -cE "'^\\s+loadSummary\\(\\);'" $P | awk -F: '"'"'{s+=$2; print} END {print "TOTAL:", s}'"'"'
 ```
 
 Expected: บรรทัดแรก `CLEAN` · บรรทัดที่สอง `TOTAL: 15` แยกเป็น Application 2, BusinessUnit 2, News 3, Role 2, User 6 · **ถ้ารวมได้น้อยกว่า 15 แปลว่าเผลอลบจุดเรียกไป ให้กู้คืน**
@@ -268,7 +269,7 @@ Expected: ไม่มี error ทั้งสองคำสั่ง · impor
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform && bun run test
 ```
 
-Expected: **144 ไฟล์ / 1241 เทสต์ ผ่านครบ** ไม่ขยับจาก baseline
+Expected: **144 ไฟล์ / 1244 เทสต์ ผ่านครบ** ไม่ขยับจาก baseline
 
 เหตุผลที่ไม่ควรมีตัวไหนแดง (ตรวจไว้แล้วใน spec §6.1): ไม่ได้เพิ่มเมธอดใหม่ใน service จึงไม่ต้องแตะ mock · mock ของ News/Application/Role ใช้รูป `p?.perpage === -1 ? summaryResponse : mainResponse` โดย `mainResponse` ไม่มีคีย์ `summary` เลย บรรทัดที่ลบจึงเป็น no-op ในเทสต์อยู่แล้ว · การถอด guard เปลี่ยนจาก "เขียนครั้งเดียว" เป็น "เขียนทุกครั้ง" แต่ fallback คืนค่าว่างเท่ากันทุกครั้งในเทสต์
 
@@ -409,7 +410,7 @@ cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-platform
 bun run typecheck && bun run lint && bun run test
 ```
 
-Expected: ผ่านครบ · เทสต์ยัง **144 ไฟล์ / 1241** — task นี้แก้คอมเมนต์อย่างเดียว ตัวเลขต้องไม่ขยับ ถ้าขยับแปลว่าเผลอแตะโค้ด
+Expected: ผ่านครบ · เทสต์ยัง **144 ไฟล์ / 1244** — task นี้แก้คอมเมนต์อย่างเดียว ตัวเลขต้องไม่ขยับ ถ้าขยับแปลว่าเผลอแตะโค้ด
 
 - [ ] **Step 7: Commit**
 
