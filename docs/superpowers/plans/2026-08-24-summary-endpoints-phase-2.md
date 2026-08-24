@@ -411,17 +411,36 @@ tb_business_unit predicate จึงเป็น { cluster_id: { in: … } } ไ
 
 - [ ] **Step 1: เมธอด service — predicate เป็น relation filter ซ้อน ไม่ใช่คอลัมน์ตรง**
 
+> ### แก้แผน 2026-08-24 — บล็อกด้านล่างนี้คือฉบับที่ถูกต้อง
+>
+> ฉบับแรกของ Task 4 ส่ง `where` ที่มี **แค่ scope** ซึ่งผิด docblock ของ `buildUserSummary`
+> (`user.service.ts:1017-1019`) ระบุว่า *"MUST be called with the list's finalised `where` minus its
+> soft-delete predicate, so the cluster scope, the search OR and the `email_verified_at` gate all
+> still apply. Passing an earlier clause silently widens the population beyond what the table shows."*
+> `listUser` ตั้ง `where.email_verified_at = { not: null }` ที่ `:129` ก่อนสร้างค่าสรุปเสมอ ถ้าละไว้
+> `/user/summary` จะนับบัญชีที่ยังไม่ยืนยันอีเมล ซึ่งตารางไม่เคยแสดง ทำให้ยอดของแถบ **สูงกว่ายอดของ
+> ตารางเอง** โดยไม่มีอะไรพัง — ความผิดพลาดชนิดเดียวกับที่แผนนี้ตั้งขึ้นมาเพื่อกำจัด
+>
+> `deleted_at` **ไม่ต้องใส่** — list ส่ง `stripSoftDelete(where)` และ `buildUserSummary` ประกอบ
+> `liveWhere` ให้เองข้างใน การใส่กลับเข้าไปจะทำให้ช่อง `deleted` เป็น 0 เสมอ
+
 ```ts
 @TryCatch
 async userSummary(userId?: string): Promise<Result<UserSummary>> {
   const scope = await this.platformScope.clusterScopeFor(userId, 'user.read');
-  const where = scope.all
-    ? {}
-    : {
-        tb_cluster_user_tb_cluster_user_user_idTotb_user: {
-          some: { cluster_id: { in: scope.clusterIds }, deleted_at: null },
-        },
-      };
+
+  // รูปเดียวกับ `where` ของ listUser ณ จุดที่มันเรียก buildUserSummary: ด่าน email_verified_at
+  // เป็นคีย์ระดับบน ส่วนขอบเขตคลัสเตอร์อยู่ใน AND — ต่างกันแค่ไม่มีตัวกรองจากคำค้นหา
+  // และไม่มี deleted_at ซึ่ง stripSoftDelete ตัดออกที่เส้นทางรายการ
+  const where: Record<string, unknown> = { email_verified_at: { not: null } };
+  if (!scope.all) {
+    where.AND = {
+      tb_cluster_user_tb_cluster_user_user_idTotb_user: {
+        some: { cluster_id: { in: scope.clusterIds }, deleted_at: null },
+      },
+    };
+  }
+
   return Result.ok(await this.buildUserSummary(where));
 }
 ```
@@ -431,6 +450,7 @@ async userSummary(userId?: string): Promise<Result<UserSummary>> {
 **สองวิธีที่จะเขียนผิดแล้วไม่มี error:**
 - `{ id: { in: scope.clusterIds } }` (ลอกจาก cluster) → เทียบ user id กับ cluster id ไม่ match อะไรเลย → แถบขึ้น **0 ทุกช่อง** ซึ่งดูเหมือน "ยังไม่มีผู้ใช้" มากกว่าดูเหมือนบั๊ก
 - `{}` เพราะบัญชีที่ทดสอบเป็น super admin แล้ว `scope.all` เป็นจริงอยู่แล้ว → cluster admin เห็นผู้ใช้ทั้งระบบ
+- ละด่าน `email_verified_at` → นับบัญชีที่ยังไม่ยืนยันอีเมล แถบขึ้นสูงกว่ายอดของตารางเอง เทียบกับ `?perpage=1` แล้วไม่ตรง
 
 **permission key คือ `'user.read'` ไม่ใช่ `'cluster.read'`**
 
