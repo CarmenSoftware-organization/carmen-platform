@@ -60,7 +60,19 @@ Backend API docs use **Scalar at `/swagger`** (e.g. `http://localhost:4000/swagg
 
 ## Deployment
 
-Static SPA on GCP: GCS bucket behind Cloud CDN + a global HTTPS load balancer (Terraform in `infra/gcp/`). `.github/workflows/deploy-gcs.yml` builds from source and deploys keyless via Workload Identity Federation (`gcloud storage rsync` + CDN cache invalidation) — its **only** trigger is `workflow_dispatch`, so **nothing deploys automatically**, not even a push to `main`; someone runs it by hand. The other workflow, `.github/workflows/verify.yml`, runs `bun run test` then `bun run build` (ESLint + tsc + Vite) on PRs to `main`/`DEV`/`UAT` and on pushes to every branch *except* those three; a second job repeats the build under `npm ci` to mirror Vercel's install. So a push to `main` triggers nothing at all. Vercel (`vercel.json`) is retained in parallel.
+Static SPA. `.github/workflows/` holds **three** workflows that ship to **three different places** — never conflate them:
+
+| Workflow | Trigger | Target | Build mode |
+|---|---|---|---|
+| `deploy-dev.yml` | **push to `main` — automatic** | `/var/www/carmen-platform` on the DEV host, served at `dev.blueledgers.com:60002` | `dev` → `dev.blueledgers.com:4001` |
+| `deploy-gcs.yml` | `workflow_dispatch` **only** | GCS bucket behind Cloud CDN + global HTTPS LB (Terraform in `infra/gcp/`), keyless via Workload Identity Federation (`gcloud storage rsync` + CDN invalidation) | `prod` |
+| `verify.yml` | PRs to `main`/`DEV`/`UAT`; pushes to every branch **except** those three | nothing — `bun run test` then `bun run build` (ESLint + tsc + Vite); a second job repeats the build under `npm ci` to mirror Vercel's install | `prod` |
+
+**So a push to `main` DOES deploy — to DEV, automatically, since 2026-08-23 (`ae64f0c`).** It touches neither GCS nor Vercel. Before claiming anything about what deploys when, run `ls .github/workflows/` and `gh run list --branch main` — this paragraph claimed the opposite for a while after `deploy-dev.yml` landed, and a session acted on it.
+
+`deploy-dev.yml` specifics worth knowing: it `scp`s a tarball, unpacks into `$ROOT.new` and **swaps directories** instead of extracting over the live one (extracting in place would serve an `index.html` pointing at chunks not yet written), then health-checks `/` and `/cluster/list` on `:9902` — a non-200 rolls the previous directory back on its own. `REACT_APP_OTEL_ENABLED` is **build-time**: Vite drops the telemetry dynamic import entirely when it is off, so the workflow fails the build if the telemetry chunk is missing, and turning it on later means rebuilding, not reconfiguring. `.env.dev` is gitignored, so CI passes `REACT_APP_*` through process env.
+
+**Vercel (`vercel.json`) is a separate production target** at `carmen-inventory-platform.vercel.app`, and it is the one real users see. Its git integration has produced **no deployment since 2026-08-23** despite merges to `main` (cause not diagnosed), so shipping there currently means running `vercel --prod` by hand. `deploy-gcs.yml`'s only run on `main` (2026-08-22) failed uploading assets with `GcsApiError('')` — no message, no retry; the last successful GCS deploy was from `GCP-POC` in July 2026.
 
 ## Unit & Component Tests
 
