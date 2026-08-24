@@ -147,8 +147,12 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
               </div>
             </div>
 
-            {summary.newest.length > 0 && (
-              <Faces faces={summary.newest.map(toFace)} total={summary.total} />
+            {/* `?? []` for the same reason `devices`/`top_roles` carry it on the sibling bands:
+                `userService.getDirectorySummary` falls back to `response.data.data || response.data`,
+                so a 200 that didn't unwrap would reach here as the envelope and `.length` would throw
+                with no ErrorBoundary above it. */}
+            {(summary.newest ?? []).length > 0 && (
+              <Faces faces={(summary.newest ?? []).map(toFace)} total={summary.total} />
             )}
           </div>
         </>
