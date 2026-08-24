@@ -120,10 +120,18 @@ const RoleManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
-      // TEMPORARY FALLBACK — delete once the backend `summary` block is live on every
-      // environment (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md,
-      // Task 6). Until then this keeps the band filled for a frontend deployed ahead of
-      // its backend.
+      // perpage: -1 คือแหล่งเดียวที่ถูกต้องของแถบตอนนี้ — `summary` ที่ backend ส่งมาคำนวณจาก
+      // `where` ชุดเดียวกับตาราง จึงผูกกับ search/advance เอามาใช้ตรงนี้จะทำให้บั๊กที่เพิ่งถอด
+      // ออกไปกลับมา เฟส 2 คือให้ backend เพิ่ม aggregate ที่ไม่ผูก filter มาแทนการอ่านทั้งลิสต์
+      // ไม่ใช่กลับไปใช้ summary block เดิม — ดู
+      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+      //
+      // perpage: -1 is the band's only correct source right now. The `summary` block the
+      // backend returns is computed from the same `where` the table uses, so it follows
+      // search/advance — using it here would bring back the bug this branch just removed.
+      // Phase 2 means giving the backend an aggregate that ignores filters, not switching
+      // back to that block. See
+      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
       const data = await roleService.getAll({ perpage: -1 });
       const raw = data.data || data;
       // แหล่งเดียวของแถบแล้ว — การดึงรายการเลิกเขียน `summary` ที่ผูก filter ทับ (ดูบล็อกที่ถูกลบ

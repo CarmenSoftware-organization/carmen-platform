@@ -175,10 +175,21 @@ const NewsManagement: React.FC = () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
+      // perpage:-1 — สามตัวเลขสถานะเป็น count query ธรรมดา และ `lead` คือแถวแรกของ
+      // published_at:desc ชุดเดียวกัน หนึ่งคำขอเต็มลิสต์ดีกว่าสี่คำขอแยก และนี่คือแหล่งเดียว
+      // ที่ถูกต้องของแถบด้วย — `summary` ที่ endpoint ส่งมาคำนวณจาก `where` ชุดเดียวกับตาราง
+      // จึงผูกกับ search/advance เอามาใช้จะทำให้บั๊กที่เพิ่งถอดออกไปกลับมา เฟส 2 คือแยกเป็น
+      // aggregate ที่ไม่ผูก filter จาก backend ไม่ใช่กลับไปใช้ summary block เดิม — ดู
+      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+      //
       // perpage:-1 — the three status counts are plain count queries, and `lead`
-      // is the first row of this same published_at:desc sort. Both are only worth
-      // splitting out once the endpoint returns a `summary` block; until then one
-      // request beats four (agent-os/standards/pages/summary-band.md).
+      // is the first row of this same published_at:desc sort; one full-list request
+      // beats four separate ones. It is also the band's only correct source: the
+      // `summary` block the endpoint returns is computed from the same `where` the
+      // table uses, so it follows search/advance and would reintroduce the bug this
+      // branch removed. Phase 2 splits this into filter-free backend aggregates —
+      // not a switch back to that block. See
+      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
       const data = await newsService.getAll({ perpage: -1, sort: 'published_at:desc' });
       const items = data.data || data;
       // แหล่งเดียวของแถบแล้ว — การดึงรายการเลิกเขียน `summary` ที่ผูก filter ทับ (ดูบล็อกที่ถูกลบ
