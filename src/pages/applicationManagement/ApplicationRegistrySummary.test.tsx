@@ -1,42 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { summarizeApplications, ApplicationRegistrySummary } from './ApplicationRegistrySummary';
-
-describe('summarizeApplications', () => {
-  const list = [
-    { is_active: true, allow_all: true, device: 'web' },
-    { is_active: true, allow_all: false, device: 'web' },
-    { is_active: false, allow_all: false, device: 'mobile' },
-    { is_active: true, allow_all: false, device: 'pos' },
-  ];
-
-  it('counts status and API-access scope', () => {
-    const s = summarizeApplications(list);
-    expect(s.total).toBe(4);
-    expect(s.active).toBe(3);
-    expect(s.inactive).toBe(1);
-    expect(s.full_access).toBe(1);
-    expect(s.scoped).toBe(3);
-  });
-
-  it('groups devices into buckets, folding a missing device into web', () => {
-    // Ordering is deliberately NOT asserted here: it moved to the band, so the same rule
-    // governs both this fallback and the endpoint's `summary.devices`. See the render test
-    // below for the platform order.
-    const s = summarizeApplications(list);
-    expect([...s.devices].sort((a, b) => a.device.localeCompare(b.device))).toEqual([
-      { device: 'mobile', count: 1 },
-      { device: 'pos', count: 1 },
-      { device: 'web', count: 2 },
-    ]);
-  });
-
-  it('defaults a missing device to web', () => {
-    const s = summarizeApplications([{ is_active: true, allow_all: false }]);
-    expect(s.devices).toEqual([{ device: 'web', count: 1 }]);
-  });
-});
+import { ApplicationRegistrySummary } from './ApplicationRegistrySummary';
 
 describe('ApplicationRegistrySummary', () => {
   const summary = {

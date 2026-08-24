@@ -5,12 +5,6 @@ import { FetchErrorState } from '../../components/FetchErrorState';
 import { cn } from '../../lib/utils';
 import type { ApplicationSummaryData, DeviceCount } from '../../types';
 
-interface AppLike {
-  is_active?: boolean;
-  allow_all?: boolean;
-  device?: string;
-}
-
 const DEVICE_ORDER = ['web', 'mobile', 'desktop', 'pos'];
 const rank = (d: string) => {
   const i = DEVICE_ORDER.indexOf(d);
@@ -20,57 +14,11 @@ const rank = (d: string) => {
 /**
  * Order the histogram by platform, not by count.
  *
- * Applied at render rather than baked into `summarizeApplications` below, so there is one
- * display rule in one place instead of two copies that could drift.
+ * Applied at render rather than baked into the backend response, so there is one display rule
+ * in one place regardless of what order `GET /api-system/applications/summary` sends `devices`.
  */
 const byPlatform = (devices: DeviceCount[]): DeviceCount[] =>
   [...devices].sort((a, b) => rank(a.device) - rank(b.device) || a.device.localeCompare(b.device));
-
-/**
- * Roll the app list into registry counts: status, API-access scope, and the device-platform mix.
- *
- * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
- * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
- * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
- * ตอนนั้นนี่คือทางเดียว — ดู
- * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
- *
- * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
- * computed from the same `where` the table uses, so it follows search/advance and makes a band
- * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
- * `perpage: -1` read that feeds this; until then this is the only path.
- *
- * `deleted` always reports 0 here: the list feed excludes soft-deleted rows, so this path
- * cannot see them at all.
- */
-export function summarizeApplications(list: AppLike[]): ApplicationSummaryData {
-  let active = 0;
-  let inactive = 0;
-  let fullAccess = 0;
-  let scoped = 0;
-  const dev = new Map<string, number>();
-
-  for (const a of list) {
-    if (a.is_active) active += 1;
-    else inactive += 1;
-    if (a.allow_all) fullAccess += 1;
-    else scoped += 1;
-    const d = a.device || 'web';
-    dev.set(d, (dev.get(d) ?? 0) + 1);
-  }
-
-  const devices = Array.from(dev.entries()).map(([device, count]) => ({ device, count }));
-
-  return {
-    total: active + inactive,
-    active,
-    inactive,
-    deleted: 0,
-    full_access: fullAccess,
-    scoped,
-    devices,
-  };
-}
 
 const capDevice = (d: string) => (d === 'pos' ? 'POS' : d.charAt(0).toUpperCase() + d.slice(1));
 

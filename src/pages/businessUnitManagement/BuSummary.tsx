@@ -2,48 +2,7 @@ import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
 import { cn } from '../../lib/utils';
-import { normalizeAudit } from '../../utils/audit';
 import type { BuSummaryData } from '../../types';
-
-interface BuLike {
-  is_active?: boolean;
-  deleted_at?: string | null;
-  cluster_id?: string;
-  cluster_name?: string;
-  audit?: { deleted?: { at?: string } };
-}
-
-/**
- * Roll a (non-deleted) business-unit list up into overview counts.
- *
- * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
- * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
- * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
- * ตอนนั้นนี่คือทางเดียว — ดู
- * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
- *
- * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
- * computed from the same `where` the table uses, so it follows search/advance and makes a band
- * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
- * `perpage: -1` read that feeds this; until then this is the only path.
- *
- * `deleted` is passed in separately because soft-deleted rows are excluded from the list feed
- * — the client cannot see them at all, which is exactly why this metric wanted a backend
- * block in the first place.
- */
-export function summarizeBus(list: BuLike[], deleted = 0): BuSummaryData {
-  let active = 0;
-  let inactive = 0;
-  const clusters = new Set<string>();
-  for (const bu of list) {
-    if (normalizeAudit(bu).deleted?.at) continue; // defensive: never count a deleted row
-    if (bu.is_active) active += 1;
-    else inactive += 1;
-    const cluster = bu.cluster_id ?? bu.cluster_name;
-    if (cluster) clusters.add(String(cluster));
-  }
-  return { total: active + inactive, active, inactive, deleted, clusters: clusters.size };
-}
 
 function Legend({ color, label, value }: { color: string; label: string; value: number }) {
   return (

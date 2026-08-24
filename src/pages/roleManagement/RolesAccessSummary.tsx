@@ -6,56 +6,6 @@ import { FetchErrorState } from '../../components/FetchErrorState';
 import { cn } from '../../lib/utils';
 import type { RolesSummaryData } from '../../types';
 
-interface RoleLike {
-  id: string;
-  name?: string;
-  is_active?: boolean;
-  permission_count?: number;
-}
-
-/** How many roles to spotlight in the breadth bars. */
-export const TOP_ROLES = 3;
-
-/**
- * Roll roles up into RBAC counts and rank them by breadth.
- *
- * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
- * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
- * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
- * ตอนนั้นนี่คือทางเดียว — ดู
- * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
- *
- * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
- * computed from the same `where` the table uses, so it follows search/advance and makes a band
- * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
- * `perpage: -1` read that feeds this; until then this is the only path.
- *
- * `deleted` cannot be known here: the list feed excludes soft-deleted rows entirely, so this
- * path always reports 0. Only the backend block can fill it truthfully.
- */
-export function summarizeRoles(list: RoleLike[]): RolesSummaryData {
-  let active = 0;
-  let inactive = 0;
-  for (const r of list) {
-    if (r.is_active) active += 1;
-    else inactive += 1;
-  }
-  const ranked = list
-    .map((r) => ({
-      id: r.id,
-      name: r.name || '(unnamed role)',
-      permission_count: r.permission_count ?? 0,
-    }))
-    .sort((a, b) => b.permission_count - a.permission_count);
-  return {
-    total: active + inactive,
-    active,
-    inactive,
-    deleted: 0,
-    top_roles: ranked.slice(0, TOP_ROLES),
-  };
-}
-
 interface RolesAccessSummaryProps {
   summary: RolesSummaryData | null;
   loading: boolean;

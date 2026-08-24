@@ -650,9 +650,8 @@ export interface TopRole {
  * The page (`RoleManagement.tsx`) reads this from the dedicated, unfiltered endpoint
  * `GET /api-system/platform/roles/summary` via `roleService.getAccessSummary()` — not the
  * `summary` block `RolesResponse` carries (that one is filter-scoped to whatever `advance`/
- * `search` the list request used) and not the client-side `summarizeRoles` aggregate, which
- * is kept around only for Task 7 to remove. The bar scale (`maxCount` in the old client-side
- * shape) is `top_roles[0].permission_count`, derived at render time rather than sent twice.
+ * `search` the list request used). The bar scale (`maxCount` in the old client-side shape) is
+ * `top_roles[0].permission_count`, derived at render time rather than sent twice.
  */
 export interface RolesSummaryData {
   total: number;
@@ -681,10 +680,9 @@ export interface DeviceCount {
  * The page (`ApplicationManagement.tsx`) reads this from the dedicated, unfiltered endpoint
  * `GET /api-system/applications/summary` via `applicationService.getRegistrySummary()` — not
  * the `summary` block `ApplicationsResponse` carries (that one is filter-scoped to whatever
- * `advance`/`search` the list request used) and not the client-side `summarizeApplications`
- * aggregate, which is kept around only for Task 7 to remove. `devices` arrives busiest-first;
- * that is NOT the display order — `ApplicationRegistrySummary.byPlatform` applies its own
- * platform ranking at render, in one place, regardless of which source filled this object.
+ * `advance`/`search` the list request used). `devices` arrives busiest-first; that is NOT the
+ * display order — `ApplicationRegistrySummary.byPlatform` applies its own platform ranking at
+ * render, in one place, regardless of which source filled this object.
  */
 export interface ApplicationSummaryData {
   total: number;
@@ -721,11 +719,9 @@ export interface LatestNews {
  * The page (`NewsManagement.tsx`) reads this from the dedicated, unfiltered endpoint
  * `GET /api/news/summary` via `newsService.getNewsroomSummary()` — not the `summary` block
  * `NewsResponse` carries (that one is filter-scoped to whatever `advance`/`search` the list
- * request used) and not the client-side `summarizeNews` aggregate, which is kept around only
- * for Task 7 to remove. Has NO active/inactive split, unlike every other summary block:
- * `tb_news` has no `is_active` column, so an article's lifecycle is its `status`. This is also
- * the only place in the contract where `archived` means a **status** — a live row — rather
- * than a deletion.
+ * request used). Has NO active/inactive split, unlike every other summary block: `tb_news` has
+ * no `is_active` column, so an article's lifecycle is its `status`. This is also the only place
+ * in the contract where `archived` means a **status** — a live row — rather than a deletion.
  */
 export interface NewsSummaryData {
   total: number;
