@@ -1,31 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { summarizeBus, BuSummary } from './BuSummary';
-
-describe('summarizeBus', () => {
-  const list = [
-    { is_active: true, cluster_id: 'c1' },
-    { is_active: true, cluster_id: 'c1' },
-    { is_active: false, cluster_id: 'c2' },
-    { is_active: true, cluster_name: 'Beta' },
-  ];
-
-  it('counts active / inactive and distinct clusters over the non-deleted list', () => {
-    const s = summarizeBus(list, 4);
-    expect(s.total).toBe(4);
-    expect(s.active).toBe(3);
-    expect(s.inactive).toBe(1);
-    expect(s.clusters).toBe(3); // c1, c2, Beta
-    expect(s.deleted).toBe(4);
-  });
-
-  it('never counts a soft-deleted row that slips into the list', () => {
-    const s = summarizeBus([...list, { is_active: true, deleted_at: '2026-01-01', cluster_id: 'c9' }]);
-    expect(s.total).toBe(4);
-    expect(s.clusters).toBe(3);
-  });
-});
+import { BuSummary } from './BuSummary';
 
 describe('BuSummary', () => {
   it('renders the total, cluster spread and status split', () => {

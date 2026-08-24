@@ -49,6 +49,7 @@ vi.mock('../services/userService', () => ({
     delete: vi.fn(),
     hardDelete: vi.fn(),
     fetchKeycloakUsers: vi.fn(),
+    getDirectorySummary: vi.fn(),
   },
 }));
 
@@ -70,6 +71,12 @@ const sampleUser = {
 const listResponse = { data: [sampleUser], paginate: { total: 1, page: 1, perpage: 10 } };
 const emptyResponse = { data: [], paginate: { total: 0, page: 1, perpage: 10 } };
 
+// UserManagement's directory band (`UserDirectorySummary`) independently calls
+// `userService.getDirectorySummary()` (dedicated `/api-system/user/summary` endpoint) on
+// mount. Kept zeroed (no `newest` faces) in every test — it renders only aggregate counts,
+// not user rows, so this is unrelated to the permission/interaction assertions under test.
+const summaryResponse = { total: 0, active: 0, inactive: 0, deleted: 0, business_units: 0, newest: [] };
+
 const renderPage = () =>
   render(
     <MemoryRouter>
@@ -86,6 +93,7 @@ beforeEach(() => {
   asMock(userService.delete).mockResolvedValue({});
   asMock(userService.hardDelete).mockResolvedValue({});
   asMock(userService.fetchKeycloakUsers).mockResolvedValue({});
+  asMock(userService.getDirectorySummary).mockResolvedValue(summaryResponse);
 });
 
 // SECURITY. Five `<Can>` gates guard this page's write surfaces: the header Add User
@@ -102,6 +110,10 @@ describe('UserManagement — Add User gates (user.create)', () => {
     await screen.findByText('jane@example.com');
 
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
+    // Directory band reads the dedicated summary endpoint, not a two-request perpage:-1 +
+    // deleted-count read — proves loadSummary actually calls the new service method
+    // (regression guard for Task 6).
+    expect(userService.getDirectorySummary).toHaveBeenCalled();
   });
 
   it('shows the header Add User button with user.create (discriminating control)', async () => {

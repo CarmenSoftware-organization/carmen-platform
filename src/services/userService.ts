@@ -1,6 +1,6 @@
 import api from "./api";
 import { buildQuery } from "../utils/buildQuery";
-import type { PaginateParams, UsersResponse } from "../types";
+import type { PaginateParams, UsersResponse, UserSummaryData } from "../types";
 
 const defaultSearchFields = ["username", "email"];
 
@@ -15,6 +15,16 @@ const userService = {
   getById: async (id: string) => {
     const response = await api.get(`/api-system/user/${id}`);
     return response.data;
+  },
+
+  /**
+   * Directory aggregate from `GET /api-system/user/summary` — unfiltered, no `search`/
+   * `advance` params. Counts every user in the caller's scope, not the current table view.
+   * See `UserSummaryData` in `types/index.ts`.
+   */
+  getDirectorySummary: async (): Promise<UserSummaryData> => {
+    const response = await api.get('/api-system/user/summary');
+    return response.data.data || response.data;
   },
 
   create: async (userData: Record<string, unknown>) => {

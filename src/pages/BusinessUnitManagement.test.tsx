@@ -49,7 +49,7 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(
 vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../services/businessUnitService', () => ({
-  default: { getAll: vi.fn(), delete: vi.fn() },
+  default: { getAll: vi.fn(), delete: vi.fn(), getSummary: vi.fn() },
 }));
 
 import BusinessUnitManagement from './BusinessUnitManagement';
@@ -67,6 +67,12 @@ const businessUnits = [
 const listResponse = { data: businessUnits, paginate: { total: 2, page: 1, perpage: 10 } };
 const emptyResponse = { data: [], paginate: { total: 0, page: 1, perpage: 10 } };
 
+// BusinessUnitManagement's overview strip (`BuSummary`) independently calls
+// `businessUnitService.getSummary()` (dedicated `/api-system/business-units/summary`
+// endpoint) on mount. Kept zeroed in every test — it renders only aggregate counts, not BU
+// names, so this is unrelated to the permission/interaction assertions under test.
+const summaryResponse = { total: 0, active: 0, inactive: 0, deleted: 0, clusters: 0 };
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('localStorage', makeLocalStorage());
@@ -74,6 +80,7 @@ beforeEach(() => {
   auth.hasPermission = () => true;
   asMock(businessUnitService.getAll).mockResolvedValue(listResponse);
   asMock(businessUnitService.delete).mockResolvedValue({});
+  asMock(businessUnitService.getSummary).mockResolvedValue(summaryResponse);
 });
 
 const renderPage = () =>
@@ -102,6 +109,10 @@ describe('BusinessUnitManagement — row action gates (cluster-scoped)', () => {
 
     expect(screen.queryByRole('menuitem', { name: /edit/i })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: /delete/i })).toBeNull();
+    // Overview strip reads the dedicated summary endpoint, not a two-request perpage:-1 +
+    // deleted-count read — proves loadSummary actually calls the new service method
+    // (regression guard for Task 6).
+    expect(businessUnitService.getSummary).toHaveBeenCalled();
   });
 
   // Discriminating control. A wholesale `() => true` would still pass if a gate lost

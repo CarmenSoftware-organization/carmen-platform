@@ -2,40 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { summarizeRoles, RolesAccessSummary } from './RolesAccessSummary';
-
-describe('summarizeRoles', () => {
-  const list = [
-    { id: 'a', name: 'Super Admin', is_active: true, permission_count: 31 },
-    { id: 'b', name: 'Manager', is_active: true, permission_count: 12 },
-    { id: 'c', name: 'Viewer', is_active: true, permission_count: 4 },
-    { id: 'd', name: 'Retired', is_active: false, permission_count: 8 },
-  ];
-
-  it('counts active / inactive', () => {
-    const s = summarizeRoles(list);
-    expect(s.total).toBe(4);
-    expect(s.active).toBe(3);
-    expect(s.inactive).toBe(1);
-  });
-
-  it('ranks the broadest roles first and caps the spotlight at three', () => {
-    const s = summarizeRoles(list);
-    expect(s.top_roles.map((r) => r.name)).toEqual(['Super Admin', 'Manager', 'Retired']);
-    expect(s.top_roles[0].permission_count).toBe(31);
-  });
-
-  it('defaults a missing permission count to zero and names', () => {
-    const s = summarizeRoles([{ id: 'x', is_active: true }]);
-    expect(s.top_roles[0]).toEqual({ id: 'x', name: '(unnamed role)', permission_count: 0 });
-  });
-
-  it('handles an empty registry', () => {
-    const s = summarizeRoles([]);
-    expect(s.total).toBe(0);
-    expect(s.top_roles).toEqual([]);
-  });
-});
+import { RolesAccessSummary } from './RolesAccessSummary';
 
 describe('RolesAccessSummary', () => {
   const summary = {

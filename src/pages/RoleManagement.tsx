@@ -3,7 +3,7 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { RolesAccessSummary, summarizeRoles } from './roleManagement/RolesAccessSummary';
+import { RolesAccessSummary } from './roleManagement/RolesAccessSummary';
 import type { RolesSummaryData } from '../types';
 import roleService from '../services/roleService';
 import { getErrorDetail, devLog, parseApiError } from '../utils/errorParser';
@@ -114,35 +114,18 @@ const RoleManagement: React.FC = () => {
     fetchRoles(paginate);
   }, [fetchRoles, paginate]);
 
-  // RBAC band: roll up the whole set (ignoring filters) so the counts and breadth
-  // ranking reflect every role, not the current view.
+  // RBAC band reads a dedicated endpoint that takes no filter, so the counts always describe
+  // every role — not the current search/advance view. On a failed refresh the last known
+  // numbers are kept (not cleared) and `summaryError` drives a dimmed "couldn't refresh" cue —
+  // see RolesAccessSummary's `error` handling, mirrored from ClusterManagement's FleetCapacity.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
-      // perpage: -1 คือแหล่งเดียวที่ถูกต้องของแถบตอนนี้ — `summary` ที่ backend ส่งมาคำนวณจาก
-      // `where` ชุดเดียวกับตาราง จึงผูกกับ search/advance เอามาใช้ตรงนี้จะทำให้บั๊กที่เพิ่งถอด
-      // ออกไปกลับมา เฟส 2 คือให้ backend เพิ่ม aggregate ที่ไม่ผูก filter มาแทนการอ่านทั้งลิสต์
-      // ไม่ใช่กลับไปใช้ summary block เดิม — ดู
-      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
-      //
-      // perpage: -1 is the band's only correct source right now. The `summary` block the
-      // backend returns is computed from the same `where` the table uses, so it follows
-      // search/advance — using it here would bring back the bug this branch just removed.
-      // Phase 2 means giving the backend an aggregate that ignores filters, not switching
-      // back to that block. See
-      // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
-      const data = await roleService.getAll({ perpage: -1 });
-      const raw = data.data || data;
-      // แหล่งเดียวของแถบแล้ว — การดึงรายการเลิกเขียน `summary` ที่ผูก filter ทับ (ดูบล็อกที่ถูกลบ
-      // ใน fetchRoles) เรซที่ guard `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ
-      // คือสิ่งที่ทำให้ `loadSummary()` หลัง mutation ทำงานจริงเป็นครั้งแรก
-      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
-      // so the race the old guard existed for is structurally gone — and writing unconditionally
-      // is what makes the post-mutation `loadSummary()` call work at all.
-      setSummary(summarizeRoles(Array.isArray(raw) ? (raw as Parameters<typeof summarizeRoles>[0]) : []));
-    } catch {
-      setSummary(null); // band swaps to its inline error/retry affordance; the table still works
+      const data = await roleService.getAccessSummary();
+      setSummary(data);
+    } catch (err: unknown) {
+      devLog('Error loading roles summary:', err);
       setSummaryError(true);
     } finally {
       setSummaryLoading(false);

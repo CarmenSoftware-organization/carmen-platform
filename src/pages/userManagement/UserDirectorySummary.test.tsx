@@ -1,61 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { summarizeUsers, UserDirectorySummary, FACE_LIMIT, toFace } from './UserDirectorySummary';
-
-describe('summarizeUsers', () => {
-  const list = [
-    { id: 'u1', is_active: true, firstname: 'Ana', lastname: 'Lopez', created_at: '2026-01-04', business_unit: [{ id: 'b1' }, { id: 'b2' }] },
-    { id: 'u2', is_active: true, name: 'Ben', created_at: '2026-01-02', business_unit: [{ id: 'b1' }] },
-    { id: 'u3', is_active: false, username: 'carl', created_at: '2026-01-03', business_unit: [{ id: 'b3' }] },
-  ];
-
-  it('counts active / inactive and distinct business units over the non-deleted list', () => {
-    const s = summarizeUsers(list, 4);
-    expect(s.total).toBe(3);
-    expect(s.active).toBe(2);
-    expect(s.inactive).toBe(1);
-    expect(s.business_units).toBe(3); // b1, b2, b3
-    expect(s.deleted).toBe(4);
-  });
-
-  it('never counts a soft-deleted row that slips into the list', () => {
-    const s = summarizeUsers([...list, { id: 'u9', is_active: true, deleted_at: '2026-01-01', business_unit: [{ id: 'b9' }] }]);
-    expect(s.total).toBe(3);
-    expect(s.business_units).toBe(3); // b9 excluded
-  });
-
-  it('reads audit fallbacks for deleted + created dates', () => {
-    const s = summarizeUsers([
-      { id: 'a', is_active: true, name: 'New', audit: { created: { at: '2026-02-09' } } },
-      { id: 'z', is_active: true, name: 'Gone', audit: { deleted: { at: '2026-02-01' } } },
-    ]);
-    expect(s.total).toBe(1);
-    expect(s.newest[0]?.id).toBe('a');
-  });
-
-  it('orders faces newest-first and caps them at FACE_LIMIT', () => {
-    const many = Array.from({ length: FACE_LIMIT + 3 }, (_, i) => ({
-      id: `u${i}`,
-      is_active: true,
-      name: `User ${i}`,
-      created_at: `2026-01-${String(i + 1).padStart(2, '0')}`,
-    }));
-    const s = summarizeUsers(many);
-    expect(s.newest).toHaveLength(FACE_LIMIT);
-    expect(s.newest[0].id).toBe(`u${FACE_LIMIT + 2}`); // highest date first
-  });
-
-  it('derives initials from name parts, then falls back to a single field', () => {
-    const s = summarizeUsers([
-      { id: 'p', is_active: true, firstname: 'Grace', lastname: 'Hopper', created_at: '2026-01-05' },
-      { id: 'q', is_active: true, username: 'admin', created_at: '2026-01-01' },
-    ]);
-    const byId = Object.fromEntries(s.newest.map(toFace).map((f) => [f.id, f]));
-    expect(byId.p.initials).toBe('GH');
-    expect(byId.q.initials).toBe('AD');
-  });
-});
+import { UserDirectorySummary } from './UserDirectorySummary';
 
 describe('UserDirectorySummary', () => {
   const summary = {

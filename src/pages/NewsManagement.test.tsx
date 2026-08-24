@@ -26,7 +26,7 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 vi.mock('../services/newsService', () => ({
-  default: { getAll: vi.fn(), getTags: vi.fn(), delete: vi.fn(), update: vi.fn() },
+  default: { getAll: vi.fn(), getTags: vi.fn(), delete: vi.fn(), update: vi.fn(), getNewsroomSummary: vi.fn() },
 }));
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
@@ -40,6 +40,12 @@ const NEWS = [
   { id: 'n1', title: 'Alpha', status: 'published' },
   { id: 'n2', title: 'Beta', status: 'draft' },
 ];
+
+// NewsManagement's masthead band (`NewsroomSummary`) independently calls
+// `newsService.getNewsroomSummary()` (dedicated `/api/news/summary` endpoint) on mount. Kept
+// empty in every test so its "Latest" lead-story slot never duplicates the table's row text
+// in queries — unrelated to the permission/interaction gates under test.
+const emptyNewsroomSummary = { total: 0, deleted: 0, draft: 0, published: 0, archived: 0, latest: null };
 
 const renderPage = () => render(<MemoryRouter><NewsManagement /></MemoryRouter>);
 
@@ -64,17 +70,10 @@ describe('NewsManagement bulk delete', () => {
     vi.stubGlobal('localStorage', makeLocalStorage());
     vi.clearAllMocks();
     auth.hasPermission = () => true;
-    // The masthead issues a separate perpage:-1 roll-up; keep it empty so its
-    // lead-story headline doesn't duplicate the table's row text in queries.
-    vi.mocked(newsService.getAll).mockImplementation((p) =>
-      Promise.resolve(
-        p?.perpage === -1
-          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
-          : { data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } },
-      ) as never,
-    );
+    vi.mocked(newsService.getAll).mockResolvedValue({ data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } } as never);
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
     vi.mocked(newsService.delete).mockResolvedValue({} as never);
+    vi.mocked(newsService.getNewsroomSummary).mockResolvedValue(emptyNewsroomSummary as never);
   });
 
   afterEach(() => {
@@ -87,6 +86,9 @@ describe('NewsManagement bulk delete', () => {
     await screen.findByText('Alpha');
     await user.click(screen.getByLabelText('Select Alpha'));
     expect(await screen.findByText('1 selected')).toBeInTheDocument();
+    // Masthead reads the dedicated summary endpoint, not a perpage:-1 full-list read —
+    // proves loadSummary actually calls the new service method (regression guard for Task 6).
+    expect(newsService.getNewsroomSummary).toHaveBeenCalled();
   });
 
   it('opens the confirm dialog and keeps Delete disabled until the code matches', async () => {
@@ -192,15 +194,10 @@ describe('NewsManagement bulk archive', () => {
     vi.stubGlobal('localStorage', makeLocalStorage());
     vi.clearAllMocks();
     auth.hasPermission = () => true;
-    vi.mocked(newsService.getAll).mockImplementation((p) =>
-      Promise.resolve(
-        p?.perpage === -1
-          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
-          : { data: NEWS_DV, paginate: { total: 3, page: 1, perpage: 10 } },
-      ) as never,
-    );
+    vi.mocked(newsService.getAll).mockResolvedValue({ data: NEWS_DV, paginate: { total: 3, page: 1, perpage: 10 } } as never);
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
     vi.mocked(newsService.update).mockResolvedValue({} as never);
+    vi.mocked(newsService.getNewsroomSummary).mockResolvedValue(emptyNewsroomSummary as never);
   });
 
   afterEach(() => {
@@ -339,14 +336,9 @@ describe('NewsManagement — row action gates (news.update / news.delete)', () =
     vi.stubGlobal('localStorage', makeLocalStorage());
     vi.clearAllMocks();
     auth.hasPermission = () => true;
-    vi.mocked(newsService.getAll).mockImplementation((p) =>
-      Promise.resolve(
-        p?.perpage === -1
-          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
-          : { data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } },
-      ) as never,
-    );
+    vi.mocked(newsService.getAll).mockResolvedValue({ data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } } as never);
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
+    vi.mocked(newsService.getNewsroomSummary).mockResolvedValue(emptyNewsroomSummary as never);
   });
 
   afterEach(() => {
@@ -413,14 +405,9 @@ describe('NewsManagement — Add News gates (news.create)', () => {
       vi.stubGlobal('localStorage', makeLocalStorage());
       vi.clearAllMocks();
       auth.hasPermission = () => true;
-      vi.mocked(newsService.getAll).mockImplementation((p) =>
-        Promise.resolve(
-          p?.perpage === -1
-            ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
-            : { data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } },
-        ) as never,
-      );
+      vi.mocked(newsService.getAll).mockResolvedValue({ data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } } as never);
       vi.mocked(newsService.getTags).mockResolvedValue([] as never);
+      vi.mocked(newsService.getNewsroomSummary).mockResolvedValue(emptyNewsroomSummary as never);
     });
 
     it('hides the header Add News button without news.create', async () => {
@@ -447,6 +434,7 @@ describe('NewsManagement — Add News gates (news.create)', () => {
       auth.hasPermission = () => true;
       vi.mocked(newsService.getAll).mockResolvedValue({ data: [], paginate: { total: 0, page: 1, perpage: 10 } } as never);
       vi.mocked(newsService.getTags).mockResolvedValue([] as never);
+      vi.mocked(newsService.getNewsroomSummary).mockResolvedValue(emptyNewsroomSummary as never);
     });
 
     it('hides the empty-state Add News button without news.create', async () => {
@@ -481,14 +469,9 @@ describe('NewsManagement — table fit-content & sticky', () => {
     vi.stubGlobal('localStorage', makeLocalStorage());
     vi.clearAllMocks();
     auth.hasPermission = () => true;
-    vi.mocked(newsService.getAll).mockImplementation((p) =>
-      Promise.resolve(
-        p?.perpage === -1
-          ? { data: [], paginate: { total: 0, page: 1, perpage: -1 } }
-          : { data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } },
-      ) as never,
-    );
+    vi.mocked(newsService.getAll).mockResolvedValue({ data: NEWS, paginate: { total: 2, page: 1, perpage: 10 } } as never);
     vi.mocked(newsService.getTags).mockResolvedValue([] as never);
+    vi.mocked(newsService.getNewsroomSummary).mockResolvedValue(emptyNewsroomSummary as never);
   });
 
   it('uses table-auto, freezes the Title column and single-lines it (row-selection on)', async () => {

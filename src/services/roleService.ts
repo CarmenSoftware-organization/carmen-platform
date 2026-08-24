@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, RolesResponse } from '../types';
+import type { PaginateParams, RolesResponse, RolesSummaryData } from '../types';
 
 const defaultSearchFields = ['name', 'description'];
 
@@ -22,6 +22,15 @@ const roleService = {
   getById: async (id: string) => {
     const response = await api.get(`/api-system/platform/roles/${id}`);
     return response.data;
+  },
+  /**
+   * RBAC aggregate from `GET /api-system/platform/roles/summary` — unfiltered, no
+   * `search`/`advance` params. Counts every role, not the current table view. See
+   * `RolesSummaryData` in `types/index.ts`.
+   */
+  getAccessSummary: async (): Promise<RolesSummaryData> => {
+    const response = await api.get('/api-system/platform/roles/summary');
+    return response.data.data || response.data;
   },
   create: async (data: RoleWriteData) => {
     const body = {

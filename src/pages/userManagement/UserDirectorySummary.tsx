@@ -2,24 +2,8 @@ import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { FetchErrorState } from '../../components/FetchErrorState';
-import { normalizeAudit } from '../../utils/audit';
+import { cn } from '../../lib/utils';
 import type { NewestUser, UserSummaryData } from '../../types';
-
-interface UserLike {
-  id: string;
-  is_active?: boolean;
-  deleted_at?: string | null;
-  firstname?: string;
-  middlename?: string;
-  lastname?: string;
-  name?: string;
-  username?: string;
-  email?: string;
-  avatar_url?: string;
-  created_at?: string;
-  business_unit?: { id: string; is_active?: boolean }[];
-  audit?: { created?: { at?: string }; deleted?: { at?: string } };
-}
 
 export interface FaceItem {
   id: string;
@@ -28,20 +12,13 @@ export interface FaceItem {
   label: string;
 }
 
-/** How many overlapping faces to show before collapsing the rest into "+N". */
-export const FACE_LIMIT = 6;
-
-const deletedAt = (u: UserLike) => normalizeAudit(u).deleted?.at ?? null;
-const createdAt = (u: UserLike) => normalizeAudit(u).created?.at ?? '';
-
 /**
  * Build the display name from whatever the row carries.
  *
- * Takes the wire shape (`NewestUser`) rather than a full user row, because `summarizeUsers`
- * below deliberately narrows each of its `newest` picks down to just these six fields before
- * returning them, so this function only ever sees that shape. `middlename` is absent from that
- * projection on purpose — the stack shows an 8px avatar with the name in a tooltip, so a middle
- * name adds nothing and would cost a field on every row of the client-side aggregate.
+ * Takes the wire shape (`NewestUser`) — the `newest` picks the backend returns in
+ * `UserSummaryData` are already narrowed down to just these six fields, so this function only
+ * ever sees that shape. `middlename` is absent from that projection on purpose — the stack
+ * shows an 8px avatar with the name in a tooltip, so a middle name adds nothing.
  */
 function displayName(u: NewestUser): string {
   const full = [u.firstname, u.lastname].filter(Boolean).join(' ');
@@ -63,65 +40,6 @@ export function toFace(u: NewestUser): FaceItem {
     initials: initialsOf(u),
     avatarUrl: u.avatar_url ?? undefined,
     label: displayName(u),
-  };
-}
-
-/**
- * Roll a (non-deleted) user list up into directory overview counts.
- *
- * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
- * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
- * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
- * ตอนนั้นนี่คือทางเดียว — ดู
- * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
- *
- * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
- * computed from the same `where` the table uses, so it follows search/advance and makes a band
- * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
- * `perpage: -1` read that feeds this; until then this is the only path.
- *
- * `deleted` is passed in separately because soft-deleted rows never reach the list feed.
- * คืนรูปเดียวกับที่ backend ส่งมาบนสาย เพื่อให้ชนิดข้อมูลตรงกัน — แต่ **ค่าใช้แทนกันไม่ได้**
- * ตัวที่ backend ส่งมาผูกกับ filter ตัวนี้ไม่ผูก
- * Returns the same wire shape so the types line up — but the VALUES are not interchangeable:
- * the backend's is filter-scoped, this one is not.
- */
-export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
-  let active = 0;
-  let inactive = 0;
-  const bus = new Set<string>();
-  const alive: UserLike[] = [];
-  for (const u of list) {
-    if (deletedAt(u)) continue; // defensive: never count a deleted row
-    alive.push(u);
-    if (u.is_active) active += 1;
-    else inactive += 1;
-    for (const b of u.business_unit ?? []) if (b?.id) bus.add(b.id);
-  }
-  const newest = alive
-    .map((u) => ({ u, t: Date.parse(createdAt(u)) || 0 }))
-    .sort((a, b) => b.t - a.t)
-    .slice(0, FACE_LIMIT)
-    .map(({ u }) => ({
-      id: u.id,
-      // `u.name` is a legacy display field on list rows that has no counterpart in
-      // `NewestUser` — tb_user has username/email and the profile has firstname/lastname,
-      // nothing named `name`. Folding it into the username slot lets this permanent
-      // client-side aggregate render the same thing the old wire-sourced band did, without
-      // inventing a `name` field on the `NewestUser` type the backend will never send.
-      username: u.username ?? u.name ?? null,
-      email: u.email ?? null,
-      firstname: u.firstname ?? null,
-      lastname: u.lastname ?? null,
-      avatar_url: u.avatar_url ?? null,
-    }));
-  return {
-    total: active + inactive,
-    active,
-    inactive,
-    deleted,
-    business_units: bus.size,
-    newest,
   };
 }
 
@@ -186,7 +104,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
     <Card className="p-4 sm:p-5">
       <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Directory</div>
 
-      {error ? (
+      {error && !summary ? (
         <FetchErrorState message="Couldn't load the directory summary." onRetry={onRetry} className="py-3" />
       ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -195,34 +113,49 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
           <Skeleton className="h-14 w-40" />
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <div className="border-border sm:border-r sm:pr-6">
-            <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
-            <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">users</div>
-          </div>
-
-          <div className="min-w-[12rem] flex-1">
-            <div
-              className="bg-muted flex h-3 overflow-hidden rounded-full"
-              role="img"
-              aria-label={`${summary.active} active, ${summary.inactive} inactive`}
-            >
-              <span className="bg-success" style={{ width: `${pct(summary.active)}%` }} />
-              <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.inactive)}%` }} />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-              <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
-              <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
-              {summary.deleted > 0 && (
-                <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
-              )}
-            </div>
-          </div>
-
-          {summary.newest.length > 0 && (
-            <Faces faces={summary.newest.map(toFace)} total={summary.total} />
+        <>
+          {/* Stale-but-plausible, not broken: the previous successful numbers are kept on a
+              later failure rather than blanked, so this must stay visible without reading as
+              an error screen — dim the numbers, announce it to assistive tech, keep the
+              register calm. Matches ClusterManagement's FleetCapacity. */}
+          {error && (
+            <p className="text-muted-foreground mb-2 text-xs" role="alert">
+              Couldn&apos;t refresh — showing the last known numbers.
+            </p>
           )}
-        </div>
+          <div className={cn('flex flex-wrap items-center gap-x-6 gap-y-4', error && 'opacity-70')}>
+            <div className="border-border sm:border-r sm:pr-6">
+              <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
+              <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">users</div>
+            </div>
+
+            <div className="min-w-[12rem] flex-1">
+              <div
+                className="bg-muted flex h-3 overflow-hidden rounded-full"
+                role="img"
+                aria-label={`${summary.active} active, ${summary.inactive} inactive`}
+              >
+                <span className="bg-success" style={{ width: `${pct(summary.active)}%` }} />
+                <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.inactive)}%` }} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
+                <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
+                {summary.deleted > 0 && (
+                  <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
+                )}
+              </div>
+            </div>
+
+            {/* `?? []` for the same reason `devices`/`top_roles` carry it on the sibling bands:
+                `userService.getDirectorySummary` falls back to `response.data.data || response.data`,
+                so a 200 that didn't unwrap would reach here as the envelope and `.length` would throw
+                with no ErrorBoundary above it. */}
+            {(summary.newest ?? []).length > 0 && (
+              <Faces faces={(summary.newest ?? []).map(toFace)} total={summary.total} />
+            )}
+          </div>
+        </>
       )}
     </Card>
   );
