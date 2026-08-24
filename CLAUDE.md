@@ -64,7 +64,7 @@ Static SPA. `.github/workflows/` holds **three** workflows that ship to **three 
 
 | Workflow | Trigger | Target | Build mode |
 |---|---|---|---|
-| `deploy-dev.yml` | **push to `main` — automatic** | `/var/www/carmen-platform` on the DEV host, served at `dev.blueledgers.com:60002` | `dev` → `dev.blueledgers.com:4001` |
+| `deploy-dev.yml` | **push to `main` — automatic** | `/var/www/carmen-platform` on the DEV host, served at `dev.blueledgers.com:9902` | `dev` → `dev.blueledgers.com:4001` |
 | `deploy-gcs.yml` | `workflow_dispatch` **only** | GCS bucket behind Cloud CDN + global HTTPS LB (Terraform in `infra/gcp/`), keyless via Workload Identity Federation (`gcloud storage rsync` + CDN invalidation) | `prod` |
 | `verify.yml` | PRs to `main`/`DEV`/`UAT`; pushes to every branch **except** those three | nothing — `bun run test` then `bun run build` (ESLint + tsc + Vite); a second job repeats the build under `npm ci` to mirror Vercel's install | `prod` |
 
