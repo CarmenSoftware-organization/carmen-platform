@@ -3,6 +3,12 @@
 @config "../tailwind.config.js";
 
 :root {
+  /* Not a token: a real property. `color-scheme` inherits down the whole tree, so declaring it
+   * once here and once in `.dark` is what makes every native control — checkboxes, date/time
+   * pickers, scrollbars, `<select>` dropdowns — follow the active theme. Without it the value
+   * computes to `normal` and native controls render light-form on a dark page (an unchecked
+   * checkbox becomes a solid white square, the brightest thing on screen). */
+  color-scheme: light;
   --background: 40 9% 97.5%;
   --foreground: 30 7% 12%;
   --card: 0 0% 100%;
@@ -45,6 +51,8 @@
 }
 
 .dark {
+  /* See the note on `color-scheme` in `:root` — both blocks must declare it. */
+  color-scheme: dark;
   --background: 30 6% 9%;
   --foreground: 40 8% 90%;
   --card: 30 6% 12%;

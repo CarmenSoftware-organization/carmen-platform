@@ -54,13 +54,7 @@ export function ClusterCreateForm({
   const noExpiry = !!formData.license_no_expiry;
 
   return (
-    /* `color-scheme` is declared nowhere in the app, so it computes to `normal` and every
-     * native control — the licence card's checkbox and date input included — renders in its
-     * light form on a dark page. An unchecked checkbox comes out a solid white square, the
-     * brightest thing on the page. Scoped to this form rather than fixed in `.dark` globally:
-     * `color-scheme` inherits, so one declaration in `index.css` would repaint every native
-     * control on ~40 pages at once, which is a change to make deliberately, not in passing. */
-    <form ref={formRef} onSubmit={onSubmit} className="space-y-4 dark:[color-scheme:dark]">
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
       <Card>
         <h2 className="text-sm font-medium">Identity</h2>
 
