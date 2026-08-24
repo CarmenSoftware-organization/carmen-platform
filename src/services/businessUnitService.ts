@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, BusinessUnit, BusinessUnitsResponse } from '../types';
+import type { PaginateParams, BusinessUnit, BusinessUnitsResponse, BuSummaryData } from '../types';
 
 const defaultSearchFields = ['name', 'code', 'description'];
 
@@ -30,6 +30,16 @@ const businessUnitService = {
   delete: async (id: string) => {
     const response = await api.delete(`/api-system/business-units/${id}`);
     return response.data;
+  },
+
+  /**
+   * Overview aggregate from `GET /api-system/business-units/summary` — unfiltered, no
+   * `search`/`advance` params. Counts every business unit in the caller's scope, not the
+   * current table view. See `BuSummaryData` in `types/index.ts`.
+   */
+  getSummary: async (): Promise<BuSummaryData> => {
+    const response = await api.get('/api-system/business-units/summary');
+    return response.data.data || response.data;
   },
 
   // Dedicated logo/avatar upload endpoints (multipart). Return { file_token, url, expires_at }.

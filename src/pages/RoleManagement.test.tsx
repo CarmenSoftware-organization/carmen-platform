@@ -52,7 +52,14 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(
 vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../services/roleService', () => ({
-  default: { getAll: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  default: {
+    getAll: vi.fn(),
+    getById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    getAccessSummary: vi.fn(),
+  },
 }));
 
 import RoleManagement from './RoleManagement';
@@ -72,20 +79,17 @@ const sampleRole = {
 const listResponse = { data: [sampleRole], paginate: { total: 1, page: 1, perpage: 10 } };
 const emptyResponse = { data: [], paginate: { total: 0, page: 1, perpage: 10 } };
 
-interface GetAllParams { perpage?: number }
+const setupGetAll = (mainResponse: typeof listResponse | typeof emptyResponse) => {
+  asMock(roleService.getAll).mockResolvedValue(mainResponse);
+};
 
 // RoleManagement's RBAC summary band (`RolesAccessSummary`) independently calls
-// `roleService.getAll({ perpage: -1 })` on mount to roll up the whole unfiltered role
-// set. Kept empty in every test so its "Broadest roles" panel never renders a second
-// `sampleRole.name` node — an unrelated duplicate would make `findByText('Admin')` throw
-// "found multiple elements" and has nothing to do with the permission gates under test.
-const summaryResponse = { data: [], paginate: { total: 0, page: 1, perpage: -1 } };
-
-const setupGetAll = (mainResponse: typeof listResponse | typeof emptyResponse) => {
-  asMock(roleService.getAll).mockImplementation(async (params?: GetAllParams) =>
-    params?.perpage === -1 ? summaryResponse : mainResponse,
-  );
-};
+// `roleService.getAccessSummary()` (dedicated `/api-system/platform/roles/summary` endpoint)
+// on mount to roll up the whole unfiltered role set. Kept empty (no `top_roles`) in every
+// test so its "Broadest roles" panel never renders a second `sampleRole.name` node — an
+// unrelated duplicate would make `findByText('Admin')` throw "found multiple elements" and
+// has nothing to do with the permission gates under test.
+const summaryResponse = { total: 0, active: 0, inactive: 0, deleted: 0, top_roles: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -94,6 +98,7 @@ beforeEach(() => {
   auth.hasPermission = () => true;
   setupGetAll(listResponse);
   asMock(roleService.delete).mockResolvedValue({});
+  asMock(roleService.getAccessSummary).mockResolvedValue(summaryResponse);
 });
 
 const renderPage = () =>

@@ -66,6 +66,16 @@ const newsService = {
     return Array.isArray(payload) ? payload : [];
   },
 
+  /**
+   * Newsroom aggregate from `GET /api/news/summary` — unfiltered, no `search`/`advance`
+   * params. Counts every article, not the current table view. See `NewsSummaryData` in
+   * `types/index.ts`.
+   */
+  getNewsroomSummary: async (): Promise<NewsSummaryData> => {
+    const response = await api.get('/api/news/summary');
+    return response.data.data || response.data;
+  },
+
   create: async (newsData: Partial<News>, image?: File) => {
     if (image) {
       // The explicit multipart Content-Type is REQUIRED, not redundant: the `api`

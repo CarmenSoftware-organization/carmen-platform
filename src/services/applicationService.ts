@@ -1,6 +1,6 @@
 import api from './api';
 import { buildQuery } from '../utils/buildQuery';
-import type { PaginateParams, ApplicationWritePayload, ApplicationsResponse, ApiCatalogGroup, DeviceType } from '../types';
+import type { PaginateParams, ApplicationWritePayload, ApplicationsResponse, ApiCatalogGroup, ApplicationSummaryData, DeviceType } from '../types';
 import { groupApiNames } from '../utils/apiCatalog';
 
 const defaultSearchFields = ['name', 'description'];
@@ -76,6 +76,16 @@ const applicationService = {
         : groupApiNames(api_names);
 
     return { groups: validGroups, api_names };
+  },
+
+  /**
+   * Registry aggregate from `GET /api-system/applications/summary` — unfiltered, no
+   * `search`/`advance` params. Counts every application in the registry, not the current
+   * table view. See `ApplicationSummaryData` in `types/index.ts`.
+   */
+  getRegistrySummary: async (): Promise<ApplicationSummaryData> => {
+    const response = await api.get('/api-system/applications/summary');
+    return response.data.data || response.data;
   },
 
   create: async (data: Parameters<typeof toWritePayload>[0]) => {

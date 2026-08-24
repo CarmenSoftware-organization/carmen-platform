@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import businessUnitService from '../services/businessUnitService';
-import { getErrorDetail } from '../utils/errorParser';
+import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
@@ -21,7 +21,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { BrandMark } from '../components/BrandMark';
-import { BuSummary, summarizeBus } from './businessUnitManagement/BuSummary';
+import { BuSummary } from './businessUnitManagement/BuSummary';
 import { auditColumns } from '../components/auditColumns';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
@@ -113,41 +113,19 @@ const BusinessUnitManagement: React.FC = () => {
     fetchBusinessUnits(paginate);
   }, [fetchBusinessUnits, paginate]);
 
-  // Summary strip: roll up the whole set (not just the current page). Business
-  // units are few enough that a single full-list read + a deleted-count read is cheap.
+  // Overview strip reads a dedicated endpoint that takes no filter, so the numbers always
+  // describe every business unit in scope — not the current search/advance view. On a failed
+  // refresh the last known numbers are kept (not cleared) and `summaryError` drives a dimmed
+  // "couldn't refresh" cue — see BuSummary's `error` handling, mirrored from
+  // ClusterManagement's FleetCapacity.
   const loadSummary = useCallback(async () => {
     setSummaryLoading(true);
     setSummaryError(false);
     try {
-      const [allRes, deletedRes] = await Promise.all([
-        // perpage: -1 คือแหล่งเดียวที่ถูกต้องของแถบตอนนี้ — `summary` ที่ backend ส่งมาคำนวณจาก
-        // `where` ชุดเดียวกับตาราง จึงผูกกับ search/advance เอามาใช้ตรงนี้จะทำให้บั๊กที่เพิ่งถอด
-        // ออกไปกลับมา เฟส 2 คือให้ backend เพิ่ม aggregate ที่ไม่ผูก filter มาแทนการอ่านทั้งลิสต์
-        // ไม่ใช่กลับไปใช้ summary block เดิม — ดู
-        // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
-        //
-        // perpage: -1 is the strip's only correct source right now. The `summary` block the
-        // backend returns is computed from the same `where` the table uses, so it follows
-        // search/advance — using it here would bring back the bug this branch just removed.
-        // Phase 2 means giving the backend an aggregate that ignores filters, not switching
-        // back to that block. See
-        // docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
-        businessUnitService.getAll({ perpage: -1, advance: JSON.stringify({ where: { deleted_at: null } }) }),
-        businessUnitService.getAll({ page: 1, perpage: 1, advance: JSON.stringify({ where: { deleted_at: { not: null } } }) }),
-      ]);
-      const items = ((allRes as { data?: unknown }).data ?? allRes) as Parameters<typeof summarizeBus>[0];
-      const list = Array.isArray(items) ? items : [];
-      const deletedRows = deletedRes as { paginate?: { total?: number }; total?: number };
-      const deletedCount = deletedRows.paginate?.total ?? deletedRows.total ?? 0;
-      // แหล่งเดียวของแถบแล้ว — `fetchBusinessUnits` เลิกเขียน `summary` ที่ผูก filter ทับ เรซที่ guard
-      // `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ คือสิ่งที่ทำให้
-      // `loadSummary()` หลัง mutation ทำงานจริงเป็นครั้งแรก
-      // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
-      // so the race the old guard existed for is structurally gone — and writing unconditionally
-      // is what makes the post-mutation `loadSummary()` call work at all.
-      setSummary(summarizeBus(list, deletedCount));
-    } catch {
-      setSummary(null); // strip swaps to its inline error/retry affordance; the table still works
+      const data = await businessUnitService.getSummary();
+      setSummary(data);
+    } catch (err: unknown) {
+      devLog('Error loading business unit summary:', err);
       setSummaryError(true);
     } finally {
       setSummaryLoading(false);

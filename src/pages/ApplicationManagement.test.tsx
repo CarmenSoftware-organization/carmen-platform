@@ -51,7 +51,15 @@ const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(
 vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../services/applicationService', () => ({
-  default: { getAll: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), getApiCatalog: vi.fn() },
+  default: {
+    getAll: vi.fn(),
+    getById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    getApiCatalog: vi.fn(),
+    getRegistrySummary: vi.fn(),
+  },
 }));
 
 import ApplicationManagement from './ApplicationManagement';
@@ -72,21 +80,17 @@ const sampleApp = {
 const listResponse = { data: [sampleApp], paginate: { total: 1, page: 1, perpage: 10 } };
 const emptyResponse = { data: [], paginate: { total: 0, page: 1, perpage: 10 } };
 
-interface GetAllParams { perpage?: number }
+const setupGetAll = (mainResponse: typeof listResponse | typeof emptyResponse) => {
+  asMock(applicationService.getAll).mockResolvedValue(mainResponse);
+};
 
 // ApplicationManagement's registry summary band (`ApplicationRegistrySummary`) independently
-// calls `applicationService.getAll({ perpage: -1 })` on mount to roll up the whole unfiltered
-// registry. Kept empty in every test so it never renders text that could collide with the
-// table/empty-state assertions below (it renders only aggregate counts, not app names, but
-// keeping it deterministic avoids any risk of an unrelated summary-band difference affecting
-// button/role queries).
-const summaryResponse = { data: [], paginate: { total: 0, page: 1, perpage: -1 } };
-
-const setupGetAll = (mainResponse: typeof listResponse | typeof emptyResponse) => {
-  asMock(applicationService.getAll).mockImplementation(async (params?: GetAllParams) =>
-    params?.perpage === -1 ? summaryResponse : mainResponse,
-  );
-};
+// calls `applicationService.getRegistrySummary()` (dedicated `/api-system/applications/summary`
+// endpoint) on mount to roll up the whole unfiltered registry. Kept zeroed in every test so it
+// never renders text that could collide with the table/empty-state assertions below (it renders
+// only aggregate counts, not app names, but keeping it deterministic avoids any risk of an
+// unrelated summary-band difference affecting button/role queries).
+const summaryResponse = { total: 0, active: 0, inactive: 0, deleted: 0, full_access: 0, scoped: 0, devices: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -95,6 +99,7 @@ beforeEach(() => {
   auth.hasPermission = () => true;
   setupGetAll(listResponse);
   asMock(applicationService.delete).mockResolvedValue({});
+  asMock(applicationService.getRegistrySummary).mockResolvedValue(summaryResponse);
 });
 
 const renderPage = () =>
