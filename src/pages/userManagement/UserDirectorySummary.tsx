@@ -66,15 +66,24 @@ export function toFace(u: NewestUser): FaceItem {
 }
 
 /**
- * TEMPORARY FALLBACK — roll a (non-deleted) user list up into directory overview counts.
+ * Roll a (non-deleted) user list up into directory overview counts.
  *
- * The endpoint now returns this shape as its `summary` block; this only fills the gap for a
- * frontend deployed ahead of its backend. Delete it once the block is live everywhere
- * (docs/superpowers/plans/2026-08-10-list-summary-block-phase-2.md, Task 6).
+ * แหล่งเดียวของแถบสรุป — ห้ามแทนด้วย `summary` ที่ endpoint รายการส่งมา ค่านั้นคำนวณจาก `where`
+ * ชุดเดียวกับตาราง จึงผูกกับ search/advance และทำให้แถบที่นั่งอยู่เหนือ filter ขยับตามการค้นหา
+ * ซึ่งเป็นบั๊กที่เพิ่งถอดออกไป · เฟส 2 จะตัดคำขอ `perpage: -1` ที่ป้อนฟังก์ชันนี้ออก จนกว่าจะถึง
+ * ตอนนั้นนี่คือทางเดียว — ดู
+ * docs/superpowers/specs/2026-08-24-summary-band-follows-filter-five-pages-design.md
+ *
+ * Sole source for the band. Do NOT swap in the `summary` block the list endpoint returns: it is
+ * computed from the same `where` the table uses, so it follows search/advance and makes a band
+ * that sits above the filter move with it — the bug this just removed. Phase 2 will drop the
+ * `perpage: -1` read that feeds this; until then this is the only path.
  *
  * `deleted` is passed in separately because soft-deleted rows never reach the list feed.
- * Returns the wire shape so both sources are interchangeable — a caller must never have to
- * know which one produced the value it is holding.
+ * คืนรูปเดียวกับที่ backend ส่งมาบนสาย เพื่อให้ชนิดข้อมูลตรงกัน — แต่ **ค่าใช้แทนกันไม่ได้**
+ * ตัวที่ backend ส่งมาผูกกับ filter ตัวนี้ไม่ผูก
+ * Returns the same wire shape so the types line up — but the VALUES are not interchangeable:
+ * the backend's is filter-scoped, this one is not.
  */
 export function summarizeUsers(list: UserLike[], deleted = 0): UserSummaryData {
   let active = 0;
