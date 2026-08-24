@@ -188,10 +188,10 @@ const UserManagement: React.FC = () => {
       const deletedCount = deletedRows.paginate?.total ?? deletedRows.total ?? 0;
       // แหล่งเดียวของแถบแล้ว — `fetchUsers` เลิกเขียน `summary` ที่ผูก filter ทับ เรซที่ guard
       // `current ??` เดิมมีไว้กันจึงหายไปเชิงโครงสร้าง และการเขียนตรง ๆ คือสิ่งที่ทำให้
-      // `loadSummary()` ทั้ง 6 จุดหลัง mutation ทำงานจริงเป็นครั้งแรก
+      // `loadSummary()` ทั้ง 5 จุดหลัง mutation ทำงานจริงเป็นครั้งแรก
       // Sole writer now: the list fetch no longer clobbers this with a filter-scoped `summary`,
       // so the race the old guard existed for is structurally gone — and writing unconditionally
-      // is what makes all six post-mutation `loadSummary()` calls work at all.
+      // is what makes all five post-mutation `loadSummary()` calls work at all.
       setSummary(summarizeUsers(list, deletedCount));
     } catch {
       setSummary(null); // band swaps to its inline error/retry affordance; the table still works
