@@ -86,6 +86,9 @@ describe('NewsManagement bulk delete', () => {
     await screen.findByText('Alpha');
     await user.click(screen.getByLabelText('Select Alpha'));
     expect(await screen.findByText('1 selected')).toBeInTheDocument();
+    // Masthead reads the dedicated summary endpoint, not a perpage:-1 full-list read —
+    // proves loadSummary actually calls the new service method (regression guard for Task 6).
+    expect(newsService.getNewsroomSummary).toHaveBeenCalled();
   });
 
   it('opens the confirm dialog and keeps Delete disabled until the code matches', async () => {

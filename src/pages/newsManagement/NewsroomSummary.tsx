@@ -3,6 +3,7 @@ import { Newspaper, Globe, Building2, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import { cn } from '../../lib/utils';
 import type { NewsSummaryData } from '../../types';
 
 interface NewsLike {
@@ -134,7 +135,7 @@ interface NewsroomSummaryProps {
 export function NewsroomSummary({ summary, loading, error = false, onRetry = () => {} }: NewsroomSummaryProps) {
   return (
     <Card className="p-4 sm:p-5">
-      {error ? (
+      {error && !summary ? (
         <FetchErrorState
           message="Couldn't load the newsroom summary."
           onRetry={onRetry}
@@ -149,65 +150,76 @@ export function NewsroomSummary({ summary, loading, error = false, onRetry = () 
           <Skeleton className="h-14 w-64" />
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
-          <div className="min-w-[16rem] flex-1">
-            <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Latest</div>
-            {summary.latest ? (
-              <div className="flex items-start gap-3">
-                {summary.latest.image_url ? (
-                  <img
-                    src={summary.latest.image_url}
-                    alt=""
-                    className="h-12 w-16 shrink-0 rounded-md border object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.visibility = 'hidden';
-                    }}
-                  />
-                ) : (
+        <>
+          {/* Stale-but-plausible, not broken: the previous successful numbers are kept on a
+              later failure rather than blanked, so this must stay visible without reading as
+              an error screen — dim the numbers, announce it to assistive tech, keep the
+              register calm. Matches ClusterManagement's FleetCapacity. */}
+          {error && (
+            <p className="text-muted-foreground mb-2 text-xs" role="alert">
+              Couldn&apos;t refresh — showing the last known numbers.
+            </p>
+          )}
+          <div className={cn('flex flex-wrap items-center gap-x-8 gap-y-5', error && 'opacity-70')}>
+            <div className="min-w-[16rem] flex-1">
+              <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Latest</div>
+              {summary.latest ? (
+                <div className="flex items-start gap-3">
+                  {summary.latest.image_url ? (
+                    <img
+                      src={summary.latest.image_url}
+                      alt=""
+                      className="h-12 w-16 shrink-0 rounded-md border object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.visibility = 'hidden';
+                      }}
+                    />
+                  ) : (
+                    <div className="bg-muted text-muted-foreground/60 grid h-12 w-16 shrink-0 place-items-center rounded-md border">
+                      <Newspaper className="size-5" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <Link
+                      to={`/news/${summary.latest.id}/edit`}
+                      className="hover:text-primary line-clamp-2 text-base font-bold leading-snug tracking-tight"
+                    >
+                      {summary.latest.title}
+                    </Link>
+                    <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                      <span>Published {timeAgo(summary.latest.published_at ?? undefined)}</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <Reach buCount={summary.latest.bu_count} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-3">
                   <div className="bg-muted text-muted-foreground/60 grid h-12 w-16 shrink-0 place-items-center rounded-md border">
                     <Newspaper className="size-5" />
                   </div>
-                )}
-                <div className="min-w-0">
-                  <Link
-                    to={`/news/${summary.latest.id}/edit`}
-                    className="hover:text-primary line-clamp-2 text-base font-bold leading-snug tracking-tight"
-                  >
-                    {summary.latest.title}
-                  </Link>
-                  <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-                    <span>Published {timeAgo(summary.latest.published_at ?? undefined)}</span>
-                    <span className="text-muted-foreground/40">·</span>
-                    <Reach buCount={summary.latest.bu_count} />
+                  <div>
+                    <div className="text-sm font-semibold">Nothing published yet</div>
+                    <div className="text-muted-foreground text-xs">Publish an article to make it visible to readers.</div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3">
-                <div className="bg-muted text-muted-foreground/60 grid h-12 w-16 shrink-0 place-items-center rounded-md border">
-                  <Newspaper className="size-5" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold">Nothing published yet</div>
-                  <div className="text-muted-foreground text-xs">Publish an article to make it visible to readers.</div>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className="border-border shrink-0 sm:border-l sm:pl-8">
-            <div className="flex items-center gap-3">
-              <Stage label="Draft" value={summary.draft} tone="muted" />
-              <ChevronRight className="text-muted-foreground/30 size-4 shrink-0" />
-              <Stage label="Published" value={summary.published} tone="success" />
-              <ChevronRight className="text-muted-foreground/30 size-4 shrink-0" />
-              <Stage label="Archived" value={summary.archived} tone="muted" />
-            </div>
-            <div className="text-muted-foreground mt-2 text-center text-[11px]">
-              {summary.total} article{summary.total === 1 ? '' : 's'} total
+            <div className="border-border shrink-0 sm:border-l sm:pl-8">
+              <div className="flex items-center gap-3">
+                <Stage label="Draft" value={summary.draft} tone="muted" />
+                <ChevronRight className="text-muted-foreground/30 size-4 shrink-0" />
+                <Stage label="Published" value={summary.published} tone="success" />
+                <ChevronRight className="text-muted-foreground/30 size-4 shrink-0" />
+                <Stage label="Archived" value={summary.archived} tone="muted" />
+              </div>
+              <div className="text-muted-foreground mt-2 text-center text-[11px]">
+                {summary.total} article{summary.total === 1 ? '' : 's'} total
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </Card>
   );

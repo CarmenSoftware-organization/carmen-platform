@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { FetchErrorState } from '../../components/FetchErrorState';
+import { cn } from '../../lib/utils';
 import { normalizeAudit } from '../../utils/audit';
 import type { NewestUser, UserSummaryData } from '../../types';
 
@@ -186,7 +187,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
     <Card className="p-4 sm:p-5">
       <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Directory</div>
 
-      {error ? (
+      {error && !summary ? (
         <FetchErrorState message="Couldn't load the directory summary." onRetry={onRetry} className="py-3" />
       ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -195,34 +196,45 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
           <Skeleton className="h-14 w-40" />
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-          <div className="border-border sm:border-r sm:pr-6">
-            <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
-            <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">users</div>
-          </div>
-
-          <div className="min-w-[12rem] flex-1">
-            <div
-              className="bg-muted flex h-3 overflow-hidden rounded-full"
-              role="img"
-              aria-label={`${summary.active} active, ${summary.inactive} inactive`}
-            >
-              <span className="bg-success" style={{ width: `${pct(summary.active)}%` }} />
-              <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.inactive)}%` }} />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-              <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
-              <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
-              {summary.deleted > 0 && (
-                <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
-              )}
-            </div>
-          </div>
-
-          {summary.newest.length > 0 && (
-            <Faces faces={summary.newest.map(toFace)} total={summary.total} />
+        <>
+          {/* Stale-but-plausible, not broken: the previous successful numbers are kept on a
+              later failure rather than blanked, so this must stay visible without reading as
+              an error screen — dim the numbers, announce it to assistive tech, keep the
+              register calm. Matches ClusterManagement's FleetCapacity. */}
+          {error && (
+            <p className="text-muted-foreground mb-2 text-xs" role="alert">
+              Couldn&apos;t refresh — showing the last known numbers.
+            </p>
           )}
-        </div>
+          <div className={cn('flex flex-wrap items-center gap-x-6 gap-y-4', error && 'opacity-70')}>
+            <div className="border-border sm:border-r sm:pr-6">
+              <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
+              <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">users</div>
+            </div>
+
+            <div className="min-w-[12rem] flex-1">
+              <div
+                className="bg-muted flex h-3 overflow-hidden rounded-full"
+                role="img"
+                aria-label={`${summary.active} active, ${summary.inactive} inactive`}
+              >
+                <span className="bg-success" style={{ width: `${pct(summary.active)}%` }} />
+                <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.inactive)}%` }} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
+                <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
+                <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
+                {summary.deleted > 0 && (
+                  <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
+                )}
+              </div>
+            </div>
+
+            {summary.newest.length > 0 && (
+              <Faces faces={summary.newest.map(toFace)} total={summary.total} />
+            )}
+          </div>
+        </>
       )}
     </Card>
   );

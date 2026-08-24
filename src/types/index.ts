@@ -647,23 +647,18 @@ export interface TopRole {
 /**
  * RBAC aggregate for the `/platform-roles` band.
  *
- * Same shape whether it arrives on the wire (`RolesResponse.summary`, filter-scoped — this
- * endpoint has no per-caller scope, so that block describes the active `advance`/`search`) or
- * is built locally by `summarizeRoles`. The page currently uses the local one: the band sits
- * above the filter and must describe the whole registry, which the wire block cannot do. See
- * `agent-os/standards/pages/summary-band.md`. The bar scale (`maxCount` in the old client-side
+ * The page (`RoleManagement.tsx`) reads this from the dedicated, unfiltered endpoint
+ * `GET /api-system/platform/roles/summary` via `roleService.getAccessSummary()` — not the
+ * `summary` block `RolesResponse` carries (that one is filter-scoped to whatever `advance`/
+ * `search` the list request used) and not the client-side `summarizeRoles` aggregate, which
+ * is kept around only for Task 7 to remove. The bar scale (`maxCount` in the old client-side
  * shape) is `top_roles[0].permission_count`, derived at render time rather than sent twice.
  */
 export interface RolesSummaryData {
   total: number;
   active: number;
   inactive: number;
-  /**
-   * On the wire this is soft-deleted roles matching the filter. The band doesn't use the wire
-   * value, though — it renders `summarizeRoles`'s local aggregate, which hardcodes this to `0`
-   * because the list feed it reads never includes soft-deleted rows. Nothing on `/platform-roles`
-   * renders this field either way.
-   */
+  /** Soft-deleted roles, fleet-wide (not filter-scoped — see the class doc above). */
   deleted: number;
   /** Broadest first, at most three entries. */
   top_roles: TopRole[];
@@ -683,10 +678,11 @@ export interface DeviceCount {
 /**
  * Registry aggregate for the `/applications` band.
  *
- * Same shape whether it arrives on the wire (`ApplicationsResponse.summary`, filter-scoped) or
- * is built locally by `summarizeApplications`. The page currently uses the local one: the band
- * sits above the filter and must describe the whole registry, which the wire block cannot do.
- * See `agent-os/standards/pages/summary-band.md`. Either way `devices` arrives busiest-first;
+ * The page (`ApplicationManagement.tsx`) reads this from the dedicated, unfiltered endpoint
+ * `GET /api-system/applications/summary` via `applicationService.getRegistrySummary()` — not
+ * the `summary` block `ApplicationsResponse` carries (that one is filter-scoped to whatever
+ * `advance`/`search` the list request used) and not the client-side `summarizeApplications`
+ * aggregate, which is kept around only for Task 7 to remove. `devices` arrives busiest-first;
  * that is NOT the display order — `ApplicationRegistrySummary.byPlatform` applies its own
  * platform ranking at render, in one place, regardless of which source filled this object.
  */
@@ -694,12 +690,7 @@ export interface ApplicationSummaryData {
   total: number;
   active: number;
   inactive: number;
-  /**
-   * On the wire this is soft-deleted rows matching the filter. The band doesn't use the wire
-   * value, though — it renders `summarizeApplications`'s local aggregate, which hardcodes this
-   * to `0` because the list feed it reads never includes soft-deleted rows. Nothing on
-   * `/applications` renders this field either way.
-   */
+  /** Soft-deleted applications, fleet-wide (not filter-scoped — see the class doc above). */
   deleted: number;
   /** allow_all — can call every endpoint (audit-worthy). */
   full_access: number;
@@ -725,20 +716,20 @@ export interface LatestNews {
 }
 
 /**
- * Newsroom aggregate from the news list → `summary`.
+ * Newsroom aggregate for the `/news` masthead.
  *
- * Has NO active/inactive split, unlike every other summary block: `tb_news` has no
- * `is_active` column, so an article's lifecycle is its `status`. This is also the only place
- * in the contract where `archived` means a **status** — a live row — rather than a deletion.
+ * The page (`NewsManagement.tsx`) reads this from the dedicated, unfiltered endpoint
+ * `GET /api/news/summary` via `newsService.getNewsroomSummary()` — not the `summary` block
+ * `NewsResponse` carries (that one is filter-scoped to whatever `advance`/`search` the list
+ * request used) and not the client-side `summarizeNews` aggregate, which is kept around only
+ * for Task 7 to remove. Has NO active/inactive split, unlike every other summary block:
+ * `tb_news` has no `is_active` column, so an article's lifecycle is its `status`. This is also
+ * the only place in the contract where `archived` means a **status** — a live row — rather
+ * than a deletion.
  */
 export interface NewsSummaryData {
   total: number;
-  /**
-   * On the wire this is soft-deleted articles matching the filter. The `/news` band doesn't
-   * use the wire value, though — it renders `summarizeNews`'s local aggregate, which hardcodes
-   * this to `0` because the list feed it reads never includes soft-deleted rows. Nothing on
-   * `/news` renders this field either way.
-   */
+  /** Soft-deleted articles, fleet-wide (not filter-scoped — see the class doc above). */
   deleted: number;
   draft: number;
   published: number;

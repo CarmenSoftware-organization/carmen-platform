@@ -110,6 +110,10 @@ describe('UserManagement — Add User gates (user.create)', () => {
     await screen.findByText('jane@example.com');
 
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
+    // Directory band reads the dedicated summary endpoint, not a two-request perpage:-1 +
+    // deleted-count read — proves loadSummary actually calls the new service method
+    // (regression guard for Task 6).
+    expect(userService.getDirectorySummary).toHaveBeenCalled();
   });
 
   it('shows the header Add User button with user.create (discriminating control)', async () => {

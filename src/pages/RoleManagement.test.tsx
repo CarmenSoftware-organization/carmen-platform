@@ -127,6 +127,9 @@ describe('RoleManagement — row action gates (role.update / role.delete)', () =
 
     expect(screen.queryByRole('menuitem', { name: /^edit$/i })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: /^delete$/i })).toBeNull();
+    // RBAC band reads the dedicated summary endpoint, not a perpage:-1 full-list read —
+    // proves loadSummary actually calls the new service method (regression guard for Task 6).
+    expect(roleService.getAccessSummary).toHaveBeenCalled();
   });
 
   it('shows Edit and Delete with full permissions (discriminating control)', async () => {

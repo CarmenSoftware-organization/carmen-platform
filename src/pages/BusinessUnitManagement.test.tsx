@@ -109,6 +109,10 @@ describe('BusinessUnitManagement — row action gates (cluster-scoped)', () => {
 
     expect(screen.queryByRole('menuitem', { name: /edit/i })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: /delete/i })).toBeNull();
+    // Overview strip reads the dedicated summary endpoint, not a two-request perpage:-1 +
+    // deleted-count read — proves loadSummary actually calls the new service method
+    // (regression guard for Task 6).
+    expect(businessUnitService.getSummary).toHaveBeenCalled();
   });
 
   // Discriminating control. A wholesale `() => true` would still pass if a gate lost

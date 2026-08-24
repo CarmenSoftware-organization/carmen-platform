@@ -127,6 +127,9 @@ describe('ApplicationManagement — Add Application gates (application.create)',
     await screen.findByText('Test App');
 
     expect(screen.queryByRole('button', { name: /add application/i })).toBeNull();
+    // Registry band reads the dedicated summary endpoint, not a `perpage: -1` list read —
+    // proves loadSummary actually calls the new service method (regression guard for Task 6).
+    expect(applicationService.getRegistrySummary).toHaveBeenCalled();
   });
 
   it('shows the header Add Application button with application.create (discriminating control)', async () => {
