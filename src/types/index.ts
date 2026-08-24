@@ -578,10 +578,16 @@ export interface ClustersResponse extends ApiListResponse<Cluster> {
 }
 
 /**
- * Overview aggregate from `GET /api-system/business-units` → `summary`.
+ * Overview aggregate for the business-unit band.
  *
- * Filter-consistent and scope-aware: it counts every business unit matching the active
- * `advance`/`search` **and** the clusters the caller may read — not the whole registry.
+ * Two routes return this shape and their scope is NOT the same — pick deliberately:
+ * - `GET /api-system/business-units/summary` (`businessUnitService.getSummary`) — the whole
+ *   registry the caller may read, ignoring `advance`/`search`. This is what the band renders.
+ * - `GET /api-system/business-units` → `summary` — filter-consistent: only the rows matching the
+ *   active `advance`/`search`. Nothing reads it today. Wiring it into the band is the bug the
+ *   dedicated endpoint exists to fix: the numbers would move as the user types.
+ *
+ * Both are scope-aware — neither counts clusters the caller may not read.
  * `snake_case` because this is a wire type, not a view model.
  */
 export interface BuSummaryData {
@@ -615,10 +621,17 @@ export interface NewestUser {
 }
 
 /**
- * Directory aggregate from the platform user list → `summary`.
+ * Directory aggregate for the user band.
  *
- * Filter-consistent and scope-aware, and it excludes unverified accounts exactly as the table
- * does. `snake_case` because this is a wire type, not a view model.
+ * Two routes return this shape and their scope is NOT the same — pick deliberately:
+ * - `GET /api-system/user/summary` (`userService.getDirectorySummary`) — the whole directory the
+ *   caller may read, ignoring `advance`/`search`. This is what the band renders.
+ * - `GET /api-system/user` → `summary` — filter-consistent: only the rows matching the active
+ *   `advance`/`search`. Nothing reads it today. Wiring it into the band would make the numbers
+ *   move as the user types, which is the bug the dedicated endpoint exists to fix.
+ *
+ * Both are scope-aware, and both exclude unverified accounts exactly as the table does.
+ * `snake_case` because this is a wire type, not a view model.
  */
 export interface UserSummaryData {
   total: number;
