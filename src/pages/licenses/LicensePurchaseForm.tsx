@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
+import { normalizeAudit } from '../../utils/audit';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -91,6 +92,24 @@ function ownerFromRow(kind: LicenseKind, row: LicenseRow): { id: string; label: 
   return { id: r.cluster_id, label: `${r.cluster_code} - ${r.cluster_name}` };
 }
 
+/**
+ * คลัสเตอร์ที่เจ้าของใบสังกัด — คู่กับ `ownerFromRow` แต่คืน `null` เมื่อใบชนิดนี้ไม่แยกคลัสเตอร์
+ * ออกจากเจ้าของ (ใบโควตา BU: คลัสเตอร์ **คือ** เจ้าของอยู่แล้ว ดู `showCluster` ใน config)
+ *
+ * ค่ามาจาก detail endpoint ตรง ๆ — `GET /platform/business-unit-licenses/:id` ส่ง
+ * `cluster_id`/`cluster_code`/`cluster_name` มาพร้อมแถวอยู่แล้ว จึงไม่ต้องยิง API เพิ่ม
+ * และไม่ต้องพึ่ง query param แบบ `?ownerLabel=` (ที่หายไปเมื่อเปิด URL ตรง ๆ)
+ */
+function clusterFromRow(
+  config: LicenseKindConfig,
+  row: LicenseRow | null,
+): { id: string; label: string } | null {
+  if (!config.showCluster || !row) return null;
+  const r = row as SeatLicenseRow;
+  if (!r.cluster_id) return null;
+  return { id: r.cluster_id, label: `${r.cluster_code} - ${r.cluster_name}` };
+}
+
 /** สถานะของแถวที่โหลดมา — เรียกฟังก์ชันคนละตัวกันตามชนิด ห้ามคิดสูตรใหม่ที่นี่ (ดูคอมเมนต์ config) */
 function statusOfRow(kind: LicenseKind, row: LicenseRow, now: Date): BuLicenseStatus | ClusterLicenseStatus {
   return kind === 'seat'
@@ -110,6 +129,8 @@ interface LicenseFieldsCardProps {
   /** id ดิบ — โชว์เป็นบรรทัดเล็กใต้ป้ายเสมอที่ `ownerText` ไม่ใช่ id ดิบอยู่แล้ว เผื่อ query param
    *  ที่พาเข้ามาผิด/เพี้ยน ยังเห็น id จริงเทียบกับที่ควรจะเป็นได้ (review Important #2) */
   ownerId: string;
+  /** คลัสเตอร์ของเจ้าของ — `null` ตอนสร้าง (ยังไม่มีแถวให้อ่าน) และตลอดไปสำหรับใบโควตา BU */
+  cluster: { id: string; label: string } | null;
   /** undefined ตอนสร้าง — ระบบยังไม่ออกเลขให้ */
   licenseNumber?: string;
   isNew: boolean;
@@ -127,7 +148,7 @@ interface LicenseFieldsCardProps {
  * ในไฟล์เดียวกันเพราะ Task 6 สร้างแค่สองไฟล์ตามบรีฟ ไม่แยกไดเรกทอรีย่อยเพิ่ม)
  */
 function LicenseFieldsCard({
-  config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, licenseNumber, isNew, statusBadge,
+  config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, cluster, licenseNumber, isNew, statusBadge,
   onChange, onBlur, onFocus, onNoExpiryChange,
 }: LicenseFieldsCardProps) {
   return (
@@ -141,6 +162,15 @@ function LicenseFieldsCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
+          {cluster && (
+            <div className="space-y-2">
+              <Label>Cluster</Label>
+              {/* อ่านอย่างเดียวเหมือนเจ้าของ — คลัสเตอร์ถูกกำหนดโดย BU ที่ถือใบนี้ ย้ายจากหน้านี้ไม่ได้ */}
+              <ReadOnlyField value={cluster.label} />
+              <p className="text-muted-foreground text-xs font-mono">{cluster.id}</p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>{config.ownerLabel}</Label>
             {/* เจ้าของแก้ไม่ได้ทั้งสองโหมด — ข้อความอ่านอย่างเดียวเสมอ ไม่ใช่ input disabled */}
@@ -593,6 +623,10 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   const status = !isNew && detail ? statusOfRow(config.kind, detail, now) : null;
   const statusBadge = status ? STATUS_BADGE[status] : null;
   const ownerText = ownerLabel || ownerId;
+  // โหมดสร้างยังไม่มีแถวให้อ่าน (`detail` เป็น null) จึงไม่มีคลัสเตอร์ให้แสดง — ต่างจาก
+  // เจ้าของที่มาทาง query param ได้ คลัสเตอร์ไม่ถูกส่งมาทาง URL เลย ช่องจะไม่ขึ้นทั้งช่อง
+  // แทนที่จะขึ้นเป็นช่องว่าง (ผู้สร้างใบเลือก BU มาแล้ว คลัสเตอร์ตามมาเองตอนบันทึก)
+  const cluster = clusterFromRow(config, detail);
 
   return (
     <Layout>
@@ -616,6 +650,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 editing={canEdit}
                 ownerText={ownerText}
                 ownerId={ownerId}
+                cluster={null}
                 isNew
                 statusBadge={null}
                 onChange={handleChange}
@@ -643,6 +678,10 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               backTo={config.listPath}
               title={licenseNumber || '(unnamed license)'}
               subtitle={`${config.ownerLabel}: ${ownerText}`}
+              // "Created … by … · Updated … by …" ใต้ subtitle — รูปแบบเดียวกับหน้าแก้ไขอื่นทั้งแอป
+              // อ่านจาก `detail` (data ที่ unwrap แล้ว) ไม่ใช่ `rawResponse` เพราะ audit อยู่ใน
+              // `data.audit` ชั้นใน — normalizeAudit รับได้ทั้งรูป nested และรูปแบน
+              audit={normalizeAudit(detail)}
             />
 
             {error && (
@@ -657,6 +696,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               editing={canEdit}
               ownerText={ownerText}
               ownerId={ownerId}
+              cluster={cluster}
               licenseNumber={licenseNumber}
               isNew={false}
               statusBadge={statusBadge}
