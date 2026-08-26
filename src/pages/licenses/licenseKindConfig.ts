@@ -29,6 +29,11 @@ export interface LicenseKindConfig {
   showNoExpiry: boolean;
   /** ใบชนิดนี้มีช่อง note ไหม */
   showNote: boolean;
+  /** แสดงคลัสเตอร์แยกจากเจ้าของไหม (คอลัมน์ใน `PurchaseLicenseTable` + ช่องอ่านอย่างเดียวใน
+   *  `LicensePurchaseForm`) — ใบที่นั่งมีเจ้าของเป็น BU จึงต้องบอกว่า BU นั้น
+   *  อยู่คลัสเตอร์ไหน ส่วนใบโควตา BU มีเจ้าของเป็น cluster อยู่แล้ว (`ownerLabel: 'Cluster'`)
+   *  การเปิดที่นั่นจะได้ Cluster สองคอลัมน์ซ้ำกัน */
+  showCluster: boolean;
   /** เส้นทางกลับของ `PageHeader backTo` */
   listPath: string;
   /** segment ของ route แก้ไข ('seats' | 'bu-quota') — ใช้ประกอบ path ตอน navigate หลังสร้างสำเร็จ
@@ -47,6 +52,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
   ownerParam: 'bu',
   showNoExpiry: false,
   showNote: false,
+  showCluster: true,
   listPath: '/licenses',
   editPathSegment: 'seats',
   service: businessUnitLicenseService,
@@ -61,6 +67,7 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   ownerParam: 'cluster',
   showNoExpiry: true,
   showNote: true,
+  showCluster: false,
   listPath: '/licenses',
   editPathSegment: 'bu-quota',
   service: clusterLicenseService,

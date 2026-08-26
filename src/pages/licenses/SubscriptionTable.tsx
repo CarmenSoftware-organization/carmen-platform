@@ -21,7 +21,6 @@ import Can from '../../components/Can';
 import { SubscriptionSummary } from './subscriptionManagement/SubscriptionSummary';
 import { buildAdvance, type SubscriptionFilters } from './subscriptionManagement/buildAdvance';
 import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../../utils/subscriptionState';
-import { seatUtilization } from '../../utils/capacity';
 import { useAuth } from '../../context/AuthContext';
 import { useAllClusters } from '../../hooks/useAllClusters';
 import { auditColumns } from '../../components/auditColumns';
@@ -311,6 +310,24 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       ),
     },
     {
+      id: 'bu',
+      header: 'Business Unit',
+      // bu_code/bu_name มาจากความสัมพันธ์ tb_subscription_bu ที่ backend compose ตอนสร้างแถว
+      // ไม่ใช่คอลัมน์จริงของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
+      enableSorting: false,
+      // ต่างจาก bu_count เดิมที่ซ่อนบนมือถือ (ตัวเลขล้วนไม่มีบริบท): BU คือคู่สัญญา ไม่ใช่ตัวนับ
+      // การ์ดที่ไม่บอกว่าใบนี้ของใครทำให้ต้องเปิดทีละใบเพื่อหา
+      cell: ({ row }) =>
+        row.original.bu_code ? (
+          <div className="min-w-0">
+            <div className="truncate font-medium">{row.original.bu_code}</div>
+            <div className="text-muted-foreground truncate text-xs">{row.original.bu_name}</div>
+          </div>
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        ),
+    },
+    {
       id: 'state',
       // "State" ไม่ใช่ "Status": ค่าที่แสดงคือ `state` ที่ backend คำนวณให้ และตัวกรองในฟิลเตอร์ชีต
       // ก็ใช้ชุดเดียวกัน — ป้ายสองที่บนจอเดียวกันต้องเรียกของสิ่งเดียวกันด้วยชื่อเดียวกัน (review I1)
@@ -332,43 +349,11 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       },
     },
     {
-      id: 'bu',
-      header: 'Business Unit',
-      // bu_code/bu_name มาจากความสัมพันธ์ tb_subscription_bu ที่ backend compose ตอนสร้างแถว
-      // ไม่ใช่คอลัมน์จริงของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
-      enableSorting: false,
-      // ต่างจาก bu_count เดิมที่ซ่อนบนมือถือ (ตัวเลขล้วนไม่มีบริบท): BU คือคู่สัญญา ไม่ใช่ตัวนับ
-      // การ์ดที่ไม่บอกว่าใบนี้ของใครทำให้ต้องเปิดทีละใบเพื่อหา
-      cell: ({ row }) =>
-        row.original.bu_code ? (
-          <div className="min-w-0">
-            <div className="truncate font-medium">{row.original.bu_code}</div>
-            <div className="text-muted-foreground truncate text-xs">{row.original.bu_name}</div>
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-xs">—</span>
-        ),
-    },
-    {
       id: 'feature_count',
       header: 'Features',
       enableSorting: false,
       meta: { card: 'hidden' },
       cell: ({ row }) => <span className="tabular-nums">{row.original.feature_count}</span>,
-    },
-    {
-      id: 'seats',
-      header: 'Seats',
-      // seat_used/seat_cap เป็นค่ารวมจาก usage ของ cluster ไม่ใช่คอลัมน์จริงเหมือนกัน
-      enableSorting: false,
-      cell: ({ row }) => {
-        const u = seatUtilization(row.original.seat_used, row.original.seat_cap);
-        return (
-          <span className={u.level === 'over' ? 'text-destructive' : u.level === 'warn' ? 'text-warning' : ''}>
-            {u.used} / {u.cap}
-          </span>
-        );
-      },
     },
     {
       accessorKey: 'end_date',

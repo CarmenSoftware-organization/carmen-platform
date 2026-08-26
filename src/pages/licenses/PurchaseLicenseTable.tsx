@@ -22,7 +22,7 @@ import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
 import type { SeatLicenseRow, BuQuotaLicenseRow, PaginateParams } from '../../types';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, Row } from '@tanstack/react-table';
 
 type StatusFilterValue = 'active' | 'scheduled' | 'expired';
 
@@ -85,6 +85,12 @@ interface FleetLicenseRow {
   created_at?: string | null;
   /** ชื่อคนสร้างใบ — มีค่าจริงเฉพาะใบโควตา BU เช่นเดียวกับ `created_at` */
   created_by_name?: string;
+  /**
+   * คลัสเตอร์ที่เจ้าของใบสังกัด — มีค่าเฉพาะใบที่นั่ง (`SeatLicenseRow` พ่วง `cluster_*` มาให้)
+   * ใบโควตา BU ไม่เซ็ตค่านี้เพราะคลัสเตอร์ **คือ** เจ้าของใบอยู่แล้ว (ดู `showCluster`)
+   */
+  cluster_code?: string;
+  cluster_name?: string;
 }
 
 function toFleetRow(
@@ -115,6 +121,8 @@ function toFleetRow(
     reference_no: row.reference_no || '-',
     created_at: quotaAudit.created?.at ?? null,
     created_by_name: quotaAudit.created?.name,
+    cluster_code: isSeat ? seat.cluster_code : undefined,
+    cluster_name: isSeat ? seat.cluster_name : undefined,
   };
 }
 
@@ -315,6 +323,21 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           </Link>
         ),
       },
+      ...(config.showCluster
+        ? [{
+            id: 'cluster',
+            header: 'Cluster',
+            // cluster_code/cluster_name มาจาก join ผ่าน business_unit_id → tb_cluster ไม่ใช่คอลัมน์
+            // จริงบนตารางใบ — เรียงไม่ได้ ด้วยเหตุผลเดียวกับคอลัมน์ owner ข้างล่าง
+            enableSorting: false,
+            cell: ({ row }: { row: Row<FleetLicenseRow> }) => (
+              <div className="flex flex-col">
+                <span>{row.original.cluster_name || '-'}</span>
+                <span className="text-xs text-muted-foreground font-mono">{row.original.cluster_code}</span>
+              </div>
+            ),
+          } as ColumnDef<FleetLicenseRow, unknown>]
+        : []),
       {
         id: 'owner',
         header: config.ownerLabel,
@@ -501,7 +524,10 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
                 data={rows}
                 serverSide
                 tableLayout="auto"
-                stickyLeftColumns={3}
+                // 2 = # + License Number เท่านั้น — คอลัมน์ที่ 3 (Cluster สำหรับใบที่นั่ง /
+                // Business Unit ก่อนหน้านี้) เลื่อนหายไปกับตารางได้: ทุกคอลัมน์ที่ตรึงคือความกว้าง
+                // ที่ผู้อ่านเลื่อนหนีไม่ได้ (agent-os/standards/styling/table-sticky-columns.md)
+                stickyLeftColumns={2}
                 totalRows={totalRows}
                 page={paginate.page}
                 perpage={paginate.perpage}
