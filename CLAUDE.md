@@ -70,27 +70,17 @@ Static SPA. `.github/workflows/` holds **three** workflows that ship to **three 
 
 **So a push to `main` DOES deploy — to DEV, automatically, since 2026-08-23 (`ae64f0c`).** It touches neither GCS nor Vercel. Before claiming anything about what deploys when, run `ls .github/workflows/` and `gh run list --branch main` — this paragraph claimed the opposite for a while after `deploy-dev.yml` landed, and a session acted on it.
 
-`deploy-dev.yml` specifics worth knowing: it `scp`s a tarball, unpacks into `$ROOT.new` and **swaps directories** instead of extracting over the live one (extracting in place would serve an `index.html` pointing at chunks not yet written), then health-checks `/` and `/cluster/list` on `:9902` — a non-200 rolls the previous directory back on its own. `REACT_APP_OTEL_ENABLED` is **build-time**: Vite drops the telemetry dynamic import entirely when it is off, so the workflow fails the build if the telemetry chunk is missing, and turning it on later means rebuilding, not reconfiguring. `.env.dev` is gitignored, so CI passes `REACT_APP_*` through process env.
-
 **Vercel (`vercel.json`) is a separate production target** at `carmen-inventory-platform.vercel.app`, and it is the one real users see. It tracks the **`vercel` branch**, not `main` — Vercel's Production environment is wired to that branch and Preview deployments are disabled, so **merging to `main` deploys nothing here**. Shipping to production is a deliberate second step:
 
 ```
 git push origin main:vercel      # fast-forward the deploy branch → Vercel builds
 ```
 
-`verify.yml` skips the `vercel` branch on purpose: every commit that reaches it already passed CI as a PR into `main`, and the push is always a fast-forward from `main`. `vercel --prod` from the CLI still works and bypasses the branch entirely — use it only when you deliberately want to ship a working tree that is not on `vercel`. Between 2026-08-23 and 2026-08-24 this target silently shipped nothing at all, because Production tracked a `DEV` branch that did not exist in the repo; if deployments stop appearing again, check Settings → Environments → Branch Tracking **first** — neither `vercel project inspect` nor the Vercel MCP tools expose that field, only the dashboard does.
-
-`deploy-gcs.yml`'s only run on `main` (2026-08-22) failed uploading assets with `GcsApiError('')` — no message, no retry; the last successful GCS deploy was from `GCP-POC` in July 2026.
+`deploy-dev.yml`'s internals, why `verify.yml` skips the `vercel` branch, the Vercel Branch-Tracking trap, and `deploy-gcs.yml`'s failure history: **`.claude/skills/deploying/SKILL.md`**.
 
 ## Unit & Component Tests
 
-Vitest (jsdom) is the in-repo test runner — separate from the Playwright E2E suite. `vitest.config.ts` is **standalone** and must not touch `vite.config.ts`; `vitest.setup.ts` wires RTL's `afterEach(cleanup)` **by hand** because we run **no** `globals` — without it renders accumulate in the shared jsdom doc. `src/vitest.d.ts` exposes the jest-dom matchers to tsc without touching `tsconfig.json`.
-
-- **Location:** co-locate `*.test.ts` / `*.test.tsx` beside the source (e.g. `src/utils/validation.test.ts`).
-- **Imports:** explicit — `import { describe, it, expect, vi } from 'vitest'` (no globals).
-- **Pure functions:** unit-test directly. Reference: `src/utils/*.test.ts`.
-- **Components:** React Testing Library + `@testing-library/user-event`; assert behavior/roles/text (no snapshots). Presentational examples: `src/pages/businessUnitEdit/*.test.tsx`.
-- **Page integration:** `vi.mock` the shell (`Layout`, `AuthContext`) + services (and `api`) + `sonner`; keep routing **real** via `MemoryRouter`. **Never mock `Can`** — it *is* the permission logic, so stubbing it makes every permission test pass regardless of permissions. Drive it through a `vi.hoisted` mutable auth object instead. Reference: `src/pages/ClusterEdit.test.tsx`; full rule: `agent-os/standards/testing/mock-boundary.md`.
+Vitest (jsdom) is the in-repo test runner — separate from the Playwright E2E suite. Every rule (co-location, no globals, what to test at which level, the mock boundary, the jsdom stubs) lives in **`agent-os/standards/testing/`**; Rule 18 below is the summary.
 
 ## E2E Tests
 
@@ -128,36 +118,6 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 **Color tokens (HSL):** warm-neutral ground + a single blue accent (calm-corporate reskin) — `--accent` is a neutral warm surface, **not** a brand hue, and status accents use dedicated `--success` / `--warning` / `--info` tokens rather than `--accent`. Values live in `src/index.css` + `tailwind.config.js` (the source of truth); the full reference (light + dark, all roles, hex, spacing, shadows, contrast) is **`.planning/design/system/tokens.md`** — keep it in sync when those change.
 
-**Adding a token (Tailwind v4):** you can declare tokens straight in `src/index.css` and the
-utilities come free — no `tailwind.config.js` edit. **Which form you use depends on whether the
-value changes with the theme, and getting it wrong fails silently:**
-
-```css
-/* Theme-dependent (every colour) — value in BOTH blocks, exposed via @theme inline */
-:root { --brand: 221 61% 48%; }
-.dark { --brand: 217 70% 60%; }        /* required, not optional */
-@theme inline { --color-brand: hsl(var(--brand)); }
-
-/* Theme-independent only (spacing, radius, a fixed colour) — @theme directly */
-@theme { --spacing-gutter: 3rem; }
-```
-
-`inline` is what makes dark mode work: it tells Tailwind **not** to mint its own variable, so
-`bg-brand` compiles to `background-color:hsl(var(--brand))` and follows `.dark`. A plain
-`@theme --color-brand: …` compiles to a single frozen value (`#e61a5e`) that is identical in
-both themes — no build error, no failing test, just one wrong colour in dark mode. The
-both-blocks rule in `agent-os/standards/styling/dark-mode.md` therefore still applies in full.
-
-`@theme` and the legacy `@config` coexist (Tailwind merges both into one theme), so this needs
-no migration; `@utility`, `@custom-variant`, `@container`, and oklch likewise all work against
-the current setup — verified, not assumed. The **existing** 36 tokens stay in
-`tailwind.config.js`, which maps utility names onto `hsl(var(--token))`; their values live in
-`:root` / `.dark` as bare HSL triplets (`--background: 40 9% 97.5%`, no `hsl()` wrapper) so
-`hsl(var(--x) / 0.4)` opacity works. Don't "modernise" those into full colour values — 9 files
-pass them to JS as `hsl(var(--x))` (Recharts, the summary Legends) and would break. Moving the
-old tokens into `@theme` was considered and **deliberately declined** — it buys consistency,
-not capability.
-
 **Surfaces:** glassmorphism (`.glass` / `.glass-strong`) was removed in the enterprise redesign — surfaces are now flat `bg-card` / `bg-background` with a 1px `border`.
 
 **Spacing:** page wrapper `space-y-4 sm:space-y-6` · card content `space-y-4` · field `space-y-2` · button gaps `gap-3`.
@@ -168,18 +128,11 @@ not capability.
 
 **Breakpoints:** mobile-first. `sm:` 640 · `md:` 768 (sidebar appears) · `lg:` 1024 (two-col form grids).
 
-How to *consume* a token (`hsl(var(--token))` where a class won't fit), the both-blocks rule for adding one, and the frozen-column CSS contract: **`agent-os/standards/styling/`**.
+Adding a token (the `@theme inline` form — plain `@theme` freezes one value across both themes and fails silently), how to *consume* one (`hsl(var(--token))` where a class won't fit), the both-blocks rule, and the frozen-column CSS contract: **`agent-os/standards/styling/`**.
 
 ## DateTime
 
-No library. Inline formatter:
-```ts
-const fmt = (v?: string) => {
-  if (!v) return '-';
-  const d = new Date(v); const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-};
-```
+No library. Copy the inline `fmt` helper from a page that already formats a timestamp (`src/utils/relativeTime.ts`, `src/components/AuditMeta.tsx` — 21 call sites share the shape).
 
 ## Rules for AI
 
