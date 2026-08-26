@@ -52,3 +52,16 @@ radius, a fixed brand colour).
 a status) or lands on the same hue twice — `--primary` and `--info` are currently identical, so
 using both for two series produces one indistinguishable chart. Add `--chart-3` (in both
 blocks) rather than borrowing a status token.
+
+### Why the existing tokens stay in `tailwind.config.js`
+
+`@theme` and the legacy `@config` coexist — Tailwind merges both into one theme, so nothing here
+needs migrating. `@utility`, `@custom-variant`, `@container`, and oklch all work against the
+current setup (verified, not assumed).
+
+The **existing** 36 tokens stay where they are: `tailwind.config.js` maps utility names onto
+`hsl(var(--token))`, and their values live in `:root` / `.dark` as bare HSL triplets
+(`--background: 40 9% 97.5%`, no `hsl()` wrapper) so `hsl(var(--x) / 0.4)` opacity works. Don't
+"modernise" those into full colour values — 9 files pass them to JS as `hsl(var(--x))` (Recharts,
+the summary Legends) and would break. Moving the old tokens into `@theme` was considered and
+**deliberately declined**: it buys consistency, not capability.
