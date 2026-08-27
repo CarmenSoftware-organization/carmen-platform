@@ -72,12 +72,14 @@ common: {
   // seeded in this slice: the 75 strings that occur >=3 times AND span >=2 slices
   status: { active: 'Active', inactive: 'Inactive', label: 'Status',
             deleted: 'Deleted', archived: 'Archived', expired: 'Expired',
-            published: 'Published', scheduled: 'Scheduled' },
-  action: { save: 'Save', saveChanges: 'Save Changes', saving: 'Saving...',
+            scheduled: 'Scheduled' },
+  // note: 'Published' and 'Edit' are NOT here. Both clear 3 occurrences but sit in
+  // one slice each (Broadcasts+News, Licenses), so they stay local until a second
+  // slice needs them. This is the rule doing its job, not an oversight.
+  action: { saveChanges: 'Save Changes', saving: 'Saving...',
             delete: 'Delete', deleting: 'Deleting...', remove: 'Remove',
-            edit: 'Edit', add: 'Add', adding: 'Adding...',
-            export: 'Export', clear: 'Clear', filters: 'Filters',
-            loading: 'Loading...' },
+            adding: 'Adding...', creating: 'Creating...',
+            clear: 'Clear', filters: 'Filters', loading: 'Loading...' },
   audit:  { createdAt: 'Created at', createdBy: 'Created by',
             updatedAt: 'Updated at', updatedBy: 'Updated by' },
   unsavedChanges: 'Unsaved changes', noChanges: 'No changes',
