@@ -164,7 +164,10 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm [&_th]:whitespace-nowrap">
+              {/* ตรึงคอลัมน์ขวาสุดเฉพาะตอนที่มันเป็นปุ่มจริง — ไม่มีสิทธิ์จัดการ คอลัมน์ท้าย
+                  จะกลายเป็น Note ซึ่งไม่ควรถูกตรึง ตารางอันดับด้านล่างลงท้ายด้วยตัวเลข
+                  จึงไม่ใส่คลาสนี้ */}
+              <table className={`w-full text-sm [&_th]:whitespace-nowrap${canManage ? ' table-sticky-right [--sticky-right-bg:var(--card)]' : ''}`}>
                 <thead>
                   <tr className="text-xs text-muted-foreground">
                     <th className="text-left px-2 py-1 whitespace-nowrap">Quota</th>

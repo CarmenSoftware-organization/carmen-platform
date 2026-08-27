@@ -189,7 +189,9 @@ function SeatRowCard({ row, canManage, onChanged }: {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm [&_th]:whitespace-nowrap">
+            {/* ตรึงคอลัมน์ขวาสุดเฉพาะตอนที่มันเป็นปุ่มจริง — ไม่มีสิทธิ์จัดการ คอลัมน์ท้าย
+                จะกลายเป็น Reference ซึ่งไม่ควรถูกตรึง */}
+            <table className={`w-full text-sm [&_th]:whitespace-nowrap${canManage ? ' table-sticky-right [--sticky-right-bg:var(--card)]' : ''}`}>
               <thead>
                 <tr className="text-xs text-muted-foreground">
                   <th className="text-left px-2 py-1 whitespace-nowrap">Seats</th>

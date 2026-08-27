@@ -304,7 +304,16 @@
   pointer-events: none;
 }
 
-/* Sticky right column for actions */
+/* Sticky right column for actions.
+
+   The opaque base comes from `--sticky-right-bg`, defaulting to `--background` — the
+   surface a DataTable always sits on. A table inside a Card sits on `--card` instead
+   (0 0% 100% vs 40 9% 97.5% in light; 30 6% 12% vs 30 6% 9% in dark), so hard-coding
+   `--background` here paints a grey stripe down the frozen column of every card table.
+   Such a table opts in with the class plus `[--sticky-right-bg:var(--card)]`.
+
+   Written as a fallback inside `var()` rather than a declaration on `.table-sticky-right`
+   so the caller's utility never has to win a specificity contest to override it. */
 .table-sticky-right th:last-child,
 .table-sticky-right td:last-child {
   position: -webkit-sticky;
@@ -315,20 +324,20 @@
 
 .table-sticky-right thead th:last-child {
   z-index: 15;
-  background-color: hsl(var(--background) / 0.95);
+  background-color: hsl(var(--sticky-right-bg, var(--background)) / 0.95);
 }
 
 .table-sticky-right tbody td:last-child {
-  background-color: hsl(var(--background));
+  background-color: hsl(var(--sticky-right-bg, var(--background)));
 }
 
 .table-sticky-right tbody tr:nth-child(even) td:last-child {
-  background-color: hsl(var(--background));
+  background-color: hsl(var(--sticky-right-bg, var(--background)));
   background-image: linear-gradient(var(--zebra-even), var(--zebra-even));
 }
 
 .table-sticky-right tbody tr:hover td:last-child {
-  background-color: hsl(var(--background));
+  background-color: hsl(var(--sticky-right-bg, var(--background)));
   background-image: linear-gradient(var(--zebra-hover), var(--zebra-hover));
 }
 

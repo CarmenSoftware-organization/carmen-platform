@@ -3,6 +3,14 @@ import { RefreshCw, UserPlus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { ConfirmDialog } from '../../../components/ui/confirm-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../../components/ui/table';
 import { TableToolbar } from '../TableToolbar';
 import { BulkActionBar, type BulkAction } from '../BulkActionBar';
 import { InlineCell } from '../InlineCell';
@@ -107,33 +115,33 @@ export function UsersSection({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-border bg-muted border-b-2">
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {canEdit && (
-                  <th className="w-10 px-4 py-2">
+                  <TableHead className="w-10">
                     <input type="checkbox" aria-label="Select all users" checked={allSelected} onChange={toggleAll} className="h-4 w-4 rounded border-input" />
-                  </th>
+                  </TableHead>
                 )}
-                <th className="px-4 py-2 text-left font-medium">Name</th>
-                <th className="px-4 py-2 text-left font-medium">Email</th>
-                <th className="px-4 py-2 text-left font-medium">Role</th>
-                <th className="px-4 py-2 text-center font-medium">Status</th>
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((u) => {
                 return (
-                  <tr key={u.id} className="zebra-row border-b transition-colors last:border-0">
+                  <TableRow key={u.id}>
                     {canEdit && (
-                      <td className="px-4 py-2">
+                      <TableCell>
                         <input type="checkbox" aria-label={`Select ${displayName(u)}`} checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} className="h-4 w-4 rounded border-input" />
-                      </td>
+                      </TableCell>
                     )}
-                    <td className="px-4 py-2">{displayName(u)}</td>
-                    <td className="text-muted-foreground px-4 py-2">{u.email}</td>
-                    <td className="px-4 py-2">
+                    <TableCell>{displayName(u)}</TableCell>
+                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
                       <InlineCell
                         ariaLabel={`Role for ${displayName(u)}`}
                         value={u.role ?? 'user'}
@@ -142,25 +150,25 @@ export function UsersSection({
                         display={<span>{u.role ?? 'user'}</span>}
                         onCommit={(v) => { void onUpdateUser(u.id, { role: v }); }}
                       />
-                    </td>
-                    <td className="px-4 py-2 text-center">
+                    </TableCell>
+                    <TableCell className="text-center">
                       <Badge variant={u.is_active !== false ? 'success' : 'secondary'} className="text-xs">
                         {u.is_active !== false ? 'Active' : 'Inactive'}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-2 text-center">
+                    </TableCell>
+                    <TableCell className="text-center">
                       {canEdit && (
                         <Button variant="ghost" size="icon" className={`text-destructive hover:text-destructive h-7 w-7 ${HIT_SLOP_44}`}
                           aria-label={`Remove ${displayName(u)} from this cluster`} onClick={() => setConfirmRemoveOne(u)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
