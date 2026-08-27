@@ -98,6 +98,10 @@ interface DataTableProps<TData> {
   // avatar column before the username). Offsets for columns 3/4 are measured at
   // runtime — see the useLayoutEffect below and `.table-sticky-left-{3,4}` in index.css.
   stickyLeftColumns?: 2 | 3 | 4;
+  // คอลัมน์ขวาสุดถูกตรึงเมื่อมันเป็นคอลัมน์ action เท่านั้น การตรึงคอลัมน์ข้อมูลธรรมดา
+  // ทำให้ผู้อ่านเลื่อนดูมันไม่ได้โดยไม่ได้อะไรตอบแทน ค่าปริยายอ่านจาก `id: 'actions'`
+  // ที่ทุกตารางในแอปใช้ — ส่งค่ามาเองเมื่อคอลัมน์ท้ายเป็น action แต่ใช้ id อื่น
+  stickyRightColumn?: boolean;
   // Below `mobileBreakpoint` the table is replaced by one card per row. Default on.
   mobileCards?: boolean;
   mobileBreakpoint?: string;
@@ -123,6 +127,7 @@ function DataTable<TData>({
   getRowSelectionLabel,
   tableLayout = 'fixed',
   stickyLeftColumns = 2,
+  stickyRightColumn,
   mobileCards = true,
   mobileBreakpoint = '(min-width: 1024px)',
 }: DataTableProps<TData>) {
@@ -259,6 +264,13 @@ function DataTable<TData>({
   const isDesktop = useMediaQuery(mobileBreakpoint);
   const showCards = mobileCards && !isDesktop;
 
+  // ตรึงคอลัมน์ขวาสุดเฉพาะเมื่อมันเป็นคอลัมน์ action จริง ๆ ตารางที่ลงท้ายด้วยคอลัมน์
+  // ข้อมูล (Status, Period, Reference No) เคยถูกตรึงไปด้วยเพราะกฎเดิมไม่มีเงื่อนไข
+  // ผู้อ่านจึงเลื่อนดูคอลัมน์นั้นไม่ได้ทั้งที่ไม่ใช่ปุ่ม อ่านจาก `columns` ที่ผู้เรียกส่งมา
+  // ไม่ใช่ `columnsWithIndex` เพราะคอลัมน์ # ที่เติมให้อยู่ทางซ้าย
+  const freezeRightColumn =
+    stickyRightColumn ?? columns[columns.length - 1]?.id === 'actions';
+
   // Each extra frozen column (3rd, 4th) needs a sticky `left` equal to the actual
   // rendered widths of every column before it. Under table-auto those widths are
   // computed by the browser and vary with content/viewport, so measure them and
@@ -315,7 +327,8 @@ function DataTable<TData>({
       ) : (
       <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         <Table ref={tableRef} className={cn(
-          'min-w-[640px] table-sticky-left table-sticky-right',
+          'min-w-[640px] table-sticky-left',
+          freezeRightColumn && 'table-sticky-right',
           tableLayout === 'auto' ? 'table-auto' : 'table-fixed',
           stickyLeftColumns >= 3 && 'table-sticky-left-3',
           stickyLeftColumns >= 4 && 'table-sticky-left-4'
