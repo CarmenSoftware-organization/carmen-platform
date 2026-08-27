@@ -408,7 +408,7 @@ const NewsManagement: React.FC = () => {
       id: 'published_at',
       header: 'Published',
       cell: ({ row }) => (
-        <span className="text-[11px] text-muted-foreground">{fmt(row.original.published_at)}</span>
+        <span className="text-[11px] whitespace-nowrap text-muted-foreground">{fmt(row.original.published_at)}</span>
       ),
     },
     {

@@ -130,7 +130,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
       id: 'expires_at',
       header: 'Expires',
       cell: ({ row }) => (
-        <div className="text-[11px] leading-tight text-muted-foreground">{fmt(row.original.expires_at)}</div>
+        <div className="text-[11px] leading-tight whitespace-nowrap text-muted-foreground">{fmt(row.original.expires_at)}</div>
       ),
     },
     {

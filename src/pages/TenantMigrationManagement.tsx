@@ -442,7 +442,7 @@ const TenantMigrationManagement: React.FC = () => {
       enableSorting: false,
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
-        return <span className="text-xs text-muted-foreground">{rs?.lastChecked ?? '-'}</span>;
+        return <span className="whitespace-nowrap text-xs text-muted-foreground">{rs?.lastChecked ?? '-'}</span>;
       },
     },
     {
