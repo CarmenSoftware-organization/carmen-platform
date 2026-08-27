@@ -202,6 +202,7 @@ const DatabasePoolManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
+      meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0' },
       cell: ({ row }) => (
         <Can permission="database_pool.manage">
           <DropdownMenu>

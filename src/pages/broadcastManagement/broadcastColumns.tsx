@@ -162,7 +162,7 @@ export const createBroadcastColumns = ({
   columns.push({
     id: 'actions',
     header: '',
-    meta: { headerClassName: 'w-12', cellClassName: 'text-center p-0 w-12', card: 'actions' },
+    meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0', card: 'actions' },
     enableSorting: false,
     cell: ({ row }) => {
       const d = row.original;

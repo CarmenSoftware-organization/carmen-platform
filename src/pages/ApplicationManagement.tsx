@@ -310,7 +310,7 @@ const ApplicationManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
-      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0' },
+      meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0' },
       enableSorting: false,
       cell: ({ row }) => (
         <DropdownMenu>
