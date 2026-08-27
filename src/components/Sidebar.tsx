@@ -7,14 +7,20 @@ import { BrandMark } from './BrandMark';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
+import { useI18n } from '../hooks/useI18n';
+import type { TKey } from '../i18n/types';
 
 export interface NavItem {
   path: string;
-  label: string;
+  /** Catalog key, not a rendered label — Sidebar translates at render time so the
+   *  nav modules stay pure and locale-independent. */
+  labelKey: TKey;
   icon: LucideIcon;
   permission?: string;
   superAdminOnly?: boolean;
-  group?: string;
+  /** Catalog key for the group heading. Grouping compares this key, never the
+   *  translated text, so a language change cannot re-partition the menu. */
+  groupKey?: TKey;
 }
 
 /** Who the application shell is currently representing — the product, or one administered cluster. */
@@ -61,18 +67,19 @@ const Sidebar: React.FC<SidebarProps> = ({
   headerSlot,
 }) => {
   const location = useLocation();
+  const { t } = useI18n();
 
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   const navGroups = React.useMemo(() => {
-    const groups: { label: string | null; items: NavItem[] }[] = [];
+    const groups: { labelKey: TKey | null; items: NavItem[] }[] = [];
     for (const item of navItems) {
-      const label = item.group ?? null;
+      const labelKey = item.groupKey ?? null;
       const last = groups[groups.length - 1];
-      if (last && last.label === label) last.items.push(item);
-      else groups.push({ label, items: [item] });
+      if (last && last.labelKey === labelKey) last.items.push(item);
+      else groups.push({ labelKey, items: [item] });
     }
     return groups;
   }, [navItems]);
@@ -96,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
         )}
         <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
-        {showLabel && <span className="truncate">{item.label}</span>}
+        {showLabel && <span className="truncate">{t(item.labelKey)}</span>}
       </Link>
     );
   };
@@ -135,17 +142,17 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-2 py-4">
           {navGroups.map((g, gi) => (
-            <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
-              {!isCollapsed && g.label && (
+            <div key={g.labelKey ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
+              {!isCollapsed && g.labelKey && (
                 <p className="px-3 pb-1 mb-2 border-b border-border text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {g.label}
+                  {t(g.labelKey)}
                 </p>
               )}
               {isCollapsed && gi > 0 && <Separator className="!my-2" />}
               <div className="space-y-1">
                 {g.items.map((item) =>
                   isCollapsed ? (
-                    <Tooltip key={item.path} content={item.label} side="right">
+                    <Tooltip key={item.path} content={t(item.labelKey)} side="right">
                       <div>
                         <NavLink item={item} showLabel={false} />
                       </div>
@@ -169,14 +176,14 @@ const Sidebar: React.FC<SidebarProps> = ({
               'w-full sidebar-item-transition',
               isCollapsed ? 'justify-center px-2' : 'justify-start px-3'
             )}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? t('sidebar.expandAria') : t('sidebar.collapseAria')}
           >
             {isCollapsed ? (
               <PanelLeft className="h-4 w-4" />
             ) : (
               <>
                 <PanelLeftClose className="mr-2 h-4 w-4" />
-                <span className="text-sm">Collapse</span>
+                <span className="text-sm">{t('sidebar.collapse')}</span>
               </>
             )}
           </Button>
@@ -202,7 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
             </SheetTitle>
-            <SheetDescription className="sr-only">Main navigation</SheetDescription>
+            <SheetDescription className="sr-only">{t('sidebar.mainNavigation')}</SheetDescription>
           </SheetHeader>
           {headerSlot && (
             <div className="border-b border-border px-4 py-3">
@@ -211,10 +218,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
           <nav className="py-2 px-2">
             {navGroups.map((g, gi) => (
-              <div key={g.label ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
-                {g.label && (
+              <div key={g.labelKey ?? `__top_${gi}`} className={gi > 0 ? 'mt-4' : ''}>
+                {g.labelKey && (
                   <p className="px-3 pb-1 mb-2 border-b border-border text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {g.label}
+                    {t(g.labelKey)}
                   </p>
                 )}
                 <div className="space-y-1">
@@ -237,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
                         )}
                         <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
-                        <span>{item.label}</span>
+                        <span>{t(item.labelKey)}</span>
                       </Link>
                     );
                   })}
