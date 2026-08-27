@@ -2,6 +2,14 @@ import React from 'react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Button } from '../../../components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../../components/ui/table';
 import { Plus, Trash2 } from 'lucide-react';
 import { CollapsibleSection, selectClassName } from '../shared';
 import type { BusinessUnitConfig } from '../../../types';
@@ -79,26 +87,26 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({ formData, e
             <p className="text-sm text-muted-foreground">No configuration entries.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b-2 border-border bg-muted">
-                    <th className="text-left font-medium px-4 py-2">Key</th>
-                    <th className="text-left font-medium px-4 py-2">Label</th>
-                    <th className="text-left font-medium px-4 py-2">Type</th>
-                    <th className="text-left font-medium px-4 py-2">Value</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Label</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {formData.config.map((item, index) => (
-                    <tr key={index} className="zebra-row border-b last:border-0">
-                      <td className="px-4 py-2">{item.key || '-'}</td>
-                      <td className="px-4 py-2">{item.label || '-'}</td>
-                      <td className="px-4 py-2">{item.datatype || '-'}</td>
-                      <td className="px-4 py-2">{typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value ?? '-')}</td>
-                    </tr>
+                    <TableRow key={index}>
+                      <TableCell>{item.key || '-'}</TableCell>
+                      <TableCell>{item.label || '-'}</TableCell>
+                      <TableCell>{item.datatype || '-'}</TableCell>
+                      <TableCell>{typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value ?? '-')}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </>

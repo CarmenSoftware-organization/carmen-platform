@@ -2,6 +2,14 @@ import { useMemo, useState } from 'react';
 import { RefreshCw, Pencil, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../../components/ui/table';
 import Can from '../../../components/Can';
 import { AuditMeta } from '../../../components/AuditMeta';
 import { TableToolbar } from '../TableToolbar';
@@ -97,28 +105,28 @@ export function BusinessUnitsSection({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-border bg-muted border-b-2">
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {(['code', 'name'] as const).map((key) => (
-                  <th key={key} className="px-4 py-2 text-left font-medium">
+                  <TableHead key={key}>
                     <button type="button" className="inline-flex items-center gap-1" onClick={() => setSort((s) => cycleSort(s, key))}>
                       {key === 'code' ? 'Code' : 'Name'}
                       <ChevronsUpDown className="h-3 w-3 opacity-50" />
                     </button>
-                  </th>
+                  </TableHead>
                 ))}
-                <th className="px-4 py-2 text-left font-medium">Status</th>
-                <th className="w-12 px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-12" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((bu) => {
                 const latest = latestActor(bu);
                 return (
-                <tr key={bu.id} className="zebra-row border-b transition-colors last:border-0">
-                  <td className="px-4 py-2"><Badge variant="outline" className="text-xs">{bu.code}</Badge></td>
-                  <td className="px-4 py-2">
+                <TableRow key={bu.id}>
+                  <TableCell><Badge variant="outline" className="text-xs">{bu.code}</Badge></TableCell>
+                  <TableCell>
                     <div className="flex flex-wrap items-center gap-2">
                       <span>{bu.name}</span>
                       {maxLicenseBu != null && (ranked.get(bu.id) ?? 0) > maxLicenseBu && (
@@ -136,23 +144,23 @@ export function BusinessUnitsSection({
                       verb={latest?.verb}
                       actor={latest?.actor}
                     />
-                  </td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
                       {bu.is_active ? 'Active' : 'Inactive'}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-2 text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                     <Button variant="ghost" size="icon" className={`h-7 w-7 ${HIT_SLOP_44}`}
                       aria-label={`Edit ${bu.name || bu.code || 'business unit'}`} onClick={() => onNavigate(`/business-units/${bu.id}/edit`)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

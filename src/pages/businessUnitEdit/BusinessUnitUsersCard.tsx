@@ -5,6 +5,14 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../../components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { UserPlus, Pencil, Trash2, Save, X, Search } from 'lucide-react';
@@ -66,19 +74,19 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
               business unit in this cluster, so deactivating here frees no seat.
             </p>
           )}
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b-2 border-border bg-muted">
-                <th className="text-center font-medium px-4 py-2 w-10">#</th>
-                <th className="text-left font-medium px-4 py-2">Name</th>
-                <th className="text-left font-medium px-4 py-2">Email</th>
-                <th className="text-left font-medium px-4 py-2">Username</th>
-                <th className="text-left font-medium px-4 py-2">BU Role</th>
-                <th className="text-center font-medium px-4 py-2">BU Status</th>
-                {canEdit && <th className="w-10"></th>}
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10 text-center">#</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>BU Role</TableHead>
+                <TableHead className="text-center">BU Status</TableHead>
+                {canEdit && <TableHead className="w-10" />}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {[...users.buUsers].sort((a, b) => {
                 const nameA = [a.firstname, a.middlename, a.lastname].filter(Boolean).join(' ').toLowerCase();
                 const nameB = [b.firstname, b.middlename, b.lastname].filter(Boolean).join(' ').toLowerCase();
@@ -88,24 +96,24 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                 if (emailA !== emailB) return emailA.localeCompare(emailB);
                 return (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase());
               }).map((u, idx) => (
-                <tr key={u.id} className="zebra-row border-b last:border-0">
-                  <td className="px-4 py-2 text-center text-muted-foreground">{idx + 1}</td>
-                  <td className="px-4 py-2">
+                <TableRow key={u.id}>
+                  <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell>
                     <Link
                       to={`/users/${u.user_id}/edit`}
                       className="text-primary hover:underline"
                     >
                       {[u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ') || '-'}
                     </Link>
-                  </td>
-                  <td className="px-4 py-2">{u.email || '-'}</td>
-                  <td className="px-4 py-2">{u.username || '-'}</td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell>{u.email || '-'}</TableCell>
+                  <TableCell>{u.username || '-'}</TableCell>
+                  <TableCell>
                     <Badge variant="outline" className="capitalize text-xs">
                       {u.role || '-'}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-2">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-center gap-1.5">
                       <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
                         {u.is_active ? 'Active' : 'Inactive'}
@@ -124,9 +132,9 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                         </Badge>
                       )}
                     </div>
-                  </td>
+                  </TableCell>
                   {canEdit && (
-                    <td className="px-4 py-2 text-center">
+                    <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${u.username || u.email || 'user'}`} onClick={() => users.handleOpenEditUser(u)}>
                           <Pencil className="h-3.5 w-3.5" />
@@ -135,12 +143,12 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    </td>
+                    </TableCell>
                   )}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 
