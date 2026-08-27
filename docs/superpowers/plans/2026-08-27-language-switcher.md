@@ -24,6 +24,7 @@ These apply to every task. Read them before starting any task.
 - **Do not translate anything under `src/pages/` except `Login.tsx`.** 221 of the 222 pages stay English in this phase.
 - **Do not touch dates or number formatting.** No `toLocale*` call site changes. Gregorian years everywhere, both languages.
 - **Branch:** `feature/language-switcher`, already created. Do not merge to `main`.
+- **Line numbers are indicative; the quoted string is authoritative.** Every line number in this plan was read against the state of the file before any task ran. Earlier tasks insert and delete lines, so by the time you reach Task 5 or Task 7 the numbers will have drifted — sometimes by more than a dozen lines in the same file. Always locate the edit by searching for the quoted "Was" text, and treat the line number as a hint about where to look. Two files are known to drift: `HeaderUserMenu.tsx` (Task 2 inserts about ten lines before Task 5's edits) and `Login.tsx` (Task 7 Step 1 deletes sixteen lines before Task 7 Step 2's edits).
 
 ### Terminology rule for `th.ts`
 
@@ -252,8 +253,10 @@ export const en = {
     locked: 'Please wait',
     backToHome: 'Back to home',
   },
-} as const;
+};
 ```
+
+**No `as const` here, deliberately.** `Translations` is `typeof en`. Under `as const` every value narrows to its own literal type (`'Dashboard'`, not `string`), so `th.ts` — which declares itself as `Translations` — could only compile if its Thai values were byte-identical to the English ones. Key inference does not need `as const`: nested object keys are inferred literally either way, so `TKey` is unaffected.
 
 - [ ] **Step 3: Create `src/i18n/th.ts`**
 
@@ -491,6 +494,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+// Declared before `useI18n` reads it: a `const` referenced above its declaration sits
+// in the temporal dead zone, and while this particular call only happens at render
+// time, `no-use-before-define` flags it and the ordering is free.
+const FALLBACK_CONTEXT: I18nContextValue = {
+  lang: DEFAULT_LANG,
+  setLang: () => {},
+  t: (key, params) => translate(DEFAULT_LANG, key, params),
+};
+
 /**
  * Unlike `useDarkMode`, this deliberately does NOT throw without a provider.
  *
@@ -504,12 +516,6 @@ export function useI18n(): I18nContextValue {
   if (context) return context;
   return FALLBACK_CONTEXT;
 }
-
-const FALLBACK_CONTEXT: I18nContextValue = {
-  lang: DEFAULT_LANG,
-  setLang: () => {},
-  t: (key, params) => translate(DEFAULT_LANG, key, params),
-};
 ```
 
 - [ ] **Step 5: Mount the provider in `src/App.tsx`**
@@ -521,14 +527,30 @@ import { ThemeProvider } from "./hooks/useDarkMode";
 import { I18nProvider } from "./hooks/useI18n";
 ```
 
-Then wrap at lines 70-72. Read the exact current lines first — the block is a small wrapper component. The change nests `I18nProvider` inside `ThemeProvider`:
+Then nest the provider inside `ThemeProvider` in the `App` component at lines 68-74. It currently reads:
 
 ```tsx
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+```
+
+Change it to:
+
+```tsx
+function App() {
+  return (
     <ThemeProvider>
       <I18nProvider>
-        {/* existing children, unchanged */}
+        <AppContent />
       </I18nProvider>
     </ThemeProvider>
+  );
+}
 ```
 
 - [ ] **Step 6: Verify the type guard actually works**
@@ -740,7 +762,7 @@ git commit -m "feat(i18n): เพิ่มตัวสลับภาษาใ�
 ### Task 3: Navigation labels
 
 **Files:**
-- Modify: `src/components/Sidebar.tsx:11-18` (NavItem), `:69-78` (grouping), `:99`, `:141`, `:148`, `:172`, `:179`, `:205`, `:216`, `:240`
+- Modify: `src/components/Sidebar.tsx:11-18` (NavItem), `:69-78` (grouping), and the render sites listed in Step 2's table (`:99`, `:138`, `:139`, `:141`, `:148`, `:172`, `:179`, `:205`, `:214`, `:215`, `:216`, `:240`)
 - Modify: `src/components/nav/platformNav.ts:8-36`
 - Modify: `src/components/nav/clusterAdminNav.ts:11-16`
 - Modify: `src/components/Sidebar.test.tsx:7-10`, `:34-36`, `:47`
