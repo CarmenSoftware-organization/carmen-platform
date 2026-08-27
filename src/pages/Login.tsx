@@ -7,6 +7,8 @@ import { Label } from '../components/ui/label';
 import { Loader2 } from 'lucide-react';
 import type { LoginCredentials } from '../types';
 import { validateField } from '../utils/validation';
+import { useI18n } from '../hooks/useI18n';
+import LanguageToggle from '../components/LanguageToggle';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
 
@@ -16,24 +18,26 @@ const env = import.meta.env.REACT_APP_ENV as string | undefined;
 // of the exact prod copy so both paths lock the button.
 const RATE_LIMIT_PATTERN = /too many|rate limit/i;
 
-const REQUIRED_MESSAGES: Record<string, string> = {
-  username: 'Username is required',
-  password: 'Password is required',
-};
-
-// validateField() short-circuits to '' for an empty value (it only checks
-// format), so "required" has to be handled here before delegating to it.
-const getFieldError = (name: string, value: string): string => {
-  if (!value.trim()) return REQUIRED_MESSAGES[name] ?? '';
-  // 'username' is dual-purpose (email OR plain username per the field label
-  // "Email or username" and the backend's 'Invalid email/username or
-  // password'), so don't force email format here — that would block valid
-  // username-based logins.
-  if (name === 'username') return '';
-  return validateField(name, value);
-};
-
 const Login: React.FC = () => {
+  const { t } = useI18n();
+
+  // Built inside the component: the messages are translated, and `t` only exists at
+  // render time. validateField() short-circuits to '' for an empty value (it only
+  // checks format), so "required" has to be handled here before delegating to it.
+  const getFieldError = (name: string, value: string): string => {
+    if (!value.trim()) {
+      if (name === 'username') return t('login.usernameRequired');
+      if (name === 'password') return t('login.passwordRequired');
+      return '';
+    }
+    // 'username' is dual-purpose (email OR plain username per the field label
+    // "Email or username" and the backend's 'Invalid email/username or
+    // password'), so don't force email format here — that would block valid
+    // username-based logins.
+    if (name === 'username') return '';
+    return validateField(name, value);
+  };
+
   const [credentials, setCredentials] = useState<LoginCredentials>({
     username: '',
     password: ''
@@ -95,7 +99,7 @@ const Login: React.FC = () => {
     if (result.success) {
       navigate('/dashboard', { replace: true });
     } else {
-      setError(result.error || 'Login failed');
+      setError(result.error || t('login.failed'));
       setLocked(RATE_LIMIT_PATTERN.test(result.error ?? ''));
     }
 
@@ -132,17 +136,17 @@ const Login: React.FC = () => {
         {/* Positioning — the hero: what this console actually runs */}
         <div className="relative max-w-md">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-primary-foreground/60">
-            Operations console
+            {t('login.operationsConsole')}
           </p>
           <p className="text-2xl xl:text-[1.75rem] font-semibold leading-snug tracking-tight text-primary-foreground">
-            One place to manage your clusters, business units, and the people who run them.
+            {t('login.hero')}
           </p>
         </div>
 
         {/* Honest system status — which environment you're badging into */}
         <div className="relative flex items-center gap-2.5 text-xs text-primary-foreground/70">
           <span className="h-2 w-2 rounded-full bg-success ring-2 ring-success/30" aria-hidden />
-          <span>All systems operational</span>
+          <span>{t('login.allSystemsOperational')}</span>
           {env && (
             <span className="ml-1 font-mono uppercase tracking-wider text-primary-foreground/45">
               · {env}
@@ -152,7 +156,10 @@ const Login: React.FC = () => {
       </aside>
 
       {/* Sign-in form */}
-      <main className="flex items-center justify-center p-6 sm:p-10">
+      <main className="relative flex items-center justify-center p-6 sm:p-10">
+        <div className="absolute right-4 top-4">
+          <LanguageToggle />
+        </div>
         <div className="w-full max-w-sm space-y-8">
           {/* Compact brand header — mobile only (panel is hidden below lg) */}
           <div className="flex items-center gap-3 lg:hidden">
@@ -162,21 +169,21 @@ const Login: React.FC = () => {
             <div className="leading-none">
               <div className="text-base font-bold tracking-tight text-foreground">Carmen Platform</div>
               <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Operations console
+                {t('login.operationsConsole')}
               </div>
             </div>
           </div>
 
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sign in</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('login.signInHeading')}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Access the Carmen operations console.
+              {t('login.signInSubtitle')}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="username">Email or username</Label>
+              <Label htmlFor="username">{t('login.usernameLabel')}</Label>
               <Input
                 type="text"
                 id="username"
@@ -186,7 +193,7 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 required
-                placeholder="you@company.com"
+                placeholder={t('login.usernamePlaceholder')}
                 className={fieldErrors.username ? 'border-destructive' : ''}
               />
               {fieldErrors.username && (
@@ -195,7 +202,7 @@ const Login: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('login.passwordLabel')}</Label>
               <Input
                 type="password"
                 id="password"
@@ -205,7 +212,7 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 onBlur={handleBlur}
                 required
-                placeholder="Enter your password"
+                placeholder={t('login.passwordPlaceholder')}
                 className={fieldErrors.password ? 'border-destructive' : ''}
               />
               {fieldErrors.password && (
@@ -218,14 +225,14 @@ const Login: React.FC = () => {
                 role="alert"
                 className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
               >
-                {accessDenied && <div className="mb-1 font-bold">Access denied</div>}
+                {accessDenied && <div className="mb-1 font-bold">{t('login.accessDenied')}</div>}
                 {error}
               </div>
             )}
 
             <Button type="submit" className="w-full" disabled={loading || locked}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {loading ? 'Signing in…' : locked ? 'Please wait' : 'Sign in'}
+              {loading ? t('login.submitting') : locked ? t('login.locked') : t('login.submit')}
             </Button>
           </form>
 
@@ -234,7 +241,7 @@ const Login: React.FC = () => {
               to="/"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Back to home
+              {t('login.backToHome')}
             </Link>
           </div>
         </div>
