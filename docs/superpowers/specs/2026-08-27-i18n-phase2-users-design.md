@@ -11,7 +11,7 @@ Phase 1 translated the application shell: navigation, breadcrumbs, header, table
 
 ## How phase 2 is decomposed, and why
 
-Measured across all page files: **1,788 user-visible string occurrences, 1,010 of them unique — 43% are repeats.** More usefully, **102 strings appear three or more times and account for 734 occurrences, 41% of the total.**
+Measured across all page files: **1,788 user-visible string occurrences, 1,010 of them unique — 43% are repeats.** More usefully, **102 strings appear three or more times and account for 734 occurrences, 41% of the total** — of which 75 span more than one slice and become the shared catalog.
 
 Two structures were considered.
 
@@ -43,8 +43,8 @@ Users goes first because it exercises both page patterns — a server-side list 
 | Question | Decision |
 |---|---|
 | Slice structure | Vertical — one feature area per slice, files touched once |
-| Shared catalog | Seeded in full in slice 1 from the ≥3-occurrence measurement |
-| Shared-vs-local rule | Seed: **≥3 occurrences** app-wide (Appendix A). Additions after the seed: **≥3 occurrences spanning ≥2 slices**. Everything else lives in `pages.<slice>.*` |
+| Shared catalog | Seeded in slice 1: the **75** strings that occur ≥3 times AND span ≥2 slices |
+| Shared-vs-local rule | One test for seed and additions alike: **≥3 occurrences AND ≥2 slices**. Everything else lives in `pages.<slice>.*` |
 | CRUD toasts | Parameterized on `{{entity}}`; non-uniform messages stay per-page |
 | CSV export | **Not translated** — headers and filename stay English |
 | Validation / API error text | Out of scope, deferred to sub-project B |
@@ -69,7 +69,7 @@ common: {
   confirm, cancel, searchPlaceholder, clearSearch,
   tryAgain, couldNotLoad, noMatchesFound, noMatchesDescription,
 
-  // seeded in this slice, from the ≥3-occurrence measurement
+  // seeded in this slice: the 75 strings that occur >=3 times AND span >=2 slices
   status: { active: 'Active', inactive: 'Inactive', label: 'Status',
             deleted: 'Deleted', archived: 'Archived', expired: 'Expired',
             published: 'Published', scheduled: 'Scheduled' },
@@ -82,8 +82,8 @@ common: {
             updatedAt: 'Updated at', updatedBy: 'Updated by' },
   unsavedChanges: 'Unsaved changes', noChanges: 'No changes',
   description: 'Description', noExpiry: 'No expiry',
-  // Appendix A lists all 102 seeded strings with their occurrence counts.
-  // The grouping above is illustrative; the plan assigns every one of them a key.
+  // Appendix A lists all 102 candidates and marks which of the 75 qualify.
+  // The grouping above is illustrative; the plan assigns every qualifier a key.
 }
 
 entity: {                       // capitalized in English; the toast templates insert verbatim
@@ -111,11 +111,20 @@ pages: {
 
 ### The shared-vs-local rule
 
-The seed set is defined by one test: **the string occurs three or more times across all page files.** That is the measurement in Appendix A, and it is what slice 1 transcribes.
+One test, applied identically to the seed and to every later addition: **the string occurs three or more times AND appears in at least two slices.**
 
-For anything added *after* the seed, the test gains a second clause: **three or more occurrences, spanning at least two slices.** The extra clause exists because a string appearing five times inside one slice is that slice's vocabulary, not the app's — without it, `common.*` would slowly absorb every slice's local idiom.
+An earlier draft defined the seed by occurrence count alone and added the two-slice clause only for later additions. Running the filter showed why that was wrong. Of the 102 strings occurring three or more times, **27 appear in only one slice** — they are that slice's vocabulary, not the app's:
 
-Both forms are arithmetic rather than a matter of taste, so later slices apply them without relitigating.
+- `Standard` and `Custom` (6× and 4×, Report Templates only)
+- `Subscription`, `By cluster`, `By subscription`, `License Number`, `Start date`, `End date` (Licenses only)
+- `Severity`, `Message`, `System`, `Title is required`, `Published` (Broadcasts + News only)
+- `Add Super Admin`, `Deploy all`, `Sessions`, `Element`, `Active users`, `Permissions`, `Platform-wide`, `No matches` (Platform admin only)
+- `App ID copied`, `Device` (Applications only); `People` (Cluster Admin only); `Capacity unavailable` (Clusters only); `Edit` (Licenses only)
+- **`Access Denied`** (Login only) — and this one is not merely local. It is the string `Login.tsx:109` matches against **backend** response text. Phase 1's spec forbids touching it. Promoting it into `common.*` would invite a later slice to translate it, and 403 detection would fail silently with nothing red to show for it.
+
+**The seed is therefore 75 strings, not 102.** The 27 above stay in their own slice's `pages.*` namespace, where a later slice can promote one if a second slice genuinely needs it.
+
+The rule is arithmetic rather than a matter of taste, so every slice applies it the same way without relitigating.
 
 A later slice adding to `common.*` must show the same evidence. Reviewers of every slice check one thing specifically: **does any new `pages.*` key duplicate a value that already exists in `common.*`?** That check is what keeps the catalog from fragmenting over nine slices.
 
@@ -197,7 +206,9 @@ This is not incidental to this slice. Every Management page in the app builds co
 ## Appendix A — the seeded shared vocabulary
 
 Every string occurring three or more times across `src/pages/**/*.tsx`, with its
-occurrence count. This is the full seed for `common.*`; slice 1 assigns each one a key.
+occurrence count. **This is the candidate list, not the seed** — 75 of the 102 also span two
+or more slices and become `common.*`; the other 27 are named in the rule section above and
+stay local to their slice.
 
 Regenerate with:
 
