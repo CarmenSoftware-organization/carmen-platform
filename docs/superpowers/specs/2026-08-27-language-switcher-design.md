@@ -77,6 +77,58 @@ The acceptance check for this mechanism is not "it compiles" — it is: delete a
 key from `th.ts` and confirm `bun run typecheck` fails. If it passes, the type
 is not doing its job and must be fixed before the work is called done.
 
+### `useI18n()` must not throw without a provider
+
+`useDarkMode()` throws when no `ThemeProvider` is mounted. `useI18n()` must
+**not** copy that: it returns a default English context instead.
+
+The repo has 144 test files, and component tests render shell components and
+`ui/` primitives bare, with no provider wrapper. A throwing hook would fail all
+of them at once and force 144 files to be rewrapped for no behavioural gain.
+
+The cost is that a forgotten provider degrades silently to English rather than
+failing loudly. That is acceptable here: the provider is mounted once in
+`App.tsx`, and English is the default language anyway.
+
+### English strings must stay byte-identical
+
+Sixteen existing test files assert on strings this work moves into the catalog —
+`'No results found'`, `'Rows per page'`, `'Clear search'`, `'Try again'`,
+`'No matches found'`, `'Log out'`, and others.
+
+Because English is the default and the provider-less fallback returns English,
+**every one of those tests stays green without modification, provided the English
+value in `en.ts` is character-for-character what the JSX held before.** Any drift
+— a changed ellipsis, a stray capital — turns into a test failure that looks
+unrelated to i18n.
+
+The only existing tests that must change are the two that assert on *data shape*
+rather than on text: `Sidebar.test.tsx` (builds `NavItem[]` literals) and
+`Breadcrumbs.test.tsx` (asserts `crumbsFromPath`'s return value).
+
+### Breadcrumbs: `crumbsFromPath` returns keys, not sentences
+
+`crumbsFromPath` (`Breadcrumbs.tsx:44`) is a pure function that today returns
+rendered labels, and `Breadcrumbs.test.tsx` asserts them directly. It has the
+same constraint as `validateField`, and one extra wrinkle: unknown URL segments
+fall back to a title-cased version of the segment itself, which has no catalog
+key at all.
+
+`Crumb` therefore carries both:
+
+```ts
+export interface Crumb {
+  /** Catalog key for a known segment; null when the segment has no entry. */
+  labelKey: BreadcrumbKey | null;
+  /** Title-cased URL segment, rendered when labelKey is null. */
+  fallback: string;
+  to?: string;
+}
+```
+
+The label decision stays inside the tested pure function; only the translation
+happens at render.
+
 ### Wiring
 
 `<I18nProvider>` wraps the app in `App.tsx`, alongside `ThemeProvider`. Initial
@@ -124,7 +176,6 @@ literals.
 | Table chrome | `ui/data-table.tsx` — pagination, no-results, rows-per-page | 14 |
 | Confirm dialog | `ui/confirm-dialog.tsx` — default Confirm/Cancel labels | 2 |
 | Login | `pages/Login.tsx` | ~15 |
-| Error fallbacks | `utils/errorParser.ts` — 3 FE-owned strings, see below | 3 |
 
 ### Deliberately out of scope
 
@@ -150,10 +201,23 @@ the caller translates.
 { key: TKey; params?: Record<string, string | number> }
 ```
 
-**What this phase actually changes:** only the three FE-owned fallback strings in
-`errorParser.ts` — `'An unexpected error occurred'`, `'Please try again later.'`,
-and `'Unknown error'`. Messages that originate from the API pass through
-untouched. `validateField` and its 32 call sites are not modified in this phase.
+**What this phase actually changes: neither of them.**
+
+An earlier draft of this spec had phase 1 translate the three FE-owned fallback
+strings in `errorParser.ts` — `'An unexpected error occurred'`, `'Please try
+again later.'`, `'Unknown error'` — on the assumption that three strings is a
+three-line change. Planning showed it is not: because the module is pure, the
+only way in is a `t` parameter, and that forces edits to all 132 call sites
+across pages this phase does not otherwise touch.
+
+Both utilities therefore keep their English strings and their current
+signatures in phase 1. The catalog keys (`error.*`) are created anyway, so
+phase 2 changes the utilities and their call sites without also having to invent
+a catalog shape.
+
+The visible consequence: a failed request shows English fallback text inside an
+otherwise Thai shell. That matches the 221 pages that also stay English, and is
+recorded here so it is not filed as a bug.
 
 ## Data flow
 
