@@ -108,6 +108,7 @@ export const en = {
     previousPage: 'Previous page',
     nextPage: 'Next page',
     page: 'Page {{page}}',
+    pageOfTotal: 'Page {{page}} of {{total}}',
     selectAllOnPage: 'Select all on this page',
     selectRow: 'Select row',
   },

@@ -107,6 +107,7 @@ export const th: Translations = {
     previousPage: 'หน้าก่อนหน้า',
     nextPage: 'หน้าถัดไป',
     page: 'หน้า {{page}}',
+    pageOfTotal: 'หน้า {{page}} จาก {{total}}',
     selectAllOnPage: 'เลือกทั้งหมดในหน้านี้',
     selectRow: 'เลือกแถวนี้',
   },

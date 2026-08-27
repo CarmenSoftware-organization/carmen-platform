@@ -486,7 +486,7 @@ function DataTable<TData>({
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-sm text-muted-foreground tabular-nums min-w-[7rem] text-center">
-            Page {currentPage} of {totalPages}
+            {t('table.pageOfTotal', { page: currentPage, total: totalPages })}
           </span>
           <button
             type="button"
