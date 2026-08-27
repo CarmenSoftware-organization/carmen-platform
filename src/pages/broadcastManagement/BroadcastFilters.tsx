@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 import { Button } from '../../components/ui/button';
+import { Label } from '../../components/ui/label';
 
 interface BroadcastFiltersProps {
   open: boolean;
@@ -82,9 +83,9 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
                 onChange={onShowDeletedToggle}
                 className="h-4 w-4 rounded border-input"
               />
-              <label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
+              <Label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
                 Show deleted broadcasts
-              </label>
+              </Label>
             </div>
           </div>
           {activeFilterCount > 0 && (

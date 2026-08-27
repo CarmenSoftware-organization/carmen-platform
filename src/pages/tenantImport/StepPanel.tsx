@@ -3,6 +3,7 @@ import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -477,9 +478,9 @@ export function StepPanel({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <label htmlFor="clear-existing-bu-code" className="text-sm font-medium">
+            <Label htmlFor="clear-existing-bu-code" className="text-sm font-medium">
               BU code
-            </label>
+            </Label>
             <Input
               ref={clearCodeInputRef}
               id="clear-existing-bu-code"
