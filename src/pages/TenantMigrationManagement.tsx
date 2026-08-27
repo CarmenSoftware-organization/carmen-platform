@@ -438,7 +438,7 @@ const TenantMigrationManagement: React.FC = () => {
     },
     {
       id: 'last_checked',
-      header: 'Last checked',
+      header: 'Last Checked',
       enableSorting: false,
       cell: ({ row }) => {
         const rs = rowState[row.original.id];

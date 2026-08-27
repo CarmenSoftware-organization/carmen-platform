@@ -161,7 +161,7 @@ export function ResultPanel({
       ) : result ? (
         <>
           <div className="max-h-[420px] overflow-auto">
-            <table className="w-full border-collapse text-xs">
+            <table className="w-full border-collapse text-xs [&_th]:whitespace-nowrap">
               <thead className="bg-muted/60 sticky top-0 backdrop-blur">
                 <tr>
                   <th className="text-muted-foreground w-12 border-r border-b px-2 py-1.5 text-right font-semibold">

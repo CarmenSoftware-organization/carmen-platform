@@ -67,7 +67,7 @@ export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: Quot
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-muted-foreground text-xs">
                 <th className="px-2 py-1.5 text-right whitespace-nowrap">Quota</th>

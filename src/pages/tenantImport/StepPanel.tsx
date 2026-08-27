@@ -359,7 +359,7 @@ export function StepPanel({
 
       {visibleRows.length > 0 && (
         <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead className="bg-muted/50 text-xs text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">Row</th>

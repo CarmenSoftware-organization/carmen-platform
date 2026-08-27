@@ -242,7 +242,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
     { accessorKey: 'name', header: 'Name', meta: { card: 'title' } },
     {
       id: 'bu_quota',
-      header: 'BU quota',
+      header: 'BU Quota',
       // เรียงไม่ได้: `bu_cap`/`bu_used` มาจาก view ไม่ใช่คอลัมน์ของ tb_cluster — `orderBy` ของ Prisma
       // จึงอ้างถึงไม่ได้ (ตัวกรองทำได้เพราะแปลงเป็น id list ก่อน แต่ `id: { in }` ไม่รักษาลำดับ)
       enableSorting: false,
@@ -268,7 +268,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
     },
     {
       id: 'bu_cap_end',
-      header: 'Quota expires',
+      header: 'Quota Expires',
       enableSorting: false,
       cell: ({ row }) => {
         const end = row.original.bu_cap_end_date;
