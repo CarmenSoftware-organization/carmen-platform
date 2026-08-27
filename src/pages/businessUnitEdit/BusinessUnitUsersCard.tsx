@@ -74,7 +74,9 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
               business unit in this cluster, so deactivating here frees no seat.
             </p>
           )}
-          <Table>
+          {/* ตรึงคอลัมน์ปุ่มไว้ขวา — gate ด้วย canEdit เพราะคอลัมน์นั้นถูกถอดทิ้ง
+              เมื่อไม่มีสิทธิ์ คอลัมน์ท้ายจะกลายเป็น BU Status ซึ่งไม่ควรถูกตรึง */}
+          <Table className={canEdit ? 'table-sticky-right [--sticky-right-bg:var(--card)]' : undefined}>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10 text-center">#</TableHead>
