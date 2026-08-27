@@ -119,9 +119,24 @@ Both forms are arithmetic rather than a matter of taste, so later slices apply t
 
 A later slice adding to `common.*` must show the same evidence. Reviewers of every slice check one thing specifically: **does any new `pages.*` key duplicate a value that already exists in `common.*`?** That check is what keeps the catalog from fragmenting over nine slices.
 
-### A note on the seed data
+### Casing variants get separate keys, not merged ones
 
-Two of the measured strings are casing variants of each other — `Business Units` and `Business units` both appear. This is a pre-existing inconsistency in the source. The catalog gets **one** key, and whichever call site used the other casing changes to match it. That is a deliberate, visible copy change and the only one this slice makes.
+The measurement surfaces pairs that differ only in case — `Business Units` / `Business units`, and inside `UserEdit.tsx` alone, `First Name` / `First name`, `Last Name` / `Last name`, `Middle Name` / `Middle name`, `Alias Name` / `Alias name`.
+
+An earlier draft of this spec called these a pre-existing inconsistency and told the implementer to unify them. **That instruction was wrong and is reversed here.** Reading the call sites shows the `UserEdit` pairs are a deliberate and consistently applied convention:
+
+```tsx
+<Label htmlFor="firstname">First Name</Label>     // Title Case for labels
+<Input placeholder="First name" />                 // sentence case for placeholders
+```
+
+All four pairs follow it. Merging them would push Title Case into every placeholder on the page and destroy a distinction someone designed.
+
+**The rule: a casing variant is a distinct string and gets its own key.** Where both forms are genuinely shared, `common.*` carries both — for example `common.field.firstNameLabel` and `common.field.firstNamePlaceholder`. Never collapse two spellings into one key on the assumption that one of them is a typo; read the call sites first.
+
+`Business Units` / `Business units` is a real inconsistency rather than a convention — it is mixed across titles and labels with no discernible rule — but **no file in this slice uses either form**, so slice 1 does not touch it. Whichever later slice owns those files decides.
+
+**This slice makes no copy changes at all.** Every English string it produces is byte-identical to the one it replaces.
 
 ## Scope
 
