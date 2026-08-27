@@ -105,7 +105,7 @@ export function BusinessUnitsSection({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="table-sticky-right [--sticky-right-bg:var(--card)]">
             <TableHeader>
               <TableRow>
                 {(['code', 'name'] as const).map((key) => (
