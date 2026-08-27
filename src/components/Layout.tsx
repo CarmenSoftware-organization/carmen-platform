@@ -132,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
 
   const userInfo = {
     initials: getUserInitials(),
-    displayName: getFullName() || user?.name || user?.email || 'User',
+    displayName: getFullName() || user?.name || user?.email || t('header.userFallback'),
     email: user?.email || '',
   };
 

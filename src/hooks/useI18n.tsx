@@ -17,9 +17,11 @@ function lookup(catalog: unknown, key: string): string | undefined {
 /** Replaces every {{name}} placeholder with the matching param. Unmatched placeholders stay put. */
 function interpolate(template: string, params?: Record<string, string | number>): string {
   if (!params) return template;
-  return template.replace(/\{\{(\w+)\}\}/g, (match, name: string) =>
-    name in params ? String(params[name]) : match,
-  );
+  return template.replace(/\{\{(\w+)\}\}/g, (match, name: string) => {
+    if (name in params) return String(params[name]);
+    if (process.env.NODE_ENV === 'development') console.warn(`[i18n] missing param: ${name}`);
+    return match;
+  });
 }
 
 function translate(lang: Lang, key: TKey, params?: Record<string, string | number>): string {

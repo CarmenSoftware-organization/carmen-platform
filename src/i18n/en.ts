@@ -11,8 +11,6 @@
 export const en = {
   language: {
     label: 'Language',
-    en: 'English',
-    th: 'ไทย',
     switch: 'Switch language',
   },
   nav: {
@@ -61,6 +59,7 @@ export const en = {
     theme: 'Theme',
     viewChangelog: 'view changelog',
     version: 'Version',
+    userFallback: 'User',
   },
   theme: {
     light: 'Light',
@@ -89,6 +88,27 @@ export const en = {
     changelog: 'Changelog',
     new: 'New',
     edit: 'Edit',
+  },
+  switcher: {
+    selectCluster: 'Select cluster',
+    switchCluster: 'Switch cluster',
+    chooseCluster: 'Choose which cluster to administer',
+    searchClusters: 'Search clusters...',
+    noClustersFound: 'No clusters found.',
+    switchBu: 'Switch business unit',
+    chooseBu: 'Search and select the tenant business unit you want to operate on.',
+    searchBu: 'Search business units',
+    buList: 'Business units',
+    searchBuPlaceholder: 'Search {{count}} business units by code, name or cluster…',
+    buCount: '{{count}} BUs',
+    buNoMatches: 'No BU matches “{{search}}”.',
+    buNoMatchesHint: 'Try a code (T02) or a cluster name.',
+    recent: 'Recent',
+    otherCluster: 'Other',
+    connected: 'connected',
+    navigate: 'navigate',
+    connect: 'connect',
+    close: 'close',
   },
   shortcuts: {
     title: 'Keyboard Shortcuts',
