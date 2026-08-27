@@ -8,6 +8,7 @@ import { getErrorDetail, devLog } from '../../utils/errorParser';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
+import { Label } from '../../components/ui/label';
 import { DataTable } from '../../components/ui/data-table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../../components/ui/sheet';
 import { Plus, Filter, X, CreditCard, Download } from 'lucide-react';
@@ -475,7 +476,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                     </div>
                     {canReadClusters && (
                       <div className="space-y-3">
-                        <label htmlFor="cluster-filter" className="text-sm font-medium">Cluster</label>
+                        <Label htmlFor="cluster-filter" className="text-sm font-medium">Cluster</Label>
                         <select
                           id="cluster-filter"
                           value={clusterFilter}
@@ -502,9 +503,9 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                           onChange={handleExpiringSoonToggle}
                           className="h-4 w-4 rounded border-input"
                         />
-                        <label htmlFor="expiringSoon" className="text-sm text-muted-foreground cursor-pointer">
+                        <Label htmlFor="expiringSoon" className="text-sm text-muted-foreground cursor-pointer">
                           Expiring within {EXPIRING_SOON_DAYS} days
-                        </label>
+                        </Label>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (

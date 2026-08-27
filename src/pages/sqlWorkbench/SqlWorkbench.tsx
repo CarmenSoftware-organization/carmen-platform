@@ -5,6 +5,7 @@ import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import {
   Select,
   SelectContent,
@@ -429,9 +430,9 @@ export default function SqlWorkbench() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4 rounded-lg border p-4 sm:grid-cols-3">
                 <div>
-                  <label htmlFor="qd-object-name" className="mb-1 block text-xs font-semibold">
+                  <Label htmlFor="qd-object-name" className="mb-1 block text-xs font-semibold">
                     Object Name
-                  </label>
+                  </Label>
                   <Input
                     id="qd-object-name"
                     value={formName}
@@ -440,10 +441,10 @@ export default function SqlWorkbench() {
                   />
                 </div>
                 <div>
-                  {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- associated via aria-labelledby on the Select trigger below, not htmlFor/nesting */}
-                  <label id="qd-type-label" className="mb-1 block text-xs font-semibold">
+                  {/* ผูกกับ Select ด้านล่างผ่าน aria-labelledby ไม่ใช่ htmlFor หรือการห่อ */}
+                  <Label id="qd-type-label" className="mb-1 block text-xs font-semibold">
                     Type
-                  </label>
+                  </Label>
                   <Select
                     value={formQueryType}
                     onValueChange={(v) => setFormQueryType(v as QueryType)}

@@ -8,6 +8,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
+import { Label } from '../components/ui/label';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
@@ -558,9 +559,9 @@ const ClusterManagement: React.FC = () => {
                           onChange={handleShowDeletedToggle}
                           className="h-4 w-4 rounded border-input"
                         />
-                        <label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
+                        <Label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
                           Show soft-deleted clusters
-                        </label>
+                        </Label>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
