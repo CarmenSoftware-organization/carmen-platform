@@ -189,7 +189,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm [&_th]:whitespace-nowrap">
               <thead>
                 <tr className="text-xs text-muted-foreground">
                   <th className="text-left px-2 py-1 whitespace-nowrap">Seats</th>

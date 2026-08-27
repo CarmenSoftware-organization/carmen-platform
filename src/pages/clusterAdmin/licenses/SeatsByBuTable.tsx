@@ -66,10 +66,10 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
           </p>
         ) : (
           <div className="overflow-x-auto pt-1">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm [&_th]:whitespace-nowrap">
               <thead>
                 <tr className="text-muted-foreground text-xs">
-                  <th className="px-2 py-1.5 text-left">Business unit</th>
+                  <th className="px-2 py-1.5 text-left">Business Unit</th>
                   <th className="px-2 py-1.5 text-right whitespace-nowrap">Seats</th>
                   <th className="px-2 py-1.5 text-right whitespace-nowrap">Licences</th>
                   <th className="px-2 py-1.5 text-left whitespace-nowrap">Ends</th>

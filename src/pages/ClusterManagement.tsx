@@ -378,7 +378,7 @@ const ClusterManagement: React.FC = () => {
       // อย่างเดียวไม่พอ หัวคอลัมน์จะไม่กลายเป็นปุ่มด้วยซ้ำ · การเรียงจริงทำที่ backend (server-side)
       // ค่าที่ accessor คืนจึงไม่ได้ถูกใช้เรียง แต่ต้องมีเพื่อปลดล็อกปุ่ม
       accessorFn: (row) => row.bu_used,
-      header: 'Business units',
+      header: 'Business Units',
       // โควตามาจากใบที่ชนะ (Task 7) — bu_cap เป็น 0 จริงเมื่อไม่มีใบ ไม่ใช่ "ไม่จำกัด" แทนที่
       // max_license_bu เดิม
       cell: ({ row }) => (

@@ -107,11 +107,11 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm [&_th]:whitespace-nowrap">
               <thead>
                 <tr className="text-xs text-muted-foreground">
                   <th className="text-left px-2 py-1 whitespace-nowrap">Subscription</th>
-                  <th className="text-left px-2 py-1">Business unit</th>
+                  <th className="text-left px-2 py-1">Business Unit</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">Start</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">End</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">State</th>

@@ -51,11 +51,11 @@ export function BuRankingCard({ businessUnits, clusterId, cap }: BuRankingCardPr
         <p className="text-muted-foreground text-sm">This cluster has no business units yet.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-muted-foreground text-xs">
                 <th className="px-2 py-1.5 text-right whitespace-nowrap">Rank</th>
-                <th className="px-2 py-1.5 text-left">Business unit</th>
+                <th className="px-2 py-1.5 text-left">Business Unit</th>
                 <th className="px-2 py-1.5 text-left whitespace-nowrap">Status</th>
               </tr>
             </thead>

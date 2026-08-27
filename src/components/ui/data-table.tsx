@@ -327,7 +327,7 @@ function DataTable<TData>({
                 <TableHead
                   key={header.id}
                   className={cn(
-                    'text-xs font-medium uppercase tracking-wide text-muted-foreground',
+                    'text-xs font-medium text-muted-foreground',
                     (header.column.columnDef.meta as Record<string, string>)?.headerClassName
                   )}
                 >

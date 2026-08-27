@@ -164,7 +164,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm [&_th]:whitespace-nowrap">
                 <thead>
                   <tr className="text-xs text-muted-foreground">
                     <th className="text-left px-2 py-1 whitespace-nowrap">Quota</th>
@@ -268,11 +268,11 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
             <p className="text-muted-foreground py-6 text-center text-sm">No business units in this cluster.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm [&_th]:whitespace-nowrap">
                 <thead>
                   <tr className="text-xs text-muted-foreground">
                     <th className="text-left px-2 py-1 whitespace-nowrap">Rank</th>
-                    <th className="text-left px-2 py-1">Business unit</th>
+                    <th className="text-left px-2 py-1">Business Unit</th>
                     <th className="text-left px-2 py-1 whitespace-nowrap">Status</th>
                     <th className="px-2 py-1" />
                   </tr>
