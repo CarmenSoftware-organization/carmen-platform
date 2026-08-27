@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
+import { I18nProvider } from "./hooks/useI18n";
 import PrivateRoute from "./components/PrivateRoute";
 import AuthedRoute from "./components/AuthedRoute";
 import ClusterAdminRoute from "./components/ClusterAdminRoute";
@@ -68,7 +69,9 @@ const RouteLoader = () => (
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <I18nProvider>
+        <AppContent />
+      </I18nProvider>
     </ThemeProvider>
   );
 }
