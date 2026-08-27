@@ -68,9 +68,11 @@ export function AuditMeta(props: AuditMetaProps) {
   }
 
   // variant 'cell' — เวลาบรรทัดบน ชื่อบรรทัดล่าง ให้คอลัมน์แคบพอในตาราง
+  // `whitespace-nowrap` อยู่ที่ตัวครอบเพราะ white-space สืบทอดลงไปทั้งสองบรรทัด: เวลา
+  // ('5mo ago') กับชื่อคนจึงไม่ถูกตัดกลาง แต่ยังคงแยกเป็นสองบรรทัดตามเดิม
   return (
     <div
-      className={props.className ?? 'text-muted-foreground space-y-0.5 text-[11px] leading-tight'}
+      className={props.className ?? 'text-muted-foreground space-y-0.5 text-[11px] leading-tight whitespace-nowrap'}
       title={absolute(actor.at)}
     >
       <div>{when || '-'}</div>
