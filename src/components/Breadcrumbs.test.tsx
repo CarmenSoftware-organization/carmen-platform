@@ -5,34 +5,36 @@ import { crumbsFromPath, Breadcrumbs } from './Breadcrumbs';
 
 describe('crumbsFromPath', () => {
   it('maps a section list route to a single unlinked crumb', () => {
-    expect(crumbsFromPath('/clusters')).toEqual([{ label: 'Clusters' }]);
+    expect(crumbsFromPath('/clusters')).toEqual([
+      { labelKey: 'breadcrumb.clusters', fallback: 'Clusters' },
+    ]);
   });
 
   it('maps an edit route to Section > Edit with the section linked', () => {
     expect(crumbsFromPath('/clusters/abc-123/edit')).toEqual([
-      { label: 'Clusters', to: '/clusters' },
-      { label: 'Edit' },
+      { labelKey: 'breadcrumb.clusters', fallback: 'Clusters', to: '/clusters' },
+      { labelKey: 'breadcrumb.edit', fallback: 'Edit' },
     ]);
   });
 
   it('maps a new route to Section > New', () => {
     expect(crumbsFromPath('/business-units/new')).toEqual([
-      { label: 'Business Units', to: '/business-units' },
-      { label: 'New' },
+      { labelKey: 'breadcrumb.businessUnits', fallback: 'Business Units', to: '/business-units' },
+      { labelKey: 'breadcrumb.new', fallback: 'New' },
     ]);
   });
 
   it('handles nested platform routes', () => {
     expect(crumbsFromPath('/platform/roles')).toEqual([
-      { label: 'Platform' },
-      { label: 'Roles' },
+      { labelKey: 'breadcrumb.platform', fallback: 'Platform' },
+      { labelKey: 'breadcrumb.roles', fallback: 'Roles' },
     ]);
   });
 
   it('leaves the broadcasts section crumb unlinked (no index route)', () => {
     expect(crumbsFromPath('/broadcasts/new')).toEqual([
-      { label: 'Broadcasts' },
-      { label: 'New' },
+      { labelKey: 'breadcrumb.broadcasts', fallback: 'Broadcasts' },
+      { labelKey: 'breadcrumb.new', fallback: 'New' },
     ]);
   });
 

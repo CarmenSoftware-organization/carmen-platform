@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
+import { useI18n } from '../hooks/useI18n';
 import type { Changelog } from '../types';
 import changelogData from '../data/changelog.json';
 
@@ -12,20 +13,23 @@ interface VersionBadgeProps {
   className?: string;
 }
 
-const VersionBadge = ({ collapsed = false, className }: VersionBadgeProps) => (
-  <Link
-    to="/changelog"
-    className={cn('inline-flex', className)}
-    aria-label={`Version ${CURRENT_VERSION} - view changelog`}
-    title={`v${CURRENT_VERSION} - view changelog`}
-  >
-    <Badge
-      variant="secondary"
-      className="cursor-pointer font-mono text-[11px] hover:bg-secondary/80"
+const VersionBadge = ({ collapsed = false, className }: VersionBadgeProps) => {
+  const { t } = useI18n();
+  return (
+    <Link
+      to="/changelog"
+      className={cn('inline-flex', className)}
+      aria-label={`${t('header.version')} ${CURRENT_VERSION} - ${t('header.viewChangelog')}`}
+      title={`v${CURRENT_VERSION} - ${t('header.viewChangelog')}`}
     >
-      {collapsed ? 'v' : `v${CURRENT_VERSION}`}
-    </Badge>
-  </Link>
-);
+      <Badge
+        variant="secondary"
+        className="cursor-pointer font-mono text-[11px] hover:bg-secondary/80"
+      >
+        {collapsed ? 'v' : `v${CURRENT_VERSION}`}
+      </Badge>
+    </Link>
+  );
+};
 
 export default VersionBadge;

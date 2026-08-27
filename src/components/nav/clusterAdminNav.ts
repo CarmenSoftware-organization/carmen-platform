@@ -9,9 +9,9 @@ import type { NavItem } from '../Sidebar';
 export function buildClusterAdminNav(clusterId: string): NavItem[] {
   const base = `/cluster-admin/${clusterId}`;
   return [
-    { path: `${base}/cluster`, label: 'Cluster', icon: Network },
-    { path: `${base}/business-units`, label: 'Business Units', icon: Building2 },
-    { path: `${base}/licenses`, label: 'Licenses', icon: KeyRound },
-    { path: `${base}/users`, label: 'Users', icon: Users },
+    { path: `${base}/cluster`, labelKey: 'nav.cluster', icon: Network },
+    { path: `${base}/business-units`, labelKey: 'nav.businessUnits', icon: Building2 },
+    { path: `${base}/licenses`, labelKey: 'nav.licenses', icon: KeyRound },
+    { path: `${base}/users`, labelKey: 'nav.users', icon: Users },
   ];
 }

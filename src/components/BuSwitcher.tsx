@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
 import type { BusinessUnit } from '../types';
 import { buHueColor, buInitials } from '../utils/buHue';
+import { useI18n } from '../hooks/useI18n';
 
 const RECENT_KEY = 'sqlwb_recent_bus';
 const RECENT_MAX = 5;
@@ -57,6 +58,7 @@ export function BuSwitcher({
   currentCode,
   onSelect,
 }: BuSwitcherProps) {
+  const { t } = useI18n();
   const [search, setSearch] = useState('');
   const [active, setActive] = useState(0);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -86,12 +88,12 @@ export function BuSwitcher({
 
     const clusters = new Map<string, BusinessUnit[]>();
     for (const b of rest) {
-      const key = b.cluster_name?.trim() || 'Other';
+      const key = b.cluster_name?.trim() || t('switcher.otherCluster');
       (clusters.get(key) ?? clusters.set(key, []).get(key)!).push(b);
     }
 
     const sections: Section[] = [];
-    if (recents.length) sections.push({ key: 'recent', label: 'Recent', recent: true, items: recents });
+    if (recents.length) sections.push({ key: 'recent', label: t('switcher.recent'), recent: true, items: recents });
     for (const [name, items] of Array.from(clusters.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
       sections.push({ key: `cluster:${name}`, label: name, items });
     }
@@ -99,7 +101,7 @@ export function BuSwitcher({
     return { sections, flat: sections.flatMap((s) => s.items) };
     // `open` is a dep so recents re-read from storage each time the palette opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessUnits, search, open]);
+  }, [businessUnits, search, open, t]);
 
   // Keep the active index in range and scrolled into view.
   useEffect(() => {
@@ -138,9 +140,9 @@ export function BuSwitcher({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-[12vh] max-w-xl translate-y-0 gap-0 overflow-hidden p-0 [&>button]:hidden">
-        <DialogTitle className="sr-only">Switch business unit</DialogTitle>
+        <DialogTitle className="sr-only">{t('switcher.switchBu')}</DialogTitle>
         <DialogDescription className="sr-only">
-          Search and select the tenant business unit you want to operate on.
+          {t('switcher.chooseBu')}
         </DialogDescription>
 
         {/* search */}
@@ -154,9 +156,9 @@ export function BuSwitcher({
             aria-expanded="true"
             aria-controls="bu-switcher-list"
             aria-activedescendant={flat[active] ? `bu-opt-${active}` : undefined}
-            aria-label="Search business units"
+            aria-label={t('switcher.searchBu')}
             className="placeholder:text-muted-foreground flex-1 bg-transparent text-[15px] outline-hidden"
-            placeholder={`Search ${businessUnits.length} business units by code, name or cluster…`}
+            placeholder={t('switcher.searchBuPlaceholder', { count: businessUnits.length })}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={onInputKeyDown}
@@ -164,7 +166,7 @@ export function BuSwitcher({
             spellCheck={false}
           />
           <span className="text-muted-foreground shrink-0 font-mono text-[11px]">
-            {search.trim() ? `${flat.length} / ${businessUnits.length}` : `${businessUnits.length} BUs`}
+            {search.trim() ? `${flat.length} / ${businessUnits.length}` : t('switcher.buCount', { count: businessUnits.length })}
           </span>
         </div>
 
@@ -172,14 +174,14 @@ export function BuSwitcher({
         <div
           id="bu-switcher-list"
           role="listbox"
-          aria-label="Business units"
+          aria-label={t('switcher.buList')}
           className="max-h-[52vh] overflow-y-auto p-1.5"
         >
           {flat.length === 0 ? (
             <div className="text-muted-foreground px-4 py-10 text-center text-sm">
-              No BU matches “{search.trim()}”.
+              {t('switcher.buNoMatches', { search: search.trim() })}
               <br />
-              Try a code (T02) or a cluster name.
+              {t('switcher.buNoMatchesHint')}
             </div>
           ) : (
             sections.map((section) => (
@@ -230,7 +232,7 @@ export function BuSwitcher({
                       )}
                       {isCurrent && (
                         <Badge variant="success" className="shrink-0 px-1.5 py-0.5 text-[10px] font-mono">
-                          connected
+                          {t('switcher.connected')}
                         </Badge>
                       )}
                     </button>
@@ -245,13 +247,13 @@ export function BuSwitcher({
         <div className="text-muted-foreground bg-muted/40 flex items-center gap-4 border-t px-4 py-2 text-[11px]">
           <span className="flex items-center gap-1.5">
             <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd> navigate
+            <Kbd>↓</Kbd> {t('switcher.navigate')}
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>↵</Kbd> connect
+            <Kbd>↵</Kbd> {t('switcher.connect')}
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>esc</Kbd> close
+            <Kbd>esc</Kbd> {t('switcher.close')}
           </span>
         </div>
       </DialogContent>

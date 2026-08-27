@@ -9,6 +9,7 @@ import { BrandMark } from './BrandMark';
 import { cn } from '../lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
+import { useI18n } from '../hooks/useI18n';
 import type { AdminCluster } from '../types';
 
 interface ClusterSwitcherProps {
@@ -22,6 +23,7 @@ interface ClusterSwitcherProps {
 const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
   const { adminScope } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState('');
   const [remote, setRemote] = useState<AdminCluster[] | null>(null);
@@ -98,15 +100,15 @@ const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
         {currentName && (
           <BrandMark name={currentName} code={current?.code} src={current?.avatar?.url} />
         )}
-        <span className="max-w-[16rem] truncate">{currentName ?? 'Select cluster'}</span>
+        <span className="max-w-[16rem] truncate">{currentName ?? t('switcher.selectCluster')}</span>
         <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="p-0 sm:max-w-lg">
-          <DialogTitle className="sr-only">Switch cluster</DialogTitle>
+          <DialogTitle className="sr-only">{t('switcher.switchCluster')}</DialogTitle>
           <DialogDescription className="sr-only">
-            Choose which cluster to administer
+            {t('switcher.chooseCluster')}
           </DialogDescription>
           <div className="flex items-center gap-2 border-b px-3">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -115,13 +117,13 @@ const ClusterSwitcher = ({ currentClusterId }: ClusterSwitcherProps) => {
               autoFocus
               value={term}
               onChange={(e) => setTerm(e.target.value)}
-              placeholder="Search clusters..."
+              placeholder={t('switcher.searchClusters')}
               className="h-11 border-0 focus-visible:ring-0"
             />
           </div>
           <div className="max-h-80 overflow-y-auto p-1">
             {items.length === 0 && (
-              <p className="p-4 text-center text-sm text-muted-foreground">No clusters found.</p>
+              <p className="p-4 text-center text-sm text-muted-foreground">{t('switcher.noClustersFound')}</p>
             )}
             {items.map((c) => (
               <button

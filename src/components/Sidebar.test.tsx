@@ -5,8 +5,8 @@ import { LayoutDashboard, Users } from 'lucide-react';
 import Sidebar, { type NavItem } from './Sidebar';
 
 const navItems: NavItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/users', label: 'Users', icon: Users, group: 'Organization' },
+  { path: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { path: '/users', labelKey: 'nav.users', icon: Users, groupKey: 'navGroup.organization' },
 ];
 
 type SidebarProps = React.ComponentProps<typeof Sidebar>;

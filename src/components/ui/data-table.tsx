@@ -24,6 +24,7 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useI18n } from '../../hooks/useI18n';
 
 const PAGE_SIZES = [10, 25, 50, 100];
 
@@ -131,6 +132,7 @@ function DataTable<TData>({
   mobileCards = true,
   mobileBreakpoint = '(min-width: 1024px)',
 }: DataTableProps<TData>) {
+  const { t } = useI18n();
   const [sorting, setSorting] = React.useState<SortingState>(
     defaultSort ? [defaultSort] : []
   );
@@ -197,19 +199,19 @@ function DataTable<TData>({
           checked={table.getIsAllPageRowsSelected()}
           indeterminate={table.getIsSomePageRowsSelected()}
           onChange={table.getToggleAllPageRowsSelectedHandler()}
-          ariaLabel="Select all on this page"
+          ariaLabel={t('table.selectAllOnPage')}
         />
       ),
       cell: ({ row }) => (
         <SelectCheckbox
           checked={row.getIsSelected()}
           onChange={row.getToggleSelectedHandler()}
-          ariaLabel={getRowSelectionLabel ? getRowSelectionLabel(row.original) : 'Select row'}
+          ariaLabel={getRowSelectionLabel ? getRowSelectionLabel(row.original) : t('table.selectRow')}
         />
       ),
     };
     return [selectionCol, ...base];
-  }, [columns, pagination.pageIndex, pagination.pageSize, enableRowSelection, getRowSelectionLabel]);
+  }, [columns, pagination.pageIndex, pagination.pageSize, enableRowSelection, getRowSelectionLabel, t]);
 
   const table = useReactTable({
     data,
@@ -368,7 +370,7 @@ function DataTable<TData>({
             <TableRow>
               <TableCell colSpan={columnsWithIndex.length} className="text-center text-muted-foreground py-12">
                 <div className="flex flex-col items-center gap-2">
-                  <span className="text-sm">No results found</span>
+                  <span className="text-sm">{t('table.noResultsFound')}</span>
                 </div>
               </TableCell>
             </TableRow>
@@ -399,10 +401,10 @@ function DataTable<TData>({
         <div className="flex items-center justify-between gap-4 sm:justify-start">
           <div className="text-sm text-muted-foreground tabular-nums">
             {totalDisplay === 0
-              ? 'No results'
-              : `Showing ${firstRow}\u2013${lastRow} of ${totalDisplay}`}
+              ? t('table.noResults')
+              : t('table.showingRange', { from: firstRow, to: lastRow, total: totalDisplay })}
           </div>
-          <div role="group" aria-label="Rows per page" className="flex sm:hidden items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5">
+          <div role="group" aria-label={t('table.rowsPerPage')} className="flex sm:hidden items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5">
             {sizeOptions.map((size) => {
               const active = size === pagination.pageSize;
               return (
@@ -425,10 +427,10 @@ function DataTable<TData>({
         </div>
 
         {/* Desktop: numbered page buttons */}
-        <nav aria-label="Pagination" className="hidden sm:flex items-center gap-1">
+        <nav aria-label={t('table.pagination')} className="hidden sm:flex items-center gap-1">
           <button
             type="button"
-            aria-label="Previous page"
+            aria-label={t('table.previousPage')}
             className={navBtn}
             onClick={() => goToPage(currentPage - 1)}
             disabled={isFirstPage}
@@ -452,7 +454,7 @@ function DataTable<TData>({
               <button
                 key={item}
                 type="button"
-                aria-label={`Page ${item}`}
+                aria-label={t('table.page', { page: item })}
                 aria-current={active ? 'page' : undefined}
                 className={`${numBtnBase} ${active ? numBtnActive : numBtnInactive}`}
                 onClick={() => goToPage(item)}
@@ -463,7 +465,7 @@ function DataTable<TData>({
           })}
           <button
             type="button"
-            aria-label="Next page"
+            aria-label={t('table.nextPage')}
             className={navBtn}
             onClick={() => goToPage(currentPage + 1)}
             disabled={isLastPage}
@@ -473,10 +475,10 @@ function DataTable<TData>({
         </nav>
 
         {/* Mobile: simple prev/next with page indicator */}
-        <nav aria-label="Pagination" className="flex sm:hidden items-center justify-center gap-2">
+        <nav aria-label={t('table.pagination')} className="flex sm:hidden items-center justify-center gap-2">
           <button
             type="button"
-            aria-label="Previous page"
+            aria-label={t('table.previousPage')}
             className={navBtn}
             onClick={() => goToPage(currentPage - 1)}
             disabled={isFirstPage}
@@ -484,11 +486,11 @@ function DataTable<TData>({
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-sm text-muted-foreground tabular-nums min-w-[7rem] text-center">
-            Page {currentPage} of {totalPages}
+            {t('table.pageOfTotal', { page: currentPage, total: totalPages })}
           </span>
           <button
             type="button"
-            aria-label="Next page"
+            aria-label={t('table.nextPage')}
             className={navBtn}
             onClick={() => goToPage(currentPage + 1)}
             disabled={isLastPage}
@@ -498,8 +500,8 @@ function DataTable<TData>({
         </nav>
 
         <div className="hidden sm:flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Show</span>
-          <div role="group" aria-label="Rows per page" className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5">
+          <span className="text-xs text-muted-foreground">{t('table.show')}</span>
+          <div role="group" aria-label={t('table.rowsPerPage')} className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-0.5">
             {sizeOptions.map((size) => {
               const active = size === pagination.pageSize;
               return (
@@ -526,9 +528,10 @@ function DataTable<TData>({
 }
 
 function MobileCardList<TData>({ table }: { table: TanstackTable<TData> }) {
+  const { t } = useI18n();
   const rows = table.getRowModel().rows;
   if (rows.length === 0) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">No results found</div>;
+    return <div className="py-12 text-center text-sm text-muted-foreground">{t('table.noResultsFound')}</div>;
   }
   return (
     <div className="space-y-3 py-1">

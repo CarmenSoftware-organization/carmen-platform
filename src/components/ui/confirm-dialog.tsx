@@ -9,6 +9,7 @@ import {
 } from './dialog';
 import { Button } from './button';
 import { Loader2 } from 'lucide-react';
+import { useI18n } from '../../hooks/useI18n';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -26,12 +27,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onOpenChange,
   title,
   description,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   confirmVariant = 'default',
   onConfirm,
 }) => {
   const [loading, setLoading] = useState(false);
+  const { t } = useI18n();
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -56,7 +58,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             onClick={() => onOpenChange(false)}
             disabled={loading}
           >
-            {cancelText}
+            {cancelText ?? t('common.cancel')}
           </Button>
           <Button
             variant={confirmVariant}
@@ -65,7 +67,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             disabled={loading}
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {confirmText}
+            {confirmText ?? t('common.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

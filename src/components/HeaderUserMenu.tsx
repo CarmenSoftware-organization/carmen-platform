@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChevronDown, LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useI18n } from '../hooks/useI18n';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import {
@@ -14,6 +15,7 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { THEME_OPTIONS } from './ThemeToggle';
+import { LANGUAGE_OPTIONS } from './LanguageToggle';
 import { CURRENT_VERSION } from './VersionBadge';
 
 interface HeaderUserInfo {
@@ -34,6 +36,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useDarkMode();
+  const { lang, setLang, t } = useI18n();
   const { hasPlatformAuthority, hasClusterAdminScope, adminScope } = useAuth();
   const { clusterId } = useParams<{ clusterId: string }>();
 
@@ -56,7 +59,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
           variant="ghost"
           size={compact ? 'icon' : 'default'}
           className={cn('rounded-full', compact ? 'h-11 w-11' : 'h-9 gap-2 px-2')}
-          aria-label={`User menu — ${userInfo.displayName}`}
+          aria-label={`${t('header.userMenu')} — ${userInfo.displayName}`}
         >
           <Avatar className={compact ? 'h-8 w-8' : 'h-7 w-7'}>
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
@@ -93,31 +96,43 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
         {inClusterAdmin && hasPlatformAuthority && (
           <DropdownMenuItem onSelect={() => navigate('/dashboard')}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
-            <span>Platform Admin view</span>
+            <span>{t('header.platformAdminView')}</span>
           </DropdownMenuItem>
         )}
         {!inClusterAdmin && hasClusterAdminScope && (
           <DropdownMenuItem onSelect={() => navigate('/cluster-admin')}>
             <Network className="mr-2 h-4 w-4" />
-            <span>Cluster Admin view</span>
+            <span>{t('header.clusterAdminView')}</span>
           </DropdownMenuItem>
         )}
 
         <DropdownMenuItem onClick={() => navigate(profileTo)}>
           <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
+          <span>{t('header.profile')}</span>
         </DropdownMenuItem>
 
         {compact && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Theme
+              {t('language.label')}
             </DropdownMenuLabel>
-            {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+            {LANGUAGE_OPTIONS.map(({ value, label }) => (
+              <DropdownMenuItem key={value} onClick={() => setLang(value)}>
+                <span>{label}</span>
+                {lang === value && (
+                  <span className="ml-auto pl-4 text-xs text-muted-foreground">&#10003;</span>
+                )}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('header.theme')}
+            </DropdownMenuLabel>
+            {THEME_OPTIONS.map(({ value, labelKey, icon: Icon }) => (
               <DropdownMenuItem key={value} onClick={() => setTheme(value)}>
                 <Icon className="mr-2 h-4 w-4" />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
                 {theme === value && (
                   <span className="ml-auto pl-4 text-xs text-muted-foreground">&#10003;</span>
                 )}
@@ -136,7 +151,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
 
         <DropdownMenuItem onClick={onLogout} className="text-destructive">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{t('header.logOut')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
