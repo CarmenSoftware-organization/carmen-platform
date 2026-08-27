@@ -347,7 +347,7 @@ const UserPlatformManagement: React.FC = () => {
       id: 'actions',
       header: '',
       enableSorting: false,
-      meta: { headerClassName: 'w-20', cellClassName: 'text-center p-0', card: 'actions' },
+      meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0', card: 'actions' },
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

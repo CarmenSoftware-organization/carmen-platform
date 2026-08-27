@@ -194,7 +194,7 @@ const ActivityEventManagement: React.FC = () => {
       id: 'actions',
       header: '',
       enableSorting: false,
-      meta: { headerClassName: 'w-16', cellClassName: 'text-center p-0', card: 'actions' },
+      meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0', card: 'actions' },
       cell: ({ row }) => (
         <Button variant="ghost" size="icon" className="h-8 w-8"
                 aria-label={`ดูรายละเอียด event ${row.original.event_id}`}

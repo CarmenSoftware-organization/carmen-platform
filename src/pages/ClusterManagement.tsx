@@ -436,7 +436,7 @@ const ClusterManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
-      meta: { headerClassName: 'max-w-12', cellClassName: 'text-center p-0 max-w-12' },
+      meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0' },
       enableSorting: false,
       cell: ({ row }) => (
         <DropdownMenu>
