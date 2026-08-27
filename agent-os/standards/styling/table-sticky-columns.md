@@ -1,8 +1,32 @@
 # Frozen Table Columns
 
-`DataTable` always freezes the **first two** left columns (checkbox + `#`) and the **last**
-column (actions) — `.table-sticky-left` + `.table-sticky-right` are unconditional. Extra frozen
-columns are opt-in and capped at four.
+`DataTable` always freezes the **first two** left columns (checkbox + `#`) — `.table-sticky-left`
+is unconditional. The **last** column is frozen only when it is genuinely an action column:
+`DataTable` checks `columns.at(-1)?.id === 'actions'` and adds `.table-sticky-right` from that.
+Extra frozen left columns are opt-in and capped at four.
+
+## The right column
+
+A table whose last column holds data (Status, Period, Reference No) must not freeze it — the
+reader then cannot scroll it away and gains nothing. The check is automatic, so a new table
+needs nothing; a table whose action column uses a different `id` opts in explicitly:
+
+```tsx
+<DataTable stickyRightColumn columns={…} />        // force on
+<DataTable stickyRightColumn={false} columns={…} />  // force off
+```
+
+A hand-written `<table>` outside `DataTable` opts in with the class itself, and **must gate it on
+the same condition that renders the action column** — a `{canManage && <th/>}` header means the
+last column becomes a data column for read-only users:
+
+```tsx
+<table className={`w-full text-sm${canManage ? ' table-sticky-right [--sticky-right-bg:var(--card)]' : ''}`}>
+```
+
+`--sticky-right-bg` names the opaque surface under the frozen cell; it defaults to `--background`
+(what a `DataTable` sits on) and a table inside a Card must pass `var(--card)`. Skipping it paints
+a grey stripe down the frozen column in both themes — see rule 2 below.
 
 ## Opting in
 
