@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChevronDown, LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { useI18n } from '../hooks/useI18n';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
 import {
@@ -14,6 +15,7 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { THEME_OPTIONS } from './ThemeToggle';
+import { LANGUAGE_OPTIONS } from './LanguageToggle';
 import { CURRENT_VERSION } from './VersionBadge';
 
 interface HeaderUserInfo {
@@ -34,6 +36,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useDarkMode();
+  const { lang, setLang, t } = useI18n();
   const { hasPlatformAuthority, hasClusterAdminScope, adminScope } = useAuth();
   const { clusterId } = useParams<{ clusterId: string }>();
 
@@ -110,6 +113,18 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
 
         {compact && (
           <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('language.label')}
+            </DropdownMenuLabel>
+            {LANGUAGE_OPTIONS.map(({ value, label }) => (
+              <DropdownMenuItem key={value} onClick={() => setLang(value)}>
+                <span>{label}</span>
+                {lang === value && (
+                  <span className="ml-auto pl-4 text-xs text-muted-foreground">&#10003;</span>
+                )}
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Theme

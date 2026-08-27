@@ -10,6 +10,7 @@ import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import HeaderUserMenu from './HeaderUserMenu';
 import ThemeToggle from './ThemeToggle';
+import LanguageToggle from './LanguageToggle';
 import VersionBadge from './VersionBadge';
 import { buildPlatformNav } from './nav/platformNav';
 
@@ -193,6 +194,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
           {isDesktop && (
             <div className="ml-auto flex items-center gap-2">
               <VersionBadge />
+              <LanguageToggle />
               <ThemeToggle />
               <HeaderUserMenu userInfo={userInfo} onLogout={handleLogout} />
             </div>
