@@ -8,6 +8,7 @@ import { Menu } from 'lucide-react';
 import Sidebar, { PRODUCT_BRAND, type BrandIdentity, type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import { useI18n } from '../hooks/useI18n';
 import HeaderUserMenu from './HeaderUserMenu';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
@@ -46,6 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
   const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useI18n();
 
   // Must match the `md:` breakpoint on the two header elements below — only one
   // HeaderUserMenu may be mounted, or the accessible name is duplicated.
@@ -161,7 +163,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMobileOpen(true)}
-                aria-label="Open navigation menu"
+                aria-label={t('sidebar.openMenu')}
               >
                 <Menu className="h-5 w-5" />
               </Button>

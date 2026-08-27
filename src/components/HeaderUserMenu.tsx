@@ -59,7 +59,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
           variant="ghost"
           size={compact ? 'icon' : 'default'}
           className={cn('rounded-full', compact ? 'h-11 w-11' : 'h-9 gap-2 px-2')}
-          aria-label={`User menu — ${userInfo.displayName}`}
+          aria-label={`${t('header.userMenu')} — ${userInfo.displayName}`}
         >
           <Avatar className={compact ? 'h-8 w-8' : 'h-7 w-7'}>
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
@@ -96,19 +96,19 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
         {inClusterAdmin && hasPlatformAuthority && (
           <DropdownMenuItem onSelect={() => navigate('/dashboard')}>
             <LayoutDashboard className="mr-2 h-4 w-4" />
-            <span>Platform Admin view</span>
+            <span>{t('header.platformAdminView')}</span>
           </DropdownMenuItem>
         )}
         {!inClusterAdmin && hasClusterAdminScope && (
           <DropdownMenuItem onSelect={() => navigate('/cluster-admin')}>
             <Network className="mr-2 h-4 w-4" />
-            <span>Cluster Admin view</span>
+            <span>{t('header.clusterAdminView')}</span>
           </DropdownMenuItem>
         )}
 
         <DropdownMenuItem onClick={() => navigate(profileTo)}>
           <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
+          <span>{t('header.profile')}</span>
         </DropdownMenuItem>
 
         {compact && (
@@ -127,12 +127,12 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Theme
+              {t('header.theme')}
             </DropdownMenuLabel>
-            {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+            {THEME_OPTIONS.map(({ value, labelKey, icon: Icon }) => (
               <DropdownMenuItem key={value} onClick={() => setTheme(value)}>
                 <Icon className="mr-2 h-4 w-4" />
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
                 {theme === value && (
                   <span className="ml-auto pl-4 text-xs text-muted-foreground">&#10003;</span>
                 )}
@@ -151,7 +151,7 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
 
         <DropdownMenuItem onClick={onLogout} className="text-destructive">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{t('header.logOut')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

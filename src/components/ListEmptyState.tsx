@@ -2,6 +2,7 @@ import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from './EmptyState';
 import { resolveListEmptyState } from '../utils/listEmptyState';
+import { useI18n } from '../hooks/useI18n';
 
 interface ListEmptyStateProps {
   searchTerm: string;
@@ -26,13 +27,20 @@ export const ListEmptyState: React.FC<ListEmptyStateProps> = ({
   emptyTitle,
   emptyDescription,
   addAction,
-  noMatchTitle = 'No matches found',
-  noMatchDescription = 'No results match your search or filters. Try adjusting or clearing them.',
+  noMatchTitle,
+  noMatchDescription,
 }) => {
+  const { t } = useI18n();
   const { kind, showAddAction } = resolveListEmptyState({ searchTerm, activeFilterCount });
 
   if (kind === 'no-match') {
-    return <EmptyState icon={icon} title={noMatchTitle} description={noMatchDescription} />;
+    return (
+      <EmptyState
+        icon={icon}
+        title={noMatchTitle ?? t('common.noMatchesFound')}
+        description={noMatchDescription ?? t('common.noMatchesDescription')}
+      />
+    );
   }
 
   return (

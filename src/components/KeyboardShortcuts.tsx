@@ -6,16 +6,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from './ui/dialog';
+import { useI18n } from '../hooks/useI18n';
 
 const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 const modKey = isMac ? '⌘' : 'Ctrl';
-
-const shortcuts = [
-  { keys: `${modKey} + S`, description: 'Save changes (in edit mode)' },
-  { keys: `${modKey} + K`, description: 'Focus search (on list pages)' },
-  { keys: 'Escape', description: 'Close dialog or cancel edit' },
-  { keys: '?', description: 'Show keyboard shortcuts' },
-];
 
 export const useGlobalShortcuts = (callbacks: {
   onSave?: () => void;
@@ -54,6 +48,16 @@ export const useGlobalShortcuts = (callbacks: {
 
 export const KeyboardShortcutsHelp: React.FC = () => {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
+
+  // Built inside the component, not at module scope: the descriptions are translated,
+  // and `t` only exists at render time.
+  const shortcuts = [
+    { keys: `${modKey} + S`, description: t('shortcuts.save') },
+    { keys: `${modKey} + K`, description: t('shortcuts.search') },
+    { keys: 'Escape', description: t('shortcuts.escape') },
+    { keys: '?', description: t('shortcuts.help') },
+  ];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -73,8 +77,8 @@ export const KeyboardShortcutsHelp: React.FC = () => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Keyboard Shortcuts</DialogTitle>
-          <DialogDescription>Quick actions to speed up your workflow</DialogDescription>
+          <DialogTitle>{t('shortcuts.title')}</DialogTitle>
+          <DialogDescription>{t('shortcuts.description')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           {shortcuts.map((s) => (

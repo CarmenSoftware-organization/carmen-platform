@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { Input } from './ui/input';
 import { Search, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useI18n } from '../hooks/useI18n';
 
 export const SearchInput = forwardRef<HTMLInputElement, {
   value: string;
@@ -11,7 +12,8 @@ export const SearchInput = forwardRef<HTMLInputElement, {
   className?: string;
   /** ผูกกับ <Label htmlFor> ได้ในหน้าที่ช่องค้นหามี label กำกับ (หน้าอื่นใช้แค่ placeholder) */
   id?: string;
-}>(function SearchInput({ value, onValueChange, onClear, placeholder = 'Search…', className, id }, ref) {
+}>(function SearchInput({ value, onValueChange, onClear, placeholder, className, id }, ref) {
+  const { t } = useI18n();
   return (
     <div className={cn('relative', className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -20,13 +22,13 @@ export const SearchInput = forwardRef<HTMLInputElement, {
         ref={ref}
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('common.searchPlaceholder')}
         className={cn('pl-9 pr-9', value ? 'border-ring' : '')}
       />
       {value && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t('common.clearSearch')}
           onClick={() => (onClear ? onClear() : onValueChange(''))}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
         >
