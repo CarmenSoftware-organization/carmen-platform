@@ -35,7 +35,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
     <Card>
       <CardHeader>
         <CardTitle>{t('pages.subscriptions.seats')}</CardTitle>
-        <CardDescription>Seat pool shared across every business unit in this cluster</CardDescription>
+        <CardDescription>{t('pages.subscriptions.seatsPoolDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-baseline gap-2">

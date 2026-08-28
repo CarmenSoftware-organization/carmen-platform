@@ -634,6 +634,7 @@ export const th: Translations = {
       clearAllIn: 'ไม่เอาทั้งหมดใน {{module}}',
       selectAllIn: 'เอาทั้งหมดใน {{module}}',
       none: 'ไม่เอา',
+      seatsPoolDescription: 'ที่นั่งเป็น pool ร่วมของทุกหน่วยธุรกิจในคลัสเตอร์นี้',
       pendingCount: 'รอตอบรับ {{count}}',
       // Source has a leading space before the arrow (SeatsCard.tsx: ` → อาจถึง ${projected}/${cap}`,
       // a JS template literal, not JSX text — whitespace inside it is not collapsed) — kept

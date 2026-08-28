@@ -802,6 +802,7 @@ export const en = {
       none: 'None',
 
       // SeatsCard
+      seatsPoolDescription: 'Seat pool shared across every business unit in this cluster',
       pendingCount: '{{count}} pending',
       upTo: ' → up to {{projected}}/{{cap}}',
       noBusinessUnitLinked: "This subscription isn't linked to any business unit",
