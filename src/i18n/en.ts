@@ -266,8 +266,29 @@ export const en = {
       nSelected: '{{count}} selected',
     },
     validation: {
-      nameRequired: 'Name is required',
-      clusterRequired: 'Cluster is required',
+      // `required` replaces the former nameRequired/clusterRequired pair. Neither had a
+      // call site yet, and 'Name is required' appears in five more pages that later slices
+      // will translate — one template beats one key per field name.
+      required: '{{label}} is required',
+      invalidEmail: 'Invalid email format',
+      invalidPhone: 'Invalid phone number format',
+      invalidUrl: 'Must be a valid http(s) URL',
+      invalidDate: 'Must be a valid date',
+      invalidCode: 'Code must be 2-20 alphanumeric characters',
+      usernameEmail: 'Username must be a valid email address',
+      nonNegativeInt: 'Must be a non-negative integer',
+      positiveInt: 'Must be a positive whole number',
+      invalidSchema: 'Schema must start with a letter or underscore and contain only letters, numbers, and underscores',
+      invalidSubNo: 'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)',
+      invalidAlias: 'Alias must be 1-{{max}} alphanumeric characters',
+      // Default field names, substituted when a caller passes no `label`. These are
+      // user-visible strings that live inside a `??` mid-expression — easy to miss.
+      fieldDefault: 'This field',
+      amount: 'Amount',
+      schema: 'Schema',
+      startDate: 'Start date',
+      endDate: 'End date',
+      subscriptionNumber: 'Subscription number',
     },
   },
   /**
