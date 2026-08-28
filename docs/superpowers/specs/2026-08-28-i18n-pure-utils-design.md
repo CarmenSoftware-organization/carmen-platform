@@ -18,12 +18,12 @@ The earlier specs assumed `t` would be a **required** parameter, which would for
 | | |
 |---|---|
 | Utility files changed | 3 |
-| New catalog keys | ~17 |
-| Call sites wired to `t` in this change | **16** — only the pages already translated (`Login` 3, `UserManagement` 5, `UserEdit` 8) |
-| Call sites left alone | 148, in pages not yet translated — they keep rendering English, exactly as today |
+| New catalog keys | 18 |
+| Call sites wired to `t` in this change | **11** — only the pages already translated (`Login` 1, `UserEdit` 6, `UserManagement` 4) |
+| Call sites left alone | 153, in pages not yet translated — they keep rendering English, exactly as today |
 | Test files changed | **0** |
 
-The remaining 148 get wired by whichever phase-2 slice translates their page, as part of that slice's normal work.
+The remaining 153 get wired by whichever phase-2 slice translates their page, as part of that slice's normal work.
 
 ## Decisions
 
@@ -44,7 +44,7 @@ A trailing optional `t` gets the same result with none of that. The utility stil
 
 **Trailing** so that a call site passing `(name, value)` or `(name, value, options)` needs no change at all. Putting `t` before `options` would break every three-argument caller for no benefit.
 
-**Optional** so that the existing test suite proves the fallback works. `src/utils/validation.test.ts` calls `validateField('email', 'bad')` with two arguments and asserts `'Invalid email format'`. That test passing **unmodified** is the acceptance criterion for the whole design: it demonstrates that 148 un-migrated call sites still render exactly what they render today.
+**Optional** so that the existing test suite proves the fallback works. `src/utils/validation.test.ts` calls `validateField('email', 'bad')` with two arguments and asserts `'Invalid email format'`. That test passing **unmodified** is the acceptance criterion for the whole design: it demonstrates that 153 un-migrated call sites still render exactly what they render today.
 
 This is the same shape the Users slice already used for `groupAccessByCluster` (`src/pages/userEdit/UserAccessTree.tsx`), and for the same reason — a frozen test calls it positionally.
 
@@ -98,6 +98,7 @@ common: {
     positiveInt:        'Must be a positive whole number',
     invalidSchema:      'Schema must start with a letter or underscore and contain only letters, numbers, and underscores',
     invalidSubNo:       'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)',
+    invalidAlias:       'Alias must be 1-{{max}} alphanumeric characters',
     // Default field names, used when a caller passes no `label`.
     fieldDefault:       'This field',
     amount:             'Amount',
@@ -111,6 +112,14 @@ common: {
 
 `error.unexpected`, `error.tryAgainLater` and `error.unknown` already exist. Phase 1 created them, left them unreferenced, and commented that they were reserved for exactly this change.
 
+### A twelfth message the first extraction missed
+
+`validateField`'s `alias_name` branch returns `` `Alias must be 1-${max} alphanumeric characters` `` —
+a template literal carrying the field's max length. The pass that produced the key list above matched
+quoted literals and missed it, which is the same blind spot that cost two earlier phases. It gets
+`common.validation.invalidAlias: 'Alias must be 1-{{max}} alphanumeric characters'`, taking `max` as
+a parameter.
+
 ### The six hidden default field names
 
 `validateField` produces `` `${options.label ?? 'This field'} is required` `` and five sibling forms that substitute `'Amount'`, `'Schema'`, `'Start date'`, `'End date'` or `'Subscription number'` when the caller passes no `label`.
@@ -121,12 +130,12 @@ These are user-visible strings hiding inside a `??` in the middle of a line. Nei
 
 `t('common.validation.required', { label })` is only as translated as the `label` handed to it. A caller passing the literal `'Name'` produces `'Name จำเป็น'` — half translated, and worse than leaving it English.
 
-Every one of the 16 call sites wired in this change must pass a translated label (`t('common.field.name')`), and the same requirement goes on each later slice's checklist.
+Every one of the 11 call sites wired in this change must pass a translated label (`t('common.field.name')`), and the same requirement goes on each later slice's checklist.
 
 ## Verification
 
 1. `bun run typecheck && bun run lint && bun run test` clean.
-2. **All 144 test files pass with none modified.** This is the primary acceptance criterion, not a formality: `validation.test.ts` calls `validateField` with two arguments and asserts the English string, so its passing proves the optional-parameter fallback renders byte-identically for the 148 call sites this change does not touch.
+2. **All 144 test files pass with none modified.** This is the primary acceptance criterion, not a formality: `validation.test.ts` calls `validateField` with two arguments and asserts the English string, so its passing proves the optional-parameter fallback renders byte-identically for the 153 call sites this change does not touch.
 3. `CI=true bun run build:dev` passes.
 4. **Prove both paths, not one.** For at least five messages: call without `t` and confirm the exact English; call with a Thai `t` and confirm the Thai. A design whose whole point is two behaviours needs both demonstrated.
 5. **In a browser, in Thai:** open `/users/:id/edit`, enter a malformed email, and confirm the validation message renders Thai. That specific message has been English through two phases by design; seeing it in Thai is what closes the hole.
@@ -136,12 +145,12 @@ Every one of the 16 call sites wired in this change must pass a translated label
 | Risk | Level | Mitigation |
 |---|---|---|
 | A page forgets `t` and silently shows English | High, accepted | Identical to today's behaviour, so not a regression. Add "wire `t` into `validateField` / `getErrorDetail` calls" to every slice's checklist. |
-| A caller passes an untranslated `label`, producing a half-Thai sentence | Medium | Named above; checked at all 16 call sites in this change and added to the slice checklist. |
+| A caller passes an untranslated `label`, producing a half-Thai sentence | Medium | Named above; checked at all 11 call sites in this change and added to the slice checklist. |
 | The English fallback becomes a second copy of the catalog | Medium | `renderEnglish` reads `en.ts`; it never holds its own strings. |
 | Replacing `nameRequired` / `clusterRequired` breaks a caller | Low | Both are currently referenced by nothing — verified. |
 
 ## Out of scope
 
-- The 148 call sites in pages that phase 2 has not translated yet. Each is wired by the slice that translates its page.
+- The 153 call sites in pages that phase 2 has not translated yet. Each is wired by the slice that translates its page.
 - `devLog` and `isNotFoundError`.
 - The `fields` record `parseApiError` returns: those strings come from the backend and are covered by the standing decision that backend text passes through untranslated.
