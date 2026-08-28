@@ -172,11 +172,11 @@ const BroadcastManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await broadcastService.remove(deleteId.id, deleteId.docVersion);
-      toast.success(t('pages.broadcasts.toastDeleted'));
+      toast.success(t('toast.deleted', { entity: t('entity.broadcast.sentence') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      toast.error(t('pages.broadcasts.toastDeleteFailed'), { description: getErrorDetail(err, t) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.broadcast.lower') }), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -233,7 +233,7 @@ const BroadcastManagement: React.FC = () => {
             <div className="space-y-1">
               <div>{t('pages.broadcasts.subtitle')}</div>
               <div className="text-xs text-muted-foreground">
-                ประกาศที่ส่งถึงผู้ใช้ที่ระบุเจาะจงจะไม่แสดงที่นี่ — ถูกบันทึกเป็นการแจ้งเตือนรายบุคคล
+                {t('pages.broadcasts.specificUserNote')}
               </div>
             </div>
           }
@@ -394,7 +394,7 @@ const BroadcastManagement: React.FC = () => {
         open={expireNowId !== null}
         onOpenChange={(open) => { if (!open) setExpireNowId(null); }}
         title={t('pages.broadcasts.expireTitle')}
-        description="ประกาศจะหายจากผู้รับทันที Are you sure you want to expire this broadcast now?"
+        description={`${t('pages.broadcasts.expireImmediateNote')} ${t('pages.broadcasts.expireConfirm')}`}
         confirmText={t('pages.broadcasts.expireNow')}
         onConfirm={handleConfirmExpireNow}
       />

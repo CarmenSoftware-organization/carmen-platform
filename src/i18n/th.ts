@@ -416,8 +416,6 @@ export const th: Translations = {
       loadingEllipsis: 'กำลังโหลดประกาศ...',
       deleteTitle: 'ลบประกาศ',
       deleteConfirm: 'ต้องการลบประกาศนี้ใช่หรือไม่ ประกาศจะถูกซ่อนจากทุกคนทันที',
-      toastDeleted: 'ลบประกาศสำเร็จ',
-      toastDeleteFailed: 'ลบประกาศไม่สำเร็จ',
       toastExpireFailed: 'ตั้งประกาศให้หมดอายุไม่สำเร็จ',
       loadFailedPrefix: 'โหลดประกาศไม่สำเร็จ: ',
       fetchErrorLog: 'เกิดข้อผิดพลาดขณะดึงข้อมูลประกาศ:',
@@ -428,6 +426,10 @@ export const th: Translations = {
       showDeletedLabel: 'แสดงประกาศที่ถูกลบแล้ว',
       summaryLoadFailed: 'โหลดสรุปข้อมูลประกาศไม่สำเร็จ',
       actions: 'การกระทำ',
+      // Existing string, unchanged verbatim — see en.ts for why this key exists.
+      specificUserNote: 'ประกาศที่ส่งถึงผู้ใช้ที่ระบุเจาะจงจะไม่แสดงที่นี่ — ถูกบันทึกเป็นการแจ้งเตือนรายบุคคล',
+      expireImmediateNote: 'ประกาศจะหายจากผู้รับทันที',
+      expireConfirm: 'ยืนยันที่จะให้ประกาศนี้หมดอายุตอนนี้หรือไม่',
     },
     news: {
       publish: 'เผยแพร่',

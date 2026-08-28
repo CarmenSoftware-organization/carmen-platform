@@ -495,8 +495,10 @@ export const en = {
       loadingEllipsis: 'Loading broadcasts...',
       deleteTitle: 'Delete Broadcast',
       deleteConfirm: 'Are you sure you want to delete this broadcast? It will be hidden from everyone immediately.',
-      toastDeleted: 'Broadcast deleted successfully',
-      toastDeleteFailed: 'Failed to delete broadcast',
+      // NOT toastDeleted/toastDeleteFailed page-local keys — those would duplicate
+      // toast.deleted/toast.deleteFailed composed with entity.broadcast.sentence/lower,
+      // which is what Task 1 added entity.broadcast for. toastExpireFailed stays
+      // page-local: there is no shared expire template to compose from.
       toastExpireFailed: 'Failed to expire broadcast',
       loadFailedPrefix: 'Failed to load broadcasts: ',
       // devLog label — console-only (isDev-gated), but named here per the brief's
@@ -509,6 +511,15 @@ export const en = {
       showDeletedLabel: 'Show deleted broadcasts',
       summaryLoadFailed: 'Failed to load broadcast summary.',
       actions: 'Actions',
+      // Fix-round-1: this line had no English at all — an English-language user was
+      // reading raw Thai. See th.ts for why the Thai value here is unchanged verbatim.
+      specificUserNote: "Broadcasts sent to specific users don't appear here — they're recorded as individual notifications.",
+      // Fix-round-1: the Expire ConfirmDialog description used to concatenate a Thai
+      // clause in front of an English sentence in ONE literal — a real bug, not a
+      // translation gap. Split into two keys (effect statement + confirmation question)
+      // since either half may be reused independently by a later slice.
+      expireImmediateNote: 'The broadcast disappears from recipients immediately.',
+      expireConfirm: 'Are you sure you want to expire this broadcast now?',
     },
     news: {
       publish: 'Publish',
