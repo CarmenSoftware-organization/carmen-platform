@@ -22,6 +22,11 @@ export const parseApiError = (err: unknown, t?: TFunction): ParsedError => {
     message?: string;
   };
 
+  // Falls back to the English catalog when no translator is supplied, so call sites in
+  // pages not yet migrated to `t` keep rendering exactly what they render today. The
+  // fallback READS the catalog rather than holding its own copy of these strings — a
+  // retyped string here would be a second source of truth that drifts silently. Same
+  // fallback below in `getErrorDetail`, not re-explained there.
   const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
 
   const dataError = error.response?.data?.error;

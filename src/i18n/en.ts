@@ -283,6 +283,24 @@ export const en = {
       invalidAlias: 'Alias must be 1-{{max}} alphanumeric characters',
       // Default field names, substituted when a caller passes no `label`. These are
       // user-visible strings that live inside a `??` mid-expression — easy to miss.
+      //
+      // Five of the six — `amount`, `schema`, `startDate`, `endDate`, `subscriptionNumber`
+      // — are unreachable as `validateField` is written today (verified independently by
+      // both the implementer and reviewer of the task that added `t`). Each backs a
+      // per-case `options?.required ? tr('common.validation.X') : ''` ternary, but
+      // `validateField`'s top-level guard already returns before the `switch` runs whenever
+      // `options?.required && !value?.trim()` is true — so inside any case, `options?.required`
+      // being true means the value can't also be blank there, and being false always sends
+      // the ternary down the `''` branch. No value can satisfy both halves at once. Every
+      // real caller also passes an explicit `label`, so this was never observed live even
+      // before the guard made it provably dead.
+      //
+      // They stay in the catalog rather than being deleted: `validation.ts`'s dead branches
+      // still reference them by key, `TKey` derives from this file, and a literal in their
+      // place would reintroduce the hardcoded-string problem this design exists to avoid.
+      // If `validateField`'s top-level guard is ever changed to check requiredness per-case
+      // instead of once up front, these five become reachable again — don't delete them on
+      // the assumption they are permanently dead.
       fieldDefault: 'This field',
       amount: 'Amount',
       schema: 'Schema',

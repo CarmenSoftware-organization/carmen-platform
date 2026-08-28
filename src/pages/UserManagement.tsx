@@ -159,7 +159,7 @@ const UserManagement: React.FC = () => {
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
     } catch (err: unknown) {
-      setError(t('toast.loadFailed', { entity: t('pages.users.usersLower') }) + ': ' + getErrorDetail(err));
+      setError(t('toast.loadFailed', { entity: t('pages.users.usersLower') }) + ': ' + getErrorDetail(err, t));
     } finally {
       setLoading(false);
     }
@@ -271,7 +271,7 @@ const UserManagement: React.FC = () => {
       setPaginate((prev) => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error(t('toast.deleteFailed', { entity: t('entity.user.lower') }), { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.user.lower') }), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -291,7 +291,7 @@ const UserManagement: React.FC = () => {
       setPaginate((prev) => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error(t('pages.users.permanentDeleteFailed'), { description: getErrorDetail(err) });
+      toast.error(t('pages.users.permanentDeleteFailed'), { description: getErrorDetail(err, t) });
     } finally {
       setHardDeleting(false);
     }
@@ -399,7 +399,7 @@ const UserManagement: React.FC = () => {
       setPaginate(prev => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error(t('pages.users.keycloakFetchFailed'), { description: getErrorDetail(err) });
+      toast.error(t('pages.users.keycloakFetchFailed'), { description: getErrorDetail(err, t) });
     } finally {
       setSyncing(false);
     }

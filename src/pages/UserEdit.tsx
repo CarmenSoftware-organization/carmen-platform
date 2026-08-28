@@ -169,7 +169,7 @@ const UserEdit: React.FC = () => {
       setShowPasswordDialog(false);
       toast.success(t('pages.users.passwordChanged'));
     } catch (err: unknown) {
-      const detail = getErrorDetail(err);
+      const detail = getErrorDetail(err, t);
       setPasswordError(t('pages.users.passwordChangeFailed') + ': ' + detail);
       toast.error(t('pages.users.passwordChangeFailed'), { description: detail });
     } finally {
@@ -224,7 +224,7 @@ const UserEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError(t('toast.loadFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err));
+        setError(t('toast.loadFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err, t));
       }
     } finally {
       setLoading(false);
@@ -295,7 +295,7 @@ const UserEdit: React.FC = () => {
       toast.success(t('pages.users.buAssigned'));
       await fetchUser();
     } catch (err: unknown) {
-      toast.error(t('pages.users.buAssignFailed'), { description: getErrorDetail(err) });
+      toast.error(t('pages.users.buAssignFailed'), { description: getErrorDetail(err, t) });
     } finally {
       setAddingBU(false);
     }
@@ -320,7 +320,7 @@ const UserEdit: React.FC = () => {
       setBusinessUnits(prev => prev.filter(b => b.id !== deleteBU.id));
       setDeleteBU(null);
     } catch (err: unknown) {
-      toast.error(t('pages.users.buRemoveFailed'), { description: getErrorDetail(err) });
+      toast.error(t('pages.users.buRemoveFailed'), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -336,7 +336,7 @@ const UserEdit: React.FC = () => {
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const error = validateField(name, value);
+    const error = validateField(name, value, undefined, t);
     setFieldErrors(prev => ({ ...prev, [name]: error }));
   };
 
@@ -370,7 +370,7 @@ const UserEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchUser();
       } else {
-        setError(t('toast.saveFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err));
+        setError(t('toast.saveFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err, t));
       }
     } finally {
       setSaving(false);
