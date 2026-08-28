@@ -13,6 +13,7 @@ import {
 } from '../../components/ui/sheet';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useI18n } from '../../hooks/useI18n';
 import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { devLog } from '../../utils/errorParser';
 import { fmtDate, isPerpetual } from './licenseDates';
@@ -22,20 +23,42 @@ import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
 import type { SeatLicenseRow, BuQuotaLicenseRow, PaginateParams } from '../../types';
+import type { TKey } from '../../i18n/types';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 
 type StatusFilterValue = 'active' | 'scheduled' | 'expired';
 
-const STATUS_OPTIONS: { value: StatusFilterValue; label: string }[] = [
-  { value: 'active', label: 'Active' },
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'expired', label: 'Expired' },
-];
+// The complete enumeration of `StatusFilterValue` — used both for the Sheet's filter
+// buttons and to type-check STATUS_VARIANT/STATUS_LABEL_KEYS below. Pure data, module scope
+// is fine; the label lookup itself happens inside the component (see `statusLabel`).
+const STATUS_VALUES: StatusFilterValue[] = ['active', 'scheduled', 'expired'];
 
 const STATUS_VARIANT: Record<StatusFilterValue, 'success' | 'secondary' | 'destructive'> = {
   active: 'success',
   scheduled: 'secondary',
   expired: 'destructive',
+};
+
+// Catalog KEYS only — resolved with `t` inside the component (see `statusLabel`). Reuses
+// common.status.* (Task 1) rather than a page-local key: every value this table's two
+// status badges (and this filter list) can render already has one.
+const STATUS_LABEL_KEYS: Record<StatusFilterValue, TKey> = {
+  active: 'common.status.active',
+  scheduled: 'common.status.scheduled',
+  expired: 'common.status.expired',
+};
+
+// See the identical note in LicensePurchaseForm.tsx: licenseKindConfig.ts used to carry
+// `ownerLabel`/`amountLabel` as plain English strings but nothing ever rendered them, so
+// this file resolves its own per-kind translated value locally instead. The dead fields
+// were deleted from `LicenseKindConfig` in the i18n fix wave (2026-08-28).
+const OWNER_LABEL_KEYS: Record<LicenseKind, TKey> = {
+  seat: 'entity.businessUnit.title',
+  'bu-quota': 'common.label.cluster',
+};
+const AMOUNT_LABEL_KEYS: Record<LicenseKind, TKey> = {
+  seat: 'common.field.seats',
+  'bu-quota': 'pages.licenses.buQuota',
 };
 
 const DEFAULT_SORT_ID = 'license_number';
@@ -64,8 +87,12 @@ const withTiebreaker = (sort: string): string => {
 /**
  * แถวกลางที่ใช้ทั้งแสดงผลและ export — จุดเดียวในไฟล์นี้ที่ต้องรู้ว่าแถวดิบมาจากชนิดไหน
  * (`SeatLicenseRow` มี `business_unit_*` ส่วน `BuQuotaLicenseRow` มี `cluster_*`) ที่เหลือ
- * (column cells, CSV) อ่านจากรูปกลางนี้อย่างเดียว ไม่ต้องแตกสาขาตามชนิดซ้ำอีก — วันที่และสถานะ
- * ถูก format/คำนวณไว้ล่วงหน้าแล้วเพื่อให้ตารางกับ CSV เห็นค่าเดียวกันเป๊ะเสมอ
+ * (column cells, CSV) อ่านจากรูปกลางนี้อย่างเดียว ไม่ต้องแตกสาขาตามชนิดซ้ำอีก — วันที่ถูก
+ * format ไว้ล่วงหน้าแล้วเพื่อให้ตารางกับ CSV เห็นค่าเดียวกันเป๊ะเสมอ ส่วน `status` เก็บเป็น
+ * enum ดิบ (`StatusFilterValue`) ไม่ใช่ label ที่แปลแล้ว — badge ในตารางและคอลัมน์ CSV
+ * ต้อง resolve ผ่าน `statusLabel()` เองคนละจุด (ตารางใน `columns`, CSV ใน `handleExport`)
+ * เพื่อไม่ผูก locale ไว้ในแถวกลาง แต่ทั้งสองจุดต้องเรียก `statusLabel()` ตัวเดียวกันเสมอ
+ * ไม่งั้นค่าที่เห็นในตารางกับไฟล์ที่ export จะไม่ตรงกัน
  */
 interface FleetLicenseRow {
   id: string;
@@ -98,6 +125,7 @@ function toFleetRow(
   row: SeatLicenseRow | BuQuotaLicenseRow,
   now: Date,
   showNoExpiry: boolean,
+  noExpiryLabel: string,
 ): FleetLicenseRow {
   const isSeat = kind === 'seat';
   const seat = row as SeatLicenseRow;
@@ -116,7 +144,7 @@ function toFleetRow(
     owner_name: isSeat ? seat.business_unit_name : quota.cluster_name,
     amount: isSeat ? seat.licensed_users : quota.licensed_bus,
     start_date: fmtDate(row.start_date),
-    end_date: showNoExpiry && isPerpetual(row.end_date) ? 'No expiry' : fmtDate(row.end_date),
+    end_date: showNoExpiry && isPerpetual(row.end_date) ? noExpiryLabel : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
     created_at: quotaAudit.created?.at ?? null,
@@ -162,6 +190,14 @@ export interface PurchaseLicenseTableProps {
  * เป็นตารางว่างคือการโกหกผู้ใช้ว่าเขาไม่ได้ซื้ออะไรไว้เลย
  */
 export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
+  const { t } = useI18n();
+  // One lookup for every rendering of a status value in this file — both badges (the
+  // license-status column and the active-filter chip) and the Sheet's filter buttons all
+  // call this, so a given status can never read two ways on one page.
+  const statusLabel = useCallback((s: StatusFilterValue) => t(STATUS_LABEL_KEYS[s]), [t]);
+  const ownerLabel = t(OWNER_LABEL_KEYS[config.kind]);
+  const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
+
   // คีย์ localStorage ผูกกับ config.kind เพื่อไม่ให้สองมุมมอง (seat / bu-quota) เหยียบ
   // page/perpage/sort/search/filter กันเอง — คอมโพเนนต์เดียวกันแต่ mount คนละอินสแตนซ์
   const pageKey = `page_${config.kind}_license`;
@@ -179,7 +215,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
   const [search, setSearch] = useState(() => localStorage.getItem(searchKey) || '');
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue | null>(() => {
     const raw = localStorage.getItem(statusKey);
-    return STATUS_OPTIONS.some((o) => o.value === raw) ? (raw as StatusFilterValue) : null;
+    return (STATUS_VALUES as string[]).includes(raw ?? '') ? (raw as StatusFilterValue) : null;
   });
 
   const [paginate, setPaginate] = useState(() => ({
@@ -215,7 +251,8 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       };
       const data = await config.service.listPlatform(params);
       const now = new Date();
-      setRows(data.data.map((r) => toFleetRow(config.kind, r, now, config.showNoExpiry)));
+      const noExpiryLabel = t('common.state.noExpiry');
+      setRows(data.data.map((r) => toFleetRow(config.kind, r, now, config.showNoExpiry, noExpiryLabel)));
       setTotalRows(data.paginate?.total ?? data.data.length);
       setLoadFailed(false);
     } catch (err: unknown) {
@@ -228,7 +265,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     } finally {
       setLoading(false);
     }
-  }, [config, paginate, debouncedSearch, statusFilter]);
+  }, [config, paginate, debouncedSearch, statusFilter, t]);
 
   useEffect(() => {
     fetchRows();
@@ -281,20 +318,24 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     // export เฉพาะหน้าปัจจุบันที่โหลดมาแล้ว (`rows`) ไม่ยิงคำขอ perpage:-1 แยกต่างหาก —
     // แพทเทิร์นเดิมเคยทำแบบนั้นแล้วเลิกใช้ (ดู memory: List summary block เลิก perpage:-1)
     // และตรงกับ SubscriptionTable.tsx ที่ export `items` ของหน้าปัจจุบันเช่นกัน
-    const csvRows = rows.map((r) => ({ ...r, ...auditCsvFields(normalizeAudit(r)) }));
+    const csvRows = rows.map((r) => ({
+      ...r,
+      ...auditCsvFields(normalizeAudit(r)),
+      status: statusLabel(r.status),
+    }));
     const csv = generateCSV(csvRows, [
-      { key: 'license_number', label: 'License Number' },
-      { key: 'owner_code', label: `${config.ownerLabel} Code` },
-      { key: 'owner_name', label: `${config.ownerLabel} Name` },
-      { key: 'amount', label: config.amountLabel },
-      { key: 'start_date', label: 'Start Date' },
-      { key: 'end_date', label: 'End Date' },
-      { key: 'status', label: 'Status' },
-      { key: 'reference_no', label: 'Reference No' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'license_number', label: t('pages.licenses.licenseNumber') },
+      { key: 'owner_code', label: t('pages.licenses.ownerCodeColumn', { owner: ownerLabel }) },
+      { key: 'owner_name', label: t('pages.licenses.ownerNameColumn', { owner: ownerLabel }) },
+      { key: 'amount', label: amountLabel },
+      { key: 'start_date', label: t('common.field.startDate') },
+      { key: 'end_date', label: t('common.field.endDate') },
+      { key: 'status', label: t('common.status.label') },
+      { key: 'reference_no', label: t('pages.licenses.referenceNoColumn') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `${config.kind}-licenses-${new Date().toISOString().slice(0, 10)}.csv`);
   };
@@ -310,7 +351,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     return [
       {
         accessorKey: 'license_number',
-        header: 'License Number',
+        header: t('pages.licenses.licenseNumber'),
         meta: { card: 'title' },
         cell: ({ row }) => (
           <Link
@@ -326,7 +367,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       ...(config.showCluster
         ? [{
             id: 'cluster',
-            header: 'Cluster',
+            header: t('common.label.cluster'),
             // cluster_code/cluster_name มาจาก join ผ่าน business_unit_id → tb_cluster ไม่ใช่คอลัมน์
             // จริงบนตารางใบ — เรียงไม่ได้ ด้วยเหตุผลเดียวกับคอลัมน์ owner ข้างล่าง
             enableSorting: false,
@@ -340,7 +381,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
         : []),
       {
         id: 'owner',
-        header: config.ownerLabel,
+        header: ownerLabel,
         // เจ้าของมาจาก join ผ่าน business_unit_id/cluster_id ไม่ใช่คอลัมน์ตรงบนตารางใบ — ไม่อยู่ใน
         // รายการคอลัมน์ที่ design doc ยืนยันว่าเรียงได้ (license_number, start_date, end_date, จำนวน)
         // ปิดการเรียงไว้ก่อนเพื่อความปลอดภัยแทนที่จะเดา
@@ -358,12 +399,12 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
         // id คือชื่อฟิลด์จริงบนสาย (`licensed_users`/`licensed_bus`) ไม่ใช่ `amount` ที่เป็นชื่อ
         // ฟิลด์กลางในไฟล์นี้ — DataTable ส่ง id นี้ตรงไปเป็นค่า `sort` ให้ backend
         id: config.amountField,
-        header: config.amountLabel,
+        header: amountLabel,
         cell: ({ row }) => <span className="font-mono text-xs">{row.original.amount}</span>,
       },
       {
         id: 'coverage',
-        header: 'Coverage',
+        header: t('pages.licenses.coverageColumn'),
         // ครอบคลุมสองคอลัมน์จริง (start_date, end_date) การเรียงคลิกเดียวไม่มีความหมายชัดเจนว่า
         // เรียงด้วยฟิลด์ไหน จึงปิดไว้ — สองฟิลด์นั้นเรียงได้จริงถ้าจะเปิดคอลัมน์แยกในอนาคต
         enableSorting: false,
@@ -375,37 +416,45 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       },
       {
         id: 'status',
-        header: 'Status',
+        header: t('common.status.label'),
         // คำนวณฝั่ง FE จากวันที่ ไม่ใช่คอลัมน์จริงบน backend (controller ruling R21) — เรียงไม่ได้
         enableSorting: false,
         // การ์ดมือถือ: เหมือน SubscriptionTable.tsx's `state` column — badge ไปโผล่ที่หัวการ์ดคู่กับ
         // title แทนที่จะตกลงไปเป็นแถว "Status: [badge]" ใน <dl> เฉย ๆ — สองแท็บของหน้าเดียวกันต้อง
         // เรนเดอร์การ์ดแบบเดียวกัน
         meta: { card: 'badge' },
+        // ไม่มี `className="capitalize"` แล้ว — ค่าจากตัวคำนวณเป็น Title Case อยู่แล้วตอนภาษาอังกฤษ
+        // (ดู statusLabel/common.status.*) ภาษาไทยไม่มี case ให้ capitalize เลยแปล
         cell: ({ row }) => (
-          <Badge variant={STATUS_VARIANT[row.original.status]} className="capitalize">
-            {row.original.status}
+          <Badge variant={STATUS_VARIANT[row.original.status]}>
+            {statusLabel(row.original.status)}
           </Badge>
         ),
       },
       {
         accessorKey: 'reference_no',
-        header: 'Reference No',
+        header: t('pages.licenses.referenceNoColumn'),
         // ค้นหาได้ (`license_number`/`reference_no` เป็นสอง searchfields เดียวที่ backend รับ)
         // แต่ไม่อยู่ในรายการคอลัมน์ที่ยืนยันว่าเรียงได้
         enableSorting: false,
         cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.reference_no}</span>,
       },
-      createdColumn,
+      // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
+      // pages — see ClusterLicenseTable.tsx's identical note). Override it here so this
+      // table's Thai header row has no English hole. This table only ever spreads the one
+      // `createdColumn` (see the comment above `const [createdColumn]` — Updated is never
+      // populated for either license kind, so it isn't rendered here at all), so there is no
+      // second header to forget, unlike a table that renders both.
+      { ...createdColumn, header: t('common.audit.created') },
     ];
-  }, [config]);
+  }, [config, t, ownerLabel, amountLabel, statusLabel]);
 
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || loadFailed || rows.length === 0}>
           <Download className="mr-2 h-4 w-4" />
-          Export
+          {t('common.action.export')}
         </Button>
       </div>
 
@@ -417,14 +466,14 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
               value={search}
               onValueChange={handleSearchChange}
               onClear={handleSearchClear}
-              placeholder="Search by license number or reference..."
+              placeholder={t('pages.licenses.searchLicensesPlaceholder')}
               className="flex-1 sm:max-w-sm"
             />
             <Sheet open={showFilters} onOpenChange={setShowFilters}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="shrink-0">
                   <Filter className="mr-2 h-4 w-4" />
-                  Filters
+                  {t('common.label.filters')}
                   {activeFilterCount > 0 && (
                     <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                       {activeFilterCount}
@@ -434,14 +483,14 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                 <SheetHeader>
-                  <SheetTitle>Filters</SheetTitle>
-                  <SheetDescription>Filter by license status</SheetDescription>
+                  <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                  <SheetDescription>{t('pages.licenses.filterByStatusDescription')}</SheetDescription>
                 </SheetHeader>
                 <div className="mt-6 space-y-6 px-1">
                   <div className="space-y-3">
-                    <span className="text-sm font-medium">Status</span>
+                    <span className="text-sm font-medium">{t('common.status.label')}</span>
                     <div className="flex flex-wrap gap-1">
-                      {STATUS_OPTIONS.map(({ value, label }) => (
+                      {STATUS_VALUES.map((value) => (
                         <Button
                           key={value}
                           variant={statusFilter === value ? 'default' : 'outline'}
@@ -449,7 +498,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter(value)}
                         >
-                          {label}
+                          {statusLabel(value)}
                         </Button>
                       ))}
                     </div>
@@ -458,7 +507,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
                   {activeFilterCount > 0 && (
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleClearFilters}>
                       <X className="mr-1 h-3 w-3" />
-                      Clear all filters
+                      {t('pages.licenses.clearAllFilters')}
                     </Button>
                   )}
                 </div>
@@ -468,9 +517,9 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
 
           {activeFilterCount > 0 && statusFilter && (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1 capitalize">
-                {statusFilter}
-                <button type="button" onClick={handleClearFilters} aria-label="Remove status filter">
+              <Badge variant="secondary" className="gap-1">
+                {statusLabel(statusFilter)}
+                <button type="button" onClick={handleClearFilters} aria-label={t('pages.licenses.removeStatusFilterAria')}>
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -482,12 +531,12 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           {loadFailed ? (
             <EmptyState
               icon={AlertTriangle}
-              title="Could not load licenses"
-              description="The list could not be loaded — this does not mean there are none."
+              title={t('pages.licenses.loadFailedTitle')}
+              description={t('pages.licenses.loadFailedDescription')}
               action={
                 <Button variant="outline" size="sm" onClick={() => fetchRows()} disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
-                  {loading ? 'Retrying...' : 'Retry'}
+                  {loading ? t('pages.licenses.retryingEllipsis') : t('common.action.retry')}
                 </Button>
               }
             />
@@ -497,16 +546,16 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           ) : rows.length === 0 ? (
             <EmptyState
               icon={FileText}
-              title="No licenses"
+              title={t('pages.licenses.noLicensesTitle')}
               description={
                 search || activeFilterCount > 0
-                  ? 'No license matches the current search and filters.'
-                  : 'No licenses have been issued yet.'
+                  ? t('pages.licenses.noLicensesMatchFilters')
+                  : t('pages.licenses.noLicensesIssuedYet')
               }
               action={
                 search || activeFilterCount > 0 ? (
                   <Button variant="outline" size="sm" onClick={() => { handleSearchClear(); handleClearFilters(); }}>
-                    Clear filters
+                    {t('pages.licenses.clearFiltersAction')}
                   </Button>
                 ) : undefined
               }
@@ -515,8 +564,8 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
             <div className="relative">
               {loading && (
                 <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
-                     role="status" aria-label="Loading licenses">
-                  <div className="text-muted-foreground">Loading...</div>
+                     role="status" aria-label={t('pages.licenses.loadingLicensesAria')}>
+                  <div className="text-muted-foreground">{t('common.busy.loading')}</div>
                 </div>
               )}
               <DataTable

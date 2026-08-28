@@ -14,6 +14,8 @@ import { useClusterSeatLicenses, type SeatRow } from '../useClusterSeatLicenses'
 import { sumActiveLicenses, licenseStatus, isExpiringSoon, isMigratedPlaceholder } from '../../../utils/buLicense';
 import { latestActor } from '../../../utils/audit';
 import { isPerpetual, fmtDate, daysLeft } from '../licenseDates';
+import { useI18n } from '../../../hooks/useI18n';
+import type { TKey } from '../../../i18n/types';
 import type { BusinessUnit, BusinessUnitLicense, BuLicenseStatus } from '../../../types';
 
 export interface SeatSectionProps {
@@ -22,10 +24,17 @@ export interface SeatSectionProps {
   canManage: boolean;
 }
 
-const STATUS_BADGE: Record<BuLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; label: string }> = {
-  active: { variant: 'success', label: 'Active' },
-  scheduled: { variant: 'secondary', label: 'Scheduled' },
-  expired: { variant: 'destructive', label: 'Expired' },
+// Pure data + catalog keys, module scope — no `t` call here, matching the STATUS_VARIANT/
+// STATUS_LABEL_KEYS split established in LicensePurchaseForm.tsx / PurchaseLicenseTable.tsx.
+const STATUS_VARIANT: Record<BuLicenseStatus, 'success' | 'secondary' | 'destructive'> = {
+  active: 'success',
+  scheduled: 'secondary',
+  expired: 'destructive',
+};
+const STATUS_LABEL_KEYS: Record<BuLicenseStatus, TKey> = {
+  active: 'common.status.active',
+  scheduled: 'common.status.scheduled',
+  expired: 'common.status.expired',
 };
 
 /**
@@ -39,6 +48,7 @@ const STATUS_BADGE: Record<BuLicenseStatus, { variant: 'success' | 'secondary' |
  * ในระบบนี้ 0 ที่นั่งแปลว่าเชิญผู้ใช้ใหม่ไม่ได้จริง (FSEG) การกลืน error เป็น 0 คือการโกหกผู้ใช้
  */
 export function SeatSection({ clusterId, businessUnits, canManage }: SeatSectionProps) {
+  const { t } = useI18n();
   const { rows, loading, reload } = useClusterSeatLicenses(clusterId, businessUnits);
   const now = new Date();
 
@@ -46,23 +56,33 @@ export function SeatSection({ clusterId, businessUnits, canManage }: SeatSection
   const failedRows = rows.filter((r) => r.failed);
   const totalSeats = okRows.reduce((sum, r) => sum + sumActiveLicenses(r.licenses, now), 0);
 
+  // Two independent pluralizable counts (seats, business units) in one sentence — pick the
+  // whole-sentence key that matches both, rather than composing translated fragments. See
+  // en.ts for why (the noFeaturesAssignedToBu/ToThis "two whole sentences" precedent).
+  const seatSummaryKey: TKey = totalSeats === 1
+    ? (okRows.length === 1 ? 'pages.licenses.seatSummaryOneOne' : 'pages.licenses.seatSummaryOneMany')
+    : (okRows.length === 1 ? 'pages.licenses.seatSummaryManyOne' : 'pages.licenses.seatSummaryManyMany');
+  const seatSummaryFailedKey: TKey = failedRows.length === 1
+    ? 'pages.licenses.seatSummaryFailedOne'
+    : 'pages.licenses.seatSummaryFailedMany';
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Seats
+            {t('common.field.seats')}
           </CardTitle>
           <CardDescription>
             {loading && rows.length === 0 ? (
-              'Loading…'
+              t('common.busy.loadingEllipsis')
             ) : rows.length === 0 ? (
-              'This cluster has no business units yet — seats are issued per business unit.'
+              t('pages.licenses.noBusinessUnitsSeatsDescription')
             ) : (
               <>
-                {totalSeats} seat{totalSeats === 1 ? '' : 's'} across {okRows.length} business unit{okRows.length === 1 ? '' : 's'}
-                {failedRows.length > 0 && ` (+ ${failedRows.length} business unit${failedRows.length === 1 ? '' : 's'} unknown)`}
+                {t(seatSummaryKey, { count: totalSeats, buCount: okRows.length })}
+                {failedRows.length > 0 && t(seatSummaryFailedKey, { count: failedRows.length })}
               </>
             )}
           </CardDescription>
@@ -72,8 +92,8 @@ export function SeatSection({ clusterId, businessUnits, canManage }: SeatSection
       {rows.length === 0 && !loading ? (
         <EmptyState
           icon={Users}
-          title="No business units"
-          description="This cluster has no business units yet — seats are issued per business unit."
+          title={t('common.state.noBusinessUnits')}
+          description={t('pages.licenses.noBusinessUnitsSeatsDescription')}
         />
       ) : (
         rows.map((row) => (
@@ -92,6 +112,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
   canManage: boolean;
   onChanged: () => void;
 }) {
+  const { t } = useI18n();
   // seed จาก batch ของ useClusterSeatLicenses แล้วข้าม GET ตอน mount (skipInitialLoad) — กัน
   // ยิงคำขอซ้ำสองครั้งต่อ BU ทุกครั้งที่เปิดหน้า (review Critical ของ Task 6: การ์ดนี้เคยยิง GET
   // ของตัวเองซ้อนกับ batch เสมอ ทำให้ error ที่ batch เจอไม่ถูกสะท้อนมาที่นี่เลยถ้าคำขอที่สองบังเอิญ
@@ -139,12 +160,17 @@ function SeatRowCard({ row, canManage, onChanged }: {
           </CardTitle>
           <CardDescription>
             {loadFailed
-              ? 'Seat count unavailable'
-              : `${activeSeats} seat${activeSeats === 1 ? '' : 's'} from ${activeCount} active ${activeCount === 1 ? 'license' : 'licenses'}`}
+              ? t('pages.licenses.seatCountUnavailable')
+              : t(
+                  activeSeats === 1
+                    ? (activeCount === 1 ? 'pages.licenses.seatFromLicenseOneOne' : 'pages.licenses.seatFromLicenseOneMany')
+                    : (activeCount === 1 ? 'pages.licenses.seatFromLicenseManyOne' : 'pages.licenses.seatFromLicenseManyMany'),
+                  { count: activeSeats, activeCount },
+                )}
           </CardDescription>
           {loadFailed && (
             <p className="text-xs text-destructive">
-              Could not load licenses for this business unit — the seat figures below are unknown, not zero.
+              {t('pages.licenses.seatLoadFailedBanner')}
             </p>
           )}
         </div>
@@ -152,7 +178,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
           <Button asChild size="sm">
             <Link to={addHref}>
               <Plus className="mr-2 h-4 w-4" />
-              Add seat license
+              {t('pages.licenses.addSeatLicense')}
             </Link>
           </Button>
         )}
@@ -162,11 +188,11 @@ function SeatRowCard({ row, canManage, onChanged }: {
         {loadFailed ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <p className="text-sm text-muted-foreground">
-              License data for this business unit could not be loaded — it is unknown, not empty.
+              {t('pages.licenses.seatDataUnavailable')}
             </p>
             <Button variant="outline" size="sm" onClick={retry} disabled={loading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Retry
+              {t('common.action.retry')}
             </Button>
           </div>
         ) : loading && licenses.length === 0 ? (
@@ -174,14 +200,14 @@ function SeatRowCard({ row, canManage, onChanged }: {
         ) : licenses.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="No licenses yet"
-            description="Add the first license to set how many seats this business unit has bought."
+            title={t('pages.licenses.noLicensesYetTitle')}
+            description={t('pages.licenses.noSeatLicenseDescription')}
             action={
               canManage ? (
                 <Button asChild size="sm">
                   <Link to={addHref}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add seat license
+                    {t('pages.licenses.addSeatLicense')}
                   </Link>
                 </Button>
               ) : undefined
@@ -194,18 +220,17 @@ function SeatRowCard({ row, canManage, onChanged }: {
             <table className={`w-full text-sm [&_th]:whitespace-nowrap${canManage ? ' table-sticky-right [--sticky-right-bg:var(--card)]' : ''}`}>
               <thead>
                 <tr className="text-xs text-muted-foreground">
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Seats</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Start</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">End</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Status</th>
-                  <th className="text-left px-2 py-1">Reference</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.field.seats')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.status.label')}</th>
+                  <th className="text-left px-2 py-1">{t('common.field.reference')}</th>
                   {canManage && <th className="px-2 py-1" />}
                 </tr>
               </thead>
               <tbody>
                 {visible.map((l) => {
                   const status = licenseStatus(l, now);
-                  const badge = STATUS_BADGE[status];
                   const latest = latestActor(l);
                   return (
                     <tr key={l.id} className="border-b last:border-0">
@@ -213,15 +238,15 @@ function SeatRowCard({ row, canManage, onChanged }: {
                       <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">
                         {/* ใบ 2099 อ่านว่า "No expiry" เหมือนใบโควตา BU (ข้อตกลง §2 ข้อ 7) */}
-                        {isPerpetual(l.end_date) ? <span className="text-muted-foreground">No expiry</span> : fmtDate(l.end_date)}
+                        {isPerpetual(l.end_date) ? <span className="text-muted-foreground">{t('common.state.noExpiry')}</span> : fmtDate(l.end_date)}
                       </td>
                       <td className="px-2 py-1 space-x-1 whitespace-nowrap">
-                        <Badge variant={badge.variant}>{badge.label}</Badge>
+                        <Badge variant={STATUS_VARIANT[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
                         {isExpiringSoon(l, now) && (
-                          <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
+                          <Badge variant="warning">{t('pages.licenses.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
                         )}
                         {/* ป้าย [migrated] จาก isMigratedPlaceholder — คนละเรื่องกับ perpetual */}
-                        {isMigratedPlaceholder(l) && <Badge variant="warning">End date required</Badge>}
+                        {isMigratedPlaceholder(l) && <Badge variant="warning">{t('pages.licenses.endDateRequiredBadge')}</Badge>}
                       </td>
                       <td className="px-2 py-1 text-xs text-muted-foreground">
                         <div>{l.reference_no || '-'}</div>
@@ -235,7 +260,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
                       {canManage && (
                         <td className="px-2 py-1 text-right whitespace-nowrap">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to={`/licenses/seats/${l.id}/edit`}>Edit</Link>
+                            <Link to={`/licenses/seats/${l.id}/edit`}>{t('common.action.edit')}</Link>
                           </Button>
                           <Button
                             variant="ghost"
@@ -243,7 +268,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
                             onClick={() => setRemoveTarget(l)}
                             disabled={saving}
                           >
-                            Remove
+                            {t('common.action.remove')}
                           </Button>
                         </td>
                       )}
@@ -257,7 +282,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
 
         {expired.length > 0 && !showExpired && (
           <Button variant="ghost" size="sm" onClick={() => setShowExpired(true)}>
-            Show expired ({expired.length})
+            {t('pages.licenses.showExpired', { count: expired.length })}
           </Button>
         )}
       </CardContent>
@@ -266,8 +291,8 @@ function SeatRowCard({ row, canManage, onChanged }: {
         <ConfirmDialog
           open={!!removeTarget}
           onOpenChange={(o) => !o && setRemoveTarget(null)}
-          title="Remove license"
-          description={`Remove the ${removeTarget?.licensed_users}-seat license. If it is still in force, those seats leave the cluster pool immediately.`}
+          title={t('pages.licenses.removeLicenseTitle')}
+          description={t('pages.licenses.removeSeatDescription', { count: removeTarget?.licensed_users ?? 0 })}
           confirmVariant="destructive"
           onConfirm={async () => {
             if (removeTarget) await remove(removeTarget.id);

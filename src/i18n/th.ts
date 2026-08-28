@@ -92,7 +92,12 @@ export const th: Translations = {
     selectCluster: 'เลือก cluster',
     switchCluster: 'เปลี่ยน cluster',
     chooseCluster: 'เลือก cluster ที่ต้องการดูแล',
-    searchClusters: 'ค้นหา cluster…',
+    // F6 (2026-08-28 fix wave): unified with pages.licenses.searchClustersPlaceholder below,
+    // which used to say 'ค้นหาคลัสเตอร์...' — same English ('Search clusters...'), same UI
+    // job, kept as two separate keys (below the promotion bar — see en.ts), but the Thai
+    // now matches: Latin loanword `cluster` (per seatsPoolNote/seatsPoolDescription) and
+    // three ASCII dots (matching the English source, not U+2026).
+    searchClusters: 'ค้นหา cluster...',
     noClustersFound: 'ไม่พบ cluster',
     switchBu: 'เปลี่ยนหน่วยธุรกิจ',
     chooseBu: 'ค้นหาและเลือกหน่วยธุรกิจที่ต้องการเข้าใช้งาน',
@@ -177,6 +182,9 @@ export const th: Translations = {
       adding: 'กำลังเพิ่ม...',
       creating: 'กำลังสร้าง...',
       loading: 'กำลังโหลด...',
+      // ดูคอมเมนต์ที่ en.ts — ต่างจาก `loading` ข้างบนด้วยตัวจุดไข่ปลา (…, U+2026) ไม่ใช่จุด
+      // ASCII สามตัว ('...') ทั้งสองรูปแบบมีอยู่จริงในซอร์สคนละจุด เลยต้องแยกคีย์กัน ไม่รวมเป็นคีย์เดียว
+      loadingEllipsis: 'กำลังโหลด…',
     },
     audit: {
       createdAt: 'สร้างเมื่อ',
@@ -206,6 +214,9 @@ export const th: Translations = {
       title: 'หัวข้อ',
       severity: 'ระดับความรุนแรง',
       delivery: 'การส่ง',
+      seats: 'ที่นั่ง',
+      startDate: 'วันที่เริ่ม',
+      endDate: 'วันที่สิ้นสุด',
       required: '{{label}} *',
     },
     section: {
@@ -243,6 +254,9 @@ export const th: Translations = {
       noExpiry: 'ไม่มีวันหมดอายุ',
       expires: 'วันหมดอายุ',
       quotaExpires: 'โควตาหมดอายุ',
+      // Copied verbatim from pages.subscriptions.expiringSoon / pages.licenses.
+      // expiringSoonBadge — not retranslated. See en.ts for the promotion rationale.
+      expiringSoon: 'ใกล้หมดอายุ',
       unsavedChanges: 'มีการแก้ไขที่ยังไม่บันทึก',
       noChanges: 'ไม่มีการแก้ไข',
       unknownUser: 'ไม่ระบุชื่อ',
@@ -291,6 +305,9 @@ export const th: Translations = {
     businessUnit: { title: 'หน่วยธุรกิจ', sentence: 'หน่วยธุรกิจ', lower: 'หน่วยธุรกิจ' },
     broadcast: { title: 'ประกาศ', sentence: 'ประกาศ', lower: 'ประกาศ' },
     news: { title: 'ข่าว', sentence: 'ข่าว', lower: 'ข่าว' },
+    // Copied verbatim from pages.subscriptions.subscription — a single Thai word means
+    // all three forms coincide, matching entity.broadcast / entity.news.
+    subscription: { title: 'สัญญา', sentence: 'สัญญา', lower: 'สัญญา' },
   },
 
   // Templates space around {{entity}}: Thai nouns don't need the boundary, but these
@@ -608,9 +625,11 @@ export const th: Translations = {
       // duplicated an existing common.* key's English exactly while carrying different Thai.
       // See en.ts for the detail — this screen's search-clear and selected-count wording now
       // comes from common.clearSearch / common.state.nSelected, not a page-local key here.
+      //
+      // `seats` dropped the same way (slice 3b Task 1 fix round 1) — see en.ts. Now
+      // common.field.seats.
       detailsTitle: 'ข้อมูลสัญญา',
       purchasedModules: 'โมดูลที่ซื้อ',
-      seats: 'ที่นั่ง',
       searchNumber: 'ค้นหาเลขที่สัญญา...',
       clearClusterFilter: 'ล้างตัวกรอง cluster',
       featuresLoadFailed: 'โหลดรายการสิทธิ์ไม่สำเร็จ',
@@ -668,10 +687,8 @@ export const th: Translations = {
       // buttons this message refers to render that exact word once translated, so this
       // sentence must name the same word or the Thai UI would name two different states.
       lockedToActive: 'ล็อกไว้ที่สถานะใช้งาน ระหว่างที่แสดงสัญญาที่ใกล้หมดอายุ',
-      expiringSoon: 'ใกล้หมดอายุ',
       expiringWithinDays: 'ใกล้หมดอายุภายใน {{days}} วัน',
       expiry: 'วันหมดอายุ',
-      subscription: 'สัญญา',
       subscriptionNumber: 'เลขที่สัญญา',
       clusterCode: 'รหัส Cluster',
       businessUnitName: 'ชื่อหน่วยธุรกิจ',
@@ -679,8 +696,8 @@ export const th: Translations = {
       features: 'สิทธิ์',
       period: 'ช่วงเวลา',
       state: 'สถานะ',
-      startDate: 'วันที่เริ่ม',
-      endDate: 'วันที่สิ้นสุด',
+      // startDate/endDate dropped here (slice 3b Task 1 fix round 1) — see en.ts. Now
+      // common.field.startDate/endDate.
       seatsUsed: 'ที่นั่งที่ใช้แล้ว',
       seatsCap: 'เพดานที่นั่ง',
 
@@ -704,8 +721,152 @@ export const th: Translations = {
       featureEntitlementsForBu: 'สิทธิ์ของฟีเจอร์สำหรับ {{code}}',
       featureEntitlementsGeneric: 'สิทธิ์ของฟีเจอร์สำหรับสัญญานี้',
       detailsDescription: 'ข้อมูลระบุตัวตนของสัญญา ช่วงเวลา และสถานะ',
-      loadingOption: 'กำลังโหลด…',
       effectiveState: 'สถานะที่มีผล:',
+    },
+
+    // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —
+    // no call site is bound yet).
+    licenses: {
+      buQuota: 'โควตา BU',
+      addBuQuotaLicense: 'เพิ่มไลเซนส์โควตา BU',
+      addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
+      licenseNumber: 'เลขที่ไลเซนส์',
+      end: 'สิ้นสุด',
+      removeLicenseTitle: 'นำไลเซนส์ออก',
+      noLicensesYetTitle: 'ยังไม่มีไลเซนส์',
+      clearAllFilters: 'ล้างตัวกรองทั้งหมด',
+
+      title: 'ไลเซนส์',
+      subtitle: 'สถานะไลเซนส์ทั้ง fleet แยกตามคลัสเตอร์ สัญญา ไลเซนส์ที่นั่ง หรือโควตา BU',
+      buQuotaExpiring: 'โควตา BU ใกล้หมดอายุ',
+      selectViewAria: 'เลือกมุมมองไลเซนส์',
+      viewByCluster: 'ตามคลัสเตอร์',
+      viewBySubscription: 'ตามสัญญา',
+      viewBySeat: 'ตามไลเซนส์ที่นั่ง',
+      viewByBuQuota: 'ตามโควตา BU',
+
+      clusterNotFoundOrDeleted: 'ไม่พบ Cluster หรืออาจถูกลบไปแล้ว',
+      clusterUnavailable: 'Cluster ใช้งานไม่ได้',
+      subtitleWithCode: 'ไลเซนส์ · {{code}}',
+
+      noLicence: 'ไม่มีไลเซนส์',
+      overBuLimit: 'เกินโควตา BU',
+      seatsFull: 'ที่นั่งเต็ม',
+      buQuotaColumn: 'โควตา BU',
+      daysLeft: 'เหลืออีก {{count}} วัน',
+      // F6: unified with switcher.searchClusters — see the comment there.
+      searchClustersPlaceholder: 'ค้นหา cluster...',
+      filtersSheetDescription: 'กรองคลัสเตอร์ตามสถานะและสถานะไลเซนส์',
+      licenceStateLabel: 'สถานะไลเซนส์',
+      quotaExpiringToggle: 'โควตาใกล้หมดอายุ',
+      filterNarrowsHint: 'เลือกมากกว่าหนึ่งตัวจะทำให้รายการแคบลง — คลัสเตอร์ต้องตรงกับทุกตัวที่เลือก',
+      removeFilterAria: 'นำตัวกรอง {{value}} ออก',
+      removeQuotaExpiringFilterAria: 'นำตัวกรองโควตาใกล้หมดอายุออก',
+      noClustersTitle: 'ไม่พบคลัสเตอร์',
+      noClustersMatchFilters: 'ไม่มีคลัสเตอร์ที่ตรงกับคำค้นหาและตัวกรองปัจจุบัน',
+      noClustersYet: 'ยังไม่มีคลัสเตอร์',
+      clearFiltersAction: 'ล้างตัวกรอง',
+      loadingClustersAria: 'กำลังโหลดคลัสเตอร์',
+      loadFailedPrefix: 'โหลดคลัสเตอร์ไม่สำเร็จ: ',
+
+      // Task 3 — see en.ts for the cross-file rationale behind each key here.
+      license: 'ไลเซนส์',
+      licenseDetailsTitle: 'รายละเอียดไลเซนส์',
+      licenseDetailsDescription: '{{owner}} จำนวน และช่วงเวลาคุ้มครอง',
+      referenceNoLabel: 'เลขที่อ้างอิง',
+      missingOwnerTitle: 'ไม่มี {{owner}}',
+      missingOwnerDescription: 'หน้านี้ต้องมี {{owner}} สำหรับออกไลเซนส์ให้ เปิดจากหน้าของ {{owner}} แทนการพิมพ์ URL นี้ตรง ๆ',
+      notFoundTitle: 'ไม่พบไลเซนส์',
+      notFoundDescription: 'ไม่พบไลเซนส์นี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการไลเซนส์',
+      backToLicenses: 'กลับไปหน้าไลเซนส์',
+      createSubtitle: 'ออกไลเซนส์ใหม่ให้กับ {{owner}} นี้',
+      createLicense: 'สร้างไลเซนส์',
+      unnamedLicense: '(ไลเซนส์ที่ยังไม่มีชื่อ)',
+      ownerSubtitle: '{{owner}}: {{value}}',
+      loadingAria: 'กำลังโหลดไลเซนส์',
+      loadFailedDetail: 'โหลดไลเซนส์ไม่สำเร็จ: ',
+      createFailedPrefix: 'สร้างไลเซนส์ไม่สำเร็จ: ',
+      saveFailedPrefix: 'บันทึกไลเซนส์ไม่สำเร็จ: ',
+      missingDocVersionOrOwner: 'ไม่มี doc_version หรือ owner id สำหรับรายการนี้ — โหลดหน้าใหม่แล้วลองอีกครั้ง',
+      // Copied verbatim from pages.subscriptions.endDateAfterStart — confirmed identical
+      // character for character, not retranslated. See en.ts for why this stays a separate
+      // key instead of reusing that one directly.
+      endDateAfterStart: 'วันที่สิ้นสุดต้องอยู่หลังวันที่เริ่ม',
+
+      filterByStatusDescription: 'กรองตามสถานะไลเซนส์',
+      removeStatusFilterAria: 'นำตัวกรองสถานะออก',
+      searchLicensesPlaceholder: 'ค้นหาด้วยเลขที่ไลเซนส์หรือเลขอ้างอิง...',
+      loadFailedTitle: 'โหลดไลเซนส์ไม่สำเร็จ',
+      loadFailedDescription: 'โหลดรายการไม่สำเร็จ — ไม่ได้แปลว่าไม่มีข้อมูล',
+      retryingEllipsis: 'กำลังลองใหม่...',
+      // Same Thai as noLicence above — see en.ts, only the English differs by spelling/number.
+      noLicensesTitle: 'ไม่มีไลเซนส์',
+      noLicensesMatchFilters: 'ไม่มีไลเซนส์ที่ตรงกับคำค้นหาและตัวกรองปัจจุบัน',
+      noLicensesIssuedYet: 'ยังไม่มีการออกไลเซนส์ใด ๆ',
+      loadingLicensesAria: 'กำลังโหลดไลเซนส์',
+      ownerCodeColumn: 'รหัส {{owner}}',
+      ownerNameColumn: 'ชื่อ {{owner}}',
+      coverageColumn: 'ช่วงเวลาคุ้มครอง',
+      referenceNoColumn: 'เลขที่อ้างอิง',
+
+      // Task 4 — see en.ts for the cross-file rationale behind each key here.
+      buQuotaCardTitle: 'ไลเซนส์โควตา BU',
+      buQuotaLoadFailedDescription: 'โหลดไลเซนส์สำหรับ Cluster นี้ไม่สำเร็จ — โควตาไม่ทราบ ไม่ใช่ศูนย์',
+      quotaNoExpiry: 'โควตา: {{count}} หน่วยธุรกิจ · ไม่มีวันหมดอายุ',
+      quotaExpires: 'โควตา: {{count}} หน่วยธุรกิจ · หมดอายุ {{date}}',
+      noLicenseInForce: 'ไม่มีไลเซนส์ที่มีผล — Cluster นี้สร้างหน่วยธุรกิจไม่ได้',
+      buQuotaLoadFailedBanner: 'โหลดข้อมูลไลเซนส์สำหรับ Cluster นี้ไม่สำเร็จ — ตัวเลขโควตาและ Over limit ด้านล่างไม่ทราบ ไม่ใช่ศูนย์',
+      businessUnitsInUse: 'หน่วยธุรกิจที่ใช้อยู่: {{used}} / {{total}}',
+      overLimitReadOnly: 'เกิน {{count}} หน่วย — หน่วยเหล่านั้นอ่านได้อย่างเดียว',
+      buQuotaDataUnavailable: 'โหลดข้อมูลไลเซนส์สำหรับ Cluster นี้ไม่สำเร็จ — ข้อมูลไม่ทราบ ไม่ใช่ว่างเปล่า',
+      noBuQuotaLicenseDescription: 'ทีมแพลตฟอร์มยังไม่ได้ออกไลเซนส์โควตา BU ให้ Cluster นี้',
+      quotaColumn: 'โควตา',
+      showExpired: 'แสดงที่หมดอายุ ({{count}})',
+      removeBuQuotaDescription: 'นำไลเซนส์ {{count}}-BU นี้ออก หากยังมีผลอยู่ Cluster นี้จะเสียสิทธิ์สร้างหน่วยธุรกิจใหม่ทันทีจนกว่าจะมีไลเซนส์ใบอื่นมาแทน',
+      buRankQuotaUnavailable: 'ไม่ทราบโควตา — โหลดข้อมูลไลเซนส์ด้านบนไม่สำเร็จ จึงยังระบุสถานะ Over limit ไม่ได้ในตอนนี้',
+      // Same Thai for both — see en.ts, only the English differs by number.
+      overLimitCountOne: '{{count}} หน่วยธุรกิจมีอันดับเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      overLimitCountMany: '{{count}} หน่วยธุรกิจมีอันดับเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      rankedExplanation: 'จัดอันดับด้วยวิธีเดียวกับที่แพลตฟอร์มใช้ตัดสินว่าหน่วยไหนได้รับความคุ้มครอง — HQ ก่อน แล้วตามด้วยหน่วยที่เก่าที่สุด',
+      rankColumn: 'อันดับ',
+      overLimitBadge: 'เกินโควตา',
+      overLimitTitle: 'โควตา {{cap}} · หน่วยนี้อยู่อันดับ {{rank}}',
+
+      noBusinessUnitsSeatsDescription: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ — ที่นั่งจะออกให้เป็นรายหน่วยธุรกิจ',
+      // Same Thai across all four combinations — see en.ts, only the English differs.
+      seatSummaryOneOne: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryOneMany: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryManyOne: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryManyMany: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryFailedOne: ' (+ {{count}} หน่วยธุรกิจไม่ทราบผล)',
+      seatSummaryFailedMany: ' (+ {{count}} หน่วยธุรกิจไม่ทราบผล)',
+      seatCountUnavailable: 'ไม่ทราบจำนวนที่นั่ง',
+      seatLoadFailedBanner: 'โหลดไลเซนส์สำหรับหน่วยธุรกิจนี้ไม่สำเร็จ — ตัวเลขที่นั่งด้านล่างไม่ทราบ ไม่ใช่ศูนย์',
+      seatDataUnavailable: 'โหลดข้อมูลไลเซนส์สำหรับหน่วยธุรกิจนี้ไม่สำเร็จ — ข้อมูลไม่ทราบ ไม่ใช่ว่างเปล่า',
+      noSeatLicenseDescription: 'เพิ่มไลเซนส์ใบแรกเพื่อกำหนดจำนวนที่นั่งที่หน่วยธุรกิจนี้ซื้อไว้',
+      removeSeatDescription: 'นำไลเซนส์ {{count}}-ที่นั่งนี้ออก หากยังมีผลอยู่ ที่นั่งเหล่านั้นจะออกจากพูลของ Cluster ทันที',
+      // Same Thai across all four combinations — see en.ts.
+      seatFromLicenseOneOne: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatFromLicenseOneMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatFromLicenseManyOne: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatFromLicenseManyMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      endDateRequiredBadge: 'ต้องระบุวันที่สิ้นสุด',
+
+      subscriptionsCardDescription: 'สัญญาที่ออกให้กับหน่วยธุรกิจของ Cluster นี้',
+      addSubscriptionButton: 'เพิ่มสัญญา',
+      subscriptionsLoadFailedPrefix: 'โหลดสัญญาสำหรับ Cluster นี้ไม่สำเร็จ: ',
+      subscriptionsLoadFailed: 'โหลดสัญญาสำหรับ Cluster นี้ไม่สำเร็จ',
+      // Copied verbatim from pages.subscriptions.emptyTitle — not retranslated.
+      noSubscriptionsYetTitle: 'ยังไม่มีสัญญา',
+      noSubscriptionContractsDescription: 'Cluster นี้ไม่มีสัญญา',
+      noBuBadge: 'ไม่มี BU',
+      // subscriptionColumn -> entity.subscription.title, expiringSoonBadge ->
+      // common.state.expiringSoon (fix round 1). subscriptionStateColumn stays — same Thai
+      // as common.status.label on purpose (Thai has no word for "state" vs "status").
+      subscriptionStateColumn: 'สถานะ',
+
+      licenseRemoved: 'นำไลเซนส์ออกแล้ว',
+      removeLicenseFailedTitle: 'นำไลเซนส์ออกไม่สำเร็จ',
     },
   },
   error: {

@@ -279,8 +279,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       { key: 'cluster_name', label: t('common.label.cluster') },
       { key: 'cluster_code', label: t('pages.subscriptions.clusterCode') },
       { key: 'state', label: t('pages.subscriptions.state') },
-      { key: 'start_date', label: t('pages.subscriptions.startDate') },
-      { key: 'end_date', label: t('pages.subscriptions.endDate') },
+      { key: 'start_date', label: t('common.field.startDate') },
+      { key: 'end_date', label: t('common.field.endDate') },
       { key: 'seat_used', label: t('pages.subscriptions.seatsUsed') },
       { key: 'seat_cap', label: t('pages.subscriptions.seatsCap') },
       { key: 'bu_code', label: t('entity.businessUnit.title') },
@@ -305,7 +305,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
     return [
       {
         accessorKey: 'subscription_number',
-        header: t('pages.subscriptions.subscription'),
+        header: t('entity.subscription.title'),
         meta: { card: 'title' },
         cell: ({ row }) => (
           <Link to={`/licenses/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
@@ -369,7 +369,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
               <Badge variant={state === 'active' ? 'success' : 'secondary'}>
                 {stateLabel(state)}
               </Badge>
-              {soon && <Badge variant="warning">{t('pages.subscriptions.expiringSoon')}</Badge>}
+              {soon && <Badge variant="warning">{t('common.state.expiringSoon')}</Badge>}
             </div>
           );
         },
@@ -549,7 +549,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                 <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {expiringSoonFilter ? (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    {t('pages.subscriptions.expiringSoon')}
+                    {t('common.state.expiringSoon')}
                     <button onClick={handleExpiringSoonToggle} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>

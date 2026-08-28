@@ -40,7 +40,7 @@ export const SubscriptionSummary: React.FC<SubscriptionSummaryProps> = ({ summar
     { key: 'total', label: t('common.option.all'), value: summary?.total, color: 'text-foreground' },
     { key: 'active', label: t('common.status.active'), value: summary?.active, color: 'text-success' },
     { key: 'expired', label: t('common.status.expired'), value: summary?.expired, color: 'text-muted-foreground' },
-    { key: 'expiring_soon', label: t('pages.subscriptions.expiringSoon'), value: summary?.expiring_soon, color: 'text-warning' },
+    { key: 'expiring_soon', label: t('common.state.expiringSoon'), value: summary?.expiring_soon, color: 'text-warning' },
     { key: 'deleted', label: t('common.status.deleted'), value: summary?.deleted, color: 'text-destructive' },
   ] as const;
 

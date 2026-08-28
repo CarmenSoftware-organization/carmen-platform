@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import clusterService from '../../services/clusterService';
 import { devLog } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
 import { FleetCapacity } from '../clusterManagement/FleetCapacity';
 import ClusterLicenseTable from './ClusterLicenseTable';
 import SubscriptionTable from './SubscriptionTable';
@@ -15,12 +16,6 @@ import type { FleetSummary } from '../../types';
 type LicenseView = 'cluster' | 'subscription' | 'seat' | 'bu-quota';
 const VIEW_KEY = 'license_center_view';
 const VIEWS: LicenseView[] = ['cluster', 'subscription', 'seat', 'bu-quota'];
-const VIEW_OPTIONS: { value: LicenseView; label: string }[] = [
-  { value: 'cluster', label: 'By cluster' },
-  { value: 'subscription', label: 'By subscription' },
-  { value: 'seat', label: 'By seat license' },
-  { value: 'bu-quota', label: 'By BU quota' },
-];
 
 /**
  * ค่าจาก localStorage ต้องตรวจสมาชิกภาพก่อนใช้ — `as LicenseView` ดิบ ๆ แล้ว `|| 'cluster'`
@@ -38,6 +33,7 @@ const readStoredView = (): LicenseView => {
  * "By seat license"/"By BU quota" ตารางรายใบทั้ง fleet จาก Task 7)
  */
 const LicenseCenter: React.FC = () => {
+  const { t } = useI18n();
   const [view, setView] = useState<LicenseView>(readStoredView);
   const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
@@ -52,6 +48,13 @@ const LicenseCenter: React.FC = () => {
   };
 
   const toggleExpiringSoonFilter = () => setExpiringSoonFilter((v) => !v);
+
+  const VIEW_OPTIONS = useMemo<{ value: LicenseView; label: string }[]>(() => [
+    { value: 'cluster', label: t('pages.licenses.viewByCluster') },
+    { value: 'subscription', label: t('pages.licenses.viewBySubscription') },
+    { value: 'seat', label: t('pages.licenses.viewBySeat') },
+    { value: 'bu-quota', label: t('pages.licenses.viewByBuQuota') },
+  ], [t]);
 
   // แถบสรุปอ่านจาก endpoint เฉพาะทางที่ไม่รับตัวกรองเลย จึงเป็นตัวเลขทั้ง fleet เสมอ
   // ตัวกรอง "โควตาใกล้หมดอายุ" ด้านล่างกรองแค่ตาราง ไม่แตะแถบนี้ — พฤติกรรมเดิมไม่เปลี่ยน
@@ -82,8 +85,8 @@ const LicenseCenter: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Licenses"
-          subtitle="Fleet-wide license status by cluster, subscription, seat license, or BU quota."
+          title={t('pages.licenses.title')}
+          subtitle={t('pages.licenses.subtitle')}
         />
 
         {/* expiring_soon นับเฉพาะใบโควตา BU ไม่รวมใบที่นั่งและใบสัญญา (src/types/index.ts) —
@@ -92,7 +95,7 @@ const LicenseCenter: React.FC = () => {
           summary={fleet}
           loading={fleetLoading}
           error={fleetError}
-          expiringLabel="BU quota expiring"
+          expiringLabel={t('pages.licenses.buQuotaExpiring')}
           onExpiringSoonClick={toggleExpiringSoonFilter}
           expiringSoonActive={expiringSoonFilter}
         />
@@ -112,7 +115,7 @@ const LicenseCenter: React.FC = () => {
         </div>
         <div className="sm:hidden">
           <Select value={view} onValueChange={(v) => changeView(v as LicenseView)}>
-            <SelectTrigger aria-label="Select license view">
+            <SelectTrigger aria-label={t('pages.licenses.selectViewAria')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

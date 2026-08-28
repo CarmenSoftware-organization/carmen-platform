@@ -21,6 +21,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../hooks/useI18n';
 import { toIsoStartOfDay, toIsoEndOfDay, isPerpetual, fmtDate, PERPETUAL_END_DATE } from './licenseDates';
 import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
@@ -28,14 +29,44 @@ import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
 import type {
   BusinessUnitLicense, ClusterLicense, SeatLicenseRow, BuQuotaLicenseRow, BuLicenseStatus, ClusterLicenseStatus,
 } from '../../types';
+import type { TKey } from '../../i18n/types';
 
 type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow;
 type StatusBadgeInfo = { variant: 'success' | 'secondary' | 'destructive'; label: string };
 
-const STATUS_BADGE: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo> = {
-  active: { variant: 'success', label: 'Active' },
-  scheduled: { variant: 'secondary', label: 'Scheduled' },
-  expired: { variant: 'destructive', label: 'Expired' },
+// Pure data (variant), no translation involved — stays a module constant.
+const STATUS_VARIANT: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo['variant']> = {
+  active: 'success',
+  scheduled: 'secondary',
+  expired: 'destructive',
+};
+
+// Catalog KEYS only (not translated values) — module-scope is fine because nothing here
+// calls `t`. Each component below resolves these with its own `useI18n()` call.
+const STATUS_LABEL_KEYS: Record<BuLicenseStatus | ClusterLicenseStatus, TKey> = {
+  active: 'common.status.active',
+  scheduled: 'common.status.scheduled',
+  expired: 'common.status.expired',
+};
+
+// licenseKindConfig.ts used to carry `ownerLabel`/`amountLabel`/`newPageTitle` as plain
+// English string fields, but neither this file nor PurchaseLicenseTable.tsx ever rendered
+// them — both resolve their own per-kind translated value locally instead, via keys Task 1
+// already seeded for this exact purpose (buQuota/addBuQuotaLicense/addSeatLicense) plus
+// common.field.seats/common.label.cluster/entity.businessUnit.title. The three dead fields
+// were deleted from `LicenseKindConfig` in the i18n fix wave (2026-08-28) once this was
+// confirmed — these Record maps are the only source of the label now, not the config.
+const OWNER_LABEL_KEYS: Record<LicenseKind, TKey> = {
+  seat: 'entity.businessUnit.title',
+  'bu-quota': 'common.label.cluster',
+};
+const AMOUNT_LABEL_KEYS: Record<LicenseKind, TKey> = {
+  seat: 'common.field.seats',
+  'bu-quota': 'pages.licenses.buQuota',
+};
+const NEW_PAGE_TITLE_KEYS: Record<LicenseKind, TKey> = {
+  seat: 'pages.licenses.addSeatLicense',
+  'bu-quota': 'pages.licenses.addBuQuotaLicense',
 };
 
 /**
@@ -151,20 +182,23 @@ function LicenseFieldsCard({
   config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, cluster, licenseNumber, isNew, statusBadge,
   onChange, onBlur, onFocus, onNoExpiryChange,
 }: LicenseFieldsCardProps) {
+  const { t } = useI18n();
+  const ownerLabel = t(OWNER_LABEL_KEYS[config.kind]);
+  const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
   return (
     <Card className={isNew ? undefined : 'pb-24'}>
       <CardHeader>
         <div className="flex items-center gap-2">
-          <CardTitle>License details</CardTitle>
+          <CardTitle>{t('pages.licenses.licenseDetailsTitle')}</CardTitle>
           {statusBadge && <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>}
         </div>
-        <CardDescription>{config.ownerLabel}, amount, and coverage period</CardDescription>
+        <CardDescription>{t('pages.licenses.licenseDetailsDescription', { owner: ownerLabel })}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           {cluster && (
             <div className="space-y-2">
-              <Label>Cluster</Label>
+              <Label>{t('common.label.cluster')}</Label>
               {/* อ่านอย่างเดียวเหมือนเจ้าของ — คลัสเตอร์ถูกกำหนดโดย BU ที่ถือใบนี้ ย้ายจากหน้านี้ไม่ได้ */}
               <ReadOnlyField value={cluster.label} />
               <p className="text-muted-foreground text-xs font-mono">{cluster.id}</p>
@@ -172,7 +206,7 @@ function LicenseFieldsCard({
           )}
 
           <div className="space-y-2">
-            <Label>{config.ownerLabel}</Label>
+            <Label>{ownerLabel}</Label>
             {/* เจ้าของแก้ไม่ได้ทั้งสองโหมด — ข้อความอ่านอย่างเดียวเสมอ ไม่ใช่ input disabled */}
             <ReadOnlyField value={ownerText} />
             {ownerText !== ownerId && (
@@ -181,14 +215,16 @@ function LicenseFieldsCard({
           </div>
 
           <div className="space-y-2">
-            <Label>License Number</Label>
+            <Label>{t('pages.licenses.licenseNumber')}</Label>
             {/* ระบบออกให้เอง (เหมือน subscription_number) — ไม่มีโหมดแก้ */}
             <ReadOnlyField value={licenseNumber} className="font-mono" />
-            {isNew && <p className="text-muted-foreground text-xs">ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก</p>}
+            {isNew && (
+              <p className="text-muted-foreground text-xs">{t('pages.subscriptions.numberAutoAssigned')}</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="amount">{config.amountLabel}{editing && ' *'}</Label>
+            <Label htmlFor="amount">{editing ? t('common.field.required', { label: amountLabel }) : amountLabel}</Label>
             {editing ? (
               <>
                 <Input
@@ -210,7 +246,9 @@ function LicenseFieldsCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="start_date">Start Date{editing && ' *'}</Label>
+            <Label htmlFor="start_date">
+              {editing ? t('common.field.required', { label: t('common.field.startDate') }) : t('common.field.startDate')}
+            </Label>
             {editing ? (
               <>
                 <Input
@@ -231,7 +269,11 @@ function LicenseFieldsCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="end_date">End Date{editing && !noExpiry && ' *'}</Label>
+            <Label htmlFor="end_date">
+              {editing && !noExpiry
+                ? t('common.field.required', { label: t('common.field.endDate') })
+                : t('common.field.endDate')}
+            </Label>
             {editing ? (
               <>
                 {config.showNoExpiry && (
@@ -240,10 +282,10 @@ function LicenseFieldsCard({
                       type="checkbox"
                       checked={noExpiry}
                       onChange={(e) => onNoExpiryChange(e.target.checked)}
-                      aria-label="No expiry"
+                      aria-label={t('common.state.noExpiry')}
                       className="h-4 w-4 rounded border-input"
                     />
-                    No expiry
+                    {t('common.state.noExpiry')}
                   </label>
                 )}
                 {!noExpiry && (
@@ -263,12 +305,12 @@ function LicenseFieldsCard({
                 )}
               </>
             ) : (
-              <ReadOnlyField value={noExpiry ? 'No expiry' : draft.end_date} />
+              <ReadOnlyField value={noExpiry ? t('common.state.noExpiry') : draft.end_date} />
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="reference_no">Reference No.</Label>
+            <Label htmlFor="reference_no">{t('pages.licenses.referenceNoLabel')}</Label>
             {editing ? (
               <Input id="reference_no" name="reference_no" value={draft.reference_no} onChange={onChange} />
             ) : (
@@ -278,7 +320,7 @@ function LicenseFieldsCard({
 
           {config.showNote && (
             <div className="space-y-2">
-              <Label htmlFor="note">Note</Label>
+              <Label htmlFor="note">{t('common.field.note')}</Label>
               {editing ? (
                 <Input id="note" name="note" value={draft.note} onChange={onChange} />
               ) : (
@@ -313,6 +355,14 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   const isNew = mode === 'create';
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('subscription.manage');
+  const { t } = useI18n();
+  // Title-Case owner-type label ('Business Unit' / 'Cluster') — NOT the same thing as the
+  // `ownerLabel` state below (the owner ENTITY's own display name, e.g. 'T02 - Some BU').
+  // `.toLowerCase()` reproduces `config.ownerLabel.toLowerCase()`'s old output exactly: it's
+  // a no-op on the Thai translation (Thai has no case) and a real lowercase on the English
+  // one, matching the byte-identity requirement for both languages.
+  const ownerTypeLabel = t(OWNER_LABEL_KEYS[config.kind]);
+  const ownerTypeLabelLower = ownerTypeLabel.toLowerCase();
 
   // โหมดสร้าง: เจ้าของมาจาก query param เท่านั้น (ไม่มี picker ในฟอร์มนี้) — ลิงก์ที่พาเข้ามาต้อง
   // รู้เจ้าของอยู่แล้วเสมอ (ปุ่ม Add license ใน SeatSection/BuQuotaSection ผูกกับ BU/cluster หนึ่งตัว)
@@ -387,12 +437,12 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError('Failed to load license: ' + getErrorDetail(err));
+        setError(t('pages.licenses.loadFailedDetail') + getErrorDetail(err, t));
       }
     } finally {
       setLoading(false);
     }
-  }, [id, isNew, config]);
+  }, [id, isNew, config, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -403,15 +453,15 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   };
 
   const blurOptions = (name: string): { required?: boolean; label?: string } | undefined => {
-    if (name === 'amount') return { required: true, label: config.amountLabel };
-    if (name === 'start_date') return { required: true, label: 'Start date' };
-    if (name === 'end_date') return { required: !noExpiry, label: 'End date' };
+    if (name === 'amount') return { required: true, label: t(AMOUNT_LABEL_KEYS[config.kind]) };
+    if (name === 'start_date') return { required: true, label: t('common.validation.startDate') };
+    if (name === 'end_date') return { required: !noExpiry, label: t('common.validation.endDate') };
     return undefined;
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, blurOptions(name)) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, blurOptions(name), t) }));
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -435,16 +485,16 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // — เช็คตรงนี้ตอน submit เหมือน SubscriptionForm
   const validateBeforeSubmit = (): boolean => {
     const next: Record<string, string> = {};
-    const amountErr = validateField('amount', draft.amount, { required: true, label: config.amountLabel });
+    const amountErr = validateField('amount', draft.amount, { required: true, label: t(AMOUNT_LABEL_KEYS[config.kind]) }, t);
     if (amountErr) next.amount = amountErr;
-    const startErr = validateField('start_date', draft.start_date, { required: true, label: 'Start date' });
+    const startErr = validateField('start_date', draft.start_date, { required: true, label: t('common.validation.startDate') }, t);
     if (startErr) next.start_date = startErr;
     if (!noExpiry) {
-      const endErr = validateField('end_date', draft.end_date, { required: true, label: 'End date' });
+      const endErr = validateField('end_date', draft.end_date, { required: true, label: t('common.validation.endDate') }, t);
       if (endErr) next.end_date = endErr;
       if (!next.start_date && !next.end_date && draft.start_date && draft.end_date) {
         if (new Date(draft.end_date).getTime() <= new Date(draft.start_date).getTime()) {
-          next.end_date = 'End date must be after start date';
+          next.end_date = t('pages.licenses.endDateAfterStart');
         }
       }
     }
@@ -482,18 +532,18 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       const create = config.service.create as unknown as (ownerId: string, data: Record<string, unknown>) => Promise<unknown>;
       const result = await create(ownerId, buildPayload());
       const created = ((result as { data?: { id?: string } })?.data || result) as { id?: string } | undefined;
-      toast.success('License created successfully');
+      toast.success(t('toast.created', { entity: t('pages.licenses.license') }));
       if (created?.id) {
         navigate(`/licenses/${config.editPathSegment}/${created.id}/edit`, { replace: true });
       } else {
         navigate(config.listPath);
       }
     } catch (err: unknown) {
-      const { fields } = parseApiError(err);
+      const { fields } = parseApiError(err, t);
       if (fields && Object.keys(fields).length > 0) {
         setFieldErrors((prev) => ({ ...prev, ...fields }));
       } else {
-        setError('Failed to create license: ' + getErrorDetail(err));
+        setError(t('pages.licenses.createFailedPrefix') + getErrorDetail(err, t));
       }
     } finally {
       setSaving(false);
@@ -506,7 +556,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     // ownerId ว่างไม่ควรเกิดได้ (load() เซ็ตจาก getByIdPlatform เสมอ) แต่ถ้าเกิดขึ้นจริงต้อง fail
     // ให้เห็นชัดตรงนี้ ไม่ใช่ปล่อยให้ PATCH ไปที่ .../undefined/licenses/:id แล้วได้ 404 งง ๆ กลับมา
     if (docVersion == null || !ownerId) {
-      setError('Missing doc_version or owner id for this record — reload the page and try again.');
+      setError(t('pages.licenses.missingDocVersionOrOwner'));
       return;
     }
     setSaving(true);
@@ -515,7 +565,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       const update = config.service.update as unknown as
         (ownerId: string, id: string, data: Record<string, unknown>) => Promise<unknown>;
       await update(ownerId, id!, { ...buildPayload(), doc_version: docVersion });
-      toast.success('Changes saved successfully');
+      toast.success(t('toast.saved'));
       await load();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
@@ -524,11 +574,11 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       } else if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        const { fields } = parseApiError(err);
+        const { fields } = parseApiError(err, t);
         if (fields && Object.keys(fields).length > 0) {
           setFieldErrors((prev) => ({ ...prev, ...fields }));
         } else {
-          setError('Failed to save license: ' + getErrorDetail(err));
+          setError(t('pages.licenses.saveFailedPrefix') + getErrorDetail(err, t));
         }
       }
     } finally {
@@ -544,7 +594,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading license">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.licenses.loadingAria')}>
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
             <div className="flex-1">
@@ -575,16 +625,16 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo={config.listPath} title="License" />
+          <PageHeader backTo={config.listPath} title={t('pages.licenses.license')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="License not found"
-                description="This license doesn't exist, or it may have been deleted. Check the link, or pick one from the license list."
+                title={t('pages.licenses.notFoundTitle')}
+                description={t('pages.licenses.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate(config.listPath)}>
-                    Back to licenses
+                    {t('pages.licenses.backToLicenses')}
                   </Button>
                 }
               />
@@ -599,16 +649,16 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo={config.listPath} title={config.newPageTitle} />
+          <PageHeader backTo={config.listPath} title={t(NEW_PAGE_TITLE_KEYS[config.kind])} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={AlertTriangle}
-                title={`Missing ${config.ownerLabel.toLowerCase()}`}
-                description={`This page needs a ${config.ownerLabel.toLowerCase()} to create a license for. Open it from a ${config.ownerLabel.toLowerCase()}'s page instead of typing this URL directly.`}
+                title={t('pages.licenses.missingOwnerTitle', { owner: ownerTypeLabelLower })}
+                description={t('pages.licenses.missingOwnerDescription', { owner: ownerTypeLabelLower })}
                 action={
                   <Button size="sm" onClick={() => navigate(config.listPath)}>
-                    Back to licenses
+                    {t('pages.licenses.backToLicenses')}
                   </Button>
                 }
               />
@@ -621,7 +671,9 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
 
   const now = new Date();
   const status = !isNew && detail ? statusOfRow(config.kind, detail, now) : null;
-  const statusBadge = status ? STATUS_BADGE[status] : null;
+  const statusBadge: StatusBadgeInfo | null = status
+    ? { variant: STATUS_VARIANT[status], label: t(STATUS_LABEL_KEYS[status]) }
+    : null;
   const ownerText = ownerLabel || ownerId;
   // โหมดสร้างยังไม่มีแถวให้อ่าน (`detail` เป็น null) จึงไม่มีคลัสเตอร์ให้แสดง — ต่างจาก
   // เจ้าของที่มาทาง query param ได้ คลัสเตอร์ไม่ถูกส่งมาทาง URL เลย ช่องจะไม่ขึ้นทั้งช่อง
@@ -635,8 +687,8 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
           <>
             <PageHeader
               backTo={config.listPath}
-              title={config.newPageTitle}
-              subtitle={`Issue a new license for this ${config.ownerLabel.toLowerCase()}`}
+              title={t(NEW_PAGE_TITLE_KEYS[config.kind])}
+              subtitle={t('pages.licenses.createSubtitle', { owner: ownerTypeLabelLower })}
             />
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
@@ -662,12 +714,12 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 <Can permission="subscription.manage">
                   <Button type="submit" size="sm" disabled={saving}>
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? 'Creating...' : 'Create License'}
+                    {saving ? t('common.busy.creating') : t('pages.licenses.createLicense')}
                   </Button>
                 </Can>
                 <Button type="button" size="sm" variant="outline" onClick={() => navigate(config.listPath)}>
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </form>
@@ -676,8 +728,8 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
           <>
             <PageHeader
               backTo={config.listPath}
-              title={licenseNumber || '(unnamed license)'}
-              subtitle={`${config.ownerLabel}: ${ownerText}`}
+              title={licenseNumber || t('pages.licenses.unnamedLicense')}
+              subtitle={t('pages.licenses.ownerSubtitle', { owner: ownerTypeLabel, value: ownerText })}
               // "Created … by … · Updated … by …" ใต้ subtitle — รูปแบบเดียวกับหน้าแก้ไขอื่นทั้งแอป
               // อ่านจาก `detail` (data ที่ unwrap แล้ว) ไม่ใช่ `rawResponse` เพราะ audit อยู่ใน
               // `data.audit` ชั้นใน — normalizeAudit รับได้ทั้งรูป nested และรูปแบน
@@ -714,17 +766,17 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
-              <span>Unsaved changes</span>
+              <span>{t('common.state.unsavedChanges')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Can permission="subscription.manage">
                 <Button type="button" size="sm" disabled={saving} onClick={() => void handleSave()}>
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
                 </Button>
               </Can>
             </div>

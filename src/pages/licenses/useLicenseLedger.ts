@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getErrorDetail } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
 
 /**
  * รูปของ service ที่ hook นี้ขับได้ — `clusterLicenseService` และ `businessUnitLicenseService`
@@ -50,6 +51,7 @@ export function useLicenseLedger<TLicense extends { id: string }>(
   service: LicenseLedgerService,
   options?: UseLicenseLedgerOptions<TLicense>,
 ) {
+  const { t } = useI18n();
   const [licenses, setLicenses] = useState<TLicense[]>(options?.initialLicenses ?? []);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -75,13 +77,13 @@ export function useLicenseLedger<TLicense extends { id: string }>(
       setLoadFailed(false);
     } catch (err) {
       if (mine !== reqId.current) return;
-      toast.error('Could not load licenses', { description: getErrorDetail(err) });
+      toast.error(t('pages.licenses.loadFailedTitle'), { description: getErrorDetail(err, t) });
       setLicenses([]);
       setLoadFailed(true);
     } finally {
       if (mine === reqId.current) setLoading(false);
     }
-  }, [ownerId, service]);
+  }, [ownerId, service, t]);
 
   // อ่าน `skipInitialLoad` ครั้งเดียวตอน mount ผ่าน ref — ไม่ใส่ใน dependency array เพราะ
   // ผู้เรียกมักส่ง `options` เป็น object literal สดทุก render (ดูคอมเมนต์ที่ตัว option เอง)
@@ -96,14 +98,14 @@ export function useLicenseLedger<TLicense extends { id: string }>(
     setSaving(true);
     try {
       await service.delete(ownerId, id);
-      toast.success('License removed');
+      toast.success(t('pages.licenses.licenseRemoved'));
       await reload();
     } catch (err) {
-      toast.error('Could not remove the license', { description: getErrorDetail(err) });
+      toast.error(t('pages.licenses.removeLicenseFailedTitle'), { description: getErrorDetail(err, t) });
     } finally {
       setSaving(false);
     }
-  }, [ownerId, reload, service]);
+  }, [ownerId, reload, service, t]);
 
   return { licenses, loading, saving, loadFailed, reload, remove };
 }

@@ -190,6 +190,16 @@ export const en = {
       adding: 'Adding...',
       creating: 'Creating...',
       loading: 'Loading...',
+      // Distinct from `loading` above on purpose, not a casing/whitespace slip: this one
+      // uses the single-character ellipsis (…, U+2026), `loading` uses three ASCII dots
+      // ('...') — two different glyphs the source files themselves use inconsistently, so
+      // both must exist as separate values rather than collapsing to one. Promoted here
+      // (F5, 2026-08-28 fix wave) from two page-local duplicates that both held this exact
+      // '…' string byte-identically in English and Thai — `pages.subscriptions.loadingOption`
+      // and `pages.licenses.loadingEllipsis` — once a third file's call site cleared the
+      // ≥3-files-AND-≥2-slices promotion bar. Call sites: SubscriptionInfoCard.tsx (x2),
+      // ClusterLicenseDetail.tsx, SeatSection.tsx.
+      loadingEllipsis: 'Loading…',
     },
     audit: {
       createdAt: 'Created at',
@@ -226,6 +236,13 @@ export const en = {
       title: 'Title',
       severity: 'Severity',
       delivery: 'Delivery',
+      // Title Case, used as form labels and column headers. Note the neighbours
+      // common.validation.startDate / endDate hold the SENTENCE-case variants
+      // ('Start date', 'End date'), which are default field NAMES for validation
+      // messages — different job, different casing, deliberately both.
+      seats: 'Seats',
+      startDate: 'Start Date',
+      endDate: 'End Date',
       // Required-field marker template (task J): every Edit page re-solves "label + asterisk"
       // page-locally otherwise. Unlike the old per-field `*Label`/`*LabelRequired` pairs, the
       // asterisk is interpolated data here, because this one template has to hold for every
@@ -277,6 +294,12 @@ export const en = {
       noExpiry: 'No expiry',
       expires: 'Expires',
       quotaExpires: 'Quota Expires',
+      // Promoted from pages.subscriptions.expiringSoon / pages.licenses.expiringSoonBadge
+      // (i18n phase-2 slice-3b Task 4 fix round 1): byte-identical value bound at 4 call
+      // sites across 2 slices (SubscriptionTable.tsx x2, SubscriptionSummary.tsx,
+      // SubscriptionSection.tsx) — clears the promote-to-common bar. Both page-local keys
+      // were deleted, both call sites' explanatory comments removed.
+      expiringSoon: 'Expiring soon',
       unsavedChanges: 'Unsaved changes',
       noChanges: 'No changes',
       unknownUser: 'Unknown user',
@@ -367,6 +390,13 @@ export const en = {
     businessUnit: { title: 'Business Unit', sentence: 'Business unit', lower: 'business unit' },
     broadcast: { title: 'Broadcast', sentence: 'Broadcast', lower: 'broadcast' },
     news: { title: 'News', sentence: 'News', lower: 'news' },
+    // Promoted from pages.subscriptions.subscription (i18n phase-2 slice-3b Task 4 fix
+    // round 1): already fed toast.created's {{entity}} param at SubscriptionForm.tsx:240,
+    // which is exactly what this namespace exists for — a common.* promotion would have
+    // been the wrong shape. 3 files across 2 slices once pages.licenses.subscriptionColumn
+    // was counted, clearing the promote bar. pages.subscriptions.subscription and
+    // pages.licenses.subscriptionColumn were both deleted.
+    subscription: { title: 'Subscription', sentence: 'Subscription', lower: 'subscription' },
   },
 
   /**
@@ -771,9 +801,14 @@ export const en = {
       // common.state.nSelected — so the Subscription screens' Thai wording moves to the
       // app-wide phrasing instead of keeping its own. If you're looking for either key here,
       // it isn't page-local; use the common.* one.
+      //
+      // `seats` was dropped the same way (slice 3b Task 1 fix round 1): it recurred in
+      // 3+ files across 2 slices (here, SubscriptionForm.tsx, SeatsCard.tsx x2, and three
+      // pages.licenses files), past the phase-2 promote-to-common threshold — moved to
+      // common.field.seats verbatim (same English, same Thai). Call sites here now bind
+      // common.field.seats.
       detailsTitle: 'Subscription details',
       purchasedModules: 'Purchased modules',
-      seats: 'Seats',
       searchNumber: 'Search subscription numbers...',
       clearClusterFilter: 'Clear cluster filter',
 
@@ -828,15 +863,15 @@ export const en = {
       filterDescription: 'Filter subscriptions by state, cluster, and expiry',
       allClusters: 'All clusters',
       lockedToActive: 'Locked to Active while showing subscriptions expiring soon.',
-      // Interfaces block: Task 6 (SubscriptionSummary's own "expiring soon" card) reuses
-      // this exact key.
-      expiringSoon: 'Expiring soon',
+      // expiringSoon moved to common.state.expiringSoon (i18n phase-2 slice-3b Task 4 fix
+      // round 1) — see the comment there.
       expiringWithinDays: 'Expiring within {{days}} days',
       expiry: 'Expiry',
       // Bare column headers — distinct from entity.* (toast-safe nouns) and from
       // common.validation.subscriptionNumber/startDate/endDate (lowercase field-name
       // fallbacks used by validateField, a different register and different casing).
-      subscription: 'Subscription',
+      // `subscription` itself moved to entity.subscription.title (Task 4 fix round 1) —
+      // the rest of this group stays page-local.
       subscriptionNumber: 'Subscription Number',
       clusterCode: 'Cluster Code',
       businessUnitName: 'Business Unit Name',
@@ -847,8 +882,13 @@ export const en = {
       // source: the badge and this filter/column both read the backend-computed `state`
       // field, never the raw `status`, and the two words must not collide on screen.
       state: 'State',
-      startDate: 'Start Date',
-      endDate: 'End Date',
+      // startDate/endDate dropped here (slice 3b Task 1 fix round 1): 3+ files across
+      // 2 slices (here, SubscriptionInfoCard.tsx, and LicensePurchaseForm.tsx in
+      // pages.licenses) — moved to common.field.startDate/endDate verbatim (same English,
+      // same Thai). Call sites here now bind those. Not the same key as
+      // common.validation.startDate/endDate ('Start date'/'End date', sentence case,
+      // default field NAMES for validation messages) — see the comment at
+      // common.field.startDate.
       seatsUsed: 'Seats Used',
       seatsCap: 'Seats Cap',
 
@@ -875,11 +915,290 @@ export const en = {
       featureEntitlementsForBu: 'Feature entitlements for {{code}}',
       featureEntitlementsGeneric: 'Feature entitlements for this contract',
       detailsDescription: 'Contract identity, period, and status',
-      // Source uses the single-character ellipsis (…), not three dots — distinct from
-      // common.busy.loading ('Loading...'). Shared by both the cluster and business-unit
-      // select's own "still loading" option.
-      loadingOption: 'Loading…',
       effectiveState: 'Effective state:',
+    },
+
+    // Slice 3b (License Center, cluster license tables, the purchase form, and three
+    // shared section cards — twelve files total). Catalog-only pass (Task 1): every key
+    // below is seeded because its exact string recurs in MORE THAN ONE of those twelve
+    // files — a later task binding any one of those files reuses the key here instead of
+    // re-declaring it. A string that shows up in only one file stays out of this object;
+    // that file's own task adds it page-locally.
+    //
+    // Reuse-checked first against common.*/entity.*/breadcrumb.*/error.* (exact value,
+    // Thai read too) and toast.* composed with entity.* — every key below is what was
+    // LEFT after that pass found no match. See task-1-report.md for the full reuse list
+    // (e.g. 'No expiry' -> common.state.noExpiry, 'Status' -> common.status.label,
+    // 'Active'/'Scheduled'/'Expired' -> common.status.*, 'Reference' -> common.field.reference,
+    // 'Filters' -> common.label.filters, 'Cluster' -> common.label.cluster).
+    licenses: {
+      // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts
+      // (BU_QUOTA_CONFIG.amountLabel) — both literally 'BU quota'.
+      buQuota: 'BU quota',
+      // licenseKindConfig.ts (BU_QUOTA_CONFIG.newPageTitle) + BuQuotaSection.tsx (the
+      // "Add BU quota license" button — hardcoded there, not read from config).
+      addBuQuotaLicense: 'Add BU quota license',
+      // licenseKindConfig.ts (SEAT_CONFIG.newPageTitle) + SeatSection.tsx (the "Add seat
+      // license" button — hardcoded there, not read from config).
+      addSeatLicense: 'Add seat license',
+      // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
+      // (field Label).
+      licenseNumber: 'License Number',
+      // BuQuotaSection.tsx + SeatSection.tsx inline ledger tables — the compact column
+      // header, a different register from common.field.startDate ("Start Date", a
+      // form-field label) — same table-header-vs-form-label split the file already uses
+      // for common.section.* vs common.field.*. Fix round 1: this namespace used to also
+      // hold `start` ('Start'), byte-identical to common.action.start — deleted, Tasks 2-4
+      // bind that shared key instead. `end` has no common.action counterpart to reuse, so
+      // it stays here alone.
+      end: 'End',
+      // BuQuotaSection.tsx + SeatSection.tsx ConfirmDialog title — the two files' dialog
+      // descriptions differ (BU count vs. seat count) and stay page-local; only the shared
+      // title is seeded here.
+      removeLicenseTitle: 'Remove license',
+      // BuQuotaSection.tsx + SeatSection.tsx EmptyState title — the two files' descriptions
+      // differ and stay page-local; only the shared title is seeded here.
+      noLicensesYetTitle: 'No licenses yet',
+      // ClusterLicenseTable.tsx + PurchaseLicenseTable.tsx "Clear all filters" button —
+      // lowercase, NOT common.action.clearAllFilters ('Clear All Filters', Title Case).
+      // Different capitalization is a different byte-identical string, so it is not that
+      // key's reuse candidate.
+      clearAllFilters: 'Clear all filters',
+
+      // Task 2 (call-site binding) — LicenseCenter.tsx page header + view switcher. `title`
+      // doubles as the ClusterLicenseDetail.tsx subtitle fallback below (cluster not yet
+      // loaded) — same page family, same 'Licenses' text, reused rather than duplicated.
+      // Coincidentally byte-identical to nav.licenses ('Licenses') — out of this task's
+      // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
+      // pages.news/pages.users precedent of a dedicated pages.<slice>.title key.
+      title: 'Licenses',
+      subtitle: 'Fleet-wide license status by cluster, subscription, seat license, or BU quota.',
+      // FleetCapacity's `expiringLabel` prop — distinct from quotaExpiringToggle below
+      // (ClusterLicenseTable's Sheet button/badge), a shorter, different string.
+      buQuotaExpiring: 'BU quota expiring',
+      selectViewAria: 'Select license view',
+      viewByCluster: 'By cluster',
+      viewBySubscription: 'By subscription',
+      viewBySeat: 'By seat license',
+      viewByBuQuota: 'By BU quota',
+
+      // ClusterLicenseDetail.tsx
+      clusterNotFoundOrDeleted: 'Cluster not found or deleted',
+      clusterUnavailable: 'Cluster unavailable',
+      subtitleWithCode: 'Licenses · {{code}}',
+
+      // ClusterLicenseTable.tsx — LICENSE_FILTERS labels. `noLicence` also renders inline in
+      // the BU Quota cell when cap is 0 (same string, same key, two call sites in the file).
+      noLicence: 'No licence',
+      overBuLimit: 'Over BU limit',
+      seatsFull: 'Seats full',
+      // Title Case column header — distinct from `buQuota` above ('BU quota', lowercase
+      // 'quota', a nav-section label), not a reuse candidate despite the near-identical text.
+      buQuotaColumn: 'BU Quota',
+      // Badge inside the Quota Expires cell — days remaining before a winning BU-quota
+      // license expires.
+      daysLeft: '{{count}} days left',
+      // Coincidentally byte-identical to switcher.searchClusters ('Search clusters...') and
+      // to ClusterManagement.tsx's own (still untranslated) literal — out of this task's
+      // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
+      // pages.users/pages.news precedent for byte-identical strings across unrelated
+      // namespaces.
+      searchClustersPlaceholder: 'Search clusters...',
+      filtersSheetDescription: 'Filter clusters by status and licence state',
+      licenceStateLabel: 'Licence state',
+      // Sheet button + active-filter badge for the expiringSoonFilter toggle — distinct from
+      // buQuotaExpiring above (FleetCapacity's stat label, a different string).
+      quotaExpiringToggle: 'Quota expiring',
+      filterNarrowsHint: 'Selecting more than one narrows the list — a cluster must match every choice.',
+      // Shared by both the status-filter chip's aria-label (value = the translated Active/
+      // Inactive label) and the license-filter chip's (value = the raw filter key — matches
+      // the source's existing behaviour of leaving that one untranslated).
+      //
+      // NOT byte-identical to pages.users.removeStatusFilter ('Remove {{status}} filter') —
+      // same shape, different param name, so the duplicate-value script does not flag it —
+      // but it's the same promotion-signal shape Task 1 found for seats/startDate/endDate:
+      // report it (task-2-report.md), don't silently fix pages.users from this task's scope.
+      removeFilterAria: 'Remove {{value}} filter',
+      removeQuotaExpiringFilterAria: 'Remove quota expiring filter',
+      noClustersTitle: 'No clusters',
+      noClustersMatchFilters: 'No cluster matches the current search and filters.',
+      noClustersYet: 'There are no clusters yet.',
+      clearFiltersAction: 'Clear filters',
+      loadingClustersAria: 'Loading clusters',
+      loadFailedPrefix: 'Failed to load clusters: ',
+
+      // Task 3 (LicensePurchaseForm.tsx + PurchaseLicenseTable.tsx additions below).
+      //
+      // Neither file has its own `config.ownerLabel`/`amountLabel`/`newPageTitle` — both
+      // read those three fields off `licenseKindConfig.ts`, a plain module (no `t`) shared
+      // by more than these two files, so it stays untouched. Both files instead look the
+      // per-kind translated value up locally (`OWNER_LABEL_KEYS`/`AMOUNT_LABEL_KEYS`/
+      // `NEW_PAGE_TITLE_KEYS`) via keys already seeded (buQuota/addBuQuotaLicense/
+      // addSeatLicense from Task 1, common.field.seats, common.label.cluster,
+      // entity.businessUnit.title) — no new key needed for those three fields themselves.
+
+      // LicensePurchaseForm.tsx — generic "License" noun, reused as both the toast.created
+      // entity param and the notFound PageHeader's title fallback. SubscriptionForm.tsx
+      // used to do the same dual-use with the single page-local
+      // pages.subscriptions.subscription key; since Task 4 fix round 1 promoted that value
+      // to entity.subscription, it now uses that object's two grammatical forms instead
+      // (.sentence for the toast, .title for the PageHeader) rather than one shared key.
+      license: 'License',
+      licenseDetailsTitle: 'License details',
+      // CardDescription — `{{owner}}` is the kind's Title-Case owner label ('Business Unit'
+      // or 'Cluster', from OWNER_LABEL_KEYS above), so this renders exactly what
+      // `${config.ownerLabel}, amount, and coverage period` used to.
+      licenseDetailsDescription: '{{owner}}, amount, and coverage period',
+      // Trailing period — distinct from PurchaseLicenseTable.tsx's `referenceNoColumn`
+      // below ('Reference No', no period), a genuinely different literal, not a casing
+      // variant of the same string.
+      referenceNoLabel: 'Reference No.',
+      // `{{owner}}` here is the LOWERCASE form (OWNER_LABEL_KEYS[kind] run through
+      // .toLowerCase() at the call site — safe because Thai has no case, so it's a no-op on
+      // the Thai string, and a real lowercase on the English one, exactly reproducing what
+      // `config.ownerLabel.toLowerCase()` used to render).
+      missingOwnerTitle: 'Missing {{owner}}',
+      missingOwnerDescription: "This page needs a {{owner}} to create a license for. Open it from a {{owner}}'s page instead of typing this URL directly.",
+      notFoundTitle: 'License not found',
+      notFoundDescription: "This license doesn't exist, or it may have been deleted. Check the link, or pick one from the license list.",
+      // Shared by both EmptyState action buttons (notFound and ownerMissing).
+      backToLicenses: 'Back to licenses',
+      // `{{owner}}` is the lowercase form again, same as missingOwnerTitle/Description above.
+      createSubtitle: 'Issue a new license for this {{owner}}',
+      createLicense: 'Create License',
+      unnamedLicense: '(unnamed license)',
+      // Detail-view PageHeader subtitle — `{{owner}}` is the Title-Case form (unlike
+      // createSubtitle/missingOwner* above), `{{value}}` is `ownerText` (already-resolved
+      // display data, not translated).
+      ownerSubtitle: '{{owner}}: {{value}}',
+      loadingAria: 'Loading license',
+      // Singular-record failure banners, matching pages.subscriptions.loadFailedDetail/
+      // createFailedPrefix/saveFailedPrefix's naming (not this same object's list-page
+      // loadFailedPrefix above, which is ClusterLicenseTable.tsx's and reads differently:
+      // 'Failed to load clusters: ').
+      loadFailedDetail: 'Failed to load license: ',
+      createFailedPrefix: 'Failed to create license: ',
+      saveFailedPrefix: 'Failed to save license: ',
+      // Extends pages.subscriptions.missingDocVersion with "or owner id" — this form's
+      // handleSave() checks both docVersion and ownerId before saving, subscriptions' does
+      // not, so the two English strings genuinely differ and this stays its own key.
+      missingDocVersionOrOwner: 'Missing doc_version or owner id for this record — reload the page and try again.',
+      // Byte-identical to pages.subscriptions.endDateAfterStart ('End date must be after
+      // start date') — a cross-slice pages.* coincidence (3a's SubscriptionForm.tsx vs this
+      // slice's LicensePurchaseForm.tsx), reported per the reuse-check's promotion-signal
+      // rule rather than silently reused: only 2 files hold it, short of the >=3-files
+      // threshold, so it stays split rather than promoted to common.*. Thai copied verbatim
+      // from pages.subscriptions.endDateAfterStart — confirmed identical, not retranslated.
+      endDateAfterStart: 'End date must be after start date',
+
+      // PurchaseLicenseTable.tsx
+      filterByStatusDescription: 'Filter by license status',
+      // Static — always "status", never the active status's own name (unlike
+      // ClusterLicenseTable.tsx's removeFilterAria above), because this table allows only
+      // one status filter at a time and the source literal never interpolated the value.
+      removeStatusFilterAria: 'Remove status filter',
+      searchLicensesPlaceholder: 'Search by license number or reference...',
+      loadFailedTitle: 'Could not load licenses',
+      loadFailedDescription: 'The list could not be loaded — this does not mean there are none.',
+      retryingEllipsis: 'Retrying...',
+      // English differs from pages.licenses.noLicence ('No licence', British, singular) by
+      // spelling and number; Thai does not inflect for either, so the two keys' Thai values
+      // coincide — matching the documented loadFailedPrefix/loadFailedDetail precedent in
+      // pages.subscriptions (same Thai, different English by number).
+      noLicensesTitle: 'No licenses',
+      noLicensesMatchFilters: 'No license matches the current search and filters.',
+      noLicensesIssuedYet: 'No licenses have been issued yet.',
+      loadingLicensesAria: 'Loading licenses',
+      // CSV export column labels — `{{owner}}` is the Title-Case owner label. Word order
+      // flips in Thai ('รหัส {{owner}}' / 'ชื่อ {{owner}}', code/name-first) to match this
+      // file's existing clusterCode/businessUnitName precedent in pages.subscriptions.
+      ownerCodeColumn: '{{owner}} Code',
+      ownerNameColumn: '{{owner}} Name',
+      coverageColumn: 'Coverage',
+      // No period — distinct from LicensePurchaseForm.tsx's referenceNoLabel above
+      // ('Reference No.'), the form-field version of the same concept with different
+      // punctuation. Reused twice within this file (CSV label + column header).
+      referenceNoColumn: 'Reference No',
+
+      // Task 4 (sections/* + hooks below) — BuQuotaSection.tsx.
+      buQuotaCardTitle: 'BU Quota Licenses',
+      buQuotaLoadFailedDescription: 'Could not load licenses for this cluster — the quota is unknown, not zero.',
+      quotaNoExpiry: 'Quota: {{count}} business units · no expiry',
+      quotaExpires: 'Quota: {{count}} business units · expires {{date}}',
+      noLicenseInForce: 'No license in force — this cluster cannot create business units',
+      buQuotaLoadFailedBanner: 'License data for this cluster could not be loaded — the quota and Over limit figures below are unknown, not zero.',
+      businessUnitsInUse: 'Business units in use: {{used}} / {{total}}',
+      overLimitReadOnly: '{{count}} over limit — those units are read-only',
+      buQuotaDataUnavailable: 'License data for this cluster could not be loaded — it is unknown, not empty.',
+      noBuQuotaLicenseDescription: 'The platform team has not issued a BU quota license for this cluster.',
+      quotaColumn: 'Quota',
+      showExpired: 'Show expired ({{count}})',
+      removeBuQuotaDescription: 'Remove the {{count}}-BU license. If it is still in force, this cluster immediately loses the ability to create new business units until another license takes over.',
+      buRankQuotaUnavailable: 'Quota unknown — the license data above failed to load, so Over-limit status cannot be determined right now.',
+      // Thai is identical for both — Thai does not inflect for number, only the English
+      // (business unit / business units) differs, matching the noLicensesTitle/noLicence
+      // precedent above.
+      overLimitCountOne: '{{count}} business unit rank beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      overLimitCountMany: '{{count}} business units rank beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      rankedExplanation: 'Ranked the same way the platform decides which units are covered — HQ first, then oldest.',
+      rankColumn: 'Rank',
+      overLimitBadge: 'Over limit',
+      overLimitTitle: 'Quota {{cap}} · this unit ranks {{rank}}',
+
+      // SeatSection.tsx
+      noBusinessUnitsSeatsDescription: 'This cluster has no business units yet — seats are issued per business unit.',
+      // Two independent pluralizable counts (seats, business units) in one sentence — four
+      // whole-sentence combinations rather than composing translated fragments, matching the
+      // noFeaturesAssignedToBu/ToThis precedent in pages.subscriptions ("two whole sentences
+      // instead" of nesting a translated value inside a translated frame). Thai is identical
+      // across all four combinations — only which English combination is picked differs.
+      seatSummaryOneOne: '{{count}} seat across {{buCount}} business unit',
+      seatSummaryOneMany: '{{count}} seat across {{buCount}} business units',
+      seatSummaryManyOne: '{{count}} seats across {{buCount}} business unit',
+      seatSummaryManyMany: '{{count}} seats across {{buCount}} business units',
+      seatSummaryFailedOne: ' (+ {{count}} business unit unknown)',
+      seatSummaryFailedMany: ' (+ {{count}} business units unknown)',
+      seatCountUnavailable: 'Seat count unavailable',
+      seatLoadFailedBanner: 'Could not load licenses for this business unit — the seat figures below are unknown, not zero.',
+      seatDataUnavailable: 'License data for this business unit could not be loaded — it is unknown, not empty.',
+      noSeatLicenseDescription: 'Add the first license to set how many seats this business unit has bought.',
+      removeSeatDescription: 'Remove the {{count}}-seat license. If it is still in force, those seats leave the cluster pool immediately.',
+      // Same two-axis pluralization shape as seatSummary* above (seat count x active-license
+      // count), same reasoning.
+      seatFromLicenseOneOne: '{{count}} seat from {{activeCount}} active license',
+      seatFromLicenseOneMany: '{{count}} seat from {{activeCount}} active licenses',
+      seatFromLicenseManyOne: '{{count}} seats from {{activeCount}} active license',
+      seatFromLicenseManyMany: '{{count}} seats from {{activeCount}} active licenses',
+      endDateRequiredBadge: 'End date required',
+
+      // SubscriptionSection.tsx
+      subscriptionsCardDescription: "Contracts issued for this cluster's business units.",
+      addSubscriptionButton: 'Add subscription',
+      subscriptionsLoadFailedPrefix: 'Could not load subscriptions for this cluster: ',
+      subscriptionsLoadFailed: 'Could not load subscriptions for this cluster.',
+      // Byte-identical to pages.subscriptions.emptyTitle ('No subscriptions yet') — a
+      // cross-slice pages.* coincidence. Only 2 files hold it (SubscriptionTable.tsx there,
+      // this file here), short of the >=3-files promotion bar, so it stays split. Thai
+      // copied verbatim from pages.subscriptions.emptyTitle, not retranslated.
+      noSubscriptionsYetTitle: 'No subscriptions yet',
+      noSubscriptionContractsDescription: 'This cluster has no subscription contracts.',
+      noBuBadge: 'No BU',
+      // subscriptionColumn promoted to entity.subscription.title, and expiringSoonBadge
+      // promoted to common.state.expiringSoon (i18n phase-2 slice-3b Task 4 fix round 1) —
+      // both cleared the promote-to-common(/entity) bar once this file's binding was
+      // counted. See the comments at their new locations.
+      //
+      // subscriptionStateColumn is confirmed NOT a promotion candidate — coordinator
+      // review: Thai has no word separating "state" from "status", and the two never
+      // appear on one screen, matching the reasoning already left at
+      // pages.subscriptions.state (en.ts). Stays split, unchanged.
+      subscriptionStateColumn: 'State',
+
+      // useLicenseLedger.ts — the toast title for a failed GET reuses loadFailedTitle above
+      // (byte-identical 'Could not load licenses', already seeded for PurchaseLicenseTable's
+      // EmptyState title; the hook's toast renders the same words in a different UI shell).
+      licenseRemoved: 'License removed',
+      removeLicenseFailedTitle: 'Could not remove the license',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

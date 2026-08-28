@@ -237,7 +237,7 @@ const SubscriptionForm: React.FC = () => {
       };
       const result = await subscriptionService.create(payload);
       const created = (result?.data || result) as { id?: string } | undefined;
-      toast.success(t('toast.created', { entity: t('pages.subscriptions.subscription') }));
+      toast.success(t('toast.created', { entity: t('entity.subscription.sentence') }));
       if (created?.id) {
         navigate(`/licenses/subscriptions/${created.id}/edit`, { replace: true });
       } else {
@@ -348,7 +348,7 @@ const SubscriptionForm: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/licenses" title={t('pages.subscriptions.subscription')} />
+          <PageHeader backTo="/licenses" title={t('entity.subscription.title')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
@@ -371,7 +371,7 @@ const SubscriptionForm: React.FC = () => {
   const navItems: NavItem[] = [
     { id: 'info', label: t('pages.subscriptions.detailsTitle') },
     { id: 'features', label: t('pages.subscriptions.purchasedModules'), count: featureKeys.length },
-    { id: 'seats', label: t('pages.subscriptions.seats') },
+    { id: 'seats', label: t('common.field.seats') },
   ];
 
   return (
