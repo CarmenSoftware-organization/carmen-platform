@@ -353,7 +353,7 @@ const UserEdit: React.FC = () => {
       if (isNew) {
         const result = await userService.create(formData);
         const created = result.data || result;
-        toast.success(t('pages.users.created'));
+        toast.success(t('toast.created', { entity: t('entity.user') }));
         if (created?.id) {
           navigate(`/users/${created.id}/edit`, { replace: true });
         } else {
@@ -491,7 +491,7 @@ const UserEdit: React.FC = () => {
                 description="This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list."
                 action={
                   <Button size="sm" onClick={() => navigate('/users')}>
-                    Back to users
+                    {t('pages.users.backToUsers')}
                   </Button>
                 }
               />
@@ -518,7 +518,7 @@ const UserEdit: React.FC = () => {
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Users
+              {t('pages.users.usersLink')}
             </Link>
 
             <UserIdentityHero
@@ -537,13 +537,13 @@ const UserEdit: React.FC = () => {
                   <Can permission="user.update">
                     <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
                       <KeyRound className="mr-2 h-4 w-4" />
-                      Change password
+                      {t('pages.users.changePasswordButton')}
                     </Button>
                   </Can>
                   <Can permission="user.update">
                     <Button size="sm" onClick={handleEditToggle}>
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit
+                      {t('common.action.edit')}
                     </Button>
                   </Can>
                 </div>
@@ -751,7 +751,7 @@ const UserEdit: React.FC = () => {
                 open={deleteBU !== null}
                 onOpenChange={(open) => { if (!open) setDeleteBU(null); }}
                 title={t('pages.users.removeBusinessUnit')}
-                description={`Are you sure you want to remove "${deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || 'this business unit'}" from this user?`}
+                description={t('pages.users.removeBuConfirm', { name: deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || 'this business unit' })}
                 confirmText={t('common.action.remove')}
                 confirmVariant="destructive"
                 onConfirm={handleConfirmDeleteBU}
@@ -822,7 +822,7 @@ const UserEdit: React.FC = () => {
                     <Button variant="outline" size="sm" onClick={() => setShowAddBU(false)}>{t('common.cancel')}</Button>
                     <Button size="sm" onClick={handleAddBU} disabled={addingBU || !selectedBUId}>
                       <Plus className="mr-2 h-4 w-4" />
-                      {addingBU ? t('common.action.adding') : 'Add'}
+                      {addingBU ? t('common.action.adding') : t('common.action.add')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -847,7 +847,7 @@ const UserEdit: React.FC = () => {
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{passwordError}</div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password *</Label>
+              <Label htmlFor="newPassword">{t('pages.users.newPasswordLabel')}</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -859,7 +859,7 @@ const UserEdit: React.FC = () => {
               <p className="text-xs text-muted-foreground">{t('pages.users.passwordTooShort')}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Label htmlFor="confirmPassword">{t('pages.users.confirmPasswordLabel')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -885,7 +885,7 @@ const UserEdit: React.FC = () => {
       <DevDebugSheet
         title={t('pages.users.debug')}
         tabs={[
-          { key: 'user', label: 'User', data: rawResponse, endpoint: `GET /api-system/user/${id}` },
+          { key: 'user', label: t('entity.user'), data: rawResponse, endpoint: `GET /api-system/user/${id}` },
           { key: 'clusterBUs', label: t('pages.users.clusterBus'), data: rawClusterBUsResponse, endpoint: 'GET /api-system/business-units' },
         ]}
       />

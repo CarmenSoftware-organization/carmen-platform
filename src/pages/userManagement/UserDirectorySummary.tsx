@@ -55,11 +55,12 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
 }
 
 function Faces({ faces, total }: { faces: FaceItem[]; total: number }) {
+  const { t } = useI18n();
   const extra = Math.max(0, total - faces.length);
   return (
     <div className="shrink-0">
       <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">
-        Recently added
+        {t('pages.users.recentlyAdded')}
       </div>
       <div className="flex items-center -space-x-2">
         {faces.map((f) => (
@@ -122,7 +123,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
               register calm. Matches ClusterManagement's FleetCapacity. */}
           {error && (
             <p className="text-muted-foreground mb-2 text-xs" role="alert">
-              Couldn&apos;t refresh — showing the last known numbers.
+              {t('pages.users.refreshFailed')}
             </p>
           )}
           <div className={cn('flex flex-wrap items-center gap-x-6 gap-y-4', error && 'opacity-70')}>
@@ -135,7 +136,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
               <div
                 className="bg-muted flex h-3 overflow-hidden rounded-full"
                 role="img"
-                aria-label={`${summary.active} active, ${summary.inactive} inactive`}
+                aria-label={t('pages.users.activeInactiveSummary', { active: summary.active, inactive: summary.inactive })}
               >
                 <span className="bg-success" style={{ width: `${pct(summary.active)}%` }} />
                 <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.inactive)}%` }} />

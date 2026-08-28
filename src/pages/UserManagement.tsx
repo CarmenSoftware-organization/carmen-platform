@@ -327,16 +327,16 @@ const UserManagement: React.FC = () => {
   }, [clearSelection, paginate.page, paginate.perpage, paginate.search, paginate.sort, paginate.advance]);
 
   const rowSelectionLabel = useCallback(
-    (u: UserRecord) => `Select ${u.username || u.email || u.user_id || 'user'}`,
-    [],
+    (u: UserRecord) => t('pages.users.selectRow', { name: u.username || u.email || u.user_id || 'user' }),
+    [t],
   );
 
   const summarizeBulk = (results: PromiseSettledResult<unknown>[]) => {
     const ok = results.filter((r) => r.status === 'fulfilled').length;
     const fail = results.length - ok;
-    if (fail === 0) toast.success(`Deleted ${ok} user(s)`);
-    else if (ok === 0) toast.error(`Failed to delete ${fail} user(s)`);
-    else toast.warning(`Deleted ${ok}, ${fail} failed`);
+    if (fail === 0) toast.success(t('pages.users.bulkDeleted', { count: ok }));
+    else if (ok === 0) toast.error(t('pages.users.bulkDeleteFailed', { count: fail }));
+    else toast.warning(t('pages.users.bulkPartial', { ok, fail }));
   };
 
   const handleConfirmBulkSoftDelete = async () => {
@@ -460,7 +460,7 @@ const UserManagement: React.FC = () => {
             <div className="flex items-center gap-2 min-w-0">
               <span className="truncate" title={name}>{name}</span>
               {row.original.deleted_at && (
-                <Badge variant="destructive" className="shrink-0 text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
+                <Badge variant="destructive" className="shrink-0 text-xs px-1.5 py-0" title={row.original.deleted_by_name ? t('pages.users.deletedByName', { name: row.original.deleted_by_name }) : undefined}>
                   {t('common.status.deleted')}
                 </Badge>
               )}
@@ -533,7 +533,7 @@ const UserManagement: React.FC = () => {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.username || row.original.email}`}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('pages.users.rowActions', { name: row.original.username || row.original.email || '' })}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -541,7 +541,7 @@ const UserManagement: React.FC = () => {
               <Can permission="user.update">
                 <DropdownMenuItem onClick={() => navigate(`/users/${row.original.id}/edit`)} className="cursor-pointer">
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t('common.action.edit')}
                 </DropdownMenuItem>
               </Can>
               <Can permission="user.delete">
@@ -560,7 +560,7 @@ const UserManagement: React.FC = () => {
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <AlertTriangle className="mr-2 h-4 w-4" />
-                  Hard Delete
+                  {t('pages.users.hardDelete')}
                 </DropdownMenuItem>
               </Can>
             </DropdownMenuContent>
@@ -587,13 +587,13 @@ const UserManagement: React.FC = () => {
               </Can>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="user.create">
                 <Button onClick={() => navigate("/users/new")}>
                   <Plus className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">{t('common.action.addUser')}</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -667,13 +667,13 @@ const UserManagement: React.FC = () => {
                           className="h-4 w-4 rounded border-input"
                         />
                         <label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
-                          Show soft-deleted users
+                          {t('pages.users.showSoftDeleted')}
                         </label>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        Clear All Filters
+                        {t('pages.users.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -682,7 +682,7 @@ const UserManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('pages.users.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? t('common.status.active') : t('common.status.inactive')}
@@ -697,7 +697,7 @@ const UserManagement: React.FC = () => {
                 ))}
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    Show Deleted
+                    {t('pages.users.showDeleted')}
                     <button
                       onClick={handleShowDeletedToggle}
                       className="ml-0.5 hover:text-foreground"
@@ -708,7 +708,7 @@ const UserManagement: React.FC = () => {
                   </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('pages.users.clearAll')}
                 </button>
               </div>
             )}
@@ -743,7 +743,7 @@ const UserManagement: React.FC = () => {
                       </Button>
                       <Button variant="destructive" size="sm" onClick={openBulkHardDelete}>
                         <AlertTriangle className="mr-2 h-4 w-4" />
-                        Hard Delete
+                        {t('pages.users.hardDelete')}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={clearSelection}>
                         {t('common.action.clear')}
@@ -800,7 +800,7 @@ const UserManagement: React.FC = () => {
       <ConfirmDialog
         open={bulkSoftOpen}
         onOpenChange={(open) => { if (!open) setBulkSoftOpen(false); }}
-        title={`Delete ${selectedUsers.length} user(s)`}
+        title={t('pages.users.bulkDeleteTitle', { count: selectedUsers.length })}
         description="Soft-delete the selected user(s)? They can be restored later."
         confirmText={t('common.action.delete')}
         confirmVariant="destructive"
@@ -813,10 +813,10 @@ const UserManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              Permanently Delete User
+              {t('pages.users.permanentlyDeleteUser')}
             </DialogTitle>
             <DialogDescription>
-              This will permanently remove the user and all associated data. This action cannot be undone.
+              {t('pages.users.hardDeleteWarning')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -843,7 +843,7 @@ const UserManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="hardDeleteConfirm">
-                Type <span className="font-mono font-semibold text-destructive">{hardDeleteUser?.username || hardDeleteUser?.email || ''}</span> to confirm
+                {t('pages.users.typeToConfirm')} <span className="font-mono font-semibold text-destructive">{hardDeleteUser?.username || hardDeleteUser?.email || ''}</span> to confirm
               </Label>
               <Input
                 id="hardDeleteConfirm"
@@ -856,7 +856,7 @@ const UserManagement: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setHardDeleteUser(null); setHardDeleteConfirm(''); setCopiedUsername(false); }} disabled={hardDeleting}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -880,7 +880,7 @@ const UserManagement: React.FC = () => {
               Permanently Delete {selectedUsers.length} User(s)
             </DialogTitle>
             <DialogDescription>
-              This will permanently remove the selected users and all associated data. This action cannot be undone.
+              {t('pages.users.hardDeleteBulkWarning')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -893,13 +893,13 @@ const UserManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulkHardConfirm">
-                Type <span className="font-mono font-semibold text-destructive">{bulkConfirmCode}</span> to confirm
+                {t('pages.users.typeToConfirm')} <span className="font-mono font-semibold text-destructive">{bulkConfirmCode}</span> to confirm
               </Label>
               <Input
                 id="bulkHardConfirm"
                 value={bulkConfirmInput}
                 onChange={(e) => setBulkConfirmInput(e.target.value.toUpperCase())}
-                placeholder="Enter the 6-character code"
+                placeholder={t('pages.users.confirmCodePlaceholder')}
                 autoComplete="off"
                 autoCapitalize="characters"
                 spellCheck={false}
@@ -908,7 +908,7 @@ const UserManagement: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setBulkHardOpen(false); setBulkConfirmInput(''); }} disabled={bulkDeleting}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
