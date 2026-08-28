@@ -255,6 +255,10 @@ export const en = {
       // asterisk is interpolated data here, because this one template has to hold for every
       // field name at once, not just username/email.
       required: '{{label}} *',
+      // i18n phase-2 slice-4 Task 2: composed with common.validation.requiredMessage for
+      // BusinessUnitForm.tsx's (dead, defensive-only) code-required check — same shape as
+      // the existing title/name entries above, added on demand rather than up front.
+      code: 'Code',
     },
     // Section headings — a different register from a bare input label. `common.field.*`
     // used to hold these too, but a heading and a label want different translations, and
@@ -1255,6 +1259,71 @@ export const en = {
       // rowActions promoted to common.action.rowActions (fix round 1) — see the comment
       // there. MembersTable.tsx / InvitationsTable.tsx bind to that key directly; this
       // object never held its own call site.
+
+      // --- Task 2: BusinessUnitList.tsx + BusinessUnitForm.tsx ---
+      businessUnitListSubtitle: 'Manage the business units in this cluster',
+      // Distinct from common.state.loadingBusinessUnits ('Loading business units...') —
+      // that one is the visible overlay text (three ASCII dots); this is the overlay's
+      // aria-label, which the source never suffixes with the ellipsis. Same split as
+      // common.busy.loading/loadingEllipsis.
+      loadingBusinessUnitsAria: 'Loading business units',
+      // Edit-page skeleton aria-label (singular unit), matching the pages.subscriptions.
+      // loadingAria / pages.licenses.loadingAria naming precedent for a form's own loading
+      // state — distinct from the List page's loadingBusinessUnitsAria above (plural).
+      loadingBusinessUnitAria: 'Loading business unit',
+      filterBusinessUnitsByStatus: 'Filter business units by status',
+      noBusinessUnitsDescription: 'Business units are created by a platform administrator. Once one is added to this cluster, it will appear here.',
+      // The over-limit banner. NOT the same string as pages.licenses.overLimitCountOne/Many
+      // (slice 3b) — that pair reads "business unit rank beyond…", this page's source reads
+      // "business unit is/units are beyond…". Same tail, different lead clause; see the
+      // task-1 report's hazard-4 note #5 for why these were not spliced together. The badge
+      // and title-tooltip on the same page ARE byte-identical to pages.licenses.
+      // overLimitBadge/overLimitTitle and reuse those directly — no new key for them.
+      overLimitCountOne: '{{count}} business unit is beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      overLimitCountMany: '{{count}} business units are beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      aliasCannotBeCleared: 'Alias cannot be cleared',
+      hotelEmailCannotBeCleared: 'Hotel email cannot be cleared',
+      companyEmailCannotBeCleared: 'Company email cannot be cleared',
+      // Byte-identical to pages.broadcasts.fixHighlightedFields (2 files / 2 slices — below
+      // the >=3-files-AND->=2-slices promotion bar, see task-1 report's promotion-signal
+      // table). Left split, not promoted.
+      fixHighlightedFields: 'Please fix the highlighted fields',
+      // Prefix-concatenation pattern, matching pages.subscriptions.loadFailedDetail /
+      // pages.licenses.loadFailedDetail's shape (setError(prefix + getErrorDetail(err))).
+      loadFailedDetail: 'Failed to load business unit: ',
+      updateFailed: 'Failed to update business unit',
+      copiedHotelAddressToCompany: 'Copied hotel address to company address',
+      // Calculation-method option label. 'Average' reuses common.option.average; FIFO has
+      // no existing key anywhere in the catalog (checked before adding).
+      fifo: 'FIFO',
+      overview: 'Overview',
+      regionalFormats: 'Regional formats',
+      timezone: 'Timezone',
+      dateFormat: 'Date format',
+      dateTimeFormat: 'Date-time format',
+      timeFormat: 'Time format',
+      longTimeFormat: 'Long time format',
+      shortTimeFormat: 'Short time format',
+      // Overview tab's People-summary value ('{{count}} user'/'users') — plain count-noun
+      // pair, distinct from common.state.nSelected ('{{count}} selected') and
+      // pages.users.bulkDeleteTitle-style '(s)' shorthand (this page's source spells the two
+      // forms out, not a parenthetical).
+      userCount: '{{count}} user',
+      userCountPlural: '{{count}} users',
+      noContactDetails: 'No contact details',
+      notSet: 'Not set',
+      // Configuration tab's summary fallback ('Defaults') — distinct English from
+      // common.label.default ('Default', singular), so not a byte match; same Thai concept.
+      configDefaults: 'Defaults',
+      taxLabel: 'TAX {{taxNo}}',
+      unsavedChangeCount: '{{count}} unsaved change',
+      unsavedChangeCountPlural: '{{count}} unsaved changes',
+      // Sentence-case ('Save changes'), NOT a byte match for common.action.saveChanges
+      // ('Save Changes', Title Case) — BusinessUnitForm.tsx's sticky-bar button differs from
+      // ClusterProfile.tsx's by casing only. Flagged in task-1's hazard-4 note #3 as a
+      // possible source typo; kept byte-identical to the source rather than silently
+      // "corrected" to Title Case.
+      saveChangesButton: 'Save changes',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
