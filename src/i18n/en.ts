@@ -141,6 +141,135 @@ export const en = {
     couldNotLoad: "Couldn't load this.",
     noMatchesFound: 'No matches found',
     noMatchesDescription: 'No results match your search or filters. Try adjusting or clearing them.',
+    // ── phase 2 shared vocabulary ──
+    // Seeded from measurement: each of these occurs >=3 times across page files AND
+    // appears in >=2 slices. Strings that clear the count but sit in one slice
+    // (Published, Edit, Standard, Custom, Severity, …) stay in that slice's own
+    // namespace — see the spec's shared-vs-local rule.
+    status: {
+      label: 'Status',
+      active: 'Active',
+      inactive: 'Inactive',
+      deleted: 'Deleted',
+      archived: 'Archived',
+      expired: 'Expired',
+      scheduled: 'Scheduled',
+      default: 'Default',
+    },
+    action: {
+      saveChanges: 'Save Changes',
+      saving: 'Saving...',
+      delete: 'Delete',
+      deleting: 'Deleting...',
+      remove: 'Remove',
+      adding: 'Adding...',
+      creating: 'Creating...',
+      clear: 'Clear',
+      filters: 'Filters',
+      loading: 'Loading...',
+      addUser: 'Add User',
+      start: 'Start',
+      manageLicences: 'Manage licences',   // British spelling, as in the source
+    },
+    audit: {
+      createdAt: 'Created at',
+      createdBy: 'Created by',
+      updatedAt: 'Updated at',
+      updatedBy: 'Updated by',
+    },
+    field: {
+      name: 'Name',
+      email: 'Email',
+      username: 'Username',
+      description: 'Description',
+      aliasName: 'Alias Name',
+      company: 'Company',
+      avatar: 'Avatar',
+      note: 'Note',
+      scope: 'Scope',
+      reference: 'Reference',
+      content: 'Content',
+      identity: 'Identity',
+      branding: 'Branding',
+      configuration: 'Configuration',
+      function: 'Function',
+      access: 'Access',
+      average: 'Average',
+      defaultCurrency: 'Default Currency',
+    },
+    state: {
+      noExpiry: 'No expiry',
+      expires: 'Expires',
+      quotaExpires: 'Quota Expires',
+      unsavedChanges: 'Unsaved changes',
+      noChanges: 'No changes',
+      unknownUser: 'Unknown user',
+      noBusinessUnits: 'No business units',
+      noBusinessUnitsYet: 'No business units yet',
+      noBusinessUnitsInCluster: 'No business units in this cluster.',
+      noClustersToAdminister: 'No clusters to administer',
+      loadingBusinessUnits: 'Loading business units...',
+      failedToLoadBusinessUnits: 'Failed to load business units',
+      selectACluster: 'Select a cluster',
+      selectABusinessUnit: 'Select a business unit',
+      searchBusinessUnits: 'Search business units...',
+    },
+    validation: {
+      nameRequired: 'Name is required',
+      clusterRequired: 'Cluster is required',
+    },
+  },
+  /**
+   * Entity names, stored already capitalized for English. The toast templates below
+   * insert them verbatim rather than transforming case at runtime, because case
+   * transformation is meaningless in Thai and wrong in several other languages.
+   * Slice 1 adds only what its own toasts name; later slices add theirs.
+   */
+  entity: {
+    // Two forms per entity, and this is load-bearing rather than redundant.
+    // `toast.deleted` renders '{{entity}} deleted successfully' — sentence-initial,
+    // so it needs 'User'. `toast.deleteFailed` renders 'Failed to delete {{entity}}'
+    // — mid-sentence, and the literal it must reproduce byte-for-byte is
+    // 'Failed to delete user', lowercase (UserManagement.tsx:272).
+    // Lowercasing at runtime would be wrong in languages whose casing rules differ
+    // from English, so both forms are stored instead.
+    user: 'User',
+    userLower: 'user',
+    businessUnit: 'Business Unit',
+    businessUnitLower: 'business unit',
+    // Entity nouns used as plain labels as well as inside the toast templates.
+    // One namespace, not two: an earlier draft also had `common.entity.*` holding
+    // byte-identical values, which forced a guess at every call site and could have
+    // drifted in Thai with nothing to catch it.
+    cluster: 'Cluster',
+    platform: 'Platform',
+    application: 'Application',
+    clusterRole: 'Cluster Role',
+    buRole: 'BU Role',
+    databasePool: 'Database Pool',
+    subscriptions: 'Subscriptions',
+    licensing: 'Licensing',
+    businessUnitsTitle: 'Business Units',
+    businessUnitsLabel: 'Business units',
+  },
+
+  /**
+   * CRUD toast templates. Any key here REQUIRES an `entity` param except `saved`
+   * and `exported`. A missing or misnamed param renders literal `{{entity}}` to the
+   * user; tsc and ESLint both pass it, so only the dev-mode warning in useI18n
+   * catches it.
+   */
+  toast: {
+    created: '{{entity}} created successfully',
+    deleted: '{{entity}} deleted successfully',
+    deleteFailed: 'Failed to delete {{entity}}',
+    saved: 'Changes saved successfully',
+    exported: 'Data exported successfully',
+  },
+
+  /** Per-slice page vocabulary. One child object per phase-2 slice. */
+  pages: {
+    users: {},
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched
