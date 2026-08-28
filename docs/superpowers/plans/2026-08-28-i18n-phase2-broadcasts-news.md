@@ -239,6 +239,8 @@ Search broadcasts...
 
 `API Response` and `GET /api/notifications/broadcasts` are `<DevDebugSheet>` props — leave them as English literals.
 
+Three of these are named here because Step 3's code refers to them: `Failed to load broadcasts: ` → `pages.broadcasts.loadFailedPrefix` (trailing space kept), `Failed to delete broadcast` → `pages.broadcasts.toastDeleteFailed`, `Failed to expire broadcast` → `pages.broadcasts.toastExpireFailed`.
+
 - [ ] **Step 3: Wire `t` into this file's three utility call sites**
 
 ```ts
@@ -406,7 +408,15 @@ t('common.validation.requiredMessage', { label: t('common.field.title') })
 
 - [ ] **Step 3: Line 487 — the all-caps severity badge**
 
-Same shape as Task 2 Step 6, including the `||` fallback.
+`formData.severity.toUpperCase()` renders the raw API value in caps. Replace with a translated lookup that keeps a fallback:
+
+```ts
+const raw = formData.severity.toLowerCase();
+const label = t(`common.severity.${raw}` as TKey) || raw.toUpperCase();
+// …render label.toUpperCase() — a no-op in Thai, byte-identical in English
+```
+
+The `||` branch is not defensive padding: `translate` returns `''` for an unknown key, so a severity value the catalog does not know would render as an empty badge. Today it renders the raw value.
 
 - [ ] **Step 4: Wire `t` into the two utility call sites** (`:143`, `:256`) — `parseApiError(err, t)`.
 
@@ -595,7 +605,15 @@ git commit -m "feat(i18n): แปลหน้ารายการข่าว +
 
 `common.label.businessUnitsLabel`, `common.cancel`, `toast.saved`, `common.action.edit`, `breadcrumb.news`, `common.state.noChanges`, `common.status.published`, `common.action.saveChanges`, `common.busy.saving`, `common.status.label`, `common.state.unsavedChanges`.
 
-- [ ] **Step 2: `cap(formData.status)` at lines 425 and 429** — same lookup-with-fallback as Task 5 Step 2.
+- [ ] **Step 2: `cap(formData.status)` at lines 425 and 429**
+
+`cap` (`:55`) upper-cases the first letter of an API status value, rendering `Published` / `Archived` / `Draft`. No literal scan can see these. Replace with a lookup that keeps `cap` as the fallback:
+
+```ts
+const statusLabel = (s: string) => t(`common.status.${s}` as TKey) || t('pages.news.draft') || cap(s);
+```
+
+`published` and `archived` have shared keys; `draft` does not, and `pages.news.draft` was created in Task 5. Keep `cap` in the file — it is the last-resort fallback for a status the catalog does not know.
 
 - [ ] **Step 3: `NewsEdit.tsx` page-local keys**
 
