@@ -237,8 +237,28 @@ export const th: Translations = {
       nSelected: 'เลือกแล้ว {{count}} รายการ',
     },
     validation: {
-      nameRequired: 'กรุณากรอกชื่อ',
-      clusterRequired: 'กรุณาเลือก cluster',
+      requiredMessage: 'กรุณากรอก {{label}}',
+      // Thai chooses a verb English doesn't need to: this reads "please select", for
+      // select-backed fields, vs. requiredMessage's "please fill in". Same English value
+      // as requiredMessage (see en.ts) — the split only matters in Thai.
+      selectRequired: 'กรุณาเลือก {{label}}',
+      invalidEmail: 'รูปแบบอีเมลไม่ถูกต้อง',
+      invalidPhone: 'รูปแบบเบอร์โทรไม่ถูกต้อง',
+      invalidUrl: 'ต้องเป็น URL ที่ขึ้นต้นด้วย http หรือ https',
+      invalidDate: 'รูปแบบวันที่ไม่ถูกต้อง',
+      invalidCode: 'รหัสต้องเป็นตัวอักษรหรือตัวเลข 2-20 ตัว',
+      usernameEmail: 'ชื่อผู้ใช้ต้องเป็นอีเมลที่ถูกต้อง',
+      nonNegativeInt: 'ต้องเป็นจำนวนเต็มไม่ติดลบ',
+      positiveInt: 'ต้องเป็นจำนวนเต็มบวก',
+      invalidSchema: 'Schema ต้องขึ้นต้นด้วยตัวอักษรหรือขีดล่าง และประกอบด้วยตัวอักษร ตัวเลข หรือขีดล่างเท่านั้น',
+      invalidSubNo: 'หมายเลขการสมัครต้องยาว 1-50 ตัว (ตัวอักษร ตัวเลข ช่องว่าง - _ . /)',
+      invalidAlias: 'ชื่อย่อต้องเป็นตัวอักษรหรือตัวเลข 1-{{max}} ตัว',
+      fieldDefault: 'ข้อมูลนี้',
+      amount: 'จำนวน',
+      schema: 'Schema',
+      startDate: 'วันที่เริ่ม',
+      endDate: 'วันที่สิ้นสุด',
+      subscriptionNumber: 'หมายเลขการสมัคร',
     },
   },
   entity: {
@@ -251,9 +271,9 @@ export const th: Translations = {
   // Templates space around {{entity}}: Thai nouns don't need the boundary, but these
   // templates also take Latin nouns (Cluster, User, Business Unit, …), and a bare
   // 'ลบClusterสำเร็จ' with no space reads as a rendering fault. The file already spaces
-  // around Latin words elsewhere (switcher.selectCluster, common.state.noBusinessUnitsInCluster,
-  // common.validation.clusterRequired) — this matches that convention instead of treating
-  // Thai nouns as a special case that gets to sit tight against the template.
+  // around Latin words elsewhere (switcher.selectCluster, common.state.noBusinessUnitsInCluster)
+  // — this matches that convention instead of treating Thai nouns as a special case that
+  // gets to sit tight against the template.
   toast: {
     created: 'สร้าง {{entity}} สำเร็จ',
     deleted: 'ลบ {{entity}} สำเร็จ',
