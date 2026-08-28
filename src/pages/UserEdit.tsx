@@ -566,7 +566,7 @@ const UserEdit: React.FC = () => {
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username {editing && "*"}</Label>
+                  <Label htmlFor="username">{editing ? t('pages.users.usernameLabelRequired') : t('pages.users.usernameLabel')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -592,7 +592,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email {editing && "*"}</Label>
+                  <Label htmlFor="email">{editing ? t('pages.users.emailLabelRequired') : t('pages.users.emailLabel')}</Label>
                   {editing ? (
                     <>
                       <Input

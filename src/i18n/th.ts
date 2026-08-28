@@ -343,6 +343,10 @@ export const th: Translations = {
       softDeleteConfirm: 'ต้องการลบผู้ใช้รายนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
       bulkSoftDeleteConfirm: 'ลบผู้ใช้ที่เลือกแบบชั่วคราวใช่หรือไม่ กู้คืนได้ภายหลัง',
       notFoundDescription: 'ไม่พบผู้ใช้รายนี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการผู้ใช้',
+      usernameLabel: 'ชื่อผู้ใช้',
+      usernameLabelRequired: 'ชื่อผู้ใช้ *',
+      emailLabel: 'อีเมล',
+      emailLabelRequired: 'อีเมล *',
     },
   },
   error: {

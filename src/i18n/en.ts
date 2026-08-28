@@ -370,6 +370,16 @@ export const en = {
       softDeleteConfirm: 'Are you sure you want to delete this user? This action cannot be undone.',
       bulkSoftDeleteConfirm: 'Soft-delete the selected user(s)? They can be restored later.',
       notFoundDescription: "This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list.",
+      // Deliberately NOT reusing common.field.username/email here even though the plain
+      // forms are byte-identical. These four keys are the non-required/required pair for
+      // one label each — splitting the pair across two namespaces would make the required
+      // form's sibling harder to find. The asterisk lives in the label string itself (not
+      // interpolated) because it's a required-field marker, not data — a language that
+      // marks required fields differently should express that in its own wording.
+      usernameLabel: 'Username',
+      usernameLabelRequired: 'Username *',
+      emailLabel: 'Email',
+      emailLabelRequired: 'Email *',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
