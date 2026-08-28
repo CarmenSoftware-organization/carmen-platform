@@ -1102,6 +1102,99 @@ export const en = {
       // ('Reference No.'), the form-field version of the same concept with different
       // punctuation. Reused twice within this file (CSV label + column header).
       referenceNoColumn: 'Reference No',
+
+      // Task 4 (sections/* + hooks below) — BuQuotaSection.tsx.
+      buQuotaCardTitle: 'BU Quota Licenses',
+      buQuotaLoadFailedDescription: 'Could not load licenses for this cluster — the quota is unknown, not zero.',
+      quotaNoExpiry: 'Quota: {{count}} business units · no expiry',
+      quotaExpires: 'Quota: {{count}} business units · expires {{date}}',
+      noLicenseInForce: 'No license in force — this cluster cannot create business units',
+      buQuotaLoadFailedBanner: 'License data for this cluster could not be loaded — the quota and Over limit figures below are unknown, not zero.',
+      businessUnitsInUse: 'Business units in use: {{used}} / {{total}}',
+      overLimitReadOnly: '{{count}} over limit — those units are read-only',
+      buQuotaDataUnavailable: 'License data for this cluster could not be loaded — it is unknown, not empty.',
+      noBuQuotaLicenseDescription: 'The platform team has not issued a BU quota license for this cluster.',
+      quotaColumn: 'Quota',
+      showExpired: 'Show expired ({{count}})',
+      removeBuQuotaDescription: 'Remove the {{count}}-BU license. If it is still in force, this cluster immediately loses the ability to create new business units until another license takes over.',
+      buRankQuotaUnavailable: 'Quota unknown — the license data above failed to load, so Over-limit status cannot be determined right now.',
+      // Thai is identical for both — Thai does not inflect for number, only the English
+      // (business unit / business units) differs, matching the noLicensesTitle/noLicence
+      // precedent above.
+      overLimitCountOne: '{{count}} business unit rank beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      overLimitCountMany: '{{count}} business units rank beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      rankedExplanation: 'Ranked the same way the platform decides which units are covered — HQ first, then oldest.',
+      rankColumn: 'Rank',
+      overLimitBadge: 'Over limit',
+      overLimitTitle: 'Quota {{cap}} · this unit ranks {{rank}}',
+
+      // SeatSection.tsx
+      noBusinessUnitsSeatsDescription: 'This cluster has no business units yet — seats are issued per business unit.',
+      // Two independent pluralizable counts (seats, business units) in one sentence — four
+      // whole-sentence combinations rather than composing translated fragments, matching the
+      // noFeaturesAssignedToBu/ToThis precedent in pages.subscriptions ("two whole sentences
+      // instead" of nesting a translated value inside a translated frame). Thai is identical
+      // across all four combinations — only which English combination is picked differs.
+      seatSummaryOneOne: '{{count}} seat across {{buCount}} business unit',
+      seatSummaryOneMany: '{{count}} seat across {{buCount}} business units',
+      seatSummaryManyOne: '{{count}} seats across {{buCount}} business unit',
+      seatSummaryManyMany: '{{count}} seats across {{buCount}} business units',
+      seatSummaryFailedOne: ' (+ {{count}} business unit unknown)',
+      seatSummaryFailedMany: ' (+ {{count}} business units unknown)',
+      seatCountUnavailable: 'Seat count unavailable',
+      seatLoadFailedBanner: 'Could not load licenses for this business unit — the seat figures below are unknown, not zero.',
+      seatDataUnavailable: 'License data for this business unit could not be loaded — it is unknown, not empty.',
+      noSeatLicenseDescription: 'Add the first license to set how many seats this business unit has bought.',
+      removeSeatDescription: 'Remove the {{count}}-seat license. If it is still in force, those seats leave the cluster pool immediately.',
+      // Same two-axis pluralization shape as seatSummary* above (seat count x active-license
+      // count), same reasoning.
+      seatFromLicenseOneOne: '{{count}} seat from {{activeCount}} active license',
+      seatFromLicenseOneMany: '{{count}} seat from {{activeCount}} active licenses',
+      seatFromLicenseManyOne: '{{count}} seats from {{activeCount}} active license',
+      seatFromLicenseManyMany: '{{count}} seats from {{activeCount}} active licenses',
+      endDateRequiredBadge: 'End date required',
+
+      // SubscriptionSection.tsx
+      subscriptionsCardDescription: "Contracts issued for this cluster's business units.",
+      addSubscriptionButton: 'Add subscription',
+      subscriptionsLoadFailedPrefix: 'Could not load subscriptions for this cluster: ',
+      subscriptionsLoadFailed: 'Could not load subscriptions for this cluster.',
+      // Byte-identical to pages.subscriptions.emptyTitle ('No subscriptions yet') — a
+      // cross-slice pages.* coincidence. Only 2 files hold it (SubscriptionTable.tsx there,
+      // this file here), short of the >=3-files promotion bar, so it stays split. Thai
+      // copied verbatim from pages.subscriptions.emptyTitle, not retranslated.
+      noSubscriptionsYetTitle: 'No subscriptions yet',
+      noSubscriptionContractsDescription: 'This cluster has no subscription contracts.',
+      noBuBadge: 'No BU',
+      // Byte-identical to pages.subscriptions.subscription ('Subscription') — used at 2 call
+      // sites in 2 files there (SubscriptionTable.tsx, SubscriptionForm.tsx) already; adding
+      // this file makes 3 files across 2 slices, which DOES clear the >=3-files-AND->=2-
+      // slices promotion bar (unlike the other cross-slice matches on this page, which stay
+      // split). Reported rather than promoted here: SubscriptionTable.tsx/SubscriptionForm.
+      // tsx are outside this task's file scope (Task 4's file list is sections/*, the two
+      // hooks, and licenseKindConfig.ts only) — flagging for a follow-up promotion pass, the
+      // same way Task 1's seats/startDate/endDate signal was reported before a separate fix
+      // round acted on it. Thai copied verbatim.
+      subscriptionColumn: 'Subscription',
+      // Byte-identical to pages.subscriptions.state ('State') — 2 files there
+      // (SubscriptionTable.tsx, 3 call sites), 1 slice; this file makes it 2 files, 2 slices
+      // — short of the >=3-files bar, so it stays split. Thai copied verbatim (both read
+      // 'สถานะ', coincidentally identical to common.status.label's Thai despite the English
+      // comment on pages.subscriptions.state insisting the two must not collide on screen —
+      // flagging as a pre-existing Thai issue in a file outside this task's scope, not fixed
+      // here).
+      subscriptionStateColumn: 'State',
+      // Byte-identical to pages.subscriptions.expiringSoon ('Expiring soon') — 2 files there
+      // (SubscriptionTable.tsx, SubscriptionSummary.tsx), 1 slice; this file makes it 3
+      // files across 2 slices — clears the promotion bar. Reported, not promoted, for the
+      // same file-scope reason as subscriptionColumn above. Thai copied verbatim.
+      expiringSoonBadge: 'Expiring soon',
+
+      // useLicenseLedger.ts — the toast title for a failed GET reuses loadFailedTitle above
+      // (byte-identical 'Could not load licenses', already seeded for PurchaseLicenseTable's
+      // EmptyState title; the hook's toast renders the same words in a different UI shell).
+      licenseRemoved: 'License removed',
+      removeLicenseFailedTitle: 'Could not remove the license',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

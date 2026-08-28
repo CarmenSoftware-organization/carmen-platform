@@ -13,12 +13,29 @@ import { isExpiringSoon } from '../../../utils/subscriptionState';
 import { getErrorDetail, devLog } from '../../../utils/errorParser';
 import { latestActor } from '../../../utils/audit';
 import { fmtDate } from '../licenseDates';
-import type { Subscription } from '../../../types';
+import { useI18n } from '../../../hooks/useI18n';
+import type { TKey } from '../../../i18n/types';
+import type { Subscription, SubscriptionState } from '../../../types';
 
 export interface SubscriptionSectionProps {
   clusterId: string;
   canManage: boolean;
 }
+
+// Pure data + catalog keys, module scope — no `t` call here. Only 'active' gets the
+// 'success' badge; both other states keep the source's original 'secondary' fallback
+// (the pre-existing code only ever checked `=== 'active'`, so 'expired' and 'inactive'
+// must render identically to each other, not get distinct variants).
+const STATE_VARIANT: Record<SubscriptionState, 'success' | 'secondary'> = {
+  active: 'success',
+  expired: 'secondary',
+  inactive: 'secondary',
+};
+const STATE_LABEL_KEYS: Record<SubscriptionState, TKey> = {
+  active: 'common.status.active',
+  expired: 'common.status.expired',
+  inactive: 'common.status.inactive',
+};
 
 /**
  * สัญญาทั้งหมดของ cluster นี้ — ดึงด้วย `subscriptionService.getAll` พร้อม advance filter
@@ -29,6 +46,7 @@ export interface SubscriptionSectionProps {
  * ต้องขึ้นป้าย "No BU" ไม่ใช่ช่องว่างเงียบ ๆ
  */
 export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectionProps) {
+  const { t } = useI18n();
   const [items, setItems] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -46,12 +64,12 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
       setItems(res?.data ?? []);
     } catch (err) {
       devLog('Failed to load subscriptions for cluster:', err);
-      setErrorMsg(getErrorDetail(err));
+      setErrorMsg(getErrorDetail(err, t));
       setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, [clusterId]);
+  }, [clusterId, t]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -63,15 +81,15 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Subscriptions
+            {t('common.label.subscriptions')}
           </CardTitle>
-          <CardDescription>Contracts issued for this cluster&apos;s business units.</CardDescription>
+          <CardDescription>{t('pages.licenses.subscriptionsCardDescription')}</CardDescription>
         </div>
         {canManage && (
           <Button size="sm" asChild>
             <Link to={addHref}>
               <Plus className="mr-2 h-4 w-4" />
-              Add subscription
+              {t('pages.licenses.addSubscriptionButton')}
             </Link>
           </Button>
         )}
@@ -82,24 +100,26 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
         ) : failed ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <p className="text-sm text-destructive">
-              Could not load subscriptions for this cluster{errorMsg ? `: ${errorMsg}` : '.'}
+              {errorMsg
+                ? `${t('pages.licenses.subscriptionsLoadFailedPrefix')}${errorMsg}`
+                : t('pages.licenses.subscriptionsLoadFailed')}
             </p>
             <Button variant="outline" size="sm" onClick={reload}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Retry
+              {t('common.action.retry')}
             </Button>
           </div>
         ) : items.length === 0 ? (
           <EmptyState
             icon={CreditCard}
-            title="No subscriptions yet"
-            description="This cluster has no subscription contracts."
+            title={t('pages.licenses.noSubscriptionsYetTitle')}
+            description={t('pages.licenses.noSubscriptionContractsDescription')}
             action={
               canManage ? (
                 <Button size="sm" asChild>
                   <Link to={addHref}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add subscription
+                    {t('pages.licenses.addSubscriptionButton')}
                   </Link>
                 </Button>
               ) : undefined
@@ -110,11 +130,11 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
             <table className="w-full text-sm [&_th]:whitespace-nowrap table-sticky-right [--sticky-right-bg:var(--card)]">
               <thead>
                 <tr className="text-xs text-muted-foreground">
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Subscription</th>
-                  <th className="text-left px-2 py-1">Business Unit</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">Start</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">End</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">State</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.subscriptionColumn')}</th>
+                  <th className="text-left px-2 py-1">{t('entity.businessUnit.title')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.subscriptionStateColumn')}</th>
                   <th className="px-2 py-1" />
                 </tr>
               </thead>
@@ -132,17 +152,17 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                             <div className="text-muted-foreground truncate text-xs">{sub.bu_name}</div>
                           </div>
                         ) : (
-                          <Badge variant="secondary">No BU</Badge>
+                          <Badge variant="secondary">{t('pages.licenses.noBuBadge')}</Badge>
                         )}
                       </td>
                       <td className="px-2 py-1 whitespace-nowrap">{fmtDate(sub.start_date)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{fmtDate(sub.end_date)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">
                         <div className="space-x-1">
-                          <Badge variant={sub.state === 'active' ? 'success' : 'secondary'} className="capitalize">
-                            {sub.state}
+                          <Badge variant={STATE_VARIANT[sub.state]}>
+                            {t(STATE_LABEL_KEYS[sub.state])}
                           </Badge>
-                          {soon && <Badge variant="warning">Expiring soon</Badge>}
+                          {soon && <Badge variant="warning">{t('pages.licenses.expiringSoonBadge')}</Badge>}
                         </div>
                         <AuditMeta
                           variant="compact"
@@ -154,7 +174,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                       <td className="px-2 py-1 text-right whitespace-nowrap">
                         {canManage && (
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to={`/licenses/subscriptions/${sub.id}/edit`}>Edit</Link>
+                            <Link to={`/licenses/subscriptions/${sub.id}/edit`}>{t('common.action.edit')}</Link>
                           </Button>
                         )}
                       </td>

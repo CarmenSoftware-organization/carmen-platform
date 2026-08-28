@@ -797,6 +797,71 @@ export const th: Translations = {
       ownerNameColumn: 'ชื่อ {{owner}}',
       coverageColumn: 'ช่วงเวลาคุ้มครอง',
       referenceNoColumn: 'เลขที่อ้างอิง',
+
+      // Task 4 — see en.ts for the cross-file rationale behind each key here.
+      buQuotaCardTitle: 'ไลเซนส์โควตา BU',
+      buQuotaLoadFailedDescription: 'โหลดไลเซนส์สำหรับ Cluster นี้ไม่สำเร็จ — โควตาไม่ทราบ ไม่ใช่ศูนย์',
+      quotaNoExpiry: 'โควตา: {{count}} หน่วยธุรกิจ · ไม่มีวันหมดอายุ',
+      quotaExpires: 'โควตา: {{count}} หน่วยธุรกิจ · หมดอายุ {{date}}',
+      noLicenseInForce: 'ไม่มีไลเซนส์ที่มีผล — Cluster นี้สร้างหน่วยธุรกิจไม่ได้',
+      buQuotaLoadFailedBanner: 'โหลดข้อมูลไลเซนส์สำหรับ Cluster นี้ไม่สำเร็จ — ตัวเลขโควตาและ Over limit ด้านล่างไม่ทราบ ไม่ใช่ศูนย์',
+      businessUnitsInUse: 'หน่วยธุรกิจที่ใช้อยู่: {{used}} / {{total}}',
+      overLimitReadOnly: 'เกิน {{count}} หน่วย — หน่วยเหล่านั้นอ่านได้อย่างเดียว',
+      buQuotaDataUnavailable: 'โหลดข้อมูลไลเซนส์สำหรับ Cluster นี้ไม่สำเร็จ — ข้อมูลไม่ทราบ ไม่ใช่ว่างเปล่า',
+      noBuQuotaLicenseDescription: 'ทีมแพลตฟอร์มยังไม่ได้ออกไลเซนส์โควตา BU ให้ Cluster นี้',
+      quotaColumn: 'โควตา',
+      showExpired: 'แสดงที่หมดอายุ ({{count}})',
+      removeBuQuotaDescription: 'นำไลเซนส์ {{count}}-BU นี้ออก หากยังมีผลอยู่ Cluster นี้จะเสียสิทธิ์สร้างหน่วยธุรกิจใหม่ทันทีจนกว่าจะมีไลเซนส์ใบอื่นมาแทน',
+      buRankQuotaUnavailable: 'ไม่ทราบโควตา — โหลดข้อมูลไลเซนส์ด้านบนไม่สำเร็จ จึงยังระบุสถานะ Over limit ไม่ได้ในตอนนี้',
+      // Same Thai for both — see en.ts, only the English differs by number.
+      overLimitCountOne: '{{count}} หน่วยธุรกิจมีอันดับเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      overLimitCountMany: '{{count}} หน่วยธุรกิจมีอันดับเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      rankedExplanation: 'จัดอันดับด้วยวิธีเดียวกับที่แพลตฟอร์มใช้ตัดสินว่าหน่วยไหนได้รับความคุ้มครอง — HQ ก่อน แล้วตามด้วยหน่วยที่เก่าที่สุด',
+      rankColumn: 'อันดับ',
+      overLimitBadge: 'เกินโควตา',
+      overLimitTitle: 'โควตา {{cap}} · หน่วยนี้อยู่อันดับ {{rank}}',
+
+      noBusinessUnitsSeatsDescription: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ — ที่นั่งจะออกให้เป็นรายหน่วยธุรกิจ',
+      // Same Thai across all four combinations — see en.ts, only the English differs.
+      seatSummaryOneOne: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryOneMany: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryManyOne: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryManyMany: '{{count}} ที่นั่ง ครอบคลุม {{buCount}} หน่วยธุรกิจ',
+      seatSummaryFailedOne: ' (+ {{count}} หน่วยธุรกิจไม่ทราบผล)',
+      seatSummaryFailedMany: ' (+ {{count}} หน่วยธุรกิจไม่ทราบผล)',
+      seatCountUnavailable: 'ไม่ทราบจำนวนที่นั่ง',
+      seatLoadFailedBanner: 'โหลดไลเซนส์สำหรับหน่วยธุรกิจนี้ไม่สำเร็จ — ตัวเลขที่นั่งด้านล่างไม่ทราบ ไม่ใช่ศูนย์',
+      seatDataUnavailable: 'โหลดข้อมูลไลเซนส์สำหรับหน่วยธุรกิจนี้ไม่สำเร็จ — ข้อมูลไม่ทราบ ไม่ใช่ว่างเปล่า',
+      noSeatLicenseDescription: 'เพิ่มไลเซนส์ใบแรกเพื่อกำหนดจำนวนที่นั่งที่หน่วยธุรกิจนี้ซื้อไว้',
+      removeSeatDescription: 'นำไลเซนส์ {{count}}-ที่นั่งนี้ออก หากยังมีผลอยู่ ที่นั่งเหล่านั้นจะออกจากพูลของ Cluster ทันที',
+      // Same Thai across all four combinations — see en.ts.
+      seatFromLicenseOneOne: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatFromLicenseOneMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatFromLicenseManyOne: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatFromLicenseManyMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      endDateRequiredBadge: 'ต้องระบุวันที่สิ้นสุด',
+
+      subscriptionsCardDescription: 'สัญญาที่ออกให้กับหน่วยธุรกิจของ Cluster นี้',
+      addSubscriptionButton: 'เพิ่มสัญญา',
+      subscriptionsLoadFailedPrefix: 'โหลดสัญญาสำหรับ Cluster นี้ไม่สำเร็จ: ',
+      subscriptionsLoadFailed: 'โหลดสัญญาสำหรับ Cluster นี้ไม่สำเร็จ',
+      // Copied verbatim from pages.subscriptions.emptyTitle — not retranslated.
+      noSubscriptionsYetTitle: 'ยังไม่มีสัญญา',
+      noSubscriptionContractsDescription: 'Cluster นี้ไม่มีสัญญา',
+      noBuBadge: 'ไม่มี BU',
+      // Copied verbatim from pages.subscriptions.subscription — not retranslated. See en.ts:
+      // this pair clears the promotion bar (3 files, 2 slices) but is reported rather than
+      // promoted, since the other two files are outside this task's scope.
+      subscriptionColumn: 'สัญญา',
+      // Copied verbatim from pages.subscriptions.state — not retranslated. See en.ts for the
+      // pre-existing Thai-collision note (this Thai is identical to common.status.label's).
+      subscriptionStateColumn: 'สถานะ',
+      // Copied verbatim from pages.subscriptions.expiringSoon — not retranslated. See en.ts:
+      // this pair clears the promotion bar (3 files, 2 slices) but is reported, not promoted.
+      expiringSoonBadge: 'ใกล้หมดอายุ',
+
+      licenseRemoved: 'นำไลเซนส์ออกแล้ว',
+      removeLicenseFailedTitle: 'นำไลเซนส์ออกไม่สำเร็จ',
     },
   },
   error: {

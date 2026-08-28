@@ -14,6 +14,8 @@ import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon } from '../..
 import { latestActor } from '../../../utils/audit';
 import { fmtDate, daysLeft } from '../licenseDates';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
+import { useI18n } from '../../../hooks/useI18n';
+import type { TKey } from '../../../i18n/types';
 import type { BusinessUnit, ClusterLicense, ClusterLicenseStatus } from '../../../types';
 
 export interface BuQuotaSectionProps {
@@ -35,10 +37,17 @@ export interface BuQuotaSectionProps {
   businessUnits: BusinessUnit[];
 }
 
-const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; label: string }> = {
-  active: { variant: 'success', label: 'Active' },
-  scheduled: { variant: 'secondary', label: 'Scheduled' },
-  expired: { variant: 'destructive', label: 'Expired' },
+// Pure data + catalog keys, module scope — no `t` call here, matching the STATUS_VARIANT/
+// STATUS_LABEL_KEYS split established in LicensePurchaseForm.tsx / PurchaseLicenseTable.tsx.
+const STATUS_VARIANT: Record<ClusterLicenseStatus, 'success' | 'secondary' | 'destructive'> = {
+  active: 'success',
+  scheduled: 'secondary',
+  expired: 'destructive',
+};
+const STATUS_LABEL_KEYS: Record<ClusterLicenseStatus, TKey> = {
+  active: 'common.status.active',
+  scheduled: 'common.status.scheduled',
+  expired: 'common.status.expired',
 };
 
 /**
@@ -55,6 +64,7 @@ const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'seconda
  * `BusinessUnitsSection`/`BusinessUnitList`) ห้ามเรียงเอง
  */
 export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage, buUsed, businessUnits }: BuQuotaSectionProps) {
+  const { t } = useI18n();
   const { licenses, loading, saving, loadFailed, reload, remove } =
     useLicenseLedger<ClusterLicense>(clusterId, clusterLicenseService);
   const now = new Date();
@@ -95,29 +105,29 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
               <Ticket className="h-5 w-5" />
-              BU Quota Licenses
+              {t('pages.licenses.buQuotaCardTitle')}
             </CardTitle>
             <CardDescription>
               {loadFailed
-                ? 'Could not load licenses for this cluster — the quota is unknown, not zero.'
+                ? t('pages.licenses.buQuotaLoadFailedDescription')
                 : winning
-                ? `Quota: ${winning.licensed_bus} business units${
-                    isPerpetual(winning.end_date) ? ' · no expiry' : ` · expires ${fmtDate(winning.end_date)}`
-                  }`
-                : 'No license in force — this cluster cannot create business units'}
+                ? t(isPerpetual(winning.end_date) ? 'pages.licenses.quotaNoExpiry' : 'pages.licenses.quotaExpires', {
+                    count: winning.licensed_bus,
+                    date: fmtDate(winning.end_date),
+                  })
+                : t('pages.licenses.noLicenseInForce')}
             </CardDescription>
             {loadFailed && (
               <p className="text-xs text-destructive">
-                License data for this cluster could not be loaded — the quota and Over limit
-                figures below are unknown, not zero.
+                {t('pages.licenses.buQuotaLoadFailedBanner')}
               </p>
             )}
             {winning && (
               <p className="text-xs text-muted-foreground">
-                Business units in use: {buUsed} / {winning.licensed_bus}
+                {t('pages.licenses.businessUnitsInUse', { used: buUsed, total: winning.licensed_bus })}
                 {buUsed > winning.licensed_bus && (
                   <span className="ml-2 text-destructive">
-                    {buUsed - winning.licensed_bus} over limit — those units are read-only
+                    {t('pages.licenses.overLimitReadOnly', { count: buUsed - winning.licensed_bus })}
                   </span>
                 )}
               </p>
@@ -127,7 +137,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
             <Button asChild size="sm">
               <Link to={addHref}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add BU quota license
+                {t('pages.licenses.addBuQuotaLicense')}
               </Link>
             </Button>
           )}
@@ -137,11 +147,11 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
           {loadFailed ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
               <p className="text-sm text-muted-foreground">
-                License data for this cluster could not be loaded — it is unknown, not empty.
+                {t('pages.licenses.buQuotaDataUnavailable')}
               </p>
               <Button variant="outline" size="sm" onClick={reload} disabled={loading}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                Retry
+                {t('common.action.retry')}
               </Button>
             </div>
           ) : loading && licenses.length === 0 ? (
@@ -149,14 +159,14 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
           ) : licenses.length === 0 ? (
             <EmptyState
               icon={Ticket}
-              title="No licenses yet"
-              description="The platform team has not issued a BU quota license for this cluster."
+              title={t('pages.licenses.noLicensesYetTitle')}
+              description={t('pages.licenses.noBuQuotaLicenseDescription')}
               action={
                 canManage ? (
                   <Button asChild size="sm">
                     <Link to={addHref}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add BU quota license
+                      {t('pages.licenses.addBuQuotaLicense')}
                     </Link>
                   </Button>
                 ) : undefined
@@ -170,31 +180,30 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
               <table className={`w-full text-sm [&_th]:whitespace-nowrap${canManage ? ' table-sticky-right [--sticky-right-bg:var(--card)]' : ''}`}>
                 <thead>
                   <tr className="text-xs text-muted-foreground">
-                    <th className="text-left px-2 py-1 whitespace-nowrap">Quota</th>
-                    <th className="text-left px-2 py-1 whitespace-nowrap">Start</th>
-                    <th className="text-left px-2 py-1 whitespace-nowrap">End</th>
-                    <th className="text-left px-2 py-1 whitespace-nowrap">Status</th>
-                    <th className="text-left px-2 py-1 whitespace-nowrap">Reference</th>
-                    <th className="text-left px-2 py-1">Note</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.quotaColumn')}</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.status.label')}</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.field.reference')}</th>
+                    <th className="text-left px-2 py-1">{t('common.field.note')}</th>
                     {canManage && <th className="px-2 py-1" />}
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map((l) => {
                     const status = licenseStatus(l, now);
-                    const badge = STATUS_BADGE[status];
                     const latest = latestActor(l);
                     return (
                       <tr key={l.id} className="border-b last:border-0">
                         <td className="px-2 py-1 font-mono whitespace-nowrap">{l.licensed_bus}</td>
                         <td className="px-2 py-1 whitespace-nowrap">{fmtDate(l.start_date)}</td>
                         <td className="px-2 py-1 whitespace-nowrap">
-                          {isPerpetual(l.end_date) ? <span className="text-muted-foreground">No expiry</span> : fmtDate(l.end_date)}
+                          {isPerpetual(l.end_date) ? <span className="text-muted-foreground">{t('common.state.noExpiry')}</span> : fmtDate(l.end_date)}
                         </td>
                         <td className="px-2 py-1 space-x-1 whitespace-nowrap">
-                          <Badge variant={badge.variant}>{badge.label}</Badge>
+                          <Badge variant={STATUS_VARIANT[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
                           {isExpiringSoon(l, now) && (
-                            <Badge variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
+                            <Badge variant="warning">{t('pages.licenses.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
                           )}
                         </td>
                         <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>
@@ -210,7 +219,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                         {canManage && (
                           <td className="px-2 py-1 text-right whitespace-nowrap">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link to={`/licenses/bu-quota/${l.id}/edit`}>Edit</Link>
+                              <Link to={`/licenses/bu-quota/${l.id}/edit`}>{t('common.action.edit')}</Link>
                             </Button>
                             <Button
                               variant="ghost"
@@ -218,7 +227,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                               onClick={() => setRemoveTarget(l)}
                               disabled={saving}
                             >
-                              Remove
+                              {t('common.action.remove')}
                             </Button>
                           </td>
                         )}
@@ -232,7 +241,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
 
           {expired.length > 0 && !showExpired && (
             <Button variant="ghost" size="sm" onClick={() => setShowExpired(true)}>
-              Show expired ({expired.length})
+              {t('pages.licenses.showExpired', { count: expired.length })}
             </Button>
           )}
         </CardContent>
@@ -241,8 +250,8 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
           <ConfirmDialog
             open={!!removeTarget}
             onOpenChange={(o) => !o && setRemoveTarget(null)}
-            title="Remove license"
-            description={`Remove the ${removeTarget?.licensed_bus}-BU license. If it is still in force, this cluster immediately loses the ability to create new business units until another license takes over.`}
+            title={t('pages.licenses.removeLicenseTitle')}
+            description={t('pages.licenses.removeBuQuotaDescription', { count: removeTarget?.licensed_bus ?? 0 })}
             confirmVariant="destructive"
             onConfirm={async () => {
               if (removeTarget) await remove(removeTarget.id);
@@ -256,27 +265,27 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Building2 className="h-4 w-4" />
-            Business units
+            {t('common.label.businessUnitsLabel')}
           </CardTitle>
           <CardDescription>
             {loadFailed
-              ? 'Quota unknown — the license data above failed to load, so Over-limit status cannot be determined right now.'
+              ? t('pages.licenses.buRankQuotaUnavailable')
               : overCount > 0
-              ? `${overCount} business unit${overCount === 1 ? '' : 's'} rank beyond the licensed quota of ${cap}. They are read-only until more quota is purchased.`
-              : 'Ranked the same way the platform decides which units are covered — HQ first, then oldest.'}
+              ? t(overCount === 1 ? 'pages.licenses.overLimitCountOne' : 'pages.licenses.overLimitCountMany', { count: overCount, cap: cap ?? 0 })
+              : t('pages.licenses.rankedExplanation')}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {businessUnits.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">No business units in this cluster.</p>
+            <p className="text-muted-foreground py-6 text-center text-sm">{t('common.state.noBusinessUnitsInCluster')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm [&_th]:whitespace-nowrap">
                 <thead>
                   <tr className="text-xs text-muted-foreground">
-                    <th className="text-left px-2 py-1 whitespace-nowrap">Rank</th>
-                    <th className="text-left px-2 py-1">Business Unit</th>
-                    <th className="text-left px-2 py-1 whitespace-nowrap">Status</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.rankColumn')}</th>
+                    <th className="text-left px-2 py-1">{t('entity.businessUnit.title')}</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.status.label')}</th>
                     <th className="px-2 py-1" />
                   </tr>
                 </thead>
@@ -299,7 +308,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                           </td>
                           <td className="px-2 py-1 whitespace-nowrap">
                             <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
-                              {bu.is_active ? 'Active' : 'Inactive'}
+                              {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
                             </Badge>
                           </td>
                           <td className="px-2 py-1 text-right whitespace-nowrap">
@@ -307,9 +316,9 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                               <Badge
                                 variant="destructive"
                                 className="text-xs"
-                                title={`Quota ${cap} · this unit ranks ${rank}`}
+                                title={t('pages.licenses.overLimitTitle', { cap: cap ?? 0, rank })}
                               >
-                                Over limit
+                                {t('pages.licenses.overLimitBadge')}
                               </Badge>
                             )}
                           </td>
