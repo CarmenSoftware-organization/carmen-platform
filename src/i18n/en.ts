@@ -761,6 +761,50 @@ export const en = {
       reachOne: '{{count}} business unit',
       reachMany: '{{count}} business units',
     },
+    subscriptions: {
+      // --- authored English for strings that existed only in Thai ---
+      detailsTitle: 'Subscription details',
+      purchasedModules: 'Purchased modules',
+      seats: 'Seats',
+      searchNumber: 'Search subscription number',
+      clearClusterFilter: 'Clear cluster filter',
+
+      // FeatureSelectionCard
+      featuresLoadFailed: "Couldn't load the feature list",
+      featuresLoadFailedHint: "Features can't be edited right now. Try again.",
+      featuresLoading: 'Loading features…',
+      unrecognisedDisabled: 'Unrecognised (disabled) ({{count}})',
+      removeUnrecognised: 'Remove unrecognised feature {{key}}',
+      disabledStillAttached: 'These features are disabled system-wide but are still attached to this subscription.',
+      disabledMustRemove: 'These features are disabled system-wide — remove them before the subscription\'s features can be saved.',
+      noFeaturesAssigned: 'No features assigned to {{target}} yet',
+      thisSubscription: 'this subscription',
+      searchFeaturesPlaceholder: 'Search modules or features...',
+      searchFeatures: 'Search features',
+      clearSearch: 'Clear search',
+      noFeaturesDefined: 'No features defined in the system yet',
+      noFeaturesMatch: 'No features match “{{query}}”',
+      collapseAll: 'Collapse all',
+      expandAll: 'Expand all',
+      clearAllIn: 'Clear all in {{module}}',
+      selectAllIn: 'Select all in {{module}}',
+      none: 'None',
+      selectedCount: '{{count}} selected',
+
+      // SeatsCard
+      pendingCount: '{{count}} pending',
+      upTo: '→ up to {{projected}}/{{cap}}',
+      noBusinessUnitLinked: "This subscription isn't linked to any business unit",
+      purchasedCount: '{{count}} purchased',
+      capEditedOnBuPage: 'The cap is edited on the business unit page',
+      editCap: 'Edit cap',
+      seatsPoolNote: 'Seats are a cluster-wide pool — business units outside this subscription contribute to it too, so the purchased count above need not equal the total cap ({{cap}}).',
+
+      // SubscriptionInfoCard
+      selectClusterFirst: 'Select a cluster first',
+      clusterHasNoBu: 'This cluster has no business units — create one before issuing a subscription',
+      numberAutoAssigned: 'A number is assigned automatically on save',
+    },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched
