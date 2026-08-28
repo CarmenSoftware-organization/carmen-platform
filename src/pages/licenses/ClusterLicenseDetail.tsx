@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
@@ -6,18 +6,13 @@ import clusterService from '../../services/clusterService';
 import businessUnitService from '../../services/businessUnitService';
 import { useAuth } from '../../context/AuthContext';
 import { devLog, isNotFoundError } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
 import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { useScrollSpy } from '../clusterEdit/useScrollSpy';
 import { BuQuotaSection } from './sections/BuQuotaSection';
 import { SeatSection } from './sections/SeatSection';
 import { SubscriptionSection } from './sections/SubscriptionSection';
 import type { BusinessUnit, Cluster } from '../../types';
-
-const ALL_SECTIONS: NavItem[] = [
-  { id: 'quota', label: 'BU quota' },
-  { id: 'seats', label: 'Seats' },
-  { id: 'subscriptions', label: 'Subscriptions' },
-];
 
 /**
  * `/licenses/:clusterId` (platform admin) — สาม "ชั้น" ของ license ของ cluster หนึ่งไว้ในหน้าเดียว:
@@ -37,6 +32,13 @@ const ClusterLicenseDetail: React.FC = () => {
   const location = useLocation();
   const { hasPermission } = useAuth();
   const canManage = hasPermission('subscription.manage');
+  const { t } = useI18n();
+
+  const ALL_SECTIONS = useMemo<NavItem[]>(() => [
+    { id: 'quota', label: t('pages.licenses.buQuota') },
+    { id: 'seats', label: t('common.field.seats') },
+    { id: 'subscriptions', label: t('common.label.subscriptions') },
+  ], [t]);
 
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
@@ -96,7 +98,7 @@ const ClusterLicenseDetail: React.FC = () => {
     if (!location.hash) return;
     const id = location.hash.slice(1);
     if (ALL_SECTIONS.some((s) => s.id === id)) scrollTo(id);
-  }, [location.hash, scrollTo]);
+  }, [location.hash, scrollTo, ALL_SECTIONS]);
 
   return (
     <Layout>
@@ -104,9 +106,13 @@ const ClusterLicenseDetail: React.FC = () => {
         <PageHeader
           backTo="/licenses"
           title={clusterLoading
-            ? 'Loading…'
-            : (cluster?.name || (clusterMissing ? 'Cluster not found or deleted' : 'Cluster unavailable'))}
-          subtitle={cluster?.code ? `Licenses · ${cluster.code}` : 'Licenses'}
+            ? t('pages.licenses.loadingEllipsis')
+            : (cluster?.name || (clusterMissing
+              ? t('pages.licenses.clusterNotFoundOrDeleted')
+              : t('pages.licenses.clusterUnavailable')))}
+          subtitle={cluster?.code
+            ? t('pages.licenses.subtitleWithCode', { code: cluster.code })
+            : t('pages.licenses.title')}
         />
 
         <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-6 pb-24">

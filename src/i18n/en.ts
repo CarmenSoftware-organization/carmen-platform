@@ -950,6 +950,68 @@ export const en = {
       // source files, not three ASCII dots, so this is genuinely distinct from
       // common.busy.loading ('Loading...'), not a duplicate of it.
       loadingEllipsis: 'Loading…',
+
+      // Task 2 (call-site binding) — LicenseCenter.tsx page header + view switcher. `title`
+      // doubles as the ClusterLicenseDetail.tsx subtitle fallback below (cluster not yet
+      // loaded) — same page family, same 'Licenses' text, reused rather than duplicated.
+      // Coincidentally byte-identical to nav.licenses ('Licenses') — out of this task's
+      // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
+      // pages.news/pages.users precedent of a dedicated pages.<slice>.title key.
+      title: 'Licenses',
+      subtitle: 'Fleet-wide license status by cluster, subscription, seat license, or BU quota.',
+      // FleetCapacity's `expiringLabel` prop — distinct from quotaExpiringToggle below
+      // (ClusterLicenseTable's Sheet button/badge), a shorter, different string.
+      buQuotaExpiring: 'BU quota expiring',
+      selectViewAria: 'Select license view',
+      viewByCluster: 'By cluster',
+      viewBySubscription: 'By subscription',
+      viewBySeat: 'By seat license',
+      viewByBuQuota: 'By BU quota',
+
+      // ClusterLicenseDetail.tsx
+      clusterNotFoundOrDeleted: 'Cluster not found or deleted',
+      clusterUnavailable: 'Cluster unavailable',
+      subtitleWithCode: 'Licenses · {{code}}',
+
+      // ClusterLicenseTable.tsx — LICENSE_FILTERS labels. `noLicence` also renders inline in
+      // the BU Quota cell when cap is 0 (same string, same key, two call sites in the file).
+      noLicence: 'No licence',
+      overBuLimit: 'Over BU limit',
+      seatsFull: 'Seats full',
+      // Title Case column header — distinct from `buQuota` above ('BU quota', lowercase
+      // 'quota', a nav-section label), not a reuse candidate despite the near-identical text.
+      buQuotaColumn: 'BU Quota',
+      // Badge inside the Quota Expires cell — days remaining before a winning BU-quota
+      // license expires.
+      daysLeft: '{{count}} days left',
+      // Coincidentally byte-identical to switcher.searchClusters ('Search clusters...') and
+      // to ClusterManagement.tsx's own (still untranslated) literal — out of this task's
+      // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
+      // pages.users/pages.news precedent for byte-identical strings across unrelated
+      // namespaces.
+      searchClustersPlaceholder: 'Search clusters...',
+      filtersSheetDescription: 'Filter clusters by status and licence state',
+      licenceStateLabel: 'Licence state',
+      // Sheet button + active-filter badge for the expiringSoonFilter toggle — distinct from
+      // buQuotaExpiring above (FleetCapacity's stat label, a different string).
+      quotaExpiringToggle: 'Quota expiring',
+      filterNarrowsHint: 'Selecting more than one narrows the list — a cluster must match every choice.',
+      // Shared by both the status-filter chip's aria-label (value = the translated Active/
+      // Inactive label) and the license-filter chip's (value = the raw filter key — matches
+      // the source's existing behaviour of leaving that one untranslated).
+      //
+      // NOT byte-identical to pages.users.removeStatusFilter ('Remove {{status}} filter') —
+      // same shape, different param name, so the duplicate-value script does not flag it —
+      // but it's the same promotion-signal shape Task 1 found for seats/startDate/endDate:
+      // report it (task-2-report.md), don't silently fix pages.users from this task's scope.
+      removeFilterAria: 'Remove {{value}} filter',
+      removeQuotaExpiringFilterAria: 'Remove quota expiring filter',
+      noClustersTitle: 'No clusters',
+      noClustersMatchFilters: 'No cluster matches the current search and filters.',
+      noClustersYet: 'There are no clusters yet.',
+      clearFiltersAction: 'Clear filters',
+      loadingClustersAria: 'Loading clusters',
+      loadFailedPrefix: 'Failed to load clusters: ',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
