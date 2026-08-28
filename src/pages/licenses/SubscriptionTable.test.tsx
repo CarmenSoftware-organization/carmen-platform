@@ -259,7 +259,7 @@ describe('SubscriptionTable — search folds into `advance`, never `search`', ()
     await screen.findByText('SUB-0001');
     asMock(subscriptionService.getAll).mockClear();
 
-    await user.type(screen.getByPlaceholderText('ค้นหาเลขที่สัญญา'), 'SUB-9');
+    await user.type(screen.getByPlaceholderText('Search subscription number'), 'SUB-9');
 
     // Real timers (no fake-timer precedent elsewhere in this repo, and userEvent + fake
     // timers is a known source of flakiness) — the debounce is 400ms, so give it room.
@@ -416,7 +416,7 @@ describe('SubscriptionTable — cluster filter', () => {
     // Close the sheet before touching the badge behind it — Radix marks the rest of the page
     // aria-hidden while a modal sheet is open.
     await user.keyboard('{Escape}');
-    await user.click(await screen.findByRole('button', { name: 'ล้างตัวกรอง cluster' }));
+    await user.click(await screen.findByRole('button', { name: 'Clear cluster filter' }));
     await waitFor(() => expect(lastCall().advance).toBe(''));
   });
 

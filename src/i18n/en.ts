@@ -814,6 +814,42 @@ export const en = {
       selectClusterFirst: 'Select a cluster first',
       clusterHasNoBu: 'This cluster has no business units — create one before issuing a subscription',
       numberAutoAssigned: 'A number is assigned automatically on save',
+
+      // Task 2 (SubscriptionTable page-local additions below).
+      subtitle: 'Manage cluster license subscriptions, seat pools, and feature entitlements.',
+      addSubscription: 'Add Subscription',
+      loading: 'Loading subscriptions',
+      loadingEllipsis: 'Loading subscriptions...',
+      loadFailedPrefix: 'Failed to load subscriptions: ',
+      summaryLoadFailed: 'Failed to load subscription summary.',
+      emptyTitle: 'No subscriptions yet',
+      emptyDescription: 'Get started by creating your first subscription for a cluster.',
+      filterDescription: 'Filter subscriptions by state, cluster, and expiry',
+      allClusters: 'All clusters',
+      lockedToActive: 'Locked to Active while showing subscriptions expiring soon.',
+      // Interfaces block: Task 6 (SubscriptionSummary's own "expiring soon" card) reuses
+      // this exact key.
+      expiringSoon: 'Expiring soon',
+      expiringWithinDays: 'Expiring within {{days}} days',
+      expiry: 'Expiry',
+      // Bare column headers — distinct from entity.* (toast-safe nouns) and from
+      // common.validation.subscriptionNumber/startDate/endDate (lowercase field-name
+      // fallbacks used by validateField, a different register and different casing).
+      subscription: 'Subscription',
+      subscriptionNumber: 'Subscription Number',
+      clusterCode: 'Cluster Code',
+      businessUnitName: 'Business Unit Name',
+      featureCount: 'Feature Count',
+      features: 'Features',
+      period: 'Period',
+      // "State" is deliberately not common.status.label ("Status") — review I1 in the
+      // source: the badge and this filter/column both read the backend-computed `state`
+      // field, never the raw `status`, and the two words must not collide on screen.
+      state: 'State',
+      startDate: 'Start Date',
+      endDate: 'End Date',
+      seatsUsed: 'Seats Used',
+      seatsCap: 'Seats Cap',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

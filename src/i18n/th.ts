@@ -651,6 +651,37 @@ export const th: Translations = {
       selectClusterFirst: 'เลือกคลัสเตอร์ก่อน',
       clusterHasNoBu: 'คลัสเตอร์นี้ยังไม่มีหน่วยธุรกิจ — สร้างหน่วยธุรกิจก่อนจึงจะออกสัญญาได้',
       numberAutoAssigned: 'ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก',
+
+      // Task 2 (SubscriptionTable page-local additions below).
+      subtitle: 'จัดการสัญญาใบอนุญาตของ cluster, pool ที่นั่ง และสิทธิ์ฟีเจอร์ของสัญญา',
+      addSubscription: 'เพิ่มสัญญา',
+      loading: 'กำลังโหลดสัญญา',
+      loadingEllipsis: 'กำลังโหลดสัญญา...',
+      loadFailedPrefix: 'โหลดสัญญาไม่สำเร็จ: ',
+      summaryLoadFailed: 'โหลดสรุปข้อมูลสัญญาไม่สำเร็จ',
+      emptyTitle: 'ยังไม่มีสัญญา',
+      emptyDescription: 'เริ่มต้นด้วยการสร้างสัญญาแรกให้กับ cluster',
+      filterDescription: 'กรองสัญญาตามสถานะ cluster และวันหมดอายุ',
+      allClusters: 'cluster ทั้งหมด',
+      // Same word as common.status.active ('ใช้งาน') on purpose: the STATE_OPTIONS
+      // buttons this message refers to render that exact word once translated, so this
+      // sentence must name the same word or the Thai UI would name two different states.
+      lockedToActive: 'ล็อกไว้ที่สถานะใช้งาน ระหว่างที่แสดงสัญญาที่ใกล้หมดอายุ',
+      expiringSoon: 'ใกล้หมดอายุ',
+      expiringWithinDays: 'ใกล้หมดอายุภายใน {{days}} วัน',
+      expiry: 'วันหมดอายุ',
+      subscription: 'สัญญา',
+      subscriptionNumber: 'เลขที่สัญญา',
+      clusterCode: 'รหัส Cluster',
+      businessUnitName: 'ชื่อหน่วยธุรกิจ',
+      featureCount: 'จำนวนสิทธิ์',
+      features: 'สิทธิ์',
+      period: 'ช่วงเวลา',
+      state: 'สถานะ',
+      startDate: 'วันที่เริ่ม',
+      endDate: 'วันที่สิ้นสุด',
+      seatsUsed: 'ที่นั่งที่ใช้แล้ว',
+      seatsCap: 'เพดานที่นั่ง',
     },
   },
   error: {
