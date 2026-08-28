@@ -29,6 +29,7 @@ import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import { useI18n } from '../../hooks/useI18n';
 import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import type { TKey } from '../../i18n/types';
 
 // สถานะที่แสดงผล (`state`) ชุดเดียวกับที่ badge ในตารางและการ์ด summary ใช้ — ไม่ใช่ `status` ดิบ
 // การกรองแปลงกลับเป็นเงื่อนไขบนคอลัมน์จริงใน `buildAdvance`
@@ -87,6 +88,13 @@ interface SubscriptionTableProps {
 
 const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false }) => {
   const { t } = useI18n();
+  // Single lookup for every place `state`/`s` (a raw SubscriptionState value) is rendered —
+  // the row badge, the filter buttons, the active-filter chips, and the CSV export — so a
+  // state can never be named two different ways on the same screen (review I1). `|| s`
+  // is a genuine fallback, not a hidden missing key: the three union members ('active',
+  // 'inactive', 'expired' — src/types/index.ts:1244) all resolve via common.status.*, and
+  // this only fires for a value outside that union (translate() returns '' on a miss).
+  const stateLabel = useCallback((s: string) => t(`common.status.${s}` as TKey) || s, [t]);
   const navigate = useNavigate();
   const [items, setItems] = useState<Subscription[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -261,7 +269,11 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   };
 
   const handleExport = () => {
-    const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
+    const rows = items.map((item) => ({
+      ...item,
+      ...auditCsvFields(normalizeAudit(item)),
+      state: stateLabel(item.state),
+    }));
     const csv = generateCSV(rows, [
       { key: 'subscription_number', label: t('pages.subscriptions.subscriptionNumber') },
       { key: 'cluster_name', label: t('common.label.cluster') },
@@ -350,16 +362,12 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
           const soon = isExpiringSoon(state, end_date);
           return (
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* Deliberately NOT translated via common.status.* here: that catalog's English
-                  values are Title Case ('Active'/'Inactive'/'Expired'), while this cell has
-                  always rendered the raw lowercase `state` value with a `capitalize` CSS
-                  class over it — SubscriptionTable.test.tsx:137 pins the literal lowercase
-                  text. Translating just this cell (or just the filter UI below) would also
-                  make the row badge and the filter controls name the same state two
-                  different ways on screen, which is what review I1 exists to prevent. Left
-                  as a known gap for a later pass — see the Task 2 report. */}
-              <Badge variant={state === 'active' ? 'success' : 'secondary'} className="capitalize">
-                {state}
+              {/* No `capitalize` class: the catalog values are already Title Case
+                  ('Active'/'Inactive'/'Expired'), and stateLabel is the same lookup the
+                  filter buttons/chips and the CSV export use — see the stateLabel comment
+                  above for why. */}
+              <Badge variant={state === 'active' ? 'success' : 'secondary'}>
+                {stateLabel(state)}
               </Badge>
               {soon && <Badge variant="warning">{t('pages.subscriptions.expiringSoon')}</Badge>}
             </div>
@@ -386,7 +394,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       { ...createdColumn, header: t('common.audit.created') },
       updatedColumn,
     ];
-  }, [t]);
+  }, [t, stateLabel]);
   // No actions column: with Delete removed (review B2#1 — the backend can never surface a
   // soft-deleted subscription, so a delete button nobody can verify or undo was worse than no
   // button), the only remaining row action was "Edit", which just duplicated the already-
@@ -484,11 +492,11 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                             key={s}
                             variant={stateFilter.includes(s) ? 'default' : 'outline'}
                             size="sm"
-                            className="h-7 text-xs capitalize"
+                            className="h-7 text-xs"
                             disabled={expiringSoonFilter}
                             onClick={() => handleStateFilter(s)}
                           >
-                            {s}
+                            {stateLabel(s)}
                           </Button>
                         ))}
                       </div>
@@ -548,8 +556,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                   </Badge>
                 ) : (
                   stateFilter.map((s) => (
-                    <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
-                      {s}
+                    <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                      {stateLabel(s)}
                       <button onClick={() => handleStateFilter(s)} className="ml-0.5 hover:text-foreground">
                         <X className="h-3 w-3" />
                       </button>

@@ -134,8 +134,8 @@ describe('SubscriptionTable — reads state, never recomputes it', () => {
 
     // status='active' + a far-future end_date would recompute to 'active'; the real
     // state field says 'inactive' — the badge must follow the field, not the recompute.
-    expect(screen.getByText('inactive')).toBeInTheDocument();
-    expect(screen.queryByText('active')).toBeNull();
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    expect(screen.queryByText('Active')).toBeNull();
   });
 });
 
