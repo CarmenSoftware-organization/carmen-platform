@@ -774,7 +774,7 @@ export const en = {
       detailsTitle: 'Subscription details',
       purchasedModules: 'Purchased modules',
       seats: 'Seats',
-      searchNumber: 'Search subscription number',
+      searchNumber: 'Search subscription numbers...',
       clearClusterFilter: 'Clear cluster filter',
 
       // FeatureSelectionCard

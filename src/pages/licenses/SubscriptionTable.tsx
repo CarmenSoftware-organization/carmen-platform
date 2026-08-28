@@ -392,7 +392,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         ),
       },
       { ...createdColumn, header: t('common.audit.created') },
-      updatedColumn,
+      { ...updatedColumn, header: t('common.audit.updatedDate') },
     ];
   }, [t, stateLabel]);
   // No actions column: with Delete removed (review B2#1 — the backend can never surface a

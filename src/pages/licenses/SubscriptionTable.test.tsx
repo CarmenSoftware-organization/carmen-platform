@@ -264,7 +264,7 @@ describe('SubscriptionTable — search folds into `advance`, never `search`', ()
     await screen.findByText('SUB-0001');
     asMock(subscriptionService.getAll).mockClear();
 
-    await user.type(screen.getByPlaceholderText('Search subscription number'), 'SUB-9');
+    await user.type(screen.getByPlaceholderText('Search subscription numbers...'), 'SUB-9');
 
     // Real timers (no fake-timer precedent elsewhere in this repo, and userEvent + fake
     // timers is a known source of flakiness) — the debounce is 400ms, so give it room.
