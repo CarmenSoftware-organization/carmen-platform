@@ -70,16 +70,35 @@ Every earlier slice held the line that **no test file may be modified**, and tha
 
 Slice 3a cannot hold it, and the reason is worth stating precisely rather than treating as an exception.
 
-**Four** test files carry **33 assertion lines against Thai strings**:
+**Four** test files carry Thai in assertions. Classified line by line, **30 lines change and 4 stay**:
 
-| File | Thai assertion lines | Thai lines total |
+| File | Lines that change | Lines that stay |
 |---|---|---|
-| `subscriptionEdit/SeatsCard.test.tsx` | 16 | 17 |
-| `SubscriptionTable.test.tsx` | 7 | 7 |
-| `SubscriptionForm.test.tsx` | 5 | 11 |
-| `subscriptionManagement/SubscriptionSummary.test.tsx` | 5 | 5 |
+| `subscriptionEdit/SeatsCard.test.tsx` | 15 | 2 |
+| `SubscriptionTable.test.tsx` | 7 | 0 |
+| `SubscriptionForm.test.tsx` | 3 | 2 |
+| `subscriptionManagement/SubscriptionSummary.test.tsx` | 5 | 0 |
 
-Three more test files contain Thai but assert none of it — `featureSelection.test.ts`, `buildAdvance.test.ts` and `SubscriptionInfoCard.test.tsx` hold it in fixtures and comments. **Those three do not change.** The distinction matters: Thai in a fixture is test data and stays; Thai in an assertion is a claim about the UI and moves.
+The four that stay, each for a stated reason:
+
+- `SeatsCard.test.tsx:45` and `SubscriptionForm.test.tsx:343` — `queryByText(/ไม่จำกัด/)`. That string lives in **3b** files (`ClusterLicenseTable`, `BuQuotaSection`), so it is still Thai after this slice and the assertion is still meaningful.
+- `SubscriptionForm.test.tsx:415` — `findByText(/โหลดรายชื่อ cluster ไม่สำเร็จ/)`. That string lives in **`src/hooks/useAllClusters.ts:56`**, a shared hook outside this slice's file list.
+- `SeatsCard.test.tsx:104` — `queryByText(/ปิดใช้งานหรือถูกลบ/).toBeNull()`. **That string exists nowhere in the source.** The assertion is already vacuous and always has been; it is a pre-existing defect, not this slice's to fix. Report it, leave it.
+
+Three further test files hold Thai in **fixtures and comments** and assert none of it — `featureSelection.test.ts`, `buildAdvance.test.ts`, `SubscriptionInfoCard.test.tsx`. **They do not change.** Thai in a fixture is test data and stays; Thai in an assertion is a claim about the UI and moves.
+
+### Negative assertions must change too, or they go quietly vacuous
+
+The obvious edits are the positive ones — `getByText('ทั้งหมด')` fails the moment the UI says `All`. The dangerous ones are the negative ones:
+
+```js
+expect(screen.queryByText(/รอตอบรับ/)).toBeNull();   // SeatsCard.test.tsx:60
+expect(screen.queryByText('ที่นั่ง')).toBeNull();     // SubscriptionForm.test.tsx:380
+```
+
+Once those strings render in English, the Thai they search for can never appear, so the assertion passes **for the wrong reason** and stops testing anything. It stays green, which is precisely why nobody looks at it again.
+
+So the rule is not "change the assertions that break". It is: **change every assertion whose subject is one of the 43** — and the negative ones are the half that will not tell you.
 
 for example `screen.getByText('ทั้งหมด')`, `screen.getByPlaceholderText('ค้นหาเลขที่สัญญา')`, `expect(line).toHaveTextContent('อาจถึง 12/10')`.
 
@@ -90,7 +109,7 @@ for example `screen.getByText('ทั้งหมด')`, `screen.getByPlaceholde
 So the rule is replaced for this slice by three narrower ones:
 
 1. **Only assertions whose subject is one of the 43 already-Thai strings may change**, and each changes from the Thai literal to the newly authored English one. Every other assertion in those files stays untouched.
-2. **The count is fixed at 33 lines in 4 files.** A test edit outside that set is a defect, not a judgment call. The implementer lists every line it changed with the before and after.
+2. **The count is fixed at 30 changed lines in 4 files**, with the 4 stated exceptions left alone. A test edit outside that set is a defect, not a judgment call. The implementer lists every line it changed with the before and after.
 3. **No assertion is deleted, weakened, or converted to a regex** to make it pass. If an assertion cannot be satisfied by the authored English, that is a signal the English is wrong — fix the English.
 
 Tests in the other 137 files remain untouchable, and the byte-identity rule applies in full to the ~170 strings that are already English.
@@ -110,7 +129,7 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 |---|---|
 | Slice boundary | Subscriptions only; `licenseDates.ts`, `licenseKindConfig.ts` and `sections/*` go to 3b |
 | The 43 Thai strings | Translated, with English authored and the Thai kept verbatim as the `th.ts` value |
-| Test files | Four change, at exactly 33 assertion lines, under the three rules above |
+| Test files | Four change, at exactly 30 assertion lines, under the three rules above |
 | Byte-identity | Applies in full to the ~170 already-English strings |
 | `featureSelection.ts` / `buildAdvance.ts` | Pure modules with frozen tests → trailing optional `t`, the shape `src/utils/validation.ts` established |
 
@@ -118,7 +137,7 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 
 | Risk | Level | Mitigation |
 |---|---|---|
-| **A test edit strays beyond the 33** | High | The count is stated, and the implementer must list every changed line with before/after. A reviewer diffs the test files independently and rejects any change whose subject is not one of the 43. |
+| **A test edit strays beyond the 30** | High | The count is stated, and the implementer must list every changed line with before/after. A reviewer diffs the test files independently and rejects any change whose subject is not one of the 43. |
 | The authored English is wrong or off-register | High | Named above as a standard. The reviewer reads all 43 against their Thai and their surrounding screen — this is the one part of the slice no script can check. |
 | A Thai string is missed because the scan is anchored on capital letters | Medium | Slice 2's lesson. `grep -n "[ก-๙]"` on every file, comments classified separately, and each file read end to end. |
 | A reused key matches in English but not in meaning | Medium | Four instances on the last branch (`theme.system`, `common.field.type`, and two column headers). Every reuse is checked at its call site, not by value equality. |
@@ -128,7 +147,7 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 ## Verification
 
 1. `bun run typecheck && bun run lint && bun run test` clean; `CI=true bun run build:dev` passes.
-2. **144 test files pass. Exactly four changed, at exactly 33 assertion lines**, each listed with before and after.
+2. **144 test files pass. Exactly four changed, at exactly 30 assertion lines**, each listed with before and after.
 3. Every one of the ~170 already-English strings is byte-identical to what it replaced.
 4. **The 43 authored English strings are reviewed one by one** against their Thai and their screen context.
 5. `grep -n "[ก-๙]"` across the eight source files leaves only code comments.
@@ -139,5 +158,5 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 ## Out of scope
 
 - 3b and slices 4-10.
-- The already-Thai strings in the other eleven areas of the app (`platformConfig` 61, `emailSettings` 42, and nine more). Each is fixed by the slice that owns its files.
+- The already-Thai strings elsewhere in the app — **205 across 14 areas**, led by `platformConfig` 61, `emailSettings` 42, `ActivityEventManagement` 22. The first count of 200 scanned only `src/pages` and `src/components`; `src/hooks/useAllClusters.ts` and `src/utils/analyticsRange.ts` hold 5 more, which is how `SubscriptionForm.test.tsx:415` reaches a string no slice-3a file contains. Each is fixed by the slice that owns its files; the shared ones need the infrastructure pass.
 - `auditColumns.tsx` / `AuditMeta.tsx` / `relativeTime.ts` — shared components on ~15 pages, deferred to the shared-infrastructure pass.
