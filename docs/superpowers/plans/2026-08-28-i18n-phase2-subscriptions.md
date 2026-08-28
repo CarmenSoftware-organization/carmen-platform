@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Translate the eight Subscription files, and unify the language of a feature that currently renders 43 user-visible strings in Thai only.
+**Goal:** Translate the eight Subscription files, and unify the language of a feature that currently renders 40 user-visible strings in Thai only.
 
-**Architecture:** Every user-visible literal becomes `t('<key>')`. Already-English strings bind byte-identically. For the 43 Thai-only strings English is **authored** and the Thai is kept verbatim — so four test files that assert those Thai strings must move to the authored English, at exactly 30 lines.
+**Architecture:** Every user-visible literal becomes `t('<key>')`. Already-English strings bind byte-identically. For the 40 Thai-only strings English is **authored** and the Thai is kept verbatim — so four test files that assert those Thai strings must move to the authored English, at exactly 30 lines.
 
 **Tech Stack:** React 19 + TypeScript + Vite, hand-rolled i18n (`src/i18n/{types,en,th}.ts`, `src/hooks/useI18n.tsx`), Vitest + RTL, Bun.
 
@@ -16,9 +16,9 @@
 
 - **Already-English values are byte-identical** to the literal they replace. 144 test files depend on it.
 - **Test files change only under the three rules below.** Everything else about the no-test-edits rule still holds.
-  1. Only an assertion whose subject is one of the 43 already-Thai strings may change, from the Thai literal to the authored English.
+  1. Only an assertion whose subject is one of the 40 already-Thai strings may change, from the Thai literal to the authored English.
   2. Exactly **30 changed lines in 4 files**: `SeatsCard.test.tsx` 15, `SubscriptionTable.test.tsx` 7, `SubscriptionSummary.test.tsx` 5, `SubscriptionForm.test.tsx` 3. Four Thai assertion lines **stay**, each for a reason: `SeatsCard.test.tsx:45` and `SubscriptionForm.test.tsx:343` search for `ไม่จำกัด`, a 3b string; `SubscriptionForm.test.tsx:415` searches for a string in `src/hooks/useAllClusters.ts`, outside this slice; `SeatsCard.test.tsx:104` searches for `ปิดใช้งานหรือถูกลบ`, which exists nowhere in the source and is already a vacuous assertion — report it, leave it. `featureSelection.test.ts`, `buildAdvance.test.ts` and `SubscriptionInfoCard.test.tsx` hold Thai in **fixtures** and do **not** change.
-  3. **Negative assertions change too.** `queryByText(/รอตอบรับ/).toBeNull()` and `queryByText('ที่นั่ง')).toBeNull()` keep passing after translation because the Thai can no longer appear — passing for the wrong reason, and staying green is exactly why nobody revisits them. Change every assertion whose subject is one of the 43, positive or negative.
+  3. **Negative assertions change too.** `queryByText(/รอตอบรับ/).toBeNull()` and `queryByText('ที่นั่ง')).toBeNull()` keep passing after translation because the Thai can no longer appear — passing for the wrong reason, and staying green is exactly why nobody revisits them. Change every assertion whose subject is one of the 40, positive or negative.
   4. No assertion is deleted, weakened, or turned into a looser regex. If the authored English cannot satisfy it, the English is wrong.
 - **Each task leaves the suite green.** A task that translates a string edits the assertions that string breaks, in the same commit.
 - **Every dynamic-key lookup enumerates the values it can receive** and confirms each has a key. A `||` fallback cannot tell you — that is how slice 2 shipped a permanently-English `Draft`.
@@ -35,7 +35,7 @@ Eight blind-spot categories are known, the newest being **JSX text interrupted b
 
 ---
 
-### Task 1: Catalog — shared keys, page keys, and the 43 authored English strings
+### Task 1: Catalog — shared keys, page keys, and the authored English strings
 
 **Files:**
 - Modify: `src/i18n/en.ts`, `src/i18n/th.ts`
@@ -43,7 +43,7 @@ Eight blind-spot categories are known, the newest being **JSX text interrupted b
 **Interfaces:**
 - Produces: `pages.subscriptions.*` and the shared additions below. Tasks 2-6 bind to these by name and add only their own file-local keys.
 
-Authoring all 43 English strings in one task is deliberate: register consistency across them is the thing no later reviewer can restore.
+Authoring all 40 English strings in one task is deliberate: register consistency across them is the thing no later reviewer can restore.
 
 - [ ] **Step 1: Create `pages.subscriptions` in `en.ts`** as a new child of `pages`, with the Thai-origin strings
 
@@ -94,7 +94,7 @@ subscriptions: {
 },
 ```
 
-Five of the 43 need **no new key** — they already exist in English and must reuse, not duplicate:
+Seven of the 40 need **no new key** — they already exist in English and must reuse, not duplicate:
 
 | Thai | Existing key | English |
 |---|---|---|
@@ -172,7 +172,7 @@ Then compose every `toast.*` template with `entity.*` and confirm none of them r
 ```bash
 bun run typecheck && bun run lint && bun run test
 git add src/i18n/en.ts src/i18n/th.ts
-git commit -m "feat(i18n): พจนานุกรม slice 3a — เขียนอังกฤษให้ 43 สตริงที่มีแต่ไทย"
+git commit -m "feat(i18n): พจนานุกรม slice 3a — เขียนอังกฤษให้สตริงที่มีแต่ไทย"
 ```
 
 Tests must still be **144/144 green**: this task adds keys but changes no call site, so nothing renders differently yet.
@@ -293,7 +293,7 @@ git commit -m "feat(i18n): แปลฟอร์มสัญญา + การ�
 **Interfaces:**
 - Consumes: Task 1's FeatureSelectionCard block, plus `common.action.retry` and `common.option.all`.
 
-This file is written almost entirely in Thai — 23 of the 43. It is the clearest case of the bug this slice fixes.
+This file is written almost entirely in Thai — 23 of the 40. It is the clearest case of the bug this slice fixes.
 
 - [ ] **Step 1: Bind every Thai string** to its Task 1 key. The mapping, by source line:
 
@@ -415,7 +415,7 @@ git diff --name-only $(git merge-base origin/main HEAD)..HEAD | grep '\.test\.'
 
 The last command must list **exactly four** files: `SubscriptionTable.test.tsx`, `SubscriptionForm.test.tsx`, `SeatsCard.test.tsx`, `SubscriptionSummary.test.tsx`. Any other test file in that list is a defect.
 
-- [ ] **Step 2: Count the test edits.** `git diff` those four files and confirm **30 changed lines**, each moving one of the 43 Thai strings to its authored English, none deleted or weakened, and confirm the four stated exceptions are still present and still Thai.
+- [ ] **Step 2: Count the test edits.** `git diff` those four files and confirm **30 changed lines**, each moving one of the 40 Thai strings to its authored English, none deleted or weakened, and confirm the four stated exceptions are still present and still Thai.
 
 - [ ] **Step 3: Catalog integrity.** EN↔TH key parity, no `{{param}}` mismatch, no new duplicate value beyond the documented pairs, and no page key duplicating what a `toast.*` template produces.
 

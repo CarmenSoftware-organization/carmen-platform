@@ -12,7 +12,7 @@ The phase-2 spec sized slice 3 at **165 strings across `licenses/` ×7**. Measur
 | | phase-2 estimate | measured |
 |---|---|---|
 | Files (non-test) | 7 | **20** |
-| User-visible strings | ~165 | **392 English + 43 Thai** |
+| User-visible strings | ~165 | **392 English + ~40 Thai** |
 
 That is larger than any slice in the plan, including "Platform admin ~200". The user's decision was to **split it into 3a and 3b**, which this spec covers the first half of.
 
@@ -22,7 +22,7 @@ Every remaining slice estimate in the phase-2 spec should now be treated as unve
 
 | | Files | English | Thai already in source |
 |---|---|---|---|
-| **3a — Subscriptions (this spec)** | 8 | ~170 | **43** |
+| **3a — Subscriptions (this spec)** | 8 | ~170 | **40** |
 | 3b — License Center, cluster licenses, purchase | 12 | ~295 | 1 |
 
 3a is smaller but carries the harder problem: **almost every one of the feature's already-Thai strings is in these eight files**, and `subscriptionEdit/FeatureSelectionCard.tsx` is written almost entirely in Thai. 3b is bigger but nearly clean, and its `sections/*` components are also consumed by slice 4 (Cluster Admin) and slice 7 (Clusters), so translating them there gives those slices a head start.
@@ -46,9 +46,9 @@ Plus `src/i18n/en.ts` and `src/i18n/th.ts`.
 
 ## This is not a translation task. It is a language unification.
 
-The app's default language is English. These eight files render **43 user-visible strings that exist only in Thai** — placeholders (`ค้นหาเลขที่สัญญา`), buttons (`ล้างการค้นหา`, `กางทั้งหมด`), whole explanatory sentences (`สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว — ต้องถอดออกก่อน จึงจะบันทึกสิทธิ์ของสัญญานี้ได้`), and error text (`โหลดรายการสิทธิ์ไม่สำเร็จ`).
+The app's default language is English. These eight files render **40 user-visible strings that exist only in Thai** — placeholders (`ค้นหาเลขที่สัญญา`), buttons (`ล้างการค้นหา`, `กางทั้งหมด`), whole explanatory sentences (`สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว — ต้องถอดออกก่อน จึงจะบันทึกสิทธิ์ของสัญญานี้ได้`), and error text (`โหลดรายการสิทธิ์ไม่สำเร็จ`).
 
-### The count is 43 because the scan was wrong first
+### The count is 40, and the scan said 34 first
 
 A first pass reported 34. It was anchored on JSX text nodes that contain no braces — a guard against matching code — which silently drops **every JSX text node with an embedded `{expression}`**, the commonest shape in React:
 
@@ -60,7 +60,7 @@ A first pass reported 34. It was anchored on JSX text nodes that contain no brac
 
 Nine strings, a 26% undercount, and phase 1 had already recorded this exact category before the slice-3 scanner reintroduced it. The corrected extraction replaces each `{expression}` with a separator and splits only there, so a phrase with Latin words inside it survives whole.
 
-That makes **eight** known blind spots across the phase: multi-line JSX text, `${}` template literals, punctuation-bearing strings, strings under six characters, runtime-synthesised labels, `${`-initial templates, text already in Thai, and now JSX text interrupted by an expression. **Treat 43 as a floor.** A few of the 43 are fragments the scan splits across multi-line JSX; whoever implements this merges them by reading the source, which is the only method that has ever found the last one.
+That makes **eight** known blind spots across the phase: multi-line JSX text, `${}` template literals, punctuation-bearing strings, strings under six characters, runtime-synthesised labels, `${`-initial templates, text already in Thai, and now JSX text interrupted by an expression. **Treat any scan count as a floor.** The corrected scan reported 43 raw candidates; three of them were fragments it split across multi-line JSX, and resolving those by reading the source gives the real figure of **40**. Reading is the only method that has ever found the last one.
 
 **An English-speaking user reads Thai on these screens today.** That is a bug this slice fixes, and it changes the shape of the work: for those 43 strings there is no existing English to preserve, so the byte-identity rule — the invariant that carried the three previous slices — cannot protect them. English must be **authored**.
 
@@ -98,7 +98,7 @@ expect(screen.queryByText('ที่นั่ง')).toBeNull();     // Subscript
 
 Once those strings render in English, the Thai they search for can never appear, so the assertion passes **for the wrong reason** and stops testing anything. It stays green, which is precisely why nobody looks at it again.
 
-So the rule is not "change the assertions that break". It is: **change every assertion whose subject is one of the 43** — and the negative ones are the half that will not tell you.
+So the rule is not "change the assertions that break". It is: **change every assertion whose subject is one of the 40** — and the negative ones are the half that will not tell you.
 
 for example `screen.getByText('ทั้งหมด')`, `screen.getByPlaceholderText('ค้นหาเลขที่สัญญา')`, `expect(line).toHaveTextContent('อาจถึง 12/10')`.
 
@@ -108,13 +108,13 @@ for example `screen.getByText('ทั้งหมด')`, `screen.getByPlaceholde
 
 So the rule is replaced for this slice by three narrower ones:
 
-1. **Only assertions whose subject is one of the 43 already-Thai strings may change**, and each changes from the Thai literal to the newly authored English one. Every other assertion in those files stays untouched.
+1. **Only assertions whose subject is one of the 40 already-Thai strings may change**, and each changes from the Thai literal to the newly authored English one. Every other assertion in those files stays untouched.
 2. **The count is fixed at 30 changed lines in 4 files**, with the 4 stated exceptions left alone. A test edit outside that set is a defect, not a judgment call. The implementer lists every line it changed with the before and after.
 3. **No assertion is deleted, weakened, or converted to a regex** to make it pass. If an assertion cannot be satisfied by the authored English, that is a signal the English is wrong — fix the English.
 
 Tests in the other 137 files remain untouchable, and the byte-identity rule applies in full to the ~170 strings that are already English.
 
-## Authoring English for 43 Thai strings
+## Authoring English for 40 Thai strings
 
 Nothing mechanical can check this half of the work, so the spec sets the standard instead:
 
@@ -128,7 +128,7 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 | Question | Decision |
 |---|---|
 | Slice boundary | Subscriptions only; `licenseDates.ts`, `licenseKindConfig.ts` and `sections/*` go to 3b |
-| The 43 Thai strings | Translated, with English authored and the Thai kept verbatim as the `th.ts` value |
+| The 40 Thai strings | Translated, with English authored and the Thai kept verbatim as the `th.ts` value |
 | Test files | Four change, at exactly 30 assertion lines, under the three rules above |
 | Byte-identity | Applies in full to the ~170 already-English strings |
 | `featureSelection.ts` / `buildAdvance.ts` | Pure modules with frozen tests → trailing optional `t`, the shape `src/utils/validation.ts` established |
@@ -137,8 +137,8 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 
 | Risk | Level | Mitigation |
 |---|---|---|
-| **A test edit strays beyond the 30** | High | The count is stated, and the implementer must list every changed line with before/after. A reviewer diffs the test files independently and rejects any change whose subject is not one of the 43. |
-| The authored English is wrong or off-register | High | Named above as a standard. The reviewer reads all 43 against their Thai and their surrounding screen — this is the one part of the slice no script can check. |
+| **A test edit strays beyond the 30** | High | The count is stated, and the implementer must list every changed line with before/after. A reviewer diffs the test files independently and rejects any change whose subject is not one of the 40. |
+| The authored English is wrong or off-register | High | Named above as a standard. The reviewer reads all 40 against their Thai and their surrounding screen — this is the one part of the slice no script can check. |
 | A Thai string is missed because the scan is anchored on capital letters | Medium | Slice 2's lesson. `grep -n "[ก-๙]"` on every file, comments classified separately, and each file read end to end. |
 | A reused key matches in English but not in meaning | Medium | Four instances on the last branch (`theme.system`, `common.field.type`, and two column headers). Every reuse is checked at its call site, not by value equality. |
 | A `\|\|` fallback masks a missing key | Medium | Slice 2's `Draft` bug. Every dynamic key lookup enumerates the values it can receive. |
@@ -149,7 +149,7 @@ Nothing mechanical can check this half of the work, so the spec sets the standar
 1. `bun run typecheck && bun run lint && bun run test` clean; `CI=true bun run build:dev` passes.
 2. **144 test files pass. Exactly four changed, at exactly 30 assertion lines**, each listed with before and after.
 3. Every one of the ~170 already-English strings is byte-identical to what it replaced.
-4. **The 43 authored English strings are reviewed one by one** against their Thai and their screen context.
+4. **The 40 authored English strings are reviewed one by one** against their Thai and their screen context.
 5. `grep -n "[ก-๙]"` across the eight source files leaves only code comments.
 6. **In a browser, in English:** open `/licenses/subscriptions`, the subscription form, and the feature-selection card, and confirm **no Thai text appears anywhere** — this is the acceptance criterion the slice exists for.
 7. **In a browser, in Thai:** the same screens render Thai, validation errors are Thai, and no `[i18n]` warning appears in the console.
