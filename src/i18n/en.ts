@@ -785,8 +785,12 @@ export const en = {
       removeUnrecognised: 'Remove unrecognised feature {{key}}',
       disabledStillAttached: 'These features are disabled system-wide but are still attached to this subscription.',
       disabledMustRemove: 'These features are disabled system-wide — remove them before the subscription\'s features can be saved.',
-      noFeaturesAssigned: 'No features assigned to {{target}} yet',
-      thisSubscription: 'this subscription',
+      // Split rather than one key with a fallback param (fix round 2): the source's
+      // fallback branch interpolates a Thai word into a Thai sentence — a translated
+      // value into a translated frame, the exact shape this project banned after
+      // summarizeBulk. Two whole sentences instead.
+      noFeaturesAssignedToBu: 'No features assigned to {{bu}} yet',
+      noFeaturesAssignedToThis: 'No features assigned to this subscription yet',
       searchFeaturesPlaceholder: 'Search modules or features...',
       searchFeatures: 'Search features',
       noFeaturesDefined: 'No features defined in the system yet',
@@ -799,7 +803,7 @@ export const en = {
 
       // SeatsCard
       pendingCount: '{{count}} pending',
-      upTo: '→ up to {{projected}}/{{cap}}',
+      upTo: ' → up to {{projected}}/{{cap}}',
       noBusinessUnitLinked: "This subscription isn't linked to any business unit",
       purchasedCount: '{{count}} purchased',
       capEditedOnBuPage: 'The cap is edited on the business unit page',

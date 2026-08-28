@@ -620,8 +620,11 @@ export const th: Translations = {
       removeUnrecognised: 'ถอดสิทธิ์ที่ไม่รู้จัก {{key}}',
       disabledStillAttached: 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว แต่ยังผูกอยู่กับสัญญานี้',
       disabledMustRemove: 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว — ต้องถอดออกก่อน จึงจะบันทึกสิทธิ์ของสัญญานี้ได้',
-      noFeaturesAssigned: 'ยังไม่มีสิทธิ์ที่กำหนดให้ {{target}}',
-      thisSubscription: 'สัญญานี้',
+      // Split rather than one key with a fallback param (fix round 2) — see en.ts.
+      // noFeaturesAssignedToThis has no space before "สัญญานี้", matching the source
+      // exactly; noFeaturesAssignedToBu keeps its space because {{bu}} can be Latin.
+      noFeaturesAssignedToBu: 'ยังไม่มีสิทธิ์ที่กำหนดให้ {{bu}}',
+      noFeaturesAssignedToThis: 'ยังไม่มีสิทธิ์ที่กำหนดให้สัญญานี้',
       searchFeaturesPlaceholder: 'ค้นหาโมดูลหรือสิทธิ์...',
       searchFeatures: 'ค้นหาสิทธิ์',
       noFeaturesDefined: 'ยังไม่มีรายการสิทธิ์ในระบบ',
