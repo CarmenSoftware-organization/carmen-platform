@@ -493,6 +493,9 @@ export const en = {
         expiryFuture: 'Expiry must be in the future',
         chooseBusinessUnit: 'Choose a business unit',
         pickRecipient: 'Pick at least one recipient',
+        // Task 4 (BroadcastEdit) field-validation additions below.
+        expiryRequired: 'Expiry is required',
+        invalidDate: 'Invalid date',
       },
       // Task 2 (Broadcast list surface: BroadcastManagement, BroadcastFilters,
       // BroadcastSummary, broadcastColumns) page-local additions below.
@@ -577,6 +580,49 @@ export const en = {
       toastSent: 'Broadcast sent',
       sendFailedPrefix: 'Failed to send broadcast: ',
       fixHighlightedFields: 'Please fix the highlighted fields',
+      // Task 4 (BroadcastEdit) page-local additions below.
+      notFoundTitle: 'Broadcast not found',
+      notFoundDescription: "This broadcast doesn't exist, or it may have been deleted. Check the link, or pick one from the list.",
+      backToBroadcasts: 'Back to broadcasts',
+      broadcastInfo: 'Broadcast Info',
+      scheduledAtLabel: 'Scheduled at',
+      leaveEmptyToSendImmediately: 'Leave empty to send immediately.',
+      rescheduleTitle: 'Reschedule Broadcast',
+      // rescheduleNote/rescheduleConfirm and the expireImmediateNote/expireConfirm pair
+      // above are concatenated the same way (whole sentence + whole sentence, never a
+      // translated fragment slotted into a translated frame) to build the two
+      // ConfirmDialog descriptions in BroadcastEdit — mirroring the 'past' expiry
+      // dialog's reuse of expireImmediateNote+expireConfirm below.
+      rescheduleNote: 'The message disappears from recipients until the new time.',
+      rescheduleConfirm: 'Are you sure you want to reschedule?',
+      // Distinct from toastExpireFailed's plural loadFailedPrefix ('Failed to load
+      // broadcasts: ') — this is BroadcastEdit's single-record load error, concatenated
+      // inline with the parsed message rather than passed as a toast description.
+      loadFailedDetail: 'Failed to load broadcast: ',
+      toastNoChanges: 'No changes to save',
+      noMessage: 'No message',
+      untitled: 'Untitled',
+      // Fix-round (Task 4): this line was raw Thai with no English at all, unconditionally
+      // rendered regardless of app language — same class of bug as specificUserNote and
+      // the expire/reschedule ConfirmDialog descriptions above. See th.ts: Thai kept
+      // verbatim.
+      contentLockedNote: "Already broadcast — content can't be edited, some recipients may have already seen it.",
+      // BroadcastPreview.tsx (reachSummary) additions below.
+      everyUserInSystem: 'Every user in the system',
+      // Plural stays in the English value only (same pattern as sendToUserSingular/Plural
+      // above) — Thai gives both keys the same value.
+      selectedUserSingular: '{{count}} selected user',
+      selectedUserPlural: '{{count}} selected users',
+      noRecipientsPickedYet: 'No recipients picked yet',
+      noBusinessUnitPickedYet: 'No business unit picked yet',
+      // BroadcastPreview.tsx (component JSX) additions below.
+      reaches: 'Reaches',
+      sendsImmediately: 'Sends immediately',
+      titlePlaceholder: 'Your title appears here',
+      messagePlaceholder: 'Your message appears here.',
+      // No trailing period — distinct from scheduledForNote above, which has one.
+      scheduledForLabel: 'Scheduled for {{when}}',
+      internalCategorisationNote: 'Colour and label are an internal categorisation — recipients see a standard notification.',
     },
     news: {
       publish: 'Publish',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -25,7 +25,9 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { BroadcastPreview } from '../components/BroadcastPreview';
 import { resolveExpiryIso, type ExpiryPreset } from '../utils/broadcastExpiry';
-import type { BroadcastListItem, BroadcastStatus, BroadcastUpdatePayload } from '../types';
+import { useI18n } from '../hooks/useI18n';
+import type { TKey } from '../i18n/types';
+import type { BroadcastListItem, BroadcastStatus, BroadcastUpdatePayload, BroadcastTypePreset } from '../types';
 
 interface BroadcastEditData {
   title: string;
@@ -49,13 +51,6 @@ const severityVariants: Record<string, 'destructive' | 'warning' | 'info' | 'sec
   MAINTENANCE: 'secondary',
 };
 
-const TYPE_OPTIONS = [
-  { value: 'INFO', label: 'Info' },
-  { value: 'WARNING', label: 'Warning' },
-  { value: 'CRITICAL', label: 'Critical' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-];
-
 function toLocalString(isoString?: string | null): string {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -73,6 +68,14 @@ function formatDt(v?: string | null) {
 const BroadcastEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
+
+  const TYPE_OPTIONS = useMemo<{ value: BroadcastTypePreset; label: string }[]>(() => [
+    { value: 'INFO', label: t('common.severity.info') },
+    { value: 'WARNING', label: t('common.severity.warning') },
+    { value: 'CRITICAL', label: t('common.severity.critical') },
+    { value: 'MAINTENANCE', label: t('common.severity.maintenance') },
+  ], [t]);
 
   const [formData, setFormData] = useState<BroadcastEditData>({
     title: '',
@@ -140,13 +143,13 @@ const BroadcastEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        const { message } = parseApiError(err);
-        setError('Failed to load broadcast: ' + message);
+        const { message } = parseApiError(err, t);
+        setError(t('pages.broadcasts.loadFailedDetail') + message);
       }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     fetchBroadcast();
@@ -175,20 +178,20 @@ const BroadcastEdit: React.FC = () => {
     if (!bypassConfirm) {
       // Validate
       const newErrors: Record<string, string> = {};
-      if (!formData.title.trim()) newErrors.title = 'Title is required';
-      if (!formData.message.trim()) newErrors.message = 'Message is required';
-      if (!formData.expiresAtLocal) newErrors.expiresAtLocal = 'Expiry is required';
-      else if (Number.isNaN(new Date(formData.expiresAtLocal).getTime())) newErrors.expiresAtLocal = 'Invalid date';
-      
+      if (!formData.title.trim()) newErrors.title = t('common.validation.requiredMessage', { label: t('common.field.title') });
+      if (!formData.message.trim()) newErrors.message = t('pages.broadcasts.validation.messageRequired');
+      if (!formData.expiresAtLocal) newErrors.expiresAtLocal = t('pages.broadcasts.validation.expiryRequired');
+      else if (Number.isNaN(new Date(formData.expiresAtLocal).getTime())) newErrors.expiresAtLocal = t('pages.broadcasts.validation.invalidDate');
+
       const schedTime = formData.scheduledAtLocal ? new Date(formData.scheduledAtLocal).getTime() : NaN;
-      if (formData.scheduledAtLocal && Number.isNaN(schedTime)) newErrors.scheduledAtLocal = 'Invalid date';
+      if (formData.scheduledAtLocal && Number.isNaN(schedTime)) newErrors.scheduledAtLocal = t('pages.broadcasts.validation.invalidDate');
 
       const expTime = new Date(formData.expiresAtLocal).getTime();
-      
+
       const willBeScheduled = !Number.isNaN(schedTime) && schedTime > Date.now();
-      
+
       if (willBeScheduled && expTime <= schedTime) {
-        newErrors.expiresAtLocal = 'Expiry must be after the scheduled send time';
+        newErrors.expiresAtLocal = t('pages.broadcasts.validation.expiryAfterSchedule');
       }
 
       if (Object.keys(newErrors).length > 0) {
@@ -236,7 +239,7 @@ const BroadcastEdit: React.FC = () => {
       // ปุ่ม Save ปิดอยู่เมื่อไม่มีอะไรเปลี่ยน แต่ Ctrl+S ไม่ผ่านปุ่ม — กัน PATCH เปล่าที่ได้ผลแค่
       // ดัน doc_version ขึ้นหนึ่งโดยไม่มีข้อมูลเปลี่ยน
       if (Object.keys(patch).length === 1) {
-        toast.info('No changes to save');
+        toast.info(t('pages.broadcasts.toastNoChanges'));
         setConfirmDialog({ open: false, type: null });
         setEditing(false);
         return;
@@ -244,7 +247,7 @@ const BroadcastEdit: React.FC = () => {
 
       await broadcastService.update(id!, patch);
 
-      toast.success(rawResponse?.status === 'active' && end_at <= new Date().toISOString() ? 'Broadcast expired successfully' : 'Changes saved successfully');
+      toast.success(rawResponse?.status === 'active' && end_at <= new Date().toISOString() ? t('pages.broadcasts.toastExpired') : t('toast.saved'));
       setConfirmDialog({ open: false, type: null });
       await fetchBroadcast();
       setEditing(false);
@@ -253,7 +256,7 @@ const BroadcastEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchBroadcast();
       } else {
-        const { message, fields } = parseApiError(err);
+        const { message, fields } = parseApiError(err, t);
         setError(message);
         if (fields) setFieldErrors(fields);
         toast.error(message);
@@ -281,16 +284,16 @@ const BroadcastEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/broadcasts" title="Broadcast" />
+          <PageHeader backTo="/broadcasts" title={t('entity.broadcast.title')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Broadcast not found"
-                description="This broadcast doesn't exist, or it may have been deleted. Check the link, or pick one from the list."
+                title={t('pages.broadcasts.notFoundTitle')}
+                description={t('pages.broadcasts.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/broadcasts')}>
-                    Back to broadcasts
+                    {t('pages.broadcasts.backToBroadcasts')}
                   </Button>
                 }
               />
@@ -302,9 +305,15 @@ const BroadcastEdit: React.FC = () => {
   }
   
   const contentEditable = rawResponse.status === 'scheduled';
-  
+
   // Resolve mode for Preview
   const previewMode = rawResponse.scope === 'system' ? 'system_all' : 'bu';
+
+  // `translate` returns '' for an unknown key, so the `|| raw.toUpperCase()` fallback is
+  // load-bearing — without it a severity value the catalog does not know would render an
+  // empty badge instead of the raw value it renders today.
+  const severityRaw = formData.severity.toLowerCase();
+  const severityLabel = t(`common.severity.${severityRaw}` as TKey) || severityRaw.toUpperCase();
   
   return (
     <Layout>
@@ -314,19 +323,21 @@ const BroadcastEdit: React.FC = () => {
           className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Broadcasts
+          {t('breadcrumb.broadcasts')}
         </Link>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">{formData.title}</h1>
-            <Badge variant={statusVariants[rawResponse.status] || 'secondary'} className="capitalize">{rawResponse.status}</Badge>
+            <Badge variant={statusVariants[rawResponse.status] || 'secondary'} className="capitalize">
+              {t(`common.status.${rawResponse.status}` as TKey) || rawResponse.status}
+            </Badge>
           </div>
           {!editing && rawResponse.status !== 'deleted' && (
             <Can permission="broadcast.update">
               <Button variant="outline" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </Button>
             </Can>
           )}
@@ -343,14 +354,14 @@ const BroadcastEdit: React.FC = () => {
             {/* Card 1 - Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Broadcast Info</CardTitle>
+                <CardTitle>{t('pages.broadcasts.broadcastInfo')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Scope</Label>
+                    <Label className="text-xs text-muted-foreground">{t('common.field.scope')}</Label>
                     <div className="mt-1 text-sm font-medium">
-                      {rawResponse.scope === 'system' ? 'System' : `BU · ${rawResponse.bu_code || 'Unknown'}`}
+                      {rawResponse.scope === 'system' ? t('theme.system') : `BU · ${rawResponse.bu_code || t('common.status.unknown')}`}
                     </div>
                   </div>
                   <div>
@@ -364,11 +375,11 @@ const BroadcastEdit: React.FC = () => {
             {/* Card 3 - Delivery */}
             <Card>
               <CardHeader>
-                <CardTitle>Delivery</CardTitle>
+                <CardTitle>{t('common.field.delivery')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="scheduledAtLocal">Scheduled at</Label>
+                  <Label htmlFor="scheduledAtLocal">{t('pages.broadcasts.scheduledAtLabel')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -380,7 +391,7 @@ const BroadcastEdit: React.FC = () => {
                         className={fieldErrors.scheduledAtLocal ? 'border-destructive' : ''}
                       />
                       {fieldErrors.scheduledAtLocal && <p className="text-xs text-destructive">{fieldErrors.scheduledAtLocal}</p>}
-                      <p className="text-xs text-muted-foreground">Leave empty to send immediately.</p>
+                      <p className="text-xs text-muted-foreground">{t('pages.broadcasts.leaveEmptyToSendImmediately')}</p>
                     </>
                   ) : (
                     <ReadOnlyField value={formatDt(rawResponse.scheduled_at)} />
@@ -388,7 +399,7 @@ const BroadcastEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="expiresAtLocal">Expires <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="expiresAtLocal">{t('common.state.expires')} <span className="text-destructive">*</span></Label>
                   {editing ? (
                     <>
                       <Input
@@ -417,16 +428,16 @@ const BroadcastEdit: React.FC = () => {
             {/* Card 2 - Content */}
             <Card>
               <CardHeader>
-                <CardTitle>Content</CardTitle>
+                <CardTitle>{t('common.field.content')}</CardTitle>
                 {!contentEditable && editing && (
                   <div className="text-xs text-warning mt-1">
-                    ออกอากาศไปแล้ว — แก้เนื้อหาไม่ได้ ผู้รับบางคนอ่านไปแล้ว
+                    {t('pages.broadcasts.contentLockedNote')}
                   </div>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title {editing && contentEditable && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="title">{t('common.field.title')} {editing && contentEditable && <span className="text-destructive">*</span>}</Label>
                   {editing && contentEditable ? (
                     <>
                       <Input
@@ -447,7 +458,7 @@ const BroadcastEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="message">Message {editing && contentEditable && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="message">{t('pages.broadcasts.message')} {editing && contentEditable && <span className="text-destructive">*</span>}</Label>
                   {editing && contentEditable ? (
                     <>
                       <Textarea
@@ -468,7 +479,7 @@ const BroadcastEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="severity">Severity</Label>
+                  <Label htmlFor="severity">{t('common.field.severity')}</Label>
                   {editing && contentEditable ? (
                     <select
                       id="severity"
@@ -484,7 +495,7 @@ const BroadcastEdit: React.FC = () => {
                   ) : (
                     <div>
                       <Badge variant={severityVariants[formData.severity.toUpperCase()] || 'secondary'}>
-                        {formData.severity.toUpperCase()}
+                        {severityLabel.toUpperCase()}
                       </Badge>
                     </div>
                   )}
@@ -495,13 +506,13 @@ const BroadcastEdit: React.FC = () => {
             {/* Card 4 - Preview */}
             <Card>
               <CardHeader>
-                <CardTitle>Preview</CardTitle>
+                <CardTitle>{t('common.action.preview')}</CardTitle>
               </CardHeader>
               <CardContent className="bg-muted/30 p-6 flex justify-center">
-                <BroadcastPreview 
+                <BroadcastPreview
                   typePreset={formData.severity as any}
-                  title={formData.title || 'Untitled'}
-                  message={formData.message || 'No message'}
+                  title={formData.title || t('pages.broadcasts.untitled')}
+                  message={formData.message || t('pages.broadcasts.noMessage')}
                   mode={previewMode as 'system_all' | 'bu'}
                   recipientCount={0}
                   buLabel={rawResponse.bu_code || undefined}
@@ -522,10 +533,10 @@ const BroadcastEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -537,11 +548,11 @@ const BroadcastEdit: React.FC = () => {
                 disabled={saving}
               >
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" disabled={saving || !hasChanges} onClick={() => handleSubmit(false)}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>
@@ -551,13 +562,13 @@ const BroadcastEdit: React.FC = () => {
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={(open) => { if (!open) setConfirmDialog({ open: false, type: null }); }}
-        title={confirmDialog.type === 'past' ? 'Expire Broadcast' : 'Reschedule Broadcast'}
+        title={confirmDialog.type === 'past' ? t('pages.broadcasts.expireTitle') : t('pages.broadcasts.rescheduleTitle')}
         description={
-          confirmDialog.type === 'past' 
-            ? 'ประกาศจะหายจากผู้รับทันที Are you sure you want to expire this broadcast?' 
-            : 'ข้อความจะหายจากผู้รับจนกว่าจะถึงเวลาใหม่ Are you sure you want to reschedule?'
+          confirmDialog.type === 'past'
+            ? `${t('pages.broadcasts.expireImmediateNote')} ${t('pages.broadcasts.expireConfirm')}`
+            : `${t('pages.broadcasts.rescheduleNote')} ${t('pages.broadcasts.rescheduleConfirm')}`
         }
-        confirmText="Confirm"
+        confirmText={t('common.confirm')}
         onConfirm={() => handleSubmit(true)}
       />
 
