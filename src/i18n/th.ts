@@ -297,6 +297,10 @@ export const th: Translations = {
       subscriptionNumber: 'หมายเลขการสมัคร',
     },
     severity: { critical: 'วิกฤต', warning: 'คำเตือน', info: 'ข้อมูล', maintenance: 'บำรุงรักษา' },
+    role: {
+      admin: 'ผู้ดูแล',
+      user: 'ผู้ใช้',
+    },
   },
   entity: {
     // Thai has no case, so all three forms repeat. Kept in sync with en.ts's three-field
@@ -867,6 +871,21 @@ export const th: Translations = {
 
       licenseRemoved: 'นำไลเซนส์ออกแล้ว',
       removeLicenseFailedTitle: 'นำไลเซนส์ออกไม่สำเร็จ',
+    },
+
+    clusterAdmin: {
+      hotel: 'โรงแรม',
+      company: 'บริษัท',
+      people: 'บุคคล',
+      hq: 'HQ',
+      businessUnitColumn: 'หน่วยธุรกิจ',
+      viewLicenses: 'ดูไลเซนส์',
+      clusterHasNoBusinessUnitsYet: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ',
+      inviteToAccessHint: 'เชิญผู้ใช้เพื่อให้สิทธิ์เข้าถึง cluster นี้',
+      invitationRateLimited: 'ถึงขีดจำกัดอัตราการเชิญแล้ว กรุณาลองใหม่อีกครั้งภายหลัง',
+      noSeatsOpen: 'ไม่มีที่นั่งว่าง',
+      unnamed: '(ไม่มีชื่อ)',
+      rowActions: 'การกระทำสำหรับ {{name}}',
     },
   },
   error: {

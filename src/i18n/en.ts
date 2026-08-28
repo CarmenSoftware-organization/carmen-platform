@@ -374,6 +374,17 @@ export const en = {
       info: 'Info',
       maintenance: 'Maintenance',
     },
+    // Membership role labels. Both `admin` and `user` are lowercase API values AND the raw
+    // strings three cluster-admin files (InviteUserDialog.tsx's CLUSTER_ROLES/BU_ROLES,
+    // MembersTable.tsx's ROLES) render directly today — those arrays stay untouched (Task 3
+    // separates the API value from the label at the call sites). These two keys exist only
+    // so the three files have one shared label pair to bind to instead of each inventing its
+    // own; not a reuse of entity.user.title ('User') despite the byte match — that namespace
+    // is toast-noun-only by its own doc comment above, not a role adjective.
+    role: {
+      admin: 'Admin',
+      user: 'User',
+    },
   },
   /**
    * Nouns that are safe to pass to a `toast.*` template. Three grammatical forms each,
@@ -1199,6 +1210,49 @@ export const en = {
       // EmptyState title; the hook's toast renders the same words in a different UI shell).
       licenseRemoved: 'License removed',
       removeLicenseFailedTitle: 'Could not remove the license',
+    },
+
+    // Slice 4 (Cluster Admin — 25 files under src/pages/clusterAdmin/, including the
+    // businessUnitForm/ and licenses/ subdirectories). Catalog-only pass (Task 1): every key
+    // below is seeded because its exact string recurs in MORE THAN ONE of those 25 files — a
+    // later task binding any one of those files reuses the key here instead of re-declaring
+    // it. A string that shows up in only one file stays out of this object; that file's own
+    // task adds it page-locally.
+    //
+    // Reuse-checked first against common.*/entity.*/breadcrumb.*/error.* (exact value, Thai
+    // read too) and toast.* composed with entity.* — every key below is what was LEFT after
+    // that pass found no match. See task-1-report.md for the full reuse list (e.g. 'Cluster
+    // Role' -> common.label.clusterRole, 'No business units in this cluster.' ->
+    // common.state.noBusinessUnitsInCluster, 'Business units' -> common.label.businessUnitsLabel,
+    // 'Identity'/'Branding'/'Configuration' -> common.section.*, 'Changes saved successfully'
+    // -> toast.saved, 'Data exported successfully' -> toast.exported).
+    //
+    // `company` is NOT a reuse of common.field.company ('Company', byte-identical) — that key
+    // is a single-input field label (see the field/section split documented above
+    // common.section), while this one is a Group/tab SECTION heading for the whole
+    // company_* field group. Same class of mismatch the phase-2 final review already fixed
+    // once for entity.* vs common.label.*.
+    clusterAdmin: {
+      hotel: 'Hotel',
+      company: 'Company',
+      people: 'People',
+      hq: 'HQ',
+      // Bare Title-Case singular column header (BuRankingCard.tsx, SeatsByBuTable.tsx) —
+      // distinct from common.label.businessUnitsTitle/businessUnitsLabel, which are both
+      // plural.
+      businessUnitColumn: 'Business Unit',
+      viewLicenses: 'View licenses',
+      clusterHasNoBusinessUnitsYet: 'This cluster has no business units yet.',
+      inviteToAccessHint: 'Invite a user to give them access to this cluster.',
+      invitationRateLimited: 'Invitation rate limit reached. Please try again later.',
+      noSeatsOpen: 'No seats open',
+      unnamed: '(unnamed)',
+      // Byte-identical to pages.users.rowActions and pages.news.rowActions — a genuine
+      // promotion signal (4 files across 3 slices once this slice's two call sites are
+      // counted), but not executed here: promoting it means deleting those two keys and
+      // rewiring UserManagement.tsx / NewsManagement.tsx, both outside this task's allowed
+      // files (src/i18n/en.ts + th.ts only). Left split; see task-1-report.md.
+      rowActions: 'Actions for {{name}}',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
