@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardContent } from '../components/ui/card';
@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import Can from '../components/Can';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useI18n } from '../hooks/useI18n';
 import broadcastService from '../services/broadcastService';
 import businessUnitService from '../services/businessUnitService';
 import { parseApiError } from '../utils/errorParser';
@@ -65,14 +66,6 @@ const initialForm: BroadcastFormData = {
   expiresAtLocal: '',
 };
 
-const TYPE_OPTIONS: { value: BroadcastTypePreset; label: string }[] = [
-  { value: 'INFO', label: 'Info' },
-  { value: 'WARNING', label: 'Warning' },
-  { value: 'CRITICAL', label: 'Critical' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'OTHER', label: 'Other…' },
-];
-
 /** severity ของผู้ส่ง — ไปอยู่ใน metadata ไม่ใช่ฟิลด์ `type` ที่ backend ทิ้งแล้ว */
 function resolveSeverity(form: BroadcastFormData): string {
   return form.typePreset === 'OTHER' ? form.typeCustom.trim().toUpperCase() : form.typePreset;
@@ -115,6 +108,7 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
 }
 
 const BroadcastCompose: React.FC = () => {
+  const { t } = useI18n();
   const { hasPermission } = useAuth();
   // broadcast.send is checked unscoped here — a cluster-scoped grantee reaches
   // system-wide send modes. As of backend PR #239, both broadcast endpoints now
@@ -156,27 +150,35 @@ const BroadcastCompose: React.FC = () => {
     }
   }, [canSendSystem, targetMode]);
 
-  const loadBusinessUnits = async () => {
+  const loadBusinessUnits = useCallback(async () => {
     setBuLoading(true);
     setBuLoadError('');
     try {
       const response = await businessUnitService.getAll({ page: 1, perpage: 100 });
       setBusinessUnits((response.data || []) as BusinessUnit[]);
     } catch (err) {
-      setBuLoadError(parseApiError(err).message);
+      setBuLoadError(parseApiError(err, t).message);
     } finally {
       setBuLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     void loadBusinessUnits();
-  }, []);
+  }, [loadBusinessUnits]);
 
   const selectedBu = useMemo(
     () => businessUnits.find((b) => b.code === formData.buCode),
     [businessUnits, formData.buCode],
   );
+
+  const TYPE_OPTIONS = useMemo<{ value: BroadcastTypePreset; label: string }[]>(() => [
+    { value: 'INFO', label: t('common.severity.info') },
+    { value: 'WARNING', label: t('common.severity.warning') },
+    { value: 'CRITICAL', label: t('common.severity.critical') },
+    { value: 'MAINTENANCE', label: t('common.severity.maintenance') },
+    { value: 'OTHER', label: t('pages.broadcasts.otherEllipsis') },
+  ], [t]);
 
   const setField = <K extends keyof BroadcastFormData>(name: K, value: BroadcastFormData[K]) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -206,54 +208,54 @@ const BroadcastCompose: React.FC = () => {
     switch (name) {
       case 'title': {
         const title = form.title.trim();
-        if (!title) return 'Title is required';
-        if (title.length > TITLE_MAX) return `Max ${TITLE_MAX} characters`;
+        if (!title) return t('common.validation.requiredMessage', { label: t('common.field.title') });
+        if (title.length > TITLE_MAX) return t('pages.broadcasts.validation.maxChars', { max: TITLE_MAX });
         return '';
       }
       case 'message': {
         const message = form.message.trim();
-        if (!message) return 'Message is required';
-        if (message.length > MESSAGE_MAX) return `Max ${MESSAGE_MAX} characters`;
+        if (!message) return t('pages.broadcasts.validation.messageRequired');
+        if (message.length > MESSAGE_MAX) return t('pages.broadcasts.validation.maxChars', { max: MESSAGE_MAX });
         return '';
       }
       case 'typeCustom': {
         if (form.typePreset !== 'OTHER') return '';
-        const t = form.typeCustom.trim();
-        if (!t) return 'Custom type is required';
-        if (t.length > TYPE_CUSTOM_MAX) return `Max ${TYPE_CUSTOM_MAX} characters`;
-        if (!TYPE_CUSTOM_RE.test(t)) return 'Use uppercase letters, digits, and underscores only';
+        const custom = form.typeCustom.trim();
+        if (!custom) return t('pages.broadcasts.validation.customTypeRequired');
+        if (custom.length > TYPE_CUSTOM_MAX) return t('pages.broadcasts.validation.maxChars', { max: TYPE_CUSTOM_MAX });
+        if (!TYPE_CUSTOM_RE.test(custom)) return t('pages.broadcasts.validation.customTypeFormat');
         return '';
       }
       case 'scheduledAtLocal': {
         if (form.sendMode !== 'schedule') return '';
         const v = form.scheduledAtLocal;
-        if (!v) return 'Pick a date and time';
+        if (!v) return t('pages.broadcasts.pickDateTime');
         const ts = new Date(v).getTime();
-        if (Number.isNaN(ts)) return 'Invalid date/time';
-        if (ts <= Date.now()) return 'Scheduled time must be in the future';
+        if (Number.isNaN(ts)) return t('pages.broadcasts.validation.invalidDateTime');
+        if (ts <= Date.now()) return t('pages.broadcasts.validation.scheduledTimeFuture');
         return '';
       }
       case 'expiresAtLocal': {
         // preset ไม่ต้องตรวจ — คำนวณจาก base เสมอจึงเป็นอนาคตโดยนิยาม
         if (form.expiryPreset !== 'custom') return '';
         const v = form.expiresAtLocal;
-        if (!v) return 'Pick an expiry date and time';
+        if (!v) return t('pages.broadcasts.validation.pickExpiryDateTime');
         const ts = new Date(v).getTime();
-        if (Number.isNaN(ts)) return 'Invalid date/time';
-        if (ts <= Date.now()) return 'Expiry must be in the future';
+        if (Number.isNaN(ts)) return t('pages.broadcasts.validation.invalidDateTime');
+        if (ts <= Date.now()) return t('pages.broadcasts.validation.expiryFuture');
         if (form.sendMode === 'schedule' && form.scheduledAtLocal) {
           const scheduled = new Date(form.scheduledAtLocal).getTime();
           if (!Number.isNaN(scheduled) && ts <= scheduled) {
-            return 'Expiry must be after the scheduled send time';
+            return t('pages.broadcasts.validation.expiryAfterSchedule');
           }
         }
         return '';
       }
       case 'buCode':
-        if (mode === 'bu' && !form.buCode) return 'Choose a business unit';
+        if (mode === 'bu' && !form.buCode) return t('pages.broadcasts.validation.chooseBusinessUnit');
         return '';
       case 'recipients':
-        if (mode === 'system_users' && recipientList.length === 0) return 'Pick at least one recipient';
+        if (mode === 'system_users' && recipientList.length === 0) return t('pages.broadcasts.validation.pickRecipient');
         return '';
       default:
         return '';
@@ -278,24 +280,30 @@ const BroadcastCompose: React.FC = () => {
   };
 
   const confirmTitle = (): string => {
-    if (targetMode === 'system_all') return 'Send to ALL users?';
-    if (targetMode === 'system_users') return `Send to ${recipients.length} user${recipients.length === 1 ? '' : 's'}?`;
-    return `Send to ${selectedBu?.name || formData.buCode}?`;
+    if (targetMode === 'system_all') return t('pages.broadcasts.sendToAllUsers');
+    if (targetMode === 'system_users') {
+      return recipients.length === 1
+        ? t('pages.broadcasts.sendToUserSingular', { count: recipients.length })
+        : t('pages.broadcasts.sendToUserPlural', { count: recipients.length });
+    }
+    return t('pages.broadcasts.sendToBu', { name: selectedBu?.name || formData.buCode });
   };
 
   const confirmDescription = (): string => {
     const base = formData.sendMode === 'schedule'
-      ? `Scheduled for ${new Date(formData.scheduledAtLocal).toLocaleString()}.`
-      : 'Will be delivered immediately.';
+      ? t('pages.broadcasts.scheduledForNote', { when: new Date(formData.scheduledAtLocal).toLocaleString() })
+      : t('pages.broadcasts.deliveredImmediately');
     if (targetMode === 'system_all') {
-      return `${base} This broadcast will reach every user in the system. Title: "${formData.title.trim()}".`;
+      return `${base} ${t('pages.broadcasts.systemAllReachNote', { title: formData.title.trim() })}`;
     }
     if (targetMode === 'system_users') {
       const names = recipients.slice(0, 5).map((r) => r.name).join(', ');
-      const extra = recipients.length > 5 ? ` and ${recipients.length - 5} more` : '';
-      return `${base} Recipients: ${names}${extra}.`;
+      if (recipients.length > 5) {
+        return `${base} ${t('pages.broadcasts.recipientsNoteWithExtra', { names, extraCount: recipients.length - 5 })}`;
+      }
+      return `${base} ${t('pages.broadcasts.recipientsNote', { names })}`;
     }
-    return `${base} Business unit: ${selectedBu?.name || ''} (${formData.buCode}).`;
+    return `${base} ${t('pages.broadcasts.buNote', { name: selectedBu?.name || '', code: formData.buCode })}`;
   };
 
   const handleSend = () => {
@@ -306,7 +314,7 @@ const BroadcastCompose: React.FC = () => {
     const errors = validate();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      toast.error('Please fix the highlighted fields');
+      toast.error(t('pages.broadcasts.fixHighlightedFields'));
       return;
     }
     setConfirmOpen(true);
@@ -329,18 +337,18 @@ const BroadcastCompose: React.FC = () => {
       setRawResponse(response);
       const scheduledMsg =
         formData.sendMode === 'schedule'
-          ? `Broadcast scheduled for ${new Date(formData.scheduledAtLocal).toLocaleString()}`
-          : 'Broadcast sent';
+          ? t('pages.broadcasts.toastScheduled', { when: new Date(formData.scheduledAtLocal).toLocaleString() })
+          : t('pages.broadcasts.toastSent');
       toast.success(scheduledMsg);
       setFormData(initialForm);
       setRecipients([]);
       setFieldErrors({});
       setConfirmOpen(false);
     } catch (err) {
-      const parsed = parseApiError(err);
+      const parsed = parseApiError(err, t);
       // A toast auto-dismisses — it's the only record of a failed send unless we also
       // keep a persistent, in-page banner (mirrors NewsEdit's save-failure banner).
-      setSendError('Failed to send broadcast: ' + parsed.message);
+      setSendError(t('pages.broadcasts.sendFailedPrefix') + parsed.message);
       toast.error(parsed.message);
       if (parsed.fields) setFieldErrors((prev) => ({ ...prev, ...parsed.fields }));
       setConfirmOpen(false);
@@ -384,12 +392,12 @@ const BroadcastCompose: React.FC = () => {
   const buLabel = selectedBu ? `${selectedBu.name} (${selectedBu.code})` : (formData.buCode || undefined);
   const scheduledLabel = (() => {
     if (formData.sendMode !== 'schedule' || !formData.scheduledAtLocal) return undefined;
-    const t = new Date(formData.scheduledAtLocal);
-    return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
+    const dt = new Date(formData.scheduledAtLocal);
+    return Number.isNaN(dt.getTime()) ? undefined : dt.toLocaleString();
   })();
   const expiresLabel = (() => {
-    const t = new Date(resolveExpiryIso(formData));
-    return Number.isNaN(t.getTime()) ? undefined : t.toLocaleString();
+    const dt = new Date(resolveExpiryIso(formData));
+    return Number.isNaN(dt.getTime()) ? undefined : dt.toLocaleString();
   })();
 
   return (
@@ -398,8 +406,8 @@ const BroadcastCompose: React.FC = () => {
         <PageHeader
           backTo="/broadcasts"
           beforeTitle={<Megaphone className="h-6 w-6 text-primary" />}
-          title="Send Broadcast"
-          subtitle="Push a notification to all users, specific users, or a business unit."
+          title={t('pages.broadcasts.sendBroadcastTitle')}
+          subtitle={t('pages.broadcasts.pushNotificationSubtitle')}
         />
 
         {sendError && (
@@ -411,28 +419,28 @@ const BroadcastCompose: React.FC = () => {
             <CardContent className="space-y-6 pt-6">
               {/* Audience */}
               <section className="space-y-3">
-                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Audience</div>
+                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">{t('pages.broadcasts.audience')}</div>
                 <Tabs value={targetMode} onValueChange={(v) => setTargetMode(v as BroadcastTargetMode)}>
                   <TabsList>
                     {canSendSystem && (
                       <TabsTrigger value="system_all">
-                        <Globe className="mr-2 h-4 w-4" /> All users
+                        <Globe className="mr-2 h-4 w-4" /> {t('pages.broadcasts.allUsers')}
                       </TabsTrigger>
                     )}
                     {canSendSystem && (
                       <TabsTrigger value="system_users">
-                        <Users className="mr-2 h-4 w-4" /> Specific users
+                        <Users className="mr-2 h-4 w-4" /> {t('pages.broadcasts.specificUsers')}
                       </TabsTrigger>
                     )}
                     <TabsTrigger value="bu">
-                      <Building2 className="mr-2 h-4 w-4" /> Business unit
+                      <Building2 className="mr-2 h-4 w-4" /> {t('entity.businessUnit.sentence')}
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
 
                 {targetMode === 'system_users' && (
                   <div className="space-y-2">
-                    <Label htmlFor="recipients">Recipients</Label>
+                    <Label htmlFor="recipients">{t('pages.broadcasts.recipients')}</Label>
                     <UserMultiSelect
                       id="recipients"
                       value={recipients}
@@ -456,7 +464,7 @@ const BroadcastCompose: React.FC = () => {
 
                 {targetMode === 'bu' && (
                   <div className="space-y-2">
-                    <Label htmlFor="buCode">Business unit</Label>
+                    <Label htmlFor="buCode">{t('entity.businessUnit.sentence')}</Label>
                     <select
                       id="buCode"
                       value={formData.buCode}
@@ -465,7 +473,7 @@ const BroadcastCompose: React.FC = () => {
                       className={SELECT_CLASS + (fieldErrors.buCode ? ' border-destructive' : '')}
                       disabled={buLoading}
                     >
-                      <option value="">{buLoading ? 'Loading business units…' : 'Select a business unit'}</option>
+                      <option value="">{buLoading ? t('pages.broadcasts.loadingBusinessUnitsEllipsis') : t('common.state.selectABusinessUnit')}</option>
                       {businessUnits
                         .filter((b) => b.is_active !== false)
                         .map((b) => (
@@ -478,7 +486,7 @@ const BroadcastCompose: React.FC = () => {
                       <p className="text-xs text-destructive" role="alert">
                         {buLoadError}{' '}
                         <button type="button" onClick={() => void loadBusinessUnits()} className="underline">
-                          Retry
+                          {t('common.action.retry')}
                         </button>
                       </p>
                     )}
@@ -489,10 +497,10 @@ const BroadcastCompose: React.FC = () => {
 
               {/* Message */}
               <section className="space-y-4 border-t pt-6">
-                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Message</div>
+                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">{t('pages.broadcasts.message')}</div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">{t('common.field.title')}</Label>
                     <span className="text-xs text-muted-foreground">
                       {formData.title.length}/{TITLE_MAX}
                     </span>
@@ -502,7 +510,7 @@ const BroadcastCompose: React.FC = () => {
                     value={formData.title}
                     onChange={(e) => setField('title', e.target.value.slice(0, TITLE_MAX))}
                     onBlur={() => handleFieldBlur('title')}
-                    placeholder="Scheduled maintenance"
+                    placeholder={t('pages.broadcasts.scheduledMaintenancePlaceholder')}
                     className={fieldErrors.title ? 'border-destructive' : ''}
                   />
                   {fieldErrors.title && <p className="text-xs text-destructive">{fieldErrors.title}</p>}
@@ -510,7 +518,7 @@ const BroadcastCompose: React.FC = () => {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="message">Message</Label>
+                    <Label htmlFor="message">{t('pages.broadcasts.message')}</Label>
                     <span className="text-xs text-muted-foreground">
                       {formData.message.length}/{MESSAGE_MAX}
                     </span>
@@ -521,14 +529,14 @@ const BroadcastCompose: React.FC = () => {
                     value={formData.message}
                     onChange={(e) => setField('message', e.target.value.slice(0, MESSAGE_MAX))}
                     onBlur={() => handleFieldBlur('message')}
-                    placeholder="The system will be unavailable from 02:00 to 03:00 UTC."
+                    placeholder={t('pages.broadcasts.systemUnavailablePlaceholder')}
                     className={fieldErrors.message ? 'border-destructive' : ''}
                   />
                   {fieldErrors.message && <p className="text-xs text-destructive">{fieldErrors.message}</p>}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="typePreset">Type</Label>
+                  <Label htmlFor="typePreset">{t('common.field.type')}</Label>
                   <select
                     id="typePreset"
                     value={formData.typePreset}
@@ -546,7 +554,7 @@ const BroadcastCompose: React.FC = () => {
                         value={formData.typeCustom}
                         onChange={(e) => setField('typeCustom', e.target.value.toUpperCase())}
                         onBlur={() => handleFieldBlur('typeCustom')}
-                        placeholder="CUSTOM_TYPE"
+                        placeholder={t('pages.broadcasts.customTypePlaceholder')}
                         className={fieldErrors.typeCustom ? 'border-destructive' : ''}
                       />
                       {fieldErrors.typeCustom && (
@@ -557,7 +565,7 @@ const BroadcastCompose: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="metadataBuCode">Related Business Unit (Metadata)</Label>
+                  <Label htmlFor="metadataBuCode">{t('pages.broadcasts.relatedBuMetadata')}</Label>
                   <select
                     id="metadataBuCode"
                     value={formData.metadataBuCode}
@@ -565,7 +573,7 @@ const BroadcastCompose: React.FC = () => {
                     className={SELECT_CLASS}
                     disabled={buLoading}
                   >
-                    <option value="">{buLoading ? 'Loading business units…' : 'None (optional)'}</option>
+                    <option value="">{buLoading ? t('pages.broadcasts.loadingBusinessUnitsEllipsis') : t('pages.broadcasts.noneOptional')}</option>
                     {businessUnits
                       .filter((b) => b.is_active !== false)
                       .map((b) => (
@@ -575,21 +583,21 @@ const BroadcastCompose: React.FC = () => {
                       ))}
                   </select>
                   <p className="text-[11px] text-muted-foreground">
-                    Attaches this business unit code to the broadcast's metadata (e.g. for navigation).
+                    {t('pages.broadcasts.metadataBuHint')}
                   </p>
                 </div>
               </section>
 
               {/* Delivery */}
               <section className="space-y-3 border-t pt-6">
-                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Delivery</div>
+                <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">{t('common.field.delivery')}</div>
                 <Tabs value={formData.sendMode} onValueChange={(v) => setField('sendMode', v as 'now' | 'schedule')}>
                   <TabsList>
                     <TabsTrigger value="now">
-                      <Send className="mr-2 h-4 w-4" /> Send immediately
+                      <Send className="mr-2 h-4 w-4" /> {t('pages.broadcasts.sendImmediately')}
                     </TabsTrigger>
                     <TabsTrigger value="schedule">
-                      <Calendar className="mr-2 h-4 w-4" /> Schedule for later
+                      <Calendar className="mr-2 h-4 w-4" /> {t('pages.broadcasts.scheduleForLater')}
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -609,17 +617,17 @@ const BroadcastCompose: React.FC = () => {
                   </div>
                 )}
                 <div className="space-y-2 pt-1">
-                  <Label htmlFor="expiryPreset">Expires</Label>
+                  <Label htmlFor="expiryPreset">{t('common.state.expires')}</Label>
                   <select
                     id="expiryPreset"
                     value={formData.expiryPreset}
                     onChange={(e) => setField('expiryPreset', e.target.value as ExpiryPreset)}
                     className={SELECT_CLASS}
                   >
-                    <option value="7d">7 days</option>
-                    <option value="30d">30 days</option>
-                    <option value="90d">90 days</option>
-                    <option value="custom">Custom…</option>
+                    <option value="7d">{t('pages.broadcasts.daysCount', { count: 7 })}</option>
+                    <option value="30d">{t('pages.broadcasts.daysCount', { count: 30 })}</option>
+                    <option value="90d">{t('pages.broadcasts.daysCount', { count: 90 })}</option>
+                    <option value="custom">{t('pages.broadcasts.customEllipsis')}</option>
                   </select>
                   {formData.expiryPreset === 'custom' && (
                     <div className="space-y-1">
@@ -667,15 +675,15 @@ const BroadcastCompose: React.FC = () => {
             {isDirty ? (
               <>
                 <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                <span>Unsaved changes</span>
+                <span>{t('common.state.unsavedChanges')}</span>
               </>
             ) : (
-              <span className="text-muted-foreground">No changes</span>
+              <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" type="button" onClick={handleReset} disabled={sending}>
-              Reset
+              {t('pages.broadcasts.reset')}
             </Button>
             {/* broadcast.send is checked unscoped here — a cluster-scoped grantee reaches
                 system-wide send modes. Backend PR #239 now ENFORCES broadcast.send
@@ -690,7 +698,7 @@ const BroadcastCompose: React.FC = () => {
                 ) : (
                   <Send className="mr-2 h-4 w-4" />
                 )}
-                {formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
+                {formData.sendMode === 'schedule' ? t('pages.broadcasts.schedule') : t('pages.broadcasts.send')}
               </Button>
             </Can>
           </div>
@@ -702,7 +710,7 @@ const BroadcastCompose: React.FC = () => {
         onOpenChange={setConfirmOpen}
         title={confirmTitle()}
         description={confirmDescription()}
-        confirmText={formData.sendMode === 'schedule' ? 'Schedule' : 'Send'}
+        confirmText={formData.sendMode === 'schedule' ? t('pages.broadcasts.schedule') : t('pages.broadcasts.send')}
         confirmVariant={targetMode === 'system_all' ? 'destructive' : 'default'}
         onConfirm={handleConfirmedSend}
       />

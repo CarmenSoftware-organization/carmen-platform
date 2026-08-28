@@ -483,6 +483,16 @@ export const en = {
       validation: {
         messageRequired: 'Message is required',
         expiryAfterSchedule: 'Expiry must be after the scheduled send time',
+        // Task 3 (BroadcastCompose) field-validation additions below.
+        maxChars: 'Max {{max}} characters',
+        customTypeRequired: 'Custom type is required',
+        customTypeFormat: 'Use uppercase letters, digits, and underscores only',
+        invalidDateTime: 'Invalid date/time',
+        scheduledTimeFuture: 'Scheduled time must be in the future',
+        pickExpiryDateTime: 'Pick an expiry date and time',
+        expiryFuture: 'Expiry must be in the future',
+        chooseBusinessUnit: 'Choose a business unit',
+        pickRecipient: 'Pick at least one recipient',
       },
       // Task 2 (Broadcast list surface: BroadcastManagement, BroadcastFilters,
       // BroadcastSummary, broadcastColumns) page-local additions below.
@@ -520,6 +530,53 @@ export const en = {
       // since either half may be reused independently by a later slice.
       expireImmediateNote: 'The broadcast disappears from recipients immediately.',
       expireConfirm: 'Are you sure you want to expire this broadcast now?',
+      // Task 3 (BroadcastCompose page-local additions below).
+      sendBroadcastTitle: 'Send Broadcast',
+      pushNotificationSubtitle: 'Push a notification to all users, specific users, or a business unit.',
+      audience: 'Audience',
+      allUsers: 'All users',
+      specificUsers: 'Specific users',
+      recipients: 'Recipients',
+      loadingBusinessUnitsEllipsis: 'Loading business units…',
+      noneOptional: 'None (optional)',
+      relatedBuMetadata: 'Related Business Unit (Metadata)',
+      metadataBuHint: "Attaches this business unit code to the broadcast's metadata (e.g. for navigation).",
+      scheduledMaintenancePlaceholder: 'Scheduled maintenance',
+      systemUnavailablePlaceholder: 'The system will be unavailable from 02:00 to 03:00 UTC.',
+      sendImmediately: 'Send immediately',
+      scheduleForLater: 'Schedule for later',
+      customEllipsis: 'Custom…',
+      otherEllipsis: 'Other…',
+      daysCount: '{{count}} days',
+      reset: 'Reset',
+      schedule: 'Schedule',
+      send: 'Send',
+      // Not in the brief's measured string list — a format-example placeholder (not
+      // prose), same rationale as pages.users.usernamePlaceholder ('user@example.com'):
+      // identical value in both languages because it illustrates the exact character
+      // set TYPE_CUSTOM_RE accepts, not a translatable word.
+      customTypePlaceholder: 'CUSTOM_TYPE',
+      sendToAllUsers: 'Send to ALL users?',
+      // Plurals stay in the English value only (brief step 3): Thai does not inflect
+      // for number, so th.ts gives both keys the same value.
+      sendToUserSingular: 'Send to {{count}} user?',
+      sendToUserPlural: 'Send to {{count}} users?',
+      sendToBu: 'Send to {{name}}?',
+      // confirmTitle/confirmDescription are assembled from these whole-sentence keys —
+      // never by slotting a translated fragment into a translated frame. `base`
+      // (scheduledForNote / deliveredImmediately) is concatenated with one more whole
+      // sentence per target mode, mirroring the expireImmediateNote+expireConfirm
+      // concatenation Task 2 already established in BroadcastManagement.
+      scheduledForNote: 'Scheduled for {{when}}.',
+      deliveredImmediately: 'Will be delivered immediately.',
+      systemAllReachNote: 'This broadcast will reach every user in the system. Title: "{{title}}".',
+      recipientsNote: 'Recipients: {{names}}.',
+      recipientsNoteWithExtra: 'Recipients: {{names}} and {{extraCount}} more.',
+      buNote: 'Business unit: {{name}} ({{code}}).',
+      toastScheduled: 'Broadcast scheduled for {{when}}',
+      toastSent: 'Broadcast sent',
+      sendFailedPrefix: 'Failed to send broadcast: ',
+      fixHighlightedFields: 'Please fix the highlighted fields',
     },
     news: {
       publish: 'Publish',
