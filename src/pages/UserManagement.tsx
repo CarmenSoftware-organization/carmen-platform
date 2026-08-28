@@ -8,6 +8,7 @@ import type { UserSummaryData } from "../types";
 import userService from "../services/userService";
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../hooks/useI18n';
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -83,6 +84,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 const UserManagement: React.FC = () => {
   const { isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -264,12 +266,12 @@ const UserManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await userService.delete(deleteId);
-      toast.success('User deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.user') }));
       setDeleteId(null);
       setPaginate((prev) => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error('Failed to delete user', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.userLower') }), { description: getErrorDetail(err) });
     }
   };
 
@@ -284,12 +286,12 @@ const UserManagement: React.FC = () => {
     setHardDeleting(true);
     try {
       await userService.hardDelete(hardDeleteUser.id);
-      toast.success('User permanently deleted');
+      toast.success(t('pages.users.permanentlyDeleted'));
       setHardDeleteUser(null);
       setPaginate((prev) => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error('Failed to permanently delete user', { description: getErrorDetail(err) });
+      toast.error(t('pages.users.permanentDeleteFailed'), { description: getErrorDetail(err) });
     } finally {
       setHardDeleting(false);
     }
@@ -301,9 +303,9 @@ const UserManagement: React.FC = () => {
       await navigator.clipboard.writeText(token);
       setCopiedUsername(true);
       setTimeout(() => setCopiedUsername(false), 2000);
-      toast.success('Copied username');
+      toast.success(t('pages.users.copiedUsername'));
     } catch {
-      toast.error('Could not copy username');
+      toast.error(t('pages.users.couldNotCopyUsername'));
     }
   };
 
@@ -386,18 +388,18 @@ const UserManagement: React.FC = () => {
       { key: 'updated_by', label: 'Updated by' },
     ]);
     downloadCSV(csv, `users-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const handleFetchKeycloak = async () => {
     try {
       setSyncing(true);
       await userService.fetchKeycloakUsers();
-      toast.success('Users fetched from Keycloak successfully');
+      toast.success(t('pages.users.keycloakFetched'));
       setPaginate(prev => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error('Failed to fetch users from Keycloak', { description: getErrorDetail(err) });
+      toast.error(t('pages.users.keycloakFetchFailed'), { description: getErrorDetail(err) });
     } finally {
       setSyncing(false);
     }
@@ -435,7 +437,7 @@ const UserManagement: React.FC = () => {
       },
       {
         accessorKey: "username",
-        header: "Username",
+        header: t('common.field.username'),
         cell: ({ row }) => {
           const label = row.original.username || row.original.user_id || "-";
           return (
@@ -459,7 +461,7 @@ const UserManagement: React.FC = () => {
               <span className="truncate" title={name}>{name}</span>
               {row.original.deleted_at && (
                 <Badge variant="destructive" className="shrink-0 text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
-                  Deleted
+                  {t('common.status.deleted')}
                 </Badge>
               )}
             </div>
@@ -498,11 +500,11 @@ const UserManagement: React.FC = () => {
       },
       {
         accessorKey: "is_active",
-        header: "Status",
+        header: t('common.status.label'),
         meta: { headerClassName: "w-24" },
         cell: ({ row }) => (
           <Badge variant={row.original.is_active ? "success" : "secondary"}>
-            {row.original.is_active ? "Active" : "Inactive"}
+            {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
           </Badge>
         ),
       },
@@ -512,7 +514,7 @@ const UserManagement: React.FC = () => {
       ...auditColumns<UserRecord>().map((c) => ({ ...c, meta: { ...c.meta, headerClassName: 'w-40' } })),
       ...(showDeleted ? [{
         id: 'deleted_at',
-        header: 'Deleted By',
+        header: t('pages.users.deletedBy'),
         meta: { headerClassName: "w-40" },
         cell: ({ row }: { row: { original: UserRecord } }) => (
           <AuditMeta
@@ -548,7 +550,7 @@ const UserManagement: React.FC = () => {
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  {t('common.action.delete')}
                 </DropdownMenuItem>
               </Can>
               <Can permission="user.delete">
@@ -566,21 +568,21 @@ const UserManagement: React.FC = () => {
         ),
       },
     ],
-    [handleDelete, handleHardDelete, navigate, showDeleted],
+    [handleDelete, handleHardDelete, navigate, showDeleted, t],
   );
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="User Management"
-          subtitle="Manage users and permissions"
+          title={t('pages.users.title')}
+          subtitle={t('pages.users.subtitle')}
           actions={
             <>
               <Can permission="user.create">
                 <Button variant="outline" size="sm" onClick={handleFetchKeycloak} disabled={syncing}>
                   {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  {syncing ? 'Fetching...' : 'Fetch Keycloak'}
+                  {syncing ? t('pages.users.fetching') : t('pages.users.fetchKeycloak')}
                 </Button>
               </Can>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || users.length === 0}>
@@ -590,7 +592,7 @@ const UserManagement: React.FC = () => {
               <Can permission="user.create">
                 <Button onClick={() => navigate("/users/new")}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add User</span>
+                  <span className="hidden sm:inline">{t('common.action.addUser')}</span>
                   <span className="sm:hidden">Add</span>
                 </Button>
               </Can>
@@ -607,14 +609,14 @@ const UserManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search users..."
+                placeholder={t('pages.users.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.action.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -624,15 +626,15 @@ const UserManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter users by status</SheetDescription>
+                    <SheetTitle>{t('common.action.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.users.filterByStatus')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -642,7 +644,7 @@ const UserManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("true")}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes("false") ? "default" : "outline"}
@@ -650,12 +652,12 @@ const UserManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("false")}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <span className="text-sm font-medium">Deleted</span>
+                      <span className="text-sm font-medium">{t('common.status.deleted')}</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -683,11 +685,11 @@ const UserManagement: React.FC = () => {
                 <span className="text-xs text-muted-foreground">Filters:</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === "true" ? "Active" : "Inactive"}
+                    {s === "true" ? t('common.status.active') : t('common.status.inactive')}
                     <button
                       onClick={() => handleStatusFilter(s)}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label={`Remove ${s === "true" ? "Active" : "Inactive"} filter`}
+                      aria-label={`Remove ${s === "true" ? t('common.status.active') : t('common.status.inactive')} filter`}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -699,7 +701,7 @@ const UserManagement: React.FC = () => {
                     <button
                       onClick={handleShowDeletedToggle}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label="Remove Show Deleted filter"
+                      aria-label={t('pages.users.removeShowDeletedFilter')}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -718,13 +720,13 @@ const UserManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Users}
-                emptyTitle="No users yet"
-                emptyDescription="Get started by creating your first user."
+                emptyTitle={t('pages.users.emptyTitle')}
+                emptyDescription={t('pages.users.emptyDescription')}
                 addAction={
                   <Can permission="user.create">
                     <Button size="sm" onClick={() => navigate('/users/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add User
+                      {t('common.action.addUser')}
                     </Button>
                   </Can>
                 }
@@ -737,14 +739,14 @@ const UserManagement: React.FC = () => {
                     <div className="ml-auto flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setBulkSoftOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        {t('common.action.delete')}
                       </Button>
                       <Button variant="destructive" size="sm" onClick={openBulkHardDelete}>
                         <AlertTriangle className="mr-2 h-4 w-4" />
                         Hard Delete
                       </Button>
                       <Button variant="ghost" size="sm" onClick={clearSelection}>
-                        Clear
+                        {t('common.action.clear')}
                       </Button>
                     </div>
                   </div>
@@ -755,8 +757,8 @@ const UserManagement: React.FC = () => {
                   ) : (
                   <>
                   {loading && (
-                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading users">
-                      <div className="text-muted-foreground">Loading...</div>
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.users.loading')}>
+                      <div className="text-muted-foreground">{t('common.action.loading')}</div>
                     </div>
                   )}
                   <DataTable
@@ -788,9 +790,9 @@ const UserManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete User"
+        title={t('pages.users.deleteTitle')}
         description="Are you sure you want to delete this user? This action cannot be undone."
-        confirmText="Delete"
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
@@ -800,7 +802,7 @@ const UserManagement: React.FC = () => {
         onOpenChange={(open) => { if (!open) setBulkSoftOpen(false); }}
         title={`Delete ${selectedUsers.length} user(s)`}
         description="Soft-delete the selected user(s)? They can be restored later."
-        confirmText="Delete"
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmBulkSoftDelete}
       />
@@ -827,7 +829,7 @@ const UserManagement: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 shrink-0"
-                    aria-label="Copy username"
+                    aria-label={t('pages.users.copyUsername')}
                     onClick={handleCopyUsername}
                     disabled={hardDeleting}
                   >
@@ -847,7 +849,7 @@ const UserManagement: React.FC = () => {
                 id="hardDeleteConfirm"
                 value={hardDeleteConfirm}
                 onChange={(e) => setHardDeleteConfirm(e.target.value)}
-                placeholder="Enter username to confirm"
+                placeholder={t('pages.users.confirmByUsername')}
                 autoComplete="off"
               />
             </div>
@@ -863,7 +865,7 @@ const UserManagement: React.FC = () => {
               disabled={hardDeleting || hardDeleteConfirm !== (hardDeleteUser?.username || hardDeleteUser?.email || '')}
             >
               {hardDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              {hardDeleting ? 'Deleting...' : 'Permanently Delete'}
+              {hardDeleting ? t('common.action.deleting') : t('pages.users.permanentlyDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -915,7 +917,7 @@ const UserManagement: React.FC = () => {
               disabled={bulkDeleting || bulkConfirmInput !== bulkConfirmCode}
             >
               {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              {bulkDeleting ? 'Deleting...' : 'Permanently Delete'}
+              {bulkDeleting ? t('common.action.deleting') : t('pages.users.permanentlyDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>

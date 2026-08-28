@@ -269,7 +269,29 @@ export const en = {
 
   /** Per-slice page vocabulary. One child object per phase-2 slice. */
   pages: {
-    users: {},
+    users: {
+      title: 'User Management',
+      subtitle: 'Manage users and permissions',
+      searchPlaceholder: 'Search users...',
+      loading: 'Loading users',
+      emptyTitle: 'No users yet',
+      emptyDescription: 'Get started by creating your first user.',
+      filterByStatus: 'Filter users by status',
+      removeShowDeletedFilter: 'Remove Show Deleted filter',
+      deletedBy: 'Deleted By',
+      copyUsername: 'Copy username',
+      copiedUsername: 'Copied username',
+      couldNotCopyUsername: 'Could not copy username',
+      deleteTitle: 'Delete User',
+      permanentlyDelete: 'Permanently Delete',
+      confirmByUsername: 'Enter username to confirm',
+      permanentlyDeleted: 'User permanently deleted',
+      permanentDeleteFailed: 'Failed to permanently delete user',
+      fetchKeycloak: 'Fetch Keycloak',
+      fetching: 'Fetching...',
+      keycloakFetched: 'Users fetched from Keycloak successfully',
+      keycloakFetchFailed: 'Failed to fetch users from Keycloak',
+    },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched
