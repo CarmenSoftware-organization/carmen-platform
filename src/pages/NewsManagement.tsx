@@ -164,7 +164,7 @@ const NewsManagement: React.FC = () => {
       setError('');
     } catch (err: unknown) {
       setError(t('pages.news.loadFailedPrefix') + getErrorDetail(err, t));
-      devLog(t('pages.news.fetchErrorLog'), err);
+      devLog('Error fetching news:', err);
     } finally {
       setLoading(false);
     }
@@ -190,12 +190,12 @@ const NewsManagement: React.FC = () => {
       const data = await newsService.getNewsroomSummary();
       setSummary(data);
     } catch (err: unknown) {
-      devLog(t('pages.news.summaryErrorLog'), err);
+      devLog('Error loading newsroom summary:', err);
       setSummaryError(true);
     } finally {
       setSummaryLoading(false);
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     loadSummary();
@@ -339,7 +339,7 @@ const NewsManagement: React.FC = () => {
       { key: 'title', label: t('common.field.title') },
       { key: 'status', label: t('common.status.label') },
       { key: 'url', label: 'URL' },
-      { key: 'published_at', label: t('common.status.published') },
+      { key: 'published_at', label: t('common.audit.publishedDate') },
       { key: 'created_at', label: t('common.audit.createdAt') },
       { key: 'created_by', label: t('common.audit.createdBy') },
       { key: 'updated_at', label: t('common.audit.updatedAt') },
@@ -430,14 +430,14 @@ const NewsManagement: React.FC = () => {
     {
       accessorKey: 'published_at',
       id: 'published_at',
-      header: t('common.status.published'),
+      header: t('common.audit.publishedDate'),
       cell: ({ row }) => (
         <span className="text-[11px] whitespace-nowrap text-muted-foreground">{fmt(row.original.published_at)}</span>
       ),
     },
     {
       id: 'updated_at',
-      header: t('common.status.updated'),
+      header: t('common.audit.updatedDate'),
       enableSorting: false,
       cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).updated} />,
     },

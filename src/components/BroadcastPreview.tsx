@@ -22,6 +22,20 @@ export interface SeverityStyle {
  */
 export function severityStyle(preset: BroadcastTypePreset, t?: TFunction): SeverityStyle {
   const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
+
+  // Dev-only signal for a page that forgets to pass `t`: fires only when the UI is
+  // actually Thai (`document.documentElement.lang`, set by useI18n.tsx), so it can't fire
+  // in jsdom, where `documentElement.lang` is `''` by default — none of the frozen
+  // positional tests see it. Shape copied from `src/utils/validation.ts`.
+  if (
+    process.env.NODE_ENV === 'development' &&
+    !t &&
+    typeof document !== 'undefined' &&
+    document.documentElement.lang === 'th'
+  ) {
+    console.warn('[i18n] severityStyle called without `t` — this message renders English');
+  }
+
   switch (preset) {
     case 'WARNING':
       return { label: tr('common.severity.warning'), bar: 'bg-warning', variant: 'warning' };
@@ -51,6 +65,20 @@ export interface ReachInfo {
  */
 export function reachSummary(mode: BroadcastTargetMode, recipientCount: number, buLabel?: string, t?: TFunction): ReachInfo {
   const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
+
+  // Dev-only signal for a page that forgets to pass `t`: fires only when the UI is
+  // actually Thai (`document.documentElement.lang`, set by useI18n.tsx), so it can't fire
+  // in jsdom, where `documentElement.lang` is `''` by default — none of the frozen
+  // positional tests see it. Shape copied from `src/utils/validation.ts`.
+  if (
+    process.env.NODE_ENV === 'development' &&
+    !t &&
+    typeof document !== 'undefined' &&
+    document.documentElement.lang === 'th'
+  ) {
+    console.warn('[i18n] reachSummary called without `t` — this message renders English');
+  }
+
   if (mode === 'system_all') return { text: tr('pages.broadcasts.everyUserInSystem'), all: true, icon: 'globe' };
   if (mode === 'system_users') {
     return {

@@ -91,7 +91,7 @@ const BroadcastManagement: React.FC = () => {
       setError('');
     } catch (err: unknown) {
       setError(t('pages.broadcasts.loadFailedPrefix') + getErrorDetail(err, t));
-      devLog(t('pages.broadcasts.fetchErrorLog'), err);
+      devLog('Error fetching broadcasts:', err);
     } finally {
       setLoading(false);
     }

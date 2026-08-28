@@ -113,7 +113,7 @@ export const createBroadcastColumns = ({
     },
     {
       accessorKey: 'scheduled_at',
-      header: t('common.status.scheduled'),
+      header: t('common.audit.scheduledDate'),
       meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
         <span className="text-sm whitespace-nowrap">{formatDt(row.original.scheduled_at)}</span>
@@ -150,6 +150,11 @@ export const createBroadcastColumns = ({
     // endpoint ที่ไม่รู้จักพารามิเตอร์นั้น กลายเป็นหัวคอลัมน์กดได้แต่ไม่มีอะไรเกิดขึ้นจริง
     {
       ...createdColumn,
+      // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
+      // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
+      // see broadcastColumns.tsx's own note above). Override just the header here so this
+      // table's Thai header row has no English hole.
+      header: t('common.audit.created'),
       enableSorting: false,
       meta: { ...createdColumn.meta, headerClassName: 'w-32', cellClassName: 'w-32', card: 'hidden' },
     },
@@ -158,7 +163,7 @@ export const createBroadcastColumns = ({
   if (showDeleted) {
     columns.push({
       id: 'deleted_at',
-      header: t('common.status.deleted'),
+      header: t('common.audit.deletedDate'),
       meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
         <div className="text-[11px] leading-tight text-destructive space-y-0.5">

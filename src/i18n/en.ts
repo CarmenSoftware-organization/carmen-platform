@@ -196,6 +196,18 @@ export const en = {
       createdBy: 'Created by',
       updatedAt: 'Updated at',
       updatedBy: 'Updated by',
+      // Date-column headers, distinct from the `common.status.*` badge values that share
+      // their English spelling by coincidence — a status badge and a date column can sit
+      // in the same row (e.g. News: "Published" badge + "Published" date column), and
+      // Thai must not spell both the same way. English stays byte-identical to what each
+      // header renders today; see the fix-round-2 report for the audit trail.
+      created: 'Created',
+      publishedDate: 'Published',
+      updatedDate: 'Updated',
+      deletedDate: 'Deleted',
+      // Broadcasts: the `scheduled_at` date column vs. the "Scheduled" status badge —
+      // same collision shape, found while sweeping the slice for more instances.
+      scheduledDate: 'Scheduled',
     },
     field: {
       name: 'Name',
@@ -464,7 +476,6 @@ export const en = {
       removeBuAria: 'Remove {{name}}',
       addBu: 'Add BU',
       recentlyAdded: 'Recently added',
-      refreshFailed: "Couldn't refresh — showing the last known numbers.",
       activeInactiveSummary: '{{active}} active, {{inactive}} inactive',
       bulkPermanentlyDeleteUsers: 'Permanently Delete {{count}} User(s)',
       removeStatusFilter: 'Remove {{status}} filter',
@@ -518,9 +529,6 @@ export const en = {
       // page-local: there is no shared expire template to compose from.
       toastExpireFailed: 'Failed to expire broadcast',
       loadFailedPrefix: 'Failed to load broadcasts: ',
-      // devLog label — console-only (isDev-gated), but named here per the brief's
-      // measurement list rather than left as an untranslated literal.
-      fetchErrorLog: 'Error fetching broadcasts:',
       buCode: 'BU Code',
       scheduledAt: 'Scheduled At',
       expiresAt: 'Expires At',
@@ -686,8 +694,6 @@ export const en = {
       // pages.users.typeUsernameToConfirm — the code itself stays a styled <span>, not
       // plain text, so it can't be baked into the translated string.
       typeCodeToConfirm: 'Type {{code}} to confirm',
-      fetchErrorLog: 'Error fetching news:',
-      summaryErrorLog: 'Error loading newsroom summary:',
       // NewsroomSummary.tsx additions below.
       summaryLoadFailed: "Couldn't load the newsroom summary.",
       latest: 'Latest',

@@ -17,6 +17,20 @@ import type { NewsStatus } from '../../types';
  */
 export function describeReach(isGlobal: boolean, count: number, t?: TFunction): string {
   const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
+
+  // Dev-only signal for a page that forgets to pass `t`: fires only when the UI is
+  // actually Thai (`document.documentElement.lang`, set by useI18n.tsx), so it can't fire
+  // in jsdom, where `documentElement.lang` is `''` by default — none of the frozen
+  // positional tests see it. Shape copied from `src/utils/validation.ts`.
+  if (
+    process.env.NODE_ENV === 'development' &&
+    !t &&
+    typeof document !== 'undefined' &&
+    document.documentElement.lang === 'th'
+  ) {
+    console.warn('[i18n] describeReach called without `t` — this message renders English');
+  }
+
   if (isGlobal || count === 0) return tr('common.option.global');
   return tr(count === 1 ? 'pages.news.reachOne' : 'pages.news.reachMany', { count });
 }

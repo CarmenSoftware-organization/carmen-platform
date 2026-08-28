@@ -123,7 +123,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
               register calm. Matches ClusterManagement's FleetCapacity. */}
           {error && (
             <p className="text-muted-foreground mb-2 text-xs" role="alert">
-              {t('pages.users.refreshFailed')}
+              {t('common.state.summaryStale')}
             </p>
           )}
           <div className={cn('flex flex-wrap items-center gap-x-6 gap-y-4', error && 'opacity-70')}>
