@@ -757,6 +757,46 @@ export const th: Translations = {
       clearFiltersAction: 'ล้างตัวกรอง',
       loadingClustersAria: 'กำลังโหลดคลัสเตอร์',
       loadFailedPrefix: 'โหลดคลัสเตอร์ไม่สำเร็จ: ',
+
+      // Task 3 — see en.ts for the cross-file rationale behind each key here.
+      license: 'ไลเซนส์',
+      licenseDetailsTitle: 'รายละเอียดไลเซนส์',
+      licenseDetailsDescription: '{{owner}} จำนวน และช่วงเวลาคุ้มครอง',
+      referenceNoLabel: 'เลขที่อ้างอิง',
+      missingOwnerTitle: 'ไม่มี {{owner}}',
+      missingOwnerDescription: 'หน้านี้ต้องมี {{owner}} สำหรับออกไลเซนส์ให้ เปิดจากหน้าของ {{owner}} แทนการพิมพ์ URL นี้ตรง ๆ',
+      notFoundTitle: 'ไม่พบไลเซนส์',
+      notFoundDescription: 'ไม่พบไลเซนส์นี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการไลเซนส์',
+      backToLicenses: 'กลับไปหน้าไลเซนส์',
+      createSubtitle: 'ออกไลเซนส์ใหม่ให้กับ {{owner}} นี้',
+      createLicense: 'สร้างไลเซนส์',
+      unnamedLicense: '(ไลเซนส์ที่ยังไม่มีชื่อ)',
+      ownerSubtitle: '{{owner}}: {{value}}',
+      loadingAria: 'กำลังโหลดไลเซนส์',
+      loadFailedDetail: 'โหลดไลเซนส์ไม่สำเร็จ: ',
+      createFailedPrefix: 'สร้างไลเซนส์ไม่สำเร็จ: ',
+      saveFailedPrefix: 'บันทึกไลเซนส์ไม่สำเร็จ: ',
+      missingDocVersionOrOwner: 'ไม่มี doc_version หรือ owner id สำหรับรายการนี้ — โหลดหน้าใหม่แล้วลองอีกครั้ง',
+      // Copied verbatim from pages.subscriptions.endDateAfterStart — confirmed identical
+      // character for character, not retranslated. See en.ts for why this stays a separate
+      // key instead of reusing that one directly.
+      endDateAfterStart: 'วันที่สิ้นสุดต้องอยู่หลังวันที่เริ่ม',
+
+      filterByStatusDescription: 'กรองตามสถานะไลเซนส์',
+      removeStatusFilterAria: 'นำตัวกรองสถานะออก',
+      searchLicensesPlaceholder: 'ค้นหาด้วยเลขที่ไลเซนส์หรือเลขอ้างอิง...',
+      loadFailedTitle: 'โหลดไลเซนส์ไม่สำเร็จ',
+      loadFailedDescription: 'โหลดรายการไม่สำเร็จ — ไม่ได้แปลว่าไม่มีข้อมูล',
+      retryingEllipsis: 'กำลังลองใหม่...',
+      // Same Thai as noLicence above — see en.ts, only the English differs by spelling/number.
+      noLicensesTitle: 'ไม่มีไลเซนส์',
+      noLicensesMatchFilters: 'ไม่มีไลเซนส์ที่ตรงกับคำค้นหาและตัวกรองปัจจุบัน',
+      noLicensesIssuedYet: 'ยังไม่มีการออกไลเซนส์ใด ๆ',
+      loadingLicensesAria: 'กำลังโหลดไลเซนส์',
+      ownerCodeColumn: 'รหัส {{owner}}',
+      ownerNameColumn: 'ชื่อ {{owner}}',
+      coverageColumn: 'ช่วงเวลาคุ้มครอง',
+      referenceNoColumn: 'เลขที่อ้างอิง',
     },
   },
   error: {

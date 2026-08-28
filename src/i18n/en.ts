@@ -1012,6 +1012,96 @@ export const en = {
       clearFiltersAction: 'Clear filters',
       loadingClustersAria: 'Loading clusters',
       loadFailedPrefix: 'Failed to load clusters: ',
+
+      // Task 3 (LicensePurchaseForm.tsx + PurchaseLicenseTable.tsx additions below).
+      //
+      // Neither file has its own `config.ownerLabel`/`amountLabel`/`newPageTitle` — both
+      // read those three fields off `licenseKindConfig.ts`, a plain module (no `t`) shared
+      // by more than these two files, so it stays untouched. Both files instead look the
+      // per-kind translated value up locally (`OWNER_LABEL_KEYS`/`AMOUNT_LABEL_KEYS`/
+      // `NEW_PAGE_TITLE_KEYS`) via keys already seeded (buQuota/addBuQuotaLicense/
+      // addSeatLicense from Task 1, common.field.seats, common.label.cluster,
+      // entity.businessUnit.title) — no new key needed for those three fields themselves.
+
+      // LicensePurchaseForm.tsx — generic "License" noun, reused as both the toast.created
+      // entity param and the notFound PageHeader's title fallback (mirrors
+      // pages.subscriptions.subscription's dual use in SubscriptionForm.tsx).
+      license: 'License',
+      licenseDetailsTitle: 'License details',
+      // CardDescription — `{{owner}}` is the kind's Title-Case owner label ('Business Unit'
+      // or 'Cluster', from OWNER_LABEL_KEYS above), so this renders exactly what
+      // `${config.ownerLabel}, amount, and coverage period` used to.
+      licenseDetailsDescription: '{{owner}}, amount, and coverage period',
+      // Trailing period — distinct from PurchaseLicenseTable.tsx's `referenceNoColumn`
+      // below ('Reference No', no period), a genuinely different literal, not a casing
+      // variant of the same string.
+      referenceNoLabel: 'Reference No.',
+      // `{{owner}}` here is the LOWERCASE form (OWNER_LABEL_KEYS[kind] run through
+      // .toLowerCase() at the call site — safe because Thai has no case, so it's a no-op on
+      // the Thai string, and a real lowercase on the English one, exactly reproducing what
+      // `config.ownerLabel.toLowerCase()` used to render).
+      missingOwnerTitle: 'Missing {{owner}}',
+      missingOwnerDescription: "This page needs a {{owner}} to create a license for. Open it from a {{owner}}'s page instead of typing this URL directly.",
+      notFoundTitle: 'License not found',
+      notFoundDescription: "This license doesn't exist, or it may have been deleted. Check the link, or pick one from the license list.",
+      // Shared by both EmptyState action buttons (notFound and ownerMissing).
+      backToLicenses: 'Back to licenses',
+      // `{{owner}}` is the lowercase form again, same as missingOwnerTitle/Description above.
+      createSubtitle: 'Issue a new license for this {{owner}}',
+      createLicense: 'Create License',
+      unnamedLicense: '(unnamed license)',
+      // Detail-view PageHeader subtitle — `{{owner}}` is the Title-Case form (unlike
+      // createSubtitle/missingOwner* above), `{{value}}` is `ownerText` (already-resolved
+      // display data, not translated).
+      ownerSubtitle: '{{owner}}: {{value}}',
+      loadingAria: 'Loading license',
+      // Singular-record failure banners, matching pages.subscriptions.loadFailedDetail/
+      // createFailedPrefix/saveFailedPrefix's naming (not this same object's list-page
+      // loadFailedPrefix above, which is ClusterLicenseTable.tsx's and reads differently:
+      // 'Failed to load clusters: ').
+      loadFailedDetail: 'Failed to load license: ',
+      createFailedPrefix: 'Failed to create license: ',
+      saveFailedPrefix: 'Failed to save license: ',
+      // Extends pages.subscriptions.missingDocVersion with "or owner id" — this form's
+      // handleSave() checks both docVersion and ownerId before saving, subscriptions' does
+      // not, so the two English strings genuinely differ and this stays its own key.
+      missingDocVersionOrOwner: 'Missing doc_version or owner id for this record — reload the page and try again.',
+      // Byte-identical to pages.subscriptions.endDateAfterStart ('End date must be after
+      // start date') — a cross-slice pages.* coincidence (3a's SubscriptionForm.tsx vs this
+      // slice's LicensePurchaseForm.tsx), reported per the reuse-check's promotion-signal
+      // rule rather than silently reused: only 2 files hold it, short of the >=3-files
+      // threshold, so it stays split rather than promoted to common.*. Thai copied verbatim
+      // from pages.subscriptions.endDateAfterStart — confirmed identical, not retranslated.
+      endDateAfterStart: 'End date must be after start date',
+
+      // PurchaseLicenseTable.tsx
+      filterByStatusDescription: 'Filter by license status',
+      // Static — always "status", never the active status's own name (unlike
+      // ClusterLicenseTable.tsx's removeFilterAria above), because this table allows only
+      // one status filter at a time and the source literal never interpolated the value.
+      removeStatusFilterAria: 'Remove status filter',
+      searchLicensesPlaceholder: 'Search by license number or reference...',
+      loadFailedTitle: 'Could not load licenses',
+      loadFailedDescription: 'The list could not be loaded — this does not mean there are none.',
+      retryingEllipsis: 'Retrying...',
+      // English differs from pages.licenses.noLicence ('No licence', British, singular) by
+      // spelling and number; Thai does not inflect for either, so the two keys' Thai values
+      // coincide — matching the documented loadFailedPrefix/loadFailedDetail precedent in
+      // pages.subscriptions (same Thai, different English by number).
+      noLicensesTitle: 'No licenses',
+      noLicensesMatchFilters: 'No license matches the current search and filters.',
+      noLicensesIssuedYet: 'No licenses have been issued yet.',
+      loadingLicensesAria: 'Loading licenses',
+      // CSV export column labels — `{{owner}}` is the Title-Case owner label. Word order
+      // flips in Thai ('รหัส {{owner}}' / 'ชื่อ {{owner}}', code/name-first) to match this
+      // file's existing clusterCode/businessUnitName precedent in pages.subscriptions.
+      ownerCodeColumn: '{{owner}} Code',
+      ownerNameColumn: '{{owner}} Name',
+      coverageColumn: 'Coverage',
+      // No period — distinct from LicensePurchaseForm.tsx's referenceNoLabel above
+      // ('Reference No.'), the form-field version of the same concept with different
+      // punctuation. Reused twice within this file (CSV label + column header).
+      referenceNoColumn: 'Reference No',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
