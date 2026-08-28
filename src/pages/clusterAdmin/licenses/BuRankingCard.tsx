@@ -56,8 +56,8 @@ export function BuRankingCard({ businessUnits, clusterId, cap }: BuRankingCardPr
           <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-muted-foreground text-xs">
-                <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.licenses.rankColumn')}</th>
-                <th className="px-2 py-1.5 text-left">{t('pages.clusterAdmin.businessUnitColumn')}</th>
+                <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.clusterAdmin.rankColumn')}</th>
+                <th className="px-2 py-1.5 text-left">{t('entity.businessUnit.title')}</th>
                 <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.status.label')}</th>
               </tr>
             </thead>

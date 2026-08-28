@@ -242,16 +242,16 @@ const BusinessUnitList: React.FC = () => {
                 {row.original.name}
               </Link>
               {overLimit && (
-                // Byte-identical to pages.licenses.overLimitBadge/overLimitTitle (slice 3b) —
-                // reused directly rather than duplicated, see the pages.clusterAdmin.
-                // overLimitCountOne/Many comment in en.ts for why the banner sentence below
-                // could NOT also be reused this way.
+                // Byte-identical to pages.licenses.overLimitBadge/overLimitTitle (slice 3b),
+                // but a page namespace is owned by its own slice — duplicated into
+                // pages.clusterAdmin instead of read cross-slice (see the en.ts comment on
+                // those keys, next to this file's own overLimitCountOne/Many).
                 <Badge
                   variant="destructive"
                   className="text-xs"
-                  title={t('pages.licenses.overLimitTitle', { cap: buCap ?? 0, rank: rank ?? 0 })}
+                  title={t('pages.clusterAdmin.overLimitTitle', { cap: buCap ?? 0, rank: rank ?? 0 })}
                 >
-                  {t('pages.licenses.overLimitBadge')}
+                  {t('pages.clusterAdmin.overLimitBadge')}
                 </Badge>
               )}
             </div>

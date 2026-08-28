@@ -880,7 +880,6 @@ export const th: Translations = {
       company: 'บริษัท',
       people: 'บุคคล',
       hq: 'HQ',
-      businessUnitColumn: 'หน่วยธุรกิจ',
       viewLicenses: 'ดูไลเซนส์',
       clusterHasNoBusinessUnitsYet: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ',
       inviteToAccessHint: 'เชิญผู้ใช้เพื่อให้สิทธิ์เข้าถึง cluster นี้',
@@ -896,6 +895,8 @@ export const th: Translations = {
       noBusinessUnitsDescription: 'หน่วยธุรกิจถูกสร้างโดยผู้ดูแลระบบระดับแพลตฟอร์ม เมื่อมีการเพิ่มหน่วยธุรกิจเข้า cluster นี้ รายการจะปรากฏที่นี่',
       overLimitCountOne: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
       overLimitCountMany: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      overLimitBadge: 'เกินโควตา',
+      overLimitTitle: 'โควตา {{cap}} · หน่วยนี้อยู่อันดับ {{rank}}',
       aliasCannotBeCleared: 'ล้างชื่อแฝงไม่ได้',
       hotelEmailCannotBeCleared: 'ล้างอีเมลโรงแรมไม่ได้',
       companyEmailCannotBeCleared: 'ล้างอีเมลบริษัทไม่ได้',
@@ -972,6 +973,7 @@ export const th: Translations = {
       send: 'ส่ง',
 
       // --- Task 3: ClusterUsers.tsx ---
+      usersPageTitle: 'ผู้ใช้งาน',
       failedToLoadMembers: 'โหลดรายชื่อสมาชิกไม่สำเร็จ',
       failedToLoadInvitations: 'โหลดคำเชิญไม่สำเร็จ',
       usersPageSubtitle: 'จัดการสมาชิกและคำเชิญที่รอดำเนินการสำหรับ cluster นี้',
@@ -1057,10 +1059,13 @@ export const th: Translations = {
       updateClusterFailed: 'อัปเดต cluster ไม่สำเร็จ',
 
       // --- Task 5: ClusterAdminLicenses.tsx ---
+      clusterNotFoundOrDeleted: 'ไม่พบ Cluster หรืออาจถูกลบไปแล้ว',
+      clusterUnavailable: 'Cluster ใช้งานไม่ได้',
       licencesSubtitleWithCode: 'ไลเซนส์ · {{code}}',
       licencesLabel: 'ไลเซนส์',
 
       // --- Task 5: licenses/BuRankingCard.tsx ---
+      rankColumn: 'อันดับ',
       buRankingLabel: 'อันดับหน่วยธุรกิจ',
       rankingExplanation: 'เมื่อโควตาไม่พอ แพลตฟอร์มจะครอบคลุมหน่วยตามลำดับนี้ — HQ ก่อน แล้วตามด้วยหน่วยที่เก่าที่สุด',
       rankedQuotaUnknown: '{{count}} หน่วยเรียงอันดับแล้ว · ไม่ทราบโควตา',
@@ -1075,6 +1080,7 @@ export const th: Translations = {
       notPurchased: 'ยังไม่ได้ซื้อ',
 
       // --- Task 5: licenses/QuotaLedgerCard.tsx ---
+      quotaColumn: 'โควตา',
       quotaSummaryLoadFailed: 'โหลดไม่สำเร็จ — โควตาที่แสดงด้านบนไม่ทราบ ไม่ใช่ศูนย์',
       noQuotaLicenceIssued: 'ยังไม่มีการออกไลเซนส์โควตาให้ cluster นี้',
       licenceCountOne: '{{count}} ไลเซนส์',

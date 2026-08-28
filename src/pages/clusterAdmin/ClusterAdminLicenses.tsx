@@ -106,7 +106,7 @@ export default function ClusterAdminLicenses() {
         <PageHeader
           title={clusterLoading
             ? t('common.busy.loadingEllipsis')
-            : (cluster?.name || (clusterMissing ? t('pages.licenses.clusterNotFoundOrDeleted') : t('pages.licenses.clusterUnavailable')))}
+            : (cluster?.name || (clusterMissing ? t('pages.clusterAdmin.clusterNotFoundOrDeleted') : t('pages.clusterAdmin.clusterUnavailable')))}
           subtitle={cluster?.code
             ? t('pages.clusterAdmin.licencesSubtitleWithCode', { code: cluster.code })
             : t('pages.clusterAdmin.licencesLabel')}

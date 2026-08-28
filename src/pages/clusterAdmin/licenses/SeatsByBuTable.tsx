@@ -71,7 +71,7 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
             <table className="w-full text-sm [&_th]:whitespace-nowrap">
               <thead>
                 <tr className="text-muted-foreground text-xs">
-                  <th className="px-2 py-1.5 text-left">{t('pages.clusterAdmin.businessUnitColumn')}</th>
+                  <th className="px-2 py-1.5 text-left">{t('entity.businessUnit.title')}</th>
                   <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('common.field.seats')}</th>
                   <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.clusterAdmin.licencesLabel')}</th>
                   <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('pages.clusterAdmin.endsColumn')}</th>

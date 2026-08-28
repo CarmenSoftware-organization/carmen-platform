@@ -60,14 +60,24 @@ type TextFieldName = Exclude<
 // check below, composed from common.validation.requiredMessage + common.field.name) and the
 // other three's "cannot be cleared" sentences are both resolved inside the component, in
 // validateRequired.
-const NOT_CLEARABLE_KEYS: Partial<Record<keyof BusinessUnitFormData, TKey>> = {
+//
+// Final-review fix (F3): this is a TOTAL Record over its own literal key union (not
+// Partial<Record<keyof BusinessUnitFormData, TKey>>) so the compiler — not a hand-kept
+// second list — is what guarantees every key here has a TKey. NOT_CLEARABLE_FIELDS below is
+// derived from this map's own keys instead of being a separately hand-typed array, so the
+// two cannot drift: adding, removing, or renaming a field here changes the guard loop too.
+const NOT_CLEARABLE_KEYS: Record<'alias_name' | 'hotel_email' | 'company_email', TKey> = {
   alias_name: 'pages.clusterAdmin.aliasCannotBeCleared',
   hotel_email: 'pages.clusterAdmin.hotelEmailCannotBeCleared',
   company_email: 'pages.clusterAdmin.companyEmailCannotBeCleared',
 };
-// Fields checked by the not-clearable guard in validateRequired — same set as
-// NOT_CLEARABLE_KEYS plus 'name', whose message needs a different composition (see above).
-const NOT_CLEARABLE_FIELDS: (keyof BusinessUnitFormData)[] = ['name', 'alias_name', 'hotel_email', 'company_email'];
+// Fields checked by the not-clearable guard in validateRequired — 'name' (different message
+// composition, see above) plus every key of NOT_CLEARABLE_KEYS, derived rather than
+// hand-duplicated.
+const NOT_CLEARABLE_FIELDS: ('name' | keyof typeof NOT_CLEARABLE_KEYS)[] = [
+  'name',
+  ...(Object.keys(NOT_CLEARABLE_KEYS) as (keyof typeof NOT_CLEARABLE_KEYS)[]),
+];
 
 /**
  * A cluster administrator's reach into one business unit — a narrowed Edit-only page (see
@@ -407,7 +417,7 @@ const BusinessUnitForm: React.FC = () => {
       const before = String(savedFormData[key] ?? '');
       const after = String(formData[key] ?? '');
       if (before === '' || after.trim() !== '') continue;
-      errs[key] = key === 'name' ? nameRequiredMessage : t(NOT_CLEARABLE_KEYS[key] as TKey);
+      errs[key] = key === 'name' ? nameRequiredMessage : t(NOT_CLEARABLE_KEYS[key]);
     }
     // fieldErrors already carries any standing onBlur error (e.g. "Alias must be 1-3
     // alphanumeric characters" still showing under the field) — Save must not fire while one

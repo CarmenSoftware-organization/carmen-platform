@@ -81,7 +81,7 @@ export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: Quot
           <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-muted-foreground text-xs">
-                <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.licenses.quotaColumn')}</th>
+                <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.clusterAdmin.quotaColumn')}</th>
                 <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.action.start')}</th>
                 <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.action.end')}</th>
                 <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.status.label')}</th>

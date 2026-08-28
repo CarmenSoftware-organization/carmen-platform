@@ -1260,10 +1260,6 @@ export const en = {
       company: 'Company',
       people: 'People',
       hq: 'HQ',
-      // Bare Title-Case singular column header (BuRankingCard.tsx, SeatsByBuTable.tsx) —
-      // distinct from common.label.businessUnitsTitle/businessUnitsLabel, which are both
-      // plural.
-      businessUnitColumn: 'Business Unit',
       viewLicenses: 'View licenses',
       clusterHasNoBusinessUnitsYet: 'This cluster has no business units yet.',
       inviteToAccessHint: 'Invite a user to give them access to this cluster.',
@@ -1290,11 +1286,18 @@ export const en = {
       // The over-limit banner. NOT the same string as pages.licenses.overLimitCountOne/Many
       // (slice 3b) — that pair reads "business unit rank beyond…", this page's source reads
       // "business unit is/units are beyond…". Same tail, different lead clause; see the
-      // task-1 report's hazard-4 note #5 for why these were not spliced together. The badge
-      // and title-tooltip on the same page ARE byte-identical to pages.licenses.
-      // overLimitBadge/overLimitTitle and reuse those directly — no new key for them.
+      // task-1 report's hazard-4 note #5 for why these were not spliced together.
       overLimitCountOne: '{{count}} business unit is beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
       overLimitCountMany: '{{count}} business units are beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      // Cross-slice fix (final review F2): the badge and title-tooltip on this page ARE
+      // byte-identical to pages.licenses.overLimitBadge/overLimitTitle, but were reading that
+      // key directly instead of duplicating it — a page namespace is owned by its own slice,
+      // so reading another slice's pages.* creates an invisible coupling. Duplicated here
+      // instead, matching this object's own fixHighlightedFields/send precedent below (2
+      // files/2 slices each, below the >=3-files-AND->=2-slices promotion bar); Thai copied
+      // verbatim from the sibling keys.
+      overLimitBadge: 'Over limit',
+      overLimitTitle: 'Quota {{cap}} · this unit ranks {{rank}}',
       aliasCannotBeCleared: 'Alias cannot be cleared',
       hotelEmailCannotBeCleared: 'Hotel email cannot be cleared',
       companyEmailCannotBeCleared: 'Company email cannot be cleared',
@@ -1407,6 +1410,12 @@ export const en = {
       send: 'Send',
 
       // --- Task 3: ClusterUsers.tsx ---
+      // Cross-slice fix (final review F2): the PageHeader title read nav.users directly. A
+      // nav label and a page heading are different jobs that happen to share a word today —
+      // an edit to the sidebar's nav label would have silently changed this page's own
+      // heading too. Given its own key instead (1 file, well below the promotion bar); Thai
+      // copied verbatim from nav.users.
+      usersPageTitle: 'Users',
       failedToLoadMembers: 'Failed to load members',
       failedToLoadInvitations: 'Failed to load invitations',
       usersPageSubtitle: 'Manage members and pending invitations for this cluster',
@@ -1526,6 +1535,13 @@ export const en = {
       updateClusterFailed: 'Failed to update cluster',
 
       // --- Task 5: ClusterAdminLicenses.tsx ---
+      // Cross-slice fix (final review F2): the PageHeader title fallback read
+      // pages.licenses.clusterNotFoundOrDeleted/clusterUnavailable directly — a page
+      // namespace is owned by its own slice. Duplicated here instead, matching this object's
+      // own fixHighlightedFields/send precedent above (2 files/2 slices each, below the
+      // promotion bar); Thai copied verbatim from the sibling keys.
+      clusterNotFoundOrDeleted: 'Cluster not found or deleted',
+      clusterUnavailable: 'Cluster unavailable',
       // NOT a byte match for pages.licenses.subtitleWithCode ('Licenses · {{code}}', American
       // spelling) — this page's source spells it "Licences" (British), matching the hazard-4
       // spelling drift Task 1's report already flagged for this file. Thai is identical to
@@ -1539,6 +1555,11 @@ export const en = {
       licencesLabel: 'Licences',
 
       // --- Task 5: licenses/BuRankingCard.tsx ---
+      // Cross-slice fix (final review F2): the Rank column header read pages.licenses.
+      // rankColumn directly — duplicated here instead, matching this file's own
+      // clusterNotFoundOrDeleted/clusterUnavailable precedent above (2 files/2 slices, below
+      // the promotion bar); Thai copied verbatim from the sibling key.
+      rankColumn: 'Rank',
       buRankingLabel: 'Business unit ranking',
       rankingExplanation: 'When quota runs short, the platform covers units in this order — HQ first, then oldest.',
       rankedQuotaUnknown: '{{count}} ranked · quota unknown',
@@ -1557,6 +1578,10 @@ export const en = {
       notPurchased: 'Not purchased',
 
       // --- Task 5: licenses/QuotaLedgerCard.tsx ---
+      // Cross-slice fix (final review F2): the Quota column header read pages.licenses.
+      // quotaColumn directly — duplicated here instead (2 files/2 slices, below the
+      // promotion bar); Thai copied verbatim from the sibling key.
+      quotaColumn: 'Quota',
       // Hazard: STATUS_BADGE was a module-scope const holding label STRINGS (same class as
       // Task 3's role arrays) — restructured to hold catalog KEYS (labelKey), resolved with t()
       // at the render site. See the file for the restructured shape.

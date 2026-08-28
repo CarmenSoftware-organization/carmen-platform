@@ -107,7 +107,7 @@ const ClusterUsers: React.FC = () => {
     <ClusterAdminLayout>
       <div className="space-y-6 sm:space-y-8">
         <PageHeader
-          title={t('nav.users')}
+          title={t('pages.clusterAdmin.usersPageTitle')}
           subtitle={t('pages.clusterAdmin.usersPageSubtitle')}
           actions={
             <Button size="sm" onClick={() => setInviteOpen(true)}>
