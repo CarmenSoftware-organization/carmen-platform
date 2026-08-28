@@ -34,7 +34,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('pages.subscriptions.seats')}</CardTitle>
+        <CardTitle>{t('common.field.seats')}</CardTitle>
         <CardDescription>{t('pages.subscriptions.seatsPoolDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -47,7 +47,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
           >
             {used} / {cap}
           </span>
-          <span className="text-sm text-muted-foreground">{t('pages.subscriptions.seats')}</span>
+          <span className="text-sm text-muted-foreground">{t('common.field.seats')}</span>
         </div>
 
         {pending_invites > 0 && (

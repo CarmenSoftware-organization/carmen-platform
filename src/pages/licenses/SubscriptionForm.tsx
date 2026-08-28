@@ -371,7 +371,7 @@ const SubscriptionForm: React.FC = () => {
   const navItems: NavItem[] = [
     { id: 'info', label: t('pages.subscriptions.detailsTitle') },
     { id: 'features', label: t('pages.subscriptions.purchasedModules'), count: featureKeys.length },
-    { id: 'seats', label: t('pages.subscriptions.seats') },
+    { id: 'seats', label: t('common.field.seats') },
   ];
 
   return (

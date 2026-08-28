@@ -195,7 +195,7 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="start_date">{t('pages.subscriptions.startDate')}{editing && ' *'}</Label>
+            <Label htmlFor="start_date">{t('common.field.startDate')}{editing && ' *'}</Label>
             {editing ? (
               <>
                 <Input
@@ -218,7 +218,7 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="end_date">{t('pages.subscriptions.endDate')}{editing && ' *'}</Label>
+            <Label htmlFor="end_date">{t('common.field.endDate')}{editing && ' *'}</Label>
             {editing ? (
               <>
                 <Input

@@ -206,6 +206,9 @@ export const th: Translations = {
       title: 'หัวข้อ',
       severity: 'ระดับความรุนแรง',
       delivery: 'การส่ง',
+      seats: 'ที่นั่ง',
+      startDate: 'วันที่เริ่ม',
+      endDate: 'วันที่สิ้นสุด',
       required: '{{label}} *',
     },
     section: {
@@ -608,9 +611,11 @@ export const th: Translations = {
       // duplicated an existing common.* key's English exactly while carrying different Thai.
       // See en.ts for the detail — this screen's search-clear and selected-count wording now
       // comes from common.clearSearch / common.state.nSelected, not a page-local key here.
+      //
+      // `seats` dropped the same way (slice 3b Task 1 fix round 1) — see en.ts. Now
+      // common.field.seats.
       detailsTitle: 'ข้อมูลสัญญา',
       purchasedModules: 'โมดูลที่ซื้อ',
-      seats: 'ที่นั่ง',
       searchNumber: 'ค้นหาเลขที่สัญญา...',
       clearClusterFilter: 'ล้างตัวกรอง cluster',
       featuresLoadFailed: 'โหลดรายการสิทธิ์ไม่สำเร็จ',
@@ -679,8 +684,8 @@ export const th: Translations = {
       features: 'สิทธิ์',
       period: 'ช่วงเวลา',
       state: 'สถานะ',
-      startDate: 'วันที่เริ่ม',
-      endDate: 'วันที่สิ้นสุด',
+      // startDate/endDate dropped here (slice 3b Task 1 fix round 1) — see en.ts. Now
+      // common.field.startDate/endDate.
       seatsUsed: 'ที่นั่งที่ใช้แล้ว',
       seatsCap: 'เพดานที่นั่ง',
 
@@ -712,13 +717,9 @@ export const th: Translations = {
     // no call site is bound yet).
     licenses: {
       buQuota: 'โควตา BU',
-      seats: 'ที่นั่ง',
       addBuQuotaLicense: 'เพิ่มไลเซนส์โควตา BU',
       addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
       licenseNumber: 'เลขที่ไลเซนส์',
-      startDate: 'วันที่เริ่ม',
-      endDate: 'วันที่สิ้นสุด',
-      start: 'เริ่ม',
       end: 'สิ้นสุด',
       removeLicenseTitle: 'นำไลเซนส์ออก',
       noLicensesYetTitle: 'ยังไม่มีไลเซนส์',

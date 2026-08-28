@@ -226,6 +226,13 @@ export const en = {
       title: 'Title',
       severity: 'Severity',
       delivery: 'Delivery',
+      // Title Case, used as form labels and column headers. Note the neighbours
+      // common.validation.startDate / endDate hold the SENTENCE-case variants
+      // ('Start date', 'End date'), which are default field NAMES for validation
+      // messages — different job, different casing, deliberately both.
+      seats: 'Seats',
+      startDate: 'Start Date',
+      endDate: 'End Date',
       // Required-field marker template (task J): every Edit page re-solves "label + asterisk"
       // page-locally otherwise. Unlike the old per-field `*Label`/`*LabelRequired` pairs, the
       // asterisk is interpolated data here, because this one template has to hold for every
@@ -771,9 +778,14 @@ export const en = {
       // common.state.nSelected — so the Subscription screens' Thai wording moves to the
       // app-wide phrasing instead of keeping its own. If you're looking for either key here,
       // it isn't page-local; use the common.* one.
+      //
+      // `seats` was dropped the same way (slice 3b Task 1 fix round 1): it recurred in
+      // 3+ files across 2 slices (here, SubscriptionForm.tsx, SeatsCard.tsx x2, and three
+      // pages.licenses files), past the phase-2 promote-to-common threshold — moved to
+      // common.field.seats verbatim (same English, same Thai). Call sites here now bind
+      // common.field.seats.
       detailsTitle: 'Subscription details',
       purchasedModules: 'Purchased modules',
-      seats: 'Seats',
       searchNumber: 'Search subscription numbers...',
       clearClusterFilter: 'Clear cluster filter',
 
@@ -847,8 +859,13 @@ export const en = {
       // source: the badge and this filter/column both read the backend-computed `state`
       // field, never the raw `status`, and the two words must not collide on screen.
       state: 'State',
-      startDate: 'Start Date',
-      endDate: 'End Date',
+      // startDate/endDate dropped here (slice 3b Task 1 fix round 1): 3+ files across
+      // 2 slices (here, SubscriptionInfoCard.tsx, and LicensePurchaseForm.tsx in
+      // pages.licenses) — moved to common.field.startDate/endDate verbatim (same English,
+      // same Thai). Call sites here now bind those. Not the same key as
+      // common.validation.startDate/endDate ('Start date'/'End date', sentence case,
+      // default field NAMES for validation messages) — see the comment at
+      // common.field.startDate.
       seatsUsed: 'Seats Used',
       seatsCap: 'Seats Cap',
 
@@ -899,12 +916,6 @@ export const en = {
       // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts
       // (BU_QUOTA_CONFIG.amountLabel) — both literally 'BU quota'.
       buQuota: 'BU quota',
-      // ClusterLicenseDetail.tsx (nav section label) + licenseKindConfig.ts
-      // (SEAT_CONFIG.amountLabel) + SeatSection.tsx (card title) — all three literally
-      // 'Seats'. Coincidentally identical to pages.subscriptions.seats — a different
-      // slice, out of this task's reuse-check scope (common/entity/breadcrumb/error only),
-      // so this stays its own key rather than reaching across slices.
-      seats: 'Seats',
       // licenseKindConfig.ts (BU_QUOTA_CONFIG.newPageTitle) + BuQuotaSection.tsx (the
       // "Add BU quota license" button — hardcoded there, not read from config).
       addBuQuotaLicense: 'Add BU quota license',
@@ -914,21 +925,13 @@ export const en = {
       // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
       // (field Label).
       licenseNumber: 'License Number',
-      // LicensePurchaseForm.tsx (field Label, before the conditional ' *' suffix) +
-      // PurchaseLicenseTable.tsx (CSV export label). Coincidentally identical to
-      // pages.subscriptions.startDate/endDate — a different slice, out of this task's
-      // reuse-check scope, so these stay their own keys (see `seats` above).
-      startDate: 'Start Date',
-      endDate: 'End Date',
       // BuQuotaSection.tsx + SeatSection.tsx inline ledger tables — the compact column
-      // headers, a different register from the full "Start Date"/"End Date" labels above
-      // (a table header vs. a form-field label — same split rationale the file already
-      // uses for common.section.* vs common.field.*). 'Start' is coincidentally identical
-      // to common.action.start (a verb, "Start" on some action button elsewhere) — kept
-      // apart because that key is a verb and this one is a noun-ish column header; there
-      // is no common.action counterpart for 'End' to reuse anyway, so both stay local here
-      // for symmetry.
-      start: 'Start',
+      // header, a different register from common.field.startDate ("Start Date", a
+      // form-field label) — same table-header-vs-form-label split the file already uses
+      // for common.section.* vs common.field.*. Fix round 1: this namespace used to also
+      // hold `start` ('Start'), byte-identical to common.action.start — deleted, Tasks 2-4
+      // bind that shared key instead. `end` has no common.action counterpart to reuse, so
+      // it stays here alone.
       end: 'End',
       // BuQuotaSection.tsx + SeatSection.tsx ConfirmDialog title — the two files' dialog
       // descriptions differ (BU count vs. seat count) and stay page-local; only the shared
@@ -943,9 +946,9 @@ export const en = {
       // key's reuse candidate.
       clearAllFilters: 'Clear all filters',
       // ClusterLicenseDetail.tsx (page title while the cluster loads) + SeatSection.tsx
-      // (card description while the seat batch loads). Coincidentally identical to
-      // pages.subscriptions.loadingOption — a different slice, out of this task's
-      // reuse-check scope, kept as its own key (see `seats`/`startDate` above).
+      // (card description while the seat batch loads) — confirmed U+2026 (…) in both
+      // source files, not three ASCII dots, so this is genuinely distinct from
+      // common.busy.loading ('Loading...'), not a duplicate of it.
       loadingEllipsis: 'Loading…',
     },
   },
