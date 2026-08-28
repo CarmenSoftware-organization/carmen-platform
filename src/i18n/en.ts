@@ -179,6 +179,13 @@ export const en = {
       clearAllFilters: 'Clear All Filters',
       filtersLabel: 'Filters:',
       showDeleted: 'Show Deleted',
+      // Promoted from pages.users.rowActions / pages.news.rowActions / pages.clusterAdmin.rowActions
+      // (i18n phase-2 slice-4 Task 1 fix round 1): the same aria-label template held at three
+      // page-local keys across three slices (UserManagement.tsx, NewsManagement.tsx,
+      // MembersTable.tsx + InvitationsTable.tsx) — an aria-label carries one meaning, so there
+      // was nothing for the three copies to diverge on. All three page-local keys deleted, all
+      // call sites repointed here.
+      rowActions: 'Actions for {{name}}',
     },
     // Spinner/busy labels, split out of `action` — that namespace was conflating verbs
     // (delete), verb phrases (saveChanges) and these `...`-suffixed spinner labels. The
@@ -501,7 +508,6 @@ export const en = {
       confirmCodePlaceholder: 'Enter the 6-character code',
       typeUsernameToConfirm: 'Type {{username}} to confirm',
       selectRow: 'Select {{name}}',
-      rowActions: 'Actions for {{name}}',
       deletedByName: 'Deleted by {{name}}',
       bulkDeleteTitle: 'Delete {{count}} user(s)',
       bulkDeleted: 'Deleted {{count}} user(s)',
@@ -707,7 +713,6 @@ export const en = {
       loading: 'Loading news',
       loadingEllipsis: 'Loading news...',
       selectRow: 'Select {{name}}',
-      rowActions: 'Actions for {{name}}',
       deleteTitle: 'Delete News',
       deleteConfirm: 'Are you sure you want to delete this news article? This action cannot be undone.',
       publishSelected: 'Publish Selected',
@@ -1247,12 +1252,9 @@ export const en = {
       invitationRateLimited: 'Invitation rate limit reached. Please try again later.',
       noSeatsOpen: 'No seats open',
       unnamed: '(unnamed)',
-      // Byte-identical to pages.users.rowActions and pages.news.rowActions — a genuine
-      // promotion signal (4 files across 3 slices once this slice's two call sites are
-      // counted), but not executed here: promoting it means deleting those two keys and
-      // rewiring UserManagement.tsx / NewsManagement.tsx, both outside this task's allowed
-      // files (src/i18n/en.ts + th.ts only). Left split; see task-1-report.md.
-      rowActions: 'Actions for {{name}}',
+      // rowActions promoted to common.action.rowActions (fix round 1) — see the comment
+      // there. MembersTable.tsx / InvitationsTable.tsx bind to that key directly; this
+      // object never held its own call site.
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

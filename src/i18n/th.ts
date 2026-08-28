@@ -175,6 +175,7 @@ export const th: Translations = {
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
       filtersLabel: 'ตัวกรอง:',
       showDeleted: 'แสดงรายการที่ลบแล้ว',
+      rowActions: 'การกระทำสำหรับ {{name}}',
     },
     busy: {
       saving: 'กำลังบันทึก...',
@@ -401,7 +402,6 @@ export const th: Translations = {
       confirmCodePlaceholder: 'กรอกรหัส 6 ตัวอักษร',
       typeUsernameToConfirm: 'พิมพ์ {{username}} เพื่อยืนยัน',
       selectRow: 'เลือก {{name}}',
-      rowActions: 'การกระทำสำหรับ {{name}}',
       deletedByName: 'ลบโดย {{name}}',
       bulkDeleteTitle: 'ลบผู้ใช้ {{count}} รายการ',
       bulkDeleted: 'ลบผู้ใช้ {{count}} รายการแล้ว',
@@ -555,7 +555,6 @@ export const th: Translations = {
       loading: 'กำลังโหลดข่าว',
       loadingEllipsis: 'กำลังโหลดข่าว...',
       selectRow: 'เลือก {{name}}',
-      rowActions: 'การกระทำสำหรับ {{name}}',
       deleteTitle: 'ลบข่าว',
       deleteConfirm: 'ต้องการลบข่าวนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
       publishSelected: 'เผยแพร่รายการที่เลือก',
@@ -885,7 +884,6 @@ export const th: Translations = {
       invitationRateLimited: 'ถึงขีดจำกัดอัตราการเชิญแล้ว กรุณาลองใหม่อีกครั้งภายหลัง',
       noSeatsOpen: 'ไม่มีที่นั่งว่าง',
       unnamed: '(ไม่มีชื่อ)',
-      rowActions: 'การกระทำสำหรับ {{name}}',
     },
   },
   error: {
