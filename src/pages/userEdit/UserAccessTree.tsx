@@ -8,6 +8,7 @@ import { AuditMeta } from '../../components/AuditMeta';
 import { HIT_SLOP_44 } from '../../lib/hitSlop';
 import { UNRESOLVED_CLUSTER_ID } from '../../utils/permissions';
 import { latestActor } from '../../utils/audit';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface AccessCluster {
   id: string;
@@ -41,8 +42,19 @@ const OTHER_KEY = '__other__';
  * access hierarchy — each cluster the user belongs to, with the business units
  * they hold inside it. Business units whose cluster isn't among the user's
  * memberships collect under a trailing "Other" group so nothing is dropped.
+ *
+ * `labels` defaults to the English copy so callers outside a component render
+ * (e.g. this file's own test suite, which calls this function directly) keep
+ * working unchanged; `UserAccessTree` passes the translated strings instead.
  */
-export function groupAccessByCluster(clusters: AccessCluster[], bus: AccessBU[]): AccessGroup[] {
+export function groupAccessByCluster(
+  clusters: AccessCluster[],
+  bus: AccessBU[],
+  labels: { unknownCluster: string; otherBusinessUnits: string } = {
+    unknownCluster: 'Unknown cluster',
+    otherBusinessUnits: 'Other business units',
+  },
+): AccessGroup[] {
   const groups: AccessGroup[] = [];
   const byClusterId = new Map<string, AccessGroup>();
 
@@ -50,7 +62,7 @@ export function groupAccessByCluster(clusters: AccessCluster[], bus: AccessBU[])
     const group: AccessGroup = {
       key: uc.cluster_id || uc.id,
       clusterId: uc.cluster?.id ?? null,
-      clusterName: uc.cluster?.name || uc.cluster_id || 'Unknown cluster',
+      clusterName: uc.cluster?.name || uc.cluster_id || labels.unknownCluster,
       clusterCode: uc.cluster?.code ?? null,
       role: uc.role || null,
       clusterActive: uc.cluster?.is_active ?? null,
@@ -63,7 +75,7 @@ export function groupAccessByCluster(clusters: AccessCluster[], bus: AccessBU[])
   const other: AccessGroup = {
     key: OTHER_KEY,
     clusterId: null,
-    clusterName: 'Other business units',
+    clusterName: labels.otherBusinessUnits,
     clusterCode: null,
     role: null,
     clusterActive: null,
@@ -81,6 +93,7 @@ export function groupAccessByCluster(clusters: AccessCluster[], bus: AccessBU[])
 }
 
 function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => void }) {
+  const { t } = useI18n();
   const unit = bu.business_unit;
   const latest = latestActor(bu);
   return (
@@ -104,10 +117,10 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
       </div>
       <Badge variant="outline" className="shrink-0 text-[11px] capitalize">{bu.role}</Badge>
       {bu.is_default && (
-        <Badge variant="outline" className="text-info border-info/40 shrink-0 text-[11px]">Default</Badge>
+        <Badge variant="outline" className="text-info border-info/40 shrink-0 text-[11px]">{t('common.status.default')}</Badge>
       )}
       <Badge variant={bu.is_active ? 'success' : 'secondary'} className="shrink-0 text-[11px]">
-        {bu.is_active ? 'Active' : 'Inactive'}
+        {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
       </Badge>
       {/* Removing BU membership is the same write BusinessUnitEdit gates on scoped
           cluster.update (see BusinessUnitUsersCard) — scope to this BU's own
@@ -139,6 +152,7 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
 }
 
 function ClusterGroup({ group, onDeleteBU }: { group: AccessGroup; onDeleteBU: (bu: AccessBU) => void }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-lg border">
       <div className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-t-lg border-b px-3 py-2.5">
@@ -158,13 +172,13 @@ function ClusterGroup({ group, onDeleteBU }: { group: AccessGroup; onDeleteBU: (
         )}
         {group.clusterActive != null && (
           <Badge variant={group.clusterActive ? 'success' : 'secondary'} className="ml-auto text-[11px]">
-            {group.clusterActive ? 'Active' : 'Inactive'}
+            {group.clusterActive ? t('common.status.active') : t('common.status.inactive')}
           </Badge>
         )}
       </div>
       <div className="divide-border/60 divide-y px-3">
         {group.bus.length === 0 ? (
-          <p className="text-muted-foreground py-3 text-xs">No business units in this cluster.</p>
+          <p className="text-muted-foreground py-3 text-xs">{t('common.state.noBusinessUnitsInCluster')}</p>
         ) : (
           group.bus.map((bu) => <BuRow key={bu.id} bu={bu} onDelete={onDeleteBU} />)
         )}
@@ -189,7 +203,11 @@ interface UserAccessTreeProps {
 
 /** The signature: a user's access shown as the cluster → business-unit hierarchy it really is. */
 export function UserAccessTree({ clusters, businessUnits, canAddBU, onAddBU, onDeleteBU }: UserAccessTreeProps) {
-  const groups = groupAccessByCluster(clusters, businessUnits);
+  const { t } = useI18n();
+  const groups = groupAccessByCluster(clusters, businessUnits, {
+    unknownCluster: t('pages.users.unknownCluster'),
+    otherBusinessUnits: t('pages.users.otherBusinessUnits'),
+  });
   const empty = groups.length === 0;
 
   return (
@@ -197,7 +215,7 @@ export function UserAccessTree({ clusters, businessUnits, canAddBU, onAddBU, onD
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">Access</div>
+            <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">{t('common.field.access')}</div>
             <p className="text-muted-foreground mt-1 text-xs">
               {businessUnits.length} business unit{businessUnits.length === 1 ? '' : 's'} across {clusters.length} cluster
               {clusters.length === 1 ? '' : 's'}
@@ -213,7 +231,7 @@ export function UserAccessTree({ clusters, businessUnits, canAddBU, onAddBU, onD
       </CardHeader>
       <CardContent>
         {empty ? (
-          <p className="text-muted-foreground text-sm">Not assigned to any cluster or business unit.</p>
+          <p className="text-muted-foreground text-sm">{t('pages.users.notAssignedAnywhere')}</p>
         ) : (
           <div className="space-y-3">
             {groups.map((group) => (

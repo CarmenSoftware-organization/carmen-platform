@@ -327,6 +327,11 @@ export const en = {
       created: 'User created successfully',
       notFound: 'User not found',
       debug: 'User Debug',
+      directory: 'Directory',
+      noAccessAssigned: 'No access assigned yet',
+      notAssignedAnywhere: 'Not assigned to any cluster or business unit.',
+      otherBusinessUnits: 'Other business units',
+      unknownCluster: 'Unknown cluster',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

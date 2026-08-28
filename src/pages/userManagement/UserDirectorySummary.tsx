@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { FetchErrorState } from '../../components/FetchErrorState';
 import { cn } from '../../lib/utils';
 import type { NewestUser, UserSummaryData } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface FaceItem {
   id: string;
@@ -20,9 +21,9 @@ export interface FaceItem {
  * ever sees that shape. `middlename` is absent from that projection on purpose — the stack
  * shows an 8px avatar with the name in a tooltip, so a middle name adds nothing.
  */
-function displayName(u: NewestUser): string {
+function displayName(u: NewestUser, unknownUserLabel: string): string {
   const full = [u.firstname, u.lastname].filter(Boolean).join(' ');
-  return full || u.username || u.email || 'Unknown user';
+  return full || u.username || u.email || unknownUserLabel;
 }
 
 function initialsOf(u: NewestUser): string {
@@ -34,12 +35,12 @@ function initialsOf(u: NewestUser): string {
 }
 
 /** Turn one wire row into the shape the presence stack renders. */
-export function toFace(u: NewestUser): FaceItem {
+export function toFace(u: NewestUser, unknownUserLabel: string): FaceItem {
   return {
     id: u.id,
     initials: initialsOf(u),
     avatarUrl: u.avatar_url ?? undefined,
-    label: displayName(u),
+    label: displayName(u, unknownUserLabel),
   };
 }
 
@@ -97,12 +98,13 @@ interface UserDirectorySummaryProps {
 
 /** Read-first overview band for the user directory: population, lifecycle, faces. */
 export function UserDirectorySummary({ summary, loading, error = false, onRetry = () => {} }: UserDirectorySummaryProps) {
+  const { t } = useI18n();
   const total = summary?.total ?? 0;
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
   return (
     <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">Directory</div>
+      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">{t('pages.users.directory')}</div>
 
       {error && !summary ? (
         <FetchErrorState message="Couldn't load the directory summary." onRetry={onRetry} className="py-3" />
@@ -139,10 +141,10 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
                 <span className="bg-muted-foreground/40" style={{ width: `${pct(summary.inactive)}%` }} />
               </div>
               <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-                <Legend color="hsl(var(--success))" label="Active" value={summary.active} />
-                <Legend color="hsl(var(--muted-foreground) / 0.4)" label="Inactive" value={summary.inactive} />
+                <Legend color="hsl(var(--success))" label={t('common.status.active')} value={summary.active} />
+                <Legend color="hsl(var(--muted-foreground) / 0.4)" label={t('common.status.inactive')} value={summary.inactive} />
                 {summary.deleted > 0 && (
-                  <Legend color="hsl(var(--destructive))" label="Archived" value={summary.deleted} />
+                  <Legend color="hsl(var(--destructive))" label={t('common.status.archived')} value={summary.deleted} />
                 )}
               </div>
             </div>
@@ -152,7 +154,10 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
                 so a 200 that didn't unwrap would reach here as the envelope and `.length` would throw
                 with no ErrorBoundary above it. */}
             {(summary.newest ?? []).length > 0 && (
-              <Faces faces={(summary.newest ?? []).map(toFace)} total={summary.total} />
+              <Faces
+                faces={(summary.newest ?? []).map((u) => toFace(u, t('common.state.unknownUser')))}
+                total={summary.total}
+              />
             )}
           </div>
         </>

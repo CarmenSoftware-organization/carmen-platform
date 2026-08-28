@@ -300,6 +300,11 @@ export const th: Translations = {
       created: 'สร้างผู้ใช้สำเร็จ',
       notFound: 'ไม่พบผู้ใช้',
       debug: 'ดีบักผู้ใช้',
+      directory: 'ทำเนียบ',
+      noAccessAssigned: 'ยังไม่ได้กำหนดสิทธิ์เข้าถึง',
+      notAssignedAnywhere: 'ยังไม่ได้กำหนดให้ cluster หรือหน่วยธุรกิจใด',
+      otherBusinessUnits: 'หน่วยธุรกิจอื่น',
+      unknownCluster: 'ไม่ทราบ cluster',
     },
   },
   error: {

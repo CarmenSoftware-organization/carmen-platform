@@ -3,6 +3,7 @@ import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { AuditMeta } from '../../components/AuditMeta';
 import type { NormalizedAudit } from '../../utils/audit';
+import { useI18n } from '../../hooks/useI18n';
 
 interface UserIdentityHeroProps {
   name: string;
@@ -32,6 +33,7 @@ export function UserIdentityHero({
   audit,
   actions,
 }: UserIdentityHeroProps) {
+  const { t } = useI18n();
   const hasAccess = buCount > 0 || clusterCount > 0;
 
   return (
@@ -65,7 +67,9 @@ export function UserIdentityHero({
               <span className="text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-xs">{email}</span>
             )}
             {alias && <span className="text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-xs">{alias}</span>}
-            <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
+            <Badge variant={isActive ? 'success' : 'secondary'}>
+              {isActive ? t('common.status.active') : t('common.status.inactive')}
+            </Badge>
           </div>
           <div className="text-muted-foreground/80 mt-2 text-[11px] leading-relaxed">
             {hasAccess ? (
@@ -74,7 +78,7 @@ export function UserIdentityHero({
                 {clusterCount === 1 ? '' : 's'}
               </>
             ) : (
-              'No access assigned yet'
+              t('pages.users.noAccessAssigned')
             )}
           </div>
           <AuditMeta variant="header" audit={audit ?? {}} className="text-muted-foreground mt-2 text-[11px] leading-tight" />
