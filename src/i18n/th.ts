@@ -246,6 +246,9 @@ export const th: Translations = {
       noExpiry: 'ไม่มีวันหมดอายุ',
       expires: 'วันหมดอายุ',
       quotaExpires: 'โควตาหมดอายุ',
+      // Copied verbatim from pages.subscriptions.expiringSoon / pages.licenses.
+      // expiringSoonBadge — not retranslated. See en.ts for the promotion rationale.
+      expiringSoon: 'ใกล้หมดอายุ',
       unsavedChanges: 'มีการแก้ไขที่ยังไม่บันทึก',
       noChanges: 'ไม่มีการแก้ไข',
       unknownUser: 'ไม่ระบุชื่อ',
@@ -294,6 +297,9 @@ export const th: Translations = {
     businessUnit: { title: 'หน่วยธุรกิจ', sentence: 'หน่วยธุรกิจ', lower: 'หน่วยธุรกิจ' },
     broadcast: { title: 'ประกาศ', sentence: 'ประกาศ', lower: 'ประกาศ' },
     news: { title: 'ข่าว', sentence: 'ข่าว', lower: 'ข่าว' },
+    // Copied verbatim from pages.subscriptions.subscription — a single Thai word means
+    // all three forms coincide, matching entity.broadcast / entity.news.
+    subscription: { title: 'สัญญา', sentence: 'สัญญา', lower: 'สัญญา' },
   },
 
   // Templates space around {{entity}}: Thai nouns don't need the boundary, but these
@@ -673,10 +679,8 @@ export const th: Translations = {
       // buttons this message refers to render that exact word once translated, so this
       // sentence must name the same word or the Thai UI would name two different states.
       lockedToActive: 'ล็อกไว้ที่สถานะใช้งาน ระหว่างที่แสดงสัญญาที่ใกล้หมดอายุ',
-      expiringSoon: 'ใกล้หมดอายุ',
       expiringWithinDays: 'ใกล้หมดอายุภายใน {{days}} วัน',
       expiry: 'วันหมดอายุ',
-      subscription: 'สัญญา',
       subscriptionNumber: 'เลขที่สัญญา',
       clusterCode: 'รหัส Cluster',
       businessUnitName: 'ชื่อหน่วยธุรกิจ',
@@ -849,16 +853,10 @@ export const th: Translations = {
       noSubscriptionsYetTitle: 'ยังไม่มีสัญญา',
       noSubscriptionContractsDescription: 'Cluster นี้ไม่มีสัญญา',
       noBuBadge: 'ไม่มี BU',
-      // Copied verbatim from pages.subscriptions.subscription — not retranslated. See en.ts:
-      // this pair clears the promotion bar (3 files, 2 slices) but is reported rather than
-      // promoted, since the other two files are outside this task's scope.
-      subscriptionColumn: 'สัญญา',
-      // Copied verbatim from pages.subscriptions.state — not retranslated. See en.ts for the
-      // pre-existing Thai-collision note (this Thai is identical to common.status.label's).
+      // subscriptionColumn -> entity.subscription.title, expiringSoonBadge ->
+      // common.state.expiringSoon (fix round 1). subscriptionStateColumn stays — same Thai
+      // as common.status.label on purpose (Thai has no word for "state" vs "status").
       subscriptionStateColumn: 'สถานะ',
-      // Copied verbatim from pages.subscriptions.expiringSoon — not retranslated. See en.ts:
-      // this pair clears the promotion bar (3 files, 2 slices) but is reported, not promoted.
-      expiringSoonBadge: 'ใกล้หมดอายุ',
 
       licenseRemoved: 'นำไลเซนส์ออกแล้ว',
       removeLicenseFailedTitle: 'นำไลเซนส์ออกไม่สำเร็จ',

@@ -130,7 +130,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
             <table className="w-full text-sm [&_th]:whitespace-nowrap table-sticky-right [--sticky-right-bg:var(--card)]">
               <thead>
                 <tr className="text-xs text-muted-foreground">
-                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.subscriptionColumn')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('entity.subscription.title')}</th>
                   <th className="text-left px-2 py-1">{t('entity.businessUnit.title')}</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
@@ -162,7 +162,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                           <Badge variant={STATE_VARIANT[sub.state]}>
                             {t(STATE_LABEL_KEYS[sub.state])}
                           </Badge>
-                          {soon && <Badge variant="warning">{t('pages.licenses.expiringSoonBadge')}</Badge>}
+                          {soon && <Badge variant="warning">{t('common.state.expiringSoon')}</Badge>}
                         </div>
                         <AuditMeta
                           variant="compact"

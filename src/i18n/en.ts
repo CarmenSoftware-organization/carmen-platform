@@ -284,6 +284,12 @@ export const en = {
       noExpiry: 'No expiry',
       expires: 'Expires',
       quotaExpires: 'Quota Expires',
+      // Promoted from pages.subscriptions.expiringSoon / pages.licenses.expiringSoonBadge
+      // (i18n phase-2 slice-3b Task 4 fix round 1): byte-identical value bound at 4 call
+      // sites across 2 slices (SubscriptionTable.tsx x2, SubscriptionSummary.tsx,
+      // SubscriptionSection.tsx) — clears the promote-to-common bar. Both page-local keys
+      // were deleted, both call sites' explanatory comments removed.
+      expiringSoon: 'Expiring soon',
       unsavedChanges: 'Unsaved changes',
       noChanges: 'No changes',
       unknownUser: 'Unknown user',
@@ -374,6 +380,13 @@ export const en = {
     businessUnit: { title: 'Business Unit', sentence: 'Business unit', lower: 'business unit' },
     broadcast: { title: 'Broadcast', sentence: 'Broadcast', lower: 'broadcast' },
     news: { title: 'News', sentence: 'News', lower: 'news' },
+    // Promoted from pages.subscriptions.subscription (i18n phase-2 slice-3b Task 4 fix
+    // round 1): already fed toast.created's {{entity}} param at SubscriptionForm.tsx:240,
+    // which is exactly what this namespace exists for — a common.* promotion would have
+    // been the wrong shape. 3 files across 2 slices once pages.licenses.subscriptionColumn
+    // was counted, clearing the promote bar. pages.subscriptions.subscription and
+    // pages.licenses.subscriptionColumn were both deleted.
+    subscription: { title: 'Subscription', sentence: 'Subscription', lower: 'subscription' },
   },
 
   /**
@@ -840,15 +853,15 @@ export const en = {
       filterDescription: 'Filter subscriptions by state, cluster, and expiry',
       allClusters: 'All clusters',
       lockedToActive: 'Locked to Active while showing subscriptions expiring soon.',
-      // Interfaces block: Task 6 (SubscriptionSummary's own "expiring soon" card) reuses
-      // this exact key.
-      expiringSoon: 'Expiring soon',
+      // expiringSoon moved to common.state.expiringSoon (i18n phase-2 slice-3b Task 4 fix
+      // round 1) — see the comment there.
       expiringWithinDays: 'Expiring within {{days}} days',
       expiry: 'Expiry',
       // Bare column headers — distinct from entity.* (toast-safe nouns) and from
       // common.validation.subscriptionNumber/startDate/endDate (lowercase field-name
       // fallbacks used by validateField, a different register and different casing).
-      subscription: 'Subscription',
+      // `subscription` itself moved to entity.subscription.title (Task 4 fix round 1) —
+      // the rest of this group stays page-local.
       subscriptionNumber: 'Subscription Number',
       clusterCode: 'Cluster Code',
       businessUnitName: 'Business Unit Name',
@@ -1024,8 +1037,11 @@ export const en = {
       // entity.businessUnit.title) — no new key needed for those three fields themselves.
 
       // LicensePurchaseForm.tsx — generic "License" noun, reused as both the toast.created
-      // entity param and the notFound PageHeader's title fallback (mirrors
-      // pages.subscriptions.subscription's dual use in SubscriptionForm.tsx).
+      // entity param and the notFound PageHeader's title fallback. SubscriptionForm.tsx
+      // used to do the same dual-use with the single page-local
+      // pages.subscriptions.subscription key; since Task 4 fix round 1 promoted that value
+      // to entity.subscription, it now uses that object's two grammatical forms instead
+      // (.sentence for the toast, .title for the PageHeader) rather than one shared key.
       license: 'License',
       licenseDetailsTitle: 'License details',
       // CardDescription — `{{owner}}` is the kind's Title-Case owner label ('Business Unit'
@@ -1166,29 +1182,16 @@ export const en = {
       noSubscriptionsYetTitle: 'No subscriptions yet',
       noSubscriptionContractsDescription: 'This cluster has no subscription contracts.',
       noBuBadge: 'No BU',
-      // Byte-identical to pages.subscriptions.subscription ('Subscription') — used at 2 call
-      // sites in 2 files there (SubscriptionTable.tsx, SubscriptionForm.tsx) already; adding
-      // this file makes 3 files across 2 slices, which DOES clear the >=3-files-AND->=2-
-      // slices promotion bar (unlike the other cross-slice matches on this page, which stay
-      // split). Reported rather than promoted here: SubscriptionTable.tsx/SubscriptionForm.
-      // tsx are outside this task's file scope (Task 4's file list is sections/*, the two
-      // hooks, and licenseKindConfig.ts only) — flagging for a follow-up promotion pass, the
-      // same way Task 1's seats/startDate/endDate signal was reported before a separate fix
-      // round acted on it. Thai copied verbatim.
-      subscriptionColumn: 'Subscription',
-      // Byte-identical to pages.subscriptions.state ('State') — 2 files there
-      // (SubscriptionTable.tsx, 3 call sites), 1 slice; this file makes it 2 files, 2 slices
-      // — short of the >=3-files bar, so it stays split. Thai copied verbatim (both read
-      // 'สถานะ', coincidentally identical to common.status.label's Thai despite the English
-      // comment on pages.subscriptions.state insisting the two must not collide on screen —
-      // flagging as a pre-existing Thai issue in a file outside this task's scope, not fixed
-      // here).
+      // subscriptionColumn promoted to entity.subscription.title, and expiringSoonBadge
+      // promoted to common.state.expiringSoon (i18n phase-2 slice-3b Task 4 fix round 1) —
+      // both cleared the promote-to-common(/entity) bar once this file's binding was
+      // counted. See the comments at their new locations.
+      //
+      // subscriptionStateColumn is confirmed NOT a promotion candidate — coordinator
+      // review: Thai has no word separating "state" from "status", and the two never
+      // appear on one screen, matching the reasoning already left at
+      // pages.subscriptions.state (en.ts). Stays split, unchanged.
       subscriptionStateColumn: 'State',
-      // Byte-identical to pages.subscriptions.expiringSoon ('Expiring soon') — 2 files there
-      // (SubscriptionTable.tsx, SubscriptionSummary.tsx), 1 slice; this file makes it 3
-      // files across 2 slices — clears the promotion bar. Reported, not promoted, for the
-      // same file-scope reason as subscriptionColumn above. Thai copied verbatim.
-      expiringSoonBadge: 'Expiring soon',
 
       // useLicenseLedger.ts — the toast title for a failed GET reuses loadFailedTitle above
       // (byte-identical 'Could not load licenses', already seeded for PurchaseLicenseTable's

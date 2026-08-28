@@ -305,7 +305,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
     return [
       {
         accessorKey: 'subscription_number',
-        header: t('pages.subscriptions.subscription'),
+        header: t('entity.subscription.title'),
         meta: { card: 'title' },
         cell: ({ row }) => (
           <Link to={`/licenses/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
@@ -369,7 +369,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
               <Badge variant={state === 'active' ? 'success' : 'secondary'}>
                 {stateLabel(state)}
               </Badge>
-              {soon && <Badge variant="warning">{t('pages.subscriptions.expiringSoon')}</Badge>}
+              {soon && <Badge variant="warning">{t('common.state.expiringSoon')}</Badge>}
             </div>
           );
         },
@@ -549,7 +549,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                 <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {expiringSoonFilter ? (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    {t('pages.subscriptions.expiringSoon')}
+                    {t('common.state.expiringSoon')}
                     <button onClick={handleExpiringSoonToggle} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
