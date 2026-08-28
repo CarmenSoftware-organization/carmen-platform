@@ -154,6 +154,9 @@ export const en = {
       archived: 'Archived',
       expired: 'Expired',
       scheduled: 'Scheduled',
+      published: 'Published',
+      updated: 'Updated',
+      unknown: 'Unknown',
     },
     action: {
       saveChanges: 'Save Changes',
@@ -166,6 +169,8 @@ export const en = {
       export: 'Export',
       edit: 'Edit',
       add: 'Add',
+      retry: 'Retry',
+      preview: 'Preview',
       // Promoted from pages.users (phase-2 final review): the sweep task that filed these
       // page-local never re-ran the shared-vs-local arithmetic. clearAll occurs 12x outside
       // this slice, clearAllFilters 8x, filtersLabel 11x — all well past the >=3-occurrences-
@@ -205,6 +210,10 @@ export const en = {
       reference: 'Reference',
       content: 'Content',
       defaultCurrency: 'Default Currency',
+      type: 'Type',
+      title: 'Title',
+      severity: 'Severity',
+      delivery: 'Delivery',
       // Required-field marker template (task J): every Edit page re-solves "label + asterisk"
       // page-locally otherwise. Unlike the old per-field `*Label`/`*LabelRequired` pairs, the
       // asterisk is interpolated data here, because this one template has to hold for every
@@ -224,6 +233,9 @@ export const en = {
     option: {
       function: 'Function',
       average: 'Average',
+      all: 'All',
+      custom: 'Custom',
+      global: 'Global',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
     // below for the toast-safe forms). Ten of these lived in `entity.*` until the phase-2
@@ -264,6 +276,7 @@ export const en = {
       // Promoted from pages.users (phase-2 final review, alongside common.action.clearAll/
       // clearAllFilters/filtersLabel/showDeleted).
       nSelected: '{{count}} selected',
+      summaryStale: "Couldn't refresh — showing the last known numbers.",
     },
     validation: {
       // `requiredMessage` replaces the former nameRequired/clusterRequired pair. Neither had
@@ -314,6 +327,14 @@ export const en = {
       endDate: 'End date',
       subscriptionNumber: 'Subscription number',
     },
+    // The four broadcast severity values. Title case here; the two call sites that want
+    // all-caps apply .toUpperCase() to the translated string, which is a no-op in Thai.
+    severity: {
+      critical: 'Critical',
+      warning: 'Warning',
+      info: 'Info',
+      maintenance: 'Maintenance',
+    },
   },
   /**
    * Nouns that are safe to pass to a `toast.*` template. Three grammatical forms each,
@@ -328,6 +349,8 @@ export const en = {
   entity: {
     user: { title: 'User', sentence: 'User', lower: 'user' },
     businessUnit: { title: 'Business Unit', sentence: 'Business unit', lower: 'business unit' },
+    broadcast: { title: 'Broadcast', sentence: 'Broadcast', lower: 'broadcast' },
+    news: { title: 'News', sentence: 'News', lower: 'news' },
   },
 
   /**
@@ -450,6 +473,22 @@ export const en = {
       softDeleteConfirm: 'Are you sure you want to delete this user? This action cannot be undone.',
       bulkSoftDeleteConfirm: 'Soft-delete the selected user(s)? They can be restored later.',
       notFoundDescription: "This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list.",
+    },
+    broadcasts: {
+      expireTitle: 'Expire Broadcast',
+      expireNow: 'Expire now',
+      toastExpired: 'Broadcast expired successfully',
+      message: 'Message',
+      pickDateTime: 'Pick a date and time',
+      validation: {
+        messageRequired: 'Message is required',
+        expiryAfterSchedule: 'Expiry must be after the scheduled send time',
+      },
+    },
+    news: {
+      publish: 'Publish',
+      tags: 'Tags',
+      loadFailedPrefix: 'Failed to load news: ',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

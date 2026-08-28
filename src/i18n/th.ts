@@ -149,6 +149,9 @@ export const th: Translations = {
       archived: 'เก็บถาวรแล้ว',
       expired: 'หมดอายุ',
       scheduled: 'ตั้งเวลาไว้',
+      published: 'เผยแพร่แล้ว',
+      updated: 'อัปเดตแล้ว',
+      unknown: 'ไม่ทราบ',
     },
     action: {
       saveChanges: 'บันทึกการแก้ไข',
@@ -161,6 +164,8 @@ export const th: Translations = {
       export: 'ส่งออก',
       edit: 'แก้ไข',
       add: 'เพิ่ม',
+      retry: 'ลองใหม่',
+      preview: 'ตัวอย่าง',
       clearAll: 'ล้างทั้งหมด',
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
       filtersLabel: 'ตัวกรอง:',
@@ -192,6 +197,10 @@ export const th: Translations = {
       reference: 'อ้างอิง',
       content: 'เนื้อหา',
       defaultCurrency: 'สกุลเงินเริ่มต้น',
+      type: 'ประเภท',
+      title: 'หัวข้อ',
+      severity: 'ระดับความรุนแรง',
+      delivery: 'การส่ง',
       required: '{{label}} *',
     },
     section: {
@@ -203,6 +212,9 @@ export const th: Translations = {
     option: {
       function: 'ฟังก์ชัน',
       average: 'เฉลี่ย',
+      all: 'ทั้งหมด',
+      custom: 'กำหนดเอง',
+      global: 'ทั้งระบบ',
     },
     label: {
       cluster: 'Cluster',
@@ -235,6 +247,7 @@ export const th: Translations = {
       selectABusinessUnit: 'เลือกหน่วยธุรกิจ',
       searchBusinessUnits: 'ค้นหาหน่วยธุรกิจ...',
       nSelected: 'เลือกแล้ว {{count}} รายการ',
+      summaryStale: 'รีเฟรชไม่สำเร็จ — แสดงตัวเลขล่าสุดที่ทราบ',
     },
     validation: {
       requiredMessage: 'กรุณากรอก {{label}}',
@@ -260,12 +273,15 @@ export const th: Translations = {
       endDate: 'วันที่สิ้นสุด',
       subscriptionNumber: 'หมายเลขการสมัคร',
     },
+    severity: { critical: 'วิกฤต', warning: 'คำเตือน', info: 'ข้อมูล', maintenance: 'บำรุงรักษา' },
   },
   entity: {
     // Thai has no case, so all three forms repeat. Kept in sync with en.ts's three-field
     // shape so the key sets stay symmetric — `Translations = typeof en` enforces it.
     user: { title: 'ผู้ใช้', sentence: 'ผู้ใช้', lower: 'ผู้ใช้' },
     businessUnit: { title: 'หน่วยธุรกิจ', sentence: 'หน่วยธุรกิจ', lower: 'หน่วยธุรกิจ' },
+    broadcast: { title: 'ประกาศ', sentence: 'ประกาศ', lower: 'ประกาศ' },
+    news: { title: 'ข่าว', sentence: 'ข่าว', lower: 'ข่าว' },
   },
 
   // Templates space around {{entity}}: Thai nouns don't need the boundary, but these
@@ -380,6 +396,22 @@ export const th: Translations = {
       softDeleteConfirm: 'ต้องการลบผู้ใช้รายนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
       bulkSoftDeleteConfirm: 'ลบผู้ใช้ที่เลือกแบบชั่วคราวใช่หรือไม่ กู้คืนได้ภายหลัง',
       notFoundDescription: 'ไม่พบผู้ใช้รายนี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการผู้ใช้',
+    },
+    broadcasts: {
+      expireTitle: 'หมดอายุประกาศ',
+      expireNow: 'ให้หมดอายุทันที',
+      toastExpired: 'ตั้งประกาศให้หมดอายุแล้ว',
+      message: 'ข้อความ',
+      pickDateTime: 'เลือกวันและเวลา',
+      validation: {
+        messageRequired: 'กรุณากรอกข้อความ',
+        expiryAfterSchedule: 'เวลาหมดอายุต้องอยู่หลังเวลาส่งที่ตั้งไว้',
+      },
+    },
+    news: {
+      publish: 'เผยแพร่',
+      tags: 'แท็ก',
+      loadFailedPrefix: 'โหลดข่าวไม่สำเร็จ: ',
     },
   },
   error: {
