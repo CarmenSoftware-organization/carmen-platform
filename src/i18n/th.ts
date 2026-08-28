@@ -578,6 +578,29 @@ export const th: Translations = {
         archive: { ok: 'เก็บถาวรข่าวแล้ว {{count}} รายการ', failed: 'เก็บถาวรข่าวไม่สำเร็จ {{count}} รายการ', partial: 'เก็บถาวรแล้ว {{count}} รายการ ไม่สำเร็จ {{failed}} รายการ' },
         delete: { ok: 'ลบข่าวแล้ว {{count}} รายการ', failed: 'ลบข่าวไม่สำเร็จ {{count}} รายการ', partial: 'ลบแล้ว {{count}} รายการ ไม่สำเร็จ {{failed}} รายการ' },
       },
+      article: 'บทความ',
+      articleDescription: 'เนื้อหาที่ผู้อ่านเห็น รวมถึงแหล่งที่มาและแท็ก',
+      bodyMarkdown: 'เนื้อหา (Markdown)',
+      sourceUrl: 'URL แหล่งที่มา',
+      addTagPlaceholder: 'เพิ่มแท็ก...',
+      coverImage: 'ภาพหน้าปก',
+      headline: 'พาดหัวข่าว',
+      publishDescription: 'ใครเห็นข่าวนี้ และเมื่อใด',
+      visibleToAllBu: 'มองเห็นได้ทุกหน่วยธุรกิจ',
+      // Quoted term written out in Thai, matching visibleToAllBu above — never interpolated
+      // from the translated key (see en.ts comment).
+      selectBuOrEnableGlobal: 'กรุณาเลือกหน่วยธุรกิจอย่างน้อยหนึ่งแห่ง หรือเปิด "มองเห็นได้ทุกหน่วยธุรกิจ"',
+      publishedAt: 'เผยแพร่เมื่อ',
+      // Quoted term matches common.status.published's Thai value ('เผยแพร่แล้ว').
+      publishedAtNote: 'ตั้งค่าโดยอัตโนมัติเมื่อสถานะเปลี่ยนเป็น "เผยแพร่แล้ว"',
+      history: 'ประวัติ',
+      createNews: 'สร้างข่าว',
+      saveFailedPrefix: 'บันทึกข่าวไม่สำเร็จ: ',
+      hiddenFromReaders: 'ซ่อนจากผู้อ่าน',
+      notVisibleToReaders: 'ผู้อ่านยังมองไม่เห็น',
+      // Same value for both — Thai does not inflect for number (see en.ts comment).
+      reachOne: '{{count}} หน่วยธุรกิจ',
+      reachMany: '{{count}} หน่วยธุรกิจ',
     },
   },
   error: {

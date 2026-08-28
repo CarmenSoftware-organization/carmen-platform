@@ -723,6 +723,37 @@ export const en = {
         archive: { ok: 'Archived {{count}} news article(s)',  failed: 'Failed to archive {{count}} news article(s)',  partial: 'Archived {{count}}, {{failed}} failed' },
         delete:  { ok: 'Deleted {{count}} news article(s)',   failed: 'Failed to delete {{count}} news article(s)',   partial: 'Deleted {{count}}, {{failed}} failed' },
       },
+      // Task 6 (NewsEdit.tsx) additions below.
+      article: 'Article',
+      articleDescription: 'The body readers see, plus its source and tags.',
+      bodyMarkdown: 'Body (Markdown)',
+      sourceUrl: 'Source URL',
+      addTagPlaceholder: 'Add a tag...',
+      coverImage: 'Cover image',
+      headline: 'Headline',
+      publishDescription: 'Who sees this, and when.',
+      visibleToAllBu: 'Visible to all business units',
+      // Whole-sentence template, NOT an interpolation of common.label.businessUnitsLabel's
+      // sibling `visibleToAllBu` — the quoted term is written out in each language rather
+      // than interpolated in, per the file's whole-sentence-reuse convention (see
+      // rescheduleNote/rescheduleConfirm in pages.broadcasts above).
+      selectBuOrEnableGlobal: 'Select at least one business unit, or enable "Visible to all business units".',
+      publishedAt: 'Published at',
+      // Whole-sentence template quoting common.status.published's value ('Published') —
+      // same convention as selectBuOrEnableGlobal above: the quoted term is written out,
+      // never interpolated from the translated key.
+      publishedAtNote: 'Set automatically when status becomes "Published".',
+      history: 'History',
+      createNews: 'Create News',
+      // Mirrors loadFailedPrefix's shape (prefix + concatenated message), not toast.saveFailed
+      // (which has no trailing ': ' and is a standalone toast, not a concatenation target).
+      saveFailedPrefix: 'Failed to save news: ',
+      // Task 6 (NewsMasthead.tsx) additions below.
+      hiddenFromReaders: 'Hidden from readers',
+      notVisibleToReaders: 'Not visible to readers',
+      // describeReach's audience-count pair. Thai holds one value for both (see th.ts).
+      reachOne: '{{count}} business unit',
+      reachMany: '{{count}} business units',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
