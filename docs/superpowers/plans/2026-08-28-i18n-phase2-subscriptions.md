@@ -259,7 +259,8 @@ git commit -m "feat(i18n): แปลตารางสัญญา + ย้า�
 **Files:**
 - Modify: `src/pages/licenses/SubscriptionForm.tsx`
 - Modify: `src/pages/licenses/subscriptionEdit/SubscriptionInfoCard.tsx`
-- Modify: `src/pages/licenses/SubscriptionForm.test.tsx` — **3 assertion lines only** (345, 346, 380)
+- Modify: `src/pages/licenses/SubscriptionForm.test.tsx` — **1 line only** (380)
+- Modify: `src/pages/licenses/subscriptionEdit/SubscriptionInfoCard.test.tsx` — **2 lines only** (53, 55)
 - Modify: `src/i18n/en.ts`, `src/i18n/th.ts`
 
 **Interfaces:**
@@ -269,7 +270,9 @@ git commit -m "feat(i18n): แปลตารางสัญญา + ย้า�
 - [ ] **Step 2: Add page-local keys** for the remaining English, taken verbatim from source.
 - [ ] **Step 3: Bind the Thai** — `ข้อมูลสัญญา`, `โมดูลที่ซื้อ`, `ที่นั่ง` in the form; `เลือกคลัสเตอร์ก่อน`, `คลัสเตอร์นี้ยังไม่มีหน่วยธุรกิจ — …`, `ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก`, `ข้อมูลสัญญา` in the card. `ข้อมูลสัญญา` is one key used by both.
 - [ ] **Step 4: Wire `t` into `validateField` / `parseApiError` / `getErrorDetail`** at every call site in both files.
-- [ ] **Step 5: Update 3 test assertions** in `SubscriptionForm.test.tsx` — lines **345** (`รอตอบรับ 1`), **346** (`queryByText(/อาจถึง/)`, negative) and **380** (`queryByText('ที่นั่ง')`, negative). Lines 343 and 415 **stay**: 343 searches for `ไม่จำกัด`, a 3b string; 415 searches for a string that lives in `src/hooks/useAllClusters.ts`, outside this slice. The other 6 Thai lines are comments. List each change with before and after, and say explicitly why 343 and 415 were left.
+- [ ] **Step 5: Update three test lines.** `SubscriptionForm.test.tsx:380` — `queryByText('ที่นั่ง')` → `'Seats'`, a **negative** assertion that would otherwise go green for the wrong reason. `SubscriptionInfoCard.test.tsx:53,55` — `'active'`/`'expired'` → `'Active'`/`'Expired'`, because the two read-only badges stop rendering the raw lowercase enum.
+
+  **Leave `SubscriptionForm.test.tsx:343, 345, 346, 415 alone.** 343 searches for `ไม่จำกัด`, a 3b string. 415 searches for text in `src/hooks/useAllClusters.ts`, outside this slice. **345 and 346 assert text rendered by the embedded `SeatsCard.tsx`** — Task 5 owns them, because a test line belongs to the task that owns the component rendering the string it asserts, not to the task that owns the file the line sits in.
 - [ ] **Step 6: Read both files end to end**, `grep -n "[ก-๙]"`, report findings.
 - [ ] **Step 7: Verify and commit**
 
@@ -337,6 +340,7 @@ git commit -m "feat(i18n): แปลการ์ดเลือกสิทธ�
 **Files:**
 - Modify: `src/pages/licenses/subscriptionEdit/SeatsCard.tsx`
 - Modify: `src/pages/licenses/subscriptionEdit/SeatsCard.test.tsx` — **15 lines only** (of 17 Thai lines; line 116 is a `describe` title naming a UI string and does change; lines 45 and 104 stay)
+- Modify: `src/pages/licenses/SubscriptionForm.test.tsx` — **2 lines only** (345, 346). They live in another file but assert strings **this task's** `SeatsCard.tsx` renders inside the form, so they break here and nowhere else.
 - Modify: `src/i18n/en.ts`, `src/i18n/th.ts`
 
 **Interfaces:** consumes Task 1's SeatsCard block plus `seats`.
@@ -357,12 +361,13 @@ git commit -m "feat(i18n): แปลการ์ดเลือกสิทธ�
 Lines 56, 66 and 95-96 are JSX text interrupted by `{expressions}` — the category the first scan of this slice missed entirely. Read them in the source; do not reconstruct them from this table.
 
 - [ ] **Step 2: Update 15 lines.** Leave **45** (`ไม่จำกัด`, a 3b string) and **104** (`ปิดใช้งานหรือถูกลบ`, which exists nowhere in the source — an assertion that has always been vacuous; report it, do not fix it). Line **116** is a `describe` title naming a UI string and does change. The rest include regex matchers (`getByText(/รอตอบรับ 2/)`) and a `toHaveTextContent('อาจถึง 12/10')`. Convert each to the authored English preserving the same matcher shape — a regex stays a regex over the same substring, never widened. The negative ones matter most: `queryByText(/รอตอบรับ/).toBeNull()` at line 60 and `queryByText(/อาจถึง/)` at 66 would keep passing after translation because the Thai can no longer render — green for the wrong reason. They change.
-- [ ] **Step 3: Read the file end to end**, `grep -n "[ก-๙]"`.
-- [ ] **Step 4: Verify and commit**
+- [ ] **Step 3: Update the two reassigned lines in `SubscriptionForm.test.tsx`** — `:345` `getByText(/รอตอบรับ 1/)` and `:346` `queryByText(/อาจถึง/)`. Both assert text `SeatsCard.tsx` renders inside the form, so translating SeatsCard is what breaks 345 and what makes 346 vacuous. Change nothing else in that file; 343 and 415 stay Thai for reasons stated in Task 3.
+- [ ] **Step 4: Read the file end to end**, `grep -n "[ก-๙]"`.
+- [ ] **Step 5: Verify and commit**
 
 ```bash
 bun run typecheck && bun run lint && bun run test
-git add src/pages/licenses/subscriptionEdit/SeatsCard.tsx src/pages/licenses/subscriptionEdit/SeatsCard.test.tsx src/i18n
+git add src/pages/licenses/subscriptionEdit/SeatsCard.tsx src/pages/licenses/subscriptionEdit/SeatsCard.test.tsx src/pages/licenses/SubscriptionForm.test.tsx src/i18n
 git commit -m "feat(i18n): แปลการ์ดที่นั่ง + ย้าย assertion ไทย 16 บรรทัด"
 ```
 
