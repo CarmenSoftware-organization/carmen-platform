@@ -4,7 +4,7 @@
 
 **Goal:** Translate the Users pages into Thai, and seed the shared catalog that the nine remaining phase-2 slices will draw on.
 
-**Architecture:** Extends the existing hand-rolled i18n layer from phase 1 — no new mechanism. `src/i18n/en.ts` stays the source of truth and `TKey` derives from it, so a key missing from `th.ts` remains a compile error. Three new top-level namespaces join `common.*`: `entity.*` (capitalized entity names), `toast.*` (CRUD templates taking `{{entity}}`), and `pages.users.*` (this slice's own strings).
+**Architecture:** Extends the existing hand-rolled i18n layer from phase 1 — no new mechanism. `src/i18n/en.ts` stays the source of truth and `TKey` derives from it, so a key missing from `th.ts` remains a compile error. Three new top-level namespaces join `common.*`: `entity.*` (entity nouns — the single home for them, used both as labels and inside toast templates), `toast.*` (CRUD templates taking `{{entity}}`), and `pages.users.*` (this slice's own strings).
 
 **Tech Stack:** React 19, TypeScript, Vite, Tailwind 4, shadcn/ui, Vitest. **No new dependency.**
 
@@ -37,7 +37,7 @@
 
 **Interfaces:**
 - Consumes: the phase-1 catalog shape and `TKey` from `src/i18n/types.ts`.
-- Produces, for Tasks 2-4: `common.status.*`, `common.action.*`, `common.audit.*`, `common.field.*`, `common.entity.*`, `common.state.*`, `common.validation.*`, `entity.*`, `toast.*`, and the `pages.users` object they will fill.
+- Produces, for Tasks 2-4: `common.status.*`, `common.action.*`, `common.audit.*`, `common.field.*`, `common.state.*`, `common.validation.*`, `entity.*`, `toast.*`, and the `pages.users` object they will fill.
 
 - [ ] **Step 1: Extend `common` in `src/i18n/en.ts`**
 
@@ -72,6 +72,7 @@ Insert these subgroups into the existing `common` object, after `noMatchesDescri
       loading: 'Loading...',
       addUser: 'Add User',
       start: 'Start',
+      manageLicences: 'Manage licences',   // British spelling, as in the source
     },
     audit: {
       createdAt: 'Created at',
@@ -99,20 +100,6 @@ Insert these subgroups into the existing `common` object, after `noMatchesDescri
       average: 'Average',
       defaultCurrency: 'Default Currency',
     },
-    entity: {
-      cluster: 'Cluster',
-      platform: 'Platform',
-      application: 'Application',
-      businessUnit: 'Business Unit',
-      businessUnitsTitle: 'Business Units',
-      businessUnitsLabel: 'Business units',
-      clusterRole: 'Cluster Role',
-      buRole: 'BU Role',
-      databasePool: 'Database Pool',
-      subscriptions: 'Subscriptions',
-      licensing: 'Licensing',
-      manageLicences: 'Manage licences',
-    },
     state: {
       noExpiry: 'No expiry',
       expires: 'Expires',
@@ -136,7 +123,7 @@ Insert these subgroups into the existing `common` object, after `noMatchesDescri
     },
 ```
 
-`common.entity.businessUnitsTitle` and `common.entity.businessUnitsLabel` are two keys on purpose: `Business Units` and `Business units` both occur across the app with no consistent rule, and this slice is not the place to change either. No file in this slice uses either form — the keys exist so later slices find them already named.
+`entity.businessUnitsTitle` and `entity.businessUnitsLabel` are two keys on purpose: `Business Units` and `Business units` both occur across the app with no consistent rule, and this slice is not the place to change either. No file in this slice uses either form — the keys exist so later slices find them already named.
 
 - [ ] **Step 2: Add the `entity` and `toast` namespaces to `src/i18n/en.ts`**
 
@@ -161,6 +148,20 @@ Add these as new top-level keys, after `common` and before `error`:
     userLower: 'user',
     businessUnit: 'Business Unit',
     businessUnitLower: 'business unit',
+    // Entity nouns used as plain labels as well as inside the toast templates.
+    // One namespace, not two: an earlier draft also had `common.entity.*` holding
+    // byte-identical values, which forced a guess at every call site and could have
+    // drifted in Thai with nothing to catch it.
+    cluster: 'Cluster',
+    platform: 'Platform',
+    application: 'Application',
+    clusterRole: 'Cluster Role',
+    buRole: 'BU Role',
+    databasePool: 'Database Pool',
+    subscriptions: 'Subscriptions',
+    licensing: 'Licensing',
+    businessUnitsTitle: 'Business Units',
+    businessUnitsLabel: 'Business units',
   },
 
   /**
@@ -218,6 +219,7 @@ Same structure, same order. Terminology follows the shipped rule: system entity 
       loading: 'กำลังโหลด...',
       addUser: 'เพิ่มผู้ใช้',
       start: 'เริ่ม',
+      manageLicences: 'จัดการไลเซนส์',
     },
     audit: {
       createdAt: 'สร้างเมื่อ',
@@ -244,20 +246,6 @@ Same structure, same order. Terminology follows the shipped rule: system entity 
       access: 'สิทธิ์เข้าถึง',
       average: 'เฉลี่ย',
       defaultCurrency: 'สกุลเงินเริ่มต้น',
-    },
-    entity: {
-      cluster: 'Cluster',
-      platform: 'Platform',
-      application: 'แอปพลิเคชัน',
-      businessUnit: 'หน่วยธุรกิจ',
-      businessUnitsTitle: 'หน่วยธุรกิจ',
-      businessUnitsLabel: 'หน่วยธุรกิจ',
-      clusterRole: 'บทบาทใน Cluster',
-      buRole: 'บทบาทในหน่วยธุรกิจ',
-      databasePool: 'Database Pool',
-      subscriptions: 'การสมัครใช้งาน',
-      licensing: 'ไลเซนส์',
-      manageLicences: 'จัดการไลเซนส์',
     },
     state: {
       noExpiry: 'ไม่มีวันหมดอายุ',
@@ -290,6 +278,16 @@ Same structure, same order. Terminology follows the shipped rule: system entity 
     userLower: 'ผู้ใช้',
     businessUnit: 'หน่วยธุรกิจ',
     businessUnitLower: 'หน่วยธุรกิจ',
+    cluster: 'Cluster',
+    platform: 'Platform',
+    application: 'แอปพลิเคชัน',
+    clusterRole: 'บทบาทใน Cluster',
+    buRole: 'บทบาทในหน่วยธุรกิจ',
+    databasePool: 'Database Pool',
+    subscriptions: 'การสมัครใช้งาน',
+    licensing: 'ไลเซนส์',
+    businessUnitsTitle: 'หน่วยธุรกิจ',
+    businessUnitsLabel: 'หน่วยธุรกิจ',
   },
 
   toast: {
@@ -660,10 +658,10 @@ and inside the component body:
 | `'Inactive'` | `t('common.status.inactive')` |
 | `'Status'` | `t('common.status.label')` |
 | `'Alias Name'` | `t('common.field.aliasName')` |
-| `'Business Unit'` | `t('common.entity.businessUnit')` |
-| `'Cluster'` | `t('common.entity.cluster')` |
-| `'Cluster Role'` | `t('common.entity.clusterRole')` |
-| `'BU Role'` | `t('common.entity.buRole')` |
+| `'Business Unit'` | `t('entity.businessUnit')` |
+| `'Cluster'` | `t('entity.cluster')` |
+| `'Cluster Role'` | `t('entity.clusterRole')` |
+| `'BU Role'` | `t('entity.buRole')` |
 | `'Cancel'` | `t('common.cancel')` |
 | `'Save Changes'` | `t('common.action.saveChanges')` |
 | `'Saving...'` | `t('common.action.saving')` |
@@ -882,7 +880,7 @@ Record, for each of the six browser checks, what you observed — not "done". No
 
 **Placeholder scan.** Every string→key mapping is enumerated with both its English and Thai value. No step says "and the rest" or "similarly".
 
-**Naming consistency.** `common.status.*`, `common.action.*`, `common.audit.*`, `common.field.*`, `common.entity.*`, `common.state.*`, `common.validation.*`, `entity.*`, `toast.*`, `pages.users.*` are defined in Task 1 and referenced with those exact paths in Tasks 2-4.
+**Naming consistency.** `common.status.*`, `common.action.*`, `common.audit.*`, `common.field.*`, `common.state.*`, `common.validation.*`, `entity.*`, `toast.*`, `pages.users.*` are defined in Task 1 and referenced with those exact paths in Tasks 2-4.
 
 **One defect this review found, and where it was fixed.** `'Failed to delete user'` has a
 lowercase `user` while `'User deleted successfully'` is sentence-initial — so a single
