@@ -165,6 +165,7 @@ export const th: Translations = {
       clear: 'ล้าง',
       addUser: 'เพิ่มผู้ใช้',
       start: 'เริ่ม',
+      end: 'สิ้นสุด',
       manageLicences: 'จัดการไลเซนส์',
       export: 'ส่งออก',
       edit: 'แก้ไข',
@@ -259,6 +260,9 @@ export const th: Translations = {
       // Copied verbatim from pages.subscriptions.expiringSoon / pages.licenses.
       // expiringSoonBadge — not retranslated. See en.ts for the promotion rationale.
       expiringSoon: 'ใกล้หมดอายุ',
+      // Copied verbatim from pages.licenses.daysLeft — not retranslated. See en.ts for the
+      // promotion rationale.
+      daysLeft: 'เหลืออีก {{count}} วัน',
       unsavedChanges: 'มีการแก้ไขที่ยังไม่บันทึก',
       noChanges: 'ไม่มีการแก้ไข',
       unknownUser: 'ไม่ระบุชื่อ',
@@ -735,7 +739,6 @@ export const th: Translations = {
       addBuQuotaLicense: 'เพิ่มไลเซนส์โควตา BU',
       addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
       licenseNumber: 'เลขที่ไลเซนส์',
-      end: 'สิ้นสุด',
       removeLicenseTitle: 'นำไลเซนส์ออก',
       noLicensesYetTitle: 'ยังไม่มีไลเซนส์',
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
@@ -757,7 +760,6 @@ export const th: Translations = {
       overBuLimit: 'เกินโควตา BU',
       seatsFull: 'ที่นั่งเต็ม',
       buQuotaColumn: 'โควตา BU',
-      daysLeft: 'เหลืออีก {{count}} วัน',
       // F6: unified with switcher.searchClusters — see the comment there.
       searchClustersPlaceholder: 'ค้นหา cluster...',
       filtersSheetDescription: 'กรองคลัสเตอร์ตามสถานะและสถานะไลเซนส์',

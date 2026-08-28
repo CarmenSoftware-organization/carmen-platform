@@ -23,29 +23,28 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../u
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useI18n } from '../../hooks/useI18n';
-import type { TFunction } from '../../i18n/types';
 
 /**
  * Turn a cluster-user row into the flat shape the People card renders.
  *
- * Module-scope, so it cannot call `useI18n()` itself — `t` is threaded in as a parameter from
- * the one call site instead (same shape as roleLabel() in roleLabels.ts).
+ * `name` is left RAW here — including empty, when a membership has neither a profile name nor
+ * an email — rather than resolved to a translated fallback. State is not bound to `lang` and
+ * will not re-resolve on a language switch, so a translated string baked in here would go
+ * stale the moment the admin toggles language without a refetch (i18n phase-2 slice-4 Task 5
+ * fix round 1). ClusterPeopleCard.tsx resolves the "Unknown user" fallback at the render
+ * boundary instead, where it re-evaluates on every render.
  */
-const toMember = (
-  cu: {
-    id: string;
-    role?: string;
-    user?: { email?: string; profile?: { firstname?: string; middlename?: string; lastname?: string } };
-  },
-  t: TFunction,
-): ClusterMemberSummary => {
+const toMember = (cu: {
+  id: string;
+  role?: string;
+  user?: { email?: string; profile?: { firstname?: string; middlename?: string; lastname?: string } };
+}): ClusterMemberSummary => {
   const p = cu.user?.profile;
   const name = [p?.firstname, p?.middlename, p?.lastname].filter(Boolean).join(' ').trim();
   return {
     id: cu.id,
     role: cu.role ?? 'user',
-    // A membership with no profile still has to be nameable — the address is the person here.
-    name: name || cu.user?.email || t('common.state.unknownUser'),
+    name: name || cu.user?.email || '',
     email: cu.user?.email ?? '',
   };
 };
@@ -135,16 +134,18 @@ const ClusterProfile: React.FC = () => {
         Array.isArray(cluster.tb_business_unit)
           ? cluster.tb_business_unit.map((bu: ClusterBusinessUnitSummary) => ({
               id: bu.id,
-              name: bu.name || '(unnamed)',
+              // Left RAW (possibly empty), not resolved to a translated fallback — same
+              // render-boundary rule as toMember() above. ClusterBusinessUnitsCard.tsx
+              // resolves the "(unnamed)" fallback at render (i18n phase-2 slice-4 Task 5 fix
+              // round 1). This was ALSO a genuine miss in the original pass: the fallback had
+              // never been wrapped in t() at all, so it rendered English even in Thai — found
+              // only by this fix round's re-sweep, not by the original task.
+              name: bu.name || '',
               code: bu.code || '—',
             }))
           : [],
       );
-      setMembers(
-        Array.isArray(cluster.tb_cluster_user)
-          ? cluster.tb_cluster_user.map((cu: Parameters<typeof toMember>[0]) => toMember(cu, t))
-          : [],
-      );
+      setMembers(Array.isArray(cluster.tb_cluster_user) ? cluster.tb_cluster_user.map(toMember) : []);
       setLogoUrl(cluster.logo?.url || '');
       setAvatarUrl(cluster.avatar?.url || '');
       setAccessLost(false);

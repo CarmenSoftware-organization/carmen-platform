@@ -299,7 +299,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
             <span className="text-xs whitespace-nowrap">
               {fmtDate(end)}
               {left <= EXPIRING_SOON_DAYS && left >= 0 && (
-                <Badge variant="warning" className="ml-2">{t('pages.licenses.daysLeft', { count: left })}</Badge>
+                <Badge variant="warning" className="ml-2">{t('common.state.daysLeft', { count: left })}</Badge>
               )}
             </span>
           );

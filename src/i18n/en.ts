@@ -165,6 +165,17 @@ export const en = {
       clear: 'Clear',
       addUser: 'Add User',
       start: 'Start',
+      // Promoted from pages.licenses.end (i18n phase-2 slice-4 Task 5 fix round 1): reused
+      // directly by clusterAdmin/licenses/QuotaLedgerCard.tsx (slice 4) alongside 3 slice-3b
+      // files (BuQuotaSection.tsx, SeatSection.tsx, SubscriptionSection.tsx) — 4 files across
+      // 2 slices, clearing the promote-to-common bar. Kept beside `start` above rather than
+      // in common.field: both are the same compact table-column-header register `start` was
+      // already promoted into — NOT the common.field.startDate/endDate form-field register,
+      // a different register per pages.licenses' own (now-deleted) comment. Keeping the pair
+      // together avoids splitting one matched Start/End column-header pair across two
+      // namespaces. Thai copied verbatim from pages.licenses.end, unchanged — all four call
+      // sites already shared the one key, so there was nothing to reconcile.
+      end: 'End',
       manageLicences: 'Manage licences',   // British spelling, as in the source
       export: 'Export',
       edit: 'Edit',
@@ -311,6 +322,14 @@ export const en = {
       // SubscriptionSection.tsx) — clears the promote-to-common bar. Both page-local keys
       // were deleted, both call sites' explanatory comments removed.
       expiringSoon: 'Expiring soon',
+      // Promoted from pages.licenses.daysLeft (i18n phase-2 slice-4 Task 5 fix round 1):
+      // reused directly by clusterAdmin/licenses/SeatsByBuTable.tsx (slice 4) alongside 3
+      // slice-3b files (ClusterLicenseTable.tsx, BuQuotaSection.tsx, SeatSection.tsx) — 4
+      // files across 2 slices, clearing the promote-to-common bar. A count-driven expiry
+      // state, same register as noExpiry/expires/quotaExpires/expiringSoon above, not a
+      // field name. Thai copied verbatim from pages.licenses.daysLeft, unchanged — all four
+      // call sites already shared the one key, so there was nothing to reconcile.
+      daysLeft: '{{count}} days left',
       unsavedChanges: 'Unsaved changes',
       noChanges: 'No changes',
       unknownUser: 'Unknown user',
@@ -964,14 +983,9 @@ export const en = {
       // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
       // (field Label).
       licenseNumber: 'License Number',
-      // BuQuotaSection.tsx + SeatSection.tsx inline ledger tables — the compact column
-      // header, a different register from common.field.startDate ("Start Date", a
-      // form-field label) — same table-header-vs-form-label split the file already uses
-      // for common.section.* vs common.field.*. Fix round 1: this namespace used to also
-      // hold `start` ('Start'), byte-identical to common.action.start — deleted, Tasks 2-4
-      // bind that shared key instead. `end` has no common.action counterpart to reuse, so
-      // it stays here alone.
-      end: 'End',
+      // `end` promoted to common.action.end (i18n phase-2 slice-4 Task 5 fix round 1) — see
+      // the comment there. BuQuotaSection.tsx / SeatSection.tsx / SubscriptionSection.tsx
+      // bind to that key directly now.
       // BuQuotaSection.tsx + SeatSection.tsx ConfirmDialog title — the two files' dialog
       // descriptions differ (BU count vs. seat count) and stay page-local; only the shared
       // title is seeded here.
@@ -1015,9 +1029,9 @@ export const en = {
       // Title Case column header — distinct from `buQuota` above ('BU quota', lowercase
       // 'quota', a nav-section label), not a reuse candidate despite the near-identical text.
       buQuotaColumn: 'BU Quota',
-      // Badge inside the Quota Expires cell — days remaining before a winning BU-quota
-      // license expires.
-      daysLeft: '{{count}} days left',
+      // `daysLeft` promoted to common.state.daysLeft (i18n phase-2 slice-4 Task 5 fix round 1)
+      // — see the comment there. ClusterLicenseTable.tsx / BuQuotaSection.tsx / SeatSection.tsx
+      // bind to that key directly now.
       // Coincidentally byte-identical to switcher.searchClusters ('Search clusters...') and
       // to ClusterManagement.tsx's own (still untranslated) literal — out of this task's
       // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the

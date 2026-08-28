@@ -33,6 +33,11 @@ export function ClusterPeopleCard({ clusterId, members }: ClusterPeopleCardProps
   const shown = admins.slice(0, MAX_ADMINS);
   const hidden = admins.length - shown.length;
   const others = members.length - admins.length;
+  // A membership with no profile and no email still has to be nameable — resolved here, at
+  // render, rather than baked into `members` at fetch time (i18n phase-2 slice-4 Task 5 fix
+  // round 1): `members` is fetched once per clusterId and does not re-resolve on a language
+  // switch, so a translated fallback stored there would go stale.
+  const displayName = (m: ClusterMemberSummary) => m.name || t('common.state.unknownUser');
 
   return (
     <Card>
@@ -61,9 +66,9 @@ export function ClusterPeopleCard({ clusterId, members }: ClusterPeopleCardProps
           <ul className="divide-y">
             {shown.map((a) => (
               <li key={a.id} className="flex items-center gap-3 py-2.5 first:pt-0">
-                <BrandMark size="xs" shape="circle" name={a.name} />
+                <BrandMark size="xs" shape="circle" name={displayName(a)} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{a.name}</p>
+                  <p className="truncate text-sm">{displayName(a)}</p>
                   <p className="text-muted-foreground truncate text-xs">{a.email}</p>
                 </div>
               </li>

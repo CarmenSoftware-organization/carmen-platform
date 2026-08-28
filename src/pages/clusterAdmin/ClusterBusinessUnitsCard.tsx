@@ -61,7 +61,7 @@ export function ClusterBusinessUnitsCard({ clusterId, units }: ClusterBusinessUn
                 <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold">
                   {bu.code}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm">{bu.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">{bu.name || t('pages.clusterAdmin.unnamed')}</span>
                 <ChevronRight className="text-muted-foreground size-4 shrink-0" />
               </Link>
             </li>

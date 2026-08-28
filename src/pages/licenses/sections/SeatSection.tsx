@@ -222,7 +222,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
                 <tr className="text-xs text-muted-foreground">
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.field.seats')}</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.end')}</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.status.label')}</th>
                   <th className="text-left px-2 py-1">{t('common.field.reference')}</th>
                   {canManage && <th className="px-2 py-1" />}
@@ -243,7 +243,7 @@ function SeatRowCard({ row, canManage, onChanged }: {
                       <td className="px-2 py-1 space-x-1 whitespace-nowrap">
                         <Badge variant={STATUS_VARIANT[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
                         {isExpiringSoon(l, now) && (
-                          <Badge variant="warning">{t('pages.licenses.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
+                          <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
                         )}
                         {/* ป้าย [migrated] จาก isMigratedPlaceholder — คนละเรื่องกับ perpetual */}
                         {isMigratedPlaceholder(l) && <Badge variant="warning">{t('pages.licenses.endDateRequiredBadge')}</Badge>}

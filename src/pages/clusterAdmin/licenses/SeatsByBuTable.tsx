@@ -120,7 +120,7 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
                                 {fmtDate(date)}
                                 {soon && (
                                   <Badge variant="warning" className="text-[10px]">
-                                    {t('pages.licenses.daysLeft', { count: daysLeft(date, now) })}
+                                    {t('common.state.daysLeft', { count: daysLeft(date, now) })}
                                   </Badge>
                                 )}
                               </span>
