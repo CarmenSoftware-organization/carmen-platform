@@ -1,41 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { en } from '../i18n/en';
-import { th } from '../i18n/th';
-import { DEFAULT_LANG, LANGUAGE_STORAGE_KEY, type Lang, type TFunction, type TKey } from '../i18n/types';
-
-const CATALOGS = { en, th } as const;
-
-/** Walks a dotted path into a catalog. Returns undefined when the path does not resolve. */
-function lookup(catalog: unknown, key: string): string | undefined {
-  const value = key.split('.').reduce<unknown>(
-    (node, part) => (typeof node === 'object' && node !== null ? (node as Record<string, unknown>)[part] : undefined),
-    catalog,
-  );
-  return typeof value === 'string' ? value : undefined;
-}
-
-/** Replaces every {{name}} placeholder with the matching param. Unmatched placeholders stay put. */
-function interpolate(template: string, params?: Record<string, string | number>): string {
-  if (!params) return template;
-  return template.replace(/\{\{(\w+)\}\}/g, (match, name: string) => {
-    if (name in params) return String(params[name]);
-    if (process.env.NODE_ENV === 'development') console.warn(`[i18n] missing param: ${name}`);
-    return match;
-  });
-}
-
-function translate(lang: Lang, key: TKey, params?: Record<string, string | number>): string {
-  const hit = lookup(CATALOGS[lang], key) ?? lookup(CATALOGS[DEFAULT_LANG], key);
-  if (hit === undefined) {
-    // Unreachable through a literal key — TKey rejects those at compile time. This
-    // guards keys assembled from variables. Never render the raw key to a user.
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`[i18n] missing key: ${key}`);
-    }
-    return '';
-  }
-  return interpolate(hit, params);
-}
+import { DEFAULT_LANG, LANGUAGE_STORAGE_KEY, type Lang, type TFunction } from '../i18n/types';
+import { translate } from '../i18n/translate';
 
 interface I18nContextValue {
   lang: Lang;

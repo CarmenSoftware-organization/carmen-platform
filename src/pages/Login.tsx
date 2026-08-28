@@ -35,7 +35,7 @@ const Login: React.FC = () => {
     // password'), so don't force email format here — that would block valid
     // username-based logins.
     if (name === 'username') return '';
-    return validateField(name, value);
+    return validateField(name, value, undefined, t);
   };
 
   const [credentials, setCredentials] = useState<LoginCredentials>({
