@@ -112,7 +112,7 @@ git commit -m "feat(i18n): แปลฟอร์มซื้อไลเซน�
 
 **Files:** Modify `sections/BuQuotaSection.tsx` (38), `sections/SeatSection.tsx` (25), `sections/SubscriptionSection.tsx` (14), `useLicenseLedger.ts` (4), `useClusterSeatLicenses.ts`, `licenseKindConfig.ts` (6), `licenseDates.ts`, plus the catalogs.
 
-**These three `sections/*` files are consumed by five call sites across three feature areas** — this slice's `ClusterLicenseDetail` and `LicensePurchaseForm`, plus `ClusterEdit.tsx` and `clusterEdit/sections/DetailsSection.tsx` (slice 7) and `clusterAdmin/ClusterAdminLicenses.tsx` (slice 4). A mistake here surfaces on three feature areas, so check every consumer renders correctly, not just this slice's two.
+**Correction (final fix wave, F4):** the sentence originally here claimed these three `sections/*` files are "consumed by five call sites across three feature areas," naming `ClusterEdit.tsx`, `clusterEdit/sections/DetailsSection.tsx` (slice 7) and `clusterAdmin/ClusterAdminLicenses.tsx` (slice 4) as consumers alongside this slice's own `ClusterLicenseDetail` and `LicensePurchaseForm`. **That is false.** `sections/BuQuotaSection.tsx`, `SeatSection.tsx` and `SubscriptionSection.tsx` have exactly one consumer: `ClusterLicenseDetail.tsx` (`:12-14`). The other three files only mention those component names in comments — they never `import` them. Slices 4 and 7 inherit nothing from this task. The original claim came from grepping the component names and counting every file where the name matched, without checking whether the match was an `import` or just a comment; re-verify shared-consumer claims by checking for actual imports.
 
 - [ ] **Step 1:** Bind every user-visible string in the three section cards.
 - [ ] **Step 2: One raw-enum badge** — `SubscriptionSection.tsx:142`. Same treatment as Task 3 Step 3, including the enumeration and dropping `capitalize`.
@@ -146,7 +146,7 @@ The last command must print **nothing**. Any test file in this slice's diff is a
 
 - [ ] **Step 4: Browser, in Thai.** The same screens render Thai; **zero `[i18n]` console warnings**, captured by wrapping `console.warn` before navigating.
 
-- [ ] **Step 5: The three `sections/*` consumers outside this slice.** Open a cluster edit page and a cluster-admin licences page in Thai and confirm the shared cards render correctly there too — they are five call sites across three feature areas, and only two of them are this slice's own.
+- [x] **Step 5 — retracted (F4, final fix wave).** This step originally read: "The three `sections/*` consumers outside this slice. Open a cluster edit page and a cluster-admin licences page in Thai and confirm the shared cards render correctly there too — they are five call sites across three feature areas, and only two of them are this slice's own." That premise is false: `sections/*` (`BuQuotaSection.tsx`, `SeatSection.tsx`, `SubscriptionSection.tsx`) has exactly one consumer, `ClusterLicenseDetail.tsx`. `ClusterEdit.tsx`, `clusterAdmin/ClusterAdminLicenses.tsx` and `clusterEdit/sections/DetailsSection.tsx` do not import these components — the shared cards cannot render on those pages, so there was nothing to verify there. See the Task 4 correction above.
 
 - [ ] **Step 6: Browser at 390px, both languages.** The three tables' frozen columns hold and the page body does not scroll horizontally. Measure with a same-origin iframe reading `contentWindow.innerWidth`, not the window size.
 

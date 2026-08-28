@@ -48,8 +48,10 @@ const STATUS_LABEL_KEYS: Record<StatusFilterValue, TKey> = {
   expired: 'common.status.expired',
 };
 
-// `config.ownerLabel`/`amountLabel` (licenseKindConfig.ts) — see the identical note in
-// LicensePurchaseForm.tsx for why this is resolved locally instead of touching that module.
+// See the identical note in LicensePurchaseForm.tsx: licenseKindConfig.ts used to carry
+// `ownerLabel`/`amountLabel` as plain English strings but nothing ever rendered them, so
+// this file resolves its own per-kind translated value locally instead. The dead fields
+// were deleted from `LicenseKindConfig` in the i18n fix wave (2026-08-28).
 const OWNER_LABEL_KEYS: Record<LicenseKind, TKey> = {
   seat: 'entity.businessUnit.title',
   'bu-quota': 'common.label.cluster',
@@ -85,8 +87,12 @@ const withTiebreaker = (sort: string): string => {
 /**
  * แถวกลางที่ใช้ทั้งแสดงผลและ export — จุดเดียวในไฟล์นี้ที่ต้องรู้ว่าแถวดิบมาจากชนิดไหน
  * (`SeatLicenseRow` มี `business_unit_*` ส่วน `BuQuotaLicenseRow` มี `cluster_*`) ที่เหลือ
- * (column cells, CSV) อ่านจากรูปกลางนี้อย่างเดียว ไม่ต้องแตกสาขาตามชนิดซ้ำอีก — วันที่และสถานะ
- * ถูก format/คำนวณไว้ล่วงหน้าแล้วเพื่อให้ตารางกับ CSV เห็นค่าเดียวกันเป๊ะเสมอ
+ * (column cells, CSV) อ่านจากรูปกลางนี้อย่างเดียว ไม่ต้องแตกสาขาตามชนิดซ้ำอีก — วันที่ถูก
+ * format ไว้ล่วงหน้าแล้วเพื่อให้ตารางกับ CSV เห็นค่าเดียวกันเป๊ะเสมอ ส่วน `status` เก็บเป็น
+ * enum ดิบ (`StatusFilterValue`) ไม่ใช่ label ที่แปลแล้ว — badge ในตารางและคอลัมน์ CSV
+ * ต้อง resolve ผ่าน `statusLabel()` เองคนละจุด (ตารางใน `columns`, CSV ใน `handleExport`)
+ * เพื่อไม่ผูก locale ไว้ในแถวกลาง แต่ทั้งสองจุดต้องเรียก `statusLabel()` ตัวเดียวกันเสมอ
+ * ไม่งั้นค่าที่เห็นในตารางกับไฟล์ที่ export จะไม่ตรงกัน
  */
 interface FleetLicenseRow {
   id: string;
@@ -119,6 +125,7 @@ function toFleetRow(
   row: SeatLicenseRow | BuQuotaLicenseRow,
   now: Date,
   showNoExpiry: boolean,
+  noExpiryLabel: string,
 ): FleetLicenseRow {
   const isSeat = kind === 'seat';
   const seat = row as SeatLicenseRow;
@@ -137,7 +144,7 @@ function toFleetRow(
     owner_name: isSeat ? seat.business_unit_name : quota.cluster_name,
     amount: isSeat ? seat.licensed_users : quota.licensed_bus,
     start_date: fmtDate(row.start_date),
-    end_date: showNoExpiry && isPerpetual(row.end_date) ? 'No expiry' : fmtDate(row.end_date),
+    end_date: showNoExpiry && isPerpetual(row.end_date) ? noExpiryLabel : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
     created_at: quotaAudit.created?.at ?? null,
@@ -244,7 +251,8 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       };
       const data = await config.service.listPlatform(params);
       const now = new Date();
-      setRows(data.data.map((r) => toFleetRow(config.kind, r, now, config.showNoExpiry)));
+      const noExpiryLabel = t('common.state.noExpiry');
+      setRows(data.data.map((r) => toFleetRow(config.kind, r, now, config.showNoExpiry, noExpiryLabel)));
       setTotalRows(data.paginate?.total ?? data.data.length);
       setLoadFailed(false);
     } catch (err: unknown) {
@@ -257,7 +265,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     } finally {
       setLoading(false);
     }
-  }, [config, paginate, debouncedSearch, statusFilter]);
+  }, [config, paginate, debouncedSearch, statusFilter, t]);
 
   useEffect(() => {
     fetchRows();
@@ -310,7 +318,11 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     // export เฉพาะหน้าปัจจุบันที่โหลดมาแล้ว (`rows`) ไม่ยิงคำขอ perpage:-1 แยกต่างหาก —
     // แพทเทิร์นเดิมเคยทำแบบนั้นแล้วเลิกใช้ (ดู memory: List summary block เลิก perpage:-1)
     // และตรงกับ SubscriptionTable.tsx ที่ export `items` ของหน้าปัจจุบันเช่นกัน
-    const csvRows = rows.map((r) => ({ ...r, ...auditCsvFields(normalizeAudit(r)) }));
+    const csvRows = rows.map((r) => ({
+      ...r,
+      ...auditCsvFields(normalizeAudit(r)),
+      status: statusLabel(r.status),
+    }));
     const csv = generateCSV(csvRows, [
       { key: 'license_number', label: t('pages.licenses.licenseNumber') },
       { key: 'owner_code', label: t('pages.licenses.ownerCodeColumn', { owner: ownerLabel }) },

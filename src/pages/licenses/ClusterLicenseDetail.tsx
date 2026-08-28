@@ -106,7 +106,7 @@ const ClusterLicenseDetail: React.FC = () => {
         <PageHeader
           backTo="/licenses"
           title={clusterLoading
-            ? t('pages.licenses.loadingEllipsis')
+            ? t('common.busy.loadingEllipsis')
             : (cluster?.name || (clusterMissing
               ? t('pages.licenses.clusterNotFoundOrDeleted')
               : t('pages.licenses.clusterUnavailable')))}

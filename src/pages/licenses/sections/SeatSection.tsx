@@ -76,7 +76,7 @@ export function SeatSection({ clusterId, businessUnits, canManage }: SeatSection
           </CardTitle>
           <CardDescription>
             {loading && rows.length === 0 ? (
-              t('pages.licenses.loadingEllipsis')
+              t('common.busy.loadingEllipsis')
             ) : rows.length === 0 ? (
               t('pages.licenses.noBusinessUnitsSeatsDescription')
             ) : (

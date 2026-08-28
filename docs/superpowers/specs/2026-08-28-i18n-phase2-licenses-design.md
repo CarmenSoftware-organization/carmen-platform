@@ -30,11 +30,11 @@ PurchaseLicenseTable.tsx  32    SubscriptionSection.tsx   14    useLicenseLedger
                                                                 licenseDates.ts            0
 ```
 
-## `sections/*` is shared with two later slices
+## Correction (final fix wave, F4): `sections/*` has one consumer, not three
 
-`sections/BuQuotaSection.tsx`, `SeatSection.tsx` and `SubscriptionSection.tsx` are consumed by `ClusterEdit.tsx` (slice 7), `clusterAdmin/ClusterAdminLicenses.tsx` (slice 4) and `clusterEdit/sections/DetailsSection.tsx` (slice 7) as well as by this slice's own `ClusterLicenseDetail` and `LicensePurchaseForm`.
+The claim below — that `sections/*` is "shared with two later slices" across three feature areas — is **false** and was corrected in the final fix wave without a code change. `sections/BuQuotaSection.tsx`, `SeatSection.tsx` and `SubscriptionSection.tsx` are imported by exactly one file: this slice's own `ClusterLicenseDetail.tsx` (`ClusterLicenseDetail.tsx:12-14`). `ClusterEdit.tsx`, `clusterAdmin/ClusterAdminLicenses.tsx` and `clusterEdit/sections/DetailsSection.tsx` only **mention** those filenames in comments — none of them import or render these components. Slices 4 and 7 inherit nothing from translating `sections/*` here.
 
-Translating them here means slices 4 and 7 inherit them already done. It also means a mistake here surfaces on three feature areas rather than one, so their reviews carry more weight than their string counts suggest.
+The original claim came from grepping the component names (`BuQuotaSection`, `SeatSection`, `SubscriptionSection`) across the repo and counting every file where a match landed, without checking whether each match was an actual `import` versus a comment that merely referenced the filename. The next slice should re-verify shared-consumer claims by checking for `import` statements, not by counting name matches.
 
 ## Three raw-enum badges
 
@@ -55,7 +55,7 @@ Each renders a raw enum title-cased by CSS, so each stays English in Thai. Each 
 | Byte-identity | Applies in full — every string here already has English |
 | Test files | **None change.** 3b's twelve files have no test coverage of their own |
 | The one Thai string | Binds to slice 3a's `pages.subscriptions.numberAutoAssigned`; no new key |
-| `sections/*` | Translated here, inherited by slices 4 and 7 |
+| `sections/*` | Translated here; **correction (F4):** consumed only by this slice's `ClusterLicenseDetail.tsx` — slices 4 and 7 inherit nothing from it (see the correction note above) |
 | Namespace | `pages.licenses.*`, with reuse from `common.*` / `entity.*` / `toast.*` checked first |
 
 ## Risks
@@ -66,7 +66,7 @@ Each renders a raw enum title-cased by CSS, so each stays English in Thai. Each 
 | A `\|\|` fallback masks a missing key | High | Three raw-enum sites here. Enumerate what each lookup can receive. |
 | A shared template already produces a key's value | Medium | Compose `toast.*` with each `entity.*` noun. The duplicate-value script cannot see this class — it compares literals. |
 | A string leaves the app without being rendered | Medium | Slice 3a found a CSV column written straight off a data object. These files export CSV too. Follow the data path. |
-| `sections/*` breaks slices 4 and 7 | Medium | They are consumed by five call sites across three feature areas; check each renders correctly, not just this slice's two. |
+| ~~`sections/*` breaks slices 4 and 7~~ — **retracted (F4)** | N/A | False premise: `sections/*` has one consumer, `ClusterLicenseDetail.tsx`. The other three named files only mention the component names in comments; they do not import them. No mitigation needed — see the correction note above. |
 | A plain English string with no key is missed | Medium | 3a shipped a `<CardDescription>` this way. Every task ends by reading its files end to end. |
 
 ## Verification

@@ -119,7 +119,7 @@ export function SubscriptionInfoCard({
                   <option value="">{t('common.state.selectACluster')}</option>
                   {missingCurrentClusterId && (
                     <option value={missingCurrentClusterId}>
-                      {clustersLoading ? t('pages.subscriptions.loadingOption') : missingCurrentClusterId}
+                      {clustersLoading ? t('common.busy.loadingEllipsis') : missingCurrentClusterId}
                     </option>
                   )}
                   {clusters.map((c) => (
@@ -156,7 +156,7 @@ export function SubscriptionInfoCard({
                     {!formData.cluster_id
                       ? t('pages.subscriptions.selectClusterFirst')
                       : clusterBusLoading
-                        ? t('pages.subscriptions.loadingOption')
+                        ? t('common.busy.loadingEllipsis')
                         : t('common.state.selectABusinessUnit')}
                   </option>
                   {clusterBus.map((b) => (

@@ -12,17 +12,8 @@ export type LicenseKind = 'seat' | 'bu-quota';
  */
 export interface LicenseKindConfig {
   kind: LicenseKind;
-  /** ป้ายช่องจำนวนที่ผู้ใช้เห็น */
-  amountLabel: string;
-  /** หัวข้อหน้าโหมดสร้าง (`PageHeader title`) — เขียนตรง ๆ แยกจาก amountLabel แทนที่จะ compose
-   *  ด้วย `Add ${amountLabel} License` เพราะ amountLabel เป็นป้ายของ "ช่องจำนวน" (สั้น ห้วน พอดี
-   *  label ของ input) ไม่ใช่สำนวนหัวข้อหน้า สอง kind สะกด/เรียงคำต่างกันได้ตามธรรมชาติของภาษา
-   *  (`Add seat license` vs `Add BU quota license`) โดยไม่ต้องพึ่งสูตร string เดียวที่บังคับให้เหมือนกัน */
-  newPageTitle: string;
   /** ชื่อฟิลด์จำนวนบนสาย */
   amountField: 'licensed_users' | 'licensed_bus';
-  /** ป้ายชนิดเจ้าของ */
-  ownerLabel: string;
   /** ชื่อ query param ที่ใช้ prefill เจ้าของตอนสร้าง */
   ownerParam: 'bu' | 'cluster';
   /** ใบชนิดนี้มีสวิตช์ "ไม่มีวันหมดอายุ" ไหม (sentinel ปี 2099) */
@@ -31,8 +22,9 @@ export interface LicenseKindConfig {
   showNote: boolean;
   /** แสดงคลัสเตอร์แยกจากเจ้าของไหม (คอลัมน์ใน `PurchaseLicenseTable` + ช่องอ่านอย่างเดียวใน
    *  `LicensePurchaseForm`) — ใบที่นั่งมีเจ้าของเป็น BU จึงต้องบอกว่า BU นั้น
-   *  อยู่คลัสเตอร์ไหน ส่วนใบโควตา BU มีเจ้าของเป็น cluster อยู่แล้ว (`ownerLabel: 'Cluster'`)
-   *  การเปิดที่นั่นจะได้ Cluster สองคอลัมน์ซ้ำกัน */
+   *  อยู่คลัสเตอร์ไหน ส่วนใบโควตา BU มีเจ้าของเป็น cluster เองอยู่แล้ว (ป้ายเจ้าของแปลจาก
+   *  `common.label.cluster` — ดู `OWNER_LABEL_KEYS` ในสองไฟล์ที่ใช้ config นี้) การเปิดที่นั่น
+   *  จะได้ Cluster สองคอลัมน์ซ้ำกัน */
   showCluster: boolean;
   /** เส้นทางกลับของ `PageHeader backTo` */
   listPath: string;
@@ -45,10 +37,7 @@ export interface LicenseKindConfig {
 
 export const SEAT_CONFIG: LicenseKindConfig = {
   kind: 'seat',
-  amountLabel: 'Seats',
-  newPageTitle: 'Add seat license',
   amountField: 'licensed_users',
-  ownerLabel: 'Business Unit',
   ownerParam: 'bu',
   showNoExpiry: false,
   showNote: false,
@@ -60,10 +49,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
 
 export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   kind: 'bu-quota',
-  amountLabel: 'BU quota',
-  newPageTitle: 'Add BU quota license',
   amountField: 'licensed_bus',
-  ownerLabel: 'Cluster',
   ownerParam: 'cluster',
   showNoExpiry: true,
   showNote: true,

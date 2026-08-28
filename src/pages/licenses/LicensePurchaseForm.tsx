@@ -49,12 +49,13 @@ const STATUS_LABEL_KEYS: Record<BuLicenseStatus | ClusterLicenseStatus, TKey> = 
   expired: 'common.status.expired',
 };
 
-// `config.ownerLabel`/`amountLabel`/`newPageTitle` (licenseKindConfig.ts) are plain English
-// strings on a module that can't call `t` (it's a shared config object, not a component,
-// and other files read it too — out of this task's two-file scope). Resolve the per-kind
-// translated value locally instead, via keys Task 1 already seeded for this exact purpose
-// (buQuota/addBuQuotaLicense/addSeatLicense) plus common.field.seats/common.label.cluster/
-// entity.businessUnit.title.
+// licenseKindConfig.ts used to carry `ownerLabel`/`amountLabel`/`newPageTitle` as plain
+// English string fields, but neither this file nor PurchaseLicenseTable.tsx ever rendered
+// them — both resolve their own per-kind translated value locally instead, via keys Task 1
+// already seeded for this exact purpose (buQuota/addBuQuotaLicense/addSeatLicense) plus
+// common.field.seats/common.label.cluster/entity.businessUnit.title. The three dead fields
+// were deleted from `LicenseKindConfig` in the i18n fix wave (2026-08-28) once this was
+// confirmed — these Record maps are the only source of the label now, not the config.
 const OWNER_LABEL_KEYS: Record<LicenseKind, TKey> = {
   seat: 'entity.businessUnit.title',
   'bu-quota': 'common.label.cluster',

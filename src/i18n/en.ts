@@ -190,6 +190,16 @@ export const en = {
       adding: 'Adding...',
       creating: 'Creating...',
       loading: 'Loading...',
+      // Distinct from `loading` above on purpose, not a casing/whitespace slip: this one
+      // uses the single-character ellipsis (…, U+2026), `loading` uses three ASCII dots
+      // ('...') — two different glyphs the source files themselves use inconsistently, so
+      // both must exist as separate values rather than collapsing to one. Promoted here
+      // (F5, 2026-08-28 fix wave) from two page-local duplicates that both held this exact
+      // '…' string byte-identically in English and Thai — `pages.subscriptions.loadingOption`
+      // and `pages.licenses.loadingEllipsis` — once a third file's call site cleared the
+      // ≥3-files-AND-≥2-slices promotion bar. Call sites: SubscriptionInfoCard.tsx (x2),
+      // ClusterLicenseDetail.tsx, SeatSection.tsx.
+      loadingEllipsis: 'Loading…',
     },
     audit: {
       createdAt: 'Created at',
@@ -905,10 +915,6 @@ export const en = {
       featureEntitlementsForBu: 'Feature entitlements for {{code}}',
       featureEntitlementsGeneric: 'Feature entitlements for this contract',
       detailsDescription: 'Contract identity, period, and status',
-      // Source uses the single-character ellipsis (…), not three dots — distinct from
-      // common.busy.loading ('Loading...'). Shared by both the cluster and business-unit
-      // select's own "still loading" option.
-      loadingOption: 'Loading…',
       effectiveState: 'Effective state:',
     },
 
@@ -958,11 +964,6 @@ export const en = {
       // Different capitalization is a different byte-identical string, so it is not that
       // key's reuse candidate.
       clearAllFilters: 'Clear all filters',
-      // ClusterLicenseDetail.tsx (page title while the cluster loads) + SeatSection.tsx
-      // (card description while the seat batch loads) — confirmed U+2026 (…) in both
-      // source files, not three ASCII dots, so this is genuinely distinct from
-      // common.busy.loading ('Loading...'), not a duplicate of it.
-      loadingEllipsis: 'Loading…',
 
       // Task 2 (call-site binding) — LicenseCenter.tsx page header + view switcher. `title`
       // doubles as the ClusterLicenseDetail.tsx subtitle fallback below (cluster not yet

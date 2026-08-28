@@ -92,7 +92,12 @@ export const th: Translations = {
     selectCluster: 'เลือก cluster',
     switchCluster: 'เปลี่ยน cluster',
     chooseCluster: 'เลือก cluster ที่ต้องการดูแล',
-    searchClusters: 'ค้นหา cluster…',
+    // F6 (2026-08-28 fix wave): unified with pages.licenses.searchClustersPlaceholder below,
+    // which used to say 'ค้นหาคลัสเตอร์...' — same English ('Search clusters...'), same UI
+    // job, kept as two separate keys (below the promotion bar — see en.ts), but the Thai
+    // now matches: Latin loanword `cluster` (per seatsPoolNote/seatsPoolDescription) and
+    // three ASCII dots (matching the English source, not U+2026).
+    searchClusters: 'ค้นหา cluster...',
     noClustersFound: 'ไม่พบ cluster',
     switchBu: 'เปลี่ยนหน่วยธุรกิจ',
     chooseBu: 'ค้นหาและเลือกหน่วยธุรกิจที่ต้องการเข้าใช้งาน',
@@ -177,6 +182,9 @@ export const th: Translations = {
       adding: 'กำลังเพิ่ม...',
       creating: 'กำลังสร้าง...',
       loading: 'กำลังโหลด...',
+      // ดูคอมเมนต์ที่ en.ts — ต่างจาก `loading` ข้างบนด้วยตัวจุดไข่ปลา (…, U+2026) ไม่ใช่จุด
+      // ASCII สามตัว ('...') ทั้งสองรูปแบบมีอยู่จริงในซอร์สคนละจุด เลยต้องแยกคีย์กัน ไม่รวมเป็นคีย์เดียว
+      loadingEllipsis: 'กำลังโหลด…',
     },
     audit: {
       createdAt: 'สร้างเมื่อ',
@@ -713,7 +721,6 @@ export const th: Translations = {
       featureEntitlementsForBu: 'สิทธิ์ของฟีเจอร์สำหรับ {{code}}',
       featureEntitlementsGeneric: 'สิทธิ์ของฟีเจอร์สำหรับสัญญานี้',
       detailsDescription: 'ข้อมูลระบุตัวตนของสัญญา ช่วงเวลา และสถานะ',
-      loadingOption: 'กำลังโหลด…',
       effectiveState: 'สถานะที่มีผล:',
     },
 
@@ -728,7 +735,6 @@ export const th: Translations = {
       removeLicenseTitle: 'นำไลเซนส์ออก',
       noLicensesYetTitle: 'ยังไม่มีไลเซนส์',
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
-      loadingEllipsis: 'กำลังโหลด…',
 
       title: 'ไลเซนส์',
       subtitle: 'สถานะไลเซนส์ทั้ง fleet แยกตามคลัสเตอร์ สัญญา ไลเซนส์ที่นั่ง หรือโควตา BU',
@@ -748,7 +754,8 @@ export const th: Translations = {
       seatsFull: 'ที่นั่งเต็ม',
       buQuotaColumn: 'โควตา BU',
       daysLeft: 'เหลืออีก {{count}} วัน',
-      searchClustersPlaceholder: 'ค้นหาคลัสเตอร์...',
+      // F6: unified with switcher.searchClusters — see the comment there.
+      searchClustersPlaceholder: 'ค้นหา cluster...',
       filtersSheetDescription: 'กรองคลัสเตอร์ตามสถานะและสถานะไลเซนส์',
       licenceStateLabel: 'สถานะไลเซนส์',
       quotaExpiringToggle: 'โควตาใกล้หมดอายุ',
