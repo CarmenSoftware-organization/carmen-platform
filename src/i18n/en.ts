@@ -881,6 +881,73 @@ export const en = {
       loadingOption: 'Loading…',
       effectiveState: 'Effective state:',
     },
+
+    // Slice 3b (License Center, cluster license tables, the purchase form, and three
+    // shared section cards — twelve files total). Catalog-only pass (Task 1): every key
+    // below is seeded because its exact string recurs in MORE THAN ONE of those twelve
+    // files — a later task binding any one of those files reuses the key here instead of
+    // re-declaring it. A string that shows up in only one file stays out of this object;
+    // that file's own task adds it page-locally.
+    //
+    // Reuse-checked first against common.*/entity.*/breadcrumb.*/error.* (exact value,
+    // Thai read too) and toast.* composed with entity.* — every key below is what was
+    // LEFT after that pass found no match. See task-1-report.md for the full reuse list
+    // (e.g. 'No expiry' -> common.state.noExpiry, 'Status' -> common.status.label,
+    // 'Active'/'Scheduled'/'Expired' -> common.status.*, 'Reference' -> common.field.reference,
+    // 'Filters' -> common.label.filters, 'Cluster' -> common.label.cluster).
+    licenses: {
+      // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts
+      // (BU_QUOTA_CONFIG.amountLabel) — both literally 'BU quota'.
+      buQuota: 'BU quota',
+      // ClusterLicenseDetail.tsx (nav section label) + licenseKindConfig.ts
+      // (SEAT_CONFIG.amountLabel) + SeatSection.tsx (card title) — all three literally
+      // 'Seats'. Coincidentally identical to pages.subscriptions.seats — a different
+      // slice, out of this task's reuse-check scope (common/entity/breadcrumb/error only),
+      // so this stays its own key rather than reaching across slices.
+      seats: 'Seats',
+      // licenseKindConfig.ts (BU_QUOTA_CONFIG.newPageTitle) + BuQuotaSection.tsx (the
+      // "Add BU quota license" button — hardcoded there, not read from config).
+      addBuQuotaLicense: 'Add BU quota license',
+      // licenseKindConfig.ts (SEAT_CONFIG.newPageTitle) + SeatSection.tsx (the "Add seat
+      // license" button — hardcoded there, not read from config).
+      addSeatLicense: 'Add seat license',
+      // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
+      // (field Label).
+      licenseNumber: 'License Number',
+      // LicensePurchaseForm.tsx (field Label, before the conditional ' *' suffix) +
+      // PurchaseLicenseTable.tsx (CSV export label). Coincidentally identical to
+      // pages.subscriptions.startDate/endDate — a different slice, out of this task's
+      // reuse-check scope, so these stay their own keys (see `seats` above).
+      startDate: 'Start Date',
+      endDate: 'End Date',
+      // BuQuotaSection.tsx + SeatSection.tsx inline ledger tables — the compact column
+      // headers, a different register from the full "Start Date"/"End Date" labels above
+      // (a table header vs. a form-field label — same split rationale the file already
+      // uses for common.section.* vs common.field.*). 'Start' is coincidentally identical
+      // to common.action.start (a verb, "Start" on some action button elsewhere) — kept
+      // apart because that key is a verb and this one is a noun-ish column header; there
+      // is no common.action counterpart for 'End' to reuse anyway, so both stay local here
+      // for symmetry.
+      start: 'Start',
+      end: 'End',
+      // BuQuotaSection.tsx + SeatSection.tsx ConfirmDialog title — the two files' dialog
+      // descriptions differ (BU count vs. seat count) and stay page-local; only the shared
+      // title is seeded here.
+      removeLicenseTitle: 'Remove license',
+      // BuQuotaSection.tsx + SeatSection.tsx EmptyState title — the two files' descriptions
+      // differ and stay page-local; only the shared title is seeded here.
+      noLicensesYetTitle: 'No licenses yet',
+      // ClusterLicenseTable.tsx + PurchaseLicenseTable.tsx "Clear all filters" button —
+      // lowercase, NOT common.action.clearAllFilters ('Clear All Filters', Title Case).
+      // Different capitalization is a different byte-identical string, so it is not that
+      // key's reuse candidate.
+      clearAllFilters: 'Clear all filters',
+      // ClusterLicenseDetail.tsx (page title while the cluster loads) + SeatSection.tsx
+      // (card description while the seat batch loads). Coincidentally identical to
+      // pages.subscriptions.loadingOption — a different slice, out of this task's
+      // reuse-check scope, kept as its own key (see `seats`/`startDate` above).
+      loadingEllipsis: 'Loading…',
+    },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched

@@ -707,6 +707,24 @@ export const th: Translations = {
       loadingOption: 'กำลังโหลด…',
       effectiveState: 'สถานะที่มีผล:',
     },
+
+    // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —
+    // no call site is bound yet).
+    licenses: {
+      buQuota: 'โควตา BU',
+      seats: 'ที่นั่ง',
+      addBuQuotaLicense: 'เพิ่มไลเซนส์โควตา BU',
+      addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
+      licenseNumber: 'เลขที่ไลเซนส์',
+      startDate: 'วันที่เริ่ม',
+      endDate: 'วันที่สิ้นสุด',
+      start: 'เริ่ม',
+      end: 'สิ้นสุด',
+      removeLicenseTitle: 'นำไลเซนส์ออก',
+      noLicensesYetTitle: 'ยังไม่มีไลเซนส์',
+      clearAllFilters: 'ล้างตัวกรองทั้งหมด',
+      loadingEllipsis: 'กำลังโหลด…',
+    },
   },
   error: {
     unexpected: 'เกิดข้อผิดพลาดที่ไม่คาดคิด',
