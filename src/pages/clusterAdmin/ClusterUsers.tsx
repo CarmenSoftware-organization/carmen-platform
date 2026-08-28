@@ -16,6 +16,7 @@ import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import clusterService from '../../services/clusterService';
 import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
 import type { ClusterInvitation, ClusterUser } from '../../types';
 
 /**
@@ -25,6 +26,7 @@ import type { ClusterInvitation, ClusterUser } from '../../types';
  * catalog. Task 9 fills the Invitations tab and the "Invite user" dialog behind the button below.
  */
 const ClusterUsers: React.FC = () => {
+  const { t } = useI18n();
   const { clusterId } = useParams<{ clusterId: string }>();
   const [tab, setTab] = useState<'members' | 'invitations'>('members');
   const [members, setMembers] = useState<ClusterUser[]>([]);
@@ -54,13 +56,13 @@ const ClusterUsers: React.FC = () => {
         setMembers([]);
         return;
       }
-      const { message } = parseApiError(err);
-      toast.error('Failed to load members', { description: message });
+      const { message } = parseApiError(err, t);
+      toast.error(t('pages.clusterAdmin.failedToLoadMembers'), { description: message });
       setMembers([]);
     } finally {
       setLoading(false);
     }
-  }, [clusterId]);
+  }, [clusterId, t]);
 
   const fetchInvitations = useCallback(async () => {
     if (!clusterId) return;
@@ -77,13 +79,13 @@ const ClusterUsers: React.FC = () => {
         setInvitations([]);
         return;
       }
-      const { message } = parseApiError(err);
-      toast.error('Failed to load invitations', { description: message });
+      const { message } = parseApiError(err, t);
+      toast.error(t('pages.clusterAdmin.failedToLoadInvitations'), { description: message });
       setInvitations([]);
     } finally {
       setInvitationsLoading(false);
     }
-  }, [clusterId]);
+  }, [clusterId, t]);
 
   useEffect(() => {
     fetchMembers();
@@ -105,12 +107,12 @@ const ClusterUsers: React.FC = () => {
     <ClusterAdminLayout>
       <div className="space-y-6 sm:space-y-8">
         <PageHeader
-          title="Users"
-          subtitle="Manage members and pending invitations for this cluster"
+          title={t('nav.users')}
+          subtitle={t('pages.clusterAdmin.usersPageSubtitle')}
           actions={
             <Button size="sm" onClick={() => setInviteOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
-              Invite user
+              {t('pages.clusterAdmin.inviteUser')}
             </Button>
           }
         />
@@ -120,8 +122,8 @@ const ClusterUsers: React.FC = () => {
         ) : (
           <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'invitations')}>
             <TabsList>
-              <TabsTrigger value="members">Members ({members.length})</TabsTrigger>
-              <TabsTrigger value="invitations">Invitations ({invitations.length})</TabsTrigger>
+              <TabsTrigger value="members">{t('pages.clusterAdmin.membersTabLabel', { count: members.length })}</TabsTrigger>
+              <TabsTrigger value="invitations">{t('pages.clusterAdmin.invitationsTabLabel', { count: invitations.length })}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="members">
@@ -130,7 +132,7 @@ const ClusterUsers: React.FC = () => {
                   <SearchInput
                     value={memberSearch}
                     onValueChange={setMemberSearch}
-                    placeholder="Search members..."
+                    placeholder={t('pages.clusterAdmin.searchMembersPlaceholder')}
                     className="sm:max-w-sm"
                   />
                 </CardHeader>

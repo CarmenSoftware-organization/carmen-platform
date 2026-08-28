@@ -1324,6 +1324,94 @@ export const en = {
       // possible source typo; kept byte-identical to the source rather than silently
       // "corrected" to Title Case.
       saveChangesButton: 'Save changes',
+
+      // --- Task 3: MembersTable.tsx ---
+      noMembersYet: 'No members yet',
+      loadingMembersAria: 'Loading members',
+      loadingMembers: 'Loading members...',
+      removeMemberTitle: 'Remove member',
+      removeMemberConfirm: 'Remove "{{name}}" from this cluster?',
+      roleUpdated: 'Role updated',
+      roleUpdateFailed: 'Failed to update role',
+      memberRemoved: 'Member removed',
+      memberRemoveFailed: 'Failed to remove member',
+      // Hazard 2 (MembersTable.tsx:139): the dropdown's "Make {r}" item — {{role}} is always
+      // pre-translated via ROLE_LABEL_KEYS before interpolation, never the raw API value.
+      makeRole: 'Make {{role}}',
+
+      // --- Task 3: InvitationsTable.tsx ---
+      // Hazard 2 (InvitationsTable.tsx:23/123): the invitation-status enum this table's status
+      // Badge can render. Not `enum_user_invitation_status` itself — 'expired' is a computed
+      // *display* status the backend derives from a lapsed `pending` row (see the file's own
+      // doc comment) — but together with 'expired' this is every value `statusVariant()` (same
+      // file) already switches on, i.e. the complete set this column can show. 'expired' reuses
+      // common.status.expired directly rather than duplicating it.
+      invitationStatusPending: 'Pending',
+      invitationStatusAccepted: 'Accepted',
+      invitationStatusDeclined: 'Declined',
+      invitationStatusRevoked: 'Revoked',
+      invitedColumn: 'Invited',
+      resend: 'Resend',
+      revoke: 'Revoke',
+      noPendingInvitations: 'No pending invitations',
+      loadingInvitationsAria: 'Loading invitations',
+      loadingInvitations: 'Loading invitations...',
+      revokeInvitationTitle: 'Revoke invitation',
+      revokeInvitationConfirm: 'Revoke the invitation sent to "{{email}}"? They will no longer be able to accept it.',
+      invitationResent: 'Invitation resent',
+      resendFailed: 'Failed to resend invitation',
+      invitationRevoked: 'Invitation revoked',
+      revokeFailed: 'Failed to revoke invitation',
+
+      // --- Task 3: InviteUserDialog.tsx ---
+      // Hazard 1 (InviteUserDialog.tsx:22,23): CLUSTER_ROLES/BU_ROLES render via
+      // ROLE_LABEL_KEYS (src/pages/clusterAdmin/roleLabels.ts), shared with MembersTable.tsx
+      // and InvitationsTable.tsx — see common.role.* above for the two label values.
+      enterValidEmail: 'Enter a valid email address',
+      invitationSent: 'Invitation sent',
+      invitationAlreadyPending: 'Invitation already pending',
+      invitationAlreadyPendingDescription: 'An invitation to {{email}} is already outstanding for this cluster.',
+      alreadyAMember: 'Already a member',
+      alreadyAMemberDescription: '{{email}} already has membership in this cluster.',
+      rateLimited: 'Rate limited',
+      sendInvitationFailed: 'Failed to send invitation',
+      // Shared with ClusterUsers.tsx's "Invite user" button — same dialog, same word, one key.
+      inviteUser: 'Invite user',
+      inviteUserDescription: "Send an invitation to join this cluster. The recipient does not need a Carmen account yet — the link lets them set a password and join in one step.",
+      // Format-example placeholder, not prose — identical value in both languages, same
+      // rationale as pages.users.usernamePlaceholder ('user@example.com').
+      emailPlaceholder: 'name@example.com',
+      // Sentence case ('Cluster role'), NOT a byte match for common.label.clusterRole
+      // ('Cluster Role', Title Case, the column header) — this is a form field label.
+      clusterRoleFieldLabel: 'Cluster role',
+      businessUnitAccessLabel: 'Business unit access',
+      businessUnitAccessHint: 'Select the business units this invitation grants access to, and optionally mark one as default.',
+      roleInBu: 'Role in {{name}}',
+      sending: 'Sending...',
+      // Byte-identical to pages.broadcasts.send (2 files / 2 slices — below the promotion
+      // bar, see task-1 report's promotion-signal table). Left split, not promoted.
+      send: 'Send',
+
+      // --- Task 3: ClusterUsers.tsx ---
+      failedToLoadMembers: 'Failed to load members',
+      failedToLoadInvitations: 'Failed to load invitations',
+      usersPageSubtitle: 'Manage members and pending invitations for this cluster',
+      membersTabLabel: 'Members ({{count}})',
+      invitationsTabLabel: 'Invitations ({{count}})',
+      searchMembersPlaceholder: 'Search members...',
+
+      // --- Task 3: ClusterPeopleCard.tsx ---
+      viewAllClusterUsers: 'View all cluster users',
+      // Distinct from noMembersYet above ('No members yet', MembersTable.tsx's empty state) —
+      // this card's EmptyState title omits "yet".
+      noMembers: 'No members',
+      noMembersInvitedDescription: 'Nobody has been invited to this cluster yet.',
+      noClusterAdministrators: 'No cluster administrators. Only platform administrators can manage this cluster.',
+      administratorsHeading: 'Administrators',
+      moreAdministrator: '{{count}} more administrator',
+      moreAdministrators: '{{count}} more administrators',
+      memberWithoutAdminRights: '{{count}} member without admin rights',
+      membersWithoutAdminRights: '{{count}} members without admin rights',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
