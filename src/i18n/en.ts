@@ -1465,6 +1465,130 @@ export const en = {
       clusterSeatsHeading: 'Cluster seats',
       capLicensedSuffix: '/ {{cap}} licensed',
       clusterSeatsAriaLabel: 'Cluster seats: {{used}} of {{cap}} licensed in use',
+
+      // --- Task 5: CapacityStrip.tsx ---
+      // Pool's numeric line ('/ no cap' vs '/ {{cap}} licensed') — the licensed branch reuses
+      // SeatMeter.tsx's capLicensedSuffix directly (Task 4's key, same '/ {{cap}} licensed'
+      // shape); this key covers only the uncapped branch, which that key has no equivalent for.
+      noCapSuffix: '/ no cap',
+      // AllocationTicks' aria-label, parameterized by the already-translated Pool label
+      // ('Business units'/'Seats', both common.* reuses — see the call site). Distinct from
+      // SeatMeter.tsx's clusterSeatsAriaLabel, which hardcodes "Cluster seats" instead of a
+      // variable label.
+      poolAriaNoCap: '{{label}}: {{used}} in use, no cap',
+      poolAriaWithCap: '{{label}}: {{used}} of {{cap}} licensed in use',
+      // buNote's four branches. NOT the same string as this object's own overLimitCountOne/Many
+      // (BusinessUnitList.tsx's banner, a longer sentence naming the quota cap) — this is the
+      // capacity strip's much shorter note line.
+      buBeyondQuotaOne: '{{count}} business unit is beyond quota and read-only',
+      buBeyondQuotaMany: '{{count}} business units are beyond quota and read-only',
+      noBuQuotaPurchased: 'No business-unit quota purchased',
+      noQuotaLeftForAnotherBu: 'No quota left for another business unit',
+      buQuotaFree: '{{free}} of {{cap}} quota free',
+      // Joined with buNote via a literal ' · ' in code, not composed into one template — same
+      // non-linguistic-separator pattern ClusterPeopleCard.tsx (Task 3) already established.
+      expiresOn: 'expires {{date}}',
+      // seatNote's remaining branches. seatFree === 0 reuses noSeatsOpen above; the "seat(s)
+      // open" branch is byte-identical to SeatMeter.tsx's seatsOpenOne/Many and reuses those
+      // directly instead of duplicating.
+      noSeatCapSet: 'No seat cap set',
+      seatsBeyondLicensedOne: '{{count}} user beyond the licensed seat count',
+      seatsBeyondLicensedMany: '{{count}} users beyond the licensed seat count',
+
+      // --- Task 5: ClusterProfile.tsx ---
+      unnamedCluster: '(unnamed cluster)',
+      tenantGroup: 'Tenant group',
+      brandingCardDescription: 'Shown in the sidebar, the cluster switcher, and lists across the platform.',
+      loadingClusterProfileAria: 'Loading cluster profile',
+      // Prefix-concatenation, matching this object's own loadFailedDetail (BusinessUnitForm.tsx)
+      // and pages.subscriptions/pages.licenses' *Prefix keys — a different entity (cluster, not
+      // business unit), so not that key's reuse candidate.
+      loadClusterFailedDetail: 'Failed to load cluster: ',
+      // No toast.updated template exists (only created/deleted/deleteFailed/loadFailed/
+      // saveFailed) and no entity.cluster noun exists in the catalog yet (ClusterEdit.tsx, the
+      // platform-admin twin, has never been run through t() to seed one) — both toast strings
+      // stay page-local rather than composed.
+      clusterUpdated: 'Cluster updated',
+      updateClusterFailed: 'Failed to update cluster',
+
+      // --- Task 5: ClusterAdminLicenses.tsx ---
+      // NOT a byte match for pages.licenses.subtitleWithCode ('Licenses · {{code}}', American
+      // spelling) — this page's source spells it "Licences" (British), matching the hazard-4
+      // spelling drift Task 1's report already flagged for this file. Thai is identical to
+      // subtitleWithCode's (Thai doesn't distinguish the two spellings), reused verbatim rather
+      // than retranslated.
+      licencesSubtitleWithCode: 'Licences · {{code}}',
+      // Shared with licenses/SeatsByBuTable.tsx's bare "Licences" column header below — same
+      // English/Thai, no distinct contract between the two (unlike e.g. common.field.company
+      // vs this object's own `company` section heading), so one key covers both rather than
+      // two identical keys.
+      licencesLabel: 'Licences',
+
+      // --- Task 5: licenses/BuRankingCard.tsx ---
+      buRankingLabel: 'Business unit ranking',
+      rankingExplanation: 'When quota runs short, the platform covers units in this order — HQ first, then oldest.',
+      rankedQuotaUnknown: '{{count}} ranked · quota unknown',
+      beyondQuotaReadOnly: '{{count}} beyond quota and read-only',
+      rankedAllWithinQuota: '{{count}} ranked · all within quota',
+      beyondQuotaBadge: 'Beyond quota',
+
+      // --- Task 5: licenses/SeatsByBuTable.tsx ---
+      seatsByBusinessUnitLabel: 'Seats by business unit',
+      // Column header reuses this object's own licencesLabel above (ClusterAdminLicenses.tsx's
+      // subtitle fallback) — British spelling, matching this file's/QuotaLedgerCard.tsx's
+      // consistent "licence(s)" usage (hazard-4, Task 1 report) — not a reuse candidate for
+      // nav.licenses ('Licenses', American).
+      endsColumn: 'Ends',
+      couldNotLoadLicencesForBu: 'Could not load licences for this business unit — its seats are unknown, not zero.',
+      notPurchased: 'Not purchased',
+
+      // --- Task 5: licenses/QuotaLedgerCard.tsx ---
+      // Hazard: STATUS_BADGE was a module-scope const holding label STRINGS (same class as
+      // Task 3's role arrays) — restructured to hold catalog KEYS (labelKey), resolved with t()
+      // at the render site. See the file for the restructured shape.
+      quotaSummaryLoadFailed: 'Could not load — the quota shown above is unknown, not zero',
+      noQuotaLicenceIssued: 'No quota licence has been issued for this cluster',
+      // The summary line's count + in-force clause, composed from these pieces and joined with
+      // a literal ' · ' in code (not spliced from fragments of unrelated meaning — same whole-
+      // phrase-per-branch discipline as pages.licenses.seatSummary*/quotaExpires).
+      licenceCountOne: '{{count}} licence',
+      licenceCountMany: '{{count}} licences',
+      inForceBusinessUnitsNoExpiry: 'in force: {{count}} business units, no expiry',
+      inForceBusinessUnitsToDate: 'in force: {{count}} business units, to {{date}}',
+      noneInForce: 'none in force',
+      buQuotaLicencesLabel: 'BU quota licences',
+      // NOT a reuse of pages.licenses.buQuotaDataUnavailable ('License data...', American) —
+      // this file spells it 'Licence' (British), byte-different by one letter. Hazard-4,
+      // already flagged in Task 1's report as the sharpest spelling-drift find. Thai is
+      // identical to buQuotaDataUnavailable's, reused verbatim.
+      licenceDataUnavailable: 'Licence data for this cluster could not be loaded — it is unknown, not empty.',
+      quotaLicencesIssuedByPlatformTeam: 'The platform team issues quota licences. Ask them to add one before this cluster needs another business unit.',
+      inForceBadge: 'In force',
+
+      // --- Task 5: ClusterAdminEntry.tsx ---
+      // NOT a byte match for switcher.chooseCluster ('Choose which cluster to administer', no
+      // period, different wording) — kept separate rather than silently normalized.
+      chooseAClusterToAdminister: 'Choose a cluster to administer.',
+      notAdministratorOfAnyCluster: 'You are not an administrator of any cluster. Ask a platform administrator to grant you access.',
+
+      // --- Task 5: ClusterAccessLost.tsx ---
+      accessLostTitle: 'You no longer administer this cluster',
+      accessLostDescription: 'Your administrator access to this cluster was removed. Choose another cluster, or ask a platform administrator to restore it.',
+      backToMyClusters: 'Back to my clusters',
+
+      // --- Task 5: ClusterBusinessUnitsCard.tsx ---
+      viewAllBusinessUnitsAria: 'View all business units',
+      // NOT a byte match for this object's own clusterHasNoBusinessUnitsYet ('This cluster has
+      // no business units yet.', no second sentence) — this card's EmptyState description adds
+      // "A platform administrator creates them."
+      noBusinessUnitsCreatedByPlatformAdmin: 'This cluster has no business units yet. A platform administrator creates them.',
+      moreOnBusinessUnitsPage: '{{count}} more on the Business Units page',
+
+      // --- Task 5: SummaryCardHeader.tsx ---
+      // The card's own "View all" link text — distinct from the `viewAllLabel` prop the two
+      // call sites (ClusterBusinessUnitsCard.tsx, ClusterPeopleCard.tsx) already pass in as an
+      // aria-label (viewAllBusinessUnitsAria above / this object's own viewAllClusterUsers).
+      viewAll: 'View all',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

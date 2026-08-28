@@ -7,6 +7,7 @@ import { Skeleton } from '../../../components/ui/skeleton';
 import { Group } from '../../businessUnitEdit/shared';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon } from '../../../utils/buLicense';
 import { isPerpetual, fmtDate, daysLeft } from '../../licenses/licenseDates';
+import { useI18n } from '../../../hooks/useI18n';
 import type { SeatRow } from '../../licenses/useClusterSeatLicenses';
 
 export interface SeatsByBuTableProps {
@@ -38,18 +39,19 @@ function earliestExpiry(row: SeatRow, now: Date): { date: string | null; soon: b
  * ไม่ได้จริง การกลืน error เป็น 0 คือการโกหกผู้ใช้ (กติกาเดียวกับ useClusterSeatLicenses)
  */
 export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuTableProps) {
+  const { t } = useI18n();
   const now = new Date();
   const failedCount = rows.filter((r) => r.failed).length;
 
   return (
     <Card className="p-0">
       <Group
-        label="Seats by business unit"
+        label={t('pages.clusterAdmin.seatsByBusinessUnitLabel')}
         action={
           failedCount > 0 && (
             <Button variant="outline" size="sm" onClick={onRetry} disabled={loading}>
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Retry
+              {t('common.action.retry')}
             </Button>
           )
         }
@@ -62,17 +64,17 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
           </div>
         ) : rows.length === 0 ? (
           <p className="text-muted-foreground pt-1 text-sm">
-            This cluster has no business units yet.
+            {t('pages.clusterAdmin.clusterHasNoBusinessUnitsYet')}
           </p>
         ) : (
           <div className="overflow-x-auto pt-1">
             <table className="w-full text-sm [&_th]:whitespace-nowrap">
               <thead>
                 <tr className="text-muted-foreground text-xs">
-                  <th className="px-2 py-1.5 text-left">Business Unit</th>
-                  <th className="px-2 py-1.5 text-right whitespace-nowrap">Seats</th>
-                  <th className="px-2 py-1.5 text-right whitespace-nowrap">Licences</th>
-                  <th className="px-2 py-1.5 text-left whitespace-nowrap">Ends</th>
+                  <th className="px-2 py-1.5 text-left">{t('pages.clusterAdmin.businessUnitColumn')}</th>
+                  <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('common.field.seats')}</th>
+                  <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.clusterAdmin.licencesLabel')}</th>
+                  <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('pages.clusterAdmin.endsColumn')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,19 +91,18 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
                           to={`/cluster-admin/${clusterId}/business-units/${row.bu.id}/edit`}
                           className="text-primary -my-3 inline-block py-3 hover:underline"
                         >
-                          {row.bu.name || row.bu.code || '(unnamed)'}
+                          {row.bu.name || row.bu.code || t('pages.clusterAdmin.unnamed')}
                         </Link>
                         {row.bu.is_hq && (
                           <Badge variant="secondary" className="ml-2 text-[10px]">
-                            HQ
+                            {t('pages.clusterAdmin.hq')}
                           </Badge>
                         )}
                       </td>
 
                       {row.failed ? (
                         <td className="text-muted-foreground px-2 py-3 text-sm" colSpan={3}>
-                          Could not load licences for this business unit — its seats are unknown,
-                          not zero.
+                          {t('pages.clusterAdmin.couldNotLoadLicencesForBu')}
                         </td>
                       ) : (
                         <>
@@ -111,15 +112,15 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
                           </td>
                           <td className="px-2 py-3 whitespace-nowrap">
                             {activeCount === 0 ? (
-                              <span className="text-muted-foreground">Not purchased</span>
+                              <span className="text-muted-foreground">{t('pages.clusterAdmin.notPurchased')}</span>
                             ) : date == null ? (
-                              <span className="text-muted-foreground">No expiry</span>
+                              <span className="text-muted-foreground">{t('common.state.noExpiry')}</span>
                             ) : (
                               <span className="inline-flex items-center gap-2">
                                 {fmtDate(date)}
                                 {soon && (
                                   <Badge variant="warning" className="text-[10px]">
-                                    {daysLeft(date, now)} days left
+                                    {t('pages.licenses.daysLeft', { count: daysLeft(date, now) })}
                                   </Badge>
                                 )}
                               </span>

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '../../../components/ui/badge';
 import { CollapsibleGroupCard } from './CollapsibleGroupCard';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
+import { useI18n } from '../../../hooks/useI18n';
 import type { BusinessUnit } from '../../../types';
 
 export interface BuRankingCardProps {
@@ -25,6 +26,7 @@ export interface BuRankingCardProps {
  * ห้ามเรียงเอง — ป้ายที่ไม่ตรงกับด่านจริง (BU ไหนโดน 403) แย่กว่าไม่มีป้าย
  */
 export function BuRankingCard({ businessUnits, clusterId, cap }: BuRankingCardProps) {
+  const { t } = useI18n();
   const ranked = useMemo(() => rankBusinessUnits(businessUnits), [businessUnits]);
   const overCount = useMemo(() => countOverLimit(ranked, cap), [ranked, cap]);
 
@@ -35,28 +37,28 @@ export function BuRankingCard({ businessUnits, clusterId, cap }: BuRankingCardPr
 
   const summary =
     businessUnits.length === 0
-      ? 'No business units yet'
+      ? t('common.state.noBusinessUnitsYet')
       : cap == null
-        ? `${businessUnits.length} ranked · quota unknown`
+        ? t('pages.clusterAdmin.rankedQuotaUnknown', { count: businessUnits.length })
         : overCount > 0
-          ? `${overCount} beyond quota and read-only`
-          : `${businessUnits.length} ranked · all within quota`;
+          ? t('pages.clusterAdmin.beyondQuotaReadOnly', { count: overCount })
+          : t('pages.clusterAdmin.rankedAllWithinQuota', { count: businessUnits.length });
 
   return (
-    <CollapsibleGroupCard label="Business unit ranking" summary={summary}>
+    <CollapsibleGroupCard label={t('pages.clusterAdmin.buRankingLabel')} summary={summary}>
       <p className="text-muted-foreground mb-3 text-sm">
-        When quota runs short, the platform covers units in this order — HQ first, then oldest.
+        {t('pages.clusterAdmin.rankingExplanation')}
       </p>
       {businessUnits.length === 0 ? (
-        <p className="text-muted-foreground text-sm">This cluster has no business units yet.</p>
+        <p className="text-muted-foreground text-sm">{t('pages.clusterAdmin.clusterHasNoBusinessUnitsYet')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-muted-foreground text-xs">
-                <th className="px-2 py-1.5 text-right whitespace-nowrap">Rank</th>
-                <th className="px-2 py-1.5 text-left">Business Unit</th>
-                <th className="px-2 py-1.5 text-left whitespace-nowrap">Status</th>
+                <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.licenses.rankColumn')}</th>
+                <th className="px-2 py-1.5 text-left">{t('pages.clusterAdmin.businessUnitColumn')}</th>
+                <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.status.label')}</th>
               </tr>
             </thead>
             <tbody>
@@ -73,21 +75,21 @@ export function BuRankingCard({ businessUnits, clusterId, cap }: BuRankingCardPr
                         to={`/cluster-admin/${clusterId}/business-units/${bu.id}/edit`}
                         className="text-primary -my-3 inline-block py-3 hover:underline"
                       >
-                        {bu.name || bu.code || '(unnamed)'}
+                        {bu.name || bu.code || t('pages.clusterAdmin.unnamed')}
                       </Link>
                       {bu.is_hq && (
                         <Badge variant="secondary" className="ml-2 text-[10px]">
-                          HQ
+                          {t('pages.clusterAdmin.hq')}
                         </Badge>
                       )}
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap">
                       <Badge variant={bu.is_active ? 'success' : 'secondary'}>
-                        {bu.is_active ? 'Active' : 'Inactive'}
+                        {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
                       </Badge>
                       {over && (
                         <Badge variant="destructive" className="ml-1.5 text-[10px]">
-                          Beyond quota
+                          {t('pages.clusterAdmin.beyondQuotaBadge')}
                         </Badge>
                       )}
                     </td>

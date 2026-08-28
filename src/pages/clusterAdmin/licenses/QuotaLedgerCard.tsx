@@ -6,12 +6,16 @@ import { AuditMeta } from '../../../components/AuditMeta';
 import { latestActor } from '../../../utils/audit';
 import { licenseStatus, activeLicense } from '../../../utils/clusterLicense';
 import { isPerpetual, fmtDate } from '../../licenses/licenseDates';
+import { useI18n } from '../../../hooks/useI18n';
+import type { TKey } from '../../../i18n/types';
 import type { ClusterLicense, ClusterLicenseStatus } from '../../../types';
 
-const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; label: string }> = {
-  active: { variant: 'success', label: 'Active' },
-  scheduled: { variant: 'secondary', label: 'Scheduled' },
-  expired: { variant: 'destructive', label: 'Expired' },
+// Module-scope, so it cannot call t() — holds catalog KEYS only, resolved with t() at the
+// render site (same shape as roleLabels.ts's ROLE_LABEL_KEYS).
+const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; labelKey: TKey }> = {
+  active: { variant: 'success', labelKey: 'common.status.active' },
+  scheduled: { variant: 'secondary', labelKey: 'common.status.scheduled' },
+  expired: { variant: 'destructive', labelKey: 'common.status.expired' },
 };
 
 export interface QuotaLedgerCardProps {
@@ -31,50 +35,57 @@ export interface QuotaLedgerCardProps {
  * ห้าม sum `licensed_bus` เด็ดขาด — คนละกติกากันคนละชั้น
  */
 export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: QuotaLedgerCardProps) {
+  const { t } = useI18n();
   const now = new Date();
   const winning = activeLicense(licenses, now);
 
+  // Count + in-force clause, joined with a literal ' · ' in code rather than spliced from
+  // unrelated fragments — same non-linguistic-separator pattern ClusterPeopleCard.tsx
+  // (Task 3) and CapacityStrip.tsx (Task 5) already established.
+  const licenceCountText = t(
+    licenses.length === 1 ? 'pages.clusterAdmin.licenceCountOne' : 'pages.clusterAdmin.licenceCountMany',
+    { count: licenses.length },
+  );
+  const forceText = winning
+    ? isPerpetual(winning.end_date)
+      ? t('pages.clusterAdmin.inForceBusinessUnitsNoExpiry', { count: winning.licensed_bus })
+      : t('pages.clusterAdmin.inForceBusinessUnitsToDate', { count: winning.licensed_bus, date: fmtDate(winning.end_date) })
+    : t('pages.clusterAdmin.noneInForce');
+
   const summary = loadFailed
-    ? 'Could not load — the quota shown above is unknown, not zero'
+    ? t('pages.clusterAdmin.quotaSummaryLoadFailed')
     : loading && licenses.length === 0
-      ? 'Loading…'
+      ? t('common.busy.loadingEllipsis')
       : licenses.length === 0
-        ? 'No quota licence has been issued for this cluster'
-        : `${licenses.length} ${licenses.length === 1 ? 'licence' : 'licences'}${
-            winning
-              ? ` · in force: ${winning.licensed_bus} business units${
-                  isPerpetual(winning.end_date) ? ', no expiry' : `, to ${fmtDate(winning.end_date)}`
-                }`
-              : ' · none in force'
-          }`;
+        ? t('pages.clusterAdmin.noQuotaLicenceIssued')
+        : `${licenceCountText} · ${forceText}`;
 
   return (
-    <CollapsibleGroupCard label="BU quota licences" summary={summary}>
+    <CollapsibleGroupCard label={t('pages.clusterAdmin.buQuotaLicencesLabel')} summary={summary}>
       {loadFailed ? (
         <div className="flex flex-col items-start gap-3">
           <p className="text-muted-foreground text-sm">
-            Licence data for this cluster could not be loaded — it is unknown, not empty.
+            {t('pages.clusterAdmin.licenceDataUnavailable')}
           </p>
           <Button variant="outline" size="sm" onClick={onRetry} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Retry
+            {t('common.action.retry')}
           </Button>
         </div>
       ) : licenses.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          The platform team issues quota licences. Ask them to add one before this cluster needs
-          another business unit.
+          {t('pages.clusterAdmin.quotaLicencesIssuedByPlatformTeam')}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm [&_th]:whitespace-nowrap">
             <thead>
               <tr className="text-muted-foreground text-xs">
-                <th className="px-2 py-1.5 text-right whitespace-nowrap">Quota</th>
-                <th className="px-2 py-1.5 text-left whitespace-nowrap">Start</th>
-                <th className="px-2 py-1.5 text-left whitespace-nowrap">End</th>
-                <th className="px-2 py-1.5 text-left whitespace-nowrap">Status</th>
-                <th className="px-2 py-1.5 text-left">Reference</th>
+                <th className="px-2 py-1.5 text-right whitespace-nowrap">{t('pages.licenses.quotaColumn')}</th>
+                <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.action.start')}</th>
+                <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('pages.licenses.end')}</th>
+                <th className="px-2 py-1.5 text-left whitespace-nowrap">{t('common.status.label')}</th>
+                <th className="px-2 py-1.5 text-left">{t('common.field.reference')}</th>
               </tr>
             </thead>
             <tbody>
@@ -87,16 +98,16 @@ export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: Quot
                     <td className="px-2 py-2 whitespace-nowrap">{fmtDate(l.start_date)}</td>
                     <td className="px-2 py-2 whitespace-nowrap">
                       {isPerpetual(l.end_date) ? (
-                        <span className="text-muted-foreground">No expiry</span>
+                        <span className="text-muted-foreground">{t('common.state.noExpiry')}</span>
                       ) : (
                         fmtDate(l.end_date)
                       )}
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap">
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                      <Badge variant={badge.variant}>{t(badge.labelKey)}</Badge>
                       {winning?.id === l.id && (
                         <Badge variant="outline" className="ml-1.5 text-[10px]">
-                          In force
+                          {t('pages.clusterAdmin.inForceBadge')}
                         </Badge>
                       )}
                     </td>

@@ -1030,6 +1030,77 @@ export const th: Translations = {
       clusterSeatsHeading: 'ที่นั่งของ cluster',
       capLicensedSuffix: '/ {{cap}} ที่มีไลเซนส์',
       clusterSeatsAriaLabel: 'ที่นั่งของ cluster: ใช้ไป {{used}} จาก {{cap}} ที่มีไลเซนส์',
+
+      // --- Task 5: CapacityStrip.tsx ---
+      noCapSuffix: '/ ไม่มีเพดาน',
+      poolAriaNoCap: '{{label}}: ใช้ไป {{used}} ไม่มีเพดาน',
+      poolAriaWithCap: '{{label}}: ใช้ไป {{used}} จาก {{cap}} ที่มีไลเซนส์',
+      buBeyondQuotaOne: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาและอ่านได้อย่างเดียว',
+      buBeyondQuotaMany: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาและอ่านได้อย่างเดียว',
+      noBuQuotaPurchased: 'ยังไม่ได้ซื้อโควตาหน่วยธุรกิจ',
+      noQuotaLeftForAnotherBu: 'ไม่มีโควตาเหลือสำหรับหน่วยธุรกิจเพิ่ม',
+      buQuotaFree: 'ว่าง {{free}} จากโควตา {{cap}}',
+      expiresOn: 'หมดอายุ {{date}}',
+      noSeatCapSet: 'ยังไม่ได้ตั้งเพดานที่นั่ง',
+      seatsBeyondLicensedOne: 'ผู้ใช้ {{count}} คนเกินจำนวนที่นั่งที่มีไลเซนส์',
+      seatsBeyondLicensedMany: 'ผู้ใช้ {{count}} คนเกินจำนวนที่นั่งที่มีไลเซนส์',
+
+      // --- Task 5: ClusterProfile.tsx ---
+      unnamedCluster: '(cluster ไม่มีชื่อ)',
+      tenantGroup: 'กลุ่มผู้เช่า',
+      brandingCardDescription: 'แสดงในแถบด้านข้าง ตัวสลับ cluster และรายการต่าง ๆ ทั่วทั้งแพลตฟอร์ม',
+      loadingClusterProfileAria: 'กำลังโหลดโปรไฟล์ cluster',
+      loadClusterFailedDetail: 'โหลด cluster ไม่สำเร็จ: ',
+      clusterUpdated: 'อัปเดต cluster แล้ว',
+      updateClusterFailed: 'อัปเดต cluster ไม่สำเร็จ',
+
+      // --- Task 5: ClusterAdminLicenses.tsx ---
+      licencesSubtitleWithCode: 'ไลเซนส์ · {{code}}',
+      licencesLabel: 'ไลเซนส์',
+
+      // --- Task 5: licenses/BuRankingCard.tsx ---
+      buRankingLabel: 'อันดับหน่วยธุรกิจ',
+      rankingExplanation: 'เมื่อโควตาไม่พอ แพลตฟอร์มจะครอบคลุมหน่วยตามลำดับนี้ — HQ ก่อน แล้วตามด้วยหน่วยที่เก่าที่สุด',
+      rankedQuotaUnknown: '{{count}} หน่วยเรียงอันดับแล้ว · ไม่ทราบโควตา',
+      beyondQuotaReadOnly: '{{count}} หน่วยเกินโควตาและอ่านได้อย่างเดียว',
+      rankedAllWithinQuota: '{{count}} หน่วยเรียงอันดับแล้ว · อยู่ในโควตาทั้งหมด',
+      beyondQuotaBadge: 'เกินโควตา',
+
+      // --- Task 5: licenses/SeatsByBuTable.tsx ---
+      seatsByBusinessUnitLabel: 'ที่นั่งแยกตามหน่วยธุรกิจ',
+      endsColumn: 'สิ้นสุด',
+      couldNotLoadLicencesForBu: 'โหลดไลเซนส์สำหรับหน่วยธุรกิจนี้ไม่สำเร็จ — ที่นั่งของหน่วยนี้ไม่ทราบจำนวน ไม่ใช่ศูนย์',
+      notPurchased: 'ยังไม่ได้ซื้อ',
+
+      // --- Task 5: licenses/QuotaLedgerCard.tsx ---
+      quotaSummaryLoadFailed: 'โหลดไม่สำเร็จ — โควตาที่แสดงด้านบนไม่ทราบ ไม่ใช่ศูนย์',
+      noQuotaLicenceIssued: 'ยังไม่มีการออกไลเซนส์โควตาให้ cluster นี้',
+      licenceCountOne: '{{count}} ไลเซนส์',
+      licenceCountMany: '{{count}} ไลเซนส์',
+      inForceBusinessUnitsNoExpiry: 'มีผล: {{count}} หน่วยธุรกิจ ไม่มีวันหมดอายุ',
+      inForceBusinessUnitsToDate: 'มีผล: {{count}} หน่วยธุรกิจ ถึง {{date}}',
+      noneInForce: 'ไม่มีใบที่มีผล',
+      buQuotaLicencesLabel: 'ไลเซนส์โควตาหน่วยธุรกิจ',
+      licenceDataUnavailable: 'โหลดข้อมูลไลเซนส์สำหรับ cluster นี้ไม่สำเร็จ — ข้อมูลไม่ทราบ ไม่ใช่ว่างเปล่า',
+      quotaLicencesIssuedByPlatformTeam: 'ทีมแพลตฟอร์มเป็นผู้ออกไลเซนส์โควตา ให้ติดต่อทีมเพื่อเพิ่มไลเซนส์ก่อนที่ cluster นี้จะต้องการหน่วยธุรกิจเพิ่ม',
+      inForceBadge: 'มีผล',
+
+      // --- Task 5: ClusterAdminEntry.tsx ---
+      chooseAClusterToAdminister: 'เลือก cluster ที่ต้องการดูแล',
+      notAdministratorOfAnyCluster: 'คุณไม่ได้เป็นผู้ดูแลของ cluster ใดเลย กรุณาติดต่อผู้ดูแลระบบระดับแพลตฟอร์มเพื่อขอสิทธิ์เข้าถึง',
+
+      // --- Task 5: ClusterAccessLost.tsx ---
+      accessLostTitle: 'คุณไม่มีสิทธิ์ดูแล cluster นี้อีกต่อไป',
+      accessLostDescription: 'สิทธิ์ผู้ดูแลของคุณสำหรับ cluster นี้ถูกนำออกแล้ว เลือก cluster อื่น หรือติดต่อผู้ดูแลระบบระดับแพลตฟอร์มเพื่อขอคืนสิทธิ์',
+      backToMyClusters: 'กลับไปยัง cluster ของฉัน',
+
+      // --- Task 5: ClusterBusinessUnitsCard.tsx ---
+      viewAllBusinessUnitsAria: 'ดูหน่วยธุรกิจทั้งหมด',
+      noBusinessUnitsCreatedByPlatformAdmin: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ ผู้ดูแลระบบระดับแพลตฟอร์มเป็นผู้สร้าง',
+      moreOnBusinessUnitsPage: 'อีก {{count}} รายการที่หน้าหน่วยธุรกิจ',
+
+      // --- Task 5: SummaryCardHeader.tsx ---
+      viewAll: 'ดูทั้งหมด',
     },
   },
   error: {

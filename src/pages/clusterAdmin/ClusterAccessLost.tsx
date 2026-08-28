@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 import { Button } from '../../components/ui/button';
+import { useI18n } from '../../hooks/useI18n';
 
 /**
  * Shown when a request under /cluster-admin returns 403 after the guard already let the page
@@ -10,14 +11,15 @@ import { Button } from '../../components/ui/button';
  */
 const ClusterAccessLost = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   return (
     <EmptyState
       icon={ShieldAlert}
-      title="You no longer administer this cluster"
-      description="Your administrator access to this cluster was removed. Choose another cluster, or ask a platform administrator to restore it."
+      title={t('pages.clusterAdmin.accessLostTitle')}
+      description={t('pages.clusterAdmin.accessLostDescription')}
       action={
         <Button onClick={() => navigate('/cluster-admin', { replace: true })}>
-          Back to my clusters
+          {t('pages.clusterAdmin.backToMyClusters')}
         </Button>
       }
     />

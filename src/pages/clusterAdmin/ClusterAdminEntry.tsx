@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Layout from '../../components/Layout';
 import { EmptyState } from '../../components/EmptyState';
 import { Card, CardHeader, CardTitle } from '../../components/ui/card';
+import { useI18n } from '../../hooks/useI18n';
 
 /**
  * Entry point for the cluster-administration space. One administered cluster goes straight in;
@@ -13,9 +14,10 @@ import { Card, CardHeader, CardTitle } from '../../components/ui/card';
 const ClusterAdminEntry = () => {
   const { adminScope } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   if (adminScope === null) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">{t('common.busy.loading')}</div>;
   }
 
   if (!adminScope.all && adminScope.clusters.length === 1) {
@@ -26,17 +28,17 @@ const ClusterAdminEntry = () => {
     <Layout navItems={[]}>
       <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Cluster Admin</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('breadcrumb.clusterAdmin')}</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Choose a cluster to administer.
+            {t('pages.clusterAdmin.chooseAClusterToAdminister')}
           </p>
         </div>
 
         {adminScope.clusters.length === 0 ? (
           <EmptyState
             icon={Network}
-            title="No clusters to administer"
-            description="You are not an administrator of any cluster. Ask a platform administrator to grant you access."
+            title={t('common.state.noClustersToAdminister')}
+            description={t('pages.clusterAdmin.notAdministratorOfAnyCluster')}
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
