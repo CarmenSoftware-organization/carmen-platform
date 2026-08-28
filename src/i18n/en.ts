@@ -761,6 +761,126 @@ export const en = {
       reachOne: '{{count}} business unit',
       reachMany: '{{count}} business units',
     },
+    subscriptions: {
+      // --- authored English for strings that existed only in Thai ---
+      // `clearSearch` and `selectedCount` were dropped from this object (fix round 1):
+      // both duplicated an existing common.* key's English exactly while carrying different
+      // Thai ('ล้างการค้นหา' vs common.clearSearch's 'ล้างคำค้นหา'; '{{count}} รายการที่เลือก' vs
+      // common.state.nSelected's 'เลือกแล้ว {{count}} รายการ'). Task 4 binds this screen's
+      // search-clear button to common.clearSearch and its selected-count line to
+      // common.state.nSelected — so the Subscription screens' Thai wording moves to the
+      // app-wide phrasing instead of keeping its own. If you're looking for either key here,
+      // it isn't page-local; use the common.* one.
+      detailsTitle: 'Subscription details',
+      purchasedModules: 'Purchased modules',
+      seats: 'Seats',
+      searchNumber: 'Search subscription numbers...',
+      clearClusterFilter: 'Clear cluster filter',
+
+      // FeatureSelectionCard
+      featuresLoadFailed: "Couldn't load the feature list",
+      featuresLoadFailedHint: "Features can't be edited right now. Try again.",
+      featuresLoading: 'Loading features…',
+      unrecognisedDisabled: 'Unrecognised (disabled) ({{count}})',
+      removeUnrecognised: 'Remove unrecognised feature {{key}}',
+      disabledStillAttached: 'These features are disabled system-wide but are still attached to this subscription.',
+      disabledMustRemove: 'These features are disabled system-wide — remove them before the subscription\'s features can be saved.',
+      // Split rather than one key with a fallback param (fix round 2): the source's
+      // fallback branch interpolates a Thai word into a Thai sentence — a translated
+      // value into a translated frame, the exact shape this project banned after
+      // summarizeBulk. Two whole sentences instead.
+      noFeaturesAssignedToBu: 'No features assigned to {{bu}} yet',
+      noFeaturesAssignedToThis: 'No features assigned to this subscription yet',
+      searchFeaturesPlaceholder: 'Search modules or features...',
+      searchFeatures: 'Search features',
+      noFeaturesDefined: 'No features defined in the system yet',
+      noFeaturesMatch: 'No features match “{{query}}”',
+      collapseAll: 'Collapse all',
+      expandAll: 'Expand all',
+      clearAllIn: 'Clear all in {{module}}',
+      selectAllIn: 'Select all in {{module}}',
+      none: 'None',
+
+      // SeatsCard
+      seatsPoolDescription: 'Seat pool shared across every business unit in this cluster',
+      pendingCount: '{{count}} pending',
+      upTo: ' → up to {{projected}}/{{cap}}',
+      noBusinessUnitLinked: "This subscription isn't linked to any business unit",
+      purchasedCount: '{{count}} purchased',
+      capEditedOnBuPage: 'The cap is edited on the business unit page',
+      editCap: 'Edit cap',
+      seatsPoolNote: 'Seats are a cluster-wide pool — business units outside this subscription contribute to it too, so the purchased count above need not equal the total cap ({{cap}}).',
+
+      // SubscriptionInfoCard
+      selectClusterFirst: 'Select a cluster first',
+      clusterHasNoBu: 'This cluster has no business units — create one before issuing a subscription',
+      numberAutoAssigned: 'A number is assigned automatically on save',
+
+      // Task 2 (SubscriptionTable page-local additions below).
+      subtitle: 'Manage cluster license subscriptions, seat pools, and feature entitlements.',
+      addSubscription: 'Add Subscription',
+      loading: 'Loading subscriptions',
+      loadingEllipsis: 'Loading subscriptions...',
+      loadFailedPrefix: 'Failed to load subscriptions: ',
+      summaryLoadFailed: 'Failed to load subscription summary.',
+      emptyTitle: 'No subscriptions yet',
+      emptyDescription: 'Get started by creating your first subscription for a cluster.',
+      filterDescription: 'Filter subscriptions by state, cluster, and expiry',
+      allClusters: 'All clusters',
+      lockedToActive: 'Locked to Active while showing subscriptions expiring soon.',
+      // Interfaces block: Task 6 (SubscriptionSummary's own "expiring soon" card) reuses
+      // this exact key.
+      expiringSoon: 'Expiring soon',
+      expiringWithinDays: 'Expiring within {{days}} days',
+      expiry: 'Expiry',
+      // Bare column headers — distinct from entity.* (toast-safe nouns) and from
+      // common.validation.subscriptionNumber/startDate/endDate (lowercase field-name
+      // fallbacks used by validateField, a different register and different casing).
+      subscription: 'Subscription',
+      subscriptionNumber: 'Subscription Number',
+      clusterCode: 'Cluster Code',
+      businessUnitName: 'Business Unit Name',
+      featureCount: 'Feature Count',
+      features: 'Features',
+      period: 'Period',
+      // "State" is deliberately not common.status.label ("Status") — review I1 in the
+      // source: the badge and this filter/column both read the backend-computed `state`
+      // field, never the raw `status`, and the two words must not collide on screen.
+      state: 'State',
+      startDate: 'Start Date',
+      endDate: 'End Date',
+      seatsUsed: 'Seats Used',
+      seatsCap: 'Seats Cap',
+
+      // Task 3 (SubscriptionForm + SubscriptionInfoCard page-local additions below).
+      loadingAria: 'Loading subscription',
+      notFoundTitle: 'Subscription not found',
+      notFoundDescription: "This subscription doesn't exist, or it may have been deleted. Check the link, or pick one from the subscription list.",
+      backToSubscriptions: 'Back to subscriptions',
+      createSubtitle: 'Create a new subscription for a cluster',
+      createSubscription: 'Create Subscription',
+      unnamedSubscription: '(unnamed subscription)',
+      clusterSubtitle: 'Cluster: {{name}} ({{code}})',
+      // Singular record-detail failure banners — distinct from the plural loadFailedPrefix
+      // above (Task 2, the management page's list load). Same shape as broadcasts'
+      // loadFailedPrefix/loadFailedDetail split: English differs by number, Thai does not
+      // (Thai has no plural inflection) — see th.ts.
+      loadFailedDetail: 'Failed to load subscription: ',
+      createFailedPrefix: 'Failed to create subscription: ',
+      saveFailedPrefix: 'Failed to save subscription: ',
+      missingDocVersion: 'Missing doc_version for this record — reload the page and try again.',
+      endDateAfterStart: 'End date must be after start date',
+      // Split rather than one key with a fallback param, matching noFeaturesAssignedToBu/
+      // ToThis above — two whole sentences, not one template with a translated fallback noun.
+      featureEntitlementsForBu: 'Feature entitlements for {{code}}',
+      featureEntitlementsGeneric: 'Feature entitlements for this contract',
+      detailsDescription: 'Contract identity, period, and status',
+      // Source uses the single-character ellipsis (…), not three dots — distinct from
+      // common.busy.loading ('Loading...'). Shared by both the cluster and business-unit
+      // select's own "still loading" option.
+      loadingOption: 'Loading…',
+      effectiveState: 'Effective state:',
+    },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched

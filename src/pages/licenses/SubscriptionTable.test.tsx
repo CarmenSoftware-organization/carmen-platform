@@ -134,8 +134,13 @@ describe('SubscriptionTable — reads state, never recomputes it', () => {
 
     // status='active' + a far-future end_date would recompute to 'active'; the real
     // state field says 'inactive' — the badge must follow the field, not the recompute.
-    expect(screen.getByText('inactive')).toBeInTheDocument();
-    expect(screen.queryByText('active')).toBeNull();
+    // Scoped to the table: the summary band's "Active" card label is now a second,
+    // legitimate "Active" text node on the page (translating it moved it into the same
+    // shared vocabulary as this badge), so a page-wide query is no longer precise enough
+    // to test what this assertion means — the row's badge, not the whole screen.
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Inactive')).toBeInTheDocument();
+    expect(within(table).queryByText('Active')).toBeNull();
   });
 });
 
@@ -144,11 +149,11 @@ describe('SubscriptionTable — summary band', () => {
     renderPage();
     await screen.findByText('SUB-0001');
 
-    expect(screen.getByText('ทั้งหมด')).toBeInTheDocument();
-    expect(screen.getByText('ใช้งาน')).toBeInTheDocument();
-    expect(screen.getByText('หมดอายุ')).toBeInTheDocument();
-    expect(screen.getByText('ใกล้หมดอายุ')).toBeInTheDocument();
-    expect(screen.getByText('ลบแล้ว')).toBeInTheDocument();
+    expect(screen.getByText('All')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(screen.getByText('Expiring soon')).toBeInTheDocument();
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
   });
 });
 
@@ -259,7 +264,7 @@ describe('SubscriptionTable — search folds into `advance`, never `search`', ()
     await screen.findByText('SUB-0001');
     asMock(subscriptionService.getAll).mockClear();
 
-    await user.type(screen.getByPlaceholderText('ค้นหาเลขที่สัญญา'), 'SUB-9');
+    await user.type(screen.getByPlaceholderText('Search subscription numbers...'), 'SUB-9');
 
     // Real timers (no fake-timer precedent elsewhere in this repo, and userEvent + fake
     // timers is a known source of flakiness) — the debounce is 400ms, so give it room.
@@ -416,7 +421,7 @@ describe('SubscriptionTable — cluster filter', () => {
     // Close the sheet before touching the badge behind it — Radix marks the rest of the page
     // aria-hidden while a modal sheet is open.
     await user.keyboard('{Escape}');
-    await user.click(await screen.findByRole('button', { name: 'ล้างตัวกรอง cluster' }));
+    await user.click(await screen.findByRole('button', { name: 'Clear cluster filter' }));
     await waitFor(() => expect(lastCall().advance).toBe(''));
   });
 

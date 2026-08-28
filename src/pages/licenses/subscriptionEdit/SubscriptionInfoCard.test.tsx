@@ -50,9 +50,9 @@ describe('SubscriptionInfoCard — read-only mode', () => {
       />,
     );
     // status itself (raw DB value) still reads 'active' — the badge...
-    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
     // ...while the effective/computed state is shown alongside as 'expired'.
-    expect(screen.getByText('expired')).toBeInTheDocument();
+    expect(screen.getByText('Expired')).toBeInTheDocument();
   });
 
   it('never shows the state helper for a brand-new (not yet created) subscription', () => {

@@ -57,19 +57,19 @@ describe('SeatsCard — cluster-level pool, never "unlimited"', () => {
 
   it('does not show a pending-invite line when there are none', () => {
     renderCard({ used: 5, cap: 10, pending_invites: 0 }, null);
-    expect(screen.queryByText(/รอตอบรับ/)).toBeNull();
+    expect(screen.queryByText(/pending/)).toBeNull();
   });
 
   it('shows pending invites without a projected-overflow warning when they would not exceed cap', () => {
     renderCard({ used: 5, cap: 10, pending_invites: 2 }, null);
-    expect(screen.getByText(/รอตอบรับ 2/)).toBeInTheDocument();
-    expect(screen.queryByText(/อาจถึง/)).toBeNull();
+    expect(screen.getByText(/2 pending/)).toBeInTheDocument();
+    expect(screen.queryByText(/up to/)).toBeNull();
   });
 
   it('warns with the projected total when pending invites would exceed cap', () => {
     renderCard({ used: 9, cap: 10, pending_invites: 3 }, null);
-    const line = screen.getByText(/รอตอบรับ 3/);
-    expect(line).toHaveTextContent('อาจถึง 12/10');
+    const line = screen.getByText(/3 pending/);
+    expect(line).toHaveTextContent('up to 12/10');
     expect(line).toHaveClass('text-warning');
   });
 
@@ -78,14 +78,14 @@ describe('SeatsCard — cluster-level pool, never "unlimited"', () => {
       { used: 15, cap: 15, pending_invites: 0 },
       bu({ business_unit_id: 'bu1', bu_name: 'Acme BU', licensed_users: 10 }),
     );
-    expect(screen.getByText('Acme BU · ซื้อ 10')).toBeInTheDocument();
-    const link = screen.getByRole('link', { name: 'แก้เพดาน' });
+    expect(screen.getByText('Acme BU · 10 purchased')).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Edit cap' });
     expect(link).toHaveAttribute('href', '/business-units/bu1/edit');
   });
 
   it('shows an explanatory note for a malformed contract with no BU link', () => {
     renderCard({ used: 0, cap: 0, pending_invites: 0 }, null);
-    expect(screen.getByText(/ไม่ได้ผูกกับหน่วยธุรกิจใด/)).toBeInTheDocument();
+    expect(screen.getByText(/isn't linked to any business unit/)).toBeInTheDocument();
   });
 
 });
@@ -99,34 +99,34 @@ describe('SeatsCard — cluster-level pool, never "unlimited"', () => {
 describe('SeatsCard — pool explanation, not a mismatch warning', () => {
   it('explains the cluster-wide pool even when licensed_users does not sum to cap', () => {
     renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu({ licensed_users: 10 }));
-    expect(screen.getByText(/ที่นั่งเป็น pool ของทั้ง cluster/)).toBeInTheDocument();
-    expect(screen.queryByText(/ไม่เท่ากับเพดานรวม/)).toBeNull();
+    expect(screen.getByText(/Seats are a cluster-wide pool/)).toBeInTheDocument();
+    expect(screen.queryByText(/does not equal the total cap/)).toBeNull();
     expect(screen.queryByText(/ปิดใช้งานหรือถูกลบ/)).toBeNull();
   });
 
   it('shows the same explanation when the BU alone accounts for the whole cap', () => {
     renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu({ licensed_users: 15 }));
-    expect(screen.getByText(/ที่นั่งเป็น pool ของทั้ง cluster/)).toBeInTheDocument();
+    expect(screen.getByText(/Seats are a cluster-wide pool/)).toBeInTheDocument();
   });
 });
 
 // Review M2: /business-units/:id/edit is gated on `cluster.update` (App.tsx), a different
 // permission from this page's `subscription.manage` — an ungated link sends anyone holding
 // only the latter straight into the Forbidden page.
-describe('SeatsCard — "แก้เพดาน" is gated on cluster.update', () => {
+describe('SeatsCard — "Edit cap" is gated on cluster.update', () => {
   it('renders plain text instead of a link when the user lacks cluster.update', () => {
     auth.hasPermission = (perm) => perm === 'subscription.manage';
     renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu());
 
-    expect(screen.queryByRole('link', { name: 'แก้เพดาน' })).toBeNull();
-    expect(screen.getByText('แก้เพดานได้ที่หน้าหน่วยธุรกิจ')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Edit cap' })).toBeNull();
+    expect(screen.getByText('The cap is edited on the business unit page')).toBeInTheDocument();
   });
 
   it('renders the link when the user does hold cluster.update (discriminating control)', () => {
     auth.hasPermission = (perm) => perm === 'cluster.update';
     renderCard({ used: 8, cap: 15, pending_invites: 0 }, bu());
 
-    expect(screen.getByRole('link', { name: 'แก้เพดาน' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Edit cap' })).toHaveAttribute(
       'href',
       '/business-units/bu1/edit',
     );

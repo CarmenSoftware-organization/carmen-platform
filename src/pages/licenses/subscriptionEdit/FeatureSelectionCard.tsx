@@ -8,6 +8,7 @@ import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { cn } from '../../../lib/utils';
 import subscriptionService from '../../../services/subscriptionService';
 import { devLog } from '../../../utils/errorParser';
+import { useI18n } from '../../../hooks/useI18n';
 import type { LicenseFeature } from '../../../types';
 import {
   filterGroups,
@@ -47,6 +48,7 @@ export function FeatureSelectionCard({
   onChange,
   readOnly,
 }: FeatureSelectionCardProps) {
+  const { t } = useI18n();
   const [catalog, setCatalog] = useState<LicenseFeature[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogFailed, setCatalogFailed] = useState(false);
@@ -81,9 +83,9 @@ export function FeatureSelectionCard({
     return (
       <EmptyState
         icon={AlertTriangle}
-        title="โหลดรายการสิทธิ์ไม่สำเร็จ"
-        description="ยังแก้สิทธิ์ไม่ได้ตอนนี้ ลองใหม่อีกครั้ง"
-        action={<Button size="sm" onClick={loadCatalog}>ลองใหม่</Button>}
+        title={t('pages.subscriptions.featuresLoadFailed')}
+        description={t('pages.subscriptions.featuresLoadFailedHint')}
+        action={<Button size="sm" onClick={loadCatalog}>{t('common.action.retry')}</Button>}
       />
     );
   }
@@ -91,7 +93,7 @@ export function FeatureSelectionCard({
   if (catalogLoading) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground" role="status">
-        กำลังโหลดรายการสิทธิ์…
+        {t('pages.subscriptions.featuresLoading')}
       </p>
     );
   }
@@ -109,7 +111,7 @@ export function FeatureSelectionCard({
   const unknownBlock = unknownKeys.length > 0 && (
     <div className="space-y-1.5 rounded-md border border-dashed border-warning/50 bg-warning/5 p-2">
       <p className="text-xs font-medium text-muted-foreground">
-        ไม่รู้จัก (ถูกปิดใช้งาน) ({unknownKeys.length})
+        {t('pages.subscriptions.unrecognisedDisabled', { count: unknownKeys.length })}
       </p>
       <div className="flex flex-wrap gap-1.5">
         {unknownKeys.map((k) =>
@@ -122,7 +124,7 @@ export function FeatureSelectionCard({
               variant="outline"
               size="sm"
               className="h-7 gap-1 font-mono text-xs"
-              aria-label={`ถอดสิทธิ์ที่ไม่รู้จัก ${k}`}
+              aria-label={t('pages.subscriptions.removeUnrecognised', { key: k })}
               onClick={() => onChange(removeFeatureKey(featureKeys, k))}
             >
               {k}
@@ -133,8 +135,8 @@ export function FeatureSelectionCard({
       </div>
       <p className="text-muted-foreground text-[11px]">
         {readOnly
-          ? 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว แต่ยังผูกอยู่กับสัญญานี้'
-          : 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว — ต้องถอดออกก่อน จึงจะบันทึกสิทธิ์ของสัญญานี้ได้'}
+          ? t('pages.subscriptions.disabledStillAttached')
+          : t('pages.subscriptions.disabledMustRemove')}
       </p>
     </div>
   );
@@ -162,7 +164,9 @@ export function FeatureSelectionCard({
       <div className="space-y-4">
         {selected.size === 0 ? (
           <p className="text-sm text-muted-foreground">
-            ยังไม่มีสิทธิ์ที่กำหนดให้{buName ? ` ${buName}` : 'สัญญานี้'}
+            {buName
+              ? t('pages.subscriptions.noFeaturesAssignedToBu', { bu: buName })
+              : t('pages.subscriptions.noFeaturesAssignedToThis')}
           </p>
         ) : (
           <div className="space-y-3">
@@ -196,16 +200,16 @@ export function FeatureSelectionCard({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ค้นหาโมดูลหรือสิทธิ์..."
+          placeholder={t('pages.subscriptions.searchFeaturesPlaceholder')}
           className="pl-9 pr-9"
-          aria-label="ค้นหาสิทธิ์"
+          aria-label={t('pages.subscriptions.searchFeatures')}
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="ล้างการค้นหา"
+            aria-label={t('common.clearSearch')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -214,19 +218,19 @@ export function FeatureSelectionCard({
 
       {groups.length === 0 ? (
         <div className="rounded-md border border-input p-2">
-          <p className="text-sm text-muted-foreground text-center py-4">ยังไม่มีรายการสิทธิ์ในระบบ</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t('pages.subscriptions.noFeaturesDefined')}</p>
         </div>
       ) : visibleGroups.length === 0 ? (
         <div className="rounded-md border border-input p-2">
           <p className="text-sm text-muted-foreground text-center py-4">
-            ไม่พบสิทธิ์ที่ตรงกับ &ldquo;{query}&rdquo;
+            {t('pages.subscriptions.noFeaturesMatch', { query })}
           </p>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-end">
             <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleExpandAllVisible}>
-              {allVisibleExpanded ? 'หุบทั้งหมด' : 'กางทั้งหมด'}
+              {allVisibleExpanded ? t('pages.subscriptions.collapseAll') : t('pages.subscriptions.expandAll')}
             </Button>
           </div>
           <div className="rounded-md border border-input max-h-96 overflow-y-auto divide-y">
@@ -255,12 +259,16 @@ export function FeatureSelectionCard({
                       variant="ghost"
                       size="sm"
                       className={cn('h-6 text-xs', HIT_SLOP_44)}
-                      aria-label={allSelected ? `ไม่เอาทั้งหมดใน ${g.module.label}` : `เอาทั้งหมดใน ${g.module.label}`}
+                      aria-label={
+                        allSelected
+                          ? t('pages.subscriptions.clearAllIn', { module: g.module.label })
+                          : t('pages.subscriptions.selectAllIn', { module: g.module.label })
+                      }
                       onClick={() =>
                         onChange(setModuleSelection(featureKeys, g.module.key, childKeys, !allSelected))
                       }
                     >
-                      {allSelected ? 'ไม่เอา' : 'ทั้งหมด'}
+                      {allSelected ? t('pages.subscriptions.none') : t('common.option.all')}
                     </Button>
                   </div>
                   {expanded && (
@@ -296,7 +304,7 @@ export function FeatureSelectionCard({
           module ถูกติ๊กอัตโนมัติตามลูก ถ้านับด้วยจะกลายเป็น "2 รายการ" ทั้งที่เลือกลูกเดียว
           (review M5) */}
       <p className="text-xs text-muted-foreground">
-        {selectedChildCount(featureKeys, catalog)} รายการที่เลือก
+        {t('common.state.nSelected', { count: selectedChildCount(featureKeys, catalog) })}
       </p>
     </div>
   );

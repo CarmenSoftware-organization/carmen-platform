@@ -20,6 +20,7 @@ import { useAllClusters } from '../../hooks/useAllClusters';
 import { fetchAllPages } from '../../utils/fetchAllPages';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../hooks/useI18n';
 import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { SeatsCard } from './subscriptionEdit/SeatsCard';
@@ -77,6 +78,7 @@ const SubscriptionForm: React.FC = () => {
   const isNew = !id;
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('subscription.manage');
+  const { t } = useI18n();
 
   const [formData, setFormData] = useState<SubscriptionFormData>(() => ({
     ...emptyFormData,
@@ -141,12 +143,12 @@ const SubscriptionForm: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError('Failed to load subscription: ' + getErrorDetail(err));
+        setError(t('pages.subscriptions.loadFailedDetail') + getErrorDetail(err, t));
       }
     } finally {
       setLoading(false);
     }
-  }, [id, isNew]);
+  }, [id, isNew, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -173,7 +175,7 @@ const SubscriptionForm: React.FC = () => {
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, undefined, t) }));
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -191,21 +193,25 @@ const SubscriptionForm: React.FC = () => {
   // ever sees one field at a time — checked here, at submit, per the corrections.
   const validateBeforeSubmit = (): boolean => {
     const next: Record<string, string> = {};
-    if (isNew && !formData.cluster_id) next.cluster_id = 'Cluster is required';
+    if (isNew && !formData.cluster_id) {
+      next.cluster_id = t('common.validation.selectRequired', { label: t('common.label.cluster') });
+    }
     // BU บังคับเฉพาะตอนสร้าง — ใบที่มีอยู่แล้วเปลี่ยน BU ไม่ได้ ค่านี้จึงมาจาก detail เสมอ และ
     // ใบเก่าที่ข้อมูลผิดรูป (ไม่มี BU) ต้องยังบันทึกสิทธิ์/วันที่ได้ ไม่ใช่ถูกล็อกด้วย validation
-    if (isNew && !formData.business_unit_id) next.business_unit_id = 'Business unit is required';
+    if (isNew && !formData.business_unit_id) {
+      next.business_unit_id = t('common.validation.selectRequired', { label: t('entity.businessUnit.sentence') });
+    }
     const startErr = validateField('start_date', formData.start_date, {
-      required: true, label: 'Start date',
-    });
+      required: true, label: t('common.validation.startDate'),
+    }, t);
     if (startErr) next.start_date = startErr;
     const endErr = validateField('end_date', formData.end_date, {
-      required: true, label: 'End date',
-    });
+      required: true, label: t('common.validation.endDate'),
+    }, t);
     if (endErr) next.end_date = endErr;
     if (!next.start_date && !next.end_date && formData.start_date && formData.end_date) {
       if (new Date(formData.end_date).getTime() <= new Date(formData.start_date).getTime()) {
-        next.end_date = 'End date must be after start date';
+        next.end_date = t('pages.subscriptions.endDateAfterStart');
       }
     }
     setFieldErrors((prev) => ({ ...prev, ...next }));
@@ -231,7 +237,7 @@ const SubscriptionForm: React.FC = () => {
       };
       const result = await subscriptionService.create(payload);
       const created = (result?.data || result) as { id?: string } | undefined;
-      toast.success('Subscription created successfully');
+      toast.success(t('toast.created', { entity: t('pages.subscriptions.subscription') }));
       if (created?.id) {
         navigate(`/licenses/subscriptions/${created.id}/edit`, { replace: true });
       } else {
@@ -240,11 +246,11 @@ const SubscriptionForm: React.FC = () => {
     } catch (err: unknown) {
       // 400 จาก backend เป็นได้สองอย่าง: BU ไม่อยู่ใน cluster ที่เลือก หรือช่วงวันไม่ถูกต้อง —
       // `parseApiError` แยกให้เป็นราย field เมื่อ backend ส่งมา ที่เหลือขึ้นเป็น banner
-      const { fields } = parseApiError(err);
+      const { fields } = parseApiError(err, t);
       if (fields && Object.keys(fields).length > 0) {
         setFieldErrors((prev) => ({ ...prev, ...fields }));
       } else {
-        setError('Failed to create subscription: ' + getErrorDetail(err));
+        setError(t('pages.subscriptions.createFailedPrefix') + getErrorDetail(err, t));
       }
     } finally {
       setSaving(false);
@@ -255,7 +261,7 @@ const SubscriptionForm: React.FC = () => {
     if (!canEdit || isNew) return;
     if (!validateBeforeSubmit()) return;
     if (docVersion == null) {
-      setError('Missing doc_version for this record — reload the page and try again.');
+      setError(t('pages.subscriptions.missingDocVersion'));
       return;
     }
     const infoChanged = JSON.stringify(formData) !== JSON.stringify(savedFormData);
@@ -287,7 +293,7 @@ const SubscriptionForm: React.FC = () => {
         // สัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนที่นี่ไม่ได้
         await subscriptionService.setFeatures(id!, featureKeys, currentDocVersion);
       }
-      toast.success('Changes saved successfully');
+      toast.success(t('toast.saved'));
       await load();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
@@ -296,7 +302,7 @@ const SubscriptionForm: React.FC = () => {
       } else if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError('Failed to save subscription: ' + getErrorDetail(err));
+        setError(t('pages.subscriptions.saveFailedPrefix') + getErrorDetail(err, t));
       }
     } finally {
       setSaving(false);
@@ -311,7 +317,7 @@ const SubscriptionForm: React.FC = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading subscription">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.subscriptions.loadingAria')}>
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
             <div className="flex-1">
@@ -342,16 +348,16 @@ const SubscriptionForm: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/licenses" title="Subscription" />
+          <PageHeader backTo="/licenses" title={t('pages.subscriptions.subscription')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Subscription not found"
-                description="This subscription doesn't exist, or it may have been deleted. Check the link, or pick one from the subscription list."
+                title={t('pages.subscriptions.notFoundTitle')}
+                description={t('pages.subscriptions.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/licenses')}>
-                    Back to subscriptions
+                    {t('pages.subscriptions.backToSubscriptions')}
                   </Button>
                 }
               />
@@ -363,9 +369,9 @@ const SubscriptionForm: React.FC = () => {
   }
 
   const navItems: NavItem[] = [
-    { id: 'info', label: 'ข้อมูลสัญญา' },
-    { id: 'features', label: 'โมดูลที่ซื้อ', count: featureKeys.length },
-    { id: 'seats', label: 'ที่นั่ง' },
+    { id: 'info', label: t('pages.subscriptions.detailsTitle') },
+    { id: 'features', label: t('pages.subscriptions.purchasedModules'), count: featureKeys.length },
+    { id: 'seats', label: t('pages.subscriptions.seats') },
   ];
 
   return (
@@ -373,7 +379,11 @@ const SubscriptionForm: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {isNew ? (
           <>
-            <PageHeader backTo="/licenses" title="Add Subscription" subtitle="Create a new subscription for a cluster" />
+            <PageHeader
+              backTo="/licenses"
+              title={t('pages.subscriptions.addSubscription')}
+              subtitle={t('pages.subscriptions.createSubtitle')}
+            />
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
@@ -396,12 +406,12 @@ const SubscriptionForm: React.FC = () => {
                 <Can permission="subscription.manage">
                   <Button type="submit" size="sm" disabled={saving}>
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? 'Creating...' : 'Create Subscription'}
+                    {saving ? t('common.busy.creating') : t('pages.subscriptions.createSubscription')}
                   </Button>
                 </Can>
                 <Button type="button" size="sm" variant="outline" onClick={() => navigate('/licenses')}>
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             </form>
@@ -410,8 +420,12 @@ const SubscriptionForm: React.FC = () => {
           <>
             <PageHeader
               backTo="/licenses"
-              title={formData.subscription_number || '(unnamed subscription)'}
-              subtitle={detail ? `Cluster: ${detail.cluster_name} (${detail.cluster_code})` : undefined}
+              title={formData.subscription_number || t('pages.subscriptions.unnamedSubscription')}
+              subtitle={
+                detail
+                  ? t('pages.subscriptions.clusterSubtitle', { name: detail.cluster_name, code: detail.cluster_code })
+                  : undefined
+              }
             />
 
             {error && (
@@ -443,11 +457,11 @@ const SubscriptionForm: React.FC = () => {
                 <section id="features" className="scroll-mt-20">
                   <Card>
                     <CardHeader>
-                      <CardTitle>โมดูลที่ซื้อ</CardTitle>
+                      <CardTitle>{t('pages.subscriptions.purchasedModules')}</CardTitle>
                       <CardDescription>
                         {detail?.bu
-                          ? `Feature entitlements for ${detail.bu.bu_code}`
-                          : 'Feature entitlements for this contract'}
+                          ? t('pages.subscriptions.featureEntitlementsForBu', { code: detail.bu.bu_code })
+                          : t('pages.subscriptions.featureEntitlementsGeneric')}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -475,17 +489,17 @@ const SubscriptionForm: React.FC = () => {
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
-              <span>Unsaved changes</span>
+              <span>{t('common.state.unsavedChanges')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Can permission="subscription.manage">
                 <Button type="button" size="sm" disabled={saving} onClick={() => void handleSave()}>
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
                 </Button>
               </Can>
             </div>

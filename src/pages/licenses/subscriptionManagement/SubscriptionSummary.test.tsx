@@ -15,16 +15,16 @@ describe('SubscriptionSummary', () => {
   it('renders all 5 cards with their backend-supplied counts', () => {
     render(<SubscriptionSummary summary={summary} loading={false} error="" onRetry={() => {}} />);
 
-    expect(screen.getByText('ทั้งหมด')).toBeInTheDocument();
+    expect(screen.getByText('All')).toBeInTheDocument();
     expect(screen.getByText('42')).toBeInTheDocument();
-    expect(screen.getByText('ใช้งาน')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('30')).toBeInTheDocument();
-    expect(screen.getByText('หมดอายุ')).toBeInTheDocument();
+    expect(screen.getByText('Expired')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('ใกล้หมดอายุ')).toBeInTheDocument();
+    expect(screen.getByText('Expiring soon')).toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument();
     // The "deleted" card — a past bug shipped this band missing exactly this card.
-    expect(screen.getByText('ลบแล้ว')).toBeInTheDocument();
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 

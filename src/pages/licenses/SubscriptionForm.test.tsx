@@ -342,8 +342,8 @@ describe('SubscriptionForm — Seats card (cluster-level pool, never "unlimited"
     expect(screen.queryByText(/unlimited/i)).toBeNull();
     expect(screen.queryByText(/ไม่จำกัด/)).toBeNull();
     // seat.used(8) + pending_invites(1) = 9, not > cap(10) — no overflow warning expected.
-    expect(screen.getByText(/รอตอบรับ 1/)).toBeInTheDocument();
-    expect(screen.queryByText(/อาจถึง/)).toBeNull();
+    expect(screen.getByText(/1 pending/)).toBeInTheDocument();
+    expect(screen.queryByText(/up to/)).toBeNull();
   });
 });
 
@@ -377,7 +377,7 @@ describe('SubscriptionForm — not found', () => {
     renderAt('/licenses/subscriptions/nope/edit');
 
     expect(await screen.findByText('Subscription not found')).toBeInTheDocument();
-    expect(screen.queryByText('ที่นั่ง')).toBeNull();
+    expect(screen.queryByText('Seats')).toBeNull();
   });
 });
 

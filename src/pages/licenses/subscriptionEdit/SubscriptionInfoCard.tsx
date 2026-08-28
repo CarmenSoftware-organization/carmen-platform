@@ -1,8 +1,11 @@
+import { useCallback } from 'react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 import { ReadOnlyField } from '../../../components/ReadOnlyField';
+import { useI18n } from '../../../hooks/useI18n';
+import type { TKey } from '../../../i18n/types';
 import type { BusinessUnit, Cluster, SubscriptionState, SubscriptionStatus } from '../../../types';
 
 export interface SubscriptionFormData {
@@ -77,6 +80,14 @@ export function SubscriptionInfoCard({
   onBlur,
   onFocus,
 }: SubscriptionInfoCardProps) {
+  const { t } = useI18n();
+  // Single lookup for both `status` (the raw, editable field) and `state` (the backend-
+  // computed "Effective state" badge below) — both are the same closed 3-member union
+  // (src/types/index.ts), so one helper covers the <select>'s options, the read-only
+  // status Badge, and the effective-state Badge. `|| s` only fires for a value outside
+  // that union; translate() returns '' on a miss (same shape as SubscriptionTable's
+  // stateLabel).
+  const statusLabel = useCallback((s: string) => t(`common.status.${s}` as TKey) || s, [t]);
   const clusterEditable = editing && isNew;
   const buEditable = editing && isNew;
   const selectedCluster = clusters.find((c) => c.id === formData.cluster_id);
@@ -89,13 +100,13 @@ export function SubscriptionInfoCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ข้อมูลสัญญา</CardTitle>
-        <CardDescription>Contract identity, period, and status</CardDescription>
+        <CardTitle>{t('pages.subscriptions.detailsTitle')}</CardTitle>
+        <CardDescription>{t('pages.subscriptions.detailsDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="cluster_id">Cluster{clusterEditable && ' *'}</Label>
+            <Label htmlFor="cluster_id">{t('common.label.cluster')}{clusterEditable && ' *'}</Label>
             {clusterEditable ? (
               <>
                 <select
@@ -105,10 +116,10 @@ export function SubscriptionInfoCard({
                   onChange={onChange}
                   className={selectClassName}
                 >
-                  <option value="">Select a cluster</option>
+                  <option value="">{t('common.state.selectACluster')}</option>
                   {missingCurrentClusterId && (
                     <option value={missingCurrentClusterId}>
-                      {clustersLoading ? 'Loading…' : missingCurrentClusterId}
+                      {clustersLoading ? t('pages.subscriptions.loadingOption') : missingCurrentClusterId}
                     </option>
                   )}
                   {clusters.map((c) => (
@@ -130,7 +141,7 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="business_unit_id">Business Unit{buEditable && ' *'}</Label>
+            <Label htmlFor="business_unit_id">{t('entity.businessUnit.title')}{buEditable && ' *'}</Label>
             {buEditable ? (
               <>
                 <select
@@ -143,10 +154,10 @@ export function SubscriptionInfoCard({
                 >
                   <option value="">
                     {!formData.cluster_id
-                      ? 'เลือกคลัสเตอร์ก่อน'
+                      ? t('pages.subscriptions.selectClusterFirst')
                       : clusterBusLoading
-                        ? 'Loading…'
-                        : 'Select a business unit'}
+                        ? t('pages.subscriptions.loadingOption')
+                        : t('common.state.selectABusinessUnit')}
                   </option>
                   {clusterBus.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -161,7 +172,7 @@ export function SubscriptionInfoCard({
                     แล้วเจอ 400 จาก backend โดยไม่รู้ว่าติดอะไร */}
                 {formData.cluster_id && !clusterBusLoading && clusterBus.length === 0 && (
                   <p className="text-destructive text-xs" role="alert">
-                    คลัสเตอร์นี้ยังไม่มีหน่วยธุรกิจ — สร้างหน่วยธุรกิจก่อนจึงจะออกสัญญาได้
+                    {t('pages.subscriptions.clusterHasNoBu')}
                   </p>
                 )}
               </>
@@ -171,7 +182,7 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="subscription_number">Subscription Number</Label>
+            <Label htmlFor="subscription_number">{t('pages.subscriptions.subscriptionNumber')}</Label>
             {/* ไม่มีโหมดแก้ — ระบบออกเลขให้ตอนสร้าง (`SUB-YYMM-####` เลขวิ่งทั่วระบบต่อเดือน)
                 และเลขนั้นอาจถูกอ้างในเอกสารที่ส่งออกไปแล้ว */}
             <ReadOnlyField
@@ -179,12 +190,12 @@ export function SubscriptionInfoCard({
               className="font-mono"
             />
             {isNew && (
-              <p className="text-muted-foreground text-xs">ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก</p>
+              <p className="text-muted-foreground text-xs">{t('pages.subscriptions.numberAutoAssigned')}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="start_date">Start Date{editing && ' *'}</Label>
+            <Label htmlFor="start_date">{t('pages.subscriptions.startDate')}{editing && ' *'}</Label>
             {editing ? (
               <>
                 <Input
@@ -207,7 +218,7 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="end_date">End Date{editing && ' *'}</Label>
+            <Label htmlFor="end_date">{t('pages.subscriptions.endDate')}{editing && ' *'}</Label>
             {editing ? (
               <>
                 <Input
@@ -230,7 +241,7 @@ export function SubscriptionInfoCard({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t('common.status.label')}</Label>
             {editing ? (
               <select
                 id="status"
@@ -240,24 +251,26 @@ export function SubscriptionInfoCard({
                 className={selectClassName}
               >
                 {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  <option key={s} value={s}>{statusLabel(s)}</option>
                 ))}
               </select>
             ) : (
               <div>
-                <Badge variant={formData.status === 'active' ? 'success' : 'secondary'} className="capitalize">
-                  {formData.status}
+                <Badge variant={formData.status === 'active' ? 'success' : 'secondary'}>
+                  {statusLabel(formData.status)}
                 </Badge>
               </div>
             )}
-            {/* status is the raw DB value; state is what backend computed from status + end_date.
-                Always show both so "status=active but already expired" is visible at a glance —
-                never recompute state on the frontend (swagger: use the field as-is). */}
+            {/* `status` (raw DB value) and `state` (backend-computed from status + end_date) are
+                two different fields shown together on purpose — "status=active but already
+                expired" must be visible at a glance, never recomputed on the frontend (swagger:
+                use the field as-is). Both go through the same `statusLabel` lookup above so they
+                can never name the same state two different ways in Thai. */}
             {!isNew && state && (
               <div className="text-xs text-muted-foreground">
-                Effective state:{' '}
-                <Badge variant={state === 'active' ? 'success' : 'secondary'} className="ml-1 capitalize">
-                  {state}
+                {t('pages.subscriptions.effectiveState')}{' '}
+                <Badge variant={state === 'active' ? 'success' : 'secondary'} className="ml-1">
+                  {statusLabel(state)}
                 </Badge>
               </div>
             )}

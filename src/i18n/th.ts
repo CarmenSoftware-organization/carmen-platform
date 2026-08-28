@@ -232,7 +232,7 @@ export const th: Translations = {
       clusterRole: 'บทบาทใน Cluster',
       buRole: 'บทบาท BU',
       databasePool: 'Database Pool',
-      subscriptions: 'การสมัครใช้งาน',
+      subscriptions: 'สัญญา',
       licensing: 'ไลเซนส์',
       businessUnitsTitle: 'หน่วยธุรกิจ',
       businessUnitsLabel: 'หน่วยธุรกิจ',
@@ -602,6 +602,110 @@ export const th: Translations = {
       // Same value for both — Thai does not inflect for number (see en.ts comment).
       reachOne: '{{count}} หน่วยธุรกิจ',
       reachMany: '{{count}} หน่วยธุรกิจ',
+    },
+    subscriptions: {
+      // `clearSearch` and `selectedCount` were dropped from this object (fix round 1): both
+      // duplicated an existing common.* key's English exactly while carrying different Thai.
+      // See en.ts for the detail — this screen's search-clear and selected-count wording now
+      // comes from common.clearSearch / common.state.nSelected, not a page-local key here.
+      detailsTitle: 'ข้อมูลสัญญา',
+      purchasedModules: 'โมดูลที่ซื้อ',
+      seats: 'ที่นั่ง',
+      searchNumber: 'ค้นหาเลขที่สัญญา...',
+      clearClusterFilter: 'ล้างตัวกรอง cluster',
+      featuresLoadFailed: 'โหลดรายการสิทธิ์ไม่สำเร็จ',
+      featuresLoadFailedHint: 'ยังแก้สิทธิ์ไม่ได้ตอนนี้ ลองใหม่อีกครั้ง',
+      featuresLoading: 'กำลังโหลดรายการสิทธิ์…',
+      unrecognisedDisabled: 'ไม่รู้จัก (ถูกปิดใช้งาน) ({{count}})',
+      removeUnrecognised: 'ถอดสิทธิ์ที่ไม่รู้จัก {{key}}',
+      disabledStillAttached: 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว แต่ยังผูกอยู่กับสัญญานี้',
+      disabledMustRemove: 'สิทธิ์เหล่านี้ถูกปิดใช้งานในระบบแล้ว — ต้องถอดออกก่อน จึงจะบันทึกสิทธิ์ของสัญญานี้ได้',
+      // Split rather than one key with a fallback param (fix round 2) — see en.ts.
+      // noFeaturesAssignedToThis has no space before "สัญญานี้", matching the source
+      // exactly; noFeaturesAssignedToBu keeps its space because {{bu}} can be Latin.
+      noFeaturesAssignedToBu: 'ยังไม่มีสิทธิ์ที่กำหนดให้ {{bu}}',
+      noFeaturesAssignedToThis: 'ยังไม่มีสิทธิ์ที่กำหนดให้สัญญานี้',
+      searchFeaturesPlaceholder: 'ค้นหาโมดูลหรือสิทธิ์...',
+      searchFeatures: 'ค้นหาสิทธิ์',
+      noFeaturesDefined: 'ยังไม่มีรายการสิทธิ์ในระบบ',
+      noFeaturesMatch: 'ไม่พบสิทธิ์ที่ตรงกับ “{{query}}”',
+      collapseAll: 'หุบทั้งหมด',
+      expandAll: 'กางทั้งหมด',
+      clearAllIn: 'ไม่เอาทั้งหมดใน {{module}}',
+      selectAllIn: 'เอาทั้งหมดใน {{module}}',
+      none: 'ไม่เอา',
+      seatsPoolDescription: 'ที่นั่งเป็น pool ร่วมของทุกหน่วยธุรกิจใน cluster นี้',
+      pendingCount: 'รอตอบรับ {{count}}',
+      // Source has a leading space before the arrow (SeatsCard.tsx: ` → อาจถึง ${projected}/${cap}`,
+      // a JS template literal, not JSX text — whitespace inside it is not collapsed) — kept
+      // verbatim per the brief's own source-wins rule, even though the brief's draft omitted it.
+      upTo: ' → อาจถึง {{projected}}/{{cap}}',
+      noBusinessUnitLinked: 'สัญญานี้ไม่ได้ผูกกับหน่วยธุรกิจใด',
+      purchasedCount: 'ซื้อ {{count}}',
+      capEditedOnBuPage: 'แก้เพดานได้ที่หน้าหน่วยธุรกิจ',
+      editCap: 'แก้เพดาน',
+      // Source (SeatsCard.tsx:95-96) is one JSX text run split across two source lines; JSX
+      // collapses the intervening newline+indentation into a single space between "ซื้อ" and
+      // "ข้างบน" — kept here per the brief's own source-wins rule, even though the brief's
+      // draft joined the two lines with no space.
+      seatsPoolNote: 'ที่นั่งเป็น pool ของทั้ง cluster — BU อื่นที่ไม่อยู่ในสัญญานี้ก็สมทบเข้า pool ด้วย จำนวนที่ซื้อ ข้างบนจึงไม่จำเป็นต้องเท่ากับเพดานรวม ({{cap}})',
+      selectClusterFirst: 'เลือกคลัสเตอร์ก่อน',
+      clusterHasNoBu: 'คลัสเตอร์นี้ยังไม่มีหน่วยธุรกิจ — สร้างหน่วยธุรกิจก่อนจึงจะออกสัญญาได้',
+      numberAutoAssigned: 'ระบบจะออกเลขให้อัตโนมัติเมื่อบันทึก',
+
+      // Task 2 (SubscriptionTable page-local additions below).
+      subtitle: 'จัดการสัญญาใบอนุญาตของ cluster, pool ที่นั่ง และสิทธิ์ฟีเจอร์ของสัญญา',
+      addSubscription: 'เพิ่มสัญญา',
+      loading: 'กำลังโหลดสัญญา',
+      loadingEllipsis: 'กำลังโหลดสัญญา...',
+      loadFailedPrefix: 'โหลดสัญญาไม่สำเร็จ: ',
+      summaryLoadFailed: 'โหลดสรุปข้อมูลสัญญาไม่สำเร็จ',
+      emptyTitle: 'ยังไม่มีสัญญา',
+      emptyDescription: 'เริ่มต้นด้วยการสร้างสัญญาแรกให้กับ cluster',
+      filterDescription: 'กรองสัญญาตามสถานะ cluster และวันหมดอายุ',
+      allClusters: 'cluster ทั้งหมด',
+      // Same word as common.status.active ('ใช้งาน') on purpose: the STATE_OPTIONS
+      // buttons this message refers to render that exact word once translated, so this
+      // sentence must name the same word or the Thai UI would name two different states.
+      lockedToActive: 'ล็อกไว้ที่สถานะใช้งาน ระหว่างที่แสดงสัญญาที่ใกล้หมดอายุ',
+      expiringSoon: 'ใกล้หมดอายุ',
+      expiringWithinDays: 'ใกล้หมดอายุภายใน {{days}} วัน',
+      expiry: 'วันหมดอายุ',
+      subscription: 'สัญญา',
+      subscriptionNumber: 'เลขที่สัญญา',
+      clusterCode: 'รหัส Cluster',
+      businessUnitName: 'ชื่อหน่วยธุรกิจ',
+      featureCount: 'จำนวนสิทธิ์',
+      features: 'สิทธิ์',
+      period: 'ช่วงเวลา',
+      state: 'สถานะ',
+      startDate: 'วันที่เริ่ม',
+      endDate: 'วันที่สิ้นสุด',
+      seatsUsed: 'ที่นั่งที่ใช้แล้ว',
+      seatsCap: 'เพดานที่นั่ง',
+
+      // Task 3 (SubscriptionForm + SubscriptionInfoCard page-local additions below).
+      loadingAria: 'กำลังโหลดสัญญา',
+      notFoundTitle: 'ไม่พบสัญญา',
+      notFoundDescription: 'ไม่พบสัญญานี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการสัญญา',
+      backToSubscriptions: 'กลับไปหน้าสัญญา',
+      createSubtitle: 'สร้างสัญญาใหม่ให้กับ cluster',
+      createSubscription: 'สร้างสัญญา',
+      unnamedSubscription: '(สัญญาที่ยังไม่มีชื่อ)',
+      clusterSubtitle: 'Cluster: {{name}} ({{code}})',
+      // Same Thai as loadFailedPrefix above — Thai does not inflect for number, only the
+      // English (subscription vs subscriptions) differs. Matches pages.broadcasts'
+      // loadFailedPrefix/loadFailedDetail pair.
+      loadFailedDetail: 'โหลดสัญญาไม่สำเร็จ: ',
+      createFailedPrefix: 'สร้างสัญญาไม่สำเร็จ: ',
+      saveFailedPrefix: 'บันทึกสัญญาไม่สำเร็จ: ',
+      missingDocVersion: 'ไม่มี doc_version สำหรับรายการนี้ — โหลดหน้าใหม่แล้วลองอีกครั้ง',
+      endDateAfterStart: 'วันที่สิ้นสุดต้องอยู่หลังวันที่เริ่ม',
+      featureEntitlementsForBu: 'สิทธิ์ของฟีเจอร์สำหรับ {{code}}',
+      featureEntitlementsGeneric: 'สิทธิ์ของฟีเจอร์สำหรับสัญญานี้',
+      detailsDescription: 'ข้อมูลระบุตัวตนของสัญญา ช่วงเวลา และสถานะ',
+      loadingOption: 'กำลังโหลด…',
+      effectiveState: 'สถานะที่มีผล:',
     },
   },
   error: {

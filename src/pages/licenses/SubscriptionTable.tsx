@@ -26,8 +26,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useAllClusters } from '../../hooks/useAllClusters';
 import { auditColumns } from '../../components/auditColumns';
 import { normalizeAudit, auditCsvFields } from '../../utils/audit';
+import { useI18n } from '../../hooks/useI18n';
 import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import type { TKey } from '../../i18n/types';
 
 // สถานะที่แสดงผล (`state`) ชุดเดียวกับที่ badge ในตารางและการ์ด summary ใช้ — ไม่ใช่ `status` ดิบ
 // การกรองแปลงกลับเป็นเงื่อนไขบนคอลัมน์จริงใน `buildAdvance`
@@ -85,6 +87,14 @@ interface SubscriptionTableProps {
 }
 
 const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false }) => {
+  const { t } = useI18n();
+  // Single lookup for every place `state`/`s` (a raw SubscriptionState value) is rendered —
+  // the row badge, the filter buttons, the active-filter chips, and the CSV export — so a
+  // state can never be named two different ways on the same screen (review I1). `|| s`
+  // is a genuine fallback, not a hidden missing key: the three union members ('active',
+  // 'inactive', 'expired' — src/types/index.ts:1244) all resolve via common.status.*, and
+  // this only fires for a value outside that union (translate() returns '' on a miss).
+  const stateLabel = useCallback((s: string) => t(`common.status.${s}` as TKey) || s, [t]);
   const navigate = useNavigate();
   const [items, setItems] = useState<Subscription[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -150,14 +160,14 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       setError('');
       setSummaryError('');
     } catch (err: unknown) {
-      setError('Failed to load subscriptions: ' + getErrorDetail(err));
-      setSummaryError('Failed to load subscription summary.');
+      setError(t('pages.subscriptions.loadFailedPrefix') + getErrorDetail(err, t));
+      setSummaryError(t('pages.subscriptions.summaryLoadFailed'));
       devLog('Error fetching subscriptions:', err);
     } finally {
       setLoading(false);
       setSummaryLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchSubscriptions(paginate);
@@ -259,115 +269,132 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   };
 
   const handleExport = () => {
-    const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
+    const rows = items.map((item) => ({
+      ...item,
+      ...auditCsvFields(normalizeAudit(item)),
+      state: stateLabel(item.state),
+    }));
     const csv = generateCSV(rows, [
-      { key: 'subscription_number', label: 'Subscription Number' },
-      { key: 'cluster_name', label: 'Cluster' },
-      { key: 'cluster_code', label: 'Cluster Code' },
-      { key: 'state', label: 'State' },
-      { key: 'start_date', label: 'Start Date' },
-      { key: 'end_date', label: 'End Date' },
-      { key: 'seat_used', label: 'Seats Used' },
-      { key: 'seat_cap', label: 'Seats Cap' },
-      { key: 'bu_code', label: 'Business Unit' },
-      { key: 'bu_name', label: 'Business Unit Name' },
-      { key: 'feature_count', label: 'Feature Count' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'subscription_number', label: t('pages.subscriptions.subscriptionNumber') },
+      { key: 'cluster_name', label: t('common.label.cluster') },
+      { key: 'cluster_code', label: t('pages.subscriptions.clusterCode') },
+      { key: 'state', label: t('pages.subscriptions.state') },
+      { key: 'start_date', label: t('pages.subscriptions.startDate') },
+      { key: 'end_date', label: t('pages.subscriptions.endDate') },
+      { key: 'seat_used', label: t('pages.subscriptions.seatsUsed') },
+      { key: 'seat_cap', label: t('pages.subscriptions.seatsCap') },
+      { key: 'bu_code', label: t('entity.businessUnit.title') },
+      { key: 'bu_name', label: t('pages.subscriptions.businessUnitName') },
+      { key: 'feature_count', label: t('pages.subscriptions.featureCount') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `subscriptions-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
-  const columns = useMemo<ColumnDef<Subscription, unknown>[]>(() => [
-    {
-      accessorKey: 'subscription_number',
-      header: 'Subscription',
-      meta: { card: 'title' },
-      cell: ({ row }) => (
-        <Link to={`/licenses/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
-          {row.original.subscription_number}
-        </Link>
-      ),
-    },
-    {
-      id: 'cluster',
-      accessorKey: 'cluster_name',
-      header: 'Cluster',
-      // cluster_name/cluster_code มาจาก join กับ tb_cluster ไม่ใช่คอลัมน์จริงของ tb_subscription —
-      // เรียงด้วยคอลัมน์นี้ backend throw 400 (phase-b-backend-contract.md §8.3)
-      enableSorting: false,
-      // mobile card header: both Subscription and Cluster are 'title' — the same dual-title
-      // pattern as ClusterManagement's Code+Name columns (data-table.tsx joins multiple title
-      // cells with a middot). Cluster must be one of them per the B2 review corrections.
-      meta: { card: 'title' },
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span>{row.original.cluster_name}</span>
-          <span className="text-xs text-muted-foreground font-mono">{row.original.cluster_code}</span>
-        </div>
-      ),
-    },
-    {
-      id: 'bu',
-      header: 'Business Unit',
-      // bu_code/bu_name มาจากความสัมพันธ์ tb_subscription_bu ที่ backend compose ตอนสร้างแถว
-      // ไม่ใช่คอลัมน์จริงของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
-      enableSorting: false,
-      // ต่างจาก bu_count เดิมที่ซ่อนบนมือถือ (ตัวเลขล้วนไม่มีบริบท): BU คือคู่สัญญา ไม่ใช่ตัวนับ
-      // การ์ดที่ไม่บอกว่าใบนี้ของใครทำให้ต้องเปิดทีละใบเพื่อหา
-      cell: ({ row }) =>
-        row.original.bu_code ? (
-          <div className="min-w-0">
-            <div className="truncate font-medium">{row.original.bu_code}</div>
-            <div className="text-muted-foreground truncate text-xs">{row.original.bu_name}</div>
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-xs">—</span>
+  const columns = useMemo<ColumnDef<Subscription, unknown>[]>(() => {
+    // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
+    // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
+    // see broadcastColumns.tsx's own note). Override just the header here so this table's
+    // Thai header row has no English hole. `hideUpdatedOnCard` keeps the mobile-card
+    // behaviour identical to before this change.
+    const [createdColumn, updatedColumn] = auditColumns<Subscription>({ hideUpdatedOnCard: true });
+    return [
+      {
+        accessorKey: 'subscription_number',
+        header: t('pages.subscriptions.subscription'),
+        meta: { card: 'title' },
+        cell: ({ row }) => (
+          <Link to={`/licenses/subscriptions/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
+            {row.original.subscription_number}
+          </Link>
         ),
-    },
-    {
-      id: 'state',
-      // "State" ไม่ใช่ "Status": ค่าที่แสดงคือ `state` ที่ backend คำนวณให้ และตัวกรองในฟิลเตอร์ชีต
-      // ก็ใช้ชุดเดียวกัน — ป้ายสองที่บนจอเดียวกันต้องเรียกของสิ่งเดียวกันด้วยชื่อเดียวกัน (review I1)
-      header: 'State',
-      meta: { card: 'badge' },
-      // `state` backend คำนวณให้ ไม่ใช่คอลัมน์จริงเช่นกัน — ห้ามเรียง
-      enableSorting: false,
-      cell: ({ row }) => {
-        const { state, end_date } = row.original;
-        const soon = isExpiringSoon(state, end_date);
-        return (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant={state === 'active' ? 'success' : 'secondary'} className="capitalize">
-              {state}
-            </Badge>
-            {soon && <Badge variant="warning">Expiring soon</Badge>}
-          </div>
-        );
       },
-    },
-    {
-      id: 'feature_count',
-      header: 'Features',
-      enableSorting: false,
-      meta: { card: 'hidden' },
-      cell: ({ row }) => <span className="tabular-nums">{row.original.feature_count}</span>,
-    },
-    {
-      accessorKey: 'end_date',
-      id: 'end_date',
-      header: 'Period',
-      cell: ({ row }) => (
-        <div className="text-[11px] leading-tight text-muted-foreground whitespace-nowrap">
-          {fmtDate(row.original.start_date)} → {fmtDate(row.original.end_date)}
-        </div>
-      ),
-    },
-    ...auditColumns<Subscription>({ hideUpdatedOnCard: true }),
-  ], []);
+      {
+        id: 'cluster',
+        accessorKey: 'cluster_name',
+        header: t('common.label.cluster'),
+        // cluster_name/cluster_code มาจาก join กับ tb_cluster ไม่ใช่คอลัมน์จริงของ tb_subscription —
+        // เรียงด้วยคอลัมน์นี้ backend throw 400 (phase-b-backend-contract.md §8.3)
+        enableSorting: false,
+        // mobile card header: both Subscription and Cluster are 'title' — the same dual-title
+        // pattern as ClusterManagement's Code+Name columns (data-table.tsx joins multiple title
+        // cells with a middot). Cluster must be one of them per the B2 review corrections.
+        meta: { card: 'title' },
+        cell: ({ row }) => (
+          <div className="flex flex-col">
+            <span>{row.original.cluster_name}</span>
+            <span className="text-xs text-muted-foreground font-mono">{row.original.cluster_code}</span>
+          </div>
+        ),
+      },
+      {
+        id: 'bu',
+        header: t('entity.businessUnit.title'),
+        // bu_code/bu_name มาจากความสัมพันธ์ tb_subscription_bu ที่ backend compose ตอนสร้างแถว
+        // ไม่ใช่คอลัมน์จริงของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
+        enableSorting: false,
+        // ต่างจาก bu_count เดิมที่ซ่อนบนมือถือ (ตัวเลขล้วนไม่มีบริบท): BU คือคู่สัญญา ไม่ใช่ตัวนับ
+        // การ์ดที่ไม่บอกว่าใบนี้ของใครทำให้ต้องเปิดทีละใบเพื่อหา
+        cell: ({ row }) =>
+          row.original.bu_code ? (
+            <div className="min-w-0">
+              <div className="truncate font-medium">{row.original.bu_code}</div>
+              <div className="text-muted-foreground truncate text-xs">{row.original.bu_name}</div>
+            </div>
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          ),
+      },
+      {
+        id: 'state',
+        // "State" ไม่ใช่ "Status": ค่าที่แสดงคือ `state` ที่ backend คำนวณให้ และตัวกรองในฟิลเตอร์ชีต
+        // ก็ใช้ชุดเดียวกัน — ป้ายสองที่บนจอเดียวกันต้องเรียกของสิ่งเดียวกันด้วยชื่อเดียวกัน (review I1)
+        header: t('pages.subscriptions.state'),
+        meta: { card: 'badge' },
+        // `state` backend คำนวณให้ ไม่ใช่คอลัมน์จริงเช่นกัน — ห้ามเรียง
+        enableSorting: false,
+        cell: ({ row }) => {
+          const { state, end_date } = row.original;
+          const soon = isExpiringSoon(state, end_date);
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* No `capitalize` class: the catalog values are already Title Case
+                  ('Active'/'Inactive'/'Expired'), and stateLabel is the same lookup the
+                  filter buttons/chips and the CSV export use — see the stateLabel comment
+                  above for why. */}
+              <Badge variant={state === 'active' ? 'success' : 'secondary'}>
+                {stateLabel(state)}
+              </Badge>
+              {soon && <Badge variant="warning">{t('pages.subscriptions.expiringSoon')}</Badge>}
+            </div>
+          );
+        },
+      },
+      {
+        id: 'feature_count',
+        header: t('pages.subscriptions.features'),
+        enableSorting: false,
+        meta: { card: 'hidden' },
+        cell: ({ row }) => <span className="tabular-nums">{row.original.feature_count}</span>,
+      },
+      {
+        accessorKey: 'end_date',
+        id: 'end_date',
+        header: t('pages.subscriptions.period'),
+        cell: ({ row }) => (
+          <div className="text-[11px] leading-tight text-muted-foreground whitespace-nowrap">
+            {fmtDate(row.original.start_date)} → {fmtDate(row.original.end_date)}
+          </div>
+        ),
+      },
+      { ...createdColumn, header: t('common.audit.created') },
+      { ...updatedColumn, header: t('common.audit.updatedDate') },
+    ];
+  }, [t, stateLabel]);
   // No actions column: with Delete removed (review B2#1 — the backend can never surface a
   // soft-deleted subscription, so a delete button nobody can verify or undo was worse than no
   // button), the only remaining row action was "Edit", which just duplicated the already-
@@ -384,13 +411,13 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
     <>
       <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
         <Download className="mr-2 h-4 w-4" />
-        Export
+        {t('common.action.export')}
       </Button>
       <Can permission="subscription.manage">
         <Button onClick={() => navigate('/licenses/subscriptions/new')}>
           <Plus className="mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">Add Subscription</span>
-          <span className="sm:hidden">Add</span>
+          <span className="hidden sm:inline">{t('pages.subscriptions.addSubscription')}</span>
+          <span className="sm:hidden">{t('common.action.add')}</span>
         </Button>
       </Can>
     </>
@@ -402,8 +429,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
           <div className="flex justify-end gap-3">{actions}</div>
         ) : (
           <PageHeader
-            title="Subscriptions"
-            subtitle="Manage cluster license subscriptions, seat pools, and feature entitlements."
+            title={t('common.label.subscriptions')}
+            subtitle={t('pages.subscriptions.subtitle')}
             actions={actions}
           />
         )}
@@ -422,14 +449,14 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="ค้นหาเลขที่สัญญา"
+                placeholder={t('pages.subscriptions.searchNumber')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -439,24 +466,24 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter subscriptions by state, cluster, and expiry</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.subscriptions.filterDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         {/* ป้ายชุดเดียวกับ badge ในตาราง: กรองด้วย `state` (สถานะที่แสดงผล)
                             ไม่ใช่ `status` ดิบ — review I1 */}
-                        <span className="text-sm font-medium">State</span>
+                        <span className="text-sm font-medium">{t('pages.subscriptions.state')}</span>
                         {stateFilter.length > 0 && (
                           <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStateFilter}>
-                            Clear
+                            {t('common.action.clear')}
                           </Button>
                         )}
                       </div>
                       {expiringSoonFilter && (
                         <p className="text-xs text-muted-foreground">
-                          Locked to Active while showing subscriptions expiring soon.
+                          {t('pages.subscriptions.lockedToActive')}
                         </p>
                       )}
                       <div className="flex flex-wrap gap-1">
@@ -465,25 +492,25 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                             key={s}
                             variant={stateFilter.includes(s) ? 'default' : 'outline'}
                             size="sm"
-                            className="h-7 text-xs capitalize"
+                            className="h-7 text-xs"
                             disabled={expiringSoonFilter}
                             onClick={() => handleStateFilter(s)}
                           >
-                            {s}
+                            {stateLabel(s)}
                           </Button>
                         ))}
                       </div>
                     </div>
                     {canReadClusters && (
                       <div className="space-y-3">
-                        <Label htmlFor="cluster-filter" className="text-sm font-medium">Cluster</Label>
+                        <Label htmlFor="cluster-filter" className="text-sm font-medium">{t('common.label.cluster')}</Label>
                         <select
                           id="cluster-filter"
                           value={clusterFilter}
                           onChange={(e) => handleClusterFilter(e.target.value)}
                           className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                         >
-                          <option value="">All clusters</option>
+                          <option value="">{t('pages.subscriptions.allClusters')}</option>
                           {clusters.map((c) => (
                             <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
                           ))}
@@ -494,7 +521,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                       </div>
                     )}
                     <div className="space-y-3">
-                      <span className="text-sm font-medium">Expiry</span>
+                      <span className="text-sm font-medium">{t('pages.subscriptions.expiry')}</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -504,13 +531,13 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                           className="h-4 w-4 rounded border-input"
                         />
                         <Label htmlFor="expiringSoon" className="text-sm text-muted-foreground cursor-pointer">
-                          Expiring within {EXPIRING_SOON_DAYS} days
+                          {t('pages.subscriptions.expiringWithinDays', { days: EXPIRING_SOON_DAYS })}
                         </Label>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -519,18 +546,18 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {expiringSoonFilter ? (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    Expiring soon
+                    {t('pages.subscriptions.expiringSoon')}
                     <button onClick={handleExpiringSoonToggle} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ) : (
                   stateFilter.map((s) => (
-                    <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
-                      {s}
+                    <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
+                      {stateLabel(s)}
                       <button onClick={() => handleStateFilter(s)} className="ml-0.5 hover:text-foreground">
                         <X className="h-3 w-3" />
                       </button>
@@ -543,14 +570,14 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                     <button
                       onClick={() => handleClusterFilter('')}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label="ล้างตัวกรอง cluster"
+                      aria-label={t('pages.subscriptions.clearClusterFilter')}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -563,13 +590,13 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={CreditCard}
-                emptyTitle="No subscriptions yet"
-                emptyDescription="Get started by creating your first subscription for a cluster."
+                emptyTitle={t('pages.subscriptions.emptyTitle')}
+                emptyDescription={t('pages.subscriptions.emptyDescription')}
                 addAction={
                   <Can permission="subscription.manage">
                     <Button size="sm" onClick={() => navigate('/licenses/subscriptions/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Subscription
+                      {t('pages.subscriptions.addSubscription')}
                     </Button>
                   </Can>
                 }
@@ -581,8 +608,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                 ) : (
                   <>
                     {loading && (
-                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading subscriptions">
-                        <div className="text-muted-foreground">Loading subscriptions...</div>
+                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.subscriptions.loading')}>
+                        <div className="text-muted-foreground">{t('pages.subscriptions.loadingEllipsis')}</div>
                       </div>
                     )}
                     <DataTable
