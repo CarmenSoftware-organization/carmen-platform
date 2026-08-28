@@ -9,6 +9,7 @@ import { HIT_SLOP_44 } from '../../lib/hitSlop';
 import { UNRESOLVED_CLUSTER_ID } from '../../utils/permissions';
 import { latestActor } from '../../utils/audit';
 import { useI18n } from '../../hooks/useI18n';
+import { en } from '../../i18n/en';
 
 export interface AccessCluster {
   id: string;
@@ -43,16 +44,19 @@ const OTHER_KEY = '__other__';
  * they hold inside it. Business units whose cluster isn't among the user's
  * memberships collect under a trailing "Other" group so nothing is dropped.
  *
- * `labels` defaults to the English copy so callers outside a component render
+ * `labels` defaults to the English catalog so callers outside a component render
  * (e.g. this file's own test suite, which calls this function directly) keep
  * working unchanged; `UserAccessTree` passes the translated strings instead.
+ * The default is sourced from `en.pages.users` rather than hand-typed, so it
+ * cannot drift from the catalog silently — an edit to either surfaces as a
+ * failing test instead.
  */
 export function groupAccessByCluster(
   clusters: AccessCluster[],
   bus: AccessBU[],
   labels: { unknownCluster: string; otherBusinessUnits: string } = {
-    unknownCluster: 'Unknown cluster',
-    otherBusinessUnits: 'Other business units',
+    unknownCluster: en.pages.users.unknownCluster,
+    otherBusinessUnits: en.pages.users.otherBusinessUnits,
   },
 ): AccessGroup[] {
   const groups: AccessGroup[] = [];
