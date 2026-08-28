@@ -987,6 +987,49 @@ export const th: Translations = {
       moreAdministrators: 'อีก {{count}} ผู้ดูแล',
       memberWithoutAdminRights: '{{count}} สมาชิกที่ไม่มีสิทธิ์ผู้ดูแล',
       membersWithoutAdminRights: '{{count}} สมาชิกที่ไม่มีสิทธิ์ผู้ดูแล',
+
+      // --- Task 4: ClusterBuDocument.tsx ---
+      elsewhere: 'ที่อื่น',
+      addressLabel: 'ที่อยู่',
+      aliasLabel: 'ชื่อแฝง',
+      logoLabel: 'โลโก้',
+      hotelNameLabel: 'ชื่อโรงแรม',
+      phoneLabel: 'โทรศัพท์',
+      copyFromHotelAddress: 'คัดลอกจากที่อยู่โรงแรม',
+      companyNameLabel: 'ชื่อบริษัท',
+      taxIdLabel: 'เลขประจำตัวผู้เสียภาษี',
+      branchLabel: 'สาขา',
+
+      // --- Task 4: AddressBlock.tsx ---
+      setAddressPlaceholder: 'ตั้งค่าที่อยู่…',
+      coordinatesLabel: 'พิกัด',
+      addressLine1Label: 'ที่อยู่บรรทัดที่ 1',
+      addressLine2Label: 'ที่อยู่บรรทัดที่ 2',
+      subDistrictLabel: 'ตำบล/แขวง',
+      districtLabel: 'อำเภอ/เขต',
+      cityLabel: 'เมือง',
+      provinceLabel: 'จังหวัด',
+      postalCodeLabel: 'รหัสไปรษณีย์',
+      countryLabel: 'ประเทศ',
+      latitudeLabel: 'ละติจูด',
+      longitudeLabel: 'ลองจิจูด',
+      doneButton: 'เสร็จสิ้น',
+
+      // --- Task 4: BuPropertyPlate.tsx ---
+      noHotelNameSet: 'ยังไม่ได้ตั้งชื่อโรงแรม — เพิ่มได้ที่แท็บโรงแรม',
+      notHq: 'ไม่ใช่ HQ',
+
+      // --- Task 4: SeatMeter.tsx ---
+      overBySeatsOne: 'เกิน {{overBy}} ที่นั่ง — ปิดการใช้งานผู้ใช้ {{overBy}} คนที่ไม่ได้อยู่ใน BU อื่นของ cluster นี้',
+      overBySeatsMany: 'เกิน {{overBy}} ที่นั่ง — ปิดการใช้งานผู้ใช้ {{overBy}} คนที่ไม่ได้อยู่ใน BU อื่นของ cluster นี้',
+      atCapacityDeactivateUser: 'เต็มความจุ — ปิดการใช้งานผู้ใช้หนึ่งคนก่อนเพิ่มคนใหม่',
+      nearingCapacitySeatOne: 'ใกล้เต็มความจุ — เหลือที่นั่ง {{seatsLeft}} ที่',
+      nearingCapacitySeatMany: 'ใกล้เต็มความจุ — เหลือที่นั่ง {{seatsLeft}} ที่',
+      seatsOpenOne: 'เหลือที่นั่งว่าง {{seatsLeft}} ที่',
+      seatsOpenMany: 'เหลือที่นั่งว่าง {{seatsLeft}} ที่',
+      clusterSeatsHeading: 'ที่นั่งของ cluster',
+      capLicensedSuffix: '/ {{cap}} ที่มีไลเซนส์',
+      clusterSeatsAriaLabel: 'ที่นั่งของ cluster: ใช้ไป {{used}} จาก {{cap}} ที่มีไลเซนส์',
     },
   },
   error: {

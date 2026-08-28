@@ -1412,6 +1412,59 @@ export const en = {
       moreAdministrators: '{{count}} more administrators',
       memberWithoutAdminRights: '{{count}} member without admin rights',
       membersWithoutAdminRights: '{{count}} members without admin rights',
+
+      // --- Task 4: ClusterBuDocument.tsx ---
+      elsewhere: 'Elsewhere',
+      addressLabel: 'Address',
+      // NOT a byte match for common.field.aliasName ('Alias Name') — this file's InlineField
+      // label is the bare word.
+      aliasLabel: 'Alias',
+      logoLabel: 'Logo',
+      hotelNameLabel: 'Hotel name',
+      // Shared by hotel_tel and company_tel — both InlineField calls pass the identical
+      // literal 'Phone'.
+      phoneLabel: 'Phone',
+      copyFromHotelAddress: 'Copy from hotel address',
+      companyNameLabel: 'Company name',
+      taxIdLabel: 'Tax ID',
+      branchLabel: 'Branch',
+
+      // --- Task 4: AddressBlock.tsx ---
+      setAddressPlaceholder: 'Set address…',
+      coordinatesLabel: 'Coordinates',
+      addressLine1Label: 'Address line 1',
+      addressLine2Label: 'Address line 2',
+      subDistrictLabel: 'Sub-district',
+      districtLabel: 'District',
+      cityLabel: 'City',
+      provinceLabel: 'Province',
+      postalCodeLabel: 'Postal code',
+      countryLabel: 'Country',
+      latitudeLabel: 'Latitude',
+      longitudeLabel: 'Longitude',
+      doneButton: 'Done',
+
+      // --- Task 4: BuPropertyPlate.tsx ---
+      // The back-link text 'Business units' reuses common.label.businessUnitsLabel directly
+      // (Task 1's reuse table already named this exact call site). Active/Inactive/HQ reuse
+      // common.status.active/.inactive and this object's own .hq.
+      noHotelNameSet: 'No hotel name set — add one under Hotel',
+      notHq: 'Not HQ',
+
+      // --- Task 4: SeatMeter.tsx ---
+      // note's five branches (BuPropertyPlate.tsx:60 investigation found no union backing the
+      // avatar-initial .toUpperCase() call — see the task-4 report; these are the file's real
+      // translatable strings). noSeatsOpen and viewLicenses reuse this object's own Task 1 keys.
+      overBySeatsOne: 'Over by {{overBy}} — deactivate {{overBy}} user who belongs to no other BU in this cluster',
+      overBySeatsMany: 'Over by {{overBy}} — deactivate {{overBy}} users who belong to no other BU in this cluster',
+      atCapacityDeactivateUser: 'At capacity — deactivate a user before adding another',
+      nearingCapacitySeatOne: 'Nearing capacity — {{seatsLeft}} seat left',
+      nearingCapacitySeatMany: 'Nearing capacity — {{seatsLeft}} seats left',
+      seatsOpenOne: '{{seatsLeft}} seat open',
+      seatsOpenMany: '{{seatsLeft}} seats open',
+      clusterSeatsHeading: 'Cluster seats',
+      capLicensedSuffix: '/ {{cap}} licensed',
+      clusterSeatsAriaLabel: 'Cluster seats: {{used}} of {{cap}} licensed in use',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
