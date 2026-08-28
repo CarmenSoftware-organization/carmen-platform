@@ -2,6 +2,8 @@ import React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 
 interface BroadcastFiltersProps {
   open: boolean;
@@ -28,16 +30,17 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
   onClearAll,
   activeFilterCount,
 }) => {
+  const { t } = useI18n();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
         <SheetHeader>
-          <SheetTitle>Filters</SheetTitle>
-          <SheetDescription>Filter broadcasts</SheetDescription>
+          <SheetTitle>{t('common.label.filters')}</SheetTitle>
+          <SheetDescription>{t('pages.broadcasts.filterDescription')}</SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-6 px-1">
           <div className="space-y-3">
-            <span className="text-sm font-medium">Status</span>
+            <span className="text-sm font-medium">{t('common.status.label')}</span>
             <div className="flex flex-wrap gap-1">
               {['active', 'scheduled', 'expired'].map((s) => (
                 <Button
@@ -47,13 +50,13 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
                   className="h-7 text-xs capitalize"
                   onClick={() => onStatusFilter(s)}
                 >
-                  {s}
+                  {t(`common.status.${s}` as TKey) || s}
                 </Button>
               ))}
             </div>
           </div>
           <div className="space-y-3">
-            <span className="text-sm font-medium">Scope</span>
+            <span className="text-sm font-medium">{t('common.field.scope')}</span>
             <div className="flex flex-wrap gap-1">
               <Button
                 variant={scopeFilter.includes('system') ? 'default' : 'outline'}
@@ -61,7 +64,7 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
                 className="h-7 text-xs"
                 onClick={() => onScopeFilter('system')}
               >
-                System
+                {t('theme.system')}
               </Button>
               <Button
                 variant={scopeFilter.includes('business_unit') ? 'default' : 'outline'}
@@ -69,12 +72,12 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
                 className="h-7 text-xs"
                 onClick={() => onScopeFilter('business_unit')}
               >
-                Business Unit
+                {t('entity.businessUnit.title')}
               </Button>
             </div>
           </div>
           <div className="space-y-3">
-            <span className="text-sm font-medium">Deleted</span>
+            <span className="text-sm font-medium">{t('common.status.deleted')}</span>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -84,13 +87,13 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
                 className="h-4 w-4 rounded border-input"
               />
               <Label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
-                Show deleted broadcasts
+                {t('pages.broadcasts.showDeletedLabel')}
               </Label>
             </div>
           </div>
           {activeFilterCount > 0 && (
             <Button variant="outline" size="sm" className="w-full" onClick={onClearAll}>
-              Clear All Filters
+              {t('common.action.clearAllFilters')}
             </Button>
           )}
         </div>
