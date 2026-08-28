@@ -349,9 +349,17 @@ const NewsManagement: React.FC = () => {
     toast.success(t('toast.exported'));
   };
 
-  // `translate` returns '' for an unknown key ('draft' has no common.status.* entry), so
-  // the `|| cap(s)` fallback is load-bearing — see the hazard note above `cap`.
-  const statusLabel = useCallback((s: string) => t(`common.status.${s}` as TKey) || cap(s), [t]);
+  // 'draft' has no common.status.* entry (only published/archived/updated do) — routed
+  // explicitly to pages.news.draft BEFORE the fallback. Fix-round-1: writing this as
+  // `t(\`common.status.${s}\`) || t('pages.news.draft') || cap(s)` looks equivalent but is
+  // not — it silently renders "Draft" for ANY unrecognised status, repeating the exact
+  // "missing key produces plausible English" illusion this fix closes. `translate` returns
+  // '' for an unknown key, so `|| cap(s)` stays as the last-resort fallback for a status
+  // this switch has never heard of, not as a way to paper over 'draft'.
+  const statusLabel = useCallback(
+    (s: string) => (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s),
+    [t],
+  );
 
   const columns = useMemo<ColumnDef<News, unknown>[]>(() => [
     {
