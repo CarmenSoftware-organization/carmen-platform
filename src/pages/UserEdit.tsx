@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
+import { useI18n } from '../hooks/useI18n';
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
@@ -79,6 +80,7 @@ const UserEdit: React.FC = () => {
   const navigate = useNavigate();
   const isNew = !id;
   const { hasPermission } = useAuth();
+  const { t } = useI18n();
 
   const [formData, setFormData] = useState<UserFormData>({
     username: "",
@@ -153,11 +155,11 @@ const UserEdit: React.FC = () => {
     setPasswordError('');
 
     if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+      setPasswordError(t('pages.users.passwordTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError(t('pages.users.passwordsDoNotMatch'));
       return;
     }
 
@@ -165,11 +167,11 @@ const UserEdit: React.FC = () => {
     try {
       await userService.resetPassword(id!, newPassword);
       setShowPasswordDialog(false);
-      toast.success('Password changed successfully');
+      toast.success(t('pages.users.passwordChanged'));
     } catch (err: unknown) {
       const detail = getErrorDetail(err);
-      setPasswordError('Failed to change password: ' + detail);
-      toast.error('Failed to change password', { description: detail });
+      setPasswordError(t('pages.users.passwordChangeFailed') + ': ' + detail);
+      toast.error(t('pages.users.passwordChangeFailed'), { description: detail });
     } finally {
       setSavingPassword(false);
     }
@@ -222,7 +224,7 @@ const UserEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError("Failed to load user: " + getErrorDetail(err));
+        setError(t('toast.loadFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err));
       }
     } finally {
       setLoading(false);
@@ -290,10 +292,10 @@ const UserEdit: React.FC = () => {
         role: addBURole,
       });
       setShowAddBU(false);
-      toast.success('Business unit assigned successfully');
+      toast.success(t('pages.users.buAssigned'));
       await fetchUser();
     } catch (err: unknown) {
-      toast.error('Failed to add business unit', { description: getErrorDetail(err) });
+      toast.error(t('pages.users.buAssignFailed'), { description: getErrorDetail(err) });
     } finally {
       setAddingBU(false);
     }
@@ -314,11 +316,11 @@ const UserEdit: React.FC = () => {
     if (!hasPermission('cluster.update', { clusterId: deleteBU.business_unit?.cluster_id ?? UNRESOLVED_CLUSTER_ID })) return;
     try {
       await businessUnitService.deleteUserBusinessUnit(deleteBU.id);
-      toast.success('Business unit removed successfully');
+      toast.success(t('pages.users.buRemoved'));
       setBusinessUnits(prev => prev.filter(b => b.id !== deleteBU.id));
       setDeleteBU(null);
     } catch (err: unknown) {
-      toast.error('Failed to remove business unit', { description: getErrorDetail(err) });
+      toast.error(t('pages.users.buRemoveFailed'), { description: getErrorDetail(err) });
     }
   };
 
@@ -351,7 +353,7 @@ const UserEdit: React.FC = () => {
       if (isNew) {
         const result = await userService.create(formData);
         const created = result.data || result;
-        toast.success('User created successfully');
+        toast.success(t('toast.created', { entity: t('entity.user.sentence') }));
         if (created?.id) {
           navigate(`/users/${created.id}/edit`, { replace: true });
         } else {
@@ -359,7 +361,7 @@ const UserEdit: React.FC = () => {
         }
       } else {
         await userService.update(id!, { ...formData, ...(docVersion != null ? { doc_version: docVersion } : {}) });
-        toast.success('Changes saved successfully');
+        toast.success(t('toast.saved'));
         await fetchUser();
         setEditing(false);
       }
@@ -368,7 +370,7 @@ const UserEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchUser();
       } else {
-        setError("Failed to save user: " + getErrorDetail(err));
+        setError(t('toast.saveFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err));
       }
     } finally {
       setSaving(false);
@@ -480,16 +482,16 @@ const UserEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/users" title="User" />
+          <PageHeader backTo="/users" title={t('entity.user.title')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="User not found"
-                description="This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list."
+                title={t('pages.users.notFound')}
+                description={t('pages.users.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/users')}>
-                    Back to users
+                    {t('pages.users.backToUsers')}
                   </Button>
                 }
               />
@@ -508,7 +510,7 @@ const UserEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         {isNew ? (
-          <PageHeader backTo="/users" title="Add User" subtitle="Create a new user" />
+          <PageHeader backTo="/users" title={t('common.action.addUser')} subtitle={t('pages.users.createSubtitle')} />
         ) : (
           <>
             <Link
@@ -516,7 +518,7 @@ const UserEdit: React.FC = () => {
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Users
+              {t('breadcrumb.users')}
             </Link>
 
             <UserIdentityHero
@@ -535,13 +537,13 @@ const UserEdit: React.FC = () => {
                   <Can permission="user.update">
                     <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
                       <KeyRound className="mr-2 h-4 w-4" />
-                      Change password
+                      {t('pages.users.changePasswordButton')}
                     </Button>
                   </Can>
                   <Can permission="user.update">
                     <Button size="sm" onClick={handleEditToggle}>
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit
+                      {t('common.action.edit')}
                     </Button>
                   </Can>
                 </div>
@@ -555,16 +557,16 @@ const UserEdit: React.FC = () => {
         {editing && (
           <Card>
             <CardHeader>
-              <CardTitle>{isNew ? "Account details" : "Edit account"}</CardTitle>
+              <CardTitle>{isNew ? t('pages.users.accountDetails') : t('pages.users.editTitle')}</CardTitle>
               <CardDescription>
-                {isNew ? "Fill in the details for the new user" : "Modify the account details below"}
+                {isNew ? t('pages.users.createHint') : t('pages.users.editSubtitle')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username {editing && "*"}</Label>
+                  <Label htmlFor="username">{editing ? t('common.field.required', { label: t('common.field.username') }) : t('common.field.username')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -575,7 +577,7 @@ const UserEdit: React.FC = () => {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         onFocus={handleFocus}
-                        placeholder="user@example.com"
+                        placeholder={t('pages.users.usernamePlaceholder')}
                         className={fieldErrors.username ? 'border-destructive' : ''}
                         disabled={!isNew}
                         required
@@ -590,7 +592,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email {editing && "*"}</Label>
+                  <Label htmlFor="email">{editing ? t('common.field.required', { label: t('common.field.email') }) : t('common.field.email')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -601,7 +603,7 @@ const UserEdit: React.FC = () => {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         onFocus={handleFocus}
-                        placeholder="Email address"
+                        placeholder={t('pages.users.emailAddress')}
                         className={fieldErrors.email ? 'border-destructive' : ''}
                         required
                       />
@@ -615,7 +617,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="alias_name">Alias Name</Label>
+                  <Label htmlFor="alias_name">{t('common.field.aliasName')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -626,7 +628,7 @@ const UserEdit: React.FC = () => {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         onFocus={handleFocus}
-                        placeholder="Alias name"
+                        placeholder={t('pages.users.aliasNamePlaceholder')}
                         className={fieldErrors.alias_name ? 'border-destructive' : ''}
                       />
                       {fieldErrors.alias_name && (
@@ -639,7 +641,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="firstname">First Name</Label>
+                  <Label htmlFor="firstname">{t('pages.users.firstNameLabel')}</Label>
                   {editing ? (
                     <Input
                       type="text"
@@ -647,7 +649,7 @@ const UserEdit: React.FC = () => {
                       name="firstname"
                       value={formData.firstname}
                       onChange={handleChange}
-                      placeholder="First name"
+                      placeholder={t('pages.users.firstNamePlaceholder')}
                     />
                   ) : (
                     <ReadOnlyField value={formData.firstname} />
@@ -655,7 +657,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lastname">Last Name</Label>
+                  <Label htmlFor="lastname">{t('pages.users.lastNameLabel')}</Label>
                   {editing ? (
                     <Input
                       type="text"
@@ -663,7 +665,7 @@ const UserEdit: React.FC = () => {
                       name="lastname"
                       value={formData.lastname}
                       onChange={handleChange}
-                      placeholder="Last name"
+                      placeholder={t('pages.users.lastNamePlaceholder')}
                     />
                   ) : (
                     <ReadOnlyField value={formData.lastname} />
@@ -671,7 +673,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="middlename">Middle Name</Label>
+                  <Label htmlFor="middlename">{t('pages.users.middleNameLabel')}</Label>
                   {editing ? (
                     <Input
                       type="text"
@@ -679,7 +681,7 @@ const UserEdit: React.FC = () => {
                       name="middlename"
                       value={formData.middlename}
                       onChange={handleChange}
-                      placeholder="Middle name"
+                      placeholder={t('pages.users.middleNamePlaceholder')}
                     />
                   ) : (
                     <ReadOnlyField value={formData.middlename} />
@@ -697,13 +699,13 @@ const UserEdit: React.FC = () => {
                         onChange={handleChange}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <Label htmlFor="is_active">Active</Label>
+                      <Label htmlFor="is_active">{t('common.status.active')}</Label>
                     </>
                   ) : (
                     <>
-                      <Label>Status</Label>
+                      <Label>{t('common.status.label')}</Label>
                       <Badge variant={formData.is_active ? "success" : "secondary"} className="ml-2">
-                        {formData.is_active ? "Active" : "Inactive"}
+                        {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
                       </Badge>
                     </>
                   )}
@@ -714,7 +716,7 @@ const UserEdit: React.FC = () => {
                 <div className="flex gap-3 pt-4">
                   <Button type="submit" size="sm" disabled={saving}>
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? "Saving..." : isNew ? "Create User" : "Save Changes"}
+                    {saving ? t('common.busy.saving') : isNew ? t('pages.users.createTitle') : t('common.action.saveChanges')}
                   </Button>
                   <Button
                     type="button"
@@ -723,7 +725,7 @@ const UserEdit: React.FC = () => {
                     onClick={isNew ? () => navigate("/users") : handleCancelEdit}
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                 </div>
               )}
@@ -748,9 +750,9 @@ const UserEdit: React.FC = () => {
               <ConfirmDialog
                 open={deleteBU !== null}
                 onOpenChange={(open) => { if (!open) setDeleteBU(null); }}
-                title="Remove Business Unit"
-                description={`Are you sure you want to remove "${deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || 'this business unit'}" from this user?`}
-                confirmText="Remove"
+                title={t('pages.users.removeBusinessUnit')}
+                description={t('pages.users.removeBuConfirm', { name: deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || t('pages.users.thisBusinessUnit') })}
+                confirmText={t('common.action.remove')}
                 confirmVariant="destructive"
                 onConfirm={handleConfirmDeleteBU}
               />
@@ -759,18 +761,18 @@ const UserEdit: React.FC = () => {
               <Dialog open={showAddBU} onOpenChange={setShowAddBU}>
                 <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
-                    <DialogTitle>Add Business Unit</DialogTitle>
-                    <DialogDescription>Select a cluster, then choose a business unit to assign</DialogDescription>
+                    <DialogTitle>{t('pages.users.addBusinessUnit')}</DialogTitle>
+                    <DialogDescription>{t('pages.users.assignHint')}</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="space-y-2">
-                      <Label>Cluster</Label>
+                      <Label>{t('common.label.cluster')}</Label>
                       <select
                         value={selectedClusterId}
                         onChange={(e) => handleClusterSelect(e.target.value)}
                         className={selectClassName}
                       >
-                        <option value="">Select a cluster</option>
+                        <option value="">{t('common.state.selectACluster')}</option>
                         {userClusters.map((uc) => (
                           <option key={uc.cluster_id} value={uc.cluster_id}>
                             {uc.cluster?.name || uc.cluster_id}
@@ -781,18 +783,18 @@ const UserEdit: React.FC = () => {
                     {selectedClusterId && (
                       <>
                         <div className="space-y-2">
-                          <Label>Business Unit</Label>
+                          <Label>{t('entity.businessUnit.title')}</Label>
                           {loadingBUs ? (
-                            <p className="text-sm text-muted-foreground">Loading business units...</p>
+                            <p className="text-sm text-muted-foreground">{t('common.state.loadingBusinessUnits')}</p>
                           ) : availableBUs.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No available business units in this cluster.</p>
+                            <p className="text-sm text-muted-foreground">{t('pages.users.noAvailableBusinessUnits')}</p>
                           ) : (
                             <select
                               value={selectedBUId}
                               onChange={(e) => setSelectedBUId(e.target.value)}
                               className={selectClassName}
                             >
-                              <option value="">Select a business unit</option>
+                              <option value="">{t('common.state.selectABusinessUnit')}</option>
                               {availableBUs.map((bu) => (
                                 <option key={bu.id} value={bu.id}>
                                   {bu.name} ({bu.code})
@@ -802,7 +804,7 @@ const UserEdit: React.FC = () => {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <Label>BU Role</Label>
+                          <Label>{t('common.label.buRole')}</Label>
                           <select
                             value={addBURole}
                             onChange={(e) => setAddBURole(e.target.value)}
@@ -817,10 +819,10 @@ const UserEdit: React.FC = () => {
                     )}
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" size="sm" onClick={() => setShowAddBU(false)}>Cancel</Button>
+                    <Button variant="outline" size="sm" onClick={() => setShowAddBU(false)}>{t('common.cancel')}</Button>
                     <Button size="sm" onClick={handleAddBU} disabled={addingBU || !selectedBUId}>
                       <Plus className="mr-2 h-4 w-4" />
-                      {addingBU ? 'Adding...' : 'Add'}
+                      {addingBU ? t('common.busy.adding') : t('common.action.add')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -837,43 +839,43 @@ const UserEdit: React.FC = () => {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
-            <DialogDescription>Set a new password for this user</DialogDescription>
+            <DialogTitle>{t('pages.users.changePassword')}</DialogTitle>
+            <DialogDescription>{t('pages.users.changePasswordHint')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleResetPassword} className="space-y-4">
             {passwordError && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{passwordError}</div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password *</Label>
+              <Label htmlFor="newPassword">{t('pages.users.newPasswordLabel')}</Label>
               <Input
                 id="newPassword"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder={t('pages.users.newPassword')}
                 required
               />
-              <p className="text-xs text-muted-foreground">Password must be at least 6 characters</p>
+              <p className="text-xs text-muted-foreground">{t('pages.users.passwordTooShort')}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Label htmlFor="confirmPassword">{t('pages.users.confirmPasswordLabel')}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder={t('pages.users.confirmNewPassword')}
                 required
               />
             </div>
             <DialogFooter>
               <Button type="button" size="sm" variant="outline" onClick={() => setShowPasswordDialog(false)}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" size="sm" disabled={savingPassword}>
                 {savingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                {savingPassword ? 'Updating...' : 'Update Password'}
+                {savingPassword ? t('pages.users.updating') : t('pages.users.updatePassword')}
               </Button>
             </DialogFooter>
           </form>
