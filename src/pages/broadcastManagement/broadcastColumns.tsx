@@ -8,11 +8,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Pencil, Trash2, Clock } from 'lucide-react';
 import Can from '../../components/Can';
 import { auditColumns } from '../../components/auditColumns';
+import type { TFunction, TKey } from '../../i18n/types';
 
 interface BroadcastColumnsProps {
   showDeleted: boolean;
   onDelete: (id: string, docVersion: number) => void;
   onExpireNow: (id: string, docVersion: number) => void;
+  t: TFunction;
 }
 
 const statusVariants: Record<BroadcastStatus, 'success' | 'info' | 'secondary' | 'destructive'> = {
@@ -39,6 +41,7 @@ export const createBroadcastColumns = ({
   showDeleted,
   onDelete,
   onExpireNow,
+  t,
 }: BroadcastColumnsProps): ColumnDef<BroadcastListItem, unknown>[] => {
   // BroadcastListItem ไม่มี updated_at/updated_by เลย (src/types/index.ts:827) — สเปรดคู่เต็มของ
   // auditColumns จะได้คอลัมน์ Updated ที่ว่างถาวร (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement)
@@ -48,7 +51,7 @@ export const createBroadcastColumns = ({
   const columns: ColumnDef<BroadcastListItem, unknown>[] = [
     {
       accessorKey: 'title',
-      header: 'Title',
+      header: t('common.field.title'),
       meta: { headerClassName: 'min-w-[200px]', card: 'title' },
       cell: ({ row }) => {
         const d = row.original;
@@ -66,44 +69,51 @@ export const createBroadcastColumns = ({
     },
     {
       accessorKey: 'scope',
-      header: 'Scope',
+      header: t('common.field.scope'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => {
         const d = row.original;
         return (
           <span className="text-sm whitespace-nowrap">
-            {d.scope === 'system' ? 'System' : `BU · ${d.bu_code || 'Unknown'}`}
+            {d.scope === 'system' ? t('common.option.system') : `BU · ${d.bu_code || t('common.status.unknown')}`}
           </span>
         );
       },
     },
     {
       id: 'severity',
-      header: 'Severity',
+      header: t('common.field.severity'),
       meta: { headerClassName: 'w-28', cellClassName: 'w-28', card: 'hidden' },
       enableSorting: false,
       cell: ({ row }) => {
-        const severity = (row.original.severity || 'INFO').toUpperCase();
+        // `translate` returns '' for an unknown key, so the `|| raw.toUpperCase()`
+        // fallback is load-bearing — without it an unrecognised severity value
+        // would render an empty badge instead of the raw value it renders today.
+        const raw = (row.original.severity || 'INFO').toLowerCase();
+        const label = t(`common.severity.${raw}` as TKey) || raw.toUpperCase();
         return (
-          <Badge variant={severityVariants[severity] || 'secondary'} className="text-[10px] px-1.5 py-0">
-            {severity}
+          <Badge variant={severityVariants[raw.toUpperCase()] || 'secondary'} className="text-[10px] px-1.5 py-0">
+            {label.toUpperCase()}
           </Badge>
         );
       },
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-28', cellClassName: 'w-28', card: 'badge' },
-      cell: ({ row }) => (
-        <Badge variant={statusVariants[row.original.status] || 'secondary'} className="capitalize">
-          {row.original.status}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const status = row.original.status;
+        return (
+          <Badge variant={statusVariants[status] || 'secondary'} className="capitalize">
+            {t(`common.status.${status}` as TKey) || status}
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: 'scheduled_at',
-      header: 'Scheduled',
+      header: t('common.audit.scheduledDate'),
       meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
         <span className="text-sm whitespace-nowrap">{formatDt(row.original.scheduled_at)}</span>
@@ -111,7 +121,7 @@ export const createBroadcastColumns = ({
     },
     {
       accessorKey: 'end_at',
-      header: 'Expires',
+      header: t('common.state.expires'),
       meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => {
         const endAt = row.original.end_at;
@@ -140,6 +150,11 @@ export const createBroadcastColumns = ({
     // endpoint ที่ไม่รู้จักพารามิเตอร์นั้น กลายเป็นหัวคอลัมน์กดได้แต่ไม่มีอะไรเกิดขึ้นจริง
     {
       ...createdColumn,
+      // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
+      // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
+      // see broadcastColumns.tsx's own note above). Override just the header here so this
+      // table's Thai header row has no English hole.
+      header: t('common.audit.created'),
       enableSorting: false,
       meta: { ...createdColumn.meta, headerClassName: 'w-32', cellClassName: 'w-32', card: 'hidden' },
     },
@@ -148,7 +163,7 @@ export const createBroadcastColumns = ({
   if (showDeleted) {
     columns.push({
       id: 'deleted_at',
-      header: 'Deleted',
+      header: t('common.audit.deletedDate'),
       meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
         <div className="text-[11px] leading-tight text-destructive space-y-0.5">
@@ -169,7 +184,7 @@ export const createBroadcastColumns = ({
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Actions">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('pages.broadcasts.actions')}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -179,32 +194,32 @@ export const createBroadcastColumns = ({
                 <DropdownMenuItem asChild>
                   <Link to={`/broadcasts/${d.id}/edit`} className="cursor-pointer w-full flex items-center">
                     <Pencil className="mr-2 h-4 w-4" />
-                    Edit
+                    {t('common.action.edit')}
                   </Link>
                 </DropdownMenuItem>
               </Can>
             )}
-            
+
             {d.status === 'active' && (
               <Can permission="broadcast.update">
-                <DropdownMenuItem 
-                  onClick={() => onExpireNow(d.id, d.doc_version)} 
+                <DropdownMenuItem
+                  onClick={() => onExpireNow(d.id, d.doc_version)}
                   className="cursor-pointer"
                 >
                   <Clock className="mr-2 h-4 w-4" />
-                  Expire now
+                  {t('pages.broadcasts.expireNow')}
                 </DropdownMenuItem>
               </Can>
             )}
 
             {d.status !== 'deleted' && (
               <Can permission="broadcast.delete">
-                <DropdownMenuItem 
-                  onClick={() => onDelete(d.id, d.doc_version)} 
+                <DropdownMenuItem
+                  onClick={() => onDelete(d.id, d.doc_version)}
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  {t('common.action.delete')}
                 </DropdownMenuItem>
               </Can>
             )}

@@ -154,6 +154,9 @@ export const en = {
       archived: 'Archived',
       expired: 'Expired',
       scheduled: 'Scheduled',
+      published: 'Published',
+      updated: 'Updated',
+      unknown: 'Unknown',
     },
     action: {
       saveChanges: 'Save Changes',
@@ -166,6 +169,8 @@ export const en = {
       export: 'Export',
       edit: 'Edit',
       add: 'Add',
+      retry: 'Retry',
+      preview: 'Preview',
       // Promoted from pages.users (phase-2 final review): the sweep task that filed these
       // page-local never re-ran the shared-vs-local arithmetic. clearAll occurs 12x outside
       // this slice, clearAllFilters 8x, filtersLabel 11x — all well past the >=3-occurrences-
@@ -191,6 +196,18 @@ export const en = {
       createdBy: 'Created by',
       updatedAt: 'Updated at',
       updatedBy: 'Updated by',
+      // Date-column headers, distinct from the `common.status.*` badge values that share
+      // their English spelling by coincidence — a status badge and a date column can sit
+      // in the same row (e.g. News: "Published" badge + "Published" date column), and
+      // Thai must not spell both the same way. English stays byte-identical to what each
+      // header renders today; see the fix-round-2 report for the audit trail.
+      created: 'Created',
+      publishedDate: 'Published',
+      updatedDate: 'Updated',
+      deletedDate: 'Deleted',
+      // Broadcasts: the `scheduled_at` date column vs. the "Scheduled" status badge —
+      // same collision shape, found while sweeping the slice for more instances.
+      scheduledDate: 'Scheduled',
     },
     field: {
       name: 'Name',
@@ -205,6 +222,10 @@ export const en = {
       reference: 'Reference',
       content: 'Content',
       defaultCurrency: 'Default Currency',
+      type: 'Type',
+      title: 'Title',
+      severity: 'Severity',
+      delivery: 'Delivery',
       // Required-field marker template (task J): every Edit page re-solves "label + asterisk"
       // page-locally otherwise. Unlike the old per-field `*Label`/`*LabelRequired` pairs, the
       // asterisk is interpolated data here, because this one template has to hold for every
@@ -224,6 +245,13 @@ export const en = {
     option: {
       function: 'Function',
       average: 'Average',
+      all: 'All',
+      custom: 'Custom',
+      global: 'Global',
+      // Deliberately the same English as theme.system, which is the THEME setting.
+      // A broadcast's scope of `system` means platform-wide; the theme's means
+      // "follow the OS". English spells both "System"; Thai must not.
+      system: 'System',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
     // below for the toast-safe forms). Ten of these lived in `entity.*` until the phase-2
@@ -264,6 +292,7 @@ export const en = {
       // Promoted from pages.users (phase-2 final review, alongside common.action.clearAll/
       // clearAllFilters/filtersLabel/showDeleted).
       nSelected: '{{count}} selected',
+      summaryStale: "Couldn't refresh — showing the last known numbers.",
     },
     validation: {
       // `requiredMessage` replaces the former nameRequired/clusterRequired pair. Neither had
@@ -314,6 +343,14 @@ export const en = {
       endDate: 'End date',
       subscriptionNumber: 'Subscription number',
     },
+    // The four broadcast severity values. Title case here; the two call sites that want
+    // all-caps apply .toUpperCase() to the translated string, which is a no-op in Thai.
+    severity: {
+      critical: 'Critical',
+      warning: 'Warning',
+      info: 'Info',
+      maintenance: 'Maintenance',
+    },
   },
   /**
    * Nouns that are safe to pass to a `toast.*` template. Three grammatical forms each,
@@ -328,6 +365,8 @@ export const en = {
   entity: {
     user: { title: 'User', sentence: 'User', lower: 'user' },
     businessUnit: { title: 'Business Unit', sentence: 'Business unit', lower: 'business unit' },
+    broadcast: { title: 'Broadcast', sentence: 'Broadcast', lower: 'broadcast' },
+    news: { title: 'News', sentence: 'News', lower: 'news' },
   },
 
   /**
@@ -437,7 +476,6 @@ export const en = {
       removeBuAria: 'Remove {{name}}',
       addBu: 'Add BU',
       recentlyAdded: 'Recently added',
-      refreshFailed: "Couldn't refresh — showing the last known numbers.",
       activeInactiveSummary: '{{active}} active, {{inactive}} inactive',
       bulkPermanentlyDeleteUsers: 'Permanently Delete {{count}} User(s)',
       removeStatusFilter: 'Remove {{status}} filter',
@@ -450,6 +488,278 @@ export const en = {
       softDeleteConfirm: 'Are you sure you want to delete this user? This action cannot be undone.',
       bulkSoftDeleteConfirm: 'Soft-delete the selected user(s)? They can be restored later.',
       notFoundDescription: "This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list.",
+    },
+    broadcasts: {
+      expireTitle: 'Expire Broadcast',
+      expireNow: 'Expire now',
+      toastExpired: 'Broadcast expired successfully',
+      message: 'Message',
+      pickDateTime: 'Pick a date and time',
+      validation: {
+        messageRequired: 'Message is required',
+        expiryAfterSchedule: 'Expiry must be after the scheduled send time',
+        // Task 3 (BroadcastCompose) field-validation additions below.
+        maxChars: 'Max {{max}} characters',
+        customTypeRequired: 'Custom type is required',
+        customTypeFormat: 'Use uppercase letters, digits, and underscores only',
+        invalidDateTime: 'Invalid date/time',
+        scheduledTimeFuture: 'Scheduled time must be in the future',
+        pickExpiryDateTime: 'Pick an expiry date and time',
+        expiryFuture: 'Expiry must be in the future',
+        chooseBusinessUnit: 'Choose a business unit',
+        pickRecipient: 'Pick at least one recipient',
+        // Task 4 (BroadcastEdit) field-validation additions below.
+        expiryRequired: 'Expiry is required',
+        invalidDate: 'Invalid date',
+      },
+      // Task 2 (Broadcast list surface: BroadcastManagement, BroadcastFilters,
+      // BroadcastSummary, broadcastColumns) page-local additions below.
+      subtitle: 'Manage platform-wide and business unit notifications.',
+      searchPlaceholder: 'Search broadcasts...',
+      newBroadcast: 'New Broadcast',
+      emptyTitle: 'No broadcasts found',
+      emptyDescription: 'Get started by creating your first broadcast.',
+      loading: 'Loading broadcasts',
+      loadingEllipsis: 'Loading broadcasts...',
+      deleteTitle: 'Delete Broadcast',
+      deleteConfirm: 'Are you sure you want to delete this broadcast? It will be hidden from everyone immediately.',
+      // NOT toastDeleted/toastDeleteFailed page-local keys — those would duplicate
+      // toast.deleted/toast.deleteFailed composed with entity.broadcast.sentence/lower,
+      // which is what Task 1 added entity.broadcast for. toastExpireFailed stays
+      // page-local: there is no shared expire template to compose from.
+      toastExpireFailed: 'Failed to expire broadcast',
+      loadFailedPrefix: 'Failed to load broadcasts: ',
+      buCode: 'BU Code',
+      scheduledAt: 'Scheduled At',
+      expiresAt: 'Expires At',
+      filterDescription: 'Filter broadcasts',
+      showDeletedLabel: 'Show deleted broadcasts',
+      summaryLoadFailed: 'Failed to load broadcast summary.',
+      actions: 'Actions',
+      // Fix-round-1: this line had no English at all — an English-language user was
+      // reading raw Thai. See th.ts for why the Thai value here is unchanged verbatim.
+      specificUserNote: "Broadcasts sent to specific users don't appear here — they're recorded as individual notifications.",
+      // Fix-round-1: the Expire ConfirmDialog description used to concatenate a Thai
+      // clause in front of an English sentence in ONE literal — a real bug, not a
+      // translation gap. Split into two keys (effect statement + confirmation question)
+      // since either half may be reused independently by a later slice.
+      expireImmediateNote: 'The broadcast disappears from recipients immediately.',
+      expireConfirm: 'Are you sure you want to expire this broadcast now?',
+      // BroadcastEdit's own 'past'-expiry ConfirmDialog — a separate flow from the
+      // list page's explicit Expire-now action above, kept as its own key so a future
+      // reword of one never silently changes the other.
+      expireConfirmEdit: 'Are you sure you want to expire this broadcast?',
+      // Task 3 (BroadcastCompose page-local additions below).
+      sendBroadcastTitle: 'Send Broadcast',
+      pushNotificationSubtitle: 'Push a notification to all users, specific users, or a business unit.',
+      audience: 'Audience',
+      allUsers: 'All users',
+      specificUsers: 'Specific users',
+      recipients: 'Recipients',
+      loadingBusinessUnitsEllipsis: 'Loading business units…',
+      noneOptional: 'None (optional)',
+      relatedBuMetadata: 'Related Business Unit (Metadata)',
+      metadataBuHint: "Attaches this business unit code to the broadcast's metadata (e.g. for navigation).",
+      scheduledMaintenancePlaceholder: 'Scheduled maintenance',
+      systemUnavailablePlaceholder: 'The system will be unavailable from 02:00 to 03:00 UTC.',
+      sendImmediately: 'Send immediately',
+      scheduleForLater: 'Schedule for later',
+      customEllipsis: 'Custom…',
+      otherEllipsis: 'Other…',
+      daysCount: '{{count}} days',
+      reset: 'Reset',
+      schedule: 'Schedule',
+      send: 'Send',
+      // Not in the brief's measured string list — a format-example placeholder (not
+      // prose), same rationale as pages.users.usernamePlaceholder ('user@example.com'):
+      // identical value in both languages because it illustrates the exact character
+      // set TYPE_CUSTOM_RE accepts, not a translatable word.
+      customTypePlaceholder: 'CUSTOM_TYPE',
+      sendToAllUsers: 'Send to ALL users?',
+      // Plurals stay in the English value only (brief step 3): Thai does not inflect
+      // for number, so th.ts gives both keys the same value.
+      sendToUserSingular: 'Send to {{count}} user?',
+      sendToUserPlural: 'Send to {{count}} users?',
+      sendToBu: 'Send to {{name}}?',
+      // confirmTitle/confirmDescription are assembled from these whole-sentence keys —
+      // never by slotting a translated fragment into a translated frame. `base`
+      // (scheduledForNote / deliveredImmediately) is concatenated with one more whole
+      // sentence per target mode, mirroring the expireImmediateNote+expireConfirm
+      // concatenation Task 2 already established in BroadcastManagement.
+      scheduledForNote: 'Scheduled for {{when}}.',
+      deliveredImmediately: 'Will be delivered immediately.',
+      systemAllReachNote: 'This broadcast will reach every user in the system. Title: "{{title}}".',
+      recipientsNote: 'Recipients: {{names}}.',
+      recipientsNoteWithExtra: 'Recipients: {{names}} and {{extraCount}} more.',
+      buNote: 'Business unit: {{name}} ({{code}}).',
+      toastScheduled: 'Broadcast scheduled for {{when}}',
+      toastSent: 'Broadcast sent',
+      sendFailedPrefix: 'Failed to send broadcast: ',
+      fixHighlightedFields: 'Please fix the highlighted fields',
+      // Task 4 (BroadcastEdit) page-local additions below.
+      notFoundTitle: 'Broadcast not found',
+      notFoundDescription: "This broadcast doesn't exist, or it may have been deleted. Check the link, or pick one from the list.",
+      backToBroadcasts: 'Back to broadcasts',
+      broadcastInfo: 'Broadcast Info',
+      // Card 1 content, not DevDebugSheet content — the brief mis-grouped these with the
+      // debug-sheet strings; they render as ordinary visible text well before the
+      // DevDebugSheet element. Parentheses are part of the rendered text, kept in both
+      // languages.
+      event: 'Event',
+      systemGenerated: '(System generated)',
+      scheduledAtLabel: 'Scheduled at',
+      leaveEmptyToSendImmediately: 'Leave empty to send immediately.',
+      rescheduleTitle: 'Reschedule Broadcast',
+      // rescheduleNote/rescheduleConfirm and the expireImmediateNote/expireConfirm pair
+      // above are concatenated the same way (whole sentence + whole sentence, never a
+      // translated fragment slotted into a translated frame) to build the two
+      // ConfirmDialog descriptions in BroadcastEdit — mirroring the 'past' expiry
+      // dialog's reuse of expireImmediateNote+expireConfirm below.
+      rescheduleNote: 'The message disappears from recipients until the new time.',
+      rescheduleConfirm: 'Are you sure you want to reschedule?',
+      // Distinct from toastExpireFailed's plural loadFailedPrefix ('Failed to load
+      // broadcasts: ') — this is BroadcastEdit's single-record load error, concatenated
+      // inline with the parsed message rather than passed as a toast description.
+      loadFailedDetail: 'Failed to load broadcast: ',
+      toastNoChanges: 'No changes to save',
+      noMessage: 'No message',
+      untitled: 'Untitled',
+      // Fix-round (Task 4): this line was raw Thai with no English at all, unconditionally
+      // rendered regardless of app language — same class of bug as specificUserNote and
+      // the expire/reschedule ConfirmDialog descriptions above. See th.ts: Thai kept
+      // verbatim.
+      contentLockedNote: "Already broadcast — content can't be edited, some recipients may have already seen it.",
+      // BroadcastPreview.tsx (reachSummary) additions below.
+      everyUserInSystem: 'Every user in the system',
+      // Plural stays in the English value only (same pattern as sendToUserSingular/Plural
+      // above) — Thai gives both keys the same value.
+      selectedUserSingular: '{{count}} selected user',
+      selectedUserPlural: '{{count}} selected users',
+      noRecipientsPickedYet: 'No recipients picked yet',
+      noBusinessUnitPickedYet: 'No business unit picked yet',
+      // BroadcastPreview.tsx (component JSX) additions below.
+      reaches: 'Reaches',
+      sendsImmediately: 'Sends immediately',
+      titlePlaceholder: 'Your title appears here',
+      messagePlaceholder: 'Your message appears here.',
+      // No trailing period — distinct from scheduledForNote above, which has one.
+      scheduledForLabel: 'Scheduled for {{when}}',
+      internalCategorisationNote: 'Colour and label are an internal categorisation — recipients see a standard notification.',
+    },
+    news: {
+      publish: 'Publish',
+      tags: 'Tags',
+      loadFailedPrefix: 'Failed to load news: ',
+      // Task 5 (NewsManagement + NewsroomSummary) additions below.
+      title: 'News Management',
+      subtitle: 'Manage announcements and news articles',
+      addNews: 'Add News',
+      searchPlaceholder: 'Search news...',
+      filterDescription: 'Filter news by status',
+      target: 'Target',
+      // No shared common.status.* entry for 'draft' (only published/archived/updated do) —
+      // used by both this page's statusLabel fallback and NewsroomSummary's Stage label.
+      draft: 'Draft',
+      untitled: '(untitled)',
+      emptyTitle: 'No news yet',
+      emptyDescription: 'Get started by creating your first news article.',
+      loading: 'Loading news',
+      loadingEllipsis: 'Loading news...',
+      selectRow: 'Select {{name}}',
+      rowActions: 'Actions for {{name}}',
+      deleteTitle: 'Delete News',
+      deleteConfirm: 'Are you sure you want to delete this news article? This action cannot be undone.',
+      publishSelected: 'Publish Selected',
+      archiveSelected: 'Archive Selected',
+      deleteSelected: 'Delete Selected',
+      // 'Archive' as a VERB (dialog title prefix + confirm button label) — distinct from
+      // common.status.archived, which is the completed-state adjective ('Archived'). Same
+      // split as 'Publish' (this page's pages.news.publish) vs common.status.published: the
+      // "Published {when}" line in NewsroomSummary uses the latter, this dialog uses the
+      // former — see the task report's hazard-2 note.
+      archive: 'Archive',
+      archiving: 'Archiving...',
+      publishing: 'Publishing...',
+      // Whole-sentence bulk-dialog headline templates ('{verb} {{count}} News Article(s)') —
+      // never a translated verb interpolated into a translated heading.
+      bulkDeleteTitle: 'Delete {{count}} News Article(s)',
+      bulkArchiveTitle: 'Archive {{count}} News Article(s)',
+      bulkPublishTitle: 'Publish {{count}} News Article(s)',
+      bulkDeleteDescription: 'This will delete {{count}} selected news article(s). This action cannot be undone.',
+      bulkArchiveDescription: 'This will archive {{count}} selected news article(s). They can be un-archived later by editing each article.',
+      bulkPublishDescription: 'This will publish {{count}} selected news article(s), making them visible to readers.',
+      confirmCodePlaceholder: 'Enter the 6-character code',
+      // The imperative "Type X to confirm", NOT common.field.type (a noun field label) —
+      // identical English spelling, different meaning (hazard 2). Marker-split like
+      // pages.users.typeUsernameToConfirm — the code itself stays a styled <span>, not
+      // plain text, so it can't be baked into the translated string.
+      typeCodeToConfirm: 'Type {{code}} to confirm',
+      // NewsroomSummary.tsx additions below.
+      summaryLoadFailed: "Couldn't load the newsroom summary.",
+      latest: 'Latest',
+      nothingPublishedYet: 'Nothing published yet',
+      publishArticleHint: 'Publish an article to make it visible to readers.',
+      // Not in the brief's measured string list (hazard 4: a curly-brace-led fragment,
+      // invisible to a capital-letter-anchored scan) — frozen by NewsroomSummary.test.tsx's
+      // `/20 articles total/`. The catalog has no plural support, so the singular/plural
+      // branch stays at the call site — same pattern as timeAgo's hourAgo/hoursAgo below.
+      articleTotal: '{{count}} article total',
+      articlesTotal: '{{count}} articles total',
+      // timeAgo (NewsroomSummary.tsx). Every output here was invisible to the string scan:
+      // each starts with a lowercase letter or a digit/param. hourAgo/hoursAgo and
+      // weekAgo/weeksAgo hold the same Thai value (see th.ts) since Thai does not inflect
+      // for number; English keeps the inflection.
+      time: {
+        none: '-',
+        justNow: 'just now',
+        minAgo: '{{count}} min ago',
+        hourAgo: '{{count}} hour ago',
+        hoursAgo: '{{count}} hours ago',
+        yesterday: 'yesterday',
+        daysAgo: '{{count}} days ago',
+        weekAgo: '{{count}} week ago',
+        weeksAgo: '{{count}} weeks ago',
+      },
+      // summarizeBulk (NewsManagement.tsx) restructure: nine whole sentences (three verbs ×
+      // three outcomes) replace an English verb interpolated into three frames — English
+      // puts the verb first and inflects it, Thai does neither. English values here are
+      // byte-identical to what the old frames produced.
+      bulk: {
+        publish: { ok: 'Published {{count}} news article(s)', failed: 'Failed to publish {{count}} news article(s)', partial: 'Published {{count}}, {{failed}} failed' },
+        archive: { ok: 'Archived {{count}} news article(s)',  failed: 'Failed to archive {{count}} news article(s)',  partial: 'Archived {{count}}, {{failed}} failed' },
+        delete:  { ok: 'Deleted {{count}} news article(s)',   failed: 'Failed to delete {{count}} news article(s)',   partial: 'Deleted {{count}}, {{failed}} failed' },
+      },
+      // Task 6 (NewsEdit.tsx) additions below.
+      article: 'Article',
+      articleDescription: 'The body readers see, plus its source and tags.',
+      bodyMarkdown: 'Body (Markdown)',
+      sourceUrl: 'Source URL',
+      addTagPlaceholder: 'Add a tag...',
+      coverImage: 'Cover image',
+      headline: 'Headline',
+      publishDescription: 'Who sees this, and when.',
+      visibleToAllBu: 'Visible to all business units',
+      // Whole-sentence template, NOT an interpolation of common.label.businessUnitsLabel's
+      // sibling `visibleToAllBu` — the quoted term is written out in each language rather
+      // than interpolated in, per the file's whole-sentence-reuse convention (see
+      // rescheduleNote/rescheduleConfirm in pages.broadcasts above).
+      selectBuOrEnableGlobal: 'Select at least one business unit, or enable "Visible to all business units".',
+      publishedAt: 'Published at',
+      // Whole-sentence template quoting common.status.published's value ('Published') —
+      // same convention as selectBuOrEnableGlobal above: the quoted term is written out,
+      // never interpolated from the translated key.
+      publishedAtNote: 'Set automatically when status becomes "Published".',
+      history: 'History',
+      createNews: 'Create News',
+      // Mirrors loadFailedPrefix's shape (prefix + concatenated message), not toast.saveFailed
+      // (which has no trailing ': ' and is a standalone toast, not a concatenation target).
+      saveFailedPrefix: 'Failed to save news: ',
+      // Task 6 (NewsMasthead.tsx) additions below.
+      hiddenFromReaders: 'Hidden from readers',
+      notVisibleToReaders: 'Not visible to readers',
+      // describeReach's audience-count pair. Thai holds one value for both (see th.ts).
+      reachOne: '{{count}} business unit',
+      reachMany: '{{count}} business units',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

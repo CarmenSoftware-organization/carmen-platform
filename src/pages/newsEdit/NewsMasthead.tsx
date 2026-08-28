@@ -1,12 +1,38 @@
 import { Newspaper, Globe, Building2 } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { useI18n } from '../../hooks/useI18n';
+import { translate } from '../../i18n/translate';
+import type { TFunction, TKey } from '../../i18n/types';
 import type { NewsStatus } from '../../types';
 
-/** Human-readable audience for the masthead eyebrow. */
-export function describeReach(isGlobal: boolean, count: number): string {
-  if (isGlobal || count === 0) return 'Global';
-  return `${count} business unit${count === 1 ? '' : 's'}`;
+/**
+ * Human-readable audience for the masthead eyebrow.
+ *
+ * Trailing optional `t`, English-catalog fallback — same shape as `validateField`/
+ * `parseApiError` (see `src/utils/validation.ts`): the fallback READS the English catalog
+ * rather than holding its own copy of these strings, and is pinned to the literal 'en' (not
+ * `DEFAULT_LANG`) so it stays byte-identical to the frozen positional test assertions
+ * regardless of what `DEFAULT_LANG` is ever repointed to.
+ */
+export function describeReach(isGlobal: boolean, count: number, t?: TFunction): string {
+  const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
+
+  // Dev-only signal for a page that forgets to pass `t`: fires only when the UI is
+  // actually Thai (`document.documentElement.lang`, set by useI18n.tsx), so it can't fire
+  // in jsdom, where `documentElement.lang` is `''` by default — none of the frozen
+  // positional tests see it. Shape copied from `src/utils/validation.ts`.
+  if (
+    process.env.NODE_ENV === 'development' &&
+    !t &&
+    typeof document !== 'undefined' &&
+    document.documentElement.lang === 'th'
+  ) {
+    console.warn('[i18n] describeReach called without `t` — this message renders English');
+  }
+
+  if (isGlobal || count === 0) return tr('common.option.global');
+  return tr(count === 1 ? 'pages.news.reachOne' : 'pages.news.reachMany', { count });
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -14,11 +40,28 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const statusVariant = (s: NewsStatus): 'success' | 'secondary' | 'outline' =>
   s === 'published' ? 'success' : s === 'archived' ? 'outline' : 'secondary';
 
-/** Short state note trailing the eyebrow — the publish date once live, else who can see it. */
-function stateNote(status: NewsStatus, publishedLabel?: string): string | undefined {
+// 'draft' has no common.status.* entry (only published/archived/updated do) — routed
+// explicitly to pages.news.draft BEFORE the fallback. Writing this as
+// `t(\`common.status.${s}\`) || t('pages.news.draft') || cap(s)` looks equivalent but is
+// not — it silently renders "Draft" for ANY unrecognised status, repeating the exact
+// "missing key produces plausible English" illusion this fix closes. `translate` returns
+// '' for an unknown key, so `|| cap(s)` stays as the last-resort fallback for a status
+// this switch has never heard of, not as a way to paper over 'draft'. Same shape as
+// NewsEdit.tsx's statusLabel and NewsManagement.tsx's — kept here rather than imported
+// since each file's `t` comes from its own component/hook scope.
+const statusLabel = (s: string, t: TFunction) =>
+  (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s);
+
+/**
+ * Short state note trailing the eyebrow — the publish date once live, else who can see it.
+ *
+ * Module-local (nothing outside this file calls it), so `t` is a required parameter rather
+ * than the optional trailing one `describeReach` takes.
+ */
+function stateNote(status: NewsStatus, publishedLabel: string | undefined, t: TFunction): string | undefined {
   if (status === 'published') return publishedLabel;
-  if (status === 'archived') return 'Hidden from readers';
-  return 'Not visible to readers';
+  if (status === 'archived') return t('pages.news.hiddenFromReaders');
+  return t('pages.news.notVisibleToReaders');
 }
 
 interface NewsMastheadProps {
@@ -47,8 +90,9 @@ export function NewsMasthead({
   titleEditor,
   actions,
 }: NewsMastheadProps) {
+  const { t } = useI18n();
   const global = isGlobal || buCount === 0;
-  const note = stateNote(status, publishedLabel);
+  const note = stateNote(status, publishedLabel, t);
 
   return (
     <Card className="overflow-hidden p-0">
@@ -73,10 +117,10 @@ export function NewsMasthead({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="text-muted-foreground mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <Badge variant={statusVariant(status)}>{cap(status)}</Badge>
+              <Badge variant={statusVariant(status)}>{statusLabel(status, t)}</Badge>
               <span className="inline-flex items-center gap-1">
                 {global ? <Globe className="size-3" /> : <Building2 className="size-3" />}
-                {describeReach(isGlobal, buCount)}
+                {describeReach(isGlobal, buCount, t)}
               </span>
               {note && (
                 <>
@@ -85,7 +129,7 @@ export function NewsMasthead({
                 </>
               )}
             </div>
-            {editing ? titleEditor : <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title || '(untitled)'}</h1>}
+            {editing ? titleEditor : <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title || t('pages.news.untitled')}</h1>}
           </div>
           {actions && <div className="shrink-0">{actions}</div>}
         </div>

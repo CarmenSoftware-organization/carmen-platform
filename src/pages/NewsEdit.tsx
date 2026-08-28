@@ -26,7 +26,9 @@ import { MarkdownEditor } from '../components/MarkdownEditor';
 import { BusinessUnitMultiSelect } from '../components/BusinessUnitMultiSelect';
 import { ImageUpload } from '../components/ImageUpload';
 import { ReadOnlyField } from '../components/ReadOnlyField';
+import { useI18n } from '../hooks/useI18n';
 import type { NewsStatus } from '../types';
+import type { TKey } from '../i18n/types';
 
 interface NewsFormData {
   title: string;
@@ -68,9 +70,20 @@ const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
 
 const NewsEdit: React.FC = () => {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
+  // 'draft' has no common.status.* entry (only published/archived/updated do) — routed
+  // explicitly to pages.news.draft BEFORE the fallback. Writing this as
+  // `t(\`common.status.${s}\`) || t('pages.news.draft') || cap(s)` looks equivalent but is
+  // not — it silently renders "Draft" for ANY unrecognised status, repeating the exact
+  // "missing key produces plausible English" illusion this fix closes. `translate` returns
+  // '' for an unknown key, so `|| cap(s)` stays as the last-resort fallback for a status
+  // this switch has never heard of, not as a way to paper over 'draft'. Same shape as
+  // NewsMasthead.tsx's statusLabel and NewsManagement.tsx's.
+  const statusLabel = (s: string) =>
+    (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s);
 
   const [formData, setFormData] = useState<NewsFormData>(initialForm);
   const [savedFormData, setSavedFormData] = useState<NewsFormData>(initialForm);
@@ -149,7 +162,7 @@ const NewsEdit: React.FC = () => {
       setNewsRecord(item);
       setPublishedAt(item.published_at || undefined);
     } catch (err: unknown) {
-      setError('Failed to load news: ' + getErrorDetail(err));
+      setError(t('pages.news.loadFailedPrefix') + getErrorDetail(err, t));
     } finally {
       setLoading(false);
     }
@@ -177,7 +190,7 @@ const NewsEdit: React.FC = () => {
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFieldErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
+    setFieldErrors(prev => ({ ...prev, [name]: validateField(name, value, undefined, t) }));
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -188,10 +201,10 @@ const NewsEdit: React.FC = () => {
     e.preventDefault();
 
     const errs: Record<string, string> = {};
-    if (!formData.title.trim()) errs.title = 'Title is required';
-    if (formData.url) errs.url = validateField('url', formData.url);
+    if (!formData.title.trim()) errs.title = t('common.validation.requiredMessage', { label: t('common.field.title') });
+    if (formData.url) errs.url = validateField('url', formData.url, undefined, t);
     if (!formData.isGlobal && formData.business_unit_ids.length === 0) {
-      errs.business_unit_ids = 'Select at least one business unit, or enable "Visible to all business units".';
+      errs.business_unit_ids = t('pages.news.selectBuOrEnableGlobal');
     }
     const activeErrs = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
     if (Object.keys(activeErrs).length > 0) {
@@ -214,7 +227,7 @@ const NewsEdit: React.FC = () => {
       if (isNew) {
         const result = await newsService.create(payload, selectedImageFile ?? undefined);
         const created = result.data || result;
-        toast.success('News created successfully');
+        toast.success(t('toast.created', { entity: t('entity.news.sentence') }));
         discardSelectedImage();
         if (created?.id) {
           setEditing(false);
@@ -224,7 +237,7 @@ const NewsEdit: React.FC = () => {
         }
       } else {
         await newsService.update(id!, payload, selectedImageFile ?? undefined);
-        toast.success('Changes saved successfully');
+        toast.success(t('toast.saved'));
         await fetchNews();
         discardSelectedImage();
         setEditing(false);
@@ -235,8 +248,8 @@ const NewsEdit: React.FC = () => {
         discardSelectedImage();
         await fetchNews();
       } else {
-        const { message, fields } = parseApiError(err);
-        setError('Failed to save news: ' + message);
+        const { message, fields } = parseApiError(err, t);
+        setError(t('pages.news.saveFailedPrefix') + message);
         if (fields) setFieldErrors(prev => ({ ...prev, ...fields }));
       }
     } finally {
@@ -284,7 +297,7 @@ const NewsEdit: React.FC = () => {
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          News
+          {t('breadcrumb.news')}
         </Link>
 
         {error && (
@@ -302,7 +315,7 @@ const NewsEdit: React.FC = () => {
             coverUrl={formData.image}
             coverEditor={
               <div className="space-y-2">
-                <Label htmlFor="image">Cover image</Label>
+                <Label htmlFor="image">{t('pages.news.coverImage')}</Label>
                 <ImageUpload
                   id="image"
                   value={formData.image}
@@ -323,8 +336,8 @@ const NewsEdit: React.FC = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   onFocus={handleFocus}
-                  placeholder="Headline"
-                  aria-label="Headline"
+                  placeholder={t('pages.news.headline')}
+                  aria-label={t('pages.news.headline')}
                   className={cn(
                     'w-full border-b border-transparent bg-transparent pb-1 text-2xl font-bold tracking-tight outline-hidden transition-colors placeholder:text-muted-foreground/40 focus:border-primary sm:text-3xl',
                     fieldErrors.title && 'border-destructive',
@@ -339,7 +352,7 @@ const NewsEdit: React.FC = () => {
                 <Can permission="news.update">
                   <Button variant="outline" size="sm" onClick={handleEditToggle}>
                     <Pencil className="mr-2 h-4 w-4" />
-                    Edit
+                    {t('common.action.edit')}
                   </Button>
                 </Can>
               )
@@ -351,12 +364,12 @@ const NewsEdit: React.FC = () => {
             <div className="min-w-0 space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Article</CardTitle>
-                  <CardDescription>The body readers see, plus its source and tags.</CardDescription>
+                  <CardTitle>{t('pages.news.article')}</CardTitle>
+                  <CardDescription>{t('pages.news.articleDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contents">Body (Markdown)</Label>
+                    <Label htmlFor="contents">{t('pages.news.bodyMarkdown')}</Label>
                     <MarkdownEditor
                       id="contents"
                       value={formData.contents}
@@ -366,7 +379,7 @@ const NewsEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="url">Source URL</Label>
+                    <Label htmlFor="url">{t('pages.news.sourceUrl')}</Label>
                     {editing ? (
                       <>
                         <Input
@@ -388,7 +401,7 @@ const NewsEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tags">Tags</Label>
+                    <Label htmlFor="tags">{t('pages.news.tags')}</Label>
                     <ChipInput
                       id="tags"
                       value={formData.tags.join(',')}
@@ -396,12 +409,12 @@ const NewsEdit: React.FC = () => {
                         setFormData((prev) => ({
                           ...prev,
                           tags: v
-                            ? Array.from(new Set(v.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)))
+                            ? Array.from(new Set(v.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean)))
                             : [],
                         }))
                       }
                       suggestions={tagSuggestions}
-                      placeholder="Add a tag..."
+                      placeholder={t('pages.news.addTagPlaceholder')}
                       disabled={!editing}
                     />
                   </div>
@@ -413,20 +426,20 @@ const NewsEdit: React.FC = () => {
             <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
               <Card>
                 <CardHeader>
-                  <CardTitle>Publish</CardTitle>
-                  <CardDescription>Who sees this, and when.</CardDescription>
+                  <CardTitle>{t('pages.news.publish')}</CardTitle>
+                  <CardDescription>{t('pages.news.publishDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
+                    <Label htmlFor="status">{t('common.status.label')}</Label>
                     {editing ? (
                       <select id="status" name="status" value={formData.status} onChange={handleChange} className={selectClassName}>
                         {NEWS_STATUSES.map((s) => (
-                          <option key={s} value={s}>{cap(s)}</option>
+                          <option key={s} value={s}>{statusLabel(s)}</option>
                         ))}
                       </select>
                     ) : (
-                      <div><Badge variant={statusVariant(formData.status)}>{cap(formData.status)}</Badge></div>
+                      <div><Badge variant={statusVariant(formData.status)}>{statusLabel(formData.status)}</Badge></div>
                     )}
                   </div>
 
@@ -441,11 +454,11 @@ const NewsEdit: React.FC = () => {
                         disabled={!editing}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <Label htmlFor="isGlobal">Visible to all business units</Label>
+                      <Label htmlFor="isGlobal">{t('pages.news.visibleToAllBu')}</Label>
                     </div>
                     {!formData.isGlobal && (
                       <div className="space-y-2">
-                        <Label>Business units</Label>
+                        <Label>{t('common.label.businessUnitsLabel')}</Label>
                         <BusinessUnitMultiSelect
                           value={formData.business_unit_ids}
                           onChange={(ids) => { setFormData(prev => ({ ...prev, business_unit_ids: ids })); setError(''); }}
@@ -459,9 +472,9 @@ const NewsEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2 border-t pt-4">
-                    <Label>Published at</Label>
+                    <Label>{t('pages.news.publishedAt')}</Label>
                     <ReadOnlyField value={fmt(publishedAt)} />
-                    <p className="text-xs text-muted-foreground">Set automatically when status becomes "Published".</p>
+                    <p className="text-xs text-muted-foreground">{t('pages.news.publishedAtNote')}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -469,7 +482,7 @@ const NewsEdit: React.FC = () => {
               {!isNew && (newsAudit.created || newsAudit.updated) && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">History</CardTitle>
+                    <CardTitle className="text-base">{t('pages.news.history')}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm">
                     <AuditMeta variant="header" audit={newsAudit} className="text-muted-foreground text-xs" />
@@ -489,10 +502,10 @@ const NewsEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -504,11 +517,11 @@ const NewsEdit: React.FC = () => {
                 disabled={saving}
               >
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : isNew ? 'Create News' : 'Save Changes'}
+                {saving ? t('common.busy.saving') : isNew ? t('pages.news.createNews') : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>

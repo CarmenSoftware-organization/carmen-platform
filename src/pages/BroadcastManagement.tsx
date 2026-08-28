@@ -19,6 +19,8 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
+import { useI18n } from '../hooks/useI18n';
+import type { TKey } from '../i18n/types';
 
 import { BroadcastSummary } from './broadcastManagement/BroadcastSummary';
 import { BroadcastFilters } from './broadcastManagement/BroadcastFilters';
@@ -36,6 +38,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const BroadcastManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [items, setItems] = useState<BroadcastListItem[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -87,12 +90,12 @@ const BroadcastManagement: React.FC = () => {
       }
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load broadcasts: ' + getErrorDetail(err));
+      setError(t('pages.broadcasts.loadFailedPrefix') + getErrorDetail(err, t));
       devLog('Error fetching broadcasts:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchItems(paginate);
@@ -169,11 +172,11 @@ const BroadcastManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await broadcastService.remove(deleteId.id, deleteId.docVersion);
-      toast.success('Broadcast deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.broadcast.sentence') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      toast.error('Failed to delete broadcast', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.broadcast.lower') }), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -184,32 +187,32 @@ const BroadcastManagement: React.FC = () => {
         end_at: new Date().toISOString(),
         doc_version: expireNowId.docVersion,
       });
-      toast.success('Broadcast expired successfully');
+      toast.success(t('pages.broadcasts.toastExpired'));
       setExpireNowId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      toast.error('Failed to expire broadcast', { description: getErrorDetail(err) });
+      toast.error(t('pages.broadcasts.toastExpireFailed'), { description: getErrorDetail(err, t) });
     }
   };
 
   const handleExport = () => {
     const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
     const csv = generateCSV(rows, [
-      { key: 'title', label: 'Title' },
-      { key: 'message', label: 'Message' },
-      { key: 'scope', label: 'Scope' },
-      { key: 'bu_code', label: 'BU Code' },
-      { key: 'severity', label: 'Severity' },
-      { key: 'status', label: 'Status' },
-      { key: 'scheduled_at', label: 'Scheduled At' },
-      { key: 'end_at', label: 'Expires At' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'title', label: t('common.field.title') },
+      { key: 'message', label: t('pages.broadcasts.message') },
+      { key: 'scope', label: t('common.field.scope') },
+      { key: 'bu_code', label: t('pages.broadcasts.buCode') },
+      { key: 'severity', label: t('common.field.severity') },
+      { key: 'status', label: t('common.status.label') },
+      { key: 'scheduled_at', label: t('pages.broadcasts.scheduledAt') },
+      { key: 'end_at', label: t('pages.broadcasts.expiresAt') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `broadcasts-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const activeFilterCount = (statusFilter.length > 0 ? 1 : 0) + (scopeFilter.length > 0 ? 1 : 0) + (showDeleted ? 1 : 0);
@@ -218,18 +221,19 @@ const BroadcastManagement: React.FC = () => {
     showDeleted,
     onDelete: (id, docVersion) => setDeleteId({ id, docVersion }),
     onExpireNow: (id, docVersion) => setExpireNowId({ id, docVersion }),
-  }), [showDeleted]);
+    t,
+  }), [showDeleted, t]);
 
   return (
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <PageHeader
-          title="Broadcasts"
+          title={t('breadcrumb.broadcasts')}
           subtitle={
             <div className="space-y-1">
-              <div>Manage platform-wide and business unit notifications.</div>
+              <div>{t('pages.broadcasts.subtitle')}</div>
               <div className="text-xs text-muted-foreground">
-                ประกาศที่ส่งถึงผู้ใช้ที่ระบุเจาะจงจะไม่แสดงที่นี่ — ถูกบันทึกเป็นการแจ้งเตือนรายบุคคล
+                {t('pages.broadcasts.specificUserNote')}
               </div>
             </div>
           }
@@ -237,13 +241,13 @@ const BroadcastManagement: React.FC = () => {
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="broadcast.send">
                 <Button onClick={() => navigate('/broadcasts/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">New Broadcast</span>
-                  <span className="sm:hidden">New</span>
+                  <span className="hidden sm:inline">{t('pages.broadcasts.newBroadcast')}</span>
+                  <span className="sm:hidden">{t('breadcrumb.new')}</span>
                 </Button>
               </Can>
             </>
@@ -268,7 +272,7 @@ const BroadcastManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search broadcasts..."
+                placeholder={t('pages.broadcasts.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <BroadcastFilters
@@ -285,7 +289,7 @@ const BroadcastManagement: React.FC = () => {
               />
               <Button variant="outline" size="sm" className="shrink-0" onClick={() => setShowFilters(true)}>
                 <Filter className="mr-2 h-4 w-4" />
-                Filters
+                {t('common.label.filters')}
                 {activeFilterCount > 0 && (
                   <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                     {activeFilterCount}
@@ -295,10 +299,10 @@ const BroadcastManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={`status-${s}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
-                    {s}
+                    {t(`common.status.${s}` as TKey) || s}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
@@ -306,7 +310,7 @@ const BroadcastManagement: React.FC = () => {
                 ))}
                 {scopeFilter.map((s) => (
                   <Badge key={`scope-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === 'system' ? 'System' : 'Business Unit'}
+                    {s === 'system' ? t('common.option.system') : t('entity.businessUnit.title')}
                     <button onClick={() => handleScopeFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
@@ -314,14 +318,14 @@ const BroadcastManagement: React.FC = () => {
                 ))}
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    Show Deleted
+                    {t('common.action.showDeleted')}
                     <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -334,13 +338,13 @@ const BroadcastManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Megaphone}
-                emptyTitle="No broadcasts found"
-                emptyDescription="Get started by creating your first broadcast."
+                emptyTitle={t('pages.broadcasts.emptyTitle')}
+                emptyDescription={t('pages.broadcasts.emptyDescription')}
                 addAction={
                   <Can permission="broadcast.send">
                     <Button size="sm" onClick={() => navigate('/broadcasts/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      New Broadcast
+                      {t('pages.broadcasts.newBroadcast')}
                     </Button>
                   </Can>
                 }
@@ -352,8 +356,8 @@ const BroadcastManagement: React.FC = () => {
                 ) : (
                   <>
                     {loading && (
-                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading broadcasts">
-                        <div className="text-muted-foreground">Loading broadcasts...</div>
+                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.broadcasts.loading')}>
+                        <div className="text-muted-foreground">{t('pages.broadcasts.loadingEllipsis')}</div>
                       </div>
                     )}
                     <DataTable
@@ -379,9 +383,9 @@ const BroadcastManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Broadcast"
-        description="Are you sure you want to delete this broadcast? It will be hidden from everyone immediately."
-        confirmText="Delete"
+        title={t('pages.broadcasts.deleteTitle')}
+        description={t('pages.broadcasts.deleteConfirm')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
@@ -389,9 +393,9 @@ const BroadcastManagement: React.FC = () => {
       <ConfirmDialog
         open={expireNowId !== null}
         onOpenChange={(open) => { if (!open) setExpireNowId(null); }}
-        title="Expire Broadcast"
-        description="ประกาศจะหายจากผู้รับทันที Are you sure you want to expire this broadcast now?"
-        confirmText="Expire now"
+        title={t('pages.broadcasts.expireTitle')}
+        description={`${t('pages.broadcasts.expireImmediateNote')} ${t('pages.broadcasts.expireConfirm')}`}
+        confirmText={t('pages.broadcasts.expireNow')}
         onConfirm={handleConfirmExpireNow}
       />
 

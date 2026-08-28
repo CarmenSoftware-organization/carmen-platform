@@ -30,6 +30,8 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
+import { useI18n } from '../hooks/useI18n';
+import type { TKey } from '../i18n/types';
 import type { News, NewsStatus, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -44,6 +46,8 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const STATUS_OPTIONS: NewsStatus[] = ['draft', 'published', 'archived'];
 
+// Fallback for a status/label lookup miss — `translate` returns '' on a miss, so this is
+// load-bearing (see statusLabel below, defined inside the component).
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const statusVariant = (s?: NewsStatus): 'success' | 'secondary' | 'outline' =>
@@ -65,35 +69,40 @@ export const buildAdvance = (statuses: string[], tags: string[]): string => {
 
 type BulkMode = 'delete' | 'archive' | 'publish';
 
+// Translation KEYS, not translated strings — the actual text is resolved with `t` at each
+// render call site (this object is module-level, outside the component, so it has no
+// access to the hook). `dialogTitleKey`/`descriptionKey` are whole-sentence templates
+// (see pages.news.bulk* in the catalog) rather than a verb interpolated into a frame —
+// Thai word order differs from English here, same reasoning as summarizeBulk below.
 const BULK_ACTIONS: Record<BulkMode, {
-  title: string;        // verb used in "{title} N News Article(s)" and the confirm button
-  past: string;         // toast success verb, e.g. 'Deleted'
-  base: string;         // toast failure verb, e.g. 'delete'
-  busy: string;         // in-flight button label, e.g. 'Deleting...'
+  titleKey: TKey;        // verb — dialog title prefix + confirm button label
+  busyKey: TKey;         // in-flight button label, e.g. 'Deleting...'
+  dialogTitleKey: TKey;  // whole '{verb} {{count}} News Article(s)' template
+  descriptionKey: TKey;  // whole sentence template, takes {{count}}
   icon: LucideIcon;
-  destructive: boolean; // destructive styling (delete only)
-  status?: NewsStatus;  // status to set for update-based actions; absent ⇒ delete
-  description: (n: number) => string;
+  destructive: boolean;  // destructive styling (delete only)
+  status?: NewsStatus;   // status to set for update-based actions; absent ⇒ delete
 }> = {
   delete: {
-    title: 'Delete', past: 'Deleted', base: 'delete', busy: 'Deleting...',
+    titleKey: 'common.action.delete', busyKey: 'common.busy.deleting',
+    dialogTitleKey: 'pages.news.bulkDeleteTitle', descriptionKey: 'pages.news.bulkDeleteDescription',
     icon: Trash2, destructive: true,
-    description: (n) => `This will delete ${n} selected news article(s). This action cannot be undone.`,
   },
   archive: {
-    title: 'Archive', past: 'Archived', base: 'archive', busy: 'Archiving...',
+    titleKey: 'pages.news.archive', busyKey: 'pages.news.archiving',
+    dialogTitleKey: 'pages.news.bulkArchiveTitle', descriptionKey: 'pages.news.bulkArchiveDescription',
     icon: Archive, destructive: false, status: 'archived',
-    description: (n) => `This will archive ${n} selected news article(s). They can be un-archived later by editing each article.`,
   },
   publish: {
-    title: 'Publish', past: 'Published', base: 'publish', busy: 'Publishing...',
+    titleKey: 'pages.news.publish', busyKey: 'pages.news.publishing',
+    dialogTitleKey: 'pages.news.bulkPublishTitle', descriptionKey: 'pages.news.bulkPublishDescription',
     icon: Send, destructive: false, status: 'published',
-    description: (n) => `This will publish ${n} selected news article(s), making them visible to readers.`,
   },
 };
 
 const NewsManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { hasPermission } = useAuth();
   const canDelete = hasPermission('news.delete');
   const canUpdate = hasPermission('news.update');
@@ -154,12 +163,12 @@ const NewsManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? data.total ?? list.length);
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load news: ' + getErrorDetail(err));
+      setError(t('pages.news.loadFailedPrefix') + getErrorDetail(err, t));
       devLog('Error fetching news:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchNews(paginate);
@@ -253,12 +262,12 @@ const NewsManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await newsService.delete(deleteId);
-      toast.success('News deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.news.sentence') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error('Failed to delete news', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.news.lower') }), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -289,12 +298,15 @@ const NewsManagement: React.FC = () => {
     setBulkOpen(true);
   };
 
-  const summarizeBulk = (results: PromiseSettledResult<unknown>[], pastVerb: string, baseVerb: string) => {
+  // Nine whole-sentence keys (three verbs × three outcomes) instead of an English verb
+  // interpolated into a frame — English puts the verb first and inflects it, Thai does
+  // neither, so the sentence has to be translated as a whole per verb/outcome pair.
+  const summarizeBulk = (results: PromiseSettledResult<unknown>[], verb: BulkMode) => {
     const ok = results.filter((r) => r.status === 'fulfilled').length;
     const fail = results.length - ok;
-    if (fail === 0) toast.success(`${pastVerb} ${ok} news article(s)`);
-    else if (ok === 0) toast.error(`Failed to ${baseVerb} ${fail} news article(s)`);
-    else toast.warning(`${pastVerb} ${ok}, ${fail} failed`);
+    if (fail === 0) toast.success(t(`pages.news.bulk.${verb}.ok` as TKey, { count: ok }));
+    else if (ok === 0) toast.error(t(`pages.news.bulk.${verb}.failed` as TKey, { count: fail }));
+    else toast.warning(t(`pages.news.bulk.${verb}.partial` as TKey, { count: ok, failed: fail }));
   };
 
   const handleConfirmBulk = async () => {
@@ -310,7 +322,7 @@ const NewsManagement: React.FC = () => {
           return newsService.delete(n.id);
         }),
       );
-      summarizeBulk(results, action.past, action.base);
+      summarizeBulk(results, bulkMode);
       setBulkOpen(false);
       setBulkInput('');
       clearSelection();
@@ -324,48 +336,60 @@ const NewsManagement: React.FC = () => {
   const handleExport = () => {
     const rows = newsItems.map((n) => ({ ...n, ...auditCsvFields(normalizeAudit(n)) }));
     const csv = generateCSV(rows, [
-      { key: 'title', label: 'Title' },
-      { key: 'status', label: 'Status' },
+      { key: 'title', label: t('common.field.title') },
+      { key: 'status', label: t('common.status.label') },
       { key: 'url', label: 'URL' },
-      { key: 'published_at', label: 'Published' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'published_at', label: t('common.audit.publishedDate') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `news-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
+
+  // 'draft' has no common.status.* entry (only published/archived/updated do) — routed
+  // explicitly to pages.news.draft BEFORE the fallback. Fix-round-1: writing this as
+  // `t(\`common.status.${s}\`) || t('pages.news.draft') || cap(s)` looks equivalent but is
+  // not — it silently renders "Draft" for ANY unrecognised status, repeating the exact
+  // "missing key produces plausible English" illusion this fix closes. `translate` returns
+  // '' for an unknown key, so `|| cap(s)` stays as the last-resort fallback for a status
+  // this switch has never heard of, not as a way to paper over 'draft'.
+  const statusLabel = useCallback(
+    (s: string) => (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s),
+    [t],
+  );
 
   const columns = useMemo<ColumnDef<News, unknown>[]>(() => [
     {
       accessorKey: 'title',
-      header: 'Title',
+      header: t('common.field.title'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Link
             to={`/news/${row.original.id}/edit`}
             className="text-primary hover:underline whitespace-nowrap"
-            title={row.original.title || '(untitled)'}
+            title={row.original.title || t('pages.news.untitled')}
           >
-            {row.original.title || '(untitled)'}
+            {row.original.title || t('pages.news.untitled')}
           </Link>
         </div>
       ),
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={statusVariant(row.original.status)}>
-          {cap(row.original.status || 'draft')}
+          {statusLabel(row.original.status || 'draft')}
         </Badge>
       ),
     },
     {
       id: 'target',
-      header: 'Target',
+      header: t('pages.news.target'),
       enableSorting: false,
       cell: ({ row }) => {
         const ids = row.original.business_unit_ids;
@@ -380,14 +404,14 @@ const NewsManagement: React.FC = () => {
         return (
           <Badge variant="outline" className="text-xs gap-1">
             <Globe className="h-3 w-3" />
-            Global
+            {t('common.option.global')}
           </Badge>
         );
       },
     },
     {
       id: 'tags',
-      header: 'Tags',
+      header: t('pages.news.tags'),
       enableSorting: false,
       cell: ({ row }) => {
         const tags = row.original.tags ?? [];
@@ -406,14 +430,14 @@ const NewsManagement: React.FC = () => {
     {
       accessorKey: 'published_at',
       id: 'published_at',
-      header: 'Published',
+      header: t('common.audit.publishedDate'),
       cell: ({ row }) => (
         <span className="text-[11px] whitespace-nowrap text-muted-foreground">{fmt(row.original.published_at)}</span>
       ),
     },
     {
       id: 'updated_at',
-      header: 'Updated',
+      header: t('common.audit.updatedDate'),
       enableSorting: false,
       cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).updated} />,
     },
@@ -425,7 +449,7 @@ const NewsManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.title}`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('pages.news.rowActions', { name: row.original.title || '' })}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -433,41 +457,50 @@ const NewsManagement: React.FC = () => {
             <Can permission="news.update">
               <DropdownMenuItem onClick={() => navigate(`/news/${row.original.id}/edit`)} className="cursor-pointer">
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
             <Can permission="news.delete">
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete]);
+  ], [navigate, handleDelete, t, statusLabel]);
 
   const bulkAction = BULK_ACTIONS[bulkMode];
   const BulkActionIcon = bulkAction.icon;
+
+  // `pages.news.typeCodeToConfirm` interpolates a single point in the sentence ("Type
+  // {{code}} to confirm" / "พิมพ์ {{code}} เพื่อยืนยัน"). The code itself has to stay a
+  // styled <span>, not plain text, so it can't be baked into the translated string. Render
+  // the template with a marker in place of the value, then split on that marker so the real
+  // JSX span can be re-inserted at the exact point the sentence puts it — mirrors
+  // UserManagement's typeUsernameToConfirm.
+  const CONFIRM_CODE_MARKER = '@@CODE@@';
+  const [confirmBefore, confirmAfter = ''] = t('pages.news.typeCodeToConfirm', { code: CONFIRM_CODE_MARKER }).split(CONFIRM_CODE_MARKER);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="News Management"
-          subtitle="Manage announcements and news articles"
+          title={t('pages.news.title')}
+          subtitle={t('pages.news.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || newsItems.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="news.create">
                 <Button onClick={() => navigate('/news/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add News</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t('pages.news.addNews')}</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -483,14 +516,14 @@ const NewsManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search news..."
+                placeholder={t('pages.news.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -500,15 +533,15 @@ const NewsManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter news by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.news.filterDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearAllFilters}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearAllFilters}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -520,7 +553,7 @@ const NewsManagement: React.FC = () => {
                             className="h-7 text-xs"
                             onClick={() => handleStatusFilter(s)}
                           >
-                            {cap(s)}
+                            {statusLabel(s)}
                           </Button>
                         ))}
                       </div>
@@ -528,9 +561,9 @@ const NewsManagement: React.FC = () => {
                     {tagOptions.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Tags</span>
+                          <span className="text-sm font-medium">{t('pages.news.tags')}</span>
                           {tagFilter.length > 0 && (
-                            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setTagFilter([]); localStorage.setItem('tagfilters_news', JSON.stringify([])); setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, []), filter: {} })); }}>Clear</Button>
+                            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setTagFilter([]); localStorage.setItem('tagfilters_news', JSON.stringify([])); setPaginate(prev => ({ ...prev, page: 1, advance: buildAdvance(statusFilter, []), filter: {} })); }}>{t('common.action.clear')}</Button>
                           )}
                         </div>
                         <div className="flex flex-wrap gap-1">
@@ -554,10 +587,10 @@ const NewsManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {cap(s)}
+                    {statusLabel(s)}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
@@ -572,7 +605,7 @@ const NewsManagement: React.FC = () => {
                   </Badge>
                 ))}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -585,13 +618,13 @@ const NewsManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Newspaper}
-                emptyTitle="No news yet"
-                emptyDescription="Get started by creating your first news article."
+                emptyTitle={t('pages.news.emptyTitle')}
+                emptyDescription={t('pages.news.emptyDescription')}
                 addAction={
                   <Can permission="news.create">
                     <Button size="sm" onClick={() => navigate('/news/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add News
+                      {t('pages.news.addNews')}
                     </Button>
                   </Can>
                 }
@@ -600,28 +633,28 @@ const NewsManagement: React.FC = () => {
               <>
                 {canSelect && selectedNews.length > 0 && (
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
-                    <span className="text-sm font-medium">{selectedNews.length} selected</span>
+                    <span className="text-sm font-medium">{t('common.state.nSelected', { count: selectedNews.length })}</span>
                     <div className="ml-auto flex items-center gap-2">
                       {canUpdate && (
                         <Button variant="outline" size="sm" onClick={() => openBulk('publish')}>
                           <Send className="mr-2 h-4 w-4" />
-                          Publish Selected
+                          {t('pages.news.publishSelected')}
                         </Button>
                       )}
                       {canUpdate && (
                         <Button variant="outline" size="sm" onClick={() => openBulk('archive')}>
                           <Archive className="mr-2 h-4 w-4" />
-                          Archive Selected
+                          {t('pages.news.archiveSelected')}
                         </Button>
                       )}
                       {canDelete && (
                         <Button variant="destructive" size="sm" onClick={() => openBulk('delete')}>
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Selected
+                          {t('pages.news.deleteSelected')}
                         </Button>
                       )}
                       <Button variant="ghost" size="sm" onClick={clearSelection}>
-                        Clear
+                        {t('common.action.clear')}
                       </Button>
                     </div>
                   </div>
@@ -632,8 +665,8 @@ const NewsManagement: React.FC = () => {
                 ) : (
                   <>
                     {loading && (
-                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading news">
-                        <div className="text-muted-foreground">Loading news...</div>
+                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.news.loading')}>
+                        <div className="text-muted-foreground">{t('pages.news.loadingEllipsis')}</div>
                       </div>
                     )}
                     <DataTable
@@ -652,7 +685,7 @@ const NewsManagement: React.FC = () => {
                       getRowId={(row) => row.id}
                       onSelectionChange={setSelectedNews}
                       selectionResetKey={selectionResetKey}
-                      getRowSelectionLabel={(n) => `Select ${n.title || 'news'}`}
+                      getRowSelectionLabel={(n) => t('pages.news.selectRow', { name: n.title || t('entity.news.lower') })}
                     />
                   </>
                 )}
@@ -666,9 +699,9 @@ const NewsManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete News"
-        description="Are you sure you want to delete this news article? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.news.deleteTitle')}
+        description={t('pages.news.deleteConfirm')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
@@ -678,27 +711,27 @@ const NewsManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${bulkAction.destructive ? 'text-destructive' : ''}`}>
               <BulkActionIcon className="h-5 w-5" />
-              {bulkAction.title} {selectedNews.length} News Article(s)
+              {t(bulkAction.dialogTitleKey, { count: selectedNews.length })}
             </DialogTitle>
             <DialogDescription>
-              {bulkAction.description(selectedNews.length)}
+              {t(bulkAction.descriptionKey, { count: selectedNews.length })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className={`max-h-40 overflow-y-auto rounded-md border px-3 py-2 space-y-1 ${bulkAction.destructive ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-muted/50'}`}>
               {selectedNews.map((n) => (
-                <div key={n.id} className="text-sm font-medium">{n.title || '(untitled)'}</div>
+                <div key={n.id} className="text-sm font-medium">{n.title || t('pages.news.untitled')}</div>
               ))}
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulkNewsConfirm">
-                Type <span className={`font-mono font-semibold ${bulkAction.destructive ? 'text-destructive' : ''}`}>{bulkCode}</span> to confirm
+                {confirmBefore}<span className={`font-mono font-semibold ${bulkAction.destructive ? 'text-destructive' : ''}`}>{bulkCode}</span>{confirmAfter}
               </Label>
               <Input
                 id="bulkNewsConfirm"
                 value={bulkInput}
                 onChange={(e) => setBulkInput(e.target.value.toUpperCase())}
-                placeholder="Enter the 6-character code"
+                placeholder={t('pages.news.confirmCodePlaceholder')}
                 autoComplete="off"
                 autoCapitalize="characters"
                 spellCheck={false}
@@ -707,7 +740,7 @@ const NewsManagement: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setBulkOpen(false); setBulkInput(''); }} disabled={bulkBusy}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant={bulkAction.destructive ? 'destructive' : 'default'}
@@ -716,7 +749,7 @@ const NewsManagement: React.FC = () => {
               disabled={bulkBusy || bulkInput !== bulkCode}
             >
               {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BulkActionIcon className="mr-2 h-4 w-4" />}
-              {bulkBusy ? bulkAction.busy : bulkAction.title}
+              {t(bulkBusy ? bulkAction.busyKey : bulkAction.titleKey)}
             </Button>
           </DialogFooter>
         </DialogContent>
