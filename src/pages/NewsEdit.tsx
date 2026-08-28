@@ -74,13 +74,16 @@ const NewsEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNew = !id;
-  // Lookup-with-fallback for a status value: `common.status.published`/`.archived` are
-  // shared keys, 'draft' has no shared entry (routed to pages.news.draft), and `cap` stays
-  // as the last-resort fallback for a status this catalog doesn't know. NewsStatus is a
-  // closed union ('draft' | 'published' | 'archived'), so every reachable value resolves
-  // through one of the first two branches — cap(s) is unreachable today but kept as the
-  // documented fallback contract shared with NewsMasthead.tsx and NewsManagement.tsx.
-  const statusLabel = (s: string) => t(`common.status.${s}` as TKey) || t('pages.news.draft') || cap(s);
+  // 'draft' has no common.status.* entry (only published/archived/updated do) — routed
+  // explicitly to pages.news.draft BEFORE the fallback. Writing this as
+  // `t(\`common.status.${s}\`) || t('pages.news.draft') || cap(s)` looks equivalent but is
+  // not — it silently renders "Draft" for ANY unrecognised status, repeating the exact
+  // "missing key produces plausible English" illusion this fix closes. `translate` returns
+  // '' for an unknown key, so `|| cap(s)` stays as the last-resort fallback for a status
+  // this switch has never heard of, not as a way to paper over 'draft'. Same shape as
+  // NewsMasthead.tsx's statusLabel and NewsManagement.tsx's.
+  const statusLabel = (s: string) =>
+    (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s);
 
   const [formData, setFormData] = useState<NewsFormData>(initialForm);
   const [savedFormData, setSavedFormData] = useState<NewsFormData>(initialForm);

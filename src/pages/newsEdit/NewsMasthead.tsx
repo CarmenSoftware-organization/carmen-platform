@@ -26,9 +26,17 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const statusVariant = (s: NewsStatus): 'success' | 'secondary' | 'outline' =>
   s === 'published' ? 'success' : s === 'archived' ? 'outline' : 'secondary';
 
-// Same lookup-with-fallback as NewsEdit.tsx's statusLabel and NewsManagement.tsx's — kept
-// here rather than imported since each file's `t` comes from its own component/hook scope.
-const statusLabel = (s: string, t: TFunction) => t(`common.status.${s}` as TKey) || t('pages.news.draft') || cap(s);
+// 'draft' has no common.status.* entry (only published/archived/updated do) — routed
+// explicitly to pages.news.draft BEFORE the fallback. Writing this as
+// `t(\`common.status.${s}\`) || t('pages.news.draft') || cap(s)` looks equivalent but is
+// not — it silently renders "Draft" for ANY unrecognised status, repeating the exact
+// "missing key produces plausible English" illusion this fix closes. `translate` returns
+// '' for an unknown key, so `|| cap(s)` stays as the last-resort fallback for a status
+// this switch has never heard of, not as a way to paper over 'draft'. Same shape as
+// NewsEdit.tsx's statusLabel and NewsManagement.tsx's — kept here rather than imported
+// since each file's `t` comes from its own component/hook scope.
+const statusLabel = (s: string, t: TFunction) =>
+  (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s);
 
 /**
  * Short state note trailing the eyebrow — the publish date once live, else who can see it.
