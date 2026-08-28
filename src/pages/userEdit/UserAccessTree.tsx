@@ -121,7 +121,7 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
       </div>
       <Badge variant="outline" className="shrink-0 text-[11px] capitalize">{bu.role}</Badge>
       {bu.is_default && (
-        <Badge variant="outline" className="text-info border-info/40 shrink-0 text-[11px]">{t('common.status.default')}</Badge>
+        <Badge variant="outline" className="text-info border-info/40 shrink-0 text-[11px]">{t('common.label.default')}</Badge>
       )}
       <Badge variant={bu.is_active ? 'success' : 'secondary'} className="shrink-0 text-[11px]">
         {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
@@ -145,7 +145,7 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
           // centred on the button. Per the A4 contract: "the tappable area
           // governs, not the visual control" (same technique as InlineField.tsx).
           className={`text-destructive hover:text-destructive size-7 shrink-0 ${HIT_SLOP_44}`}
-          aria-label={t('pages.users.removeBuAria', { name: unit?.name || unit?.code || 'business unit' })}
+          aria-label={t('pages.users.removeBuAria', { name: unit?.name || unit?.code || t('entity.businessUnit.lower') })}
           onClick={() => onDelete(bu)}
         >
           <Trash2 className="size-3.5" />
@@ -219,7 +219,7 @@ export function UserAccessTree({ clusters, businessUnits, canAddBU, onAddBU, onD
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">{t('common.field.access')}</div>
+            <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.14em]">{t('common.section.access')}</div>
             <p className="text-muted-foreground mt-1 text-xs">
               {businessUnits.length} business unit{businessUnits.length === 1 ? '' : 's'} across {clusters.length} cluster
               {clusters.length === 1 ? '' : 's'}

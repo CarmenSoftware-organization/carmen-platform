@@ -224,7 +224,7 @@ const UserEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError("Failed to load user: " + getErrorDetail(err));
+        setError(t('toast.loadFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err));
       }
     } finally {
       setLoading(false);
@@ -353,7 +353,7 @@ const UserEdit: React.FC = () => {
       if (isNew) {
         const result = await userService.create(formData);
         const created = result.data || result;
-        toast.success(t('toast.created', { entity: t('entity.user') }));
+        toast.success(t('toast.created', { entity: t('entity.user.sentence') }));
         if (created?.id) {
           navigate(`/users/${created.id}/edit`, { replace: true });
         } else {
@@ -370,7 +370,7 @@ const UserEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchUser();
       } else {
-        setError("Failed to save user: " + getErrorDetail(err));
+        setError(t('toast.saveFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err));
       }
     } finally {
       setSaving(false);
@@ -482,7 +482,7 @@ const UserEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/users" title={t('entity.user')} />
+          <PageHeader backTo="/users" title={t('entity.user.title')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
@@ -518,7 +518,7 @@ const UserEdit: React.FC = () => {
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              {t('pages.users.usersLink')}
+              {t('breadcrumb.users')}
             </Link>
 
             <UserIdentityHero
@@ -566,7 +566,7 @@ const UserEdit: React.FC = () => {
               <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="username">{editing ? t('pages.users.usernameLabelRequired') : t('pages.users.usernameLabel')}</Label>
+                  <Label htmlFor="username">{editing ? t('common.field.required', { label: t('common.field.username') }) : t('common.field.username')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -577,7 +577,7 @@ const UserEdit: React.FC = () => {
                         onChange={handleChange}
                         onBlur={handleBlur}
                         onFocus={handleFocus}
-                        placeholder="user@example.com"
+                        placeholder={t('pages.users.usernamePlaceholder')}
                         className={fieldErrors.username ? 'border-destructive' : ''}
                         disabled={!isNew}
                         required
@@ -592,7 +592,7 @@ const UserEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">{editing ? t('pages.users.emailLabelRequired') : t('pages.users.emailLabel')}</Label>
+                  <Label htmlFor="email">{editing ? t('common.field.required', { label: t('common.field.email') }) : t('common.field.email')}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -716,7 +716,7 @@ const UserEdit: React.FC = () => {
                 <div className="flex gap-3 pt-4">
                   <Button type="submit" size="sm" disabled={saving}>
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? t('common.action.saving') : isNew ? t('pages.users.createTitle') : t('common.action.saveChanges')}
+                    {saving ? t('common.busy.saving') : isNew ? t('pages.users.createTitle') : t('common.action.saveChanges')}
                   </Button>
                   <Button
                     type="button"
@@ -751,7 +751,7 @@ const UserEdit: React.FC = () => {
                 open={deleteBU !== null}
                 onOpenChange={(open) => { if (!open) setDeleteBU(null); }}
                 title={t('pages.users.removeBusinessUnit')}
-                description={t('pages.users.removeBuConfirm', { name: deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || 'this business unit' })}
+                description={t('pages.users.removeBuConfirm', { name: deleteBU?.business_unit?.name || deleteBU?.business_unit?.code || t('pages.users.thisBusinessUnit') })}
                 confirmText={t('common.action.remove')}
                 confirmVariant="destructive"
                 onConfirm={handleConfirmDeleteBU}
@@ -766,7 +766,7 @@ const UserEdit: React.FC = () => {
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="space-y-2">
-                      <Label>{t('entity.cluster')}</Label>
+                      <Label>{t('common.label.cluster')}</Label>
                       <select
                         value={selectedClusterId}
                         onChange={(e) => handleClusterSelect(e.target.value)}
@@ -783,7 +783,7 @@ const UserEdit: React.FC = () => {
                     {selectedClusterId && (
                       <>
                         <div className="space-y-2">
-                          <Label>{t('entity.businessUnit')}</Label>
+                          <Label>{t('entity.businessUnit.title')}</Label>
                           {loadingBUs ? (
                             <p className="text-sm text-muted-foreground">{t('common.state.loadingBusinessUnits')}</p>
                           ) : availableBUs.length === 0 ? (
@@ -804,7 +804,7 @@ const UserEdit: React.FC = () => {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <Label>{t('entity.buRole')}</Label>
+                          <Label>{t('common.label.buRole')}</Label>
                           <select
                             value={addBURole}
                             onChange={(e) => setAddBURole(e.target.value)}
@@ -822,7 +822,7 @@ const UserEdit: React.FC = () => {
                     <Button variant="outline" size="sm" onClick={() => setShowAddBU(false)}>{t('common.cancel')}</Button>
                     <Button size="sm" onClick={handleAddBU} disabled={addingBU || !selectedBUId}>
                       <Plus className="mr-2 h-4 w-4" />
-                      {addingBU ? t('common.action.adding') : t('common.action.add')}
+                      {addingBU ? t('common.busy.adding') : t('common.action.add')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -883,10 +883,10 @@ const UserEdit: React.FC = () => {
       </Dialog>
 
       <DevDebugSheet
-        title={t('pages.users.debug')}
+        title="User Debug"
         tabs={[
-          { key: 'user', label: t('entity.user'), data: rawResponse, endpoint: `GET /api-system/user/${id}` },
-          { key: 'clusterBUs', label: t('pages.users.clusterBus'), data: rawClusterBUsResponse, endpoint: 'GET /api-system/business-units' },
+          { key: 'user', label: 'User', data: rawResponse, endpoint: `GET /api-system/user/${id}` },
+          { key: 'clusterBUs', label: 'Cluster BUs', data: rawClusterBUsResponse, endpoint: 'GET /api-system/business-units' },
         ]}
       />
     </Layout>

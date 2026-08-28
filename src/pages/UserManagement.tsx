@@ -159,11 +159,11 @@ const UserManagement: React.FC = () => {
       setTotalRows(pag?.total ?? (data.total as number) ?? (Array.isArray(items) ? items.length : 0));
       setError("");
     } catch (err: unknown) {
-      setError("Failed to load users: " + getErrorDetail(err));
+      setError(t('toast.loadFailed', { entity: t('pages.users.usersLower') }) + ': ' + getErrorDetail(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchUsers(paginate);
@@ -266,12 +266,12 @@ const UserManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await userService.delete(deleteId);
-      toast.success(t('toast.deleted', { entity: t('entity.user') }));
+      toast.success(t('toast.deleted', { entity: t('entity.user.sentence') }));
       setDeleteId(null);
       setPaginate((prev) => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error(t('toast.deleteFailed', { entity: t('entity.userLower') }), { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.user.lower') }), { description: getErrorDetail(err) });
     }
   };
 
@@ -578,7 +578,7 @@ const UserManagement: React.FC = () => {
   // JSX span can be re-inserted at the exact point the sentence puts it — this works
   // regardless of word order between languages.
   const CONFIRM_MARKER = '@@USERNAME@@';
-  const [confirmBefore, confirmAfter] = t('pages.users.typeUsernameToConfirm', { username: CONFIRM_MARKER }).split(CONFIRM_MARKER);
+  const [confirmBefore, confirmAfter = ''] = t('pages.users.typeUsernameToConfirm', { username: CONFIRM_MARKER }).split(CONFIRM_MARKER);
 
   return (
     <Layout>
@@ -625,7 +625,7 @@ const UserManagement: React.FC = () => {
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    {t('common.action.filters')}
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -635,7 +635,7 @@ const UserManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>{t('common.action.filters')}</SheetTitle>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
                     <SheetDescription>{t('pages.users.filterByStatus')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
@@ -682,7 +682,7 @@ const UserManagement: React.FC = () => {
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        {t('pages.users.clearAllFilters')}
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -691,7 +691,7 @@ const UserManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">{t('pages.users.filtersLabel')}</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? t('common.status.active') : t('common.status.inactive')}
@@ -706,7 +706,7 @@ const UserManagement: React.FC = () => {
                 ))}
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    {t('pages.users.showDeleted')}
+                    {t('common.action.showDeleted')}
                     <button
                       onClick={handleShowDeletedToggle}
                       className="ml-0.5 hover:text-foreground"
@@ -717,7 +717,7 @@ const UserManagement: React.FC = () => {
                   </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  {t('pages.users.clearAll')}
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -744,7 +744,7 @@ const UserManagement: React.FC = () => {
               <>
                 {isSuperAdmin && selectedUsers.length > 0 && (
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
-                    <span className="text-sm font-medium">{t('pages.users.nSelected', { count: selectedUsers.length })}</span>
+                    <span className="text-sm font-medium">{t('common.state.nSelected', { count: selectedUsers.length })}</span>
                     <div className="ml-auto flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setBulkSoftOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -767,7 +767,7 @@ const UserManagement: React.FC = () => {
                   <>
                   {loading && (
                     <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.users.loading')}>
-                      <div className="text-muted-foreground">{t('common.action.loading')}</div>
+                      <div className="text-muted-foreground">{t('common.busy.loading')}</div>
                     </div>
                   )}
                   <DataTable
@@ -874,7 +874,7 @@ const UserManagement: React.FC = () => {
               disabled={hardDeleting || hardDeleteConfirm !== (hardDeleteUser?.username || hardDeleteUser?.email || '')}
             >
               {hardDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              {hardDeleting ? t('common.action.deleting') : t('pages.users.permanentlyDelete')}
+              {hardDeleting ? t('common.busy.deleting') : t('pages.users.permanentlyDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -926,7 +926,7 @@ const UserManagement: React.FC = () => {
               disabled={bulkDeleting || bulkConfirmInput !== bulkConfirmCode}
             >
               {bulkDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              {bulkDeleting ? t('common.action.deleting') : t('pages.users.permanentlyDelete')}
+              {bulkDeleting ? t('common.busy.deleting') : t('pages.users.permanentlyDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>

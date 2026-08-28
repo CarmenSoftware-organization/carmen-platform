@@ -108,7 +108,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
       <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">{t('pages.users.directory')}</div>
 
       {error && !summary ? (
-        <FetchErrorState message="Couldn't load the directory summary." onRetry={onRetry} className="py-3" />
+        <FetchErrorState message={t('pages.users.summaryLoadFailed')} onRetry={onRetry} className="py-3" />
       ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
           <Skeleton className="h-14 w-24" />
@@ -129,7 +129,7 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
           <div className={cn('flex flex-wrap items-center gap-x-6 gap-y-4', error && 'opacity-70')}>
             <div className="border-border sm:border-r sm:pr-6">
               <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
-              <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">users</div>
+              <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">{t('pages.users.usersCountLabel')}</div>
             </div>
 
             <div className="min-w-[12rem] flex-1">
