@@ -642,6 +642,87 @@ export const en = {
       publish: 'Publish',
       tags: 'Tags',
       loadFailedPrefix: 'Failed to load news: ',
+      // Task 5 (NewsManagement + NewsroomSummary) additions below.
+      title: 'News Management',
+      subtitle: 'Manage announcements and news articles',
+      addNews: 'Add News',
+      searchPlaceholder: 'Search news...',
+      filterDescription: 'Filter news by status',
+      target: 'Target',
+      // No shared common.status.* entry for 'draft' (only published/archived/updated do) —
+      // used by both this page's statusLabel fallback and NewsroomSummary's Stage label.
+      draft: 'Draft',
+      untitled: '(untitled)',
+      emptyTitle: 'No news yet',
+      emptyDescription: 'Get started by creating your first news article.',
+      loading: 'Loading news',
+      loadingEllipsis: 'Loading news...',
+      selectRow: 'Select {{name}}',
+      rowActions: 'Actions for {{name}}',
+      deleteTitle: 'Delete News',
+      deleteConfirm: 'Are you sure you want to delete this news article? This action cannot be undone.',
+      publishSelected: 'Publish Selected',
+      archiveSelected: 'Archive Selected',
+      deleteSelected: 'Delete Selected',
+      // 'Archive' as a VERB (dialog title prefix + confirm button label) — distinct from
+      // common.status.archived, which is the completed-state adjective ('Archived'). Same
+      // split as 'Publish' (this page's pages.news.publish) vs common.status.published: the
+      // "Published {when}" line in NewsroomSummary uses the latter, this dialog uses the
+      // former — see the task report's hazard-2 note.
+      archive: 'Archive',
+      archiving: 'Archiving...',
+      publishing: 'Publishing...',
+      // Whole-sentence bulk-dialog headline templates ('{verb} {{count}} News Article(s)') —
+      // never a translated verb interpolated into a translated heading.
+      bulkDeleteTitle: 'Delete {{count}} News Article(s)',
+      bulkArchiveTitle: 'Archive {{count}} News Article(s)',
+      bulkPublishTitle: 'Publish {{count}} News Article(s)',
+      bulkDeleteDescription: 'This will delete {{count}} selected news article(s). This action cannot be undone.',
+      bulkArchiveDescription: 'This will archive {{count}} selected news article(s). They can be un-archived later by editing each article.',
+      bulkPublishDescription: 'This will publish {{count}} selected news article(s), making them visible to readers.',
+      confirmCodePlaceholder: 'Enter the 6-character code',
+      // The imperative "Type X to confirm", NOT common.field.type (a noun field label) —
+      // identical English spelling, different meaning (hazard 2). Marker-split like
+      // pages.users.typeUsernameToConfirm — the code itself stays a styled <span>, not
+      // plain text, so it can't be baked into the translated string.
+      typeCodeToConfirm: 'Type {{code}} to confirm',
+      fetchErrorLog: 'Error fetching news:',
+      summaryErrorLog: 'Error loading newsroom summary:',
+      // NewsroomSummary.tsx additions below.
+      summaryLoadFailed: "Couldn't load the newsroom summary.",
+      latest: 'Latest',
+      nothingPublishedYet: 'Nothing published yet',
+      publishArticleHint: 'Publish an article to make it visible to readers.',
+      // Not in the brief's measured string list (hazard 4: a curly-brace-led fragment,
+      // invisible to a capital-letter-anchored scan) — frozen by NewsroomSummary.test.tsx's
+      // `/20 articles total/`. The catalog has no plural support, so the singular/plural
+      // branch stays at the call site — same pattern as timeAgo's hourAgo/hoursAgo below.
+      articleTotal: '{{count}} article total',
+      articlesTotal: '{{count}} articles total',
+      // timeAgo (NewsroomSummary.tsx). Every output here was invisible to the string scan:
+      // each starts with a lowercase letter or a digit/param. hourAgo/hoursAgo and
+      // weekAgo/weeksAgo hold the same Thai value (see th.ts) since Thai does not inflect
+      // for number; English keeps the inflection.
+      time: {
+        none: '-',
+        justNow: 'just now',
+        minAgo: '{{count}} min ago',
+        hourAgo: '{{count}} hour ago',
+        hoursAgo: '{{count}} hours ago',
+        yesterday: 'yesterday',
+        daysAgo: '{{count}} days ago',
+        weekAgo: '{{count}} week ago',
+        weeksAgo: '{{count}} weeks ago',
+      },
+      // summarizeBulk (NewsManagement.tsx) restructure: nine whole sentences (three verbs ×
+      // three outcomes) replace an English verb interpolated into three frames — English
+      // puts the verb first and inflects it, Thai does neither. English values here are
+      // byte-identical to what the old frames produced.
+      bulk: {
+        publish: { ok: 'Published {{count}} news article(s)', failed: 'Failed to publish {{count}} news article(s)', partial: 'Published {{count}}, {{failed}} failed' },
+        archive: { ok: 'Archived {{count}} news article(s)',  failed: 'Failed to archive {{count}} news article(s)',  partial: 'Archived {{count}}, {{failed}} failed' },
+        delete:  { ok: 'Deleted {{count}} news article(s)',   failed: 'Failed to delete {{count}} news article(s)',   partial: 'Deleted {{count}}, {{failed}} failed' },
+      },
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
