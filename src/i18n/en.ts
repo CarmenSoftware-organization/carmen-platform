@@ -763,6 +763,14 @@ export const en = {
     },
     subscriptions: {
       // --- authored English for strings that existed only in Thai ---
+      // `clearSearch` and `selectedCount` were dropped from this object (fix round 1):
+      // both duplicated an existing common.* key's English exactly while carrying different
+      // Thai ('ล้างการค้นหา' vs common.clearSearch's 'ล้างคำค้นหา'; '{{count}} รายการที่เลือก' vs
+      // common.state.nSelected's 'เลือกแล้ว {{count}} รายการ'). Task 4 binds this screen's
+      // search-clear button to common.clearSearch and its selected-count line to
+      // common.state.nSelected — so the Subscription screens' Thai wording moves to the
+      // app-wide phrasing instead of keeping its own. If you're looking for either key here,
+      // it isn't page-local; use the common.* one.
       detailsTitle: 'Subscription details',
       purchasedModules: 'Purchased modules',
       seats: 'Seats',
@@ -781,7 +789,6 @@ export const en = {
       thisSubscription: 'this subscription',
       searchFeaturesPlaceholder: 'Search modules or features...',
       searchFeatures: 'Search features',
-      clearSearch: 'Clear search',
       noFeaturesDefined: 'No features defined in the system yet',
       noFeaturesMatch: 'No features match “{{query}}”',
       collapseAll: 'Collapse all',
@@ -789,7 +796,6 @@ export const en = {
       clearAllIn: 'Clear all in {{module}}',
       selectAllIn: 'Select all in {{module}}',
       none: 'None',
-      selectedCount: '{{count}} selected',
 
       // SeatsCard
       pendingCount: '{{count}} pending',

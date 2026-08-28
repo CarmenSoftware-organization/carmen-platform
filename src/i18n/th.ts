@@ -604,6 +604,10 @@ export const th: Translations = {
       reachMany: '{{count}} หน่วยธุรกิจ',
     },
     subscriptions: {
+      // `clearSearch` and `selectedCount` were dropped from this object (fix round 1): both
+      // duplicated an existing common.* key's English exactly while carrying different Thai.
+      // See en.ts for the detail — this screen's search-clear and selected-count wording now
+      // comes from common.clearSearch / common.state.nSelected, not a page-local key here.
       detailsTitle: 'ข้อมูลสัญญา',
       purchasedModules: 'โมดูลที่ซื้อ',
       seats: 'ที่นั่ง',
@@ -620,7 +624,6 @@ export const th: Translations = {
       thisSubscription: 'สัญญานี้',
       searchFeaturesPlaceholder: 'ค้นหาโมดูลหรือสิทธิ์...',
       searchFeatures: 'ค้นหาสิทธิ์',
-      clearSearch: 'ล้างการค้นหา',
       noFeaturesDefined: 'ยังไม่มีรายการสิทธิ์ในระบบ',
       noFeaturesMatch: 'ไม่พบสิทธิ์ที่ตรงกับ “{{query}}”',
       collapseAll: 'หุบทั้งหมด',
@@ -628,7 +631,6 @@ export const th: Translations = {
       clearAllIn: 'ไม่เอาทั้งหมดใน {{module}}',
       selectAllIn: 'เอาทั้งหมดใน {{module}}',
       none: 'ไม่เอา',
-      selectedCount: '{{count}} รายการที่เลือก',
       pendingCount: 'รอตอบรับ {{count}}',
       // Source has a leading space before the arrow (SeatsCard.tsx: ` → อาจถึง ${projected}/${cap}`,
       // a JS template literal, not JSX text — whitespace inside it is not collapsed) — kept
