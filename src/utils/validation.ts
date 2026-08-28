@@ -1,3 +1,6 @@
+import { translate } from '../i18n/translate';
+import type { TFunction } from '../i18n/types';
+
 export const isValidEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
@@ -52,9 +55,16 @@ export const validateField = (
   name: string,
   value: string,
   options?: ValidateFieldOptions,
+  t?: TFunction,
 ): string => {
+  // Falls back to the English catalog when no translator is supplied, so the 153 call
+  // sites that have not been migrated render exactly what they render today. The
+  // fallback READS the catalog rather than holding its own copy — a retyped string
+  // is a second source of truth that drifts with nothing to catch it.
+  const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
+
   if (options?.required && !value?.trim()) {
-    return `${options.label ?? 'This field'} is required`;
+    return tr('common.validation.required', { label: options.label ?? tr('common.validation.fieldDefault') });
   }
   // Historical contract, unchanged for every existing call site: a falsy value passes.
   // A whitespace-only value still falls through to the switch, as it always has.
@@ -65,55 +75,55 @@ export const validateField = (
     case 'hotel_email':
     case 'company_email':
     case 'from_email':
-      return isValidEmail(value) ? '' : 'Invalid email format';
+      return isValidEmail(value) ? '' : tr('common.validation.invalidEmail');
     case 'code':
-      return isValidCode(value) ? '' : 'Code must be 2-20 alphanumeric characters';
+      return isValidCode(value) ? '' : tr('common.validation.invalidCode');
     case 'telephone':
     case 'hotel_tel':
     case 'company_tel':
-      return isValidPhone(value) ? '' : 'Invalid phone number format';
+      return isValidPhone(value) ? '' : tr('common.validation.invalidPhone');
     case 'username':
-      return isValidEmail(value) ? '' : 'Username must be a valid email address';
+      return isValidEmail(value) ? '' : tr('common.validation.usernameEmail');
     case 'alias_name': {
       // Default 3 = tb_cluster.alias_name's VarChar(3). Business units pass 10 — see
       // ValidateFieldOptions.maxLength for why one field name needs two bounds.
       const max = options?.maxLength ?? 3;
       return new RegExp(`^[a-zA-Z0-9]{0,${max}}$`).test(value)
         ? ''
-        : `Alias must be 1-${max} alphanumeric characters`;
+        : tr('common.validation.invalidAlias', { max });
     }
     case 'max_license_users':
-      return /^\d+$/.test(value) && Number(value) >= 0 ? '' : 'Must be a non-negative integer';
+      return /^\d+$/.test(value) && Number(value) >= 0 ? '' : tr('common.validation.nonNegativeInt');
     // ใช้ร่วมกันโดยทั้งใบที่นั่งและใบโควตา BU (LicensePurchaseForm) — ชื่อฟิลด์บนสาย
     // (licensed_users / licensed_bus) ต่างกัน แต่ชื่อ input ในฟอร์มเป็น 'amount' เสมอ
     case 'amount':
-      if (!value.trim()) return options?.required ? `${options.label || 'Amount'} is required` : '';
-      return /^\d+$/.test(value) && Number(value) > 0 ? '' : 'Must be a positive whole number';
+      if (!value.trim()) return options?.required ? tr('common.validation.required', { label: options?.label || tr('common.validation.amount') }) : '';
+      return /^\d+$/.test(value) && Number(value) > 0 ? '' : tr('common.validation.positiveInt');
     case 'url':
     case 'image':
-      return isValidUrl(value) ? '' : 'Must be a valid http(s) URL';
+      return isValidUrl(value) ? '' : tr('common.validation.invalidUrl');
     case 'subscription_number':
       // ค่าว่าง (รวมช่องว่างล้วน) ต้องตอบ "is required" หรือผ่านไปเงียบ ๆ ตามสัญญาของไฟล์นี้ —
       // ไม่ใช่ตอบว่ารูปแบบผิด ท่าเดียวกับ `case 'db_schema'` ด้านล่าง (review M1)
-      if (!value.trim()) return options?.required ? `${options.label || 'Subscription number'} is required` : '';
+      if (!value.trim()) return options?.required ? tr('common.validation.required', { label: options?.label || tr('common.validation.subscriptionNumber') }) : '';
       // No format rule is documented by the backend beyond "required, unique per cluster"
       // (phase-b-backend-contract.md §4) — this is a defensive length + charset bound, not
       // a mirror of a server-side constraint.
       return /^[A-Za-z0-9][A-Za-z0-9 _\-./]{0,49}$/.test(value)
         ? ''
-        : 'Subscription number must be 1-50 characters (letters, numbers, spaces, - _ . /)';
+        : tr('common.validation.invalidSubNo');
     case 'start_date':
-      if (!value.trim()) return options?.required ? `${options.label || 'Start date'} is required` : '';
-      return Number.isNaN(Date.parse(value)) ? 'Must be a valid date' : '';
+      if (!value.trim()) return options?.required ? tr('common.validation.required', { label: options?.label || tr('common.validation.startDate') }) : '';
+      return Number.isNaN(Date.parse(value)) ? tr('common.validation.invalidDate') : '';
     case 'end_date':
-      if (!value.trim()) return options?.required ? `${options.label || 'End date'} is required` : '';
-      return Number.isNaN(Date.parse(value)) ? 'Must be a valid date' : '';
+      if (!value.trim()) return options?.required ? tr('common.validation.required', { label: options?.label || tr('common.validation.endDate') }) : '';
+      return Number.isNaN(Date.parse(value)) ? tr('common.validation.invalidDate') : '';
     case 'db_schema': {
-      if (!value) return options?.required ? `${options.label || 'Schema'} is required` : '';
+      if (!value) return options?.required ? tr('common.validation.required', { label: options?.label || tr('common.validation.schema') }) : '';
       // postgres identifier: ขึ้นต้นด้วยตัวอักษรหรือ _ ตามด้วยตัวอักษร/ตัวเลข/_ ยาวไม่เกิน 63
       return /^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(value)
         ? ''
-        : 'Schema must start with a letter or underscore and contain only letters, numbers, and underscores';
+        : tr('common.validation.invalidSchema');
     }
     default:
       return '';
