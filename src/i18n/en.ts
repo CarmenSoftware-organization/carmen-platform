@@ -165,6 +165,17 @@ export const en = {
       clear: 'Clear',
       addUser: 'Add User',
       start: 'Start',
+      // Promoted from pages.licenses.end (i18n phase-2 slice-4 Task 5 fix round 1): reused
+      // directly by clusterAdmin/licenses/QuotaLedgerCard.tsx (slice 4) alongside 3 slice-3b
+      // files (BuQuotaSection.tsx, SeatSection.tsx, SubscriptionSection.tsx) — 4 files across
+      // 2 slices, clearing the promote-to-common bar. Kept beside `start` above rather than
+      // in common.field: both are the same compact table-column-header register `start` was
+      // already promoted into — NOT the common.field.startDate/endDate form-field register,
+      // a different register per pages.licenses' own (now-deleted) comment. Keeping the pair
+      // together avoids splitting one matched Start/End column-header pair across two
+      // namespaces. Thai copied verbatim from pages.licenses.end, unchanged — all four call
+      // sites already shared the one key, so there was nothing to reconcile.
+      end: 'End',
       manageLicences: 'Manage licences',   // British spelling, as in the source
       export: 'Export',
       edit: 'Edit',
@@ -179,6 +190,13 @@ export const en = {
       clearAllFilters: 'Clear All Filters',
       filtersLabel: 'Filters:',
       showDeleted: 'Show Deleted',
+      // Promoted from pages.users.rowActions / pages.news.rowActions / pages.clusterAdmin.rowActions
+      // (i18n phase-2 slice-4 Task 1 fix round 1): the same aria-label template held at three
+      // page-local keys across three slices (UserManagement.tsx, NewsManagement.tsx,
+      // MembersTable.tsx + InvitationsTable.tsx) — an aria-label carries one meaning, so there
+      // was nothing for the three copies to diverge on. All three page-local keys deleted, all
+      // call sites repointed here.
+      rowActions: 'Actions for {{name}}',
     },
     // Spinner/busy labels, split out of `action` — that namespace was conflating verbs
     // (delete), verb phrases (saveChanges) and these `...`-suffixed spinner labels. The
@@ -248,6 +266,10 @@ export const en = {
       // asterisk is interpolated data here, because this one template has to hold for every
       // field name at once, not just username/email.
       required: '{{label}} *',
+      // i18n phase-2 slice-4 Task 2: composed with common.validation.requiredMessage for
+      // BusinessUnitForm.tsx's (dead, defensive-only) code-required check — same shape as
+      // the existing title/name entries above, added on demand rather than up front.
+      code: 'Code',
     },
     // Section headings — a different register from a bare input label. `common.field.*`
     // used to hold these too, but a heading and a label want different translations, and
@@ -300,6 +322,14 @@ export const en = {
       // SubscriptionSection.tsx) — clears the promote-to-common bar. Both page-local keys
       // were deleted, both call sites' explanatory comments removed.
       expiringSoon: 'Expiring soon',
+      // Promoted from pages.licenses.daysLeft (i18n phase-2 slice-4 Task 5 fix round 1):
+      // reused directly by clusterAdmin/licenses/SeatsByBuTable.tsx (slice 4) alongside 3
+      // slice-3b files (ClusterLicenseTable.tsx, BuQuotaSection.tsx, SeatSection.tsx) — 4
+      // files across 2 slices, clearing the promote-to-common bar. A count-driven expiry
+      // state, same register as noExpiry/expires/quotaExpires/expiringSoon above, not a
+      // field name. Thai copied verbatim from pages.licenses.daysLeft, unchanged — all four
+      // call sites already shared the one key, so there was nothing to reconcile.
+      daysLeft: '{{count}} days left',
       unsavedChanges: 'Unsaved changes',
       noChanges: 'No changes',
       unknownUser: 'Unknown user',
@@ -373,6 +403,17 @@ export const en = {
       warning: 'Warning',
       info: 'Info',
       maintenance: 'Maintenance',
+    },
+    // Membership role labels. Both `admin` and `user` are lowercase API values AND the raw
+    // strings three cluster-admin files (InviteUserDialog.tsx's CLUSTER_ROLES/BU_ROLES,
+    // MembersTable.tsx's ROLES) render directly today — those arrays stay untouched (Task 3
+    // separates the API value from the label at the call sites). These two keys exist only
+    // so the three files have one shared label pair to bind to instead of each inventing its
+    // own; not a reuse of entity.user.title ('User') despite the byte match — that namespace
+    // is toast-noun-only by its own doc comment above, not a role adjective.
+    role: {
+      admin: 'Admin',
+      user: 'User',
     },
   },
   /**
@@ -490,7 +531,6 @@ export const en = {
       confirmCodePlaceholder: 'Enter the 6-character code',
       typeUsernameToConfirm: 'Type {{username}} to confirm',
       selectRow: 'Select {{name}}',
-      rowActions: 'Actions for {{name}}',
       deletedByName: 'Deleted by {{name}}',
       bulkDeleteTitle: 'Delete {{count}} user(s)',
       bulkDeleted: 'Deleted {{count}} user(s)',
@@ -696,7 +736,6 @@ export const en = {
       loading: 'Loading news',
       loadingEllipsis: 'Loading news...',
       selectRow: 'Select {{name}}',
-      rowActions: 'Actions for {{name}}',
       deleteTitle: 'Delete News',
       deleteConfirm: 'Are you sure you want to delete this news article? This action cannot be undone.',
       publishSelected: 'Publish Selected',
@@ -944,14 +983,9 @@ export const en = {
       // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
       // (field Label).
       licenseNumber: 'License Number',
-      // BuQuotaSection.tsx + SeatSection.tsx inline ledger tables — the compact column
-      // header, a different register from common.field.startDate ("Start Date", a
-      // form-field label) — same table-header-vs-form-label split the file already uses
-      // for common.section.* vs common.field.*. Fix round 1: this namespace used to also
-      // hold `start` ('Start'), byte-identical to common.action.start — deleted, Tasks 2-4
-      // bind that shared key instead. `end` has no common.action counterpart to reuse, so
-      // it stays here alone.
-      end: 'End',
+      // `end` promoted to common.action.end (i18n phase-2 slice-4 Task 5 fix round 1) — see
+      // the comment there. BuQuotaSection.tsx / SeatSection.tsx / SubscriptionSection.tsx
+      // bind to that key directly now.
       // BuQuotaSection.tsx + SeatSection.tsx ConfirmDialog title — the two files' dialog
       // descriptions differ (BU count vs. seat count) and stay page-local; only the shared
       // title is seeded here.
@@ -995,9 +1029,9 @@ export const en = {
       // Title Case column header — distinct from `buQuota` above ('BU quota', lowercase
       // 'quota', a nav-section label), not a reuse candidate despite the near-identical text.
       buQuotaColumn: 'BU Quota',
-      // Badge inside the Quota Expires cell — days remaining before a winning BU-quota
-      // license expires.
-      daysLeft: '{{count}} days left',
+      // `daysLeft` promoted to common.state.daysLeft (i18n phase-2 slice-4 Task 5 fix round 1)
+      // — see the comment there. ClusterLicenseTable.tsx / BuQuotaSection.tsx / SeatSection.tsx
+      // bind to that key directly now.
       // Coincidentally byte-identical to switcher.searchClusters ('Search clusters...') and
       // to ClusterManagement.tsx's own (still untranslated) literal — out of this task's
       // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
@@ -1199,6 +1233,401 @@ export const en = {
       // EmptyState title; the hook's toast renders the same words in a different UI shell).
       licenseRemoved: 'License removed',
       removeLicenseFailedTitle: 'Could not remove the license',
+    },
+
+    // Slice 4 (Cluster Admin — 25 files under src/pages/clusterAdmin/, including the
+    // businessUnitForm/ and licenses/ subdirectories). Catalog-only pass (Task 1): every key
+    // below is seeded because its exact string recurs in MORE THAN ONE of those 25 files — a
+    // later task binding any one of those files reuses the key here instead of re-declaring
+    // it. A string that shows up in only one file stays out of this object; that file's own
+    // task adds it page-locally.
+    //
+    // Reuse-checked first against common.*/entity.*/breadcrumb.*/error.* (exact value, Thai
+    // read too) and toast.* composed with entity.* — every key below is what was LEFT after
+    // that pass found no match. See task-1-report.md for the full reuse list (e.g. 'Cluster
+    // Role' -> common.label.clusterRole, 'No business units in this cluster.' ->
+    // common.state.noBusinessUnitsInCluster, 'Business units' -> common.label.businessUnitsLabel,
+    // 'Identity'/'Branding'/'Configuration' -> common.section.*, 'Changes saved successfully'
+    // -> toast.saved, 'Data exported successfully' -> toast.exported).
+    //
+    // `company` is NOT a reuse of common.field.company ('Company', byte-identical) — that key
+    // is a single-input field label (see the field/section split documented above
+    // common.section), while this one is a Group/tab SECTION heading for the whole
+    // company_* field group. Same class of mismatch the phase-2 final review already fixed
+    // once for entity.* vs common.label.*.
+    clusterAdmin: {
+      hotel: 'Hotel',
+      company: 'Company',
+      people: 'People',
+      hq: 'HQ',
+      viewLicenses: 'View licenses',
+      clusterHasNoBusinessUnitsYet: 'This cluster has no business units yet.',
+      inviteToAccessHint: 'Invite a user to give them access to this cluster.',
+      invitationRateLimited: 'Invitation rate limit reached. Please try again later.',
+      noSeatsOpen: 'No seats open',
+      unnamed: '(unnamed)',
+      // rowActions promoted to common.action.rowActions (fix round 1) — see the comment
+      // there. MembersTable.tsx / InvitationsTable.tsx bind to that key directly; this
+      // object never held its own call site.
+
+      // --- Task 2: BusinessUnitList.tsx + BusinessUnitForm.tsx ---
+      businessUnitListSubtitle: 'Manage the business units in this cluster',
+      // Distinct from common.state.loadingBusinessUnits ('Loading business units...') —
+      // that one is the visible overlay text (three ASCII dots); this is the overlay's
+      // aria-label, which the source never suffixes with the ellipsis. Same split as
+      // common.busy.loading/loadingEllipsis.
+      loadingBusinessUnitsAria: 'Loading business units',
+      // Edit-page skeleton aria-label (singular unit), matching the pages.subscriptions.
+      // loadingAria / pages.licenses.loadingAria naming precedent for a form's own loading
+      // state — distinct from the List page's loadingBusinessUnitsAria above (plural).
+      loadingBusinessUnitAria: 'Loading business unit',
+      filterBusinessUnitsByStatus: 'Filter business units by status',
+      noBusinessUnitsDescription: 'Business units are created by a platform administrator. Once one is added to this cluster, it will appear here.',
+      // The over-limit banner. NOT the same string as pages.licenses.overLimitCountOne/Many
+      // (slice 3b) — that pair reads "business unit rank beyond…", this page's source reads
+      // "business unit is/units are beyond…". Same tail, different lead clause; see the
+      // task-1 report's hazard-4 note #5 for why these were not spliced together.
+      overLimitCountOne: '{{count}} business unit is beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      overLimitCountMany: '{{count}} business units are beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      // Cross-slice fix (final review F2): the badge and title-tooltip on this page ARE
+      // byte-identical to pages.licenses.overLimitBadge/overLimitTitle, but were reading that
+      // key directly instead of duplicating it — a page namespace is owned by its own slice,
+      // so reading another slice's pages.* creates an invisible coupling. Duplicated here
+      // instead, matching this object's own fixHighlightedFields/send precedent below (2
+      // files/2 slices each, below the >=3-files-AND->=2-slices promotion bar); Thai copied
+      // verbatim from the sibling keys.
+      overLimitBadge: 'Over limit',
+      overLimitTitle: 'Quota {{cap}} · this unit ranks {{rank}}',
+      aliasCannotBeCleared: 'Alias cannot be cleared',
+      hotelEmailCannotBeCleared: 'Hotel email cannot be cleared',
+      companyEmailCannotBeCleared: 'Company email cannot be cleared',
+      // Byte-identical to pages.broadcasts.fixHighlightedFields (2 files / 2 slices — below
+      // the >=3-files-AND->=2-slices promotion bar, see task-1 report's promotion-signal
+      // table). Left split, not promoted.
+      fixHighlightedFields: 'Please fix the highlighted fields',
+      // Prefix-concatenation pattern, matching pages.subscriptions.loadFailedDetail /
+      // pages.licenses.loadFailedDetail's shape (setError(prefix + getErrorDetail(err))).
+      loadFailedDetail: 'Failed to load business unit: ',
+      updateFailed: 'Failed to update business unit',
+      copiedHotelAddressToCompany: 'Copied hotel address to company address',
+      // Calculation-method option label. 'Average' reuses common.option.average; FIFO has
+      // no existing key anywhere in the catalog (checked before adding).
+      fifo: 'FIFO',
+      overview: 'Overview',
+      regionalFormats: 'Regional formats',
+      timezone: 'Timezone',
+      dateFormat: 'Date format',
+      dateTimeFormat: 'Date-time format',
+      timeFormat: 'Time format',
+      longTimeFormat: 'Long time format',
+      shortTimeFormat: 'Short time format',
+      // Overview tab's People-summary value ('{{count}} user'/'users') — plain count-noun
+      // pair, distinct from common.state.nSelected ('{{count}} selected') and
+      // pages.users.bulkDeleteTitle-style '(s)' shorthand (this page's source spells the two
+      // forms out, not a parenthetical).
+      userCount: '{{count}} user',
+      userCountPlural: '{{count}} users',
+      noContactDetails: 'No contact details',
+      notSet: 'Not set',
+      // Configuration tab's summary fallback ('Defaults') — distinct English from
+      // common.label.default ('Default', singular), so not a byte match; same Thai concept.
+      configDefaults: 'Defaults',
+      taxLabel: 'TAX {{taxNo}}',
+      unsavedChangeCount: '{{count}} unsaved change',
+      unsavedChangeCountPlural: '{{count}} unsaved changes',
+      // Sentence-case ('Save changes'), NOT a byte match for common.action.saveChanges
+      // ('Save Changes', Title Case) — BusinessUnitForm.tsx's sticky-bar button differs from
+      // ClusterProfile.tsx's by casing only. Flagged in task-1's hazard-4 note #3 as a
+      // possible source typo; kept byte-identical to the source rather than silently
+      // "corrected" to Title Case.
+      saveChangesButton: 'Save changes',
+
+      // --- Task 3: MembersTable.tsx ---
+      noMembersYet: 'No members yet',
+      loadingMembersAria: 'Loading members',
+      loadingMembers: 'Loading members...',
+      removeMemberTitle: 'Remove member',
+      removeMemberConfirm: 'Remove "{{name}}" from this cluster?',
+      roleUpdated: 'Role updated',
+      roleUpdateFailed: 'Failed to update role',
+      memberRemoved: 'Member removed',
+      memberRemoveFailed: 'Failed to remove member',
+      // Hazard 2 (MembersTable.tsx:139): the dropdown's "Make {r}" item — {{role}} is always
+      // pre-translated via ROLE_LABEL_KEYS before interpolation, never the raw API value.
+      makeRole: 'Make {{role}}',
+
+      // --- Task 3: InvitationsTable.tsx ---
+      // Hazard 2 (InvitationsTable.tsx:23/123): the invitation-status enum this table's status
+      // Badge can render. Not `enum_user_invitation_status` itself — 'expired' is a computed
+      // *display* status the backend derives from a lapsed `pending` row (see the file's own
+      // doc comment) — but together with 'expired' this is every value `statusVariant()` (same
+      // file) already switches on, i.e. the complete set this column can show. 'expired' reuses
+      // common.status.expired directly rather than duplicating it.
+      invitationStatusPending: 'Pending',
+      invitationStatusAccepted: 'Accepted',
+      invitationStatusDeclined: 'Declined',
+      invitationStatusRevoked: 'Revoked',
+      invitedColumn: 'Invited',
+      resend: 'Resend',
+      revoke: 'Revoke',
+      noPendingInvitations: 'No pending invitations',
+      loadingInvitationsAria: 'Loading invitations',
+      loadingInvitations: 'Loading invitations...',
+      revokeInvitationTitle: 'Revoke invitation',
+      revokeInvitationConfirm: 'Revoke the invitation sent to "{{email}}"? They will no longer be able to accept it.',
+      invitationResent: 'Invitation resent',
+      resendFailed: 'Failed to resend invitation',
+      invitationRevoked: 'Invitation revoked',
+      revokeFailed: 'Failed to revoke invitation',
+
+      // --- Task 3: InviteUserDialog.tsx ---
+      // Hazard 1 (InviteUserDialog.tsx:22,23): CLUSTER_ROLES/BU_ROLES render via
+      // ROLE_LABEL_KEYS (src/pages/clusterAdmin/roleLabels.ts), shared with MembersTable.tsx
+      // and InvitationsTable.tsx — see common.role.* above for the two label values.
+      enterValidEmail: 'Enter a valid email address',
+      invitationSent: 'Invitation sent',
+      invitationAlreadyPending: 'Invitation already pending',
+      invitationAlreadyPendingDescription: 'An invitation to {{email}} is already outstanding for this cluster.',
+      alreadyAMember: 'Already a member',
+      alreadyAMemberDescription: '{{email}} already has membership in this cluster.',
+      rateLimited: 'Rate limited',
+      sendInvitationFailed: 'Failed to send invitation',
+      // Shared with ClusterUsers.tsx's "Invite user" button — same dialog, same word, one key.
+      inviteUser: 'Invite user',
+      inviteUserDescription: "Send an invitation to join this cluster. The recipient does not need a Carmen account yet — the link lets them set a password and join in one step.",
+      // Format-example placeholder, not prose — identical value in both languages, same
+      // rationale as pages.users.usernamePlaceholder ('user@example.com').
+      emailPlaceholder: 'name@example.com',
+      // Sentence case ('Cluster role'), NOT a byte match for common.label.clusterRole
+      // ('Cluster Role', Title Case, the column header) — this is a form field label.
+      clusterRoleFieldLabel: 'Cluster role',
+      businessUnitAccessLabel: 'Business unit access',
+      businessUnitAccessHint: 'Select the business units this invitation grants access to, and optionally mark one as default.',
+      roleInBu: 'Role in {{name}}',
+      sending: 'Sending...',
+      // Byte-identical to pages.broadcasts.send (2 files / 2 slices — below the promotion
+      // bar, see task-1 report's promotion-signal table). Left split, not promoted.
+      send: 'Send',
+
+      // --- Task 3: ClusterUsers.tsx ---
+      // Cross-slice fix (final review F2): the PageHeader title read nav.users directly. A
+      // nav label and a page heading are different jobs that happen to share a word today —
+      // an edit to the sidebar's nav label would have silently changed this page's own
+      // heading too. Given its own key instead (1 file, well below the promotion bar); Thai
+      // copied verbatim from nav.users.
+      usersPageTitle: 'Users',
+      failedToLoadMembers: 'Failed to load members',
+      failedToLoadInvitations: 'Failed to load invitations',
+      usersPageSubtitle: 'Manage members and pending invitations for this cluster',
+      membersTabLabel: 'Members ({{count}})',
+      invitationsTabLabel: 'Invitations ({{count}})',
+      searchMembersPlaceholder: 'Search members...',
+
+      // --- Task 3: ClusterPeopleCard.tsx ---
+      viewAllClusterUsers: 'View all cluster users',
+      // Distinct from noMembersYet above ('No members yet', MembersTable.tsx's empty state) —
+      // this card's EmptyState title omits "yet".
+      noMembers: 'No members',
+      noMembersInvitedDescription: 'Nobody has been invited to this cluster yet.',
+      noClusterAdministrators: 'No cluster administrators. Only platform administrators can manage this cluster.',
+      administratorsHeading: 'Administrators',
+      moreAdministrator: '{{count}} more administrator',
+      moreAdministrators: '{{count}} more administrators',
+      memberWithoutAdminRights: '{{count}} member without admin rights',
+      membersWithoutAdminRights: '{{count}} members without admin rights',
+
+      // --- Task 4: ClusterBuDocument.tsx ---
+      elsewhere: 'Elsewhere',
+      addressLabel: 'Address',
+      // NOT a byte match for common.field.aliasName ('Alias Name') — this file's InlineField
+      // label is the bare word.
+      aliasLabel: 'Alias',
+      logoLabel: 'Logo',
+      hotelNameLabel: 'Hotel name',
+      // Shared by hotel_tel and company_tel — both InlineField calls pass the identical
+      // literal 'Phone'.
+      phoneLabel: 'Phone',
+      copyFromHotelAddress: 'Copy from hotel address',
+      companyNameLabel: 'Company name',
+      taxIdLabel: 'Tax ID',
+      branchLabel: 'Branch',
+
+      // --- Task 4: AddressBlock.tsx ---
+      setAddressPlaceholder: 'Set address…',
+      coordinatesLabel: 'Coordinates',
+      addressLine1Label: 'Address line 1',
+      addressLine2Label: 'Address line 2',
+      subDistrictLabel: 'Sub-district',
+      districtLabel: 'District',
+      cityLabel: 'City',
+      provinceLabel: 'Province',
+      postalCodeLabel: 'Postal code',
+      countryLabel: 'Country',
+      latitudeLabel: 'Latitude',
+      longitudeLabel: 'Longitude',
+      doneButton: 'Done',
+
+      // --- Task 4: BuPropertyPlate.tsx ---
+      // The back-link text 'Business units' reuses common.label.businessUnitsLabel directly
+      // (Task 1's reuse table already named this exact call site). Active/Inactive/HQ reuse
+      // common.status.active/.inactive and this object's own .hq.
+      noHotelNameSet: 'No hotel name set — add one under Hotel',
+      notHq: 'Not HQ',
+
+      // --- Task 4: SeatMeter.tsx ---
+      // note's five branches (BuPropertyPlate.tsx:60 investigation found no union backing the
+      // avatar-initial .toUpperCase() call — see the task-4 report; these are the file's real
+      // translatable strings). noSeatsOpen and viewLicenses reuse this object's own Task 1 keys.
+      overBySeatsOne: 'Over by {{overBy}} — deactivate {{overBy}} user who belongs to no other BU in this cluster',
+      overBySeatsMany: 'Over by {{overBy}} — deactivate {{overBy}} users who belong to no other BU in this cluster',
+      atCapacityDeactivateUser: 'At capacity — deactivate a user before adding another',
+      nearingCapacitySeatOne: 'Nearing capacity — {{seatsLeft}} seat left',
+      nearingCapacitySeatMany: 'Nearing capacity — {{seatsLeft}} seats left',
+      seatsOpenOne: '{{seatsLeft}} seat open',
+      seatsOpenMany: '{{seatsLeft}} seats open',
+      clusterSeatsHeading: 'Cluster seats',
+      capLicensedSuffix: '/ {{cap}} licensed',
+      clusterSeatsAriaLabel: 'Cluster seats: {{used}} of {{cap}} licensed in use',
+
+      // --- Task 5: CapacityStrip.tsx ---
+      // Pool's numeric line ('/ no cap' vs '/ {{cap}} licensed') — the licensed branch reuses
+      // SeatMeter.tsx's capLicensedSuffix directly (Task 4's key, same '/ {{cap}} licensed'
+      // shape); this key covers only the uncapped branch, which that key has no equivalent for.
+      noCapSuffix: '/ no cap',
+      // AllocationTicks' aria-label, parameterized by the already-translated Pool label
+      // ('Business units'/'Seats', both common.* reuses — see the call site). Distinct from
+      // SeatMeter.tsx's clusterSeatsAriaLabel, which hardcodes "Cluster seats" instead of a
+      // variable label.
+      poolAriaNoCap: '{{label}}: {{used}} in use, no cap',
+      poolAriaWithCap: '{{label}}: {{used}} of {{cap}} licensed in use',
+      // buNote's four branches. NOT the same string as this object's own overLimitCountOne/Many
+      // (BusinessUnitList.tsx's banner, a longer sentence naming the quota cap) — this is the
+      // capacity strip's much shorter note line.
+      buBeyondQuotaOne: '{{count}} business unit is beyond quota and read-only',
+      buBeyondQuotaMany: '{{count}} business units are beyond quota and read-only',
+      noBuQuotaPurchased: 'No business-unit quota purchased',
+      noQuotaLeftForAnotherBu: 'No quota left for another business unit',
+      buQuotaFree: '{{free}} of {{cap}} quota free',
+      // Joined with buNote via a literal ' · ' in code, not composed into one template — same
+      // non-linguistic-separator pattern ClusterPeopleCard.tsx (Task 3) already established.
+      expiresOn: 'expires {{date}}',
+      // seatNote's remaining branches. seatFree === 0 reuses noSeatsOpen above; the "seat(s)
+      // open" branch is byte-identical to SeatMeter.tsx's seatsOpenOne/Many and reuses those
+      // directly instead of duplicating.
+      noSeatCapSet: 'No seat cap set',
+      seatsBeyondLicensedOne: '{{count}} user beyond the licensed seat count',
+      seatsBeyondLicensedMany: '{{count}} users beyond the licensed seat count',
+
+      // --- Task 5: ClusterProfile.tsx ---
+      unnamedCluster: '(unnamed cluster)',
+      tenantGroup: 'Tenant group',
+      brandingCardDescription: 'Shown in the sidebar, the cluster switcher, and lists across the platform.',
+      loadingClusterProfileAria: 'Loading cluster profile',
+      // Prefix-concatenation, matching this object's own loadFailedDetail (BusinessUnitForm.tsx)
+      // and pages.subscriptions/pages.licenses' *Prefix keys — a different entity (cluster, not
+      // business unit), so not that key's reuse candidate.
+      loadClusterFailedDetail: 'Failed to load cluster: ',
+      // No toast.updated template exists (only created/deleted/deleteFailed/loadFailed/
+      // saveFailed) and no entity.cluster noun exists in the catalog yet (ClusterEdit.tsx, the
+      // platform-admin twin, has never been run through t() to seed one) — both toast strings
+      // stay page-local rather than composed.
+      clusterUpdated: 'Cluster updated',
+      updateClusterFailed: 'Failed to update cluster',
+
+      // --- Task 5: ClusterAdminLicenses.tsx ---
+      // Cross-slice fix (final review F2): the PageHeader title fallback read
+      // pages.licenses.clusterNotFoundOrDeleted/clusterUnavailable directly — a page
+      // namespace is owned by its own slice. Duplicated here instead, matching this object's
+      // own fixHighlightedFields/send precedent above (2 files/2 slices each, below the
+      // promotion bar); Thai copied verbatim from the sibling keys.
+      clusterNotFoundOrDeleted: 'Cluster not found or deleted',
+      clusterUnavailable: 'Cluster unavailable',
+      // NOT a byte match for pages.licenses.subtitleWithCode ('Licenses · {{code}}', American
+      // spelling) — this page's source spells it "Licences" (British), matching the hazard-4
+      // spelling drift Task 1's report already flagged for this file. Thai is identical to
+      // subtitleWithCode's (Thai doesn't distinguish the two spellings), reused verbatim rather
+      // than retranslated.
+      licencesSubtitleWithCode: 'Licences · {{code}}',
+      // Shared with licenses/SeatsByBuTable.tsx's bare "Licences" column header below — same
+      // English/Thai, no distinct contract between the two (unlike e.g. common.field.company
+      // vs this object's own `company` section heading), so one key covers both rather than
+      // two identical keys.
+      licencesLabel: 'Licences',
+
+      // --- Task 5: licenses/BuRankingCard.tsx ---
+      // Cross-slice fix (final review F2): the Rank column header read pages.licenses.
+      // rankColumn directly — duplicated here instead, matching this file's own
+      // clusterNotFoundOrDeleted/clusterUnavailable precedent above (2 files/2 slices, below
+      // the promotion bar); Thai copied verbatim from the sibling key.
+      rankColumn: 'Rank',
+      buRankingLabel: 'Business unit ranking',
+      rankingExplanation: 'When quota runs short, the platform covers units in this order — HQ first, then oldest.',
+      rankedQuotaUnknown: '{{count}} ranked · quota unknown',
+      beyondQuotaReadOnly: '{{count}} beyond quota and read-only',
+      rankedAllWithinQuota: '{{count}} ranked · all within quota',
+      beyondQuotaBadge: 'Beyond quota',
+
+      // --- Task 5: licenses/SeatsByBuTable.tsx ---
+      seatsByBusinessUnitLabel: 'Seats by business unit',
+      // Column header reuses this object's own licencesLabel above (ClusterAdminLicenses.tsx's
+      // subtitle fallback) — British spelling, matching this file's/QuotaLedgerCard.tsx's
+      // consistent "licence(s)" usage (hazard-4, Task 1 report) — not a reuse candidate for
+      // nav.licenses ('Licenses', American).
+      endsColumn: 'Ends',
+      couldNotLoadLicencesForBu: 'Could not load licences for this business unit — its seats are unknown, not zero.',
+      notPurchased: 'Not purchased',
+
+      // --- Task 5: licenses/QuotaLedgerCard.tsx ---
+      // Cross-slice fix (final review F2): the Quota column header read pages.licenses.
+      // quotaColumn directly — duplicated here instead (2 files/2 slices, below the
+      // promotion bar); Thai copied verbatim from the sibling key.
+      quotaColumn: 'Quota',
+      // Hazard: STATUS_BADGE was a module-scope const holding label STRINGS (same class as
+      // Task 3's role arrays) — restructured to hold catalog KEYS (labelKey), resolved with t()
+      // at the render site. See the file for the restructured shape.
+      quotaSummaryLoadFailed: 'Could not load — the quota shown above is unknown, not zero',
+      noQuotaLicenceIssued: 'No quota licence has been issued for this cluster',
+      // The summary line's count + in-force clause, composed from these pieces and joined with
+      // a literal ' · ' in code (not spliced from fragments of unrelated meaning — same whole-
+      // phrase-per-branch discipline as pages.licenses.seatSummary*/quotaExpires).
+      licenceCountOne: '{{count}} licence',
+      licenceCountMany: '{{count}} licences',
+      inForceBusinessUnitsNoExpiry: 'in force: {{count}} business units, no expiry',
+      inForceBusinessUnitsToDate: 'in force: {{count}} business units, to {{date}}',
+      noneInForce: 'none in force',
+      buQuotaLicencesLabel: 'BU quota licences',
+      // NOT a reuse of pages.licenses.buQuotaDataUnavailable ('License data...', American) —
+      // this file spells it 'Licence' (British), byte-different by one letter. Hazard-4,
+      // already flagged in Task 1's report as the sharpest spelling-drift find. Thai is
+      // identical to buQuotaDataUnavailable's, reused verbatim.
+      licenceDataUnavailable: 'Licence data for this cluster could not be loaded — it is unknown, not empty.',
+      quotaLicencesIssuedByPlatformTeam: 'The platform team issues quota licences. Ask them to add one before this cluster needs another business unit.',
+      inForceBadge: 'In force',
+
+      // --- Task 5: ClusterAdminEntry.tsx ---
+      // NOT a byte match for switcher.chooseCluster ('Choose which cluster to administer', no
+      // period, different wording) — kept separate rather than silently normalized.
+      chooseAClusterToAdminister: 'Choose a cluster to administer.',
+      notAdministratorOfAnyCluster: 'You are not an administrator of any cluster. Ask a platform administrator to grant you access.',
+
+      // --- Task 5: ClusterAccessLost.tsx ---
+      accessLostTitle: 'You no longer administer this cluster',
+      accessLostDescription: 'Your administrator access to this cluster was removed. Choose another cluster, or ask a platform administrator to restore it.',
+      backToMyClusters: 'Back to my clusters',
+
+      // --- Task 5: ClusterBusinessUnitsCard.tsx ---
+      viewAllBusinessUnitsAria: 'View all business units',
+      // NOT a byte match for this object's own clusterHasNoBusinessUnitsYet ('This cluster has
+      // no business units yet.', no second sentence) — this card's EmptyState description adds
+      // "A platform administrator creates them."
+      noBusinessUnitsCreatedByPlatformAdmin: 'This cluster has no business units yet. A platform administrator creates them.',
+      moreOnBusinessUnitsPage: '{{count}} more on the Business Units page',
+
+      // --- Task 5: SummaryCardHeader.tsx ---
+      // The card's own "View all" link text — distinct from the `viewAllLabel` prop the two
+      // call sites (ClusterBusinessUnitsCard.tsx, ClusterPeopleCard.tsx) already pass in as an
+      // aria-label (viewAllBusinessUnitsAria above / this object's own viewAllClusterUsers).
+      viewAll: 'View all',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

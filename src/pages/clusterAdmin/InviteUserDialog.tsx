@@ -17,12 +17,12 @@ import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
 import { isValidEmail } from '../../utils/validation';
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
+import { ROLE_LABEL_KEYS } from './roleLabels';
 import type { BusinessUnit } from '../../types';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
 const BU_ROLES = ['admin', 'user'] as const;
-
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const selectClassName = 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
 
@@ -57,6 +57,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
   onAlreadyMember,
   onAlreadyPending,
 }) => {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [clusterRole, setClusterRole] = useState<'admin' | 'user'>('user');
   const [selected, setSelected] = useState<Record<string, BuSelection>>({});
@@ -87,15 +88,15 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
         const items = data.data || data;
         setBusinessUnits(Array.isArray(items) ? items : []);
       } catch (err: unknown) {
-        const { message } = parseApiError(err);
-        toast.error('Failed to load business units', { description: message });
+        const { message } = parseApiError(err, t);
+        toast.error(t('common.state.failedToLoadBusinessUnits'), { description: message });
         setBusinessUnits([]);
       } finally {
         setLoadingBUs(false);
       }
     };
     fetchBusinessUnits();
-  }, [open, clusterId]);
+  }, [open, clusterId, t]);
 
   const toggleBu = (buId: string) => {
     setSelected((prev) => {
@@ -126,7 +127,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
 
   const handleSubmit = async () => {
     if (!isValidEmail(email)) {
-      setFieldErrors({ email: 'Enter a valid email address' });
+      setFieldErrors({ email: t('pages.clusterAdmin.enterValidEmail') });
       return;
     }
     setSending(true);
@@ -140,12 +141,12 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
           ...(v.is_default ? { is_default: true } : {}),
         })),
       });
-      toast.success('Invitation sent', { description: email });
+      toast.success(t('pages.clusterAdmin.invitationSent'), { description: email });
       onOpenChange(false);
       onInvited();
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
-      const { message, fields } = parseApiError(err);
+      const { message, fields } = parseApiError(err, t);
       if (status === 409) {
         // The backend has two distinct 409s reachable from this endpoint: INVITATION_ALREADY_MEMBER
         // and INVITATION_ALREADY_PENDING (see user-invitation.service.ts createInvitation —
@@ -165,25 +166,25 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
           code === 'INVITATION_ALREADY_PENDING' || /already pending|no longer pending/i.test(message);
         if (isAlreadyPending) {
           // A pending invitation already exists — the answer is on the Invitations tab, not here.
-          toast.error('Invitation already pending', {
-            description: `An invitation to ${email} is already outstanding for this cluster.`,
+          toast.error(t('pages.clusterAdmin.invitationAlreadyPending'), {
+            description: t('pages.clusterAdmin.invitationAlreadyPendingDescription', { email }),
           });
           onOpenChange(false);
           onAlreadyPending(email);
         } else {
           // The address is already a member, so the answer is on the Members tab, not here.
-          toast.error('Already a member', {
-            description: `${email} already has membership in this cluster.`,
+          toast.error(t('pages.clusterAdmin.alreadyAMember'), {
+            description: t('pages.clusterAdmin.alreadyAMemberDescription', { email }),
           });
           onOpenChange(false);
           onAlreadyMember(email);
         }
       } else if (status === 429) {
-        toast.error('Rate limited', {
-          description: 'Invitation rate limit reached. Please try again later.',
+        toast.error(t('pages.clusterAdmin.rateLimited'), {
+          description: t('pages.clusterAdmin.invitationRateLimited'),
         });
       } else {
-        toast.error('Failed to send invitation', { description: message });
+        toast.error(t('pages.clusterAdmin.sendInvitationFailed'), { description: message });
         if (fields) setFieldErrors(fields);
       }
     } finally {
@@ -195,16 +196,15 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
     <Dialog open={open} onOpenChange={(v) => { if (!sending) onOpenChange(v); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Invite user</DialogTitle>
+          <DialogTitle>{t('pages.clusterAdmin.inviteUser')}</DialogTitle>
           <DialogDescription>
-            Send an invitation to join this cluster. The recipient does not need a Carmen account
-            yet — the link lets them set a password and join in one step.
+            {t('pages.clusterAdmin.inviteUserDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="invite-email">Email</Label>
+            <Label htmlFor="invite-email">{t('common.field.email')}</Label>
             <Input
               id="invite-email"
               type="email"
@@ -219,7 +219,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
                   });
                 }
               }}
-              placeholder="name@example.com"
+              placeholder={t('pages.clusterAdmin.emailPlaceholder')}
               className={fieldErrors.email ? 'border-destructive' : ''}
               // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
@@ -228,7 +228,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="invite-cluster-role">Cluster role</Label>
+            <Label htmlFor="invite-cluster-role">{t('pages.clusterAdmin.clusterRoleFieldLabel')}</Label>
             <select
               id="invite-cluster-role"
               value={clusterRole}
@@ -236,21 +236,21 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
               className={selectClassName}
             >
               {CLUSTER_ROLES.map((r) => (
-                <option key={r} value={r}>{cap(r)}</option>
+                <option key={r} value={r}>{t(ROLE_LABEL_KEYS[r])}</option>
               ))}
             </select>
           </div>
 
           <div className="space-y-2">
-            <Label>Business unit access</Label>
+            <Label>{t('pages.clusterAdmin.businessUnitAccessLabel')}</Label>
             <p className="text-xs text-muted-foreground">
-              Select the business units this invitation grants access to, and optionally mark one as default.
+              {t('pages.clusterAdmin.businessUnitAccessHint')}
             </p>
             <div className="max-h-60 overflow-y-auto rounded-md border divide-y">
               {loadingBUs ? (
-                <div className="text-sm text-muted-foreground text-center py-4">Loading business units...</div>
+                <div className="text-sm text-muted-foreground text-center py-4">{t('common.state.loadingBusinessUnits')}</div>
               ) : businessUnits.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No business units in this cluster.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('common.state.noBusinessUnitsInCluster')}</p>
               ) : (
                 businessUnits.map((bu) => {
                   const entry = selected[bu.id];
@@ -268,13 +268,13 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
                       {entry && (
                         <div className="ml-6 flex flex-wrap items-center gap-3">
                           <select
-                            aria-label={`Role in ${bu.name}`}
+                            aria-label={t('pages.clusterAdmin.roleInBu', { name: bu.name })}
                             value={entry.role}
                             onChange={(e) => updateBuRole(bu.id, e.target.value)}
                             className={cn(selectClassName, 'w-28')}
                           >
                             {BU_ROLES.map((r) => (
-                              <option key={r} value={r}>{cap(r)}</option>
+                              <option key={r} value={r}>{t(ROLE_LABEL_KEYS[r])}</option>
                             ))}
                           </select>
                           <label className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -284,7 +284,7 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
                               onChange={(e) => setBuDefault(bu.id, e.target.checked)}
                               className="h-4 w-4 rounded border-input"
                             />
-                            Default
+                            {t('common.label.default')}
                           </label>
                         </div>
                       )}
@@ -298,11 +298,11 @@ const InviteUserDialog: React.FC<InviteUserDialogProps> = ({
 
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={sending}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button size="sm" onClick={handleSubmit} disabled={sending}>
             {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            {sending ? 'Sending...' : 'Send'}
+            {sending ? t('pages.clusterAdmin.sending') : t('pages.clusterAdmin.send')}
           </Button>
         </DialogFooter>
       </DialogContent>

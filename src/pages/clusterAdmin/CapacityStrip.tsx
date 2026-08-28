@@ -6,6 +6,7 @@ import { AllocationTicks } from './AllocationTicks';
 import { GAUGE_TEXT } from '../clusterManagement/CapacityGauge';
 import { seatUtilization, utilization, type CapLevel } from '../../utils/capacity';
 import { isPerpetual } from '../../utils/clusterLicense';
+import { useI18n } from '../../hooks/useI18n';
 
 /** Date-only (yyyy-mm-dd) — the repo's inline formatter (see the DateTime section of CLAUDE.md). */
 const fmtDate = (v: string): string => {
@@ -27,6 +28,7 @@ interface PoolProps {
 }
 
 function Pool({ icon: Icon, label, used, cap, level, note, licensesTo }: PoolProps) {
+  const { t } = useI18n();
   // The figure only takes on a status colour once that status means something. A green "11"
   // would shout about a pool that is simply doing its job.
   const pressured = level === 'warn' || level === 'over';
@@ -43,7 +45,9 @@ function Pool({ icon: Icon, label, used, cap, level, note, licensesTo }: PoolPro
           {used.toLocaleString()}
         </span>
         <span className="text-muted-foreground text-sm">
-          / {cap == null ? 'no cap' : `${cap.toLocaleString()} licensed`}
+          {cap == null
+            ? t('pages.clusterAdmin.noCapSuffix')
+            : t('pages.clusterAdmin.capLicensedSuffix', { cap: cap.toLocaleString() })}
         </span>
       </div>
 
@@ -54,8 +58,8 @@ function Pool({ icon: Icon, label, used, cap, level, note, licensesTo }: PoolPro
         level={level}
         label={
           cap == null
-            ? `${label}: ${used} in use, no cap`
-            : `${label}: ${used} of ${cap} licensed in use`
+            ? t('pages.clusterAdmin.poolAriaNoCap', { label, used })
+            : t('pages.clusterAdmin.poolAriaWithCap', { label, used, cap })
         }
       />
 
@@ -66,7 +70,7 @@ function Pool({ icon: Icon, label, used, cap, level, note, licensesTo }: PoolPro
           to={licensesTo}
           className="text-primary mt-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
         >
-          View licenses
+          {t('pages.clusterAdmin.viewLicenses')}
           <ArrowRight className="size-3" />
         </Link>
       )}
@@ -93,6 +97,7 @@ export interface CapacityStripProps {
  * different.
  */
 export function CapacityStrip({ bu, seats, licensesTo }: CapacityStripProps) {
+  const { t } = useI18n();
   // Two different rules on purpose: BU quota comes from dated purchase rows where 0 is zero,
   // seats from a nullable cap where absent means unlimited. See utils/capacity.
   const buU = seatUtilization(bu.used, bu.cap);
@@ -108,25 +113,26 @@ export function CapacityStrip({ bu, seats, licensesTo }: CapacityStripProps) {
   // over-quota has a consequence they will actually run into: those units go read-only.
   const buNote =
     buOver > 0
-      ? `${buOver} business unit${buOver === 1 ? ' is' : 's are'} beyond quota and read-only`
+      ? t(buOver === 1 ? 'pages.clusterAdmin.buBeyondQuotaOne' : 'pages.clusterAdmin.buBeyondQuotaMany', { count: buOver })
       : buU.cap === 0
-        ? 'No business-unit quota purchased'
+        ? t('pages.clusterAdmin.noBuQuotaPurchased')
         : buFree === 0
-          ? 'No quota left for another business unit'
-          : `${buFree} of ${buU.cap} quota free`;
+          ? t('pages.clusterAdmin.noQuotaLeftForAnotherBu')
+          : t('pages.clusterAdmin.buQuotaFree', { free: buFree, cap: buU.cap });
 
   // A perpetual licence has no expiry story, so it tells none. Appending "no expiry" to a line
   // that already says the quota is full pairs good news with bad in one breath and blunts both.
-  const expiry = bu.endDate != null && !isPerpetual(bu.endDate) ? `expires ${fmtDate(bu.endDate)}` : null;
+  const expiry =
+    bu.endDate != null && !isPerpetual(bu.endDate) ? t('pages.clusterAdmin.expiresOn', { date: fmtDate(bu.endDate) }) : null;
 
   const seatNote =
     seatU.cap == null
-      ? 'No seat cap set'
+      ? t('pages.clusterAdmin.noSeatCapSet')
       : seatOver > 0
-        ? `${seatOver} user${seatOver === 1 ? '' : 's'} beyond the licensed seat count`
+        ? t(seatOver === 1 ? 'pages.clusterAdmin.seatsBeyondLicensedOne' : 'pages.clusterAdmin.seatsBeyondLicensedMany', { count: seatOver })
         : seatFree === 0
-          ? 'No seats open'
-          : `${seatFree} seat${seatFree === 1 ? '' : 's'} open`;
+          ? t('pages.clusterAdmin.noSeatsOpen')
+          : t(seatFree === 1 ? 'pages.clusterAdmin.seatsOpenOne' : 'pages.clusterAdmin.seatsOpenMany', { seatsLeft: seatFree ?? 0 });
 
   const underPressure = (level: CapLevel) => level === 'warn' || level === 'over';
 
@@ -135,7 +141,7 @@ export function CapacityStrip({ bu, seats, licensesTo }: CapacityStripProps) {
       <div className="grid divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0">
         <Pool
           icon={Building2}
-          label="Business units"
+          label={t('common.label.businessUnitsLabel')}
           used={buU.used}
           cap={buU.cap}
           level={buU.level}
@@ -146,7 +152,7 @@ export function CapacityStrip({ bu, seats, licensesTo }: CapacityStripProps) {
         />
         <Pool
           icon={Users}
-          label="Seats"
+          label={t('common.field.seats')}
           used={seatU.used}
           cap={seatU.cap}
           level={seatU.level}

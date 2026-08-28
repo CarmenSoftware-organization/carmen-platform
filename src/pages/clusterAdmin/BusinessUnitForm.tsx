@@ -15,6 +15,7 @@ import { devLog, getErrorDetail, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { useI18n } from '../../hooks/useI18n';
 import { cn } from '../../lib/utils';
 import { ReadOnlyText, ReadOnlyTextarea, Group } from '../businessUnitEdit/shared';
 import { initialFormData, aliasBound, type BusinessUnitFormData, type DefaultCurrency } from '../businessUnitEdit/types';
@@ -34,6 +35,7 @@ import { useLicenseLedger } from '../licenses/useLicenseLedger';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
 import type { BusinessUnitLicense } from '../../types';
+import type { TKey } from '../../i18n/types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
 // Booleans (is_hq/is_active), arrays (config), and the fields this narrowed
@@ -53,12 +55,29 @@ type TextFieldName = Exclude<
  * ส่ง '' ไปจะได้ 400 ไม่ใช่การล้างค่า จึงต้องกันที่ UI ไม่ใช่ปล่อยให้ผู้ใช้ไปเจอ error
  * จาก backend การที่ API ล้าง alias/email ไม่ได้เป็นช่องว่างฝั่ง backend ที่ยังไม่แก้
  */
-const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
-  name: 'Name is required',
-  alias_name: 'Alias cannot be cleared',
-  hotel_email: 'Hotel email cannot be cleared',
-  company_email: 'Company email cannot be cleared',
+// Holds i18n KEYS, not the user-visible strings themselves — a module-scope const cannot
+// call `t()`, so `name`'s "Name is required" message (identical to validateRequired's own
+// check below, composed from common.validation.requiredMessage + common.field.name) and the
+// other three's "cannot be cleared" sentences are both resolved inside the component, in
+// validateRequired.
+//
+// Final-review fix (F3): this is a TOTAL Record over its own literal key union (not
+// Partial<Record<keyof BusinessUnitFormData, TKey>>) so the compiler — not a hand-kept
+// second list — is what guarantees every key here has a TKey. NOT_CLEARABLE_FIELDS below is
+// derived from this map's own keys instead of being a separately hand-typed array, so the
+// two cannot drift: adding, removing, or renaming a field here changes the guard loop too.
+const NOT_CLEARABLE_KEYS: Record<'alias_name' | 'hotel_email' | 'company_email', TKey> = {
+  alias_name: 'pages.clusterAdmin.aliasCannotBeCleared',
+  hotel_email: 'pages.clusterAdmin.hotelEmailCannotBeCleared',
+  company_email: 'pages.clusterAdmin.companyEmailCannotBeCleared',
 };
+// Fields checked by the not-clearable guard in validateRequired — 'name' (different message
+// composition, see above) plus every key of NOT_CLEARABLE_KEYS, derived rather than
+// hand-duplicated.
+const NOT_CLEARABLE_FIELDS: ('name' | keyof typeof NOT_CLEARABLE_KEYS)[] = [
+  'name',
+  ...(Object.keys(NOT_CLEARABLE_KEYS) as (keyof typeof NOT_CLEARABLE_KEYS)[]),
+];
 
 /**
  * A cluster administrator's reach into one business unit — a narrowed Edit-only page (see
@@ -99,6 +118,7 @@ const NOT_CLEARABLE: Partial<Record<keyof BusinessUnitFormData, string>> = {
  * หน้า Users เหมือนเดิม การ์ดนี้จัดการ BU membership (tb_user_tb_business_unit) ซึ่งเป็นตัวที่ seat นับ
  */
 const BusinessUnitForm: React.FC = () => {
+  const { t } = useI18n();
   const { clusterId, buId } = useParams<{ clusterId: string; buId: string }>();
   const navigate = useNavigate();
 
@@ -164,13 +184,13 @@ const BusinessUnitForm: React.FC = () => {
   const tabs: ClusterBuTab[] = (() => {
     const errored = clusterBuTabsWithErrors(fieldErrors);
     const base: ClusterBuTab[] = [
-      { id: 'overview', label: 'Overview' },
-      { id: 'people', label: 'People', count: users.buUsers.length },
-      { id: 'hotel', label: 'Hotel' },
-      { id: 'company', label: 'Company' },
-      { id: 'configuration', label: 'Configuration' },
+      { id: 'overview', label: t('pages.clusterAdmin.overview') },
+      { id: 'people', label: t('pages.clusterAdmin.people'), count: users.buUsers.length },
+      { id: 'hotel', label: t('pages.clusterAdmin.hotel') },
+      { id: 'company', label: t('pages.clusterAdmin.company') },
+      { id: 'configuration', label: t('common.section.configuration') },
     ];
-    return base.map((t) => ({ ...t, hasError: errored.includes(t.id) }));
+    return base.map((tab) => ({ ...tab, hasError: errored.includes(tab.id) }));
   })();
 
   const handleTabChange = (tab: ClusterBuTabId) => {
@@ -291,7 +311,7 @@ const BusinessUnitForm: React.FC = () => {
         setAccessLost(true);
         return;
       }
-      setError('Failed to load business unit: ' + getErrorDetail(err));
+      setError(t('pages.clusterAdmin.loadFailedDetail') + getErrorDetail(err, t));
     } finally {
       setLoading(false);
     }
@@ -318,7 +338,7 @@ const BusinessUnitForm: React.FC = () => {
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, undefined, t) }));
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -337,7 +357,7 @@ const BusinessUnitForm: React.FC = () => {
     setError('');
   };
   const handleInlineValidate = (name: string, value: string) => {
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name)) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name), t) }));
   };
 
   // One-way copy: hotel address -> company address, same as the platform page.
@@ -355,13 +375,13 @@ const BusinessUnitForm: React.FC = () => {
       company_latitude: prev.hotel_latitude,
       company_longitude: prev.hotel_longitude,
     }));
-    toast.success('Copied hotel address to company address');
+    toast.success(t('pages.clusterAdmin.copiedHotelAddressToCompany'));
   };
 
   const getCalculationMethodLabel = (method: string): string => {
     switch (method) {
-      case 'average': return 'Average';
-      case 'fifo': return 'FIFO';
+      case 'average': return t('common.option.average');
+      case 'fifo': return t('pages.clusterAdmin.fifo');
       default: return '-';
     }
   };
@@ -384,15 +404,20 @@ const BusinessUnitForm: React.FC = () => {
   // omit a backend-required field from update() silently and surface as an opaque 400
   // instead of this page's normal inline-validation toast.
   const validateRequired = (): boolean => {
+    // "Name is required" is used both here and by the not-clearable guard below — composed
+    // once from the generic required-field template so both stay in sync (same pattern as
+    // BroadcastEdit.tsx/NewsEdit.tsx's own required-title checks).
+    const nameRequiredMessage = t('common.validation.requiredMessage', { label: t('common.field.name') });
     const errs: Record<string, string> = {};
-    if (!formData.code.trim()) errs.code = 'Code is required';
-    else errs.code = validateField('code', formData.code);
-    if (!formData.name.trim()) errs.name = 'Name is required';
+    if (!formData.code.trim()) errs.code = t('common.validation.requiredMessage', { label: t('common.field.code') });
+    else errs.code = validateField('code', formData.code, undefined, t);
+    if (!formData.name.trim()) errs.name = nameRequiredMessage;
     // ล้างค่าฟิลด์กลุ่มนี้ = 400 จาก backend จับที่นี่ก่อนยิง
-    for (const [key, message] of Object.entries(NOT_CLEARABLE) as [keyof BusinessUnitFormData, string][]) {
+    for (const key of NOT_CLEARABLE_FIELDS) {
       const before = String(savedFormData[key] ?? '');
       const after = String(formData[key] ?? '');
-      if (before !== '' && after.trim() === '') errs[key] = message;
+      if (before === '' || after.trim() !== '') continue;
+      errs[key] = key === 'name' ? nameRequiredMessage : t(NOT_CLEARABLE_KEYS[key]);
     }
     // fieldErrors already carries any standing onBlur error (e.g. "Alias must be 1-3
     // alphanumeric characters" still showing under the field) — Save must not fire while one
@@ -402,7 +427,7 @@ const BusinessUnitForm: React.FC = () => {
     const active = Object.fromEntries(Object.entries(combined).filter(([, v]) => v));
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
-      toast.error('Please fix the highlighted fields', { description: Object.values(active).join(', ') });
+      toast.error(t('pages.clusterAdmin.fixHighlightedFields'), { description: Object.values(active).join(', ') });
       // A failed Save can highlight a field on a tab the user cannot see — Company's tax_no
       // while they were reading Hotel, say. Jump to the first tab holding one; without it
       // Save just looks like it did nothing. `name` maps to no tab (it lives in the plate,
@@ -467,15 +492,15 @@ const BusinessUnitForm: React.FC = () => {
         ...payload,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       });
-      toast.success('Changes saved successfully');
+      toast.success(t('toast.saved'));
       await fetchBusinessUnit();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict();
         await fetchBusinessUnit();
       } else {
-        const { message, fields } = parseApiError(err);
-        toast.error('Failed to update business unit', { description: message });
+        const { message, fields } = parseApiError(err, t);
+        toast.error(t('pages.clusterAdmin.updateFailed'), { description: message });
         if (fields) setFieldErrors(fields);
       }
     } finally {
@@ -493,30 +518,33 @@ const BusinessUnitForm: React.FC = () => {
   const summaries: TabSummary[] = [
     {
       id: 'people',
-      label: 'People',
-      value: `${users.buUsers.length} ${users.buUsers.length === 1 ? 'user' : 'users'}`,
+      label: t('pages.clusterAdmin.people'),
+      value: t(
+        users.buUsers.length === 1 ? 'pages.clusterAdmin.userCount' : 'pages.clusterAdmin.userCountPlural',
+        { count: users.buUsers.length },
+      ),
     },
     {
       id: 'hotel',
-      label: 'Hotel',
+      label: t('pages.clusterAdmin.hotel'),
       value:
         [formData.hotel_tel, formData.hotel_email].filter(Boolean).join(' · ') ||
-        'No contact details',
+        t('pages.clusterAdmin.noContactDetails'),
     },
     {
       id: 'company',
-      label: 'Company',
+      label: t('pages.clusterAdmin.company'),
       value:
-        [formData.company_name, formData.tax_no && `TAX ${formData.tax_no}`]
-          .filter(Boolean).join(' · ') || 'Not set',
+        [formData.company_name, formData.tax_no && t('pages.clusterAdmin.taxLabel', { taxNo: formData.tax_no })]
+          .filter(Boolean).join(' · ') || t('pages.clusterAdmin.notSet'),
     },
     {
       id: 'configuration',
-      label: 'Configuration',
+      label: t('common.section.configuration'),
       // ไม่นับ config: หน้านี้ไม่แสดงตาราง config แล้ว การบอกจำนวนของที่กดเข้าไปดูไม่ได้
       // คือคำเชิญให้คลิกหาสิ่งที่ไม่มี
       value: [formData.timezone, formData.calculation_method && getCalculationMethodLabel(formData.calculation_method)]
-        .filter(Boolean).join(' · ') || 'Defaults',
+        .filter(Boolean).join(' · ') || t('pages.clusterAdmin.configDefaults'),
     },
   ];
 
@@ -549,7 +577,7 @@ const BusinessUnitForm: React.FC = () => {
   if (loading) {
     return (
       <ClusterAdminLayout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading business unit">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.clusterAdmin.loadingBusinessUnitAria')}>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <Skeleton className="h-7 w-48" />
@@ -642,14 +670,14 @@ const BusinessUnitForm: React.FC = () => {
                  จะได้หัวข้อซ้อนสองชั้น */
               <div className="space-y-4">
                 <Card className="p-0">
-                  <Group label="Regional formats">
+                  <Group label={t('pages.clusterAdmin.regionalFormats')}>
                     <div className="grid gap-4 pt-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {readOnlyField('timezone', 'Timezone')}
-                      {readOnlyField('date_format', 'Date format', { mono: true })}
-                      {readOnlyField('date_time_format', 'Date-time format', { mono: true })}
-                      {readOnlyField('time_format', 'Time format', { mono: true })}
-                      {readOnlyField('long_time_format', 'Long time format', { mono: true })}
-                      {readOnlyField('short_time_format', 'Short time format', { mono: true })}
+                      {readOnlyField('timezone', t('pages.clusterAdmin.timezone'))}
+                      {readOnlyField('date_format', t('pages.clusterAdmin.dateFormat'), { mono: true })}
+                      {readOnlyField('date_time_format', t('pages.clusterAdmin.dateTimeFormat'), { mono: true })}
+                      {readOnlyField('time_format', t('pages.clusterAdmin.timeFormat'), { mono: true })}
+                      {readOnlyField('long_time_format', t('pages.clusterAdmin.longTimeFormat'), { mono: true })}
+                      {readOnlyField('short_time_format', t('pages.clusterAdmin.shortTimeFormat'), { mono: true })}
                     </div>
                   </Group>
                 </Card>
@@ -670,15 +698,18 @@ const BusinessUnitForm: React.FC = () => {
           <div className="bg-background fixed inset-x-0 bottom-0 z-40 border-t p-3 md:left-16 lg:left-60">
             <div className="mx-auto flex max-w-5xl items-center justify-end gap-3">
               <span className="text-muted-foreground mr-auto text-sm" role="status">
-                {changedKeys.length} unsaved {changedKeys.length === 1 ? 'change' : 'changes'}
+                {t(
+                  changedKeys.length === 1 ? 'pages.clusterAdmin.unsavedChangeCount' : 'pages.clusterAdmin.unsavedChangeCountPlural',
+                  { count: changedKeys.length },
+                )}
               </span>
               <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : 'Save changes'}
+                {saving ? t('common.busy.saving') : t('pages.clusterAdmin.saveChangesButton')}
               </Button>
             </div>
           </div>

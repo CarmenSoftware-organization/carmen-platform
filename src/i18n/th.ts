@@ -165,6 +165,7 @@ export const th: Translations = {
       clear: 'ล้าง',
       addUser: 'เพิ่มผู้ใช้',
       start: 'เริ่ม',
+      end: 'สิ้นสุด',
       manageLicences: 'จัดการไลเซนส์',
       export: 'ส่งออก',
       edit: 'แก้ไข',
@@ -175,6 +176,7 @@ export const th: Translations = {
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
       filtersLabel: 'ตัวกรอง:',
       showDeleted: 'แสดงรายการที่ลบแล้ว',
+      rowActions: 'การกระทำสำหรับ {{name}}',
     },
     busy: {
       saving: 'กำลังบันทึก...',
@@ -218,6 +220,7 @@ export const th: Translations = {
       startDate: 'วันที่เริ่ม',
       endDate: 'วันที่สิ้นสุด',
       required: '{{label}} *',
+      code: 'รหัส',
     },
     section: {
       identity: 'ข้อมูลระบุตัวตน',
@@ -257,6 +260,9 @@ export const th: Translations = {
       // Copied verbatim from pages.subscriptions.expiringSoon / pages.licenses.
       // expiringSoonBadge — not retranslated. See en.ts for the promotion rationale.
       expiringSoon: 'ใกล้หมดอายุ',
+      // Copied verbatim from pages.licenses.daysLeft — not retranslated. See en.ts for the
+      // promotion rationale.
+      daysLeft: 'เหลืออีก {{count}} วัน',
       unsavedChanges: 'มีการแก้ไขที่ยังไม่บันทึก',
       noChanges: 'ไม่มีการแก้ไข',
       unknownUser: 'ไม่ระบุชื่อ',
@@ -297,6 +303,10 @@ export const th: Translations = {
       subscriptionNumber: 'หมายเลขการสมัคร',
     },
     severity: { critical: 'วิกฤต', warning: 'คำเตือน', info: 'ข้อมูล', maintenance: 'บำรุงรักษา' },
+    role: {
+      admin: 'ผู้ดูแล',
+      user: 'ผู้ใช้',
+    },
   },
   entity: {
     // Thai has no case, so all three forms repeat. Kept in sync with en.ts's three-field
@@ -397,7 +407,6 @@ export const th: Translations = {
       confirmCodePlaceholder: 'กรอกรหัส 6 ตัวอักษร',
       typeUsernameToConfirm: 'พิมพ์ {{username}} เพื่อยืนยัน',
       selectRow: 'เลือก {{name}}',
-      rowActions: 'การกระทำสำหรับ {{name}}',
       deletedByName: 'ลบโดย {{name}}',
       bulkDeleteTitle: 'ลบผู้ใช้ {{count}} รายการ',
       bulkDeleted: 'ลบผู้ใช้ {{count}} รายการแล้ว',
@@ -551,7 +560,6 @@ export const th: Translations = {
       loading: 'กำลังโหลดข่าว',
       loadingEllipsis: 'กำลังโหลดข่าว...',
       selectRow: 'เลือก {{name}}',
-      rowActions: 'การกระทำสำหรับ {{name}}',
       deleteTitle: 'ลบข่าว',
       deleteConfirm: 'ต้องการลบข่าวนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
       publishSelected: 'เผยแพร่รายการที่เลือก',
@@ -731,7 +739,6 @@ export const th: Translations = {
       addBuQuotaLicense: 'เพิ่มไลเซนส์โควตา BU',
       addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
       licenseNumber: 'เลขที่ไลเซนส์',
-      end: 'สิ้นสุด',
       removeLicenseTitle: 'นำไลเซนส์ออก',
       noLicensesYetTitle: 'ยังไม่มีไลเซนส์',
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
@@ -753,7 +760,6 @@ export const th: Translations = {
       overBuLimit: 'เกินโควตา BU',
       seatsFull: 'ที่นั่งเต็ม',
       buQuotaColumn: 'โควตา BU',
-      daysLeft: 'เหลืออีก {{count}} วัน',
       // F6: unified with switcher.searchClusters — see the comment there.
       searchClustersPlaceholder: 'ค้นหา cluster...',
       filtersSheetDescription: 'กรองคลัสเตอร์ตามสถานะและสถานะไลเซนส์',
@@ -867,6 +873,242 @@ export const th: Translations = {
 
       licenseRemoved: 'นำไลเซนส์ออกแล้ว',
       removeLicenseFailedTitle: 'นำไลเซนส์ออกไม่สำเร็จ',
+    },
+
+    clusterAdmin: {
+      hotel: 'โรงแรม',
+      company: 'บริษัท',
+      people: 'บุคคล',
+      hq: 'HQ',
+      viewLicenses: 'ดูไลเซนส์',
+      clusterHasNoBusinessUnitsYet: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ',
+      inviteToAccessHint: 'เชิญผู้ใช้เพื่อให้สิทธิ์เข้าถึง cluster นี้',
+      invitationRateLimited: 'ถึงขีดจำกัดอัตราการเชิญแล้ว กรุณาลองใหม่อีกครั้งภายหลัง',
+      noSeatsOpen: 'ไม่มีที่นั่งว่าง',
+      unnamed: '(ไม่มีชื่อ)',
+
+      // --- Task 2: BusinessUnitList.tsx + BusinessUnitForm.tsx ---
+      businessUnitListSubtitle: 'จัดการหน่วยธุรกิจใน cluster นี้',
+      loadingBusinessUnitsAria: 'กำลังโหลดหน่วยธุรกิจ',
+      loadingBusinessUnitAria: 'กำลังโหลดหน่วยธุรกิจ',
+      filterBusinessUnitsByStatus: 'กรองหน่วยธุรกิจตามสถานะ',
+      noBusinessUnitsDescription: 'หน่วยธุรกิจถูกสร้างโดยผู้ดูแลระบบระดับแพลตฟอร์ม เมื่อมีการเพิ่มหน่วยธุรกิจเข้า cluster นี้ รายการจะปรากฏที่นี่',
+      overLimitCountOne: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      overLimitCountMany: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาที่มีไลเซนส์ {{cap}} หน่วย หน่วยเหล่านั้นอ่านได้อย่างเดียวจนกว่าจะซื้อโควตาเพิ่ม',
+      overLimitBadge: 'เกินโควตา',
+      overLimitTitle: 'โควตา {{cap}} · หน่วยนี้อยู่อันดับ {{rank}}',
+      aliasCannotBeCleared: 'ล้างชื่อแฝงไม่ได้',
+      hotelEmailCannotBeCleared: 'ล้างอีเมลโรงแรมไม่ได้',
+      companyEmailCannotBeCleared: 'ล้างอีเมลบริษัทไม่ได้',
+      fixHighlightedFields: 'กรุณาแก้ไขช่องที่มีข้อผิดพลาด',
+      loadFailedDetail: 'โหลดหน่วยธุรกิจไม่สำเร็จ: ',
+      updateFailed: 'อัปเดตหน่วยธุรกิจไม่สำเร็จ',
+      copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
+      fifo: 'FIFO',
+      overview: 'ภาพรวม',
+      regionalFormats: 'รูปแบบตามภูมิภาค',
+      timezone: 'เขตเวลา',
+      dateFormat: 'รูปแบบวันที่',
+      dateTimeFormat: 'รูปแบบวันที่-เวลา',
+      timeFormat: 'รูปแบบเวลา',
+      longTimeFormat: 'รูปแบบเวลาแบบยาว',
+      shortTimeFormat: 'รูปแบบเวลาแบบสั้น',
+      userCount: 'ผู้ใช้ {{count}} คน',
+      userCountPlural: 'ผู้ใช้ {{count}} คน',
+      noContactDetails: 'ไม่มีข้อมูลติดต่อ',
+      notSet: 'ยังไม่ได้ตั้งค่า',
+      configDefaults: 'ค่าเริ่มต้น',
+      taxLabel: 'TAX {{taxNo}}',
+      unsavedChangeCount: '{{count}} การแก้ไขที่ยังไม่บันทึก',
+      unsavedChangeCountPlural: '{{count}} การแก้ไขที่ยังไม่บันทึก',
+      saveChangesButton: 'บันทึกการแก้ไข',
+
+      // --- Task 3: MembersTable.tsx ---
+      noMembersYet: 'ยังไม่มีสมาชิก',
+      loadingMembersAria: 'กำลังโหลดสมาชิก',
+      loadingMembers: 'กำลังโหลดสมาชิก...',
+      removeMemberTitle: 'นำสมาชิกออก',
+      removeMemberConfirm: 'นำ "{{name}}" ออกจาก cluster นี้?',
+      roleUpdated: 'อัปเดตบทบาทแล้ว',
+      roleUpdateFailed: 'อัปเดตบทบาทไม่สำเร็จ',
+      memberRemoved: 'นำสมาชิกออกแล้ว',
+      memberRemoveFailed: 'นำสมาชิกออกไม่สำเร็จ',
+      makeRole: 'ตั้งเป็น {{role}}',
+
+      // --- Task 3: InvitationsTable.tsx ---
+      invitationStatusPending: 'รอตอบรับ',
+      invitationStatusAccepted: 'ตอบรับแล้ว',
+      invitationStatusDeclined: 'ปฏิเสธแล้ว',
+      invitationStatusRevoked: 'เพิกถอนแล้ว',
+      invitedColumn: 'วันที่เชิญ',
+      resend: 'ส่งใหม่',
+      revoke: 'เพิกถอน',
+      noPendingInvitations: 'ไม่มีคำเชิญที่รอดำเนินการ',
+      loadingInvitationsAria: 'กำลังโหลดคำเชิญ',
+      loadingInvitations: 'กำลังโหลดคำเชิญ...',
+      revokeInvitationTitle: 'เพิกถอนคำเชิญ',
+      revokeInvitationConfirm: 'เพิกถอนคำเชิญที่ส่งถึง "{{email}}"? ผู้รับจะไม่สามารถตอบรับคำเชิญนี้ได้อีก',
+      invitationResent: 'ส่งคำเชิญใหม่แล้ว',
+      resendFailed: 'ส่งคำเชิญใหม่ไม่สำเร็จ',
+      invitationRevoked: 'เพิกถอนคำเชิญแล้ว',
+      revokeFailed: 'เพิกถอนคำเชิญไม่สำเร็จ',
+
+      // --- Task 3: InviteUserDialog.tsx ---
+      enterValidEmail: 'กรุณากรอกอีเมลที่ถูกต้อง',
+      invitationSent: 'ส่งคำเชิญแล้ว',
+      invitationAlreadyPending: 'มีคำเชิญค้างอยู่แล้ว',
+      invitationAlreadyPendingDescription: 'มีคำเชิญที่ส่งถึง {{email}} สำหรับ cluster นี้อยู่แล้ว',
+      alreadyAMember: 'เป็นสมาชิกอยู่แล้ว',
+      alreadyAMemberDescription: '{{email}} เป็นสมาชิกของ cluster นี้อยู่แล้ว',
+      rateLimited: 'ถูกจำกัดอัตราการส่ง',
+      sendInvitationFailed: 'ส่งคำเชิญไม่สำเร็จ',
+      inviteUser: 'เชิญผู้ใช้',
+      inviteUserDescription: 'ส่งคำเชิญให้เข้าร่วม cluster นี้ ผู้รับไม่จำเป็นต้องมีบัญชี Carmen มาก่อน — ลิงก์จะให้ตั้งรหัสผ่านและเข้าร่วมได้ในขั้นตอนเดียว',
+      emailPlaceholder: 'name@example.com',
+      clusterRoleFieldLabel: 'บทบาทใน cluster',
+      businessUnitAccessLabel: 'สิทธิ์เข้าถึงหน่วยธุรกิจ',
+      businessUnitAccessHint: 'เลือกหน่วยธุรกิจที่คำเชิญนี้จะให้สิทธิ์เข้าถึง และเลือกทำเครื่องหมายหนึ่งหน่วยเป็นค่าเริ่มต้น (ไม่บังคับ)',
+      roleInBu: 'บทบาทใน {{name}}',
+      sending: 'กำลังส่ง...',
+      send: 'ส่ง',
+
+      // --- Task 3: ClusterUsers.tsx ---
+      usersPageTitle: 'ผู้ใช้งาน',
+      failedToLoadMembers: 'โหลดรายชื่อสมาชิกไม่สำเร็จ',
+      failedToLoadInvitations: 'โหลดคำเชิญไม่สำเร็จ',
+      usersPageSubtitle: 'จัดการสมาชิกและคำเชิญที่รอดำเนินการสำหรับ cluster นี้',
+      membersTabLabel: 'สมาชิก ({{count}})',
+      invitationsTabLabel: 'คำเชิญ ({{count}})',
+      searchMembersPlaceholder: 'ค้นหาสมาชิก...',
+
+      // --- Task 3: ClusterPeopleCard.tsx ---
+      viewAllClusterUsers: 'ดูผู้ใช้ทั้งหมดของ cluster',
+      noMembers: 'ไม่มีสมาชิก',
+      noMembersInvitedDescription: 'ยังไม่มีใครถูกเชิญเข้า cluster นี้',
+      noClusterAdministrators: 'ไม่มีผู้ดูแล cluster เลย มีเพียงผู้ดูแลระบบระดับแพลตฟอร์มเท่านั้นที่จัดการ cluster นี้ได้',
+      administratorsHeading: 'ผู้ดูแล',
+      moreAdministrator: 'อีก {{count}} ผู้ดูแล',
+      moreAdministrators: 'อีก {{count}} ผู้ดูแล',
+      memberWithoutAdminRights: '{{count}} สมาชิกที่ไม่มีสิทธิ์ผู้ดูแล',
+      membersWithoutAdminRights: '{{count}} สมาชิกที่ไม่มีสิทธิ์ผู้ดูแล',
+
+      // --- Task 4: ClusterBuDocument.tsx ---
+      elsewhere: 'ที่อื่น',
+      addressLabel: 'ที่อยู่',
+      aliasLabel: 'ชื่อแฝง',
+      logoLabel: 'โลโก้',
+      hotelNameLabel: 'ชื่อโรงแรม',
+      phoneLabel: 'โทรศัพท์',
+      copyFromHotelAddress: 'คัดลอกจากที่อยู่โรงแรม',
+      companyNameLabel: 'ชื่อบริษัท',
+      taxIdLabel: 'เลขประจำตัวผู้เสียภาษี',
+      branchLabel: 'สาขา',
+
+      // --- Task 4: AddressBlock.tsx ---
+      setAddressPlaceholder: 'ตั้งค่าที่อยู่…',
+      coordinatesLabel: 'พิกัด',
+      addressLine1Label: 'ที่อยู่บรรทัดที่ 1',
+      addressLine2Label: 'ที่อยู่บรรทัดที่ 2',
+      subDistrictLabel: 'ตำบล/แขวง',
+      districtLabel: 'อำเภอ/เขต',
+      cityLabel: 'เมือง',
+      provinceLabel: 'จังหวัด',
+      postalCodeLabel: 'รหัสไปรษณีย์',
+      countryLabel: 'ประเทศ',
+      latitudeLabel: 'ละติจูด',
+      longitudeLabel: 'ลองจิจูด',
+      doneButton: 'เสร็จสิ้น',
+
+      // --- Task 4: BuPropertyPlate.tsx ---
+      noHotelNameSet: 'ยังไม่ได้ตั้งชื่อโรงแรม — เพิ่มได้ที่แท็บโรงแรม',
+      notHq: 'ไม่ใช่ HQ',
+
+      // --- Task 4: SeatMeter.tsx ---
+      overBySeatsOne: 'เกิน {{overBy}} ที่นั่ง — ปิดการใช้งานผู้ใช้ {{overBy}} คนที่ไม่ได้อยู่ใน BU อื่นของ cluster นี้',
+      overBySeatsMany: 'เกิน {{overBy}} ที่นั่ง — ปิดการใช้งานผู้ใช้ {{overBy}} คนที่ไม่ได้อยู่ใน BU อื่นของ cluster นี้',
+      atCapacityDeactivateUser: 'เต็มความจุ — ปิดการใช้งานผู้ใช้หนึ่งคนก่อนเพิ่มคนใหม่',
+      nearingCapacitySeatOne: 'ใกล้เต็มความจุ — เหลือที่นั่ง {{seatsLeft}} ที่',
+      nearingCapacitySeatMany: 'ใกล้เต็มความจุ — เหลือที่นั่ง {{seatsLeft}} ที่',
+      seatsOpenOne: 'เหลือที่นั่งว่าง {{seatsLeft}} ที่',
+      seatsOpenMany: 'เหลือที่นั่งว่าง {{seatsLeft}} ที่',
+      clusterSeatsHeading: 'ที่นั่งของ cluster',
+      capLicensedSuffix: '/ {{cap}} ที่มีไลเซนส์',
+      clusterSeatsAriaLabel: 'ที่นั่งของ cluster: ใช้ไป {{used}} จาก {{cap}} ที่มีไลเซนส์',
+
+      // --- Task 5: CapacityStrip.tsx ---
+      noCapSuffix: '/ ไม่มีเพดาน',
+      poolAriaNoCap: '{{label}}: ใช้ไป {{used}} ไม่มีเพดาน',
+      poolAriaWithCap: '{{label}}: ใช้ไป {{used}} จาก {{cap}} ที่มีไลเซนส์',
+      buBeyondQuotaOne: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาและอ่านได้อย่างเดียว',
+      buBeyondQuotaMany: 'หน่วยธุรกิจ {{count}} หน่วยเกินโควตาและอ่านได้อย่างเดียว',
+      noBuQuotaPurchased: 'ยังไม่ได้ซื้อโควตาหน่วยธุรกิจ',
+      noQuotaLeftForAnotherBu: 'ไม่มีโควตาเหลือสำหรับหน่วยธุรกิจเพิ่ม',
+      buQuotaFree: 'ว่าง {{free}} จากโควตา {{cap}}',
+      expiresOn: 'หมดอายุ {{date}}',
+      noSeatCapSet: 'ยังไม่ได้ตั้งเพดานที่นั่ง',
+      seatsBeyondLicensedOne: 'ผู้ใช้ {{count}} คนเกินจำนวนที่นั่งที่มีไลเซนส์',
+      seatsBeyondLicensedMany: 'ผู้ใช้ {{count}} คนเกินจำนวนที่นั่งที่มีไลเซนส์',
+
+      // --- Task 5: ClusterProfile.tsx ---
+      unnamedCluster: '(cluster ไม่มีชื่อ)',
+      tenantGroup: 'กลุ่มผู้เช่า',
+      brandingCardDescription: 'แสดงในแถบด้านข้าง ตัวสลับ cluster และรายการต่าง ๆ ทั่วทั้งแพลตฟอร์ม',
+      loadingClusterProfileAria: 'กำลังโหลดโปรไฟล์ cluster',
+      loadClusterFailedDetail: 'โหลด cluster ไม่สำเร็จ: ',
+      clusterUpdated: 'อัปเดต cluster แล้ว',
+      updateClusterFailed: 'อัปเดต cluster ไม่สำเร็จ',
+
+      // --- Task 5: ClusterAdminLicenses.tsx ---
+      clusterNotFoundOrDeleted: 'ไม่พบ Cluster หรืออาจถูกลบไปแล้ว',
+      clusterUnavailable: 'Cluster ใช้งานไม่ได้',
+      licencesSubtitleWithCode: 'ไลเซนส์ · {{code}}',
+      licencesLabel: 'ไลเซนส์',
+
+      // --- Task 5: licenses/BuRankingCard.tsx ---
+      rankColumn: 'อันดับ',
+      buRankingLabel: 'อันดับหน่วยธุรกิจ',
+      rankingExplanation: 'เมื่อโควตาไม่พอ แพลตฟอร์มจะครอบคลุมหน่วยตามลำดับนี้ — HQ ก่อน แล้วตามด้วยหน่วยที่เก่าที่สุด',
+      rankedQuotaUnknown: '{{count}} หน่วยเรียงอันดับแล้ว · ไม่ทราบโควตา',
+      beyondQuotaReadOnly: '{{count}} หน่วยเกินโควตาและอ่านได้อย่างเดียว',
+      rankedAllWithinQuota: '{{count}} หน่วยเรียงอันดับแล้ว · อยู่ในโควตาทั้งหมด',
+      beyondQuotaBadge: 'เกินโควตา',
+
+      // --- Task 5: licenses/SeatsByBuTable.tsx ---
+      seatsByBusinessUnitLabel: 'ที่นั่งแยกตามหน่วยธุรกิจ',
+      endsColumn: 'สิ้นสุด',
+      couldNotLoadLicencesForBu: 'โหลดไลเซนส์สำหรับหน่วยธุรกิจนี้ไม่สำเร็จ — ที่นั่งของหน่วยนี้ไม่ทราบจำนวน ไม่ใช่ศูนย์',
+      notPurchased: 'ยังไม่ได้ซื้อ',
+
+      // --- Task 5: licenses/QuotaLedgerCard.tsx ---
+      quotaColumn: 'โควตา',
+      quotaSummaryLoadFailed: 'โหลดไม่สำเร็จ — โควตาที่แสดงด้านบนไม่ทราบ ไม่ใช่ศูนย์',
+      noQuotaLicenceIssued: 'ยังไม่มีการออกไลเซนส์โควตาให้ cluster นี้',
+      licenceCountOne: '{{count}} ไลเซนส์',
+      licenceCountMany: '{{count}} ไลเซนส์',
+      inForceBusinessUnitsNoExpiry: 'มีผล: {{count}} หน่วยธุรกิจ ไม่มีวันหมดอายุ',
+      inForceBusinessUnitsToDate: 'มีผล: {{count}} หน่วยธุรกิจ ถึง {{date}}',
+      noneInForce: 'ไม่มีใบที่มีผล',
+      buQuotaLicencesLabel: 'ไลเซนส์โควตาหน่วยธุรกิจ',
+      licenceDataUnavailable: 'โหลดข้อมูลไลเซนส์สำหรับ cluster นี้ไม่สำเร็จ — ข้อมูลไม่ทราบ ไม่ใช่ว่างเปล่า',
+      quotaLicencesIssuedByPlatformTeam: 'ทีมแพลตฟอร์มเป็นผู้ออกไลเซนส์โควตา ให้ติดต่อทีมเพื่อเพิ่มไลเซนส์ก่อนที่ cluster นี้จะต้องการหน่วยธุรกิจเพิ่ม',
+      inForceBadge: 'มีผล',
+
+      // --- Task 5: ClusterAdminEntry.tsx ---
+      chooseAClusterToAdminister: 'เลือก cluster ที่ต้องการดูแล',
+      notAdministratorOfAnyCluster: 'คุณไม่ได้เป็นผู้ดูแลของ cluster ใดเลย กรุณาติดต่อผู้ดูแลระบบระดับแพลตฟอร์มเพื่อขอสิทธิ์เข้าถึง',
+
+      // --- Task 5: ClusterAccessLost.tsx ---
+      accessLostTitle: 'คุณไม่มีสิทธิ์ดูแล cluster นี้อีกต่อไป',
+      accessLostDescription: 'สิทธิ์ผู้ดูแลของคุณสำหรับ cluster นี้ถูกนำออกแล้ว เลือก cluster อื่น หรือติดต่อผู้ดูแลระบบระดับแพลตฟอร์มเพื่อขอคืนสิทธิ์',
+      backToMyClusters: 'กลับไปยัง cluster ของฉัน',
+
+      // --- Task 5: ClusterBusinessUnitsCard.tsx ---
+      viewAllBusinessUnitsAria: 'ดูหน่วยธุรกิจทั้งหมด',
+      noBusinessUnitsCreatedByPlatformAdmin: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ ผู้ดูแลระบบระดับแพลตฟอร์มเป็นผู้สร้าง',
+      moreOnBusinessUnitsPage: 'อีก {{count}} รายการที่หน้าหน่วยธุรกิจ',
+
+      // --- Task 5: SummaryCardHeader.tsx ---
+      viewAll: 'ดูทั้งหมด',
     },
   },
   error: {

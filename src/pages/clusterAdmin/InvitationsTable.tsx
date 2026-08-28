@@ -17,10 +17,32 @@ import clusterAdminService from '../../services/clusterAdminService';
 import { parseApiError } from '../../utils/errorParser';
 import { AuditMeta } from '../../components/AuditMeta';
 import { normalizeAudit } from '../../utils/audit';
+import { useI18n } from '../../hooks/useI18n';
+import { roleLabel } from './roleLabels';
 import type { ClusterInvitation } from '../../types';
+import type { TKey } from '../../i18n/types';
 import type { ColumnDef } from '@tanstack/react-table';
 
+// Fallback only — applied to a status value this table cannot map to a known label (see
+// STATUS_LABEL_KEYS / statusLabel below). Not used on any of the five known statuses, since
+// their catalog values are already Title Case.
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// Hazard 2 (InvitationsTable.tsx:23/123, per the task brief's original line numbers): the
+// invitation-status enum this table's status Badge can render. Not `enum_user_invitation_status`
+// itself — 'expired' is a computed *display* status the backend derives from a lapsed `pending`
+// row (see this file's doc comment above) — but together with 'expired' this is every value
+// `statusVariant()` below already switches on, i.e. the complete set this column can show.
+type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
+
+const STATUS_LABEL_KEYS: Record<InvitationStatus, TKey> = {
+  pending: 'pages.clusterAdmin.invitationStatusPending',
+  accepted: 'pages.clusterAdmin.invitationStatusAccepted',
+  declined: 'pages.clusterAdmin.invitationStatusDeclined',
+  revoked: 'pages.clusterAdmin.invitationStatusRevoked',
+  // Reuses common.status.expired directly rather than duplicating it.
+  expired: 'common.status.expired',
+};
 
 const fmt = (v?: string) => {
   if (!v) return '-';
@@ -66,69 +88,79 @@ interface InvitationsTableProps {
  * terminal ones would block exactly that.
  */
 const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitations, loading, onChanged }) => {
+  const { t } = useI18n();
   const [revokeTarget, setRevokeTarget] = useState<ClusterInvitation | null>(null);
+
+  // Resolves a display status to its translated label. Known values (see InvitationStatus
+  // above) are exhaustively mapped; anything else falls back to the raw, capitalized value —
+  // this table's `status` field is typed as plain `string | undefined` in src/types/index.ts,
+  // so an unrecognised future value degrades to English instead of throwing or mistranslating.
+  const statusLabel = useCallback((status?: string): string => {
+    const key = STATUS_LABEL_KEYS[(status ?? '').toLowerCase() as InvitationStatus];
+    return key ? t(key) : (status ? cap(status) : '-');
+  }, [t]);
 
   const handleResend = useCallback(async (invitation: ClusterInvitation) => {
     try {
       await clusterAdminService.resendInvitation(clusterId, invitation.id);
-      toast.success('Invitation resent');
+      toast.success(t('pages.clusterAdmin.invitationResent'));
       onChanged();
     } catch (err: unknown) {
-      const { message } = parseApiError(err);
+      const { message } = parseApiError(err, t);
       const description =
         (err as { response?: { status?: number } })?.response?.status === 429
-          ? 'Invitation rate limit reached. Please try again later.'
+          ? t('pages.clusterAdmin.invitationRateLimited')
           : message;
-      toast.error('Failed to resend invitation', { description });
+      toast.error(t('pages.clusterAdmin.resendFailed'), { description });
     }
-  }, [clusterId, onChanged]);
+  }, [clusterId, onChanged, t]);
 
   const handleConfirmRevoke = async () => {
     if (!revokeTarget) return;
     try {
       await clusterAdminService.revokeInvitation(clusterId, revokeTarget.id);
-      toast.success('Invitation revoked');
+      toast.success(t('pages.clusterAdmin.invitationRevoked'));
       setRevokeTarget(null);
       onChanged();
     } catch (err: unknown) {
-      const { message } = parseApiError(err);
-      toast.error('Failed to revoke invitation', { description: message });
+      const { message } = parseApiError(err, t);
+      toast.error(t('pages.clusterAdmin.revokeFailed'), { description: message });
     }
   };
 
   const columns = useMemo<ColumnDef<ClusterInvitation, unknown>[]>(() => [
     {
       accessorKey: 'email',
-      header: 'Email',
+      header: t('common.field.email'),
       meta: { card: 'title' },
       cell: ({ row }) => <span>{row.original.email}</span>,
     },
     {
       accessorKey: 'cluster_role',
-      header: 'Cluster Role',
+      header: t('common.label.clusterRole'),
       // กว้างเท่ากับคอลัมน์เดียวกันในตาราง Members — ของเดิม w-28 แคบไปจนหัวคอลัมน์ห่อสองบรรทัด
       // มาตั้งแต่ก่อนหน้านี้ ไม่ได้เพิ่งเกิดจากการเปลี่ยนชื่อคอลัมน์ฝั่ง Members
       meta: { headerClassName: 'w-36', cellClassName: 'w-36' },
       cell: ({ row }) => (
-        <Badge variant="outline" className="text-xs capitalize">
-          {row.original.cluster_role ?? 'user'}
+        <Badge variant="outline" className="text-xs">
+          {roleLabel(t, row.original.cluster_role)}
         </Badge>
       ),
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-28', cellClassName: 'w-28', card: 'badge' },
       cell: ({ row }) => (
-        <Badge variant={statusVariant(row.original.status)} className="capitalize">
-          {row.original.status ? cap(row.original.status) : '-'}
+        <Badge variant={statusVariant(row.original.status)}>
+          {statusLabel(row.original.status)}
         </Badge>
       ),
     },
     {
       accessorKey: 'expires_at',
       id: 'expires_at',
-      header: 'Expires',
+      header: t('common.state.expires'),
       cell: ({ row }) => (
         <div className="text-[11px] leading-tight whitespace-nowrap text-muted-foreground">{fmt(row.original.expires_at)}</div>
       ),
@@ -136,7 +168,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
     {
       accessorKey: 'created_at',
       id: 'created_at',
-      header: 'Invited',
+      header: t('pages.clusterAdmin.invitedColumn'),
       cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).created} />,
     },
     {
@@ -157,7 +189,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${invitation.email}`}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('common.action.rowActions', { name: invitation.email })}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -168,7 +200,7 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
                 className="cursor-pointer"
               >
                 <RotateCw className="mr-2 h-4 w-4" />
-                Resend
+                {t('pages.clusterAdmin.resend')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!isActionable}
@@ -176,14 +208,14 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
                 className="cursor-pointer text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Revoke
+                {t('pages.clusterAdmin.revoke')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
       },
     },
-  ], [handleResend]);
+  ], [handleResend, statusLabel, t]);
 
   if (loading && invitations.length === 0) {
     // +1 accounts for the `#` row-index column DataTable always prepends.
@@ -196,8 +228,8 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
         searchTerm=""
         activeFilterCount={0}
         icon={Mail}
-        emptyTitle="No pending invitations"
-        emptyDescription="Invite a user to give them access to this cluster."
+        emptyTitle={t('pages.clusterAdmin.noPendingInvitations')}
+        emptyDescription={t('pages.clusterAdmin.inviteToAccessHint')}
       />
     );
   }
@@ -205,8 +237,8 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
   return (
     <div className="relative">
       {loading && invitations.length > 0 && (
-        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading invitations">
-          <div className="text-muted-foreground">Loading invitations...</div>
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.clusterAdmin.loadingInvitationsAria')}>
+          <div className="text-muted-foreground">{t('pages.clusterAdmin.loadingInvitations')}</div>
         </div>
       )}
       <DataTable columns={columns} data={invitations} tableLayout="auto" />
@@ -214,9 +246,9 @@ const InvitationsTable: React.FC<InvitationsTableProps> = ({ clusterId, invitati
       <ConfirmDialog
         open={revokeTarget !== null}
         onOpenChange={(open) => { if (!open) setRevokeTarget(null); }}
-        title="Revoke invitation"
-        description={`Revoke the invitation sent to "${revokeTarget?.email ?? ''}"? They will no longer be able to accept it.`}
-        confirmText="Revoke"
+        title={t('pages.clusterAdmin.revokeInvitationTitle')}
+        description={t('pages.clusterAdmin.revokeInvitationConfirm', { email: revokeTarget?.email ?? '' })}
+        confirmText={t('pages.clusterAdmin.revoke')}
         confirmVariant="destructive"
         onConfirm={handleConfirmRevoke}
       />

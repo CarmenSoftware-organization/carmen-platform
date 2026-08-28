@@ -8,6 +8,7 @@ import { AddressBlock } from './AddressBlock';
 import type { ClusterBuTab, ClusterBuTabId } from './ClusterBuTabs';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
 import { BU_ALIAS_MAX } from '../../businessUnitEdit/types';
+import { useI18n } from '../../../hooks/useI18n';
 
 /** หนึ่งบรรทัดของรายการข้ามไป tab อื่น: ชื่อ tab + ค่าที่ตั้งไว้จริง */
 export interface TabSummary {
@@ -45,9 +46,10 @@ export interface ClusterBuDocumentProps {
  * เพื่อรู้ว่าข้างในว่างหรือมีของ ซึ่งทำลายงาน "ดูว่า BU นี้ตั้งค่าไว้ยังไง"
  */
 function TabJumpList({ summaries, onJump }: { summaries: TabSummary[]; onJump: (id: ClusterBuTabId) => void }) {
+  const { t } = useI18n();
   return (
     <Card className="p-0">
-      <Group label="Elsewhere">
+      <Group label={t('pages.clusterAdmin.elsewhere')}>
         <ul className="-mx-2">
           {summaries.map((s) => (
             <li key={s.id}>
@@ -82,6 +84,8 @@ export function ClusterBuDocument({
   logoUrl, avatarUrl, onUploadLogo, onUploadAvatar,
   tabs, activeTab, onTabChange, summaries, peopleSlot, configurationSlot,
 }: ClusterBuDocumentProps) {
+  const { t } = useI18n();
+
   const inline = (
     name: keyof BusinessUnitFormData,
     label: string,
@@ -104,7 +108,7 @@ export function ClusterBuDocument({
 
   const address = (prefix: 'hotel' | 'company') => (
     <div className="mt-2">
-      <div className="text-muted-foreground mb-1 px-2 text-sm">Address</div>
+      <div className="text-muted-foreground mb-1 px-2 text-sm">{t('pages.clusterAdmin.addressLabel')}</div>
       <AddressBlock prefix={prefix} formData={f} disabled={!canEdit} onChange={onChange} />
     </div>
   );
@@ -116,23 +120,23 @@ export function ClusterBuDocument({
       {activeTab === 'overview' && (
         <div className="space-y-4">
           <Card className="p-0">
-            <Group label="Identity">
-              {inline('alias_name', 'Alias', { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
-              {inline('description', 'Description', { type: 'textarea' })}
+            <Group label={t('common.section.identity')}>
+              {inline('alias_name', t('pages.clusterAdmin.aliasLabel'), { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
+              {inline('description', t('common.field.description'), { type: 'textarea' })}
             </Group>
             {/* ป้ายกลุ่มแบบเดียวกับที่เหลือของหน้า แทน BusinessUnitBrandingCard ซึ่งใช้หัวการ์ด
                 คนละแบบ (CardTitle + CardDescription) — การ์ดนั้นยังเป็นของหน้า platform ต่อไป */}
-            <Group label="Branding">
+            <Group label={t('common.section.branding')}>
               <div className="flex flex-col gap-6 pt-1 sm:flex-row sm:gap-10">
                 <BrandingImageUpload
-                  label="Logo"
+                  label={t('pages.clusterAdmin.logoLabel')}
                   value={logoUrl}
                   disabled={!canEdit}
                   shape="rect"
                   onUpload={onUploadLogo}
                 />
                 <BrandingImageUpload
-                  label="Avatar"
+                  label={t('common.field.avatar')}
                   value={avatarUrl}
                   disabled={!canEdit}
                   shape="square"
@@ -151,10 +155,10 @@ export function ClusterBuDocument({
 
       {activeTab === 'hotel' && (
         <Card className="p-0">
-          <Group label="Hotel">
-            {inline('hotel_name', 'Hotel name')}
-            {inline('hotel_tel', 'Phone', { mono: true, validate: true })}
-            {inline('hotel_email', 'Email', { type: 'email', validate: true })}
+          <Group label={t('pages.clusterAdmin.hotel')}>
+            {inline('hotel_name', t('pages.clusterAdmin.hotelNameLabel'))}
+            {inline('hotel_tel', t('pages.clusterAdmin.phoneLabel'), { mono: true, validate: true })}
+            {inline('hotel_email', t('common.field.email'), { type: 'email', validate: true })}
             {address('hotel')}
           </Group>
         </Card>
@@ -163,21 +167,21 @@ export function ClusterBuDocument({
       {activeTab === 'company' && (
         <Card className="p-0">
           <Group
-            label="Company"
+            label={t('pages.clusterAdmin.company')}
             action={
               canEdit && (
                 <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
                   <Copy className="mr-2 h-4 w-4" />
-                  Copy from hotel address
+                  {t('pages.clusterAdmin.copyFromHotelAddress')}
                 </Button>
               )
             }
           >
-            {inline('company_name', 'Company name')}
-            {inline('company_tel', 'Phone', { mono: true, validate: true })}
-            {inline('company_email', 'Email', { type: 'email', validate: true })}
-            {inline('tax_no', 'Tax ID', { mono: true })}
-            {inline('branch_no', 'Branch', { mono: true })}
+            {inline('company_name', t('pages.clusterAdmin.companyNameLabel'))}
+            {inline('company_tel', t('pages.clusterAdmin.phoneLabel'), { mono: true, validate: true })}
+            {inline('company_email', t('common.field.email'), { type: 'email', validate: true })}
+            {inline('tax_no', t('pages.clusterAdmin.taxIdLabel'), { mono: true })}
+            {inline('branch_no', t('pages.clusterAdmin.branchLabel'), { mono: true })}
             {address('company')}
           </Group>
         </Card>

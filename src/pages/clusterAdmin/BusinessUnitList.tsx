@@ -22,6 +22,7 @@ import { parseApiError } from '../../utils/errorParser';
 import { rankBusinessUnits, countOverLimit } from '../../utils/businessUnitRank';
 import { auditColumns } from '../../components/auditColumns';
 import { normalizeAudit, auditCsvFields } from '../../utils/audit';
+import { useI18n } from '../../hooks/useI18n';
 import type { BusinessUnit, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -39,6 +40,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
  * page in the established pattern (see ClusterManagement.tsx), narrowed by cluster.
  */
 const BusinessUnitList: React.FC = () => {
+  const { t } = useI18n();
   const { clusterId } = useParams<{ clusterId: string }>();
 
   const [items, setItems] = useState<BusinessUnit[]>([]);
@@ -135,13 +137,13 @@ const BusinessUnitList: React.FC = () => {
         setAccessLost(true);
         return;
       }
-      const { message } = parseApiError(err);
+      const { message } = parseApiError(err, t);
       setError(message);
-      toast.error('Failed to load business units', { description: message });
+      toast.error(t('common.state.failedToLoadBusinessUnits'), { description: message });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchBusinessUnits(paginate);
@@ -191,83 +193,113 @@ const BusinessUnitList: React.FC = () => {
   };
 
   const handleExport = () => {
-    const rows = items.map((bu) => ({ ...bu, ...auditCsvFields(normalizeAudit(bu)) }));
+    // generateCSV reads each column's raw field off the row object with no per-column
+    // formatter — is_hq/is_active never pass through the Badge that renders them in the
+    // table, so without this mapping the file gets the raw JS booleans stringified
+    // ("true"/"false") instead of the translated words the table shows. Map both to their
+    // rendered text here, before generateCSV ever sees the row (same shape as
+    // SubscriptionTable.tsx's `state: stateLabel(item.state)` / PurchaseLicenseTable.tsx's
+    // `status: statusLabel(o.status)`).
+    const rows = items.map((bu) => ({
+      ...bu,
+      ...auditCsvFields(normalizeAudit(bu)),
+      is_hq: bu.is_hq ? t('pages.clusterAdmin.hq') : '',
+      is_active: bu.is_active ? t('common.status.active') : t('common.status.inactive'),
+    }));
     const csv = generateCSV(rows, [
-      { key: 'name', label: 'Name' },
-      { key: 'is_hq', label: 'HQ' },
-      { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'is_hq', label: t('pages.clusterAdmin.hq') },
+      { key: 'is_active', label: t('common.status.label') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
-  const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
-    {
-      accessorKey: 'name',
-      header: 'Name',
-      meta: { card: 'title' },
-      cell: ({ row }) => {
-        const rank = ranked.get(row.original.id);
-        const overLimit = buCap != null && (rank ?? 0) > buCap;
-        return (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              to={`/cluster-admin/${clusterId}/business-units/${row.original.id}/edit`}
-              className="text-primary hover:underline whitespace-nowrap"
-            >
-              {row.original.name}
-            </Link>
-            {overLimit && (
-              <Badge variant="destructive" className="text-xs" title={`Quota ${buCap} · this unit ranks ${rank}`}>
-                Over limit
-              </Badge>
-            )}
-          </div>
-        );
+  const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => {
+    // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
+    // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
+    // see broadcastColumns.tsx's own note). Override both headers here so this table's
+    // Thai header row has no English hole.
+    const [createdColumn, updatedColumn] = auditColumns<BusinessUnit>();
+    return [
+      {
+        accessorKey: 'name',
+        header: t('common.field.name'),
+        meta: { card: 'title' },
+        cell: ({ row }) => {
+          const rank = ranked.get(row.original.id);
+          const overLimit = buCap != null && (rank ?? 0) > buCap;
+          return (
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to={`/cluster-admin/${clusterId}/business-units/${row.original.id}/edit`}
+                className="text-primary hover:underline whitespace-nowrap"
+              >
+                {row.original.name}
+              </Link>
+              {overLimit && (
+                // Byte-identical to pages.licenses.overLimitBadge/overLimitTitle (slice 3b),
+                // but a page namespace is owned by its own slice — duplicated into
+                // pages.clusterAdmin instead of read cross-slice (see the en.ts comment on
+                // those keys, next to this file's own overLimitCountOne/Many).
+                <Badge
+                  variant="destructive"
+                  className="text-xs"
+                  title={t('pages.clusterAdmin.overLimitTitle', { cap: buCap ?? 0, rank: rank ?? 0 })}
+                >
+                  {t('pages.clusterAdmin.overLimitBadge')}
+                </Badge>
+              )}
+            </div>
+          );
+        },
       },
-    },
-    {
-      accessorKey: 'is_hq',
-      header: 'HQ',
-      meta: { headerClassName: 'w-20', cellClassName: 'w-20' },
-      cell: ({ row }) => (row.original.is_hq ? <Badge variant="secondary">HQ</Badge> : null),
-      enableSorting: false,
-    },
-    {
-      accessorKey: 'is_active',
-      header: 'Status',
-      meta: { headerClassName: 'w-32', cellClassName: 'w-32', card: 'badge' },
-      cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    ...auditColumns<BusinessUnit>(),
-  ], [clusterId, ranked, buCap]);
+      {
+        accessorKey: 'is_hq',
+        header: t('pages.clusterAdmin.hq'),
+        meta: { headerClassName: 'w-20', cellClassName: 'w-20' },
+        cell: ({ row }) => (row.original.is_hq ? <Badge variant="secondary">{t('pages.clusterAdmin.hq')}</Badge> : null),
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'is_active',
+        header: t('common.status.label'),
+        meta: { headerClassName: 'w-32', cellClassName: 'w-32', card: 'badge' },
+        cell: ({ row }) => (
+          <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
+            {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
+          </Badge>
+        ),
+      },
+      { ...createdColumn, header: t('common.audit.created') },
+      { ...updatedColumn, header: t('common.audit.updatedDate') },
+    ];
+  }, [t, clusterId, ranked, buCap]);
 
   return (
     <ClusterAdminLayout>
       <div className="space-y-6 sm:space-y-8">
         <PageHeader
-          title="Business Units"
-          subtitle="Manage the business units in this cluster"
+          title={t('common.label.businessUnitsTitle')}
+          subtitle={t('pages.clusterAdmin.businessUnitListSubtitle')}
           actions={
             <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {t('common.action.export')}
             </Button>
           }
         />
 
         {overLimitCount > 0 && (
           <p className="text-destructive text-sm" role="alert">
-            {overLimitCount} business {overLimitCount === 1 ? 'unit is' : 'units are'} beyond the licensed
-            quota of {buCap}. They are read-only until more quota is purchased.
+            {t(
+              overLimitCount === 1 ? 'pages.clusterAdmin.overLimitCountOne' : 'pages.clusterAdmin.overLimitCountMany',
+              { count: overLimitCount, cap: buCap ?? 0 },
+            )}
           </p>
         )}
 
@@ -278,14 +310,14 @@ const BusinessUnitList: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search business units..."
+                placeholder={t('common.state.searchBusinessUnits')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -295,15 +327,15 @@ const BusinessUnitList: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter business units by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.clusterAdmin.filterBusinessUnitsByStatus')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -313,7 +345,7 @@ const BusinessUnitList: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter('true')}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes('false') ? 'default' : 'outline'}
@@ -321,13 +353,13 @@ const BusinessUnitList: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter('false')}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearStatusFilter}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -336,17 +368,17 @@ const BusinessUnitList: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === 'true' ? 'Active' : 'Inactive'}
+                    {s === 'true' ? t('common.status.active') : t('common.status.inactive')}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
                 <button onClick={handleClearStatusFilter} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -363,8 +395,8 @@ const BusinessUnitList: React.FC = () => {
                 <TableSkeleton columns={columns.length + 1} rows={paginate.perpage || 5} />
               ) : loading && items.length > 0 ? (
                 <div className="relative">
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading business units">
-                    <div className="text-muted-foreground">Loading business units...</div>
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.clusterAdmin.loadingBusinessUnitsAria')}>
+                    <div className="text-muted-foreground">{t('common.state.loadingBusinessUnits')}</div>
                   </div>
                   <DataTable
                     columns={columns}
@@ -385,8 +417,8 @@ const BusinessUnitList: React.FC = () => {
                   searchTerm={searchTerm}
                   activeFilterCount={activeFilterCount}
                   icon={Building2}
-                  emptyTitle="No business units yet"
-                  emptyDescription="Business units are created by a platform administrator. Once one is added to this cluster, it will appear here."
+                  emptyTitle={t('common.state.noBusinessUnitsYet')}
+                  emptyDescription={t('pages.clusterAdmin.noBusinessUnitsDescription')}
                 />
               ) : (
                 <DataTable

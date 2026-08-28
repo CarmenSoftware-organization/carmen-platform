@@ -533,7 +533,7 @@ const UserManagement: React.FC = () => {
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('pages.users.rowActions', { name: row.original.username || row.original.email || '' })}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('common.action.rowActions', { name: row.original.username || row.original.email || '' })}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

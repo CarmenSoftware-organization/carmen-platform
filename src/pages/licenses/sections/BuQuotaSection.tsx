@@ -182,7 +182,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                   <tr className="text-xs text-muted-foreground">
                     <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.quotaColumn')}</th>
                     <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
-                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
+                    <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.end')}</th>
                     <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.status.label')}</th>
                     <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.field.reference')}</th>
                     <th className="text-left px-2 py-1">{t('common.field.note')}</th>
@@ -203,7 +203,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                         <td className="px-2 py-1 space-x-1 whitespace-nowrap">
                           <Badge variant={STATUS_VARIANT[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
                           {isExpiringSoon(l, now) && (
-                            <Badge variant="warning">{t('pages.licenses.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
+                            <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
                           )}
                         </td>
                         <td className="px-2 py-1 text-xs text-muted-foreground">{l.reference_no || '-'}</td>

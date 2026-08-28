@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AddrField } from '../../businessUnitEdit/shared';
 import { formatAddress } from './formatAddress';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
+import { useI18n } from '../../../hooks/useI18n';
 
 interface AddressBlockProps {
   /** เลือกชุดฟิลด์: hotel_* หรือ company_* */
@@ -18,6 +19,7 @@ interface AddressBlockProps {
  * ความยาวที่ใหญ่ที่สุดของการรื้อครั้งนี้ — ดู spec §7
  */
 export function AddressBlock({ prefix, formData, disabled = false, onChange }: AddressBlockProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const f = (suffix: string) => `${prefix}_${suffix}` as keyof BusinessUnitFormData;
   const v = (suffix: string) => String(formData[f(suffix)] ?? '');
@@ -48,12 +50,12 @@ export function AddressBlock({ prefix, formData, disabled = false, onChange }: A
           {lines.length > 0 ? (
             lines.map((line, idx) => <span key={idx} className="block">{line}</span>)
           ) : (
-            <span className="text-muted-foreground italic">Set address…</span>
+            <span className="text-muted-foreground italic">{t('pages.clusterAdmin.setAddressPlaceholder')}</span>
           )}
         </button>
         {(lat || lon) && (
           <div className="text-muted-foreground flex items-baseline gap-2 px-2 text-xs">
-            <span className="text-sm">Coordinates</span>
+            <span className="text-sm">{t('pages.clusterAdmin.coordinatesLabel')}</span>
             <span className="font-mono">{lat || '—'}, {lon || '—'}</span>
           </div>
         )}
@@ -75,23 +77,23 @@ export function AddressBlock({ prefix, formData, disabled = false, onChange }: A
   return (
     <div className="space-y-3">
       <div className="grid gap-4 sm:grid-cols-2">
-        {field('address_line1', 'Address line 1')}
-        {field('address_line2', 'Address line 2')}
-        {field('sub_district', 'Sub-district')}
-        {field('district', 'District')}
-        {field('city', 'City')}
-        {field('province', 'Province')}
-        {field('postal_code', 'Postal code')}
-        {field('country', 'Country')}
-        {field('latitude', 'Latitude')}
-        {field('longitude', 'Longitude')}
+        {field('address_line1', t('pages.clusterAdmin.addressLine1Label'))}
+        {field('address_line2', t('pages.clusterAdmin.addressLine2Label'))}
+        {field('sub_district', t('pages.clusterAdmin.subDistrictLabel'))}
+        {field('district', t('pages.clusterAdmin.districtLabel'))}
+        {field('city', t('pages.clusterAdmin.cityLabel'))}
+        {field('province', t('pages.clusterAdmin.provinceLabel'))}
+        {field('postal_code', t('pages.clusterAdmin.postalCodeLabel'))}
+        {field('country', t('pages.clusterAdmin.countryLabel'))}
+        {field('latitude', t('pages.clusterAdmin.latitudeLabel'))}
+        {field('longitude', t('pages.clusterAdmin.longitudeLabel'))}
       </div>
       <button
         type="button"
         onClick={() => setOpen(false)}
         className="text-muted-foreground hover:text-foreground text-xs underline"
       >
-        Done
+        {t('pages.clusterAdmin.doneButton')}
       </button>
     </div>
   );

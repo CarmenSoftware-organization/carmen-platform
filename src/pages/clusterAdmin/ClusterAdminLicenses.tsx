@@ -15,6 +15,7 @@ import { QuotaLedgerCard } from './licenses/QuotaLedgerCard';
 import { BuRankingCard } from './licenses/BuRankingCard';
 import { useLicenseLedger } from '../licenses/useLicenseLedger';
 import { useClusterSeatLicenses } from '../licenses/useClusterSeatLicenses';
+import { useI18n } from '../../hooks/useI18n';
 import type { BusinessUnit, Cluster, ClusterLicense } from '../../types';
 
 /**
@@ -32,6 +33,7 @@ import type { BusinessUnit, Cluster, ClusterLicense } from '../../types';
  */
 export default function ClusterAdminLicenses() {
   const { clusterId } = useParams<{ clusterId: string }>();
+  const { t } = useI18n();
 
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
@@ -103,9 +105,11 @@ export default function ClusterAdminLicenses() {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title={clusterLoading
-            ? 'Loading…'
-            : (cluster?.name || (clusterMissing ? 'Cluster not found or deleted' : 'Cluster unavailable'))}
-          subtitle={cluster?.code ? `Licences · ${cluster.code}` : 'Licences'}
+            ? t('common.busy.loadingEllipsis')
+            : (cluster?.name || (clusterMissing ? t('pages.clusterAdmin.clusterNotFoundOrDeleted') : t('pages.clusterAdmin.clusterUnavailable')))}
+          subtitle={cluster?.code
+            ? t('pages.clusterAdmin.licencesSubtitleWithCode', { code: cluster.code })
+            : t('pages.clusterAdmin.licencesLabel')}
         />
 
         {clusterLoading ? (

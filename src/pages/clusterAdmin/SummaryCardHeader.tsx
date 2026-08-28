@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface SummaryCardHeaderProps {
   title: string;
@@ -12,6 +13,7 @@ export interface SummaryCardHeaderProps {
 
 /** Title, live count, and the way through to the page that owns the collection. */
 export function SummaryCardHeader({ title, count, to, viewAllLabel }: SummaryCardHeaderProps) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-between gap-3">
       <h3 className="flex items-baseline gap-2 text-base font-semibold tracking-tight">
@@ -25,7 +27,7 @@ export function SummaryCardHeader({ title, count, to, viewAllLabel }: SummaryCar
         aria-label={viewAllLabel}
         className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center gap-1 text-xs font-medium"
       >
-        View all
+        {t('pages.clusterAdmin.viewAll')}
         <ArrowRight className="size-3" />
       </Link>
     </div>

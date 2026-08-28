@@ -133,7 +133,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('entity.subscription.title')}</th>
                   <th className="text-left px-2 py-1">{t('entity.businessUnit.title')}</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.start')}</th>
-                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.end')}</th>
+                  <th className="text-left px-2 py-1 whitespace-nowrap">{t('common.action.end')}</th>
                   <th className="text-left px-2 py-1 whitespace-nowrap">{t('pages.licenses.subscriptionStateColumn')}</th>
                   <th className="px-2 py-1" />
                 </tr>

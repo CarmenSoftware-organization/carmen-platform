@@ -5,6 +5,7 @@ import { StatusToggle } from '../../../components/StatusToggle';
 import { HeroName } from '../../businessUnitEdit/HeroName';
 import { SeatMeter } from './SeatMeter';
 import type { BusinessUnitFormData } from '../../businessUnitEdit/types';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface BuPropertyPlateProps {
   formData: BusinessUnitFormData;
@@ -33,6 +34,7 @@ export function BuPropertyPlate({
   formData: f, logoUrl, avatarUrl, canEdit, backTo, licensesTo,
   clusterSeat, onCommit, onToggle,
 }: BuPropertyPlateProps) {
+  const { t } = useI18n();
   const place = [f.hotel_city, f.hotel_country].filter(Boolean).join(', ');
   const property = [f.hotel_name, place].filter(Boolean).join(' · ');
 
@@ -45,7 +47,7 @@ export function BuPropertyPlate({
         className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
       >
         <ArrowLeft className="size-4" />
-        Business units
+        {t('common.label.businessUnitsLabel')}
       </Link>
 
       <Card className="p-0">
@@ -67,22 +69,22 @@ export function BuPropertyPlate({
               </h1>
 
               <p className="text-muted-foreground mt-0.5 truncate text-sm">
-                {property || 'No hotel name set — add one under Hotel'}
+                {property || t('pages.clusterAdmin.noHotelNameSet')}
               </p>
 
               <div className="mt-2.5 flex flex-wrap items-center gap-2 text-sm">
                 <StatusToggle
                   on={f.is_active}
-                  onLabel="Active"
-                  offLabel="Inactive"
+                  onLabel={t('common.status.active')}
+                  offLabel={t('common.status.inactive')}
                   variant="success"
                   disabled={!canEdit}
                   onClick={() => onToggle('is_active', !f.is_active)}
                 />
                 <StatusToggle
                   on={f.is_hq}
-                  onLabel="HQ"
-                  offLabel="Not HQ"
+                  onLabel={t('pages.clusterAdmin.hq')}
+                  offLabel={t('pages.clusterAdmin.notHq')}
                   variant="default"
                   disabled={!canEdit}
                   onClick={() => onToggle('is_hq', !f.is_hq)}

@@ -22,8 +22,18 @@ import { getErrorDetail, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { useI18n } from '../../hooks/useI18n';
 
-/** Turn a cluster-user row into the flat shape the People card renders. */
+/**
+ * Turn a cluster-user row into the flat shape the People card renders.
+ *
+ * `name` is left RAW here — including empty, when a membership has neither a profile name nor
+ * an email — rather than resolved to a translated fallback. State is not bound to `lang` and
+ * will not re-resolve on a language switch, so a translated string baked in here would go
+ * stale the moment the admin toggles language without a refetch (i18n phase-2 slice-4 Task 5
+ * fix round 1). ClusterPeopleCard.tsx resolves the "Unknown user" fallback at the render
+ * boundary instead, where it re-evaluates on every render.
+ */
 const toMember = (cu: {
   id: string;
   role?: string;
@@ -34,8 +44,7 @@ const toMember = (cu: {
   return {
     id: cu.id,
     role: cu.role ?? 'user',
-    // A membership with no profile still has to be nameable — the address is the person here.
-    name: name || cu.user?.email || 'Unknown user',
+    name: name || cu.user?.email || '',
     email: cu.user?.email ?? '',
   };
 };
@@ -62,6 +71,7 @@ const toMember = (cu: {
  */
 const ClusterProfile: React.FC = () => {
   const { clusterId } = useParams<{ clusterId: string }>();
+  const { t } = useI18n();
 
   const [formData, setFormData] = useState<ClusterFormData>({
     code: '',
@@ -124,7 +134,13 @@ const ClusterProfile: React.FC = () => {
         Array.isArray(cluster.tb_business_unit)
           ? cluster.tb_business_unit.map((bu: ClusterBusinessUnitSummary) => ({
               id: bu.id,
-              name: bu.name || '(unnamed)',
+              // Left RAW (possibly empty), not resolved to a translated fallback — same
+              // render-boundary rule as toMember() above. ClusterBusinessUnitsCard.tsx
+              // resolves the "(unnamed)" fallback at render (i18n phase-2 slice-4 Task 5 fix
+              // round 1). This was ALSO a genuine miss in the original pass: the fallback had
+              // never been wrapped in t() at all, so it rendered English even in Thai — found
+              // only by this fix round's re-sweep, not by the original task.
+              name: bu.name || '',
               code: bu.code || '—',
             }))
           : [],
@@ -142,7 +158,7 @@ const ClusterProfile: React.FC = () => {
         setAccessLost(true);
         return;
       }
-      setError('Failed to load cluster: ' + getErrorDetail(err));
+      setError(t('pages.clusterAdmin.loadClusterFailedDetail') + getErrorDetail(err, t));
     } finally {
       setLoading(false);
     }
@@ -167,7 +183,7 @@ const ClusterProfile: React.FC = () => {
   };
 
   const handleValidate = (name: string, value: string) => {
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, undefined, t) }));
   };
 
   const handleEditToggle = () => {
@@ -192,7 +208,7 @@ const ClusterProfile: React.FC = () => {
         ...payload,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       });
-      toast.success('Cluster updated');
+      toast.success(t('pages.clusterAdmin.clusterUpdated'));
       setEditing(false);
       await fetchCluster();
     } catch (err: unknown) {
@@ -200,8 +216,8 @@ const ClusterProfile: React.FC = () => {
         notifyVersionConflict();
         await fetchCluster();
       } else {
-        const { message, fields } = parseApiError(err);
-        toast.error('Failed to update cluster', { description: message });
+        const { message, fields } = parseApiError(err, t);
+        toast.error(t('pages.clusterAdmin.updateClusterFailed'), { description: message });
         if (fields) setFieldErrors(fields);
       }
     } finally {
@@ -224,9 +240,9 @@ const ClusterProfile: React.FC = () => {
   const brandingCard = (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-base font-semibold tracking-tight">Branding</CardTitle>
+        <CardTitle className="text-base font-semibold tracking-tight">{t('common.section.branding')}</CardTitle>
         <CardDescription className="text-muted-foreground text-sm">
-          Shown in the sidebar, the cluster switcher, and lists across the platform.
+          {t('pages.clusterAdmin.brandingCardDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -246,7 +262,7 @@ const ClusterProfile: React.FC = () => {
   if (loading) {
     return (
       <ClusterAdminLayout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading cluster profile">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.clusterAdmin.loadingClusterProfileAria')}>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <Skeleton className="h-7 w-40" />
@@ -305,7 +321,7 @@ const ClusterProfile: React.FC = () => {
     <ClusterAdminLayout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title={formData.name || '(unnamed cluster)'}
+          title={formData.name || t('pages.clusterAdmin.unnamedCluster')}
           subtitle={
             // Spans only: PageHeader renders the subtitle inside a <p>, so a <Badge> (a div)
             // would close the paragraph out from under it. Status appears here only when it is
@@ -315,11 +331,11 @@ const ClusterProfile: React.FC = () => {
               {formData.alias_name && (
                 <span className="rounded border px-1.5 py-0.5 font-mono text-xs">{formData.alias_name}</span>
               )}
-              <span>Tenant group</span>
+              <span>{t('pages.clusterAdmin.tenantGroup')}</span>
               {!formData.is_active && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span className="text-destructive font-medium">Inactive</span>
+                  <span className="text-destructive font-medium">{t('common.status.inactive')}</span>
                 </>
               )}
             </span>
@@ -329,17 +345,17 @@ const ClusterProfile: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
                 </Button>
               </div>
             ) : (
               <Button type="button" size="sm" onClick={handleEditToggle}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </Button>
             )
           }
@@ -374,7 +390,7 @@ const ClusterProfile: React.FC = () => {
                 <div className={cn('space-y-4 sm:space-y-6', editing && 'order-first lg:order-none')}>
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base font-semibold tracking-tight">Identity</CardTitle>
+                      <CardTitle className="text-base font-semibold tracking-tight">{t('common.section.identity')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <DetailsSection

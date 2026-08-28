@@ -3,6 +3,7 @@ import { Building2, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { EmptyState } from '../../components/EmptyState';
 import { SummaryCardHeader } from './SummaryCardHeader';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface ClusterBusinessUnitSummary {
   id: string;
@@ -29,6 +30,7 @@ export interface ClusterBusinessUnitsCardProps {
  * Status lives on the Business Units page, one click away.
  */
 export function ClusterBusinessUnitsCard({ clusterId, units }: ClusterBusinessUnitsCardProps) {
+  const { t } = useI18n();
   const listTo = `/cluster-admin/${clusterId}/business-units`;
   const shown = units.slice(0, MAX_ROWS);
   const hidden = units.length - shown.length;
@@ -36,17 +38,17 @@ export function ClusterBusinessUnitsCard({ clusterId, units }: ClusterBusinessUn
   return (
     <Card>
       <SummaryCardHeader
-        title="Business units"
+        title={t('common.label.businessUnitsLabel')}
         count={units.length}
         to={listTo}
-        viewAllLabel="View all business units"
+        viewAllLabel={t('pages.clusterAdmin.viewAllBusinessUnitsAria')}
       />
 
       {units.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No business units"
-          description="This cluster has no business units yet. A platform administrator creates them."
+          title={t('common.state.noBusinessUnits')}
+          description={t('pages.clusterAdmin.noBusinessUnitsCreatedByPlatformAdmin')}
         />
       ) : (
         <ul className="divide-y">
@@ -59,14 +61,14 @@ export function ClusterBusinessUnitsCard({ clusterId, units }: ClusterBusinessUn
                 <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold">
                   {bu.code}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm">{bu.name}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">{bu.name || t('pages.clusterAdmin.unnamed')}</span>
                 <ChevronRight className="text-muted-foreground size-4 shrink-0" />
               </Link>
             </li>
           ))}
           {hidden > 0 && (
             <li className="text-muted-foreground pt-2.5 text-xs">
-              {hidden} more on the Business Units page
+              {t('pages.clusterAdmin.moreOnBusinessUnitsPage', { count: hidden })}
             </li>
           )}
         </ul>
