@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { seatUtilization } from '../../../utils/capacity';
 import type { SubscriptionBu, SubscriptionSeat } from '../../../types';
 import { cn } from '../../../lib/utils';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface SeatsCardProps {
   seat: SubscriptionSeat;
@@ -24,6 +25,7 @@ export interface SeatsCardProps {
  * source of truth.
  */
 export function SeatsCard({ seat, bu }: SeatsCardProps) {
+  const { t } = useI18n();
   const { used, cap, pending_invites } = seat;
   const u = seatUtilization(used, cap);
   const projected = used + pending_invites;
@@ -32,7 +34,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ที่นั่ง</CardTitle>
+        <CardTitle>{t('pages.subscriptions.seats')}</CardTitle>
         <CardDescription>Seat pool shared across every business unit in this cluster</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -45,7 +47,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
           >
             {used} / {cap}
           </span>
-          <span className="text-sm text-muted-foreground">ที่นั่ง</span>
+          <span className="text-sm text-muted-foreground">{t('pages.subscriptions.seats')}</span>
         </div>
 
         {pending_invites > 0 && (
@@ -53,17 +55,17 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
             className={cn('text-sm', willExceed ? 'text-warning' : 'text-muted-foreground')}
             role={willExceed ? 'alert' : undefined}
           >
-            รอตอบรับ {pending_invites}
-            {willExceed && ` → อาจถึง ${projected}/${cap}`}
+            {t('pages.subscriptions.pendingCount', { count: pending_invites })}
+            {willExceed && t('pages.subscriptions.upTo', { projected, cap })}
           </p>
         )}
 
         <div className="divide-y rounded-md border">
           {!bu ? (
-            <p className="p-3 text-sm text-muted-foreground">สัญญานี้ไม่ได้ผูกกับหน่วยธุรกิจใด</p>
+            <p className="p-3 text-sm text-muted-foreground">{t('pages.subscriptions.noBusinessUnitLinked')}</p>
           ) : (
             <div className="flex items-center justify-between gap-3 p-3 text-sm">
-                <span className="min-w-0 truncate">{bu.bu_name} · ซื้อ {bu.licensed_users}</span>
+                <span className="min-w-0 truncate">{bu.bu_name} · {t('pages.subscriptions.purchasedCount', { count: bu.licensed_users })}</span>
                 {/* `/business-units/:id/edit` ต้องใช้ `cluster.update` (App.tsx) ซึ่งเป็นคนละสิทธิ์
                     กับ `subscription.manage` ของหน้านี้ — ไม่ห่อ `<Can>` คนที่แก้สัญญาได้แต่แก้
                     cluster ไม่ได้จะกดแล้วเจอหน้า Forbidden (gating-a-page.md ข้อ 3, review M2) */}
@@ -71,7 +73,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
                   permission="cluster.update"
                   fallback={
                     <span className="text-muted-foreground shrink-0 text-xs">
-                      แก้เพดานได้ที่หน้าหน่วยธุรกิจ
+                      {t('pages.subscriptions.capEditedOnBuPage')}
                     </span>
                   }
                 >
@@ -79,7 +81,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
                     to={`/business-units/${bu.business_unit_id}/edit`}
                     className="shrink-0 text-primary hover:underline"
                   >
-                    แก้เพดาน
+                    {t('pages.subscriptions.editCap')}
                   </Link>
                 </Can>
             </div>
@@ -92,8 +94,7 @@ export function SeatsCard({ seat, bu }: SeatsCardProps) {
             จำนวนคนละแกนกัน และตอนนี้ยิ่งต่างกันเป็นปกติ เพราะหนึ่งใบผูก BU เดียวแต่ pool เป็นของ
             ทั้ง cluster ไม่ใช่ความผิดปกติที่ต้องเตือน */}
         <p className="text-xs text-muted-foreground">
-          ที่นั่งเป็น pool ของทั้ง cluster — BU อื่นที่ไม่อยู่ในสัญญานี้ก็สมทบเข้า pool ด้วย จำนวนที่ซื้อ
-          ข้างบนจึงไม่จำเป็นต้องเท่ากับเพดานรวม ({cap})
+          {t('pages.subscriptions.seatsPoolNote', { cap })}
         </p>
       </CardContent>
     </Card>
