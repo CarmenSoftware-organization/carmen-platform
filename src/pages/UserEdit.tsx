@@ -482,13 +482,13 @@ const UserEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/users" title="User" />
+          <PageHeader backTo="/users" title={t('entity.user')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
                 title={t('pages.users.notFound')}
-                description="This user doesn't exist, or they may have been deleted. Check the link, or pick one from the user list."
+                description={t('pages.users.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/users')}>
                     {t('pages.users.backToUsers')}

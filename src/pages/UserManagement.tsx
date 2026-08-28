@@ -453,7 +453,7 @@ const UserManagement: React.FC = () => {
       },
       {
         accessorKey: "name",
-        header: "Name",
+        header: t('common.field.name'),
         cell: ({ row }) => {
           const name = getNameDisplay(row.original);
           return (
@@ -470,7 +470,7 @@ const UserManagement: React.FC = () => {
       },
       {
         accessorKey: "email",
-        header: "Email",
+        header: t('common.field.email'),
         cell: ({ row }) => (
           <div className="truncate" title={row.original.email || undefined}>
             {row.original.email || "-"}
@@ -480,7 +480,7 @@ const UserManagement: React.FC = () => {
 
       {
         id: "bu_count",
-        header: "BU",
+        header: t('pages.users.buColumn'),
         enableSorting: false,
         meta: { headerClassName: "w-16" },
         cell: ({ row }) => {
@@ -570,6 +570,15 @@ const UserManagement: React.FC = () => {
     ],
     [handleDelete, handleHardDelete, navigate, showDeleted, t],
   );
+
+  // `typeUsernameToConfirm` interpolates a single point in the sentence ("Type {{username}}
+  // to confirm" / "พิมพ์ {{username}} เพื่อยืนยัน"). The username/code itself has to stay a
+  // styled <span>, not plain text, so it can't be baked into the translated string. Render
+  // the template with a marker in place of the value, then split on that marker so the real
+  // JSX span can be re-inserted at the exact point the sentence puts it — this works
+  // regardless of word order between languages.
+  const CONFIRM_MARKER = '@@USERNAME@@';
+  const [confirmBefore, confirmAfter] = t('pages.users.typeUsernameToConfirm', { username: CONFIRM_MARKER }).split(CONFIRM_MARKER);
 
   return (
     <Layout>
@@ -689,7 +698,7 @@ const UserManagement: React.FC = () => {
                     <button
                       onClick={() => handleStatusFilter(s)}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label={`Remove ${s === "true" ? t('common.status.active') : t('common.status.inactive')} filter`}
+                      aria-label={t('pages.users.removeStatusFilter', { status: s === "true" ? t('common.status.active') : t('common.status.inactive') })}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -735,7 +744,7 @@ const UserManagement: React.FC = () => {
               <>
                 {isSuperAdmin && selectedUsers.length > 0 && (
                   <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
-                    <span className="text-sm font-medium">{selectedUsers.length} selected</span>
+                    <span className="text-sm font-medium">{t('pages.users.nSelected', { count: selectedUsers.length })}</span>
                     <div className="ml-auto flex items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setBulkSoftOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -791,7 +800,7 @@ const UserManagement: React.FC = () => {
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
         title={t('pages.users.deleteTitle')}
-        description="Are you sure you want to delete this user? This action cannot be undone."
+        description={t('pages.users.softDeleteConfirm')}
         confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
@@ -801,7 +810,7 @@ const UserManagement: React.FC = () => {
         open={bulkSoftOpen}
         onOpenChange={(open) => { if (!open) setBulkSoftOpen(false); }}
         title={t('pages.users.bulkDeleteTitle', { count: selectedUsers.length })}
-        description="Soft-delete the selected user(s)? They can be restored later."
+        description={t('pages.users.bulkSoftDeleteConfirm')}
         confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmBulkSoftDelete}
@@ -843,7 +852,7 @@ const UserManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="hardDeleteConfirm">
-                {t('pages.users.typeToConfirm')} <span className="font-mono font-semibold text-destructive">{hardDeleteUser?.username || hardDeleteUser?.email || ''}</span> to confirm
+                {confirmBefore}<span className="font-mono font-semibold text-destructive">{hardDeleteUser?.username || hardDeleteUser?.email || ''}</span>{confirmAfter}
               </Label>
               <Input
                 id="hardDeleteConfirm"
@@ -877,7 +886,7 @@ const UserManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              Permanently Delete {selectedUsers.length} User(s)
+              {t('pages.users.bulkPermanentlyDeleteUsers', { count: selectedUsers.length })}
             </DialogTitle>
             <DialogDescription>
               {t('pages.users.hardDeleteBulkWarning')}
@@ -893,7 +902,7 @@ const UserManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="bulkHardConfirm">
-                {t('pages.users.typeToConfirm')} <span className="font-mono font-semibold text-destructive">{bulkConfirmCode}</span> to confirm
+                {confirmBefore}<span className="font-mono font-semibold text-destructive">{bulkConfirmCode}</span>{confirmAfter}
               </Label>
               <Input
                 id="bulkHardConfirm"
