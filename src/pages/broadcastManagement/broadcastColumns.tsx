@@ -75,7 +75,7 @@ export const createBroadcastColumns = ({
         const d = row.original;
         return (
           <span className="text-sm whitespace-nowrap">
-            {d.scope === 'system' ? t('theme.system') : `BU · ${d.bu_code || t('common.status.unknown')}`}
+            {d.scope === 'system' ? t('common.option.system') : `BU · ${d.bu_code || t('common.status.unknown')}`}
           </span>
         );
       },

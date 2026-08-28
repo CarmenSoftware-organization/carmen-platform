@@ -310,7 +310,7 @@ const BroadcastManagement: React.FC = () => {
                 ))}
                 {scopeFilter.map((s) => (
                   <Badge key={`scope-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === 'system' ? t('theme.system') : t('entity.businessUnit.title')}
+                    {s === 'system' ? t('common.option.system') : t('entity.businessUnit.title')}
                     <button onClick={() => handleScopeFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>

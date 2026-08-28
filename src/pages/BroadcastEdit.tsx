@@ -361,12 +361,12 @@ const BroadcastEdit: React.FC = () => {
                   <div>
                     <Label className="text-xs text-muted-foreground">{t('common.field.scope')}</Label>
                     <div className="mt-1 text-sm font-medium">
-                      {rawResponse.scope === 'system' ? t('theme.system') : `BU · ${rawResponse.bu_code || t('common.status.unknown')}`}
+                      {rawResponse.scope === 'system' ? t('common.option.system') : `BU · ${rawResponse.bu_code || t('common.status.unknown')}`}
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Event</Label>
-                    <div className="mt-1 text-sm font-medium">{rawResponse.event} <span className="text-muted-foreground font-normal">(System generated)</span></div>
+                    <Label className="text-xs text-muted-foreground">{t('pages.broadcasts.event')}</Label>
+                    <div className="mt-1 text-sm font-medium">{rawResponse.event} <span className="text-muted-foreground font-normal">{t('pages.broadcasts.systemGenerated')}</span></div>
                   </div>
                 </div>
               </CardContent>
@@ -565,7 +565,7 @@ const BroadcastEdit: React.FC = () => {
         title={confirmDialog.type === 'past' ? t('pages.broadcasts.expireTitle') : t('pages.broadcasts.rescheduleTitle')}
         description={
           confirmDialog.type === 'past'
-            ? `${t('pages.broadcasts.expireImmediateNote')} ${t('pages.broadcasts.expireConfirm')}`
+            ? `${t('pages.broadcasts.expireImmediateNote')} ${t('pages.broadcasts.expireConfirmEdit')}`
             : `${t('pages.broadcasts.rescheduleNote')} ${t('pages.broadcasts.rescheduleConfirm')}`
         }
         confirmText={t('common.confirm')}

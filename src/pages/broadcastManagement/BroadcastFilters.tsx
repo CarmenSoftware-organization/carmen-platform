@@ -64,7 +64,7 @@ export const BroadcastFilters: React.FC<BroadcastFiltersProps> = ({
                 className="h-7 text-xs"
                 onClick={() => onScopeFilter('system')}
               >
-                {t('theme.system')}
+                {t('common.option.system')}
               </Button>
               <Button
                 variant={scopeFilter.includes('business_unit') ? 'default' : 'outline'}

@@ -215,6 +215,10 @@ export const th: Translations = {
       all: 'ทั้งหมด',
       custom: 'กำหนดเอง',
       global: 'ทั้งระบบ',
+      // See en.ts: this is the broadcast-scope "System" (platform-wide), distinct from
+      // theme.system (the "follow the OS" theme setting) even though English spells both
+      // the same way.
+      system: 'ทั้งระบบ',
     },
     label: {
       cluster: 'Cluster',
@@ -441,6 +445,7 @@ export const th: Translations = {
       specificUserNote: 'ประกาศที่ส่งถึงผู้ใช้ที่ระบุเจาะจงจะไม่แสดงที่นี่ — ถูกบันทึกเป็นการแจ้งเตือนรายบุคคล',
       expireImmediateNote: 'ประกาศจะหายจากผู้รับทันที',
       expireConfirm: 'ยืนยันที่จะให้ประกาศนี้หมดอายุตอนนี้หรือไม่',
+      expireConfirmEdit: 'ยืนยันที่จะให้ประกาศนี้หมดอายุหรือไม่',
       sendBroadcastTitle: 'ส่งประกาศ',
       pushNotificationSubtitle: 'ส่งการแจ้งเตือนถึงผู้ใช้ทั้งหมด ผู้ใช้ที่ระบุเจาะจง หรือหน่วยธุรกิจ',
       audience: 'กลุ่มเป้าหมาย',
@@ -481,6 +486,8 @@ export const th: Translations = {
       notFoundDescription: 'ไม่พบประกาศนี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการ',
       backToBroadcasts: 'กลับไปหน้าประกาศ',
       broadcastInfo: 'ข้อมูลประกาศ',
+      event: 'อีเวนต์',
+      systemGenerated: '(ระบบสร้างอัตโนมัติ)',
       scheduledAtLabel: 'เวลาที่ตั้งไว้',
       leaveEmptyToSendImmediately: 'เว้นว่างไว้เพื่อส่งทันที',
       rescheduleTitle: 'เลื่อนกำหนดประกาศ',

@@ -236,6 +236,10 @@ export const en = {
       all: 'All',
       custom: 'Custom',
       global: 'Global',
+      // Deliberately the same English as theme.system, which is the THEME setting.
+      // A broadcast's scope of `system` means platform-wide; the theme's means
+      // "follow the OS". English spells both "System"; Thai must not.
+      system: 'System',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
     // below for the toast-safe forms). Ten of these lived in `entity.*` until the phase-2
@@ -533,6 +537,10 @@ export const en = {
       // since either half may be reused independently by a later slice.
       expireImmediateNote: 'The broadcast disappears from recipients immediately.',
       expireConfirm: 'Are you sure you want to expire this broadcast now?',
+      // BroadcastEdit's own 'past'-expiry ConfirmDialog — a separate flow from the
+      // list page's explicit Expire-now action above, kept as its own key so a future
+      // reword of one never silently changes the other.
+      expireConfirmEdit: 'Are you sure you want to expire this broadcast?',
       // Task 3 (BroadcastCompose page-local additions below).
       sendBroadcastTitle: 'Send Broadcast',
       pushNotificationSubtitle: 'Push a notification to all users, specific users, or a business unit.',
@@ -585,6 +593,12 @@ export const en = {
       notFoundDescription: "This broadcast doesn't exist, or it may have been deleted. Check the link, or pick one from the list.",
       backToBroadcasts: 'Back to broadcasts',
       broadcastInfo: 'Broadcast Info',
+      // Card 1 content, not DevDebugSheet content — the brief mis-grouped these with the
+      // debug-sheet strings; they render as ordinary visible text well before the
+      // DevDebugSheet element. Parentheses are part of the rendered text, kept in both
+      // languages.
+      event: 'Event',
+      systemGenerated: '(System generated)',
       scheduledAtLabel: 'Scheduled at',
       leaveEmptyToSendImmediately: 'Leave empty to send immediately.',
       rescheduleTitle: 'Reschedule Broadcast',
