@@ -237,7 +237,11 @@ export const th: Translations = {
       nSelected: 'เลือกแล้ว {{count}} รายการ',
     },
     validation: {
-      required: 'กรุณากรอก{{label}}',
+      requiredMessage: 'กรุณากรอก {{label}}',
+      // Thai chooses a verb English doesn't need to: this reads "please select", for
+      // select-backed fields, vs. requiredMessage's "please fill in". Same English value
+      // as requiredMessage (see en.ts) — the split only matters in Thai.
+      selectRequired: 'กรุณาเลือก {{label}}',
       invalidEmail: 'รูปแบบอีเมลไม่ถูกต้อง',
       invalidPhone: 'รูปแบบเบอร์โทรไม่ถูกต้อง',
       invalidUrl: 'ต้องเป็น URL ที่ขึ้นต้นด้วย http หรือ https',
@@ -267,9 +271,9 @@ export const th: Translations = {
   // Templates space around {{entity}}: Thai nouns don't need the boundary, but these
   // templates also take Latin nouns (Cluster, User, Business Unit, …), and a bare
   // 'ลบClusterสำเร็จ' with no space reads as a rendering fault. The file already spaces
-  // around Latin words elsewhere (switcher.selectCluster, common.state.noBusinessUnitsInCluster,
-  // common.validation.clusterRequired) — this matches that convention instead of treating
-  // Thai nouns as a special case that gets to sit tight against the template.
+  // around Latin words elsewhere (switcher.selectCluster, common.state.noBusinessUnitsInCluster)
+  // — this matches that convention instead of treating Thai nouns as a special case that
+  // gets to sit tight against the template.
   toast: {
     created: 'สร้าง {{entity}} สำเร็จ',
     deleted: 'ลบ {{entity}} สำเร็จ',

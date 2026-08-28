@@ -266,10 +266,17 @@ export const en = {
       nSelected: '{{count}} selected',
     },
     validation: {
-      // `required` replaces the former nameRequired/clusterRequired pair. Neither had a
-      // call site yet, and 'Name is required' appears in five more pages that later slices
-      // will translate — one template beats one key per field name.
-      required: '{{label}} is required',
+      // `requiredMessage` replaces the former nameRequired/clusterRequired pair. Neither had
+      // a call site yet, and 'Name is required' appears in five more pages that later slices
+      // will translate — one template beats one key per field name. Named `requiredMessage`,
+      // not `required`, to keep it apart from `common.field.required` (the '{{label}} *'
+      // marker) — same parent depth, same param, different string, too easy to autocomplete
+      // the wrong one.
+      requiredMessage: '{{label}} is required',
+      // English has one verb for "required" regardless of control type, so this is
+      // byte-identical to requiredMessage above — Thai isn't, and needs to choose between
+      // "please fill in" and "please select". See th.ts. Nothing consumes this yet.
+      selectRequired: '{{label}} is required',
       invalidEmail: 'Invalid email format',
       invalidPhone: 'Invalid phone number format',
       invalidUrl: 'Must be a valid http(s) URL',
@@ -285,8 +292,7 @@ export const en = {
       // user-visible strings that live inside a `??` mid-expression — easy to miss.
       //
       // Five of the six — `amount`, `schema`, `startDate`, `endDate`, `subscriptionNumber`
-      // — are unreachable as `validateField` is written today (verified independently by
-      // both the implementer and reviewer of the task that added `t`). Each backs a
+      // — are unreachable as `validateField` is written today. Each backs a
       // per-case `options?.required ? tr('common.validation.X') : ''` ternary, but
       // `validateField`'s top-level guard already returns before the `switch` runs whenever
       // `options?.required && !value?.trim()` is true — so inside any case, `options?.required`
