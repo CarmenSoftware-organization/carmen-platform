@@ -255,28 +255,22 @@ export function SubscriptionInfoCard({
                 ))}
               </select>
             ) : (
-              // NOT translated via statusLabel — SubscriptionInfoCard.test.tsx:53 pins the
-              // read-only badge's DOM text to the raw lowercase enum ('active'), which the
-              // CSS `capitalize` class visually renders as "Active" without changing the
-              // actual text node. statusLabel('active') resolves to the already-Title-Case
-              // 'Active', which would change that text node and break a test file this task
-              // is not permitted to touch. See task-3-report.md.
               <div>
-                <Badge variant={formData.status === 'active' ? 'success' : 'secondary'} className="capitalize">
-                  {formData.status}
+                <Badge variant={formData.status === 'active' ? 'success' : 'secondary'}>
+                  {statusLabel(formData.status)}
                 </Badge>
               </div>
             )}
-            {/* status is the raw DB value; state is what backend computed from status + end_date.
-                Always show both so "status=active but already expired" is visible at a glance —
-                never recompute state on the frontend (swagger: use the field as-is). */}
+            {/* `status` (raw DB value) and `state` (backend-computed from status + end_date) are
+                two different fields shown together on purpose — "status=active but already
+                expired" must be visible at a glance, never recomputed on the frontend (swagger:
+                use the field as-is). Both go through the same `statusLabel` lookup above so they
+                can never name the same state two different ways in Thai. */}
             {!isNew && state && (
               <div className="text-xs text-muted-foreground">
                 {t('pages.subscriptions.effectiveState')}{' '}
-                {/* Same constraint as the status badge above — SubscriptionInfoCard.test.tsx:55
-                    pins this to the raw lowercase enum. Not translated; see task-3-report.md. */}
-                <Badge variant={state === 'active' ? 'success' : 'secondary'} className="ml-1 capitalize">
-                  {state}
+                <Badge variant={state === 'active' ? 'success' : 'secondary'} className="ml-1">
+                  {statusLabel(state)}
                 </Badge>
               </div>
             )}
