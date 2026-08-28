@@ -377,7 +377,7 @@ describe('SubscriptionForm — not found', () => {
     renderAt('/licenses/subscriptions/nope/edit');
 
     expect(await screen.findByText('Subscription not found')).toBeInTheDocument();
-    expect(screen.queryByText('ที่นั่ง')).toBeNull();
+    expect(screen.queryByText('Seats')).toBeNull();
   });
 });
 

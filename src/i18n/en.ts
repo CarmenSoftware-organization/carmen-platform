@@ -850,6 +850,35 @@ export const en = {
       endDate: 'End Date',
       seatsUsed: 'Seats Used',
       seatsCap: 'Seats Cap',
+
+      // Task 3 (SubscriptionForm + SubscriptionInfoCard page-local additions below).
+      loadingAria: 'Loading subscription',
+      notFoundTitle: 'Subscription not found',
+      notFoundDescription: "This subscription doesn't exist, or it may have been deleted. Check the link, or pick one from the subscription list.",
+      backToSubscriptions: 'Back to subscriptions',
+      createSubtitle: 'Create a new subscription for a cluster',
+      createSubscription: 'Create Subscription',
+      unnamedSubscription: '(unnamed subscription)',
+      clusterSubtitle: 'Cluster: {{name}} ({{code}})',
+      // Singular record-detail failure banners — distinct from the plural loadFailedPrefix
+      // above (Task 2, the management page's list load). Same shape as broadcasts'
+      // loadFailedPrefix/loadFailedDetail split: English differs by number, Thai does not
+      // (Thai has no plural inflection) — see th.ts.
+      loadFailedDetail: 'Failed to load subscription: ',
+      createFailedPrefix: 'Failed to create subscription: ',
+      saveFailedPrefix: 'Failed to save subscription: ',
+      missingDocVersion: 'Missing doc_version for this record — reload the page and try again.',
+      endDateAfterStart: 'End date must be after start date',
+      // Split rather than one key with a fallback param, matching noFeaturesAssignedToBu/
+      // ToThis above — two whole sentences, not one template with a translated fallback noun.
+      featureEntitlementsForBu: 'Feature entitlements for {{code}}',
+      featureEntitlementsGeneric: 'Feature entitlements for this contract',
+      detailsDescription: 'Contract identity, period, and status',
+      // Source uses the single-character ellipsis (…), not three dots — distinct from
+      // common.busy.loading ('Loading...'). Shared by both the cluster and business-unit
+      // select's own "still loading" option.
+      loadingOption: 'Loading…',
+      effectiveState: 'Effective state:',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

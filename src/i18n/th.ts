@@ -682,6 +682,29 @@ export const th: Translations = {
       endDate: 'วันที่สิ้นสุด',
       seatsUsed: 'ที่นั่งที่ใช้แล้ว',
       seatsCap: 'เพดานที่นั่ง',
+
+      // Task 3 (SubscriptionForm + SubscriptionInfoCard page-local additions below).
+      loadingAria: 'กำลังโหลดสัญญา',
+      notFoundTitle: 'ไม่พบสัญญา',
+      notFoundDescription: 'ไม่พบสัญญานี้ หรืออาจถูกลบไปแล้ว ลองตรวจสอบลิงก์ หรือเลือกจากรายการสัญญา',
+      backToSubscriptions: 'กลับไปหน้าสัญญา',
+      createSubtitle: 'สร้างสัญญาใหม่ให้กับ cluster',
+      createSubscription: 'สร้างสัญญา',
+      unnamedSubscription: '(สัญญาที่ยังไม่มีชื่อ)',
+      clusterSubtitle: 'Cluster: {{name}} ({{code}})',
+      // Same Thai as loadFailedPrefix above — Thai does not inflect for number, only the
+      // English (subscription vs subscriptions) differs. Matches pages.broadcasts'
+      // loadFailedPrefix/loadFailedDetail pair.
+      loadFailedDetail: 'โหลดสัญญาไม่สำเร็จ: ',
+      createFailedPrefix: 'สร้างสัญญาไม่สำเร็จ: ',
+      saveFailedPrefix: 'บันทึกสัญญาไม่สำเร็จ: ',
+      missingDocVersion: 'ไม่มี doc_version สำหรับรายการนี้ — โหลดหน้าใหม่แล้วลองอีกครั้ง',
+      endDateAfterStart: 'วันที่สิ้นสุดต้องอยู่หลังวันที่เริ่ม',
+      featureEntitlementsForBu: 'สิทธิ์ของฟีเจอร์สำหรับ {{code}}',
+      featureEntitlementsGeneric: 'สิทธิ์ของฟีเจอร์สำหรับสัญญานี้',
+      detailsDescription: 'ข้อมูลระบุตัวตนของสัญญา ช่วงเวลา และสถานะ',
+      loadingOption: 'กำลังโหลด…',
+      effectiveState: 'สถานะที่มีผล:',
     },
   },
   error: {
