@@ -1,3 +1,6 @@
+import { translate } from '../i18n/translate';
+import type { TFunction } from '../i18n/types';
+
 const isDev = import.meta.env.DEV;
 
 interface ParsedError {
@@ -5,7 +8,7 @@ interface ParsedError {
   fields?: Record<string, string>;
 }
 
-export const parseApiError = (err: unknown): ParsedError => {
+export const parseApiError = (err: unknown, t?: TFunction): ParsedError => {
   const error = err as {
     response?: {
       data?: {
@@ -19,6 +22,8 @@ export const parseApiError = (err: unknown): ParsedError => {
     message?: string;
   };
 
+  const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
+
   const dataError = error.response?.data?.error;
   const nestedErrorMessage = typeof dataError === 'object' && dataError !== null ? dataError.message : undefined;
   const flatErrorMessage = typeof dataError === 'string' ? dataError : undefined;
@@ -28,7 +33,7 @@ export const parseApiError = (err: unknown): ParsedError => {
     nestedErrorMessage ||
     flatErrorMessage ||
     error.message ||
-    'An unexpected error occurred';
+    tr('error.unexpected');
 
   const apiErrors = error.response?.data?.errors;
   const fields: Record<string, string> = {};
@@ -47,15 +52,16 @@ export const parseApiError = (err: unknown): ParsedError => {
  * - Development: shows full API error message for debugging.
  * - Production: returns a generic safe message, hiding sensitive data.
  */
-export const getErrorDetail = (err: unknown): string => {
+export const getErrorDetail = (err: unknown, t?: TFunction): string => {
   const error = err as {
     response?: { status?: number; data?: { message?: string } };
     message?: string;
   };
+  const tr: TFunction = t ?? ((key, params) => translate('en', key, params));
   if (isDev) {
-    return error.response?.data?.message || error.message || 'Unknown error';
+    return error.response?.data?.message || error.message || tr('error.unknown');
   }
-  return 'Please try again later.';
+  return tr('error.tryAgainLater');
 };
 
 /**
