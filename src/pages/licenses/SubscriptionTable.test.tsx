@@ -134,8 +134,13 @@ describe('SubscriptionTable — reads state, never recomputes it', () => {
 
     // status='active' + a far-future end_date would recompute to 'active'; the real
     // state field says 'inactive' — the badge must follow the field, not the recompute.
-    expect(screen.getByText('Inactive')).toBeInTheDocument();
-    expect(screen.queryByText('Active')).toBeNull();
+    // Scoped to the table: the summary band's "Active" card label is now a second,
+    // legitimate "Active" text node on the page (translating it moved it into the same
+    // shared vocabulary as this badge), so a page-wide query is no longer precise enough
+    // to test what this assertion means — the row's badge, not the whole screen.
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Inactive')).toBeInTheDocument();
+    expect(within(table).queryByText('Active')).toBeNull();
   });
 });
 
@@ -144,11 +149,11 @@ describe('SubscriptionTable — summary band', () => {
     renderPage();
     await screen.findByText('SUB-0001');
 
-    expect(screen.getByText('ทั้งหมด')).toBeInTheDocument();
-    expect(screen.getByText('ใช้งาน')).toBeInTheDocument();
-    expect(screen.getByText('หมดอายุ')).toBeInTheDocument();
-    expect(screen.getByText('ใกล้หมดอายุ')).toBeInTheDocument();
-    expect(screen.getByText('ลบแล้ว')).toBeInTheDocument();
+    expect(screen.getByText('All')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Expired')).toBeInTheDocument();
+    expect(screen.getByText('Expiring soon')).toBeInTheDocument();
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
   });
 });
 

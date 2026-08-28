@@ -3,6 +3,7 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { cn } from '../../../lib/utils';
 import { FetchErrorState } from '../../../components/FetchErrorState';
+import { useI18n } from '../../../hooks/useI18n';
 import type { SubscriptionSummary as SummaryType } from '../../../types';
 
 interface SubscriptionSummaryProps {
@@ -23,6 +24,8 @@ interface SubscriptionSummaryProps {
  * ตัวกรองเดียวกัน และ "ลบแล้ว" ก็ไม่มีทางคลิกดูรายการได้อยู่แล้ว (§8.2 ของสัญญา backend)
  */
 export const SubscriptionSummary: React.FC<SubscriptionSummaryProps> = ({ summary, loading, error, onRetry }) => {
+  const { t } = useI18n();
+
   if (error) {
     return (
       <Card>
@@ -34,11 +37,11 @@ export const SubscriptionSummary: React.FC<SubscriptionSummaryProps> = ({ summar
   }
 
   const items = [
-    { key: 'total', label: 'ทั้งหมด', value: summary?.total, color: 'text-foreground' },
-    { key: 'active', label: 'ใช้งาน', value: summary?.active, color: 'text-success' },
-    { key: 'expired', label: 'หมดอายุ', value: summary?.expired, color: 'text-muted-foreground' },
-    { key: 'expiring_soon', label: 'ใกล้หมดอายุ', value: summary?.expiring_soon, color: 'text-warning' },
-    { key: 'deleted', label: 'ลบแล้ว', value: summary?.deleted, color: 'text-destructive' },
+    { key: 'total', label: t('common.option.all'), value: summary?.total, color: 'text-foreground' },
+    { key: 'active', label: t('common.status.active'), value: summary?.active, color: 'text-success' },
+    { key: 'expired', label: t('common.status.expired'), value: summary?.expired, color: 'text-muted-foreground' },
+    { key: 'expiring_soon', label: t('pages.subscriptions.expiringSoon'), value: summary?.expiring_soon, color: 'text-warning' },
+    { key: 'deleted', label: t('common.status.deleted'), value: summary?.deleted, color: 'text-destructive' },
   ] as const;
 
   return (
