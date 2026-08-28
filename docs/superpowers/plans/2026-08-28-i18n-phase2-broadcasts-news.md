@@ -610,10 +610,13 @@ git commit -m "feat(i18n): แปลหน้ารายการข่าว +
 `cap` (`:55`) upper-cases the first letter of an API status value, rendering `Published` / `Archived` / `Draft`. No literal scan can see these. Replace with a lookup that keeps `cap` as the fallback:
 
 ```ts
-const statusLabel = (s: string) => t(`common.status.${s}` as TKey) || t('pages.news.draft') || cap(s);
+const statusLabel = (s: string) =>
+  (s === 'draft' ? t('pages.news.draft') : t(`common.status.${s}` as TKey)) || cap(s);
 ```
 
-`published` and `archived` have shared keys; `draft` does not, and `pages.news.draft` was created in Task 5. Keep `cap` in the file — it is the last-resort fallback for a status the catalog does not know.
+`published` and `archived` have shared keys; `draft` does **not** — `common.status.draft` has never existed — so it must be routed to `pages.news.draft` explicitly, before the fallback. Writing it as `t('common.status.' + s) || t('pages.news.draft') || cap(s)` is wrong twice over: it renders `Draft` for any status the catalog does not know, and it makes the missing `draft` key look handled while it is not.
+
+Keep `cap` in the file as the last-resort fallback for a genuinely unknown status. Note what that fallback does and does not do: it stops an unknown value rendering as an empty badge, but because `cap('draft')` happens to equal the English `Draft`, it **also silently masks a missing key** — the UI looks right in English and stays English in Thai. Task 5 shipped exactly this bug. When you add a lookup, check that every value it can receive has a key, rather than trusting the fallback to tell you.
 
 - [ ] **Step 3: `NewsEdit.tsx` page-local keys**
 
