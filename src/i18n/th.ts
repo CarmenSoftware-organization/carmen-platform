@@ -1131,6 +1131,33 @@ export const th: Translations = {
       // Copied verbatim from nav.users — not retranslated. See en.ts for why this stays its
       // own key instead of reading nav.users directly.
       usersLabel: 'ผู้ใช้งาน',
+
+      title: 'จัดการหน่วยธุรกิจ',
+      subtitle: 'จัดการหน่วยธุรกิจและแผนกต่าง ๆ',
+      loadFailedPrefix: 'โหลดหน่วยธุรกิจไม่สำเร็จ: ',
+      // Copied verbatim from pages.users.addBusinessUnit.
+      addBusinessUnit: 'เพิ่มหน่วยธุรกิจ',
+      // Copied verbatim from pages.users.addBu.
+      addBu: 'เพิ่ม BU',
+      emptyDescription: 'เริ่มต้นด้วยการสร้างหน่วยธุรกิจแรกของคุณ',
+      // Copied verbatim from pages.clusterAdmin.loadingBusinessUnitsAria.
+      loading: 'กำลังโหลดหน่วยธุรกิจ',
+      // Copied verbatim from pages.clusterAdmin.filterBusinessUnitsByStatus.
+      filterBusinessUnitsByStatus: 'กรองหน่วยธุรกิจตามสถานะ',
+      showSoftDeleted: 'แสดงหน่วยธุรกิจที่ถูกลบชั่วคราว',
+      // Copied verbatim from pages.users.deletedByName.
+      deletedByName: 'ลบโดย {{name}}',
+      deleteTitle: 'ลบหน่วยธุรกิจ',
+      deleteConfirm: 'ต้องการลบหน่วยธุรกิจนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
+
+      // Copied verbatim from pages.clusterAdmin.overview.
+      overview: 'ภาพรวม',
+      summaryLoadFailed: 'โหลดสรุปข้อมูลหน่วยธุรกิจไม่สำเร็จ',
+      businessUnitsCountLabel: 'หน่วยธุรกิจ',
+      acrossClustersOne: 'ครอบคลุม {{count}} cluster',
+      acrossClustersMany: 'ครอบคลุม {{count}} cluster',
+      // Copied verbatim from pages.users.activeInactiveSummary.
+      activeInactiveSummary: 'ใช้งาน {{active}} ราย ไม่ใช้งาน {{inactive}} ราย',
     },
   },
   error: {

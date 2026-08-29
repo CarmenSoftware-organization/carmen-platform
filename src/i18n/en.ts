@@ -1731,6 +1731,43 @@ export const en = {
       // register, so left split rather than promoted. Thai copied verbatim from nav.users,
       // unchanged.
       usersLabel: 'Users',
+
+      // --- Task 2: BusinessUnitManagement.tsx ---
+      title: 'Business Unit Management',
+      subtitle: 'Manage business units and departments',
+      loadFailedPrefix: 'Failed to load business units: ',
+      // Promotion signal (Task 1, below the >=3-files/>=2-slices bar): byte-identical to
+      // pages.users.addBusinessUnit — 2 files / 2 slices total, so kept page-local per this
+      // task's own rule rather than promoted.
+      addBusinessUnit: 'Add Business Unit',
+      // Promotion signal vs pages.users.addBu (2 files / 2 slices) — same reasoning as
+      // addBusinessUnit above.
+      addBu: 'Add BU',
+      emptyDescription: 'Get started by creating your first business unit.',
+      // Promotion signal vs pages.clusterAdmin.loadingBusinessUnitsAria (2 files / 2 slices)
+      // — byte-identical aria-label ('Loading business units', no ellipsis; distinct from
+      // common.busy.loading's 'Loading...' overlay text rendered alongside it).
+      loading: 'Loading business units',
+      // Promotion signal vs pages.clusterAdmin.filterBusinessUnitsByStatus (2 files / 2
+      // slices).
+      filterBusinessUnitsByStatus: 'Filter business units by status',
+      showSoftDeleted: 'Show soft-deleted business units',
+      // Promotion signal vs pages.users.deletedByName (2 files / 2 slices) — same template
+      // shape, different entity noun.
+      deletedByName: 'Deleted by {{name}}',
+      deleteTitle: 'Delete Business Unit',
+      deleteConfirm: 'Are you sure you want to delete this business unit? This action cannot be undone.',
+
+      // --- Task 2: BuSummary.tsx ---
+      // Promotion signal vs pages.clusterAdmin.overview (2 files / 2 slices).
+      overview: 'Overview',
+      summaryLoadFailed: "Couldn't load the business unit summary.",
+      businessUnitsCountLabel: 'business units',
+      acrossClustersOne: 'across {{count}} cluster',
+      acrossClustersMany: 'across {{count}} clusters',
+      // Promotion signal vs pages.users.activeInactiveSummary (2 files / 2 slices) — byte-
+      // identical aria-label template.
+      activeInactiveSummary: '{{active}} active, {{inactive}} inactive',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
