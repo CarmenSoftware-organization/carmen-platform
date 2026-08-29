@@ -6,6 +6,8 @@
  * ถ้าใช้เที่ยงคืน UTC เป็นขอบ วันแรกกับวันสุดท้ายในกราฟจะโผล่มาไม่ครบวัน
  */
 
+import type { TFunction } from '../i18n/types';
+
 /** ต้องตรงกับ ANALYTICS_TZ ฝั่ง backend */
 export const ANALYTICS_TZ = 'Asia/Bangkok';
 
@@ -34,12 +36,28 @@ export interface DateRange {
   to: string;
 }
 
-export const RANGE_PRESETS = [
-  { value: '7', label: '7 วันล่าสุด' },
-  { value: '30', label: '30 วันล่าสุด' },
-  { value: '90', label: '90 วันล่าสุด' },
-  { value: 'custom', label: 'กำหนดเอง' },
-] as const;
+/**
+ * ค่า "จำนวนวัน" ของ preset แบบไม่ผูกภาษา — แยกออกจากป้ายที่แปลแล้ว (`getRangePresets`
+ * ด้านล่าง) เพราะ `DateRangeFilter.tsx`'s `presetOf()` ต้องเรียกใช้ตอน lazy-init ของ
+ * `useState` ซึ่งยังไม่มี `t` ให้เรียก (hook `useI18n()` ยังไม่ได้ถูกเรียกในจังหวะนั้น)
+ */
+export const RANGE_PRESET_DAY_VALUES = ['7', '30', '90'] as const;
+
+/**
+ * คืนรายการ preset สำหรับ dropdown ของ `DateRangeFilter` พร้อมป้ายที่แปลแล้ว
+ *
+ * เป็นฟังก์ชันไม่ใช่ const ระดับโมดูล เพราะค่านี้ต้อง re-render เมื่อสลับภาษา และ const
+ * ระดับโมดูลเรียก hook ไม่ได้ — เหมือนแนวทางเดียวกับ `auditColumns`'s trailing optional `t`
+ * แต่ที่นี่ผู้เรียกมีหน้าเดียว (`DateRangeFilter.tsx`) จึงรับ `t` แบบ required แทน optional
+ */
+export function getRangePresets(t: TFunction): { value: string; label: string }[] {
+  return [
+    { value: '7', label: t('components.dateRangeFilter.last7Days') },
+    { value: '30', label: t('components.dateRangeFilter.last30Days') },
+    { value: '90', label: t('components.dateRangeFilter.last90Days') },
+    { value: 'custom', label: t('common.option.custom') },
+  ];
+}
 
 /** 'YYYY-MM-DD' ของวันนี้ตามเวลาไทย */
 export function todayInTz(): string {

@@ -91,7 +91,7 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
   };
 
   const columns = useMemo<ColumnDef<ClusterUser, unknown>[]>(() => {
-    const [createdColumn, updatedColumn] = auditColumns<ClusterUser>();
+    const [createdColumn, updatedColumn] = auditColumns<ClusterUser>({ t });
     return [
       {
         id: 'name',
@@ -120,11 +120,8 @@ const MembersTable: React.FC<MembersTableProps> = ({ members, loading, searchTer
           </Badge>
         ),
       },
-      // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared infra, out
-      // of scope here) — override both headers so this table's Thai header row has no
-      // English hole.
-      { ...createdColumn, header: t('common.audit.created') },
-      { ...updatedColumn, header: t('common.audit.updatedDate') },
+      createdColumn,
+      updatedColumn,
       {
         id: 'actions',
         header: '',

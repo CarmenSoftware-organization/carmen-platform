@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../hooks/useI18n';
 
 /**
  * Authentication only — no permission check and no view boundary.
@@ -12,9 +13,10 @@ import { useAuth } from '../context/AuthContext';
  */
 const AuthedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const { t } = useI18n();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">{t('common.busy.loading')}</div>;
   }
 
   if (!isAuthenticated) {

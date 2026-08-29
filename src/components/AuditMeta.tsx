@@ -1,6 +1,8 @@
 import { relativeTime } from '../utils/relativeTime';
 import type { AuditActor, NormalizedAudit } from '../utils/audit';
 import { isUnknownActor } from '../utils/audit';
+import { useI18n } from '../hooks/useI18n';
+import type { TFunction } from '../i18n/types';
 
 // ไม่มี date library ในโปรเจกต์นี้ (CLAUDE.md · DateTime) — formatter แบบ inline
 const absolute = (iso?: string): string | undefined => {
@@ -12,9 +14,9 @@ const absolute = (iso?: string): string | undefined => {
 };
 
 /** ชื่อที่จะแสดง — 'Unknown' จาก backend อ่านไม่รู้เรื่อง ต้องขยายเป็นประโยค */
-const displayName = (name?: string): string | undefined => {
+const displayName = (t: TFunction, name?: string): string | undefined => {
   if (!name) return undefined;
-  return isUnknownActor(name) ? 'Unknown user' : name;
+  return isUnknownActor(name) ? t('common.state.unknownUser') : name;
 };
 
 type AuditMetaProps =
@@ -32,6 +34,7 @@ type AuditMetaProps =
  * `now` ต้องส่งได้จากภายนอกเพื่อให้ผลลัพธ์คงที่ตอนทดสอบ
  */
 export function AuditMeta(props: AuditMetaProps) {
+  const { t } = useI18n();
   const now = props.now ?? new Date();
 
   if (props.variant === 'header') {
@@ -39,9 +42,9 @@ export function AuditMeta(props: AuditMetaProps) {
     if (!created && !updated) return null;
     return (
       <p className={props.className ?? 'text-muted-foreground mt-0.5 text-xs'}>
-        {created && <ActorPhrase verb="Created" actor={created} now={now} />}
+        {created && <ActorPhrase t={t} verb={t('common.audit.created')} actor={created} now={now} />}
         {created && updated && <span className="mx-1.5">·</span>}
-        {updated && <ActorPhrase verb="Updated" actor={updated} now={now} />}
+        {updated && <ActorPhrase t={t} verb={t('common.audit.updatedDate')} actor={updated} now={now} />}
       </p>
     );
   }
@@ -54,7 +57,7 @@ export function AuditMeta(props: AuditMetaProps) {
     return <span className="text-muted-foreground">-</span>;
   }
   const when = relativeTime(actor.at, now);
-  const who = displayName(actor.name);
+  const who = displayName(t, actor.name);
 
   if (props.variant === 'compact') {
     return (
@@ -81,12 +84,12 @@ export function AuditMeta(props: AuditMetaProps) {
   );
 }
 
-function ActorPhrase({ verb, actor, now }: { verb: string; actor: AuditActor; now: Date }) {
-  const who = displayName(actor.name);
+function ActorPhrase({ t, verb, actor, now }: { t: TFunction; verb: string; actor: AuditActor; now: Date }) {
+  const who = displayName(t, actor.name);
   return (
     <span title={absolute(actor.at)}>
       <span className="font-medium">{verb}</span> {relativeTime(actor.at, now) || '-'}
-      {who && ` by ${who}`}
+      {who && ` ${t('components.auditMeta.byActor', { name: who })}`}
     </span>
   );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Forbidden from '../pages/Forbidden';
+import { useI18n } from '../hooks/useI18n';
 
 /**
  * Scope guard for /cluster-admin/:clusterId/*. Resolves once, here, so every page beneath it
@@ -16,9 +17,10 @@ import Forbidden from '../pages/Forbidden';
 const ClusterAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading, adminScope, isClusterAdminOf } = useAuth();
   const { clusterId } = useParams<{ clusterId: string }>();
+  const { t } = useI18n();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">{t('common.busy.loading')}</div>;
   }
 
   if (!isAuthenticated) {
@@ -26,7 +28,7 @@ const ClusterAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
   }
 
   if (adminScope === null) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">{t('common.busy.loading')}</div>;
   }
 
   if (!clusterId || !isClusterAdminOf(clusterId)) {

@@ -220,11 +220,7 @@ const BusinessUnitList: React.FC = () => {
   };
 
   const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => {
-    // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
-    // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
-    // see broadcastColumns.tsx's own note). Override both headers here so this table's
-    // Thai header row has no English hole.
-    const [createdColumn, updatedColumn] = auditColumns<BusinessUnit>();
+    const [createdColumn, updatedColumn] = auditColumns<BusinessUnit>({ t });
     return [
       {
         accessorKey: 'name',
@@ -275,8 +271,8 @@ const BusinessUnitList: React.FC = () => {
           </Badge>
         ),
       },
-      { ...createdColumn, header: t('common.audit.created') },
-      { ...updatedColumn, header: t('common.audit.updatedDate') },
+      createdColumn,
+      updatedColumn,
     ];
   }, [t, clusterId, ranked, buCap]);
 

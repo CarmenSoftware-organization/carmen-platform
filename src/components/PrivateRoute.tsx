@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Forbidden from '../pages/Forbidden';
+import { useI18n } from '../hooks/useI18n';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -36,9 +37,10 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
     adminScope,
     effectivePermissions,
   } = useAuth();
+  const { t } = useI18n();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">{t('common.busy.loading')}</div>;
   }
 
   if (!isAuthenticated) {
@@ -55,7 +57,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
     // Still resolving. Rendering the page for even one frame mounts it — for /dashboard that
     // means a burst of platform-wide list requests that all 403.
     if (adminScope === null) {
-      return <div className="loading">Loading...</div>;
+      return <div className="loading">{t('common.busy.loading')}</div>;
     }
     if (hasClusterAdminScope) {
       return <Navigate to="/cluster-admin" replace />;
