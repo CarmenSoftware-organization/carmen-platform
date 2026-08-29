@@ -18,7 +18,7 @@ import { parseApiError } from '../../utils/errorParser';
 import { isValidEmail } from '../../utils/validation';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
-import { ROLE_LABEL_KEYS } from './roleLabels';
+import { ROLE_LABEL_KEYS } from '../../utils/roleLabels';
 import type { BusinessUnit } from '../../types';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;

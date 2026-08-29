@@ -18,7 +18,7 @@ import clusterService from '../../services/clusterService';
 import { parseApiError } from '../../utils/errorParser';
 import { auditColumns } from '../../components/auditColumns';
 import { useI18n } from '../../hooks/useI18n';
-import { ROLE_LABEL_KEYS, roleLabel } from './roleLabels';
+import { ROLE_LABEL_KEYS, roleLabel } from '../../utils/roleLabels';
 import type { ClusterUser } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 

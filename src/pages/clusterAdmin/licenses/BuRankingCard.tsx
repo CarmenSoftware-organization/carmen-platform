@@ -79,7 +79,7 @@ export function BuRankingCard({ businessUnits, clusterId, cap }: BuRankingCardPr
                       </Link>
                       {bu.is_hq && (
                         <Badge variant="secondary" className="ml-2 text-[10px]">
-                          {t('pages.clusterAdmin.hq')}
+                          {t('common.label.hq')}
                         </Badge>
                       )}
                     </td>

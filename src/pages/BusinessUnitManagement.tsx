@@ -26,6 +26,7 @@ import { BuSummary } from './businessUnitManagement/BuSummary';
 import { auditColumns } from '../components/auditColumns';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
+import { useI18n } from '../hooks/useI18n';
 import type { BuSummaryData } from '../types';
 import type { BusinessUnit, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -40,6 +41,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 };
 
 const BusinessUnitManagement: React.FC = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -104,11 +106,11 @@ const BusinessUnitManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load business units: ' + getErrorDetail(err));
+      setError(t('pages.businessUnits.loadFailedPrefix') + getErrorDetail(err, t));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchBusinessUnits(paginate);
@@ -205,12 +207,12 @@ const BusinessUnitManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await businessUnitService.delete(deleteId);
-      toast.success('Business unit deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.businessUnit.sentence') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error('Failed to delete business unit', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.businessUnit.lower') }), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -220,26 +222,42 @@ const BusinessUnitManagement: React.FC = () => {
     // computed aggregate the backend exposes is per-cluster (`Cluster.total_max_license_users`),
     // not per-BU. Rather than export the retired raw column (stale the moment any licence
     // changes) or a blank column, the column is dropped.
-    const rows = businessUnits.map((bu) => ({ ...bu, ...auditCsvFields(normalizeAudit(bu)) }));
+    // generateCSV reads each column's raw field off the row object with no per-column
+    // formatter — is_active never passes through the Badge that renders it in the table, so
+    // without this mapping the file gets the raw JS boolean stringified ("true"/"false")
+    // instead of the translated word the table shows. Map it to its rendered text here,
+    // before generateCSV ever sees the row (same shape as clusterAdmin/BusinessUnitList.tsx's
+    // is_active mapping / licenses/SubscriptionTable.tsx's `state: stateLabel(item.state)`).
+    const rows = businessUnits.map((bu) => ({
+      ...bu,
+      ...auditCsvFields(normalizeAudit(bu)),
+      is_active: bu.is_active ? t('common.status.active') : t('common.status.inactive'),
+    }));
     const csv = generateCSV(rows, [
-      { key: 'code', label: 'Code' },
-      { key: 'name', label: 'Name' },
-      { key: 'alias_name', label: 'Alias Name' },
-      { key: 'cluster_name', label: 'Cluster' },
-      { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'code', label: t('common.field.code') },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'alias_name', label: t('common.field.aliasName') },
+      { key: 'cluster_name', label: t('common.label.cluster') },
+      { key: 'is_active', label: t('common.status.label') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `business-units-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
-  const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
+  const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => {
+    // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
+    // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
+    // see broadcastColumns.tsx's own note). Override both headers here so this table's
+    // Thai header row has no English hole.
+    const [createdColumn, updatedColumn] = auditColumns<BusinessUnit>();
+    return [
     {
       accessorKey: 'code',
-      header: 'Code',
+      header: t('common.field.code'),
       // Fixed width so the sticky offset of the 3rd frozen column (Name) is
       // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
       meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
@@ -251,7 +269,7 @@ const BusinessUnitManagement: React.FC = () => {
     },
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('common.field.name'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <BrandMark
@@ -267,8 +285,8 @@ const BusinessUnitManagement: React.FC = () => {
             {row.original.name}
           </Link>
           {row.original.deleted_at && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
-              Deleted
+            <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? t('pages.businessUnits.deletedByName', { name: row.original.deleted_by_name }) : undefined}>
+              {t('common.status.deleted')}
             </Badge>
           )}
         </div>
@@ -276,26 +294,27 @@ const BusinessUnitManagement: React.FC = () => {
     },
     {
       accessorKey: 'alias_name',
-      header: 'Alias',
+      header: t('common.field.alias'),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">{row.original.alias_name || '-'}</span>
       ),
     },
-    { accessorKey: 'cluster_name', id: 'tb_cluster.name', header: 'Cluster' },
+    { accessorKey: 'cluster_name', id: 'tb_cluster.name', header: t('common.label.cluster') },
     {
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
+          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
-    ...auditColumns<BusinessUnit>(),
+    { ...createdColumn, header: t('common.audit.created') },
+    { ...updatedColumn, header: t('common.audit.updatedDate') },
     ...(showDeleted ? [{
       id: 'deleted_at',
-      header: 'Deleted',
+      header: t('common.audit.deletedDate'),
       cell: ({ row }: { row: { original: BusinessUnit } }) => (
         <AuditMeta
           variant="cell"
@@ -313,7 +332,7 @@ const BusinessUnitManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name || row.original.code}`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('common.action.rowActions', { name: row.original.name || row.original.code })}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -321,38 +340,39 @@ const BusinessUnitManagement: React.FC = () => {
             <Can permission="cluster.update" clusterId={row.original.cluster_id}>
               <DropdownMenuItem onClick={() => navigate(`/business-units/${row.original.id}/edit`)} className="cursor-pointer">
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
             <Can permission="cluster.delete" clusterId={row.original.cluster_id}>
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, showDeleted]);
+    ];
+  }, [t, navigate, handleDelete, showDeleted]);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Business Unit Management"
-          subtitle="Manage business units and departments"
+          title={t('pages.businessUnits.title')}
+          subtitle={t('pages.businessUnits.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || businessUnits.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="cluster.create">
                 <Button onClick={() => navigate('/business-units/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Business Unit</span>
-                  <span className="sm:hidden">Add BU</span>
+                  <span className="hidden sm:inline">{t('pages.businessUnits.addBusinessUnit')}</span>
+                  <span className="sm:hidden">{t('pages.businessUnits.addBu')}</span>
                 </Button>
               </Can>
             </>
@@ -368,14 +388,14 @@ const BusinessUnitManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search business units..."
+                placeholder={t('common.state.searchBusinessUnits')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -385,15 +405,15 @@ const BusinessUnitManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter business units by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.businessUnits.filterBusinessUnitsByStatus')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -403,7 +423,7 @@ const BusinessUnitManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("true")}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes("false") ? "default" : "outline"}
@@ -411,12 +431,12 @@ const BusinessUnitManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("false")}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <span className="text-sm font-medium">Deleted</span>
+                      <span className="text-sm font-medium">{t('common.status.deleted')}</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -426,13 +446,13 @@ const BusinessUnitManagement: React.FC = () => {
                           className="h-4 w-4 rounded border-input"
                         />
                         <Label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
-                          Show soft-deleted business units
+                          {t('pages.businessUnits.showSoftDeleted')}
                         </Label>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -441,10 +461,10 @@ const BusinessUnitManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === "true" ? "Active" : "Inactive"}
+                    {s === "true" ? t('common.status.active') : t('common.status.inactive')}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
@@ -452,14 +472,14 @@ const BusinessUnitManagement: React.FC = () => {
                 ))}
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    Show Deleted
+                    {t('common.action.showDeleted')}
                     <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -471,13 +491,13 @@ const BusinessUnitManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Building2}
-                emptyTitle="No business units yet"
-                emptyDescription="Get started by creating your first business unit."
+                emptyTitle={t('common.state.noBusinessUnitsYet')}
+                emptyDescription={t('pages.businessUnits.emptyDescription')}
                 addAction={
                   <Can permission="cluster.create">
                     <Button size="sm" onClick={() => navigate('/business-units/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Business Unit
+                      {t('pages.businessUnits.addBusinessUnit')}
                     </Button>
                   </Can>
                 }
@@ -492,8 +512,8 @@ const BusinessUnitManagement: React.FC = () => {
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading business units">
-                    <div className="text-muted-foreground">Loading...</div>
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.businessUnits.loading')}>
+                    <div className="text-muted-foreground">{t('common.busy.loading')}</div>
                   </div>
                 )}
                 <DataTable
@@ -520,9 +540,9 @@ const BusinessUnitManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Business Unit"
-        description="Are you sure you want to delete this business unit? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.businessUnits.deleteTitle')}
+        description={t('pages.businessUnits.deleteConfirm')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />

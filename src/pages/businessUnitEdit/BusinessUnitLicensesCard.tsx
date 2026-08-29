@@ -4,6 +4,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon } from '../../utils/buLicense';
 import { daysLeft } from '../licenses/licenseDates';
+import { useI18n } from '../../hooks/useI18n';
 import type { BusinessUnitLicense } from '../../types';
 
 interface BusinessUnitLicensesCardProps {
@@ -26,6 +27,7 @@ interface BusinessUnitLicensesCardProps {
 export default function BusinessUnitLicensesCard({
   licenses, loading, clusterSeat, manageHref, now = new Date(),
 }: BusinessUnitLicensesCardProps) {
+  const { t } = useI18n();
   const activeSeats = sumActiveLicenses(licenses, now);
   const activeCount = licenses.filter((l) => licenseStatus(l, now) === 'active').length;
   const soon = licenses.filter((l) => isExpiringSoon(l, now));
@@ -35,29 +37,31 @@ export default function BusinessUnitLicensesCard({
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold">User Licenses</h3>
+          <h3 className="text-sm font-semibold">{t('pages.businessUnits.userLicensesTitle')}</h3>
           {loading ? (
-            <p className="text-xs text-muted-foreground">Loading…</p>
+            <p className="text-xs text-muted-foreground">{t('common.busy.loadingEllipsis')}</p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              {activeSeats} seats from {activeCount} active {activeCount === 1 ? 'license' : 'licenses'}
+              {activeCount === 1
+                ? t('pages.businessUnits.seatsFromActiveLicenseOne', { count: activeSeats, activeCount })
+                : t('pages.businessUnits.seatsFromActiveLicenseMany', { count: activeSeats, activeCount })}
             </p>
           )}
           {clusterSeat && (
             <p className={`text-xs ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
-              Cluster pool: {clusterSeat.used} / {clusterSeat.cap} seats used
+              {t('pages.businessUnits.clusterPoolSeatsUsed', { used: clusterSeat.used, cap: clusterSeat.cap })}
             </p>
           )}
           {soon.map((l) => (
-            <Badge key={l.id} variant="warning">{daysLeft(l.end_date, now)} days left</Badge>
+            <Badge key={l.id} variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
           ))}
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to={manageHref}>Manage licences</Link>
+          <Link to={manageHref}>{t('common.action.manageLicences')}</Link>
         </Button>
       </CardHeader>
       <CardContent className="text-xs text-muted-foreground">
-        Seats are managed in the License Center.
+        {t('pages.businessUnits.seatsManagedInLicenseCenter')}
       </CardContent>
     </Card>
   );

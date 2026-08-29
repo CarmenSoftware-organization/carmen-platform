@@ -83,7 +83,7 @@ export function BuPropertyPlate({
                 />
                 <StatusToggle
                   on={f.is_hq}
-                  onLabel={t('pages.clusterAdmin.hq')}
+                  onLabel={t('common.label.hq')}
                   offLabel={t('pages.clusterAdmin.notHq')}
                   variant="default"
                   disabled={!canEdit}

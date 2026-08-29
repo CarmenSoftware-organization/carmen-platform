@@ -3,6 +3,8 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Badge } from '../../../components/ui/badge';
 import { CollapsibleSection, ReadOnlyText, selectClassName } from '../shared';
+import { useI18n } from '../../../hooks/useI18n';
+import type { TFunction } from '../../../i18n/types';
 import type { SectionFieldProps, DefaultCurrency } from '../types';
 import type { TenantCurrency } from '../../../types';
 
@@ -35,8 +37,8 @@ interface CalculationSettingsSectionProps extends SectionFieldProps {
   canEditCalculationMethod?: boolean;
 }
 
-const currencyLabel = (c: TenantCurrency) =>
-  `${c.code} - ${c.name}${c.is_active === false ? ' (inactive)' : ''}`;
+const currencyLabel = (c: TenantCurrency, t: TFunction) =>
+  `${c.code} - ${c.name}${c.is_active === false ? t('pages.businessUnits.inactiveSuffix') : ''}`;
 
 const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
   formData,
@@ -50,6 +52,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
   showCurrencyField = true,
   canEditCalculationMethod = true,
 }) => {
+  const { t } = useI18n();
   const useDropdown = editing && !currenciesFailed && Array.isArray(currencies);
   const currentId = formData.default_currency_id;
   // Preserve a saved id that isn't in the fetched list so the value never drops.
@@ -63,7 +66,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
     if (editing && currenciesLoading) {
       return (
         <select id="default_currency_id" name="default_currency_id" className={selectClassName} disabled>
-          <option>Loading currencies…</option>
+          <option>{t('pages.businessUnits.loadingCurrencies')}</option>
         </select>
       );
     }
@@ -76,11 +79,11 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
           onChange={onChange}
           className={selectClassName}
         >
-          <option value="">Select currency</option>
+          <option value="">{t('pages.businessUnits.selectCurrencyOption')}</option>
           {currentId && !currentInList && <option value={currentId}>{currentLabel}</option>}
           {(currencies ?? []).map((c) => (
             <option key={c.id} value={c.id}>
-              {currencyLabel(c)}
+              {currencyLabel(c, t)}
             </option>
           ))}
         </select>
@@ -94,7 +97,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
           name="default_currency_id"
           value={currentId}
           onChange={onChange}
-          placeholder="Default currency ID"
+          placeholder={t('pages.businessUnits.defaultCurrencyIdPlaceholder')}
         />
       );
     }
@@ -102,11 +105,11 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
   };
 
   return (
-    <CollapsibleSection title="Calculation Settings" description="Calculation method and currency configuration" forceOpen>
+    <CollapsibleSection title={t('pages.businessUnits.calculationSettingsTitle')} description={t('pages.businessUnits.calculationSettingsDescription')} forceOpen>
       <div className="space-y-4">
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
-            <Label htmlFor="calculation_method">Calculation Method</Label>
+            <Label htmlFor="calculation_method">{t('pages.businessUnits.calculationMethodLabel')}</Label>
             {editing && canEditCalculationMethod ? (
               <select
                 id="calculation_method"
@@ -115,9 +118,9 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
                 onChange={onChange}
                 className={selectClassName}
               >
-                <option value="">Select method</option>
-                <option value="average">Average</option>
-                <option value="fifo">FIFO</option>
+                <option value="">{t('pages.businessUnits.selectMethodOption')}</option>
+                <option value="average">{t('common.option.average')}</option>
+                <option value="fifo">{t('common.option.fifo')}</option>
               </select>
             ) : (
               <ReadOnlyText value={getCalculationMethodLabel(formData.calculation_method)} />
@@ -125,7 +128,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
           </div>
           {showCurrencyField && (
             <div className="space-y-2">
-              <Label htmlFor="default_currency_id">Default Currency ID</Label>
+              <Label htmlFor="default_currency_id">{t('pages.businessUnits.defaultCurrencyIdLabel')}</Label>
               {renderCurrencyField()}
             </div>
           )}
@@ -133,32 +136,32 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
         {!editing && defaultCurrency && (
           <div className="rounded-md border p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Default Currency</span>
+              <span className="text-sm font-medium">{t('common.field.defaultCurrency')}</span>
               <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-xs">
-                {defaultCurrency.is_active ? 'Active' : 'Inactive'}
+                {defaultCurrency.is_active ? t('common.status.active') : t('common.status.inactive')}
               </Badge>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Code</span>
+                <span className="text-xs text-muted-foreground">{t('common.field.code')}</span>
                 <div className="text-sm font-medium">{defaultCurrency.code || '-'}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Name</span>
+                <span className="text-xs text-muted-foreground">{t('common.field.name')}</span>
                 <div className="text-sm">{defaultCurrency.name || '-'}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Symbol</span>
+                <span className="text-xs text-muted-foreground">{t('pages.businessUnits.symbolLabel')}</span>
                 <div className="text-sm">{defaultCurrency.symbol || '-'}</div>
               </div>
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Decimal Places</span>
+                <span className="text-xs text-muted-foreground">{t('pages.businessUnits.decimalPlacesLabel')}</span>
                 <div className="text-sm">{defaultCurrency.decimal_places ?? '-'}</div>
               </div>
             </div>
             {defaultCurrency.description && (
               <div className="space-y-1">
-                <span className="text-xs text-muted-foreground">Description</span>
+                <span className="text-xs text-muted-foreground">{t('common.field.description')}</span>
                 <div className="text-sm">{defaultCurrency.description}</div>
               </div>
             )}

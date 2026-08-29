@@ -5,6 +5,7 @@ import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { BrandMark } from './BrandMark';
 import { parseApiError } from '../utils/errorParser';
+import { useI18n } from '../hooks/useI18n';
 
 const DEFAULT_ACCEPT = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -42,15 +43,16 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
   fallbackCode,
   onUpload,
 }) => {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
   const validate = (file: File): string => {
     if (!accept.includes(file.type)) {
-      return `Unsupported file type. Allowed: ${accept.map((t) => t.replace('image/', '')).join(', ')}.`;
+      return t('common.upload.unsupportedType', { types: accept.map((t2) => t2.replace('image/', '')).join(', ') });
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
-      return `File is too large. Maximum size is ${maxSizeMB} MB.`;
+      return t('common.upload.tooLarge', { size: maxSizeMB });
     }
     return '';
   };
@@ -64,9 +66,9 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
     setBusy(true);
     try {
       await onUpload(file);
-      toast.success(`${label} updated`);
+      toast.success(t('common.upload.updated', { label }));
     } catch (e) {
-      toast.error(`${label} upload failed`, { description: parseApiError(e).message });
+      toast.error(t('common.upload.uploadFailed', { label }), { description: parseApiError(e).message });
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -141,7 +143,11 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          aria-label={value ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
+          aria-label={
+            value
+              ? t('common.upload.replaceLabel', { label: label.toLowerCase() })
+              : t('common.upload.uploadLabel', { label: label.toLowerCase() })
+          }
           className="group focus-visible:ring-ring relative block rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
         >
           {renderPreview()}
@@ -176,10 +182,15 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
             {fileInput}
             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-              {busy ? 'Uploading…' : value ? `Replace ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}
+              {busy
+                ? t('common.busy.uploading')
+                : value
+                  ? t('common.upload.replaceLabel', { label: label.toLowerCase() })
+                  : t('common.upload.uploadLabel', { label: label.toLowerCase() })}
             </Button>
             <p className="text-xs text-muted-foreground">
-              {accept.map((t) => t.replace('image/', '').toUpperCase()).join(', ')} · up to {maxSizeMB} MB
+              {accept.map((mime) => mime.replace('image/', '').toUpperCase()).join(', ')} ·{' '}
+              {t('common.upload.maxSizeHint', { size: maxSizeMB })}
             </p>
           </div>
         )}

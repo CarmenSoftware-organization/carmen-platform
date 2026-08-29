@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../../hooks/useI18n';
 
 interface HeroNameProps {
   value: string;
@@ -26,10 +27,18 @@ interface HeroNameProps {
 export function HeroName({
   value,
   disabled,
-  label = 'Business unit name',
-  emptyText = '(unnamed business unit)',
+  label,
+  emptyText,
   onCommit,
 }: HeroNameProps) {
+  const { t } = useI18n();
+  // `??`, not a JS default parameter — the fallback has to be a translated call, and default
+  // parameter values can't reach a hook. src/pages/clusterAdmin/businessUnitForm/
+  // BuPropertyPlate.tsx (slice 4) renders this component without either prop and inherits
+  // these two defaults; src/pages/clusterEdit/ClusterPlate.tsx always passes its own
+  // "Cluster name" / "(unnamed cluster)" literals, so it never reaches this fallback.
+  const resolvedLabel = label ?? t('pages.businessUnits.heroNameLabel');
+  const resolvedEmptyText = emptyText ?? t('pages.businessUnits.heroNameEmptyText');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -38,7 +47,7 @@ export function HeroName({
       <input
         // eslint-disable-next-line jsx-a11y/no-autofocus -- edit-in-place
         autoFocus
-        aria-label={label}
+        aria-label={resolvedLabel}
         aria-required="true"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -71,7 +80,7 @@ export function HeroName({
         }}
         className="hover:bg-primary/5 -mx-1.5 min-h-[44px] rounded px-1.5 text-left disabled:hover:bg-transparent sm:min-h-0"
       >
-        {value.trim() || emptyText}
+        {value.trim() || resolvedEmptyText}
       </button>
       {!disabled && (
         <span className="text-destructive text-base font-normal" aria-hidden="true">

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import businessUnitService from '../../services/businessUnitService';
 import clusterService from '../../services/clusterService';
 import { getErrorDetail } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
 import type { BUUser, ClusterUser } from './types';
 
 export function useBusinessUnitUsers(
@@ -17,6 +18,7 @@ export function useBusinessUnitUsers(
    */
   onMutate?: () => void,
 ) {
+  const { t } = useI18n();
   const [buUsers, setBuUsers] = useState<BUUser[]>([]);
   const [editingUser, setEditingUser] = useState<BUUser | null>(null);
   const [editUserForm, setEditUserForm] = useState<{ role: string; is_active: boolean }>({ role: '', is_active: true });
@@ -65,12 +67,12 @@ export function useBusinessUnitUsers(
     if (!deleteUser) return;
     try {
       await businessUnitService.deleteUserBusinessUnit(deleteUser.id);
-      toast.success('User removed from business unit');
+      toast.success(t('pages.businessUnits.userRemovedFromBu'));
       setBuUsers(prev => prev.filter(u => u.id !== deleteUser.id));
       setDeleteUser(null);
       onMutate?.();
     } catch (err: unknown) {
-      toast.error('Failed to remove user', { description: getErrorDetail(err) });
+      toast.error(t('pages.businessUnits.removeUserFailed'), { description: getErrorDetail(err, t) });
     }
   };
 
@@ -84,12 +86,12 @@ export function useBusinessUnitUsers(
     setSavingUser(true);
     try {
       await businessUnitService.updateUserBusinessUnit(editingUser.id, editUserForm);
-      toast.success('User role updated successfully');
+      toast.success(t('pages.businessUnits.userRoleUpdated'));
       setBuUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...editUserForm } : u));
       setEditingUser(null);
       onMutate?.();
     } catch (err: unknown) {
-      toast.error('Failed to update user', { description: getErrorDetail(err) });
+      toast.error(t('pages.businessUnits.updateUserFailed'), { description: getErrorDetail(err, t) });
     } finally {
       setSavingUser(false);
     }
@@ -124,11 +126,11 @@ export function useBusinessUnitUsers(
         role: addUserRole,
       });
       setShowAddUser(false);
-      toast.success('User added to business unit');
+      toast.success(t('pages.businessUnits.userAddedToBu'));
       await fetchBuUsers();
       onMutate?.();
     } catch (err: unknown) {
-      toast.error('Failed to add user', { description: getErrorDetail(err) });
+      toast.error(t('pages.businessUnits.addUserFailed'), { description: getErrorDetail(err, t) });
     } finally {
       setAddingUser(false);
     }

@@ -16,6 +16,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { useI18n } from '../hooks/useI18n';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +44,7 @@ const BusinessUnitEdit: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isNew = !id;
   const { isSuperAdmin, hasPermission } = useAuth();
+  const { t } = useI18n();
 
   const [formData, setFormData] = useState<BusinessUnitFormData>({
     ...initialFormData,
@@ -117,16 +119,18 @@ const BusinessUnitEdit: React.FC = () => {
   const tabs: BuTab[] = (() => {
     const errored = tabsWithErrors(fieldErrors);
     const base: BuTab[] = [
-      { id: 'general', label: 'General' },
-      { id: 'location', label: 'Location' },
-      { id: 'formats', label: 'Formats' },
-      { id: 'technical', label: 'Technical' },
+      { id: 'general', label: t('pages.businessUnits.generalTab') },
+      { id: 'location', label: t('pages.businessUnits.locationTab') },
+      { id: 'formats', label: t('pages.businessUnits.formatsTab') },
+      { id: 'technical', label: t('pages.businessUnits.technicalTab') },
     ];
-    if (!isNew) base.push({ id: 'users', label: 'Users', count: users.buUsers.length });
-    return base.map((t) => ({ ...t, hasError: errored.includes(t.id) }));
+    if (!isNew) base.push({ id: 'users', label: t('pages.businessUnits.usersLabel'), count: users.buUsers.length });
+    // Renamed from the pre-existing `(t) =>` — now that `t` is this component's translator,
+    // reusing the name here would shadow it.
+    return base.map((tab) => ({ ...tab, hasError: errored.includes(tab.id) }));
   })();
   // A ?tab=users deep link on the create form would otherwise render an empty page.
-  const currentTab: BuTabId = tabs.some((t) => t.id === activeTab) ? activeTab : 'general';
+  const currentTab: BuTabId = tabs.some((tab) => tab.id === activeTab) ? activeTab : 'general';
 
   const handleTabChange = (tab: BuTabId) => {
     setActiveTab(tab);
@@ -166,7 +170,7 @@ const BusinessUnitEdit: React.FC = () => {
     setError('');
   };
   const handleInlineValidate = (name: string, value: string) => {
-    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name)) }));
+    setFieldErrors((prev) => ({ ...prev, [name]: validateField(name, value, aliasBound(name), t) }));
   };
 
   // One-way copy: hotel address -> company address. Goes through the same
@@ -187,7 +191,7 @@ const BusinessUnitEdit: React.FC = () => {
       company_longitude: prev.hotel_longitude,
     }));
     setError('');
-    toast.success('Copied hotel address to company address');
+    toast.success(t('pages.businessUnits.copiedHotelAddressToCompany'));
   };
 
   const loadCurrencies = async (buCode: string) => {
@@ -308,7 +312,7 @@ const BusinessUnitEdit: React.FC = () => {
       setDefaultCurrency(bu.default_currency || null);
       users.setBuUsers(Array.isArray(bu.users) ? bu.users : []);
     } catch (err: unknown) {
-      setError('Failed to load business unit: ' + getErrorDetail(err));
+      setError(t('toast.loadFailed', { entity: t('entity.businessUnit.lower') }) + ': ' + getErrorDetail(err, t));
     } finally {
       setLoading(false);
     }
@@ -337,7 +341,7 @@ const BusinessUnitEdit: React.FC = () => {
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const error = validateField(name, value);
+    const error = validateField(name, value, undefined, t);
     setFieldErrors(prev => ({ ...prev, [name]: error }));
   };
 
@@ -425,18 +429,18 @@ const BusinessUnitEdit: React.FC = () => {
   // them client-side so a blank required field never fires a doomed request.
   const validateRequired = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!formData.cluster_id) errs.cluster_id = 'Cluster is required';
-    if (!formData.code.trim()) errs.code = 'Code is required';
-    else errs.code = validateField('code', formData.code);
-    if (!formData.name.trim()) errs.name = 'Name is required';
+    if (!formData.cluster_id) errs.cluster_id = t('common.validation.selectRequired', { label: t('common.label.cluster') });
+    if (!formData.code.trim()) errs.code = t('common.validation.requiredMessage', { label: t('common.field.code') });
+    else errs.code = validateField('code', formData.code, undefined, t);
+    if (!formData.name.trim()) errs.name = t('common.validation.requiredMessage', { label: t('common.field.name') });
     // db_schema is optional (empty = not configured), but a non-empty value must still
     // be a valid postgres identifier before Save goes through — onBlur alone only
     // renders the error, it never blocks submit.
-    if (formData.db_schema) errs.db_schema = validateField('db_schema', formData.db_schema);
+    if (formData.db_schema) errs.db_schema = validateField('db_schema', formData.db_schema, undefined, t);
     const active = Object.fromEntries(Object.entries(errs).filter(([, v]) => v));
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
-      setError('Please fix the highlighted fields: ' + Object.values(active).join(', '));
+      setError(t('pages.businessUnits.fixHighlightedFieldsPrefix') + Object.values(active).join(', '));
       // db_schema lives in Technical while code/cluster live in General, so a failed Save
       // can highlight a field on a tab the user cannot see. Jump to the first tab that
       // holds one — without it, Save just looks like it did nothing.
@@ -468,14 +472,14 @@ const BusinessUnitEdit: React.FC = () => {
           const buCap = cluster.bu_cap ?? 0;
           const buUsed = cluster.bu_used ?? 0;
           if (buUsed >= buCap) {
-            setError(`Cannot create business unit: cluster has reached its license limit (${buUsed}/${buCap})`);
+            setError(t('pages.businessUnits.clusterLicenseLimitReached', { used: buUsed, cap: buCap }));
             setSaving(false);
             return;
           }
         }
         const result = await businessUnitService.create(payload);
         const created = result.data || result;
-        toast.success('Business unit created successfully');
+        toast.success(t('toast.created', { entity: t('entity.businessUnit.sentence') }));
         if (created?.id) {
           navigate(`/business-units/${created.id}/edit`, { replace: true });
         } else {
@@ -483,7 +487,7 @@ const BusinessUnitEdit: React.FC = () => {
         }
       } else {
         await businessUnitService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
-        toast.success('Changes saved successfully');
+        toast.success(t('toast.saved'));
         await fetchBusinessUnit();
       }
     } catch (err: unknown) {
@@ -491,7 +495,7 @@ const BusinessUnitEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchBusinessUnit();
       } else {
-        setError('Failed to save business unit: ' + getErrorDetail(err));
+        setError(t('toast.saveFailed', { entity: t('entity.businessUnit.lower') }) + ': ' + getErrorDetail(err, t));
       }
     } finally {
       setSaving(false);
@@ -523,11 +527,14 @@ const BusinessUnitEdit: React.FC = () => {
     return cluster ? cluster.name : clusterId || '-';
   };
 
-  // Helper to get calculation method label
+  // Helper to get calculation method label. The domain only ever produces 'average'/'fifo'
+  // (see the <select> in businessUnitEdit/sections/CalculationSettingsSection.tsx) or ''
+  // (unset) — not a closed union in src/types/index.ts (calculation_method is a plain
+  // `string` there), so this stays a switch rather than a Record<Union, TKey>.
   const getCalculationMethodLabel = (method: string): string => {
     switch (method) {
-      case 'average': return 'Average';
-      case 'fifo': return 'FIFO';
+      case 'average': return t('common.option.average');
+      case 'fifo': return t('common.option.fifo');
       default: return '-';
     }
   };
@@ -605,7 +612,7 @@ const BusinessUnitEdit: React.FC = () => {
               onCommit={(v) => handleInlineCommit('name', v)}
             />
           }
-          subtitle={isNew ? 'Create a new business unit' : 'Business unit details'}
+          subtitle={isNew ? t('pages.businessUnits.createSubtitle') : t('pages.businessUnits.editSubtitle')}
           audit={normalizeAudit(buRecord)}
         />
 
@@ -703,10 +710,10 @@ const BusinessUnitEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -718,7 +725,7 @@ const BusinessUnitEdit: React.FC = () => {
                 disabled={saving}
               >
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="button"
@@ -731,7 +738,7 @@ const BusinessUnitEdit: React.FC = () => {
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
-                {saving ? 'Saving...' : isNew ? 'Create Business Unit' : 'Save Changes'}
+                {saving ? t('common.busy.saving') : isNew ? t('pages.businessUnits.createButton') : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>
@@ -752,9 +759,11 @@ const BusinessUnitEdit: React.FC = () => {
       <ConfirmDialog
         open={poolChangeConfirm}
         onOpenChange={setPoolChangeConfirm}
-        title="Repoint this business unit?"
-        description={`This business unit will read and write ${formData.db_schema || '(no schema)'} in the selected database pool. Data in the previous location stays where it is and will no longer be reachable from this screen.`}
-        confirmText="Repoint"
+        title={t('pages.businessUnits.repointTitle')}
+        description={t('pages.businessUnits.repointDescription', {
+          schema: formData.db_schema || t('pages.businessUnits.noSchemaFallback'),
+        })}
+        confirmText={t('pages.businessUnits.repointButton')}
         confirmVariant="destructive"
         onConfirm={async () => {
           setPoolChangeConfirm(false);

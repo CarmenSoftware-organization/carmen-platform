@@ -159,6 +159,9 @@ export const th: Translations = {
       unknown: 'ไม่ทราบ',
     },
     action: {
+      // Promoted from PageHeader.tsx's own back-link aria-label (i18n phase-2 slice-5 fix
+      // wave FIX 4) — see en.ts for the reasoning.
+      back: 'กลับ',
       saveChanges: 'บันทึกการแก้ไข',
       delete: 'ลบ',
       remove: 'นำออก',
@@ -187,6 +190,27 @@ export const th: Translations = {
       // ดูคอมเมนต์ที่ en.ts — ต่างจาก `loading` ข้างบนด้วยตัวจุดไข่ปลา (…, U+2026) ไม่ใช่จุด
       // ASCII สามตัว ('...') ทั้งสองรูปแบบมีอยู่จริงในซอร์สคนละจุด เลยต้องแยกคีย์กัน ไม่รวมเป็นคีย์เดียว
       loadingEllipsis: 'กำลังโหลด…',
+      // สถานะ busy ของปุ่มใน BrandingImageUpload.tsx — ใช้ตัวจุดไข่ปลา U+2026 ตัวเดียวกับ
+      // ต้นฉบับ ('Uploading…') และตัวเดียวกับ loadingEllipsis ข้างบน
+      uploading: 'กำลังอัปโหลด…',
+    },
+    // ข้อความของ BrandingImageUpload.tsx เอง (ปุ่ม/aria-label/validate/toast) — คอมโพเนนต์กลาง
+    // ที่ผู้เรียกไม่มีช่องแทนที่ได้ (ข้อความอยู่ใน JSX/toast() ของคอมโพเนนต์เอง ไม่ใช่ label ที่
+    // รับมาจากผู้เรียก) จึงเลื่อนไปทำทีหลังแบบ auditColumns.tsx/AuditMeta.tsx/relativeTime.ts
+    // ไม่ได้ ดูคอมเมนต์ที่ en.ts
+    upload: {
+      // `.toLowerCase()` ยังคงเรียกกับ `label` ก่อน interpolate เหมือนต้นฉบับ — กับข้อความไทย
+      // ไม่มีผล (ภาษาไทยไม่มีตัวพิมพ์เล็ก-ใหญ่) แต่จำเป็นเพื่อให้ผลลัพธ์ภาษาอังกฤษเหมือนเดิมทุก
+      // ตัวอักษร ('Upload logo' ไม่ใช่ 'Upload Logo')
+      uploadLabel: 'อัปโหลด {{label}}',
+      replaceLabel: 'แทนที่ {{label}}',
+      unsupportedType: 'ไม่รองรับประเภทไฟล์นี้ อนุญาต: {{types}}',
+      tooLarge: 'ไฟล์มีขนาดใหญ่เกินไป ขนาดสูงสุดคือ {{size}} MB',
+      // คู่กับรายการชนิดไฟล์ที่ไม่แปล (ข้อมูล ไม่ใช่ข้อความ เช่น 'JPEG, PNG, WEBP') — คีย์นี้
+      // ให้แค่ครึ่งหลัง: '{{types}} · {{คีย์นี้}}'
+      maxSizeHint: 'ไม่เกิน {{size}} MB',
+      updated: 'อัปเดต {{label}} แล้ว',
+      uploadFailed: 'อัปโหลด {{label}} ไม่สำเร็จ',
     },
     audit: {
       createdAt: 'สร้างเมื่อ',
@@ -221,12 +245,19 @@ export const th: Translations = {
       endDate: 'วันที่สิ้นสุด',
       required: '{{label}} *',
       code: 'รหัส',
+      // Promoted from pages.clusterAdmin.aliasLabel — copied verbatim, not retranslated.
+      // See en.ts for the promotion rationale.
+      alias: 'ชื่อแฝง',
     },
     section: {
       identity: 'ข้อมูลระบุตัวตน',
       branding: 'แบรนด์',
       configuration: 'การตั้งค่า',
       access: 'สิทธิ์เข้าถึง',
+      // Promoted from pages.clusterAdmin.hotel / pages.clusterAdmin.company — copied
+      // verbatim, not retranslated. See en.ts for the promotion rationale.
+      hotel: 'โรงแรม',
+      company: 'บริษัท',
     },
     option: {
       function: 'ฟังก์ชัน',
@@ -238,6 +269,9 @@ export const th: Translations = {
       // theme.system (the "follow the OS" theme setting) even though English spells both
       // the same way.
       system: 'ทั้งระบบ',
+      // Promoted from pages.clusterAdmin.fifo — identical to English in both languages
+      // (FIFO is not translated); copied verbatim. See en.ts for the promotion rationale.
+      fifo: 'FIFO',
     },
     label: {
       cluster: 'Cluster',
@@ -252,6 +286,10 @@ export const th: Translations = {
       businessUnitsLabel: 'หน่วยธุรกิจ',
       filters: 'ตัวกรอง',
       default: 'ค่าเริ่มต้น',
+      // Promoted from pages.clusterAdmin.hq — identical to English in both languages (HQ is
+      // an abbreviation, not translated); copied verbatim. See en.ts for the promotion
+      // rationale.
+      hq: 'HQ',
     },
     state: {
       noExpiry: 'ไม่มีวันหมดอายุ',
@@ -265,6 +303,9 @@ export const th: Translations = {
       daysLeft: 'เหลืออีก {{count}} วัน',
       unsavedChanges: 'มีการแก้ไขที่ยังไม่บันทึก',
       noChanges: 'ไม่มีการแก้ไข',
+      // Promoted from TabStrip.tsx's own error-dot aria-label (i18n phase-2 slice-5 fix
+      // wave FIX 4) — see en.ts for the reasoning.
+      hasErrors: 'มีข้อผิดพลาด',
       unknownUser: 'ไม่ระบุชื่อ',
       noBusinessUnits: 'ไม่มีหน่วยธุรกิจ',
       noBusinessUnitsYet: 'ยังไม่มีหน่วยธุรกิจ',
@@ -876,10 +917,7 @@ export const th: Translations = {
     },
 
     clusterAdmin: {
-      hotel: 'โรงแรม',
-      company: 'บริษัท',
       people: 'บุคคล',
-      hq: 'HQ',
       viewLicenses: 'ดูไลเซนส์',
       clusterHasNoBusinessUnitsYet: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ',
       inviteToAccessHint: 'เชิญผู้ใช้เพื่อให้สิทธิ์เข้าถึง cluster นี้',
@@ -904,7 +942,6 @@ export const th: Translations = {
       loadFailedDetail: 'โหลดหน่วยธุรกิจไม่สำเร็จ: ',
       updateFailed: 'อัปเดตหน่วยธุรกิจไม่สำเร็จ',
       copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
-      fifo: 'FIFO',
       overview: 'ภาพรวม',
       regionalFormats: 'รูปแบบตามภูมิภาค',
       timezone: 'เขตเวลา',
@@ -995,7 +1032,6 @@ export const th: Translations = {
       // --- Task 4: ClusterBuDocument.tsx ---
       elsewhere: 'ที่อื่น',
       addressLabel: 'ที่อยู่',
-      aliasLabel: 'ชื่อแฝง',
       logoLabel: 'โลโก้',
       hotelNameLabel: 'ชื่อโรงแรม',
       phoneLabel: 'โทรศัพท์',
@@ -1109,6 +1145,212 @@ export const th: Translations = {
 
       // --- Task 5: SummaryCardHeader.tsx ---
       viewAll: 'ดูทั้งหมด',
+    },
+
+    // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —
+    // no call site is bound yet).
+    businessUnits: {
+      // Copied verbatim from nav.users — not retranslated. See en.ts for why this stays its
+      // own key instead of reading nav.users directly.
+      usersLabel: 'ผู้ใช้งาน',
+
+      title: 'จัดการหน่วยธุรกิจ',
+      subtitle: 'จัดการหน่วยธุรกิจและแผนกต่าง ๆ',
+      loadFailedPrefix: 'โหลดหน่วยธุรกิจไม่สำเร็จ: ',
+      // Copied verbatim from pages.users.addBusinessUnit.
+      addBusinessUnit: 'เพิ่มหน่วยธุรกิจ',
+      // Copied verbatim from pages.users.addBu.
+      addBu: 'เพิ่ม BU',
+      emptyDescription: 'เริ่มต้นด้วยการสร้างหน่วยธุรกิจแรกของคุณ',
+      // Copied verbatim from pages.clusterAdmin.loadingBusinessUnitsAria.
+      loading: 'กำลังโหลดหน่วยธุรกิจ',
+      // Copied verbatim from pages.clusterAdmin.filterBusinessUnitsByStatus.
+      filterBusinessUnitsByStatus: 'กรองหน่วยธุรกิจตามสถานะ',
+      showSoftDeleted: 'แสดงหน่วยธุรกิจที่ถูกลบชั่วคราว',
+      // Copied verbatim from pages.users.deletedByName.
+      deletedByName: 'ลบโดย {{name}}',
+      deleteTitle: 'ลบหน่วยธุรกิจ',
+      deleteConfirm: 'ต้องการลบหน่วยธุรกิจนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
+
+      // Copied verbatim from pages.clusterAdmin.overview.
+      overview: 'ภาพรวม',
+      summaryLoadFailed: 'โหลดสรุปข้อมูลหน่วยธุรกิจไม่สำเร็จ',
+      businessUnitsCountLabel: 'หน่วยธุรกิจ',
+      acrossClustersOne: 'ครอบคลุม {{count}} cluster',
+      acrossClustersMany: 'ครอบคลุม {{count}} cluster',
+      // Copied verbatim from pages.users.activeInactiveSummary.
+      activeInactiveSummary: 'ใช้งาน {{active}} ราย ไม่ใช้งาน {{inactive}} ราย',
+
+      // --- Task 3: BusinessUnitDocument.tsx ---
+      // Copied verbatim from pages.users.buColumn ('BU' is an abbreviation, not translated).
+      logoFallback: 'BU',
+      detailsGroup: 'รายละเอียด',
+      maxUsersLabel: 'จำนวนผู้ใช้สูงสุด',
+      maxUsersFromLicenseOne: 'จาก {{count}} ไลเซนส์ที่ใช้งานอยู่ · แก้ไขได้ที่แท็บผู้ใช้งาน',
+      maxUsersFromLicenseMany: 'จาก {{count}} ไลเซนส์ที่ใช้งานอยู่ · แก้ไขได้ที่แท็บผู้ใช้งาน',
+      // Copied verbatim from pages.clusterAdmin.hotelNameLabel/addressLine1Label/
+      // addressLine2Label/subDistrictLabel/districtLabel/cityLabel/provinceLabel/
+      // postalCodeLabel/countryLabel/latitudeLabel/longitudeLabel/phoneLabel.
+      hotelNameLabel: 'ชื่อโรงแรม',
+      addressLine1Label: 'ที่อยู่บรรทัดที่ 1',
+      addressLine2Label: 'ที่อยู่บรรทัดที่ 2',
+      subDistrictLabel: 'ตำบล/แขวง',
+      districtLabel: 'อำเภอ/เขต',
+      cityLabel: 'เมือง',
+      provinceLabel: 'จังหวัด',
+      postalCodeLabel: 'รหัสไปรษณีย์',
+      countryLabel: 'ประเทศ',
+      latitudeLabel: 'ละติจูด',
+      longitudeLabel: 'ลองจิจูด',
+      phoneLabel: 'โทรศัพท์',
+      // Copied verbatim from pages.clusterAdmin.copyFromHotelAddress.
+      copyFromHotelAddress: 'คัดลอกจากที่อยู่โรงแรม',
+      companyPhoneLabel: 'โทรศัพท์บริษัท',
+      companyEmailLabel: 'อีเมลบริษัท',
+      companyAddressLine1Label: 'ที่อยู่บริษัท บรรทัดที่ 1',
+      companyAddressLine2Label: 'ที่อยู่บริษัท บรรทัดที่ 2',
+      companySubDistrictLabel: 'ตำบล/แขวงบริษัท',
+      companyDistrictLabel: 'อำเภอ/เขตบริษัท',
+      companyCityLabel: 'เมืองบริษัท',
+      companyProvinceLabel: 'จังหวัดบริษัท',
+      companyPostalCodeLabel: 'รหัสไปรษณีย์บริษัท',
+      companyCountryLabel: 'ประเทศบริษัท',
+      companyLatitudeLabel: 'ละติจูดบริษัท',
+      companyLongitudeLabel: 'ลองจิจูดบริษัท',
+      taxGroup: 'ภาษี',
+      // Copied verbatim from pages.clusterAdmin.taxIdLabel/branchLabel.
+      taxIdLabel: 'เลขประจำตัวผู้เสียภาษี',
+      branchLabel: 'สาขา',
+      dateAndTimeGroup: 'วันและเวลา',
+      // Copied verbatim from pages.clusterAdmin.timezone/dateFormat/dateTimeFormat/
+      // timeFormat/longTimeFormat/shortTimeFormat.
+      timezoneLabel: 'เขตเวลา',
+      dateFormatLabel: 'รูปแบบวันที่',
+      dateTimeFormatLabel: 'รูปแบบวันที่-เวลา',
+      timeFormatLabel: 'รูปแบบเวลา',
+      longTimeFormatLabel: 'รูปแบบเวลาแบบยาว',
+      shortTimeFormatLabel: 'รูปแบบเวลาแบบสั้น',
+
+      // --- Task 3: HeroName.tsx ---
+      heroNameLabel: 'ชื่อหน่วยธุรกิจ',
+      heroNameEmptyText: '(หน่วยธุรกิจที่ยังไม่มีชื่อ)',
+
+      // --- Task 3: InlineField.tsx ---
+      setFieldPlaceholder: 'ตั้งค่า {{field}}…',
+
+      // --- Task 3: BusinessUnitEdit.tsx ---
+      generalTab: 'ทั่วไป',
+      locationTab: 'ที่ตั้ง',
+      formatsTab: 'รูปแบบ',
+      technicalTab: 'เทคนิค',
+      createSubtitle: 'สร้างหน่วยธุรกิจใหม่',
+      editSubtitle: 'รายละเอียดหน่วยธุรกิจ',
+      fixHighlightedFieldsPrefix: 'กรุณาแก้ไขช่องที่มีข้อผิดพลาด: ',
+      clusterLicenseLimitReached: 'ไม่สามารถสร้างหน่วยธุรกิจได้: cluster มีไลเซนส์ครบโควตาแล้ว ({{used}}/{{cap}})',
+      createButton: 'สร้างหน่วยธุรกิจ',
+      repointTitle: 'ย้ายจุดเชื่อมต่อของหน่วยธุรกิจนี้หรือไม่',
+      repointDescription: 'หน่วยธุรกิจนี้จะอ่านและเขียนข้อมูลที่ {{schema}} ใน database pool ที่เลือกไว้ ข้อมูลในตำแหน่งเดิมจะยังอยู่ที่เดิม แต่จะไม่สามารถเข้าถึงได้จากหน้านี้อีกต่อไป',
+      noSchemaFallback: '(ไม่มี schema)',
+      repointButton: 'ย้ายจุดเชื่อมต่อ',
+      // Copied verbatim from pages.clusterAdmin.copiedHotelAddressToCompany.
+      copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
+
+      // --- Task 4: BusinessUnitBrandingCard.tsx ---
+      brandingDescription: 'โลโก้และรูปประจำตัวที่แสดงทั่วทั้งแพลตฟอร์ม',
+      // Copied verbatim from pages.clusterAdmin.logoLabel.
+      logoLabel: 'โลโก้',
+
+      // --- Task 4: BusinessUnitLicensesCard.tsx ---
+      userLicensesTitle: 'ไลเซนส์ผู้ใช้',
+      // Copied verbatim from pages.licenses.seatFromLicenseManyOne/ManyMany (identical Thai
+      // across all four variants there).
+      seatsFromActiveLicenseOne: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatsFromActiveLicenseMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      clusterPoolSeatsUsed: 'พูลระดับ cluster: ใช้ไป {{used}} / {{cap}} ที่นั่ง',
+      seatsManagedInLicenseCenter: 'จัดการที่นั่งได้ที่ License Center',
+
+      // --- Task 4: BusinessUnitUsersCard.tsx ---
+      activeCountBadge: 'ใช้งาน {{count}} ราย',
+      ofTotalUsers: 'จากทั้งหมด {{total}} คน',
+      clusterSeatsUsed: 'ใช้ที่นั่งระดับ cluster ไป {{used}} / {{cap}}',
+      deactivateMoreHint: 'ต้องปิดใช้งานเพิ่มอีก {{count}} คนที่ไม่ได้สังกัดหน่วยธุรกิจอื่นใน cluster นี้',
+      noUsersAssignedYet: 'ยังไม่มีผู้ใช้ที่มอบหมาย',
+      sharedLabel: 'ใช้ร่วมกัน',
+      sharedExplanation: 'ยังใช้งานอยู่ในหน่วยธุรกิจอื่นใน cluster นี้ด้วย การปิดใช้งานที่นี่จึงไม่คืนที่นั่ง',
+      sharedBadgeTooltip: 'ยังใช้งานอยู่ในหน่วยธุรกิจอื่นใน cluster นี้ด้วย',
+      buStatusLabel: 'สถานะ BU',
+      editUserAria: 'แก้ไข {{name}}',
+      // Copied verbatim from pages.users.removeBuAria.
+      removeUserAria: 'นำ {{name}} ออก',
+      editUserInBuTitle: 'แก้ไขผู้ใช้ในหน่วยธุรกิจ',
+      saveButton: 'บันทึก',
+      removeUserTitle: 'นำผู้ใช้ออก',
+      removeUserConfirm: 'ต้องการนำ "{{name}}" ออกจากหน่วยธุรกิจนี้ใช่หรือไม่',
+      thisUser: 'ผู้ใช้รายนี้',
+      addUserToBuTitle: 'เพิ่มผู้ใช้เข้าหน่วยธุรกิจ',
+      selectUserFromClusterDesc: 'เลือกผู้ใช้จาก cluster นี้เพื่อเพิ่ม',
+      searchClusterUsersPlaceholder: 'ค้นหาผู้ใช้ใน cluster...',
+      loadingClusterUsers: 'กำลังโหลดผู้ใช้ใน cluster...',
+      allClusterUsersAdded: 'ผู้ใช้ทั้งหมดใน cluster นี้อยู่ในหน่วยธุรกิจนี้แล้ว',
+      noUsersInCluster: 'ไม่มีผู้ใช้ใน cluster นี้',
+      availableOfTotalClusterUsers: 'ว่าง {{available}} จากผู้ใช้ทั้งหมด {{total}} คนใน cluster',
+
+      // --- Task 4: useBusinessUnitUsers.ts ---
+      userRemovedFromBu: 'นำผู้ใช้ออกจากหน่วยธุรกิจแล้ว',
+      removeUserFailed: 'นำผู้ใช้ออกไม่สำเร็จ',
+      userRoleUpdated: 'อัปเดตบทบาทผู้ใช้สำเร็จ',
+      updateUserFailed: 'อัปเดตผู้ใช้ไม่สำเร็จ',
+      userAddedToBu: 'เพิ่มผู้ใช้เข้าหน่วยธุรกิจแล้ว',
+      addUserFailed: 'เพิ่มผู้ใช้ไม่สำเร็จ',
+
+      // --- Task 4: ConfigurationSection.tsx ---
+      configDescription: 'รายการตั้งค่าแบบคีย์-ค่า',
+      configKeyLabel: 'คีย์',
+      configLabelField: 'ป้ายกำกับ',
+      configDataTypeLabel: 'ประเภทข้อมูล',
+      configValueLabel: 'ค่า',
+      configKeyPlaceholder: 'คีย์การตั้งค่า',
+      configLabelPlaceholder: 'ป้ายกำกับการตั้งค่า',
+      configValuePlaceholder: 'ค่าการตั้งค่า',
+      configSelectType: 'เลือกประเภท',
+      datatypeString: 'String',
+      datatypeNumber: 'Number',
+      datatypeBoolean: 'Boolean',
+      datatypeDate: 'Date',
+      datatypeEnum: 'Enum',
+      datatypeJson: 'JSON',
+      addConfigEntry: 'เพิ่มรายการตั้งค่า',
+      noConfigEntries: 'ไม่มีรายการตั้งค่า',
+
+      // --- Task 4: CalculationSettingsSection.tsx ---
+      calculationSettingsTitle: 'ตั้งค่าการคำนวณ',
+      calculationSettingsDescription: 'วิธีคำนวณและการตั้งค่าสกุลเงิน',
+      loadingCurrencies: 'กำลังโหลดสกุลเงิน…',
+      calculationMethodLabel: 'วิธีคำนวณ',
+      selectMethodOption: 'เลือกวิธีคำนวณ',
+      defaultCurrencyIdLabel: 'รหัสสกุลเงินเริ่มต้น',
+      selectCurrencyOption: 'เลือกสกุลเงิน',
+      defaultCurrencyIdPlaceholder: 'รหัสสกุลเงินเริ่มต้น',
+      symbolLabel: 'สัญลักษณ์',
+      decimalPlacesLabel: 'จำนวนทศนิยม',
+      inactiveSuffix: ' (ปิดใช้งาน)',
+
+      // --- Task 4: DatabaseConnectionSection.tsx ---
+      loadingPoolsText: 'กำลังโหลด pool…',
+      notSetOption: '— ยังไม่ได้ตั้งค่า —',
+      schemaLabel: 'Schema',
+      schemaPlaceholder: 'cbr_prod',
+      databaseConnectionTitle: 'การเชื่อมต่อฐานข้อมูล',
+      databaseConnectionDescription: 'Database pool และ schema ที่ใช้ร่วมกัน',
+      databasePoolPermissionRequired: 'การเปลี่ยน database pool ต้องมีสิทธิ์ระดับแพลตฟอร์ม',
+
+      // --- Task 4: NumberFormatsSection.tsx ---
+      numberFormatsTitle: 'รูปแบบตัวเลข',
+      numberFormatsDescription: 'ตั้งค่ารูปแบบการแสดงตัวเลข',
+      perPageFormatLabel: 'รูปแบบต่อหน้า',
+      amountFormatLabel: 'รูปแบบจำนวนเงิน',
+      quantityFormatLabel: 'รูปแบบจำนวน',
+      recipeFormatLabel: 'รูปแบบสูตร',
     },
   },
   error: {

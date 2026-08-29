@@ -121,7 +121,7 @@ export function ClusterBuDocument({
         <div className="space-y-4">
           <Card className="p-0">
             <Group label={t('common.section.identity')}>
-              {inline('alias_name', t('pages.clusterAdmin.aliasLabel'), { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
+              {inline('alias_name', t('common.field.alias'), { mono: true, validate: true, maxLength: BU_ALIAS_MAX })}
               {inline('description', t('common.field.description'), { type: 'textarea' })}
             </Group>
             {/* ป้ายกลุ่มแบบเดียวกับที่เหลือของหน้า แทน BusinessUnitBrandingCard ซึ่งใช้หัวการ์ด
@@ -155,7 +155,7 @@ export function ClusterBuDocument({
 
       {activeTab === 'hotel' && (
         <Card className="p-0">
-          <Group label={t('pages.clusterAdmin.hotel')}>
+          <Group label={t('common.section.hotel')}>
             {inline('hotel_name', t('pages.clusterAdmin.hotelNameLabel'))}
             {inline('hotel_tel', t('pages.clusterAdmin.phoneLabel'), { mono: true, validate: true })}
             {inline('hotel_email', t('common.field.email'), { type: 'email', validate: true })}
@@ -167,7 +167,7 @@ export function ClusterBuDocument({
       {activeTab === 'company' && (
         <Card className="p-0">
           <Group
-            label={t('pages.clusterAdmin.company')}
+            label={t('common.section.company')}
             action={
               canEdit && (
                 <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>

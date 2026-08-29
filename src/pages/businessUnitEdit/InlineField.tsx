@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { CharacterCountInput } from '../../components/ui/character-count-input';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface InlineOption {
   value: string;
@@ -65,6 +66,7 @@ export function InlineField({
   onCommit,
   onValidate,
 }: InlineFieldProps) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -103,7 +105,7 @@ export function InlineField({
     }
   };
 
-  const promptText = placeholder || `Set ${label.toLowerCase()}…`;
+  const promptText = placeholder || t('pages.businessUnits.setFieldPlaceholder', { field: label.toLowerCase() });
   // Selects store the option value (e.g. a UUID); show its human label in read mode.
   const displayValue =
     type === 'select'
