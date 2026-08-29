@@ -21,12 +21,12 @@ describe('TestEmailDialog', () => {
     render(
       <TestEmailDialog open settingId="s1" defaultTo="admin@carmen.io" onOpenChange={vi.fn()} />,
     );
-    expect(screen.getByLabelText('ผู้รับ')).toHaveValue('admin@carmen.io');
+    expect(screen.getByLabelText('Recipient')).toHaveValue('admin@carmen.io');
   });
 
   it('leaves the recipient blank when the identity is a username, not an email', () => {
     render(<TestEmailDialog open settingId="s1" defaultTo="samutpra" onOpenChange={vi.fn()} />);
-    expect(screen.getByLabelText('ผู้รับ')).toHaveValue('');
+    expect(screen.getByLabelText('Recipient')).toHaveValue('');
   });
 
   it('reports success with the address it was sent to', async () => {
@@ -35,7 +35,7 @@ describe('TestEmailDialog', () => {
     render(
       <TestEmailDialog open settingId="s1" defaultTo="admin@carmen.io" onOpenChange={vi.fn()} />,
     );
-    await user.click(screen.getByRole('button', { name: 'ส่งเมลทดสอบ' }));
+    await user.click(screen.getByRole('button', { name: 'Send test email' }));
     await waitFor(() => expect(mockSendTest).toHaveBeenCalledWith('s1', 'admin@carmen.io'));
     expect(toast.success).toHaveBeenCalledWith(
       expect.stringContaining('admin@carmen.io'),
@@ -46,7 +46,7 @@ describe('TestEmailDialog', () => {
     const user = userEvent.setup();
     mockSendTest.mockResolvedValue({ sent: false, reason: 'decrypt-failed' });
     render(<TestEmailDialog open settingId="s1" defaultTo="" onOpenChange={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'ส่งเมลทดสอบ' }));
+    await user.click(screen.getByRole('button', { name: 'Send test email' }));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     const message = toast.error.mock.calls[0][0] as string;
     expect(message).toContain('SECRET_ENCRYPTION_KEY');
@@ -57,7 +57,7 @@ describe('TestEmailDialog', () => {
     const user = userEvent.setup();
     mockSendTest.mockResolvedValue({ sent: false, reason: 'smtp-error' });
     render(<TestEmailDialog open settingId="s1" defaultTo="" onOpenChange={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'ส่งเมลทดสอบ' }));
+    await user.click(screen.getByRole('button', { name: 'Send test email' }));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(toast.error.mock.calls[0][0]).toContain('host');
   });

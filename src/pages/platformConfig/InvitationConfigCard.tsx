@@ -7,6 +7,7 @@ import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { InvitationConfig, PlatformConfig } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface InvitationConfigCardProps {
   config: PlatformConfig | null;
@@ -46,6 +47,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<InvitationFormData>(() => toForm(config));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -58,17 +60,17 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
    */
   const validate = (name: keyof InvitationFormData, value: string): string => {
     if (name === 'base_url') {
-      if (!value.trim()) return 'ต้องระบุ Base URL';
+      if (!value.trim()) return t('pages.platformConfig.baseUrlRequired');
       try {
         new URL(value);
         return '';
       } catch {
-        return 'รูปแบบ URL ไม่ถูกต้อง (ต้องมี scheme เช่น https://)';
+        return t('pages.platformConfig.urlInvalid');
       }
     }
     const n = Number(value);
-    if (!value.trim()) return 'ต้องระบุจำนวนวัน';
-    if (!Number.isInteger(n) || n < 1 || n > 365) return 'ต้องเป็นจำนวนเต็ม 1–365';
+    if (!value.trim()) return t('pages.platformConfig.daysRequired');
+    if (!Number.isInteger(n) || n < 1 || n > 365) return t('pages.platformConfig.daysRange');
     return '';
   };
 
@@ -105,7 +107,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
         base_url: formData.base_url.trim(),
         expiry_days: Number(formData.expiry_days),
       });
-      toast.success('บันทึกการตั้งค่าคำเชิญแล้ว');
+      toast.success(t('pages.platformConfig.savedInvitationToast'));
       await onSaved();
     } catch (err: unknown) {
       const { message, fields } = parseApiError(err);
@@ -120,8 +122,8 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
 
   return (
     <ConfigCardShell
-      title="Invitation"
-      description="ลิงก์ปลายทางและอายุของคำเชิญเข้าคลัสเตอร์"
+      title={t('pages.platformConfig.invitationTitle')}
+      description={t('pages.platformConfig.invitationDescription')}
       canManage={canManage}
       isEditing={isEditing}
       saving={saving}
@@ -130,7 +132,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
       onCancel={handleCancel}
     >
         <div className="space-y-2">
-          <Label htmlFor="invitation-base-url">Base URL</Label>
+          <Label htmlFor="invitation-base-url">{t('pages.platformConfig.baseUrl')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -139,7 +141,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
                 onChange={(e) => handleChange('base_url', e.target.value)}
                 onBlur={() => handleBlur('base_url')}
                 className={fieldErrors.base_url ? 'border-destructive' : ''}
-                placeholder="https://inventory.carmen.io/invitations"
+                placeholder={t('pages.platformConfig.invitationUrlPlaceholder')}
               />
               {fieldErrors.base_url && (
                 <p className="text-xs text-destructive">{fieldErrors.base_url}</p>
@@ -149,16 +151,14 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
             <ReadOnlyText value={form.base_url} />
           )}
           <p className="text-xs text-muted-foreground">
-            Where the invitation link in the email points. This is the Carmen inventory app, not
-            this console — the recipient accepts the invitation there, and can create their account
-            from the same link without signing up first. The system appends{' '}
-            <code className="font-mono">?token=…</code> itself, so enter the page URL only, e.g.{' '}
+            {t('pages.platformConfig.invitationHint1')}{' '}
+            <code className="font-mono">?token=…</code> {t('pages.platformConfig.invitationHint2')}{' '}
             <code className="font-mono">https://inventory.example.com/invitations</code>.
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="invitation-expiry-days">Expiry (days)</Label>
+          <Label htmlFor="invitation-expiry-days">{t('pages.platformConfig.expiryDays')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -176,7 +176,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
               )}
             </>
           ) : (
-            <ReadOnlyText value={`${form.expiry_days} วัน`} />
+            <ReadOnlyText value={t('pages.platformConfig.daysValue', { count: form.expiry_days })} />
           )}
         </div>
     </ConfigCardShell>

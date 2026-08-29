@@ -6,6 +6,7 @@ import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { LinkConfig, PlatformConfig } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface LinkConfigCardProps {
   /** คีย์ใน tb_platform_config เช่น `email_verification` หรือ `password_reset` */
@@ -48,6 +49,7 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   /**
    * แปลงค่าดิบจาก API เป็นค่าในฟอร์ม — ค่าที่ backend คืนมาผ่าน Zod แล้วเสมอ
    * แต่ยังกันไว้ด้วย fallback เผื่อ backend เวอร์ชันเก่ายังไม่รู้จักคีย์นี้
@@ -73,17 +75,17 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
    */
   const validate = (name: keyof LinkFormData, value: string): string => {
     if (name === 'base_url') {
-      if (!value.trim()) return 'ต้องระบุ Base URL';
+      if (!value.trim()) return t('pages.platformConfig.baseUrlRequired');
       try {
         new URL(value);
         return '';
       } catch {
-        return 'รูปแบบ URL ไม่ถูกต้อง (ต้องมี scheme เช่น https://)';
+        return t('pages.platformConfig.urlInvalid');
       }
     }
     const n = Number(value);
-    if (!value.trim()) return 'ต้องระบุจำนวนชั่วโมง';
-    if (!Number.isInteger(n) || n < 1 || n > 720) return 'ต้องเป็นจำนวนเต็ม 1–720';
+    if (!value.trim()) return t('pages.platformConfig.hoursRequired');
+    if (!Number.isInteger(n) || n < 1 || n > 720) return t('pages.platformConfig.hoursRange');
     return '';
   };
 
@@ -120,7 +122,7 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
         base_url: formData.base_url.trim(),
         expiry_hours: Number(formData.expiry_hours),
       });
-      toast.success(`บันทึกการตั้งค่า ${title} แล้ว`);
+      toast.success(t('pages.platformConfig.savedToast', { title }));
       await onSaved();
     } catch (err: unknown) {
       const { message, fields } = parseApiError(err);
@@ -145,7 +147,7 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
       onCancel={handleCancel}
     >
         <div className="space-y-2">
-          <Label htmlFor={`${configKey}-base-url`}>Base URL</Label>
+          <Label htmlFor={`${configKey}-base-url`}>{t('pages.platformConfig.baseUrl')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -164,14 +166,14 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
             <ReadOnlyText value={form.base_url} />
           )}
           <p className="text-xs text-muted-foreground">
-            หน้าปลายทางในแอป inventory ที่ลิงก์ในอีเมลชี้ไป ไม่ใช่ console นี้ ระบบจะเติม{' '}
-            <code className="font-mono">?token=…</code> ต่อท้ายให้เอง จึงกรอกแค่ URL ของหน้า เช่น{' '}
+            {t('pages.platformConfig.baseUrlHint1')}{' '}
+            <code className="font-mono">?token=…</code> {t('pages.platformConfig.baseUrlHint2')}{' '}
             <code className="font-mono">{urlExample}</code>
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor={`${configKey}-expiry-hours`}>Expiry (hours)</Label>
+          <Label htmlFor={`${configKey}-expiry-hours`}>{t('pages.platformConfig.expiryHours')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -189,7 +191,7 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
               )}
             </>
           ) : (
-            <ReadOnlyText value={`${form.expiry_hours} ชั่วโมง`} />
+            <ReadOnlyText value={t('pages.platformConfig.hoursValue', { count: form.expiry_hours })} />
           )}
         </div>
     </ConfigCardShell>

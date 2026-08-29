@@ -18,6 +18,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
 import { normalizeAudit, latestActor } from '../utils/audit';
 import type { PlatformConfig } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 /** การ์ดหนึ่งใบในหน้านี้ — ไม่ใช่คีย์ของ config เพราะคีย์ `invitation` มีสองการ์ด */
 type CardId =
@@ -31,6 +32,7 @@ type CardId =
 
 const PlatformConfigManagement: React.FC = () => {
   const { hasPermission } = useAuth();
+  const { t } = useI18n();
   const canManage = hasPermission('platform_config.manage');
   // คีย์ `license` มีด่านที่สองฝั่ง backend (`platform_configs.controller.ts` → `mayWriteKey`)
   // ต้องมี `license.manage` เพิ่มจึงจะเขียนได้ ไม่ gate ตรงนี้ = ปุ่ม Edit ที่ Save แล้ว 403 เสมอ
@@ -96,8 +98,8 @@ const PlatformConfigManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Platform Config"
-          subtitle="ค่าตั้งระดับ platform ที่แก้ได้โดยไม่ต้อง deploy ใหม่"
+          title={t('pages.platformConfig.title')}
+          subtitle={t('pages.platformConfig.subtitle')}
         />
 
         {error ? (
@@ -109,10 +111,10 @@ const PlatformConfigManagement: React.FC = () => {
         ) : loading ? (
           <div className="space-y-6">
             {[
-              { heading: 'Email links & lifetimes', cards: 4 },
-              { heading: 'Invitation limits', cards: 1 },
-              { heading: 'Notifications', cards: 1 },
-              { heading: 'Licensing', cards: 1 },
+              { heading: t('pages.platformConfig.sectionEmailLinks'), cards: 4 },
+              { heading: t('pages.platformConfig.sectionInvitationLimits'), cards: 1 },
+              { heading: t('pages.platformConfig.sectionNotifications'), cards: 1 },
+              { heading: t('pages.platformConfig.sectionLicensing'), cards: 1 },
             ].map((section) => (
               <div key={section.heading} className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted-foreground">{section.heading}</h2>
@@ -128,7 +130,7 @@ const PlatformConfigManagement: React.FC = () => {
           <div className="space-y-6">
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground">
-                Email links &amp; lifetimes
+                {t('pages.platformConfig.sectionEmailLinks')}
               </h2>
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-1">
@@ -171,8 +173,8 @@ const PlatformConfigManagement: React.FC = () => {
                   <LinkConfigCard
                     key={`email_verification-${emailVerificationAudit.updated?.at ?? emailVerificationAudit.created?.at ?? 'default'}`}
                     configKey="email_verification"
-                    title="Email Verification"
-                    description="ลิงก์ยืนยันอีเมลของเส้นทางเดิม (บัญชีที่สร้างก่อนกลับลำดับ และผู้ดูแลสร้างให้)"
+                    title={t('pages.platformConfig.emailVerificationTitle')}
+                    description={t('pages.platformConfig.emailVerificationDescription')}
                     urlExample="https://inventory.carmen.io/verify-email"
                     defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
                     config={emailVerification}
@@ -193,8 +195,8 @@ const PlatformConfigManagement: React.FC = () => {
                   <LinkConfigCard
                     key={`password_reset-${passwordResetAudit.updated?.at ?? passwordResetAudit.created?.at ?? 'default'}`}
                     configKey="password_reset"
-                    title="Password Reset"
-                    description="ลิงก์ตั้งรหัสผ่านใหม่และอายุของลิงก์"
+                    title={t('pages.platformConfig.passwordResetTitle')}
+                    description={t('pages.platformConfig.passwordResetDescription')}
                     urlExample="https://inventory.carmen.io/reset-password"
                     defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
                     config={passwordReset}
@@ -215,7 +217,7 @@ const PlatformConfigManagement: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">Invitation limits</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.platformConfig.sectionInvitationLimits')}</h2>
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-1">
                   <InvitationLimitsCard
@@ -239,7 +241,7 @@ const PlatformConfigManagement: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">Notifications</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.platformConfig.sectionNotifications')}</h2>
               <div className="grid gap-4 lg:grid-cols-2">
                 <NotificationEmailConfigCard
                   // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา —
@@ -256,7 +258,7 @@ const PlatformConfigManagement: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">Licensing</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.platformConfig.sectionLicensing')}</h2>
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-1">
                   <LicenseEnforcementCard

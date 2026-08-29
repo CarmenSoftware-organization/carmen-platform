@@ -9,6 +9,8 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import emailSettingService from '../../services/emailSettingService';
 import { parseApiError } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 
 interface TestEmailDialogProps {
   open: boolean;
@@ -21,12 +23,13 @@ interface TestEmailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const REASON_MESSAGE: Record<string, string> = {
-  'smtp-error': 'เชื่อมต่อ SMTP ไม่สำเร็จ — ตรวจ host, port, TLS และรหัสผ่าน',
+// เก็บ TKey ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้
+const REASON_MESSAGE: Record<string, TKey> = {
+  'smtp-error': 'pages.emailSettings.reasonSmtpError',
   'decrypt-failed':
-    'ถอดรหัสรหัสผ่านไม่ได้ — SECRET_ENCRYPTION_KEY ของเซิร์ฟเวอร์ไม่ตรงกัน ต้องให้ทีมระบบตรวจ',
-  'lookup-failed': 'อ่านโปรไฟล์จากฐานข้อมูลไม่ได้',
-  'no-config': 'ไม่พบการตั้งค่า SMTP สำหรับโปรไฟล์นี้',
+    'pages.emailSettings.reasonDecryptFailed',
+  'lookup-failed': 'pages.emailSettings.reasonLookupFailed',
+  'no-config': 'pages.emailSettings.reasonNoConfig',
 };
 
 export const TestEmailDialog: React.FC<TestEmailDialogProps> = ({
@@ -35,6 +38,7 @@ export const TestEmailDialog: React.FC<TestEmailDialogProps> = ({
   defaultTo,
   onOpenChange,
 }) => {
+  const { t } = useI18n();
   const [to, setTo] = useState(defaultTo.includes('@') ? defaultTo : '');
   const [sending, setSending] = useState(false);
 
@@ -43,12 +47,16 @@ export const TestEmailDialog: React.FC<TestEmailDialogProps> = ({
     try {
       const result = await emailSettingService.sendTest(settingId, to);
       if (result.sent) {
-        const target = to.trim() || 'อีเมลของคุณ';
-        toast.success(`ส่งไปที่ ${target} แล้ว — ตรวจกล่องขาเข้าและ spam`);
+        const target = to.trim() || t('pages.emailSettings.yourEmail');
+        toast.success(t('pages.emailSettings.testSentToast', { target }));
         onOpenChange(false);
         return;
       }
-      toast.error(REASON_MESSAGE[result.reason ?? ''] ?? 'ส่งเมลทดสอบไม่สำเร็จ');
+      toast.error(
+        REASON_MESSAGE[result.reason ?? '']
+          ? t(REASON_MESSAGE[result.reason ?? ''])
+          : t('pages.emailSettings.testFailedToast'),
+      );
     } catch (err: unknown) {
       toast.error(parseApiError(err).message);
     } finally {
@@ -60,24 +68,24 @@ export const TestEmailDialog: React.FC<TestEmailDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>ส่งเมลทดสอบ</DialogTitle>
+          <DialogTitle>{t('pages.emailSettings.testEmailTitle')}</DialogTitle>
           <DialogDescription>
-            ส่งข้อความทดสอบผ่านโปรไฟล์ที่บันทึกไว้ เพื่อยืนยันว่าค่า SMTP ใช้งานได้จริง
+            {t('pages.emailSettings.testEmailDescription')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <Label htmlFor="test_to">ผู้รับ</Label>
+          <Label htmlFor="test_to">{t('pages.emailSettings.recipient')}</Label>
           <Input
             id="test_to"
-            aria-label="ผู้รับ"
+            aria-label={t('pages.emailSettings.recipient')}
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            placeholder="เว้นว่าง = ส่งไปที่อีเมลของคุณ"
+            placeholder={t('pages.emailSettings.recipientPlaceholder')}
           />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
-            ยกเลิก
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSend} disabled={sending}>
             {sending ? (
@@ -85,7 +93,7 @@ export const TestEmailDialog: React.FC<TestEmailDialogProps> = ({
             ) : (
               <Send className="mr-2 h-4 w-4" />
             )}
-            ส่งเมลทดสอบ
+            {t('pages.emailSettings.sendTestEmail')}
           </Button>
         </DialogFooter>
       </DialogContent>

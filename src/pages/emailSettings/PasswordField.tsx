@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { useI18n } from '../../hooks/useI18n';
 
 interface PasswordFieldProps {
   /** true เมื่อโปรไฟล์ที่บันทึกไว้มีรหัสผ่านอยู่ */
@@ -20,6 +21,7 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
   isNew,
   onChange,
 }) => {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(isNew);
   const [value, setValue] = useState('');
 
@@ -46,15 +48,15 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
         <Label>SMTP password</Label>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
-            {hasStoredPassword ? 'ตั้งรหัสผ่านไว้แล้ว' : 'ไม่ได้ตั้งรหัสผ่าน'}
+            {hasStoredPassword ? t('pages.emailSettings.passwordSet') : t('pages.emailSettings.passwordNotSet')}
           </span>
           <Button type="button" variant="outline" size="sm" onClick={startEditing}>
-            {hasStoredPassword ? 'เปลี่ยนรหัสผ่าน' : 'ตั้งรหัสผ่าน'}
+            {hasStoredPassword ? t('pages.emailSettings.changePassword') : t('pages.emailSettings.setPassword')}
           </Button>
         </div>
         {!hasStoredPassword && (
           <p className="text-xs text-muted-foreground">
-            โปรไฟล์นี้ส่งเมลโดยไม่ยืนยันตัวตนกับเซิร์ฟเวอร์ SMTP
+            {t('pages.emailSettings.noAuthNote')}
           </p>
         )}
       </div>
@@ -69,20 +71,19 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
           id="smtp_password"
           type="password"
           autoComplete="new-password"
-          aria-label="SMTP password"
+          aria-label={t('pages.emailSettings.smtpPasswordAria')}
           value={value}
           onChange={(e) => handleInput(e.target.value)}
         />
         {!isNew && (
           <Button type="button" variant="ghost" size="sm" onClick={cancelEditing}>
-            ยกเลิก
+            {t('common.cancel')}
           </Button>
         )}
       </div>
-      {!isNew && <p className="text-xs text-muted-foreground">ปล่อยว่าง = ไม่เปลี่ยนรหัสผ่านเดิม</p>}
+      {!isNew && <p className="text-xs text-muted-foreground">{t('pages.emailSettings.keepPasswordHint')}</p>}
       <p className="text-xs text-muted-foreground">
-        หน้านี้ลบรหัสผ่านออกจากโปรไฟล์ที่มีอยู่ไม่ได้ — ถ้าจะย้ายไปใช้ relay ที่ไม่ต้องยืนยันตัวตน
-        ให้ยกเลิกการตั้งค่าแล้วสร้างใหม่
+        {t('pages.emailSettings.cannotRemovePasswordHint')}
       </p>
     </div>
   );

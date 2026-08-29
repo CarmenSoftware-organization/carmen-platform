@@ -7,6 +7,7 @@ import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { InvitationConfig, PlatformConfig } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface InvitationLimitsCardProps {
   config: PlatformConfig | null;
@@ -48,6 +49,7 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<LimitsFormData>(() => toForm(config));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -57,9 +59,9 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
    * การใส่เพดานฝั่ง FE จะทำให้ฟอร์มปฏิเสธค่าที่ API รับได้จริง
    */
   const validate = (value: string): string => {
-    if (!value.trim()) return 'ต้องระบุจำนวน';
+    if (!value.trim()) return t('pages.platformConfig.countRequired');
     const n = Number(value);
-    if (!Number.isInteger(n) || n < 1) return 'ต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป';
+    if (!Number.isInteger(n) || n < 1) return t('pages.platformConfig.countMin1');
     return '';
   };
 
@@ -95,7 +97,7 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
         max_per_admin_per_hour: Number(formData.max_per_admin_per_hour),
         max_per_cluster_per_day: Number(formData.max_per_cluster_per_day),
       });
-      toast.success('บันทึกเพดานคำเชิญแล้ว');
+      toast.success(t('pages.platformConfig.savedLimitsToast'));
       await onSaved();
     } catch (err: unknown) {
       const { message, fields } = parseApiError(err);
@@ -110,8 +112,8 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
 
   return (
     <ConfigCardShell
-      title="Rate limits"
-      description="เพดานจำนวนคำเชิญที่ออกได้ในช่วงเวลาหนึ่ง"
+      title={t('pages.platformConfig.rateLimitsTitle')}
+      description={t('pages.platformConfig.rateLimitsDescription')}
       canManage={canManage}
       isEditing={isEditing}
       saving={saving}
@@ -120,7 +122,7 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
       onCancel={handleCancel}
     >
       <div className="space-y-2">
-        <Label htmlFor="invitation-max-per-admin-per-hour">ต่อผู้ดูแลหนึ่งคน / ชั่วโมง</Label>
+        <Label htmlFor="invitation-max-per-admin-per-hour">{t('pages.platformConfig.perAdminPerHour')}</Label>
         {isEditing ? (
           <>
             <Input
@@ -137,12 +139,12 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
             )}
           </>
         ) : (
-          <ReadOnlyText value={`${form.max_per_admin_per_hour} คำเชิญ`} />
+          <ReadOnlyText value={t('pages.platformConfig.invitationsValue', { count: form.max_per_admin_per_hour })} />
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="invitation-max-per-cluster-per-day">ต่อคลัสเตอร์ / วัน</Label>
+        <Label htmlFor="invitation-max-per-cluster-per-day">{t('pages.platformConfig.perClusterPerDay')}</Label>
         {isEditing ? (
           <>
             <Input
@@ -159,19 +161,20 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
             )}
           </>
         ) : (
-          <ReadOnlyText value={`${form.max_per_cluster_per_day} คำเชิญ`} />
+          <ReadOnlyText value={t('pages.platformConfig.invitationsValue', { count: form.max_per_cluster_per_day })} />
         )}
       </div>
 
       <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-muted-foreground">
         <p>
-          ค่าเริ่มต้นตั้งไว้สูงโดยตั้งใจ — การเปิดโรงแรมใหม่แล้วเชิญพนักงาน 30–50 คนรวดเดียวเป็น
-          สถานการณ์ปกติ เพดานนี้กันการใช้ผิดปกติ <strong>ไม่ใช่ขอบเขตความปลอดภัย</strong> จึงไม่ควรลดลงมา
-          ใกล้จำนวนการใช้งานจริง
+          {t('pages.platformConfig.limitsNote1')}{' '}
+          <strong>{t('pages.platformConfig.limitsNoteStrong1')}</strong>
+          {t('pages.platformConfig.limitsNote2')}
         </p>
         <p className="mt-2">
-          ตัวนับอยู่ในหน่วยความจำของแต่ละ process — <strong>เพดานที่มีผลจริงคูณตามจำนวน instance</strong>{' '}
-          ที่รันอยู่ ตั้ง 100 บนสอง instance หมายถึงได้จริงถึง 200
+          {t('pages.platformConfig.limitsNote3')}{' '}
+          <strong>{t('pages.platformConfig.limitsNoteStrong2')}</strong>{' '}
+          {t('pages.platformConfig.limitsNote4')}
         </p>
       </div>
     </ConfigCardShell>

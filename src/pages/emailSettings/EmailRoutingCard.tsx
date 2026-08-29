@@ -15,6 +15,7 @@ import platformConfigService from '../../services/platformConfigService';
 import { EMAIL_FLOWS } from '../../constants/emailFlows';
 import { parseApiError } from '../../utils/errorParser';
 import type { EmailRoutingConfig, EmailSetting } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface EmailRoutingCardProps {
   profiles: EmailSetting[];
@@ -45,6 +46,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const [routing, setRouting] = useState<EmailRoutingConfig | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
 
   const handleSave = async () => {
     if (!draft.default) {
-      setError('ต้องเลือกโปรไฟล์เริ่มต้น');
+      setError(t('pages.emailSettings.defaultRequired'));
       return;
     }
     try {
@@ -98,7 +100,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
       }
       await platformConfigService.update('email_routing', payload);
       setRouting(payload);
-      toast.success('บันทึกการจับคู่อีเมลแล้ว');
+      toast.success(t('pages.emailSettings.routingSavedToast'));
       await onSaved();
       onCancelEdit();
     } catch (err: unknown) {
@@ -114,21 +116,21 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
         <div className="min-w-0">
-          <CardTitle className="text-base">Email routing</CardTitle>
+          <CardTitle className="text-base">{t('pages.emailSettings.routingTitle')}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            เส้นทางไหนส่งด้วยโปรไฟล์ผู้ส่งตัวใด
+            {t('pages.emailSettings.routingDescription')}
           </p>
         </div>
         {canManage && !isEditing && !loading && (
           <Button variant="outline" size="sm" onClick={onRequestEdit}>
             <Pencil className="mr-2 h-4 w-4" />
-            Edit routing
+            {t('pages.emailSettings.editRouting')}
           </Button>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
-          <p className="text-sm text-muted-foreground">กำลังโหลด...</p>
+          <p className="text-sm text-muted-foreground">{t('common.busy.loading')}</p>
         ) : (
           <>
             <div className="space-y-2">
@@ -139,7 +141,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
                   onValueChange={(v) => setDraft((prev) => ({ ...prev, default: v }))}
                 >
                   <SelectTrigger id="routing-default">
-                    <SelectValue placeholder="เลือกโปรไฟล์" />
+                    <SelectValue placeholder={t('pages.emailSettings.chooseProfile')} />
                   </SelectTrigger>
                   <SelectContent>
                     {liveProfiles.map((p) => (
@@ -155,7 +157,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                ใช้กับทุกเส้นทางที่ไม่ได้เลือกไว้เป็นการเฉพาะ รวมถึงเส้นทางที่เพิ่มใหม่ในอนาคต
+                {t('pages.emailSettings.defaultAppliesNote')}
               </p>
             </div>
 
@@ -171,7 +173,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={USE_DEFAULT}>ใช้ค่าเริ่มต้น</SelectItem>
+                      <SelectItem value={USE_DEFAULT}>{t('pages.emailSettings.useDefault')}</SelectItem>
                       {liveProfiles.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}
@@ -181,10 +183,10 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
                   </Select>
                 ) : (
                   <div className="flex h-9 items-center rounded-md border border-input bg-muted/50 px-3 text-sm">
-                    {routing?.[flow.value] ? nameOf(routing[flow.value]) : 'ใช้ค่าเริ่มต้น'}
+                    {routing?.[flow.value] ? nameOf(routing[flow.value]) : t('pages.emailSettings.useDefault')}
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">{flow.description}</p>
+                <p className="text-xs text-muted-foreground">{t(flow.descriptionKey)}</p>
               </div>
             ))}
 
@@ -202,7 +204,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
                 </Button>
                 <Button variant="outline" onClick={onCancelEdit} disabled={saving}>
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               </div>
             )}
