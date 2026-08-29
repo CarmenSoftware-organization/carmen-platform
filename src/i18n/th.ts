@@ -180,12 +180,34 @@ export const th: Translations = {
       filtersLabel: 'ตัวกรอง:',
       showDeleted: 'แสดงรายการที่ลบแล้ว',
       rowActions: 'การกระทำสำหรับ {{name}}',
+      // ป้ายปุ่มกริยาทั่วไป ใช้โดย XmlEditor.tsx ทั้งสองโหมด (แก้ไข/อ่านอย่างเดียว) — ดู en.ts
+      copy: 'คัดลอก',
+      copied: 'คัดลอกแล้ว',
+      copyFailed: 'คัดลอกไม่สำเร็จ',
+      copiedToClipboard: 'คัดลอกไปยังคลิปบอร์ดแล้ว',
+      download: 'ดาวน์โหลด',
+      upload: 'อัปโหลด',
+      format: 'จัดรูปแบบ',
+      // คู่กับ clearAll ข้างบน — ปุ่ม toggle ต่อ resource ของ PermissionPicker.tsx
+      selectAll: 'เลือกทั้งหมด',
+      // aria-label ปุ่มนำ chip ออกของ BusinessUnitMultiSelect.tsx / UserMultiSelect.tsx —
+      // ข้อความเดียวกันเป๊ะทั้งสองไฟล์
+      removeAria: 'นำ {{name}} ออก',
+      // ปุ่มตรวจสอบสถานะร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx
+      checkStatus: 'ตรวจสอบสถานะ',
+      recheckStatus: 'ตรวจสอบสถานะอีกครั้ง',
     },
     busy: {
       saving: 'กำลังบันทึก...',
+      // ต่างจาก `saving` ข้างบนด้วยตัวจุดไข่ปลา (…, U+2026) ไม่ใช่จุด ASCII สามตัว —
+      // InterfaceEntitlementCard.tsx ใช้ตัวนี้ในซอร์ส ('Saving…')
+      savingEllipsis: 'กำลังบันทึก…',
       deleting: 'กำลังลบ...',
       adding: 'กำลังเพิ่ม...',
       creating: 'กำลังสร้าง...',
+      // ปุ่มตรวจสอบสถานะร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx (ternary
+      // สามทางคู่กับ common.action.checkStatus/recheckStatus ข้างล่าง)
+      checking: 'กำลังตรวจสอบ...',
       loading: 'กำลังโหลด...',
       // ดูคอมเมนต์ที่ en.ts — ต่างจาก `loading` ข้างบนด้วยตัวจุดไข่ปลา (…, U+2026) ไม่ใช่จุด
       // ASCII สามตัว ('...') ทั้งสองรูปแบบมีอยู่จริงในซอร์สคนละจุด เลยต้องแยกคีย์กัน ไม่รวมเป็นคีย์เดียว
@@ -318,6 +340,23 @@ export const th: Translations = {
       searchBusinessUnits: 'ค้นหาหน่วยธุรกิจ...',
       nSelected: 'เลือกแล้ว {{count}} รายการ',
       summaryStale: 'รีเฟรชไม่สำเร็จ — แสดงตัวเลขล่าสุดที่ทราบ',
+      // aria-label ช่องค้นหาของ BusinessUnitMultiSelect.tsx — แนวคิดเดียวกับ
+      // searchBusinessUnits ข้างบน (placeholder ที่มีจุดต่อท้าย) แต่ตัวนี้ไม่มีจุด ตรงกับ
+      // ซอร์สที่แยกเป็นข้อความ aria-label คนละสตริง
+      searchBusinessUnitsAria: 'ค้นหาหน่วยธุรกิจ',
+      noBusinessUnitsFound: 'ไม่พบหน่วยธุรกิจ',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx ทั้งสาม
+      // เช็ค isSuperAdmin ด้วยข้อความ disabledReason นี้เป๊ะเหมือนกันทุกตัวอักษร จึงใช้คีย์
+      // เดียวร่วมกันแทนที่จะสร้างซ้ำสามที่
+      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุดเท่านั้น',
+      // ข้อความเงื่อนไขร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx (เหมือนกันเป๊ะ
+      // ทั้งสองไฟล์)
+      configureDbPoolFirst: 'กรุณาตั้งค่า database pool และ schema ก่อน',
+      // ข้อความเงื่อนไขของ InterfaceEntitlementCard.tsx เอง — อยู่กลุ่มเดียวกับ
+      // configureDbPoolFirst ข้างบน
+      saveBusinessUnitFirst: 'กรุณาบันทึกหน่วยธุรกิจก่อน',
+      // ข้อความ "ตรวจสอบล่าสุดเมื่อ HH:MM:SS" ร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx
+      lastChecked: 'ตรวจสอบล่าสุดเมื่อ {{time}}',
     },
     validation: {
       requiredMessage: 'กรุณากรอก {{label}}',
@@ -375,6 +414,162 @@ export const th: Translations = {
     saveFailed: 'บันทึก {{entity}} ไม่สำเร็จ',
     saved: 'บันทึกการแก้ไขแล้ว',
     exported: 'ส่งออกข้อมูลสำเร็จ',
+  },
+
+  // ข้อความของคอมโพเนนต์กลางใน src/components/ (ไม่รวม ui/) — คอมโพเนนต์กลางต้องไม่อ่านคีย์
+  // pages.* เพราะถูกเรนเดอร์ในหลายหน้า จึงแยกเป็น namespace ของตัวเองตามชื่อคอมโพเนนต์
+  // (i18n phase-2 slice-5.5) — ดู en.ts สำหรับเหตุผลของแต่ละคีย์
+  components: {
+    dialogPreview: {
+      title: 'ตัวอย่าง Dialog',
+      noXmlProvided: 'ไม่มี XML',
+      parseError: 'ข้อผิดพลาดในการแยกวิเคราะห์',
+      // <Dialog> คือชื่อ root element ของ XML ที่ต้องมี — เป็นชื่อ element ไม่ใช่ข้อความ
+      // ทั่วไป จึงคงไว้ไม่แปลภายในประโยค
+      requiresDialogRoot: 'การแสดงตัวอย่างต้องมี root element เป็น <Dialog>',
+      // {{source}} คือค่า DataSource ที่ทำความสะอาดแล้ว (เช่น "Vendor") — เป็นข้อมูลจาก XML
+      // ไม่ใช่ label ที่ต้องแปล จึงไม่มีคีย์ของตัวเอง
+      selectPlaceholder: 'เลือก {{source}}…',
+      // คำสำรองแทน {{source}} เมื่อ XML ไม่มี attribute DataSource เลย
+      genericValue: 'ค่า',
+      noControl: '(ไม่มีตัวควบคุม)',
+      previewUnavailable: 'ไม่สามารถแสดงตัวอย่างได้',
+      // พหูพจน์คงค่าเดียวกันทั้งสองคีย์ — ภาษาไทยไม่ผันตามจำนวน เหมือน
+      // pages.news.articleTotal/articlesTotal
+      fieldCountSingular: 'ฟิลด์ {{count}} รายการ',
+      fieldCountPlural: 'ฟิลด์ {{count}} รายการ',
+      previewOnlyNote: 'แสดงตัวอย่างเท่านั้น ตัวควบคุมถูกปิดใช้งานและไม่ได้โหลดข้อมูล lookup',
+    },
+    // ใช้ร่วมกันระหว่าง DialogPreview.tsx กับ XmlEditor.tsx — ทั้งสองไฟล์แสดงข้อความนี้เหมือน
+    // กันเป๊ะเมื่อแยกวิเคราะห์ XML ไม่สำเร็จและไม่มีข้อความเจาะจงกว่านี้
+    xml: {
+      invalidXml: 'XML ไม่ถูกต้อง',
+    },
+    xmlEditor: {
+      alreadyFormatted: 'จัดรูปแบบไว้แล้ว',
+      formatted: 'จัดรูปแบบ XML แล้ว',
+      nothingToDownload: 'ไม่มีอะไรให้ดาวน์โหลด',
+      downloaded: 'ดาวน์โหลด {{name}} แล้ว',
+      fileLoaded: 'โหลด {{name}} แล้ว',
+      cleared: 'ล้างแล้ว',
+      validXml: 'XML ถูกต้อง',
+      // ประกอบเป็น "{{line}}" แล้วต่อด้วย ", col {{column}}" แบบมีเงื่อนไข ก่อนต่อด้วย ": "
+      // ตรงๆ — แยกสองชิ้นเพราะส่วนคอลัมน์แสดงเฉพาะเมื่อ parser รายงานมา
+      lineLabel: 'บรรทัด {{line}}',
+      colLabel: ', คอลัมน์ {{column}}',
+      linesCount: '{{count}} บรรทัด',
+      clearDialogTitle: 'ล้างตัวแก้ไข?',
+      // "Ctrl/⌘+Z" เป็นสัญลักษณ์ปุ่มลัด ไม่ใช่ข้อความทั่วไป คงไว้ตามเดิมในประโยคที่แปล
+      clearDialogDescription: 'การดำเนินการนี้จะลบเนื้อหาทั้งหมดออกจากตัวแก้ไข คุณสามารถยกเลิกการดำเนินการนี้ได้ด้วย Ctrl/⌘+Z',
+    },
+    markdownEditor: {
+      writeTab: 'เขียน',
+      defaultPlaceholder: 'เขียนเนื้อหาข่าวเป็น Markdown...',
+      nothingToPreview: 'ไม่มีอะไรให้แสดงตัวอย่าง',
+    },
+    tenantSeedCard: {
+      // คงคำว่า "Tenant" ไว้เป็นภาษาอังกฤษ ตามแบบ breadcrumb.tenantMigrations ที่ไม่แปลคำนี้
+      title: 'Tenant Seed Data',
+      description: 'ตรวจสอบและสร้างข้อมูลหลักเริ่มต้นลงในฐานข้อมูล tenant ของ BU นี้',
+      seeded: 'สร้างข้อมูลแล้ว',
+      missingCount: 'ขาด {{count}} รายการ',
+      hideMissingRowsAria: 'ซ่อนรายการที่ขาดของ {{label}}',
+      showMissingRowsAria: 'แสดงรายการที่ขาดของ {{label}}',
+      nothingToSeed: 'ไม่มีอะไรต้องสร้าง',
+      seedRowsButton: 'สร้างข้อมูล {{count}} แถว',
+      seedingEllipsis: 'กำลังสร้างข้อมูล…',
+      // ข้อความ toast.info แบบ no-op ("ไม่มีอะไรเกิดขึ้น") — คงระดับความสำคัญเดิม แปลแค่ข้อความ
+      nothingToSeedUpToDate: 'ไม่มีอะไรต้องสร้าง ข้อมูลเป็นปัจจุบันอยู่แล้ว',
+      createdRowsToast: 'สร้างข้อมูล {{count}} แถวให้ {{buCode}} แล้ว (ข้าม {{skipped}} แถว)',
+      confirmTitle: 'สร้างข้อมูลตั้งต้นของ tenant',
+      confirmDescription: 'สร้างข้อมูลหลักเริ่มต้น {{count}} แถวลงใน {{name}} ({{code}}) หรือไม่? การดำเนินการนี้จะสร้างข้อมูลหลักเริ่มต้นที่ขาดหายไปในฐานข้อมูล tenant โดยไม่แก้ไขแถวที่มีอยู่แล้ว',
+      seedButton: 'สร้างข้อมูล',
+    },
+    tenantMigrationCard: {
+      // หัวข้อการ์ด ('Tenant Migrations') ใช้ breadcrumb.tenantMigrations ตรงๆ — ข้อความ
+      // เหมือนกันเป๊ะ ไม่ต้องสร้างคีย์ใหม่ ดู task-1-report.md
+      description: 'ตรวจสอบและอัปเดตโครงสร้างฐานข้อมูล (migration) ให้กับฐานข้อมูล tenant ของ BU นี้',
+      upToDate: 'เป็นปัจจุบัน',
+      pendingCount: 'ค้างอยู่ {{count}} รายการ',
+      pendingMigrationsHeading: 'Migration ที่ค้างอยู่ ({{count}})',
+      applyMigrationsButton: 'ใช้งาน Migration {{count}} รายการ',
+      applyingEllipsis: 'กำลังใช้งาน Migration…',
+      // ข้อความ toast.info แบบ no-op เหมือนกับ tenantSeedCard.nothingToSeedUpToDate
+      alreadyUpToDateToast: 'เป็นปัจจุบันอยู่แล้ว',
+      appliedToast: 'ใช้งาน Migration {{count}} รายการกับ {{buCode}} แล้ว',
+      hideRawOutput: 'ซ่อนผลลัพธ์ดิบ',
+      showRawOutput: 'แสดงผลลัพธ์ดิบ',
+      confirmTitle: 'ใช้งาน Migration ของ tenant',
+      confirmDescription: 'ใช้งาน Migration ที่ค้างอยู่ {{count}} รายการกับ {{name}} ({{code}}) หรือไม่? การดำเนินการนี้จะเปลี่ยนโครงสร้างฐานข้อมูลของ tenant และไม่สามารถย้อนกลับได้',
+      applyButton: 'ใช้งาน Migration',
+    },
+    interfaceEntitlementCard: {
+      title: 'สิทธิ์การใช้งานอินเทอร์เฟซ',
+      description: 'อินเทอร์เฟซระบบภายนอกที่หน่วยธุรกิจนี้สามารถตั้งค่าได้ เว้นว่างไว้เพื่ออนุญาตทุกอินเทอร์เฟซ หรือเลือกแบรนด์เฉพาะเพื่อจำกัดสิทธิ์ของ BU นี้',
+      // ปุ่ม toggle ต่อกลุ่ม ไม่ใช่ common.option.all ('All' ในเมนู <select>) — คอมเมนต์ของ
+      // คีย์นั้นจำกัดขอบเขตไว้เฉพาะค่าใน <option> เท่านั้น ไม่ใช่ป้ายปุ่ม
+      toggleAll: 'ทั้งหมด',
+      toggleNone: 'ไม่มี',
+      saveButton: 'บันทึกสิทธิ์การใช้งาน',
+      savedToast: 'บันทึกสิทธิ์การใช้งานอินเทอร์เฟซแล้ว',
+      notRestrictedNote: 'ไม่ถูกจำกัด BU มองเห็นทุกอินเทอร์เฟซ',
+    },
+    businessUnitMultiSelect: {
+      noneSelected: 'ยังไม่ได้เลือกหน่วยธุรกิจ',
+    },
+    userMultiSelect: {
+      defaultPlaceholder: 'ค้นหาผู้ใช้ด้วยชื่อหรืออีเมล',
+      alreadySelected: 'เลือกแล้ว',
+    },
+    userPicker: {
+      defaultPlaceholder: 'ค้นหาผู้ใช้ด้วยชื่อผู้ใช้หรืออีเมล',
+      disabledLabel: 'ไม่พร้อมใช้งาน',
+      clearSelectedAria: 'ล้างผู้ใช้ที่เลือก {{name}}',
+    },
+    // ใช้ร่วมกันระหว่าง UserMultiSelect.tsx กับ UserPicker.tsx — ทั้งสองไฟล์ใช้ useUserSearch
+    // และแสดงข้อความ dropdown เหมือนกันเป๊ะ
+    userSearch: {
+      searchingEllipsis: 'กำลังค้นหา…',
+      noMatch: 'ไม่พบผู้ใช้ที่ตรงกับ "{{query}}"',
+      typeToSearch: 'พิมพ์เพื่อค้นหาผู้ใช้',
+    },
+    imageUpload: {
+      uploadAriaLabel: 'อัปโหลดรูปภาพ',
+      // ImageUpload.tsx มีผู้เรียกใช้จริงเพียงรายเดียววันนี้ — src/pages/NewsEdit.tsx:319
+      // (ตรวจสอบจาก import statement แล้ว) ข้อความ alt นี้จึงถูกต้องตามบริบทจริง ถ้ามีผู้เรียก
+      // รายที่สองในอนาคต ควรเปลี่ยนเป็น prop `alt` แทน ไม่ควรเพิ่ม prop นี้ล่วงหน้า
+      newsAlt: 'ข่าว',
+      // แยกเป็นสองคีย์ตามที่ซอร์สแยกไว้จริง: ข้อความธรรมดาตามด้วย <span> ที่มีสไตล์เหมือนลิงก์
+      // (ไม่มี handler คลิกแยกต่างหาก — พื้นที่ลากวางทั้งหมดคลิกได้อยู่แล้ว) ผู้ implement Task 4
+      // ใส่ช่องว่างจริงระหว่างสองคีย์นี้เอง
+      dragDropText: 'ลากและวางรูปภาพที่นี่ หรือ',
+      browse: 'เรียกดู',
+      uploadingImage: 'กำลังอัปโหลดรูปภาพ…',
+    },
+    // ActorPhrase ของ AuditMeta.tsx (variant 'header') — เรียก useI18n() เองได้ตาม 5a ของแผน
+    // ท่อนนี้ตกสำรวจจากรายการสตริงเดิมของแผน (จุดบอดของตัวนับ: สตริงสั้นกว่า 6 ตัวอักษร) —
+    // ` by ${who}` เป็นคำอังกฤษจริง ไม่ใช่เครื่องหมายวรรคตอนแบบจุดกลาง (·) ที่ variant 'compact'
+    // ใช้แทน
+    auditMeta: {
+      byActor: 'โดย {{name}}',
+    },
+    // DateRangeFilter.tsx กลับทิศ: ไม่มีภาษาอังกฤษเดิมเลย ป้ายเป็นภาษาไทยล้วน ผู้ใช้ที่ตั้ง
+    // ภาษาอังกฤษเห็นภาษาไทยอยู่ทุกวันนี้ ค่าภาษาไทยข้างล่างจึงคงไว้ตรงกับซอร์สทุกตัวอักษร
+    // (ไม่ใช่การแปลใหม่) ส่วนภาษาอังกฤษเป็นข้อความที่เขียนขึ้นใหม่ทั้งหมด — ดู task-1-report.md
+    // รายการ 'custom' ใน RANGE_PRESETS (src/utils/analyticsRange.ts ผู้เรียกใช้รายเดียวของ
+    // ไฟล์นี้) ใช้ common.option.custom แทนคีย์ใหม่ที่นี่ เพราะภาษาไทยของคีย์นั้นตรงกับ
+    // ข้อความต้นฉบับเป๊ะอยู่แล้ว ('กำหนดเอง')
+    dateRangeFilter: {
+      dateRangeLabel: 'ช่วงวัน',
+      fromLabel: 'ตั้งแต่',
+      toLabel: 'ถึง',
+      endBeforeStart: 'วันสิ้นสุดต้องไม่ก่อนวันเริ่ม',
+      maxRangeDays: 'เลือกได้สูงสุด {{max}} วัน',
+      viewingRange: 'กำลังดู {{range}}',
+      last7Days: '7 วันล่าสุด',
+      last30Days: '30 วันล่าสุด',
+      last90Days: '90 วันล่าสุด',
+    },
   },
 
   pages: {
