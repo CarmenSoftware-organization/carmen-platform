@@ -23,6 +23,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { auditColumns } from '../components/auditColumns';
+import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { Application, PaginateParams } from '../types';
 import { DEVICE_OPTIONS } from '../types';
@@ -39,6 +40,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const ApplicationManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [applications, setApplications] = useState<Application[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -306,7 +308,7 @@ const ApplicationManagement: React.FC = () => {
         </Badge>
       ),
     },
-    ...auditColumns<Application>(),
+    ...auditColumns<Application>({ t }),
     {
       id: 'actions',
       header: '',
@@ -336,7 +338,7 @@ const ApplicationManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, handleCopyId, copiedId]);
+  ], [navigate, handleDelete, handleCopyId, copiedId, t]);
 
   return (
     <Layout>

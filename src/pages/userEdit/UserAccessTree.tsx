@@ -145,7 +145,7 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
           // centred on the button. Per the A4 contract: "the tappable area
           // governs, not the visual control" (same technique as InlineField.tsx).
           className={`text-destructive hover:text-destructive size-7 shrink-0 ${HIT_SLOP_44}`}
-          aria-label={t('pages.users.removeBuAria', { name: unit?.name || unit?.code || t('entity.businessUnit.lower') })}
+          aria-label={t('common.action.removeAria', { name: unit?.name || unit?.code || t('entity.businessUnit.lower') })}
           onClick={() => onDelete(bu)}
         >
           <Trash2 className="size-3.5" />

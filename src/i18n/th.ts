@@ -101,7 +101,6 @@ export const th: Translations = {
     noClustersFound: 'ไม่พบ cluster',
     switchBu: 'เปลี่ยนหน่วยธุรกิจ',
     chooseBu: 'ค้นหาและเลือกหน่วยธุรกิจที่ต้องการเข้าใช้งาน',
-    searchBu: 'ค้นหาหน่วยธุรกิจ',
     buList: 'หน่วยธุรกิจ',
     searchBuPlaceholder: 'ค้นหาหน่วยธุรกิจ {{count}} รายการ ด้วยรหัส ชื่อ หรือ cluster…',
     buCount: '{{count}} BUs',
@@ -508,13 +507,12 @@ export const th: Translations = {
     interfaceEntitlementCard: {
       title: 'สิทธิ์การใช้งานอินเทอร์เฟซ',
       description: 'อินเทอร์เฟซระบบภายนอกที่หน่วยธุรกิจนี้สามารถตั้งค่าได้ เว้นว่างไว้เพื่ออนุญาตทุกอินเทอร์เฟซ หรือเลือกแบรนด์เฉพาะเพื่อจำกัดสิทธิ์ของ BU นี้',
-      // ปุ่ม toggle ต่อกลุ่ม ไม่ใช่ common.option.all ('All' ในเมนู <select>) — คอมเมนต์ของ
-      // คีย์นั้นจำกัดขอบเขตไว้เฉพาะค่าใน <option> เท่านั้น ไม่ใช่ป้ายปุ่ม
-      toggleAll: 'ทั้งหมด',
       toggleNone: 'ไม่มี',
       saveButton: 'บันทึกสิทธิ์การใช้งาน',
       savedToast: 'บันทึกสิทธิ์การใช้งานอินเทอร์เฟซแล้ว',
       notRestrictedNote: 'ไม่ถูกจำกัด BU มองเห็นทุกอินเทอร์เฟซ',
+      catalogAccounting: 'บัญชี',
+      catalogExternalSystem: 'ระบบภายนอก',
     },
     businessUnitMultiSelect: {
       noneSelected: 'ยังไม่ได้เลือกหน่วยธุรกิจ',
@@ -656,7 +654,6 @@ export const th: Translations = {
       confirmPasswordLabel: 'ยืนยันรหัสผ่าน *',
       removeBuConfirm: 'ต้องการนำ “{{name}}” ออกจากผู้ใช้รายนี้ใช่หรือไม่',
       thisBusinessUnit: 'หน่วยธุรกิจนี้',
-      removeBuAria: 'นำ {{name}} ออก',
       addBu: 'เพิ่ม BU',
       recentlyAdded: 'เพิ่มล่าสุด',
       activeInactiveSummary: 'ใช้งาน {{active}} ราย ไม่ใช้งาน {{inactive}} ราย',
@@ -1477,8 +1474,6 @@ export const th: Translations = {
       sharedBadgeTooltip: 'ยังใช้งานอยู่ในหน่วยธุรกิจอื่นใน cluster นี้ด้วย',
       buStatusLabel: 'สถานะ BU',
       editUserAria: 'แก้ไข {{name}}',
-      // Copied verbatim from pages.users.removeBuAria.
-      removeUserAria: 'นำ {{name}} ออก',
       editUserInBuTitle: 'แก้ไขผู้ใช้ในหน่วยธุรกิจ',
       saveButton: 'บันทึก',
       removeUserTitle: 'นำผู้ใช้ออก',

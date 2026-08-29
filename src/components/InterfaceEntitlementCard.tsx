@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 import { parseApiError } from '../utils/errorParser';
 import interfaceEntitlementService from '../services/interfaceEntitlementService';
-import { INTERFACE_CATALOG } from '../utils/interfaceCatalog';
+import { getInterfaceCatalog } from '../utils/interfaceCatalog';
 import { useI18n } from '../hooks/useI18n';
 
 interface InterfaceEntitlementCardProps {
@@ -27,6 +27,7 @@ export const InterfaceEntitlementCard = ({
   isSuperAdmin,
 }: InterfaceEntitlementCardProps): ReactElement => {
   const { t } = useI18n();
+  const catalog = useMemo(() => getInterfaceCatalog(t), [t]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [initial, setInitial] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -122,7 +123,7 @@ export const InterfaceEntitlementCard = ({
           </div>
         ) : (
           <>
-            {INTERFACE_CATALOG.map((group) => {
+            {catalog.map((group) => {
               const keys = group.brands.map((b) => b.key);
               const selectedCount = keys.filter((k) => selected.has(k)).length;
               const allOn = selectedCount === keys.length;
@@ -144,7 +145,7 @@ export const InterfaceEntitlementCard = ({
                     >
                       {allOn
                         ? t('components.interfaceEntitlementCard.toggleNone')
-                        : t('components.interfaceEntitlementCard.toggleAll')}
+                        : t('common.option.all')}
                     </Button>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">

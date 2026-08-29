@@ -97,7 +97,6 @@ export const en = {
     noClustersFound: 'No clusters found.',
     switchBu: 'Switch business unit',
     chooseBu: 'Search and select the tenant business unit you want to operate on.',
-    searchBu: 'Search business units',
     buList: 'Business units',
     searchBuPlaceholder: 'Search {{count}} business units by code, name or cluster…',
     buCount: '{{count}} BUs',
@@ -680,13 +679,17 @@ export const en = {
     interfaceEntitlementCard: {
       title: 'Interface Entitlement',
       description: 'Which external-system interfaces this business unit may configure. Leave empty to allow every interface; select specific brands to restrict the BU to those.',
-      // Per-group toggle button, NOT common.option.all ('All' inside a <select>) — that
-      // key's own doc comment scopes it to <option> values, never a button caption.
-      toggleAll: 'All',
       toggleNone: 'None',
       saveButton: 'Save entitlement',
       savedToast: 'Interface entitlement saved',
       notRestrictedNote: 'Not restricted. BU sees all interfaces.',
+      // INTERFACE_CATALOG group label (interfaceCatalog.ts). 'POS'/'PMS' and every brand
+      // name (Carmen GL, Oracle Micros, …) are deliberately left untranslated — industry
+      // abbreviations and product names — so only this one group label needs a key.
+      catalogAccounting: 'Accounting',
+      // INTERFACE_CATALOG brand label for accounting_external — the one brand name that is
+      // a generic noun phrase rather than a product name, so it gets translated.
+      catalogExternalSystem: 'External system',
     },
     businessUnitMultiSelect: {
       noneSelected: 'No business units selected',
@@ -834,7 +837,6 @@ export const en = {
       removeBuConfirm: 'Are you sure you want to remove "{{name}}" from this user?',
       // English fallback for when the BU record itself carries no name/code (task F).
       thisBusinessUnit: 'this business unit',
-      removeBuAria: 'Remove {{name}}',
       addBu: 'Add BU',
       recentlyAdded: 'Recently added',
       activeInactiveSummary: '{{active}} active, {{inactive}} inactive',
@@ -2189,14 +2191,13 @@ export const en = {
       // that one with different capitalisation spliced in.
       sharedBadgeTooltip: 'Also active in another business unit in this cluster',
       buStatusLabel: 'BU Status',
-      // "Edit"/"Remove" aria-label templates for the per-row icon buttons, with the
-      // `entity.user.lower` ('user') fallback when the row has neither a username nor an
-      // email. editUserAria has no sibling anywhere in the catalog (fresh key); removeUserAria
-      // is byte-identical to pages.users.removeBuAria ('Remove {{name}}') — a promotion
-      // signal, but only 2 files / 2 slices, below the promote bar, so kept page-local with
-      // Thai copied verbatim from that sibling.
+      // "Edit" aria-label template for the per-row icon button, with the `entity.user.lower`
+      // ('user') fallback when the row has neither a username nor an email. No sibling
+      // anywhere in the catalog (fresh key). The matching "Remove" aria-label uses
+      // common.action.removeAria instead — it was byte-identical to this file's own
+      // removeUserAria and to pages.users.removeBuAria across 4 files / 3 slices, above the
+      // promote bar, so it was promoted (moved, not copied) rather than kept page-local.
       editUserAria: 'Edit {{name}}',
-      removeUserAria: 'Remove {{name}}',
       editUserInBuTitle: 'Edit User in Business Unit',
       // Bare "Save" — distinct from common.action.saveChanges ('Save Changes'), a different
       // (longer) button label used by every Edit page's own primary save action; this dialog's

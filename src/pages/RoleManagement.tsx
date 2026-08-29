@@ -23,6 +23,7 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { ListEmptyState } from '../components/ListEmptyState';
 import { auditColumns } from '../components/auditColumns';
+import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -49,6 +50,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const RoleManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -264,7 +266,7 @@ const RoleManagement: React.FC = () => {
         </Badge>
       ),
     },
-    ...auditColumns<RoleRow>(),
+    ...auditColumns<RoleRow>({ t }),
     {
       id: 'actions',
       header: '',
@@ -305,7 +307,7 @@ const RoleManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete]);
+  ], [navigate, handleDelete, t]);
 
   return (
     <Layout>

@@ -26,6 +26,7 @@ import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import { isPerpetual } from '../utils/clusterLicense';
 import { auditColumns } from '../components/auditColumns';
+import { useI18n } from '../hooks/useI18n';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { FleetSummary } from '../types';
@@ -53,6 +54,7 @@ const fmtDate = (v?: string | null): string => {
 
 const ClusterManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -420,7 +422,7 @@ const ClusterManagement: React.FC = () => {
       // backend อ่านจาก `clusterHeadsSubquery()` ตัวเดียวกับ `countClusterHeads`
       enableSorting: true,
     },
-    ...auditColumns<Cluster>({ hideUpdatedOnCard: true }),
+    ...auditColumns<Cluster>({ hideUpdatedOnCard: true, t }),
     ...(showDeleted ? [{
       id: 'deleted_at',
       header: 'Deleted',
@@ -462,7 +464,7 @@ const ClusterManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, showDeleted]);
+  ], [navigate, handleDelete, showDeleted, t]);
 
   return (
     <Layout>

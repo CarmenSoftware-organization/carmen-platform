@@ -156,7 +156,7 @@ export function BuSwitcher({
             aria-expanded="true"
             aria-controls="bu-switcher-list"
             aria-activedescendant={flat[active] ? `bu-opt-${active}` : undefined}
-            aria-label={t('switcher.searchBu')}
+            aria-label={t('common.state.searchBusinessUnitsAria')}
             className="placeholder:text-muted-foreground flex-1 bg-transparent text-[15px] outline-hidden"
             placeholder={t('switcher.searchBuPlaceholder', { count: businessUnits.length })}
             value={search}
