@@ -6,6 +6,7 @@ import { StatusToggle } from '../../components/StatusToggle';
 import { cn } from '../../lib/utils';
 import { AllocationTicks } from '../clusterAdmin/AllocationTicks';
 import type { ClusterFormData } from '../clusterManagement/ClusterIdentityFields';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface ClusterDraftPlateProps {
   formData: ClusterFormData;
@@ -46,6 +47,7 @@ function DraftIdentifier({ label, value }: { label: string; value: string }) {
  * not exist yet — an upload slot here would be a control that cannot work.
  */
 export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterDraftPlateProps) {
+  const { t } = useI18n();
   const name = formData.name.trim();
   // Blank, `0` and a non-numeric draft all mean the same thing here: no quota asked for yet.
   const cap = Number(formData.licensed_bus) || 0;
@@ -55,12 +57,12 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
   // quantity first. `AllocationTicks` draws cap 0 as an empty track — on a saved cluster that
   // means "no covering licence", and it means the same thing here: nothing issued yet.
   const note = !cap
-    ? 'No quota entered yet'
+    ? t('pages.clusters.noQuotaYet')
     : formData.license_no_expiry
-      ? 'Never expires'
+      ? t('pages.clusters.neverExpires')
       : endDate
-        ? `Runs to ${endDate}`
-        : 'Set an expiry below';
+        ? t('pages.clusters.runsTo', { date: endDate })
+        : t('pages.clusters.setExpiryBelow');
 
   return (
     <div className="space-y-3">
@@ -71,7 +73,7 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
         className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
       >
         <ArrowLeft className="size-4" />
-        Clusters
+        {t('breadcrumb.clusters')}
       </Link>
 
       <Card className="overflow-hidden p-0">
@@ -94,12 +96,12 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
                   !name && 'text-muted-foreground',
                 )}
               >
-                {name || 'New cluster'}
+                {name || t('pages.clusters.newCluster')}
               </h1>
               <StatusToggle
                 on={formData.is_active}
-                onLabel="Active"
-                offLabel="Inactive"
+                onLabel={t('common.status.active')}
+                offLabel={t('common.status.inactive')}
                 variant="success"
                 disabled={false}
                 onClick={onToggleActive}
@@ -107,13 +109,13 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
             </div>
 
             <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <DraftIdentifier label="Code" value={formData.code} />
-              <DraftIdentifier label="Alias" value={formData.alias_name} />
+              <DraftIdentifier label={t('common.field.code')} value={formData.code} />
+              <DraftIdentifier label={t('common.field.alias')} value={formData.alias_name} />
             </div>
 
             {/* Where the audit line sits on a saved cluster. Saying so keeps the plate from
              *  reading as a record that already exists. */}
-            <p className="text-muted-foreground mt-1.5 text-[11px] leading-tight">Not created yet</p>
+            <p className="text-muted-foreground mt-1.5 text-[11px] leading-tight">{t('pages.clusters.notCreatedYet')}</p>
           </div>
         </div>
 
@@ -133,11 +135,14 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
                 <Building2 className="size-3.5" aria-hidden />
-                Business units
+                {t('pages.clusters.businessUnitsLower')}
               </span>
               <span className="font-mono text-xs tabular-nums">
                 <span className="text-foreground font-semibold">{cap.toLocaleString()}</span>
-                <span className="text-muted-foreground"> licence{cap === 1 ? '' : 's'}</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  {cap === 1 ? t('pages.clusters.licence') : t('pages.clusters.licences')}
+                </span>
               </span>
             </div>
             <div className="mt-1.5 h-2.5">
@@ -145,7 +150,11 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
                 used={cap}
                 cap={cap}
                 level="none"
-                label={`${cap} business unit licence${cap === 1 ? '' : 's'}`}
+                label={
+                  cap === 1
+                    ? t('pages.clusters.buLicenceCount', { count: cap })
+                    : t('pages.clusters.buLicenceCountPlural', { count: cap })
+                }
               />
             </div>
             <p className="text-muted-foreground mt-1.5 text-[11px]">{note}</p>

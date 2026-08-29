@@ -34,12 +34,14 @@ import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers'
 import { PERPETUAL_END_DATE } from '../utils/clusterLicense';
 import { toIsoEndOfDay } from './licenses/licenseDates';
 import type { BusinessUnit } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
 
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isNew = !id;
   const { hasPermission } = useAuth();
   const canEdit = !isNew && hasPermission('cluster.update', { clusterId: id });
@@ -207,7 +209,7 @@ const ClusterEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError('Failed to load cluster: ' + getErrorDetail(err));
+        setError(t('pages.clusters.loadFailedOne', { detail: getErrorDetail(err, t) }));
       }
     } finally {
       setLoading(false);
@@ -239,7 +241,7 @@ const ClusterEdit: React.FC = () => {
       );
       setBusinessUnits(sorted);
     } catch (err) {
-      devLog('Failed to load business units:', err);
+      devLog('Failed to load business units:', err);  // dev-only, ไม่ใช่ข้อความผู้ใช้
     } finally {
       setBuLoading(false);
     }
@@ -284,14 +286,14 @@ const ClusterEdit: React.FC = () => {
       };
       const result = await clusterService.create(payload);
       const created = result.data || result;
-      toast.success('Cluster created successfully');
+      toast.success(t('toast.created', { entity: t('entity.cluster.title') }));
       if (created?.id) {
         navigate(`/clusters/${created.id}/edit`, { replace: true });
       } else {
         navigate('/clusters');
       }
     } catch (err: unknown) {
-      setError('Failed to save cluster: ' + getErrorDetail(err));
+      setError(t('pages.clusters.saveFailed', { detail: getErrorDetail(err, t) }));
     } finally {
       setSaving(false);
     }
@@ -308,14 +310,14 @@ const ClusterEdit: React.FC = () => {
       // directly. This page only shows a read-only summary card that links there.
       const payload: Record<string, unknown> = { ...formData };
       await clusterService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
-      toast.success('Changes saved successfully');
+      toast.success(t('toast.saved'));
       await fetchCluster();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict();
         await fetchCluster();
       } else {
-        setError('Failed to save cluster: ' + getErrorDetail(err));
+        setError(t('pages.clusters.saveFailed', { detail: getErrorDetail(err, t) }));
       }
     } finally {
       setSaving(false);
@@ -328,7 +330,7 @@ const ClusterEdit: React.FC = () => {
     try {
       await users.updateUser(cuId, patch);
     } catch (err) {
-      toast.error('Failed to update user', { description: getErrorDetail(err) });
+      toast.error(t('pages.clusters.updateUserFailed'), { description: getErrorDetail(err, t) });
     }
   };
   const handleRemoveUser = async (cuId: string) => {
@@ -336,7 +338,7 @@ const ClusterEdit: React.FC = () => {
       await users.removeUser(cuId);
       await users.fetchClusterUsers();
     } catch (err) {
-      toast.error('Failed to remove user', { description: getErrorDetail(err) });
+      toast.error(t('pages.clusters.removeUserFailed'), { description: getErrorDetail(err, t) });
     }
   };
   // addUser toasts its own success and toasts+rethrows on failure — leave the dialog
@@ -350,7 +352,7 @@ const ClusterEdit: React.FC = () => {
     }
   };
   const handleBulkRemove = async (ids: string[]): Promise<void> => {
-    await users.bulkRun(ids, (cuId) => users.removeUser(cuId), 'Remove users');
+    await users.bulkRun(ids, (cuId) => users.removeUser(cuId), t('pages.clusters.removeUsersTitle'));
   };
 
   const handleOpenAddUserDialog = () => {
@@ -387,7 +389,7 @@ const ClusterEdit: React.FC = () => {
     // so nothing snaps sideways when the data lands.
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading cluster">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.clusters.loadingOneAria')}>
           {/* Plate skeleton — marks, name, identifiers, the two licence rails, the strip. */}
           <Skeleton className="h-5 w-24" />
           <Card className="overflow-hidden p-0">
@@ -435,16 +437,16 @@ const ClusterEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/clusters" title="Cluster" />
+          <PageHeader backTo="/clusters" title={t('pages.clusters.singularTitle')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Cluster not found"
-                description="This cluster doesn't exist, or it may have been deleted. Check the link, or pick one from the cluster list."
+                title={t('pages.clusters.notFoundTitle')}
+                description={t('pages.clusters.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/clusters')}>
-                    Back to clusters
+                    {t('pages.clusters.backToList')}
                   </Button>
                 }
               />
@@ -471,9 +473,9 @@ const ClusterEdit: React.FC = () => {
   const userActive = users.clusterUsers.filter((u) => u.is_active !== false).length;
 
   const tabs: ClusterTab[] = [
-    { id: 'licensing', label: 'Licensing' },
-    { id: 'business-units', label: 'Business Units', count: businessUnits.length },
-    { id: 'users', label: 'Users', count: users.clusterUsers.length },
+    { id: 'licensing', label: t('pages.clusters.tabLicensing') },
+    { id: 'business-units', label: t('pages.clusters.tabBusinessUnits'), count: businessUnits.length },
+    { id: 'users', label: t('pages.clusters.tabUsers'), count: users.clusterUsers.length },
   ];
 
   return (
@@ -539,13 +541,13 @@ const ClusterEdit: React.FC = () => {
               <Card className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
                   <div>
-                    <h2 className="text-sm font-medium">Subscriptions</h2>
+                    <h2 className="text-sm font-medium">{t('pages.clusters.subscriptionsHeading')}</h2>
                     <p className="text-muted-foreground text-xs">
-                      The latest licences covering this cluster, newest expiry first
+                      {t('pages.clusters.licencesNote')}
                     </p>
                   </div>
                   <Button asChild size="sm" variant="outline">
-                    <Link to={`/licenses/${id}#quota`}>Manage licences</Link>
+                    <Link to={`/licenses/${id}#quota`}>{t('common.action.manageLicences')}</Link>
                   </Button>
                 </div>
                 {/* `SubscriptionCard` renders nothing at all — and fires no request — without
@@ -594,16 +596,16 @@ const ClusterEdit: React.FC = () => {
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
-              <span>Unsaved changes</span>
+              <span>{t('common.state.unsavedChanges')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Button type="button" variant="outline" size="sm" onClick={handleCancelEdit} disabled={saving}>
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" disabled={saving} onClick={() => void handleSaveCluster()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>
@@ -614,8 +616,8 @@ const ClusterEdit: React.FC = () => {
       <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add User to Cluster</DialogTitle>
-            <DialogDescription>Search and select a user to add</DialogDescription>
+            <DialogTitle>{t('pages.clusters.addUserTitle')}</DialogTitle>
+            <DialogDescription>{t('pages.clusters.addUserDescription')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {/* Selected user display */}
@@ -632,7 +634,7 @@ const ClusterEdit: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  aria-label="Clear selected user"
+                  aria-label={t('pages.clusters.clearSelectedUser')}
                   onClick={() => setSelectedUser(null)}
                 >
                   <X className="h-3.5 w-3.5" />
@@ -646,7 +648,7 @@ const ClusterEdit: React.FC = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search by username or email..."
+                    placeholder={t('pages.clusters.userSearchPlaceholder')}
                     value={users.searchUsersTerm}
                     onChange={(e) => users.setSearchUsersTerm(e.target.value)}
                     className="pl-9"
@@ -663,7 +665,9 @@ const ClusterEdit: React.FC = () => {
                 >
                   {!users.loadingSearchUsers && availableUsers.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      {users.searchUsers.length > 0 ? 'All matching users are already in this cluster.' : 'No users found.'}
+                      {users.searchUsers.length > 0
+                        ? t('pages.clusters.allUsersAlreadyIn')
+                        : t('pages.clusters.noUsersFound')}
                     </p>
                   ) : (
                     <div className="divide-y">
@@ -682,14 +686,14 @@ const ClusterEdit: React.FC = () => {
                         </button>
                       ))}
                       {users.loadingSearchUsers && (
-                        <div className="text-sm text-muted-foreground text-center py-3">Loading...</div>
+                        <div className="text-sm text-muted-foreground text-center py-3">{t('common.busy.loading')}</div>
                       )}
                     </div>
                   )}
                 </div>
                 {users.searchUsersTotal > 0 && (
                   <div className="text-xs text-muted-foreground">
-                    Showing {availableUsers.length} of {users.searchUsersTotal} users
+                    {t('pages.clusters.showingUsers', { shown: availableUsers.length, total: users.searchUsersTotal })}
                   </div>
                 )}
               </>
@@ -697,7 +701,7 @@ const ClusterEdit: React.FC = () => {
 
             {/* Role select */}
             <div className="space-y-2">
-              <Label htmlFor="add-user-role">Cluster Role</Label>
+              <Label htmlFor="add-user-role">{t('pages.clusters.clusterRole')}</Label>
               <select
                 id="add-user-role"
                 value={addUserRole}
@@ -705,7 +709,7 @@ const ClusterEdit: React.FC = () => {
                 className={selectClassName}
               >
                 {CLUSTER_ROLES.map((r) => (
-                  <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                  <option key={r} value={r}>{r === 'admin' ? t('common.role.admin') : t('common.role.user')}</option>
                 ))}
               </select>
             </div>
@@ -715,13 +719,13 @@ const ClusterEdit: React.FC = () => {
             {userCap != null && (
               <p className={`text-xs ${userUsed >= userCap ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {userUsed >= userCap
-                  ? `Cluster license limit reached (${userUsed}/${userCap})`
-                  : `${userUsed} of ${userCap} licensed users in this cluster`}
+                  ? t('pages.clusters.clusterLimitReached', { used: userUsed, cap: userCap })
+                  : t('pages.clusters.licensedUsersInCluster', { used: userUsed, cap: userCap })}
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowAddUser(false)}>{t('common.cancel')}</Button>
             {(() => {
               // Cluster-wide cap, not a per-BU one (Task 3.5) — the seat pool belongs to the
               // cluster as a whole, so this does not depend on which BU is selected above.
@@ -729,7 +733,7 @@ const ClusterEdit: React.FC = () => {
               return (
                 <Button size="sm" onClick={() => void handleSubmitAddUser()} disabled={addingUser || !selectedUser || clusterAtLimit}>
                   <UserPlus className="mr-2 h-4 w-4" />
-                  {addingUser ? 'Adding...' : 'Add User'}
+                  {addingUser ? t('pages.clusters.adding') : t('common.action.addUser')}
                 </Button>
               );
             })()}

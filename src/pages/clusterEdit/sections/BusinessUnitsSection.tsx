@@ -18,6 +18,7 @@ import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import { latestActor } from '../../../utils/audit';
 import type { BusinessUnit } from '../../../types';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface BusinessUnitsSectionProps {
   clusterId: string;
@@ -67,6 +68,7 @@ export function BusinessUnitsSection({
 
   // null cap = unknown/unenforced, same convention as `atLimit` above — never coerced to 0,
   // which would falsely mark every row as over limit.
+  const { t } = useI18n();
   const overLimitCount = useMemo(() => countOverLimit(ranked, maxLicenseBu), [ranked, maxLicenseBu]);
 
   return (
@@ -74,21 +76,21 @@ export function BusinessUnitsSection({
       <TableToolbar
         search={search}
         onSearchChange={setSearch}
-        placeholder="Search business units"
+        placeholder={t('pages.clusters.searchBusinessUnits')}
         filters={[
-          { key: 'active', label: 'Active', active: activeOnly, onToggle: () => { setActiveOnly((v) => !v); setInactiveOnly(false); } },
-          { key: 'inactive', label: 'Inactive', active: inactiveOnly, onToggle: () => { setInactiveOnly((v) => !v); setActiveOnly(false); } },
+          { key: 'active', label: t('common.status.active'), active: activeOnly, onToggle: () => { setActiveOnly((v) => !v); setInactiveOnly(false); } },
+          { key: 'inactive', label: t('common.status.inactive'), active: inactiveOnly, onToggle: () => { setInactiveOnly((v) => !v); setActiveOnly(false); } },
         ]}
         right={
           <>
             <Button variant="outline" size="icon" onClick={onRefresh} disabled={loading}
-              className={`h-8 w-8 ${HIT_SLOP_44}`} aria-label="Refresh business units">
+              className={`h-8 w-8 ${HIT_SLOP_44}`} aria-label={t('pages.clusters.refreshBusinessUnits')}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
             <Can permission="cluster.create">
               <Button size="sm" onClick={() => onNavigate(`/business-units/new?cluster_id=${clusterId}`)} disabled={atLimit}
-                title={atLimit ? `License limit reached (${businessUnits.length}/${maxLicenseBu})` : undefined}>
-                Add
+                title={atLimit ? t('pages.clusters.licenseLimitReached', { used: businessUnits.length, cap: maxLicenseBu ?? 0 }) : undefined}>
+                {t('common.action.add')}
               </Button>
             </Can>
           </>
@@ -96,12 +98,14 @@ export function BusinessUnitsSection({
       />
       {overLimitCount > 0 && (
         <p className="px-4 pb-3 text-xs text-destructive">
-          {overLimitCount} business units are beyond the licensed quota of {maxLicenseBu}. They are read-only until more quota is purchased.
+          {t('pages.clusters.overLimitNote', { count: overLimitCount, cap: maxLicenseBu ?? 0 })}
         </p>
       )}
       {rows.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center text-sm">
-          {businessUnits.length === 0 ? 'No business units found in this cluster.' : 'No business units match your filters.'}
+          {businessUnits.length === 0
+            ? t('pages.clusters.noBuInCluster')
+            : t('pages.clusters.noBuMatchFilters')}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -111,12 +115,12 @@ export function BusinessUnitsSection({
                 {(['code', 'name'] as const).map((key) => (
                   <TableHead key={key}>
                     <button type="button" className="inline-flex items-center gap-1" onClick={() => setSort((s) => cycleSort(s, key))}>
-                      {key === 'code' ? 'Code' : 'Name'}
+                      {key === 'code' ? t('common.field.code') : t('common.field.name')}
                       <ChevronsUpDown className="h-3 w-3 opacity-50" />
                     </button>
                   </TableHead>
                 ))}
-                <TableHead>Status</TableHead>
+                <TableHead>{t('common.status.label')}</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -133,9 +137,9 @@ export function BusinessUnitsSection({
                         <Badge
                           variant="destructive"
                           className="text-xs"
-                          title={`Quota ${maxLicenseBu} · this unit ranks ${ranked.get(bu.id)}`}
+                          title={t('pages.clusters.overLimitRankTitle', { cap: maxLicenseBu ?? 0, rank: ranked.get(bu.id) ?? 0 })}
                         >
-                          Over limit
+                          {t('pages.clusters.overLimit')}
                         </Badge>
                       )}
                     </div>
@@ -147,12 +151,12 @@ export function BusinessUnitsSection({
                   </TableCell>
                   <TableCell>
                     <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
-                      {bu.is_active ? 'Active' : 'Inactive'}
+                      {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" className={`h-7 w-7 ${HIT_SLOP_44}`}
-                      aria-label={`Edit ${bu.name || bu.code || 'business unit'}`} onClick={() => onNavigate(`/business-units/${bu.id}/edit`)}>
+                      aria-label={t('pages.clusters.editBuAria', { name: bu.name || bu.code || t('pages.clusters.buSingularLower') })} onClick={() => onNavigate(`/business-units/${bu.id}/edit`)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                   </TableCell>

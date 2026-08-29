@@ -16,6 +16,7 @@ import { BulkActionBar, type BulkAction } from '../BulkActionBar';
 import { InlineCell } from '../InlineCell';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import type { ClusterUser } from '../../../types';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface UsersSectionProps {
   users: ClusterUser[];
@@ -28,7 +29,8 @@ export interface UsersSectionProps {
   onBulkRemove: (ids: string[]) => Promise<void>;
 }
 
-const ROLE_OPTIONS = [{ value: 'admin', label: 'Admin' }, { value: 'user', label: 'User' }];
+// ป้ายบทบาทอ่านจากคีย์ร่วม (common.role.*) — สร้างในตัว component เพราะ const ระดับโมดูล
+// เรียก hook ไม่ได้ และค่าต้องเปลี่ยนตามภาษาที่สลับ
 
 function displayName(u: ClusterUser): string {
   const parts = [u.userInfo?.firstname, u.userInfo?.middlename, u.userInfo?.lastname].filter(Boolean);
@@ -39,6 +41,7 @@ export function UsersSection({
   users, loading, canEdit,
   onRefresh, onAddUser, onUpdateUser, onRemoveUser, onBulkRemove,
 }: UsersSectionProps) {
+  const { t } = useI18n();
   const [search, setSearch] = useState('');
   const [activeOnly, setActiveOnly] = useState(false);
   const [inactiveOnly, setInactiveOnly] = useState(false);
@@ -74,8 +77,13 @@ export function UsersSection({
   };
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rowIds));
 
+  const roleOptions = [
+    { value: 'admin', label: t('common.role.admin') },
+    { value: 'user', label: t('common.role.user') },
+  ];
+
   const bulkActions: BulkAction[] = [
-    { key: 'remove', label: 'Remove', icon: Trash2, variant: 'destructive', onClick: () => setConfirmBulkRemove(true) },
+    { key: 'remove', label: t('common.action.remove'), icon: Trash2, variant: 'destructive', onClick: () => setConfirmBulkRemove(true) },
   ];
 
   return (
@@ -83,20 +91,20 @@ export function UsersSection({
       <TableToolbar
         search={search}
         onSearchChange={(v) => { setSearch(v); resetSelection(); }}
-        placeholder="Search users"
+        placeholder={t('pages.clusters.searchUsers')}
         filters={[
-          { key: 'active', label: 'Active', active: activeOnly, onToggle: () => { setActiveOnly((v) => !v); setInactiveOnly(false); resetSelection(); } },
-          { key: 'inactive', label: 'Inactive', active: inactiveOnly, onToggle: () => { setInactiveOnly((v) => !v); setActiveOnly(false); resetSelection(); } },
+          { key: 'active', label: t('common.status.active'), active: activeOnly, onToggle: () => { setActiveOnly((v) => !v); setInactiveOnly(false); resetSelection(); } },
+          { key: 'inactive', label: t('common.status.inactive'), active: inactiveOnly, onToggle: () => { setInactiveOnly((v) => !v); setActiveOnly(false); resetSelection(); } },
         ]}
         right={
           <>
             <Button variant="outline" size="icon" onClick={onRefresh} disabled={loading}
-              className={`h-8 w-8 ${HIT_SLOP_44}`} aria-label="Refresh users">
+              className={`h-8 w-8 ${HIT_SLOP_44}`} aria-label={t('pages.clusters.refreshUsers')}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
             {canEdit && (
               <Button variant="outline" size="sm" onClick={onAddUser}>
-                <UserPlus className="mr-2 h-4 w-4" /> Add User
+                <UserPlus className="mr-2 h-4 w-4" /> {t('common.action.addUser')}
               </Button>
             )}
           </>
@@ -111,7 +119,9 @@ export function UsersSection({
 
       {rows.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center text-sm">
-          {users.length === 0 ? 'No users found in this cluster.' : 'No users match your filters.'}
+          {users.length === 0
+            ? t('pages.clusters.noUsersInCluster')
+            : t('pages.clusters.noUsersMatchFilters')}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -120,13 +130,13 @@ export function UsersSection({
               <TableRow>
                 {canEdit && (
                   <TableHead className="w-10">
-                    <input type="checkbox" aria-label="Select all users" checked={allSelected} onChange={toggleAll} className="h-4 w-4 rounded border-input" />
+                    <input type="checkbox" aria-label={t('pages.clusters.selectAllUsers')} checked={allSelected} onChange={toggleAll} className="h-4 w-4 rounded border-input" />
                   </TableHead>
                 )}
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="text-center">Status</TableHead>
+                <TableHead>{t('common.field.name')}</TableHead>
+                <TableHead>{t('common.field.email')}</TableHead>
+                <TableHead>{t('pages.clusters.columnRole')}</TableHead>
+                <TableHead className="text-center">{t('common.status.label')}</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -136,30 +146,36 @@ export function UsersSection({
                   <TableRow key={u.id}>
                     {canEdit && (
                       <TableCell>
-                        <input type="checkbox" aria-label={`Select ${displayName(u)}`} checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} className="h-4 w-4 rounded border-input" />
+                        <input type="checkbox" aria-label={t('pages.clusters.selectUserAria', { name: displayName(u) })} checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} className="h-4 w-4 rounded border-input" />
                       </TableCell>
                     )}
                     <TableCell>{displayName(u)}</TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
+                      {/* `display` แสดง "ค่าดิบ" ของ role ไม่ใช่ป้ายที่แปลแล้ว — คงพฤติกรรมเดิม
+                          ทุกตัวอักษร (UsersSection.test.tsx ตรึง 'admin' ตัวเล็กไว้) และตรงกับกฎ
+                          "ห้ามแปลค่า enum ของ API"
+                          หมายเหตุถึงผู้ดูแล: ตัวเลือกใน dropdown แสดง 'Admin'/'User' แต่ช่องอ่าน
+                          อย่างเดียวแสดง 'admin' — ความไม่สม่ำเสมอนี้มีมาก่อนงานแปล ถ้าจะแก้ให้ตรงกัน
+                          ควรเป็นการเปลี่ยน copy รอบแยก ไม่ใช่แอบเปลี่ยนใน slice แปล */}
                       <InlineCell
-                        ariaLabel={`Role for ${displayName(u)}`}
+                        ariaLabel={t('pages.clusters.roleForAria', { name: displayName(u) })}
                         value={u.role ?? 'user'}
                         disabled={!canEdit}
-                        options={ROLE_OPTIONS}
+                        options={roleOptions}
                         display={<span>{u.role ?? 'user'}</span>}
                         onCommit={(v) => { void onUpdateUser(u.id, { role: v }); }}
                       />
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={u.is_active !== false ? 'success' : 'secondary'} className="text-xs">
-                        {u.is_active !== false ? 'Active' : 'Inactive'}
+                        {u.is_active !== false ? t('common.status.active') : t('common.status.inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
                       {canEdit && (
                         <Button variant="ghost" size="icon" className={`text-destructive hover:text-destructive h-7 w-7 ${HIT_SLOP_44}`}
-                          aria-label={`Remove ${displayName(u)} from this cluster`} onClick={() => setConfirmRemoveOne(u)}>
+                          aria-label={t('pages.clusters.removeUserAria', { name: displayName(u) })} onClick={() => setConfirmRemoveOne(u)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -175,18 +191,18 @@ export function UsersSection({
       <ConfirmDialog
         open={confirmBulkRemove}
         onOpenChange={setConfirmBulkRemove}
-        title="Remove selected users"
-        description={`Remove ${selected.size} user(s) from this cluster?`}
-        confirmText="Remove"
+        title={t('pages.clusters.removeSelectedUsers')}
+        description={t('pages.clusters.removeSelectedConfirm', { count: selected.size })}
+        confirmText={t('common.action.remove')}
         confirmVariant="destructive"
         onConfirm={async () => { await onBulkRemove(Array.from(selected)); resetSelection(); }}
       />
       <ConfirmDialog
         open={confirmRemoveOne !== null}
         onOpenChange={(open) => { if (!open) setConfirmRemoveOne(null); }}
-        title="Remove User from Cluster"
-        description={`Remove "${confirmRemoveOne ? displayName(confirmRemoveOne) : ''}" from this cluster?`}
-        confirmText="Remove"
+        title={t('pages.clusters.removeUserFromCluster')}
+        description={t('pages.clusters.removeOneConfirm', { name: confirmRemoveOne ? displayName(confirmRemoveOne) : '' })}
+        confirmText={t('common.action.remove')}
         confirmVariant="destructive"
         onConfirm={async () => { if (confirmRemoveOne) await onRemoveUser(confirmRemoveOne.id); setConfirmRemoveOne(null); }}
       />

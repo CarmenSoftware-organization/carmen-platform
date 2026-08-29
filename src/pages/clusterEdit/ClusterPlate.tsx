@@ -12,6 +12,7 @@ import { PlateField } from './PlateField';
 import type { ClusterTab, ClusterTabId } from './clusterTabs';
 import type { ClusterFormData } from '../clusterManagement/ClusterIdentityFields';
 import type { NormalizedAudit } from '../../utils/audit';
+import { useI18n } from '../../hooks/useI18n';
 
 interface LicenceRailProps {
   icon: LucideIcon;
@@ -32,6 +33,7 @@ interface LicenceRailProps {
  * something you compute from 33%.
  */
 function LicenceRail({ icon: Icon, label, used, cap, finite = false, note }: LicenceRailProps) {
+  const { t } = useI18n();
   const u = finite ? seatUtilization(used, cap ?? 0) : utilization(used, cap);
   return (
     <div>
@@ -47,7 +49,7 @@ function LicenceRail({ icon: Icon, label, used, cap, finite = false, note }: Lic
           <span className="text-foreground font-semibold">{u.used.toLocaleString()}</span>
           <span className="text-muted-foreground">
             {' / '}
-            {u.cap == null ? '∞' : u.cap.toLocaleString()} licensed
+            {u.cap == null ? '∞' : u.cap.toLocaleString()} {t('pages.clusters.licensedSuffix')}
           </span>
         </span>
       </div>
@@ -114,6 +116,7 @@ export function ClusterPlate({
   onUploadAvatar,
   onTabChange,
 }: ClusterPlateProps) {
+  const { t } = useI18n();
   const buFree = Math.max(0, bu.cap - bu.used);
   const buInactive = bu.used - bu.active;
   const usersFree = users.cap != null ? Math.max(0, users.cap - users.used) : null;
@@ -127,7 +130,7 @@ export function ClusterPlate({
         className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
       >
         <ArrowLeft className="size-4" />
-        Clusters
+        {t('breadcrumb.clusters')}
       </Link>
 
       <Card className="overflow-hidden p-0">
@@ -136,7 +139,7 @@ export function ClusterPlate({
             <div className="flex shrink-0 items-center gap-2.5">
               <BrandingImageUpload
                 compact
-                label="Logo"
+                label={t('pages.clusters.logo')}
                 shape="rect"
                 value={logoUrl}
                 disabled={!canEdit}
@@ -144,7 +147,7 @@ export function ClusterPlate({
               />
               <BrandingImageUpload
                 compact
-                label="Avatar"
+                label={t('common.field.avatar')}
                 shape="square"
                 value={avatarUrl}
                 fallbackName={formData.name}
@@ -163,16 +166,16 @@ export function ClusterPlate({
                 <h1 className="truncate text-xl font-semibold tracking-tight">
                   <HeroName
                     value={formData.name}
-                    label="Cluster name"
-                    emptyText="(unnamed cluster)"
+                    label={t('pages.clusters.namePlaceholder')}
+                    emptyText={t('pages.clusters.unnamedCluster')}
                     disabled={!canEdit}
                     onCommit={(v) => onCommit('name', v)}
                   />
                 </h1>
                 <StatusToggle
                   on={formData.is_active}
-                  onLabel="Active"
-                  offLabel="Inactive"
+                  onLabel={t('common.status.active')}
+                  offLabel={t('common.status.inactive')}
                   variant="success"
                   disabled={!canEdit}
                   onClick={() => onCommit('is_active', formData.is_active ? 'false' : 'true')}
@@ -182,7 +185,7 @@ export function ClusterPlate({
               <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                 <PlateField
                   name="code"
-                  label="Code"
+                  label={t('common.field.code')}
                   value={formData.code}
                   required
                   disabled={!canEdit}
@@ -192,10 +195,10 @@ export function ClusterPlate({
                 />
                 <PlateField
                   name="alias_name"
-                  label="Alias"
+                  label={t('common.field.alias')}
                   value={formData.alias_name}
-                  placeholder="Not set"
-                  editPlaceholder="Max 3 chars"
+                  placeholder={t('pages.clusters.notSet')}
+                  editPlaceholder={t('pages.clusters.maxThreeChars')}
                   disabled={!canEdit}
                   error={fieldErrors.alias_name}
                   onCommit={onCommit}
@@ -215,7 +218,7 @@ export function ClusterPlate({
         <div className="bg-muted/30 grid gap-x-8 gap-y-4 border-t p-4 sm:grid-cols-2 sm:p-5">
           <LicenceRail
             icon={Building2}
-            label="Business units"
+            label={t('pages.clusters.businessUnitsLower')}
             used={bu.used}
             cap={bu.cap}
             // BU quota comes from the cluster's licence view — 0 is a real zero, never
@@ -223,21 +226,21 @@ export function ClusterPlate({
             finite
             note={
               <>
-                {bu.active} active
-                {buInactive > 0 ? ` · ${buInactive} inactive` : ''}
-                {` · ${buFree} licence${buFree === 1 ? '' : 's'} free`}
+                {t('pages.clusters.activeCount', { count: bu.active })}
+                {buInactive > 0 ? ` · ${t('pages.clusters.inactiveCount', { count: buInactive })}` : ''}
+                {` · ${buFree === 1 ? t('pages.clusters.licenceFree', { count: buFree }) : t('pages.clusters.licencesFree', { count: buFree })}`}
               </>
             }
           />
           <LicenceRail
             icon={Users}
-            label="Seats"
+            label={t('pages.clusters.seats')}
             used={users.used}
             cap={users.cap}
             note={
               usersFree != null
-                ? `${users.active} active · ${usersFree} seat${usersFree === 1 ? '' : 's'} free`
-                : `${users.active} active · no seat cap set`
+                ? `${t('pages.clusters.activeCount', { count: users.active })} · ${usersFree === 1 ? t('pages.clusters.seatFree', { count: usersFree }) : t('pages.clusters.seatsFree', { count: usersFree })}`
+                : `${t('pages.clusters.activeCount', { count: users.active })} · ${t('pages.clusters.noSeatCap')}`
             }
           />
         </div>

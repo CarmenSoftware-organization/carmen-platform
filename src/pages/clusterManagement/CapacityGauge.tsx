@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
 import { utilization, seatUtilization, type CapLevel } from '../../utils/capacity';
 
 export const GAUGE_FILL: Record<CapLevel, string> = {
@@ -33,6 +34,7 @@ interface CapacityGaugeProps {
 
 /** A labelled capacity gauge: `used / cap licensed`, a bar, an optional note. */
 export function CapacityGauge({ icon: Icon, label, used, cap, note, finite = false }: CapacityGaugeProps) {
+  const { t } = useI18n();
   const u = finite ? seatUtilization(used, cap ?? 0) : utilization(used, cap);
   return (
     <div>
@@ -45,7 +47,9 @@ export function CapacityGauge({ icon: Icon, label, used, cap, note, finite = fal
           <span className="text-foreground font-semibold">{used.toLocaleString()}</span>
           <span className="text-muted-foreground">
             {' / '}
-            {u.cap == null ? '∞ (no cap)' : `${u.cap.toLocaleString()} licensed`}
+            {u.cap == null
+              ? t('components.fleetCapacity.noCap')
+              : t('components.fleetCapacity.licensedSuffix', { cap: u.cap.toLocaleString() })}
           </span>
           {u.cap != null && <span className={cn('ml-2', GAUGE_TEXT[u.level])}>{u.pct}%</span>}
         </span>

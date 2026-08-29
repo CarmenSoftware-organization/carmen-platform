@@ -165,12 +165,12 @@ const ClusterManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? data.total ?? mapped.length);
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load clusters: ' + getErrorDetail(err));
+      setError(t('pages.clusters.loadFailed', { detail: getErrorDetail(err, t) }));
       devLog('Error fetching clusters:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchClusters(paginate);
@@ -279,24 +279,32 @@ const ClusterManagement: React.FC = () => {
     const cluster = clustersRef.current.find((c) => c.id === id);
     const buCount = cluster?.bu_count ?? 0;
     if (buCount > 0) {
-      toast.error(`Can't delete ${cluster?.name || 'this cluster'}`, {
-        description: `It still has ${buCount} business unit${buCount > 1 ? 's' : ''}. Delete or move them to another cluster first.`,
-      });
+      toast.error(
+        t('pages.clusters.cantDelete', { name: cluster?.name || t('pages.clusters.thisCluster') }),
+        {
+          description:
+            buCount === 1
+              ? t('pages.clusters.stillHasBu', { count: buCount })
+              : t('pages.clusters.stillHasBus', { count: buCount }),
+        },
+      );
       return;
     }
     setDeleteId(id);
-  }, []);
+  }, [t]);
 
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     try {
       await clusterService.delete(deleteId);
-      toast.success('Cluster deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.cluster.title') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
       loadFleet();
     } catch (err: unknown) {
-      toast.error('Failed to delete cluster', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.cluster.lower') }), {
+        description: getErrorDetail(err, t),
+      });
     }
   };
 
@@ -308,31 +316,31 @@ const ClusterManagement: React.FC = () => {
     // the value before handing rows to it.
     const rows = clusters.map((c) => {
       const d = c.bu_cap_end_date;
-      const buCapEndDate = !d ? '' : isPerpetual(d) ? 'No expiry' : fmtDate(d);
+      const buCapEndDate = !d ? '' : isPerpetual(d) ? t('common.state.noExpiry') : fmtDate(d);
       return { ...c, bu_cap_end_date: buCapEndDate, ...auditCsvFields(normalizeAudit(c)) };
     });
     const csv = generateCSV(rows, [
-      { key: 'code', label: 'Code' },
-      { key: 'name', label: 'Name' },
-      { key: 'alias_name', label: 'Alias' },
-      { key: 'is_active', label: 'Status' },
-      { key: 'bu_cap', label: 'BU Quota' },
-      { key: 'bu_cap_end_date', label: 'Quota Expires' },
-      { key: 'users_count', label: 'Users' },
-      { key: 'total_max_license_users', label: 'Max Licensed Users' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'code', label: t('common.field.code') },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'alias_name', label: t('common.field.alias') },
+      { key: 'is_active', label: t('common.status.label') },
+      { key: 'bu_cap', label: t('pages.clusters.columnBuQuota') },
+      { key: 'bu_cap_end_date', label: t('common.state.quotaExpires') },
+      { key: 'users_count', label: t('nav.users') },
+      { key: 'total_max_license_users', label: t('pages.clusters.columnMaxLicensedUsers') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `clusters-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<Cluster, unknown>[]>(() => [
     {
       accessorKey: 'code',
-      header: 'Code',
+      header: t('common.field.code'),
       // Fixed width so the sticky offset of the 3rd frozen column (Name) is
       // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
       meta: { headerClassName: 'w-24', cellClassName: 'w-24', card: 'title' },
@@ -344,7 +352,7 @@ const ClusterManagement: React.FC = () => {
     },
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('common.field.name'),
       meta: { card: 'title' },
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -357,8 +365,8 @@ const ClusterManagement: React.FC = () => {
             {row.original.name}
           </Link>
           {row.original.deleted_at && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? `Deleted by ${row.original.deleted_by_name}` : undefined}>
-              Deleted
+            <Badge variant="destructive" className="text-xs px-1.5 py-0" title={row.original.deleted_by_name ? t('pages.clusters.deletedByTitle', { name: row.original.deleted_by_name }) : undefined}>
+              {t('common.status.deleted')}
             </Badge>
           )}
         </div>
@@ -366,11 +374,11 @@ const ClusterManagement: React.FC = () => {
     },
     {
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32', card: 'badge' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
+          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
@@ -380,7 +388,7 @@ const ClusterManagement: React.FC = () => {
       // อย่างเดียวไม่พอ หัวคอลัมน์จะไม่กลายเป็นปุ่มด้วยซ้ำ · การเรียงจริงทำที่ backend (server-side)
       // ค่าที่ accessor คืนจึงไม่ได้ถูกใช้เรียง แต่ต้องมีเพื่อปลดล็อกปุ่ม
       accessorFn: (row) => row.bu_used,
-      header: 'Business Units',
+      header: t('pages.clusters.columnBusinessUnits'),
       // โควตามาจากใบที่ชนะ (Task 7) — bu_cap เป็น 0 จริงเมื่อไม่มีใบ ไม่ใช่ "ไม่จำกัด" แทนที่
       // max_license_bu เดิม
       cell: ({ row }) => (
@@ -394,13 +402,13 @@ const ClusterManagement: React.FC = () => {
       id: 'bu_cap_end_date',
       // ดูเหตุผลที่ต้องมี accessor ในคอลัมน์ bu_count ด้านบน
       accessorFn: (row) => row.bu_cap_end_date,
-      header: 'Quota Expires',
+      header: t('common.state.quotaExpires'),
       // ใบตลอดชีพ (sentinel ปี 2099) ต้องไม่โชว์ปี 2099 ให้ผู้ใช้เห็น
       cell: ({ row }) => {
         const d = row.original.bu_cap_end_date;
         if (!d) return <span className="text-muted-foreground">—</span>;
         return isPerpetual(d) ? (
-          <span className="text-muted-foreground">No expiry</span>
+          <span className="text-muted-foreground">{t('common.state.noExpiry')}</span>
         ) : (
           <span className="text-xs">{fmtDate(d)}</span>
         );
@@ -413,7 +421,7 @@ const ClusterManagement: React.FC = () => {
       id: 'user_count',
       // ดูเหตุผลที่ต้องมี accessor ในคอลัมน์ bu_count ด้านบน
       accessorFn: (row) => row.users_count,
-      header: 'Users',
+      header: t('nav.users'),
       // `total_max_license_users` = backend aggregate of per-BU caps; 0 / null / absent = no cap.
       cell: ({ row }) => (
         <CapacityMeter used={row.original.users_count} cap={row.original.total_max_license_users} />
@@ -425,7 +433,7 @@ const ClusterManagement: React.FC = () => {
     ...auditColumns<Cluster>({ hideUpdatedOnCard: true, t }),
     ...(showDeleted ? [{
       id: 'deleted_at',
-      header: 'Deleted',
+      header: t('common.audit.deletedDate'),
       cell: ({ row }: { row: { original: Cluster } }) => (
         <AuditMeta
           variant="cell"
@@ -443,7 +451,7 @@ const ClusterManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name || row.original.code}`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('common.action.rowActions', { name: row.original.name || row.original.code })}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -451,13 +459,13 @@ const ClusterManagement: React.FC = () => {
             <Can permission="cluster.update" clusterId={row.original.id}>
               <DropdownMenuItem onClick={() => navigate(`/clusters/${row.original.id}/edit`)} className="cursor-pointer">
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
             <Can permission="cluster.delete" clusterId={row.original.id}>
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
@@ -470,19 +478,19 @@ const ClusterManagement: React.FC = () => {
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <PageHeader
-          title="Cluster Management"
-          subtitle="Manage and configure clusters"
+          title={t('pages.clusters.title')}
+          subtitle={t('pages.clusters.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || clusters.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="cluster.create">
                 <Button onClick={() => navigate('/clusters/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Cluster</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t('pages.clusters.addCluster')}</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -504,14 +512,14 @@ const ClusterManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search clusters..."
+                placeholder={t('pages.clusters.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -521,15 +529,15 @@ const ClusterManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter clusters by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.clusters.filtersDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -539,7 +547,7 @@ const ClusterManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("true")}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes("false") ? "default" : "outline"}
@@ -547,12 +555,12 @@ const ClusterManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("false")}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <span className="text-sm font-medium">Deleted</span>
+                      <span className="text-sm font-medium">{t('pages.clusters.deletedSectionLabel')}</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
@@ -562,13 +570,13 @@ const ClusterManagement: React.FC = () => {
                           className="h-4 w-4 rounded border-input"
                         />
                         <Label htmlFor="showDeleted" className="text-sm text-muted-foreground cursor-pointer">
-                          Show soft-deleted clusters
+                          {t('pages.clusters.showSoftDeleted')}
                         </Label>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -577,10 +585,10 @@ const ClusterManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === "true" ? "Active" : "Inactive"}
+                    {s === "true" ? t('common.status.active') : t('common.status.inactive')}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
@@ -588,14 +596,14 @@ const ClusterManagement: React.FC = () => {
                 ))}
                 {showDeleted && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    Show Deleted
+                    {t('common.action.showDeleted')}
                     <button onClick={handleShowDeletedToggle} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 )}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -608,13 +616,13 @@ const ClusterManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Network}
-                emptyTitle="No clusters yet"
-                emptyDescription="Get started by creating your first cluster to organize business units."
+                emptyTitle={t('pages.clusters.emptyTitle')}
+                emptyDescription={t('pages.clusters.emptyDescription')}
                 addAction={
                   <Can permission="cluster.create">
                     <Button size="sm" onClick={() => navigate('/clusters/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Cluster
+                      {t('pages.clusters.addCluster')}
                     </Button>
                   </Can>
                 }
@@ -629,8 +637,8 @@ const ClusterManagement: React.FC = () => {
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading clusters">
-                    <div className="text-muted-foreground">Loading clusters...</div>
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.clusters.loadingAria')}>
+                    <div className="text-muted-foreground">{t('pages.clusters.loadingText')}</div>
                   </div>
                 )}
                 <DataTable
@@ -657,9 +665,9 @@ const ClusterManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Cluster"
-        description="Are you sure you want to delete this cluster? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.clusters.deleteTitle')}
+        description={t('pages.clusters.deleteDescription')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
