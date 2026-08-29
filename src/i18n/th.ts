@@ -221,12 +221,19 @@ export const th: Translations = {
       endDate: 'วันที่สิ้นสุด',
       required: '{{label}} *',
       code: 'รหัส',
+      // Promoted from pages.clusterAdmin.aliasLabel — copied verbatim, not retranslated.
+      // See en.ts for the promotion rationale.
+      alias: 'ชื่อแฝง',
     },
     section: {
       identity: 'ข้อมูลระบุตัวตน',
       branding: 'แบรนด์',
       configuration: 'การตั้งค่า',
       access: 'สิทธิ์เข้าถึง',
+      // Promoted from pages.clusterAdmin.hotel / pages.clusterAdmin.company — copied
+      // verbatim, not retranslated. See en.ts for the promotion rationale.
+      hotel: 'โรงแรม',
+      company: 'บริษัท',
     },
     option: {
       function: 'ฟังก์ชัน',
@@ -238,6 +245,9 @@ export const th: Translations = {
       // theme.system (the "follow the OS" theme setting) even though English spells both
       // the same way.
       system: 'ทั้งระบบ',
+      // Promoted from pages.clusterAdmin.fifo — identical to English in both languages
+      // (FIFO is not translated); copied verbatim. See en.ts for the promotion rationale.
+      fifo: 'FIFO',
     },
     label: {
       cluster: 'Cluster',
@@ -252,6 +262,10 @@ export const th: Translations = {
       businessUnitsLabel: 'หน่วยธุรกิจ',
       filters: 'ตัวกรอง',
       default: 'ค่าเริ่มต้น',
+      // Promoted from pages.clusterAdmin.hq — identical to English in both languages (HQ is
+      // an abbreviation, not translated); copied verbatim. See en.ts for the promotion
+      // rationale.
+      hq: 'HQ',
     },
     state: {
       noExpiry: 'ไม่มีวันหมดอายุ',
@@ -1109,6 +1123,14 @@ export const th: Translations = {
 
       // --- Task 5: SummaryCardHeader.tsx ---
       viewAll: 'ดูทั้งหมด',
+    },
+
+    // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —
+    // no call site is bound yet).
+    businessUnits: {
+      // Copied verbatim from nav.users — not retranslated. See en.ts for why this stays its
+      // own key instead of reading nav.users directly.
+      usersLabel: 'ผู้ใช้งาน',
     },
   },
   error: {

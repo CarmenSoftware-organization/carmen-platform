@@ -270,6 +270,16 @@ export const en = {
       // BusinessUnitForm.tsx's (dead, defensive-only) code-required check — same shape as
       // the existing title/name entries above, added on demand rather than up front.
       code: 'Code',
+      // Promoted from pages.clusterAdmin.aliasLabel (i18n phase-2 slice-5 Task 1): this bare
+      // 'Alias' label recurs at 3 files across 2 slices — ClusterBuDocument.tsx
+      // (clusterAdmin, slice 4) plus BusinessUnitManagement.tsx's column header and
+      // BusinessUnitDocument.tsx's InlineField label (both slice 5, businessUnits) —
+      // clearing the promote-to-common bar. NOT the same key as aliasName ('Alias Name')
+      // above: that one is the Title-Case two-word CSV/full-form label; this is the bare
+      // single word used as a column header and a compact InlineField label — the same
+      // form-label/column-header register this whole namespace already covers. Thai copied
+      // verbatim from pages.clusterAdmin.aliasLabel, unchanged.
+      alias: 'Alias',
     },
     // Section headings — a different register from a bare input label. `common.field.*`
     // used to hold these too, but a heading and a label want different translations, and
@@ -279,6 +289,18 @@ export const en = {
       branding: 'Branding',
       configuration: 'Configuration',
       access: 'Access',
+      // Promoted from pages.clusterAdmin.hotel / pages.clusterAdmin.company (i18n phase-2
+      // slice-5 Task 1): both are Group/tab section headings — see the doc comment that used
+      // to sit at pages.clusterAdmin.company explaining `company` is a SECTION heading for
+      // the whole company_* field group, NOT a reuse of common.field.company (the
+      // single-input field label, still unbound) — and byte-identical to this slice's own
+      // BusinessUnitDocument.tsx `<Group label="Hotel">` / `<Group label="Company">`
+      // headings. clusterAdmin already binds each at 2 files of its own (BusinessUnitForm.tsx
+      // tab labels, ClusterBuDocument.tsx Group headings); adding businessUnits' one file
+      // each clears the >=3-files-AND->=2-slices bar. Thai copied verbatim from the sibling
+      // keys, unchanged.
+      hotel: 'Hotel',
+      company: 'Company',
     },
     // <option> values inside a <select> — never a heading, never an input label.
     option: {
@@ -291,6 +313,14 @@ export const en = {
       // A broadcast's scope of `system` means platform-wide; the theme's means
       // "follow the OS". English spells both "System"; Thai must not.
       system: 'System',
+      // Promoted from pages.clusterAdmin.fifo (i18n phase-2 slice-5 Task 1): the
+      // calculation-method option label recurs at 3 files across 2 slices —
+      // BusinessUnitForm.tsx (clusterAdmin, slice 4) plus BusinessUnitEdit.tsx's
+      // getCalculationMethodLabel() and CalculationSettingsSection.tsx's <option> (both
+      // slice 5, businessUnits) — clearing the promote bar. Thai copied verbatim from
+      // pages.clusterAdmin.fifo (identical to English; FIFO is not translated in either
+      // language).
+      fifo: 'FIFO',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
     // below for the toast-safe forms). Ten of these lived in `entity.*` until the phase-2
@@ -311,6 +341,14 @@ export const en = {
       businessUnitsLabel: 'Business units',
       filters: 'Filters',
       default: 'Default',
+      // Promoted from pages.clusterAdmin.hq (i18n phase-2 slice-5 Task 1): the HQ badge/
+      // column value for the is_hq flag recurs at 5 files across 2 slices —
+      // BusinessUnitList.tsx, BuPropertyPlate.tsx, BuRankingCard.tsx, SeatsByBuTable.tsx
+      // (all clusterAdmin, slice 4) plus BusinessUnitDocument.tsx's hero Badge (slice 5,
+      // businessUnits) — clearing the promote bar by a wide margin. Thai copied verbatim
+      // from pages.clusterAdmin.hq (identical to English; HQ is an abbreviation, not
+      // translated in either language).
+      hq: 'HQ',
     },
     state: {
       noExpiry: 'No expiry',
@@ -1628,6 +1666,71 @@ export const en = {
       // call sites (ClusterBusinessUnitsCard.tsx, ClusterPeopleCard.tsx) already pass in as an
       // aria-label (viewAllBusinessUnitsAria above / this object's own viewAllClusterUsers).
       viewAll: 'View all',
+    },
+
+    // Slice 5 (Business Unit surfaces — 18 files: BusinessUnitManagement.tsx,
+    // BusinessUnitEdit.tsx, and the src/pages/businessUnitEdit/ + businessUnitManagement/
+    // decomposition). Catalog-only pass (Task 1): every key below is seeded because its
+    // exact string recurs in MORE THAN ONE of those 18 files — a later task binding any one
+    // of those files reuses the key here instead of re-declaring it. A string used once
+    // stays out of this object; that file's own task adds it page-locally.
+    //
+    // Reuse-checked first against common.*/entity.*/breadcrumb.*/error.* (exact value, Thai
+    // read too) and toast.* composed with entity.* — this slice is unusually saturated with
+    // matches, since six earlier slices already discuss business units constantly. Every one
+    // of the following was reused directly rather than duplicated here (see task-1-report.md
+    // for the full list with file counts): Code/Name/Alias Name/Cluster/Status/Created at/
+    // Created by/Updated at/Updated by (CSV + column headers) -> common.field.*/
+    // common.label.cluster/common.status.label/common.audit.*; Email/Username/Description/
+    // Type/Avatar -> common.field.*; BU Role/Database Pool/Filters -> common.label.*;
+    // Active/Inactive/Deleted/Archived -> common.status.*; Export/Clear/Clear All Filters/
+    // Filters:/Show Deleted/Clear all/Delete/Edit/Add User/Remove/Actions for {{name}}/
+    // Manage licences/Save Changes -> common.action.*; Saving…/Adding…/Loading.../Loading… ->
+    // common.busy.*; Cancel -> common.cancel; Search business units.../No business units yet/
+    // Unsaved changes/No changes/Couldn't refresh — showing the last known numbers. ->
+    // common.state.*; Average -> common.option.average; Branding/Configuration ->
+    // common.section.*; Business unit created/deleted successfully, Failed to delete
+    // business unit, Changes saved successfully, Data exported successfully -> toast.*
+    // composed with entity.businessUnit.*; Cluster/Code/Name is required ->
+    // common.validation.requiredMessage composed with common.label.cluster/common.field.code/
+    // common.field.name. One further reuse is notable: BusinessUnitDocument.tsx's
+    // company_name InlineField label is the first-ever call site for common.field.company
+    // ('Company') — that key has sat unbound in the catalog since an earlier slice; its Thai
+    // ('บริษัท') was read and fits this field exactly.
+    //
+    // Four cross-slice promotion signals cleared the >=3-files-AND->=2-slices bar and were
+    // promoted to common.* instead of landing here — see the comments at common.field.alias,
+    // common.section.hotel/company, common.option.fifo, and common.label.hq. Every other
+    // promotion signal found stayed below the bar (2 files / 2 slices each) AND is used by
+    // only one of this slice's 18 files, so per this task's own rule it stays out of this
+    // object too — that file's own task adds it page-locally with a comment naming the
+    // sibling. Full list in task-1-report.md: Add Business Unit / Add BU (vs
+    // pages.users.addBusinessUnit/addBu), Deleted by {{name}} (vs
+    // pages.users.deletedByName), Loading business units [aria] (vs pages.clusterAdmin.
+    // loadingBusinessUnitsAria), Filter business units by status (vs pages.clusterAdmin.
+    // filterBusinessUnitsByStatus), Copy from hotel address / Copied hotel address to
+    // company address (vs pages.clusterAdmin.copyFromHotelAddress/
+    // copiedHotelAddressToCompany), Tax ID / Branch / Logo / Overview (vs pages.clusterAdmin.
+    // taxIdLabel/branchLabel/logoLabel/overview), the ten AddressBlock.tsx field labels
+    // (Hotel name/Address line 1/Address line 2/Sub-district/District/City/Province/Postal
+    // code/Country/Latitude/Longitude/Phone vs pages.clusterAdmin.*Label), the six regional-
+    // format labels (Timezone/Date format/Date-time format/Time format/Long time format/
+    // Short time format vs pages.clusterAdmin.*), the {{active}}/{{inactive}} summary
+    // sentence (vs pages.users.activeInactiveSummary), and the seat/license two-axis
+    // pluralization templates (vs pages.licenses.seatFromLicense*).
+    businessUnits: {
+      // BusinessUnitEdit.tsx's Users-tab label and BusinessUnitUsersCard.tsx's CardTitle are
+      // the one string that recurs across 2 of this slice's 18 files. NOT a reuse of
+      // nav.users / breadcrumb.users ('Users') despite the byte match — pages.clusterAdmin.
+      // usersPageTitle already hit this exact hazard (a nav label and a page heading are
+      // different jobs that happen to share a word) and was given its own key rather than
+      // reading nav.users directly; the same reasoning applies to a tab label / Card heading
+      // here. Also a promotion signal against pages.clusterAdmin.usersPageTitle (1 file) —
+      // 3 files across 2 slices in total, but clusterAdmin's is a full PageHeader title while
+      // this slice's two call sites are a compact tab pill and a Card heading, a different
+      // register, so left split rather than promoted. Thai copied verbatim from nav.users,
+      // unchanged.
+      usersLabel: 'Users',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
