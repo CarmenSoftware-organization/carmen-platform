@@ -24,6 +24,7 @@ import analyticsService from '../services/analyticsService';
 import { presetRange, type DateRange } from '../utils/analyticsRange';
 import { parseApiError } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
+import { useI18n } from '../hooks/useI18n';
 import type { ActivityEvent } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -38,6 +39,7 @@ const isParsableDate = (v: string | null): v is string =>
   !!v && !Number.isNaN(new Date(v).getTime());
 
 const ActivityEventManagement: React.FC = () => {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -139,13 +141,13 @@ const ActivityEventManagement: React.FC = () => {
   const columns = useMemo<ColumnDef<ActivityEvent, unknown>[]>(() => [
     {
       accessorKey: 'server_ts',
-      header: 'เวลา',
+      header: t('pages.activityEvents.columnTime'),
       meta: { card: 'title' },
       cell: ({ row }) => <span className="whitespace-nowrap text-xs">{fmt(row.original.server_ts)}</span>,
     },
     {
       accessorKey: 'user_name',
-      header: 'ผู้ใช้',
+      header: t('pages.activityEvents.columnUser'),
       enableSorting: false,
       cell: ({ row }) => (
         <div className="min-w-0">
@@ -160,17 +162,17 @@ const ActivityEventManagement: React.FC = () => {
         </div>
       ),
     },
-    { accessorKey: 'bu_code', header: 'BU', enableSorting: false,
+    { accessorKey: 'bu_code', header: t('pages.activityEvents.columnBu'), enableSorting: false,
       cell: ({ row }) => row.original.bu_code || '-' },
     {
       accessorKey: 'event_type',
-      header: 'ชนิด',
+      header: t('pages.activityEvents.columnType'),
       meta: { card: 'badge' },
       cell: ({ row }) => <Badge variant="secondary">{row.original.event_type}</Badge>,
     },
     {
       accessorKey: 'page_path',
-      header: 'หน้า',
+      header: t('pages.activityEvents.columnPage'),
       cell: ({ row }) => (
         <span className="block max-w-[280px] truncate font-mono text-xs" title={row.original.page_path}>
           {row.original.page_path}
@@ -179,7 +181,7 @@ const ActivityEventManagement: React.FC = () => {
     },
     {
       accessorKey: 'element_id',
-      header: 'Element',
+      header: t('pages.activityEvents.columnElement'),
       enableSorting: false,
       cell: ({ row }) => (
         <span className="block max-w-[180px] truncate font-mono text-xs"
@@ -188,7 +190,7 @@ const ActivityEventManagement: React.FC = () => {
         </span>
       ),
     },
-    { accessorKey: 'app_name', header: 'App', enableSorting: false, meta: { card: 'hidden' },
+    { accessorKey: 'app_name', header: t('pages.activityEvents.columnApp'), enableSorting: false, meta: { card: 'hidden' },
       cell: ({ row }) => row.original.app_name || '-' },
     {
       id: 'actions',
@@ -197,13 +199,13 @@ const ActivityEventManagement: React.FC = () => {
       meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0', card: 'actions' },
       cell: ({ row }) => (
         <Button variant="ghost" size="icon" className="h-8 w-8"
-                aria-label={`ดูรายละเอียด event ${row.original.event_id}`}
+                aria-label={t('pages.activityEvents.viewDetailsAria', { id: row.original.event_id })}
                 onClick={() => setSelected(row.original)}>
           <Eye className="h-4 w-4" />
         </Button>
       ),
     },
-  ], []);
+  ], [t]);
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     localStorage.setItem('perpage_activity_events', String(perpage));
@@ -223,29 +225,29 @@ const ActivityEventManagement: React.FC = () => {
   };
 
   const handleExport = () => {
-    if (events.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
+    if (events.length === 0) { toast.error(t('toast.nothingToExport')); return; }
     const csv = generateCSV(events, [
-      { key: 'server_ts', label: 'Server time' },
-      { key: 'user_name', label: 'User' },
-      { key: 'user_email', label: 'Email' },
-      { key: 'bu_code', label: 'BU' },
-      { key: 'event_type', label: 'Type' },
-      { key: 'page_path', label: 'Page' },
-      { key: 'element_id', label: 'Element' },
-      { key: 'app_name', label: 'App' },
+      { key: 'server_ts', label: t('pages.activityEvents.csvServerTime') },
+      { key: 'user_name', label: t('pages.activityEvents.columnUser') },
+      { key: 'user_email', label: t('common.field.email') },
+      { key: 'bu_code', label: t('pages.activityEvents.columnBu') },
+      { key: 'event_type', label: t('pages.activityEvents.columnType') },
+      { key: 'page_path', label: t('pages.activityEvents.columnPage') },
+      { key: 'element_id', label: t('pages.activityEvents.columnElement') },
+      { key: 'app_name', label: t('pages.activityEvents.columnApp') },
     ]);
     downloadCSV(csv, `activity-events-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const activeFilters = [
-    searchTerm && { label: `ค้นหา: ${searchTerm}`, clear: () => { setSearchTerm(''); flushSearch(''); resetPage(); } },
-    pagePath && { label: `หน้า: ${pagePath}`, clear: () => { setPagePath(''); flushPagePath(''); resetPage(); } },
-    sessionId && { label: `session: ${sessionId.slice(0, 8)}…`, clear: () => { setSessionId(''); flushSessionId(''); resetPage(); } },
-    userId && { label: `ผู้ใช้: ${userId.slice(0, 8)}…`, clear: () => { setUserId(''); flushUserId(''); resetPage(); } },
-    eventType && { label: `ชนิด: ${eventType}`, clear: () => { setEventType(''); resetPage(); } },
-    buCode && { label: `BU: ${optionLabel(buOptions, buCode)}`, clear: () => { setBuCode(''); resetPage(); } },
-    appId && { label: `App: ${optionLabel(appOptions, appId)}`, clear: () => { setAppId(''); resetPage(); } },
+    searchTerm && { label: t('pages.activityEvents.chipSearch', { value: searchTerm }), clear: () => { setSearchTerm(''); flushSearch(''); resetPage(); } },
+    pagePath && { label: t('pages.activityEvents.chipPage', { value: pagePath }), clear: () => { setPagePath(''); flushPagePath(''); resetPage(); } },
+    sessionId && { label: t('pages.activityEvents.chipSession', { value: sessionId.slice(0, 8) }), clear: () => { setSessionId(''); flushSessionId(''); resetPage(); } },
+    userId && { label: t('pages.activityEvents.chipUser', { value: userId.slice(0, 8) }), clear: () => { setUserId(''); flushUserId(''); resetPage(); } },
+    eventType && { label: t('pages.activityEvents.chipType', { value: eventType }), clear: () => { setEventType(''); resetPage(); } },
+    buCode && { label: t('pages.activityEvents.chipBu', { value: optionLabel(buOptions, buCode) }), clear: () => { setBuCode(''); resetPage(); } },
+    appId && { label: t('pages.activityEvents.chipApp', { value: optionLabel(appOptions, appId) }), clear: () => { setAppId(''); resetPage(); } },
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
@@ -253,14 +255,14 @@ const ActivityEventManagement: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Activity Events</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('nav.activityEvents')}</h1>
             <p className="text-sm text-muted-foreground sm:text-base">
-              UI telemetry รายรายการ — ใครกดอะไร หน้าไหน เมื่อไหร่
+              {t('pages.activityEvents.subtitle')}
             </p>
           </div>
           <Button variant="outline" onClick={handleExport} disabled={loading}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            {t('common.action.exportCsv')}
           </Button>
         </div>
 
@@ -268,14 +270,14 @@ const ActivityEventManagement: React.FC = () => {
           <CardContent className="space-y-4 p-4">
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[220px] flex-1 space-y-2">
-                <Label htmlFor="event-search">ค้นหา</Label>
+                <Label htmlFor="event-search">{t('pages.activityEvents.searchLabel')}</Label>
                 <SearchInput
                   id="event-search"
                   ref={searchInputRef}
                   value={searchTerm}
                   onValueChange={setSearchTerm}
                   onClear={() => { setSearchTerm(''); flushSearch(''); resetPage(); }}
-                  placeholder="page path / element id / element text"
+                  placeholder={t('pages.activityEvents.searchPlaceholder')}
                 />
               </div>
 
@@ -285,25 +287,25 @@ const ActivityEventManagement: React.FC = () => {
                 <SheetTrigger asChild>
                   <Button variant="outline">
                     <SlidersHorizontal className="mr-2 h-4 w-4" />
-                    ตัวกรอง
+                    {t('common.label.filters')}
                   </Button>
                 </SheetTrigger>
                 <SheetContent className="w-full sm:max-w-md">
                   <SheetHeader>
-                    <SheetTitle>ตัวกรอง</SheetTitle>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
                     <SheetDescription>
-                      กรอง event ตาม BU, application, ชนิด, ผู้ใช้, หน้า และ session
+                      {t('pages.activityEvents.filtersDescription')}
                     </SheetDescription>
                   </SheetHeader>
                   <div className="mt-4 space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="f-type">ชนิด event</Label>
+                      <Label htmlFor="f-type">{t('pages.activityEvents.eventTypeLabel')}</Label>
                       <Select value={eventType || 'all'} onValueChange={(v) => { setEventType(v === 'all' ? '' : v); resetPage(); }}>
                         <SelectTrigger id="f-type"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">ทั้งหมด</SelectItem>
-                          <SelectItem value="click">Click</SelectItem>
-                          <SelectItem value="page_view">Page view</SelectItem>
+                          <SelectItem value="all">{t('common.option.all')}</SelectItem>
+                          <SelectItem value="click">{t('pages.activityEvents.eventTypeClick')}</SelectItem>
+                          <SelectItem value="page_view">{t('pages.activityEvents.eventTypePageView')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -311,38 +313,38 @@ const ActivityEventManagement: React.FC = () => {
                         "ไม่พบ event" โดยไม่มีอะไรบอกว่าพิมพ์ผิด และหน้า /analytics
                         ก็ใช้ <Select> ชุดเดียวกันนี้อยู่แล้ว */}
                     <div className="space-y-2">
-                      <Label htmlFor="f-bu">Business Unit</Label>
+                      <Label htmlFor="f-bu">{t('entity.businessUnit.title')}</Label>
                       <Select value={buCode || 'all'} onValueChange={(v) => { setBuCode(v === 'all' ? '' : v); resetPage(); }}>
                         <SelectTrigger id="f-bu"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">ทั้งหมด</SelectItem>
+                          <SelectItem value="all">{t('common.option.all')}</SelectItem>
                           {buOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="f-app">Application</Label>
+                      <Label htmlFor="f-app">{t('common.label.application')}</Label>
                       <Select value={appId || 'all'} onValueChange={(v) => { setAppId(v === 'all' ? '' : v); resetPage(); }}>
                         <SelectTrigger id="f-app"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">ทั้งหมด</SelectItem>
+                          <SelectItem value="all">{t('common.option.all')}</SelectItem>
                           {appOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="f-user">ผู้ใช้ (User ID)</Label>
+                      <Label htmlFor="f-user">{t('pages.activityEvents.userIdLabel')}</Label>
                       <Input
                         id="f-user" value={userId} onChange={(e) => setUserId(e.target.value)}
-                        placeholder="UUID ของผู้ใช้"
+                        placeholder={t('pages.activityEvents.userIdPlaceholder')}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="f-page">Page path</Label>
+                      <Label htmlFor="f-page">{t('pages.activityEvents.pagePathLabel')}</Label>
                       <Input id="f-page" value={pagePath} onChange={(e) => setPagePath(e.target.value)} placeholder="/procurement/purchase-request" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="f-session">Session ID</Label>
+                      <Label htmlFor="f-session">{t('pages.activityEvents.sessionIdLabel')}</Label>
                       <Input id="f-session" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
                     </div>
                   </div>
@@ -355,7 +357,7 @@ const ActivityEventManagement: React.FC = () => {
                 {activeFilters.map((f) => (
                   <Badge key={f.label} variant="secondary" className="gap-1">
                     {f.label}
-                    <button type="button" onClick={f.clear} aria-label={`ล้างตัวกรอง ${f.label}`}>
+                    <button type="button" onClick={f.clear} aria-label={t('pages.activityEvents.clearFilterAria', { label: f.label })}>
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -378,14 +380,14 @@ const ActivityEventManagement: React.FC = () => {
             ) : !loading && !error && events.length === 0 ? (
               <EmptyState
                 icon={MousePointerClick}
-                title="ไม่พบ event"
-                description="ลองขยายช่วงวัน หรือล้างตัวกรองบางตัวออก"
+                title={t('pages.activityEvents.emptyTitle')}
+                description={t('pages.activityEvents.emptyDescription')}
               />
             ) : (
               <>
                 {loading && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
-                    <span className="text-sm text-muted-foreground">กำลังโหลด…</span>
+                    <span className="text-sm text-muted-foreground">{t('common.busy.loadingEllipsis')}</span>
                   </div>
                 )}
                 <DataTable

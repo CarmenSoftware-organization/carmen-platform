@@ -20,10 +20,12 @@ import { useAnalyticsFilterOptions } from '../hooks/useAnalyticsFilterOptions';
 import { presetRange, ymdInTz, type DateRange } from '../utils/analyticsRange';
 import { parseApiError } from '../utils/errorParser';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
+import { useI18n } from '../hooks/useI18n';
 import type { AnalyticsOverview } from '../types';
 
 const UsageAnalytics: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [range, setRange] = useState<DateRange>(() => presetRange(7));
   const [buCode, setBuCode] = useState('');
   const [appId, setAppId] = useState('');
@@ -65,10 +67,13 @@ const UsageAnalytics: React.FC = () => {
     () => (overview?.top_pages || []).map((p) => ({
       key: p.page_path,
       label: p.page_path,
-      sub: `${p.sessions.toLocaleString()} sessions · ${p.users.toLocaleString()} users`,
+      sub: t('pages.usageAnalytics.topPageSub', {
+        sessions: p.sessions.toLocaleString(),
+        users: p.users.toLocaleString(),
+      }),
       value: p.events,
     })),
-    [overview],
+    [overview, t],
   );
 
   const topElementItems = useMemo(
@@ -94,13 +99,13 @@ const UsageAnalytics: React.FC = () => {
 
   const handleExport = () => {
     const rows = overview?.daily || [];
-    if (rows.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
+    if (rows.length === 0) { toast.error(t('toast.nothingToExport')); return; }
     const csv = generateCSV(rows, [
-      { key: 'day', label: 'Day' },
-      { key: 'clicks', label: 'Clicks' },
-      { key: 'page_views', label: 'Page views' },
-      { key: 'sessions', label: 'Sessions' },
-      { key: 'users', label: 'Active users' },
+      { key: 'day', label: t('pages.usageAnalytics.csvDay') },
+      { key: 'clicks', label: t('pages.usageAnalytics.metricClicks') },
+      { key: 'page_views', label: t('pages.usageAnalytics.metricPageViews') },
+      { key: 'sessions', label: t('pages.usageAnalytics.metricSessions') },
+      { key: 'users', label: t('pages.usageAnalytics.metricActiveUsers') },
     ]);
     // ชื่อไฟล์ต้องเป็นวันตามเวลาไทยเหมือนที่ UI แสดง ไม่ใช่วัน UTC ที่ตัดจาก ISO ตรง ๆ —
     // ช่วง 1–7 ส.ค. ตามเวลาไทยมี from เป็น 2026-07-31T17:00Z จะได้ชื่อไฟล์เป็นวันที่ 31 ก.ค.
@@ -108,7 +113,7 @@ const UsageAnalytics: React.FC = () => {
     const fromYmd = ymdInTz(range.from);
     const toYmd = ymdInTz(new Date(new Date(range.to).getTime() - 1).toISOString());
     downloadCSV(csv, `usage-analytics-${fromYmd}_${toYmd}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const isEmpty = !loading && (overview?.summary.events ?? 0) === 0;
@@ -118,14 +123,14 @@ const UsageAnalytics: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Usage Analytics</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('nav.usageAnalytics')}</h1>
             <p className="text-sm text-muted-foreground sm:text-base">
-              ภาพรวมการใช้งานจาก UI telemetry
+              {t('pages.usageAnalytics.subtitle')}
             </p>
           </div>
           <Button variant="outline" onClick={handleExport} disabled={loading}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            {t('common.action.exportCsv')}
           </Button>
         </div>
 
@@ -134,35 +139,35 @@ const UsageAnalytics: React.FC = () => {
             <DateRangeFilter value={range} onChange={setRange} />
 
             <div className="space-y-2">
-              <Label htmlFor="filter-bu">Business Unit</Label>
+              <Label htmlFor="filter-bu">{t('entity.businessUnit.title')}</Label>
               <Select value={buCode || 'all'} onValueChange={(v) => setBuCode(v === 'all' ? '' : v)}>
                 <SelectTrigger id="filter-bu" className="w-[200px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ทั้งหมด</SelectItem>
+                  <SelectItem value="all">{t('common.option.all')}</SelectItem>
                   {buOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="filter-app">Application</Label>
+              <Label htmlFor="filter-app">{t('common.label.application')}</Label>
               <Select value={appId || 'all'} onValueChange={(v) => setAppId(v === 'all' ? '' : v)}>
                 <SelectTrigger id="filter-app" className="w-[200px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ทั้งหมด</SelectItem>
+                  <SelectItem value="all">{t('common.option.all')}</SelectItem>
                   {appOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="filter-type">ชนิด event</Label>
+              <Label htmlFor="filter-type">{t('pages.usageAnalytics.eventTypeLabel')}</Label>
               <Select value={eventType || 'all'} onValueChange={(v) => setEventType(v === 'all' ? '' : v)}>
                 <SelectTrigger id="filter-type" className="w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">ทั้งหมด</SelectItem>
-                  <SelectItem value="click">Click</SelectItem>
-                  <SelectItem value="page_view">Page view</SelectItem>
+                  <SelectItem value="all">{t('common.option.all')}</SelectItem>
+                  <SelectItem value="click">{t('pages.usageAnalytics.eventTypeClick')}</SelectItem>
+                  <SelectItem value="page_view">{t('pages.usageAnalytics.eventTypePageView')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -187,8 +192,8 @@ const UsageAnalytics: React.FC = () => {
             <CardContent className="p-0">
               <EmptyState
                 icon={BarChart3}
-                title="ยังไม่มี event ในช่วงที่เลือก"
-                description="ลองขยายช่วงวัน หรือเอาตัวกรอง Business Unit / Application ออก"
+                title={t('pages.usageAnalytics.emptyTitle')}
+                description={t('pages.usageAnalytics.emptyDescription')}
               />
             </CardContent>
           </Card>
@@ -202,15 +207,30 @@ const UsageAnalytics: React.FC = () => {
               ) : (
                 <Can
                   permission="activity_event.detail"
-                  fallback={<TopList title="Top pages" items={topPageItems} emptyLabel="ไม่มีข้อมูล" />}
+                  fallback={(
+                    <TopList
+                      title={t('pages.usageAnalytics.topPages')}
+                      items={topPageItems}
+                      emptyLabel={t('pages.usageAnalytics.noData')}
+                    />
+                  )}
                 >
-                  <TopList title="Top pages" items={topPageItems} emptyLabel="ไม่มีข้อมูล" onSelect={goToEvents} />
+                  <TopList
+                    title={t('pages.usageAnalytics.topPages')}
+                    items={topPageItems}
+                    emptyLabel={t('pages.usageAnalytics.noData')}
+                    onSelect={goToEvents}
+                  />
                 </Can>
               )}
               {loading ? (
                 <Skeleton className="h-[420px] w-full" />
               ) : (
-                <TopList title="Top elements" items={topElementItems} emptyLabel="ไม่มีข้อมูล" />
+                <TopList
+                  title={t('pages.usageAnalytics.topElements')}
+                  items={topElementItems}
+                  emptyLabel={t('pages.usageAnalytics.noData')}
+                />
               )}
             </div>
           </>

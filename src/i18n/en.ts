@@ -77,6 +77,11 @@ export const en = {
     reportTemplates: 'Report Templates',
     news: 'News',
     broadcasts: 'Broadcasts',
+    // เติมตอน browser pass ของ fix wave 2: /analytics กับ /activity-events ไม่เคยอยู่ใน
+    // SEGMENT_KEYS ของ Breadcrumbs.tsx เลย ตัว titleCase() จึงคืนคำอังกฤษให้ทุกภาษา —
+    // ป้ายบนหัวหน้ายังเป็น 'Activity Events' ทั้งที่ทั้งหน้าเป็นไทยแล้ว
+    usageAnalytics: 'Usage Analytics',
+    activityEvents: 'Activity Events',
     applications: 'Applications',
     platform: 'Platform',
     roles: 'Roles',
@@ -183,6 +188,10 @@ export const en = {
       end: 'End',
       manageLicences: 'Manage licences',   // British spelling, as in the source
       export: 'Export',
+      // The two analytics pages' header button, which says 'Export CSV' rather than the
+      // bare 'Export' above; DatabasePoolManagement.tsx holds a third, still-untranslated
+      // occurrence that should bind here when its slice lands.
+      exportCsv: 'Export CSV',
       edit: 'Edit',
       add: 'Add',
       retry: 'Retry',
@@ -412,6 +421,24 @@ export const en = {
       // not translated in either language).
       hq: 'HQ',
     },
+    // AuditMeta.tsx's relative timestamps, reached through relativeTime()'s trailing
+    // optional `t` (same shape as auditColumns.tsx). English values are byte-identical to
+    // the literals relativeTime() returned before this change: the function still produces
+    // them verbatim when no `t` is passed, so relativeTime.test.ts keeps passing untouched
+    // and dashboard/ActivityStream.tsx — a page with no useI18n() yet — is unaffected.
+    // Distinct from pages.news.time.* ('{{count}} min ago'), which is that page's own
+    // longer-form register; these are the compact 'Nd ago' forms AuditMeta renders inline.
+    timeAgo: {
+      justNow: 'just now',
+      // No space before the unit in English ('30m ago'), a space in Thai — the Thai
+      // convention spaces around an interpolated parameter (see the note above `toast:`
+      // in th.ts) and Thai has no compact unit suffix to butt against the number.
+      minutes: '{{count}}m ago',
+      hours: '{{count}}h ago',
+      days: '{{count}}d ago',
+      months: '{{count}}mo ago',
+      years: '{{count}}y ago',
+    },
     state: {
       noExpiry: 'No expiry',
       expires: 'Expires',
@@ -576,6 +603,10 @@ export const en = {
     saveFailed: 'Failed to save {{entity}}',
     saved: 'Changes saved successfully',
     exported: 'Data exported successfully',
+    // Third exception to the {{entity}} rule above, alongside `saved` and `exported`:
+    // the guard both analytics pages hit when their export button is pressed with an
+    // empty result set.
+    nothingToExport: 'No data to export',
   },
 
   /**
@@ -2308,6 +2339,93 @@ export const en = {
       amountFormatLabel: 'Amount Format',
       quantityFormatLabel: 'Quantity Format',
       recipeFormatLabel: 'Recipe Format',
+    },
+    // ── Analytics (i18n phase-2 slice-5.5 fix wave 2) ──
+    // The two pages that render <DateRangeFilter>. Neither had ANY English before this
+    // wave — both were Thai-only — so unlike every earlier slice these English values are
+    // NEW COPY, not byte-preserved literals, and no existing test asserts against them.
+    // The Thai is each page's existing wording moved across unchanged. Where a shared key
+    // already held the same English but a different Thai word (common.field.type is
+    // 'ประเภท'; this page's column says 'ชนิด'), a page-local key preserves the page's own
+    // word instead of silently rewording the Thai UI — flagged for the owner's read.
+    usageAnalytics: {
+      subtitle: 'Usage overview from UI telemetry',
+      // TopList's emptyLabel. Deliberately NOT table.noResultsFound: that key's Thai is
+      // 'ไม่พบข้อมูล' ("none found", a search verdict); this one is 'ไม่มีข้อมูล' ("no data").
+      noData: 'No data',
+      emptyTitle: 'No events in the selected range',
+      emptyDescription: 'Try widening the date range, or clearing the Business Unit / Application filters.',
+      eventTypeLabel: 'Event type',
+      // <SelectItem> labels for the API's two event_type values. Identical in both
+      // catalogs on purpose: the Thai page already showed these two words in English, and
+      // this wave adds a language rather than revising the Thai.
+      eventTypeClick: 'Click',
+      eventTypePageView: 'Page view',
+      // Metric names, shared by the five StatCards, the chart legend and the CSV header
+      // row — one key each rather than three copies. Same en==th reasoning as above.
+      metricEvents: 'Events',
+      metricClicks: 'Clicks',
+      metricPageViews: 'Page views',
+      metricSessions: 'Sessions',
+      metricActiveUsers: 'Active users',
+      csvDay: 'Day',
+      chartTitle: 'Sessions & Active users by day',
+      topPages: 'Top pages',
+      topElements: 'Top elements',
+      // Assembled at runtime from two numbers, so the finished string never appears in the
+      // source and no text sweep can see it (blind spot 2 of the fix brief).
+      topPageSub: '{{sessions}} sessions · {{users}} users',
+    },
+    activityEvents: {
+      subtitle: 'Per-event UI telemetry — who clicked what, on which page, and when',
+      searchLabel: 'Search',
+      searchPlaceholder: 'page path / element id / element text',
+      filtersDescription: 'Filter events by BU, application, type, user, page and session',
+      // Duplicated from pages.usageAnalytics above rather than promoted to common.*: two
+      // files in one slice does not clear the >=3-files-AND->=2-slices promotion bar.
+      eventTypeLabel: 'Event type',
+      eventTypeClick: 'Click',
+      eventTypePageView: 'Page view',
+      userIdLabel: 'User (User ID)',
+      userIdPlaceholder: "User's UUID",
+      pagePathLabel: 'Page path',
+      sessionIdLabel: 'Session ID',
+      // Column headers double as the CSV header row, so the exported file follows the UI
+      // language — a CSV label read straight off a data object is user-visible text.
+      columnTime: 'Time',
+      columnUser: 'User',
+      columnBu: 'BU',
+      columnType: 'Type',
+      columnPage: 'Page',
+      columnElement: 'Element',
+      columnApp: 'App',
+      csvServerTime: 'Server time',
+      viewDetailsAria: 'View event details {{id}}',
+      clearFilterAria: 'Clear filter {{label}}',
+      // Active-filter chips. Each is built at runtime and used as the chip's React key AND
+      // interpolated into clearFilterAria, so the whole label must come from one template.
+      chipSearch: 'Search: {{value}}',
+      chipPage: 'Page: {{value}}',
+      chipSession: 'session: {{value}}…',
+      chipUser: 'User: {{value}}…',
+      chipType: 'Type: {{value}}',
+      chipBu: 'BU: {{value}}',
+      chipApp: 'App: {{value}}',
+      emptyTitle: 'No events found',
+      emptyDescription: 'Try widening the date range, or clearing some filters.',
+      detailTitle: 'Event Details',
+      detailDescription: 'Every field of the selected event, including props and user agent',
+      detailServerTime: 'Time (server)',
+      detailClientTime: 'Time (client)',
+      detailDomain: 'Domain',
+      detailElementText: 'Element text',
+      detailSession: 'Session',
+      detailEventId: 'Event ID',
+      // Lower-case on purpose in both languages: these caption the raw `props` object and
+      // the raw `user_agent` string, which are field names from the API, not prose.
+      detailProps: 'props',
+      detailUserAgent: 'user agent',
+      viewWholeSession: 'View this entire session',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

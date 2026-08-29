@@ -1,6 +1,17 @@
 // Date helpers for the dashboard activity stream. There is no date library in
 // this repo (see CLAUDE.md · DateTime) — keep these pure and locale-stable so
 // they're trivially testable with an injected `now`.
+//
+// `relativeTime` takes an OPTIONAL trailing `t` (same shape as auditColumns.tsx) rather
+// than calling useI18n() itself: this module is pure and has no React context. Without
+// `t` it returns exactly the English literals it always has, which is what keeps
+// relativeTime.test.ts passing unchanged and leaves dashboard/ActivityStream.tsx — the
+// only other caller, on a page with no useI18n() yet — rendering as before.
+//
+// `dayGroup` and `formatClock` are deliberately NOT given the same treatment: their only
+// caller is that untranslated dashboard, so translating them would put Thai labels on an
+// otherwise English page — the exact mixed-language defect this change exists to remove.
+import type { TFunction } from '../i18n/types';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -36,20 +47,21 @@ export function dayGroup(iso?: string | null, now: Date = new Date()): DayGroup 
   return { key, label };
 }
 
-/** Coarse 'x ago' phrasing, for the row's title tooltip. */
-export function relativeTime(iso?: string | null, now: Date = new Date()): string {
+/** Coarse 'x ago' phrasing, for the row's title tooltip. Pass `t` to translate it. */
+export function relativeTime(iso?: string | null, now: Date = new Date(), t?: TFunction): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const s = Math.max(0, Math.round((now.getTime() - d.getTime()) / 1000));
-  if (s < 60) return 'just now';
+  if (s < 60) return t ? t('common.timeAgo.justNow') : 'just now';
   const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
+  if (m < 60) return t ? t('common.timeAgo.minutes', { count: m }) : `${m}m ago`;
   const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return t ? t('common.timeAgo.hours', { count: h }) : `${h}h ago`;
   const dd = Math.round(h / 24);
-  if (dd < 30) return `${dd}d ago`;
+  if (dd < 30) return t ? t('common.timeAgo.days', { count: dd }) : `${dd}d ago`;
   const mo = Math.round(dd / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  return `${Math.round(mo / 12)}y ago`;
+  if (mo < 12) return t ? t('common.timeAgo.months', { count: mo }) : `${mo}mo ago`;
+  const y = Math.round(mo / 12);
+  return t ? t('common.timeAgo.years', { count: y }) : `${y}y ago`;
 }
