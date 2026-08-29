@@ -24,6 +24,7 @@ import { ReadOnlyField } from '../components/ReadOnlyField';
 import { EmptyState } from '../components/EmptyState';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit } from '../utils/audit';
+import { useI18n } from '../hooks/useI18n';
 import type { User, BusinessUnit } from '../types';
 
 interface ProfileFormData {
@@ -47,6 +48,7 @@ interface ProfileFieldsData {
 }
 
 const Profile: React.FC = () => {
+  const { t } = useI18n();
   const { user, refreshUser } = useAuth();
   // Rendered at two routes: /profile in the platform view, and
   // /cluster-admin/:clusterId/profile inside the cluster-admin view. The param is the only
@@ -150,20 +152,20 @@ const Profile: React.FC = () => {
         refreshUser();
       } catch (err) {
         devLog('Failed to fetch profile:', err);
-        setError('Failed to load profile: ' + getErrorDetail(err));
+        setError(t('pages.profile.loadFailed') + getErrorDetail(err));
       } finally {
         setFetchingProfile(false);
       }
     };
 
     fetchProfile();
-  }, [refreshUser]);
+  }, [refreshUser, t]);
 
   const getDisplayName = (): string => {
     if (profile?.firstname || profile?.lastname) {
       return [profile.firstname, profile.middlename, profile.lastname].filter(Boolean).join(' ');
     }
-    return profile?.name || profile?.email || 'User';
+    return profile?.name || profile?.email || t('pages.profile.fallbackName');
   };
 
   const getUserInitials = (): string => {
@@ -233,13 +235,13 @@ const Profile: React.FC = () => {
       setBusinessUnits(Array.isArray(data.business_unit) ? data.business_unit : []);
       localStorage.setItem('user', JSON.stringify(data));
       refreshUser();
-      setSuccess('Profile updated successfully!');
-      toast.success('Profile updated successfully');
+      setSuccess(t('pages.profile.updated'));
+      toast.success(t('pages.profile.updatedToast'));
       setEditingProfile(false);
     } catch (err: unknown) {
       const detail = getErrorDetail(err);
-      setError('Failed to update profile: ' + detail);
-      toast.error('Failed to update profile', { description: detail });
+      setError(t('pages.profile.updateFailedPrefix') + detail);
+      toast.error(t('pages.profile.updateFailed'), { description: detail });
     } finally {
       setLoading(false);
     }
@@ -253,13 +255,13 @@ const Profile: React.FC = () => {
 
     // Validate passwords
     if (formData.newPassword !== formData.confirmPassword) {
-      setError('New passwords do not match');
+      setError(t('pages.profile.passwordMismatch'));
       setLoading(false);
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('pages.profile.passwordTooShort'));
       setLoading(false);
       return;
     }
@@ -278,12 +280,12 @@ const Profile: React.FC = () => {
         confirmPassword: ''
       });
       setShowPasswordDialog(false);
-      setSuccess('Password changed successfully!');
-      toast.success('Password changed successfully');
+      setSuccess(t('pages.profile.passwordChanged'));
+      toast.success(t('pages.profile.passwordChangedToast'));
     } catch (err: unknown) {
       const detail = getErrorDetail(err);
-      setError('Failed to change password: ' + detail);
-      toast.error('Failed to change password', { description: detail });
+      setError(t('pages.profile.passwordChangeFailedPrefix') + detail);
+      toast.error(t('pages.profile.passwordChangeFailed'), { description: detail });
     } finally {
       setLoading(false);
     }
@@ -293,7 +295,7 @@ const Profile: React.FC = () => {
     return (
       <Shell>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader title="Profile" subtitle="Manage your account settings and preferences" />
+          <PageHeader title={t('pages.profile.title')} subtitle={t('pages.profile.subtitle')} />
           <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
             {/* Profile Overview Skeleton */}
             <Card className="md:col-span-1">
@@ -367,7 +369,7 @@ const Profile: React.FC = () => {
   return (
     <Shell>
       <div className="space-y-4 sm:space-y-6">
-        <PageHeader title="Profile" subtitle="Manage your account settings and preferences" />
+        <PageHeader title={t('pages.profile.title')} subtitle={t('pages.profile.subtitle')} />
 
         {success && (
           <div className="flex items-center gap-2 text-sm text-success bg-success/10 p-3 rounded-md" role="status" aria-live="polite">
@@ -386,7 +388,7 @@ const Profile: React.FC = () => {
           {/* Profile Overview Card */}
           <Card className="md:col-span-1">
             <CardHeader>
-              <CardTitle>Profile Overview</CardTitle>
+              <CardTitle>{t('pages.profile.overview')}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center space-y-4">
               <Avatar className="h-24 w-24">
@@ -408,12 +410,12 @@ const Profile: React.FC = () => {
               <div className="w-full pt-4 border-t">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Member since</span>
+                    <span className="text-muted-foreground">{t('pages.profile.memberSince')}</span>
                     <AuditMeta variant="compact" actor={normalizeAudit(profile).created} className="font-medium" />
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Account ID</span>
-                    <span className="font-medium">{profile?.id || 'N/A'}</span>
+                    <span className="text-muted-foreground">{t('pages.profile.accountId')}</span>
+                    <span className="font-medium">{profile?.id || t('common.notAvailable')}</span>
                   </div>
                 </div>
               </div>
@@ -425,9 +427,9 @@ const Profile: React.FC = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Profile Information</CardTitle>
+                  <CardTitle>{t('pages.profile.information')}</CardTitle>
                   <CardDescription>
-                    {editingProfile ? 'Update your account details' : 'View your account details'}
+                    {editingProfile ? t('pages.profile.descEditing') : t('pages.profile.descReadOnly')}
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
@@ -435,11 +437,11 @@ const Profile: React.FC = () => {
                     <>
                       <Button variant="outline" size="sm" onClick={() => setShowPasswordDialog(true)}>
                         <Lock className="mr-2 h-4 w-4" />
-                        Change Password
+                        {t('pages.profile.changePassword')}
                       </Button>
                       <Button variant="outline" size="sm" onClick={handleEditToggle}>
                         <Pencil className="mr-2 h-4 w-4" />
-                        Edit
+                        {t('common.action.edit')}
                       </Button>
                     </>
                   )}
@@ -449,7 +451,7 @@ const Profile: React.FC = () => {
             <CardContent>
               <form ref={formRef} onSubmit={handleProfileUpdate} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="alias_name">Alias Name</Label>
+                  <Label htmlFor="alias_name">{t('pages.profile.aliasName')}</Label>
                   {editingProfile ? (
                     <div className="relative">
                       <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -459,7 +461,7 @@ const Profile: React.FC = () => {
                         value={formData.alias_name}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="Alias name (optional)"
+                        placeholder={t('pages.profile.aliasNamePlaceholder')}
                         className={`pl-9 ${fieldErrors.alias_name ? 'border-destructive' : ''}`}
                       />
                     </div>
@@ -476,7 +478,7 @@ const Profile: React.FC = () => {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="firstname">First Name</Label>
+                    <Label htmlFor="firstname">{t('pages.profile.firstName')}</Label>
                     {editingProfile ? (
                       <div className="relative">
                         <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -485,7 +487,7 @@ const Profile: React.FC = () => {
                           name="firstname"
                           value={formData.firstname}
                           onChange={handleChange}
-                          placeholder="First name"
+                          placeholder={t('pages.profile.firstNamePlaceholder')}
                           className="pl-9"
                         />
                       </div>
@@ -498,14 +500,14 @@ const Profile: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="middlename">Middle Name</Label>
+                    <Label htmlFor="middlename">{t('pages.profile.middleName')}</Label>
                     {editingProfile ? (
                       <Input
                         id="middlename"
                         name="middlename"
                         value={formData.middlename}
                         onChange={handleChange}
-                        placeholder="Middle name (optional)"
+                        placeholder={t('pages.profile.middleNamePlaceholder')}
                       />
                     ) : (
                       <ReadOnlyField value={formData.middlename} />
@@ -514,7 +516,7 @@ const Profile: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lastname">Last Name</Label>
+                  <Label htmlFor="lastname">{t('pages.profile.lastName')}</Label>
                   {editingProfile ? (
                     <div className="relative">
                       <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -523,7 +525,7 @@ const Profile: React.FC = () => {
                         name="lastname"
                         value={formData.lastname}
                         onChange={handleChange}
-                        placeholder="Last name"
+                        placeholder={t('pages.profile.lastNamePlaceholder')}
                         className="pl-9"
                       />
                     </div>
@@ -536,7 +538,7 @@ const Profile: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="telephone">Telephone</Label>
+                  <Label htmlFor="telephone">{t('pages.profile.telephone')}</Label>
                   {editingProfile ? (
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -547,7 +549,7 @@ const Profile: React.FC = () => {
                         value={formData.telephone}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="Phone number (optional)"
+                        placeholder={t('pages.profile.telephonePlaceholder')}
                         className={`pl-9 ${fieldErrors.telephone ? 'border-destructive' : ''}`}
                       />
                     </div>
@@ -563,23 +565,23 @@ const Profile: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">{t('pages.profile.emailAddress')}</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <div className="flex h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-3 py-1 text-sm items-center">{formData.email || '-'}</div>
                   </div>
-                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                  <p className="text-xs text-muted-foreground">{t('pages.profile.emailImmutable')}</p>
                 </div>
 
                 {editingProfile && (
                   <div className="flex gap-3 pt-4">
                     <Button type="submit" size="sm" disabled={loading}>
                       {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      {loading ? 'Saving...' : 'Save Changes'}
+                      {loading ? t('common.busy.saving') : t('common.action.saveChanges')}
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={handleCancelEdit}>
                       <X className="mr-2 h-4 w-4" />
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 )}
@@ -593,20 +595,25 @@ const Profile: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5" />
-                Business Units
+                {t('pages.profile.businessUnits')}
               </CardTitle>
               <CardDescription>
                 {businessUnits.length > 0
-                  ? `${businessUnits.length} business unit${businessUnits.length !== 1 ? 's' : ''} assigned to your account`
-                  : 'No business units assigned'}
+                  ? t(
+                      businessUnits.length === 1
+                        ? 'pages.profile.buAssigned'
+                        : 'pages.profile.buAssignedPlural',
+                      { count: businessUnits.length },
+                    )
+                  : t('pages.profile.buNoneDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {businessUnits.length === 0 ? (
                 <EmptyState
                   icon={Building2}
-                  title="No business units"
-                  description="You are not assigned to any business unit yet."
+                  title={t('pages.profile.buEmptyTitle')}
+                  description={t('pages.profile.buEmptyBody')}
                 />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -619,7 +626,7 @@ const Profile: React.FC = () => {
                             <Badge variant="outline" className="text-xs mt-1">{bu.code}</Badge>
                           </div>
                           <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
-                            {bu.is_active ? 'Active' : 'Inactive'}
+                            {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
                           </Badge>
                         </div>
                       </CardContent>
@@ -640,12 +647,12 @@ const Profile: React.FC = () => {
         }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Change Password</DialogTitle>
-              <DialogDescription>Update your password to keep your account secure</DialogDescription>
+              <DialogTitle>{t('pages.profile.changePassword')}</DialogTitle>
+              <DialogDescription>{t('pages.profile.passwordDialogDesc')}</DialogDescription>
             </DialogHeader>
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
+                <Label htmlFor="currentPassword">{t('pages.profile.currentPassword')}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -654,14 +661,14 @@ const Profile: React.FC = () => {
                     type="password"
                     value={formData.currentPassword}
                     onChange={handleChange}
-                    placeholder="Enter current password"
+                    placeholder={t('pages.profile.currentPasswordPlaceholder')}
                     className="pl-9"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
+                <Label htmlFor="newPassword">{t('pages.profile.newPassword')}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -670,17 +677,17 @@ const Profile: React.FC = () => {
                     type="password"
                     value={formData.newPassword}
                     onChange={handleChange}
-                    placeholder="Enter new password"
+                    placeholder={t('pages.profile.newPasswordPlaceholder')}
                     className="pl-9"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Password must be at least 6 characters
+                  {t('pages.profile.newPasswordHint')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword">{t('pages.profile.confirmPassword')}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -689,7 +696,7 @@ const Profile: React.FC = () => {
                     type="password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    placeholder="Confirm new password"
+                    placeholder={t('pages.profile.confirmPasswordPlaceholder')}
                     className="pl-9"
                   />
                 </div>
@@ -697,11 +704,11 @@ const Profile: React.FC = () => {
 
               <DialogFooter className="gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => setShowPasswordDialog(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" size="sm" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
-                  {loading ? 'Updating...' : 'Update Password'}
+                  {loading ? t('pages.profile.updating') : t('pages.profile.updatePassword')}
                 </Button>
               </DialogFooter>
             </form>

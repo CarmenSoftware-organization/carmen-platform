@@ -74,7 +74,7 @@ describe('toActivityItem', () => {
 
 describe('mergeAndSort', () => {
   const mk = (id: string, at: string): ActivityItem => ({
-    id, at, domainKey: 'x', domainLabel: 'X', icon: clusters.icon, verb: 'updated', name: id, href: '#',
+    id, at, domainKey: 'x', domainLabelKey: 'nav.clusters', icon: clusters.icon, verb: 'updated', name: id, href: '#',
   });
   it('orders newest first and caps', () => {
     const out = mergeAndSort([mk('a', '2026-07-10T00:00:00Z'), mk('b', '2026-07-14T00:00:00Z'), mk('c', '2026-07-12T00:00:00Z')], 2);

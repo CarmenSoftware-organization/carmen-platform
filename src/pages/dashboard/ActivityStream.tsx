@@ -6,12 +6,14 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { Badge, type BadgeProps } from '../../components/ui/badge';
 import { FetchErrorState } from '../../components/FetchErrorState';
 import { formatClock, dayGroup, relativeTime } from '../../utils/relativeTime';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 import { ACTIVITY_SOURCES, type ActivityItem, type ActivityVerb } from './activity';
 
-const VERB: Record<ActivityVerb, { dot: string; variant: NonNullable<BadgeProps['variant']> }> = {
-  created: { dot: 'bg-success', variant: 'success' },
-  updated: { dot: 'bg-info', variant: 'info' },
-  published: { dot: 'bg-warning', variant: 'warning' },
+const VERB: Record<ActivityVerb, { dot: string; variant: NonNullable<BadgeProps['variant']>; key: TKey }> = {
+  created: { dot: 'bg-success', variant: 'success', key: 'pages.dashboard.verbCreated' },
+  updated: { dot: 'bg-info', variant: 'info', key: 'pages.dashboard.verbUpdated' },
+  published: { dot: 'bg-warning', variant: 'warning', key: 'pages.dashboard.verbPublished' },
 };
 
 interface ActivityStreamProps {
@@ -22,6 +24,7 @@ interface ActivityStreamProps {
 }
 
 export function ActivityStream({ items, loading, error, onRetry }: ActivityStreamProps) {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<string>('all');
 
   const perDomain = useMemo(() => {
@@ -32,14 +35,14 @@ export function ActivityStream({ items, loading, error, onRetry }: ActivityStrea
 
   const shown = filter === 'all' ? items : items.filter((i) => i.domainKey === filter);
 
-  const chips = [{ key: 'all', label: 'All', count: items.length }].concat(
-    ACTIVITY_SOURCES.map((s) => ({ key: s.key, label: s.label, count: perDomain[s.key] ?? 0 })),
+  const chips = [{ key: 'all', label: t('pages.dashboard.filterAll'), count: items.length }].concat(
+    ACTIVITY_SOURCES.map((s) => ({ key: s.key, label: t(s.labelKey), count: perDomain[s.key] ?? 0 })),
   );
 
   return (
     <div>
       {/* filter chips */}
-      <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Filter activity by domain">
+      <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('pages.dashboard.filterAria')}>
         {chips.map((c) => {
           const on = filter === c.key;
           return (
@@ -70,15 +73,15 @@ export function ActivityStream({ items, loading, error, onRetry }: ActivityStrea
         // button can drop to its own centered line at narrow widths. Accepted deliberately
         // to keep a single error/retry implementation — see Task 10 report for the trade-off.
         <FetchErrorState
-          message="Couldn’t load recent activity."
+          message={t('pages.dashboard.activityLoadFailed')}
           onRetry={onRetry}
           className="rounded-lg border border-dashed py-14"
         />
       ) : shown.length === 0 ? (
         <div className="text-muted-foreground flex flex-col items-center gap-2 rounded-lg border border-dashed py-14 text-center">
           <History className="text-muted-foreground/60 size-6" />
-          <p className="text-foreground text-sm font-medium">Nothing changed here yet</p>
-          <p className="text-xs">When you create or edit anything, it shows up in this stream.</p>
+          <p className="text-foreground text-sm font-medium">{t('pages.dashboard.emptyTitle')}</p>
+          <p className="text-xs">{t('pages.dashboard.emptyBody')}</p>
         </div>
       ) : (
         <Timeline items={shown} />
@@ -88,15 +91,17 @@ export function ActivityStream({ items, loading, error, onRetry }: ActivityStrea
 }
 
 function Timeline({ items }: { items: ActivityItem[] }) {
+  const { t } = useI18n();
   const now = new Date();
   let lastDay = '';
 
   return (
     <div>
       {items.map((it, i) => {
-        const g = dayGroup(it.at, now);
+        const g = dayGroup(it.at, now, t);
         const header = g.key !== lastDay;
         lastDay = g.key;
+        // เทียบด้วย `key` ซึ่งไม่ขึ้นกับภาษา — ถ้าเทียบด้วย label การสลับภาษาจะทำให้กลุ่มวันแตก
         const nextIsNewDay = i === items.length - 1 || dayGroup(items[i + 1].at, now).key !== g.key;
         const verb = VERB[it.verb];
         const Icon = it.icon;
@@ -127,7 +132,7 @@ function Timeline({ items }: { items: ActivityItem[] }) {
               {/* body */}
               <Link
                 to={it.href}
-                title={`${it.verb} ${it.name} · ${relativeTime(it.at, now)}`}
+                title={`${t(VERB[it.verb].key)} ${it.name || (it.nameFallbackKey ? t(it.nameFallbackKey) : '')} · ${relativeTime(it.at, now, t)}`}
                 className="group hover:bg-primary/5 my-0.5 flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors"
               >
                 <span className="bg-primary/[0.07] text-muted-foreground grid size-7 shrink-0 place-items-center rounded-lg border">
@@ -136,16 +141,16 @@ function Timeline({ items }: { items: ActivityItem[] }) {
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-baseline gap-x-2">
                     <Badge variant={verb.variant} className="text-[11px] font-bold uppercase tracking-wide">
-                      {it.verb}
+                      {t(verb.key)}
                     </Badge>
                     <span className="text-foreground text-sm font-semibold">
-                      {it.name}
+                      {it.name || (it.nameFallbackKey ? t(it.nameFallbackKey) : '')}
                       {it.code && <span className="text-muted-foreground ml-1.5 font-mono text-xs font-medium">{it.code}</span>}
                     </span>
                   </span>
                   <span className="text-muted-foreground mt-0.5 block text-xs">
-                    <span className="text-foreground/80 font-medium">{it.domainLabel}</span>
-                    {it.who ? ` · by ${it.who}` : ''}
+                    <span className="text-foreground/80 font-medium">{t(it.domainLabelKey)}</span>
+                    {it.who ? ` · ${t('pages.dashboard.by', { who: it.who })}` : ''}
                   </span>
                 </span>
                 <ChevronRight className="text-muted-foreground/50 group-hover:text-primary size-4 shrink-0 opacity-0 transition group-hover:opacity-100" />
@@ -159,8 +164,9 @@ function Timeline({ items }: { items: ActivityItem[] }) {
 }
 
 function StreamSkeleton() {
+  const { t } = useI18n();
   return (
-    <div className="space-y-2" role="status" aria-label="Loading activity">
+    <div className="space-y-2" role="status" aria-label={t('pages.dashboard.loadingActivity')}>
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-2.5 py-2">
           <Skeleton className="size-7 rounded-lg" />

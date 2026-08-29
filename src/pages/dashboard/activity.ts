@@ -7,16 +7,20 @@ import newsService from '../../services/newsService';
 import reportTemplateService from '../../services/reportTemplateService';
 import type { ApiListResponse, Audit, PaginateParams } from '../../types';
 import { normalizeAudit } from '../../utils/audit';
+import type { TKey } from '../../i18n/types';
 
 export type ActivityVerb = 'created' | 'updated' | 'published';
 
 export interface ActivityItem {
   id: string;
   domainKey: string;
-  domainLabel: string;
+  /** คีย์แปลของชื่อหมวด — เก็บคีย์ ไม่ใช่ข้อความ เพราะโมดูลนี้บริสุทธิ์ เรียก hook ไม่ได้ */
+  domainLabelKey: TKey;
   icon: LucideIcon;
   verb: ActivityVerb;
   name: string;
+  /** ใช้เมื่อ `name` ว่าง — ข้อความสำรองต่างกันตามหมวด ('ไม่มีชื่อ' / 'ไม่มีหัวข้อ' / 'ไม่ทราบผู้ใช้') */
+  nameFallbackKey?: TKey;
   code?: string;
   who?: string;
   at: string; // ISO timestamp used for ordering + grouping
@@ -41,28 +45,30 @@ interface RawRecord {
 
 interface ActivitySource {
   key: string;
-  label: string;
+  labelKey: TKey;
   icon: LucideIcon;
   path: string; // e.g. '/clusters' → row links to '/clusters/:id/edit'
   service: { getAll: (p: PaginateParams) => Promise<ApiListResponse<RawRecord>> };
+  /** คืน '' เมื่อไม่มีชื่อ แล้วให้ชั้น render เติม `nameFallbackKey` แทน — โมดูลนี้แปลเองไม่ได้ */
   nameOf: (r: RawRecord) => string;
+  nameFallbackKey: TKey;
   codeOf?: (r: RawRecord) => string | undefined;
 }
 
 // Order matches the sidebar / Landing index.
 export const ACTIVITY_SOURCES: ActivitySource[] = [
-  { key: 'clusters', label: 'Clusters', icon: Network, path: '/clusters', service: clusterService,
-    nameOf: (r) => r.name || '(unnamed)', codeOf: (r) => r.code },
-  { key: 'business-units', label: 'Business Units', icon: Building2, path: '/business-units', service: businessUnitService,
-    nameOf: (r) => r.name || '(unnamed)', codeOf: (r) => r.code },
-  { key: 'users', label: 'Users', icon: Users, path: '/users', service: userService,
-    nameOf: (r) => r.name || r.email || '(unknown user)' },
-  { key: 'applications', label: 'Applications', icon: AppWindow, path: '/applications', service: applicationService,
-    nameOf: (r) => r.name || '(unnamed)' },
-  { key: 'news', label: 'News', icon: Newspaper, path: '/news', service: newsService,
-    nameOf: (r) => r.title || '(untitled)' },
-  { key: 'report-templates', label: 'Report Templates', icon: FileText, path: '/report-templates', service: reportTemplateService,
-    nameOf: (r) => r.name || '(unnamed)' },
+  { key: 'clusters', labelKey: 'nav.clusters', icon: Network, path: '/clusters', service: clusterService,
+    nameOf: (r) => r.name || '', nameFallbackKey: 'pages.dashboard.unnamed', codeOf: (r) => r.code },
+  { key: 'business-units', labelKey: 'nav.businessUnits', icon: Building2, path: '/business-units', service: businessUnitService,
+    nameOf: (r) => r.name || '', nameFallbackKey: 'pages.dashboard.unnamed', codeOf: (r) => r.code },
+  { key: 'users', labelKey: 'nav.users', icon: Users, path: '/users', service: userService,
+    nameOf: (r) => r.name || r.email || '', nameFallbackKey: 'pages.dashboard.unknownUser' },
+  { key: 'applications', labelKey: 'nav.applications', icon: AppWindow, path: '/applications', service: applicationService,
+    nameOf: (r) => r.name || '', nameFallbackKey: 'pages.dashboard.unnamed' },
+  { key: 'news', labelKey: 'nav.news', icon: Newspaper, path: '/news', service: newsService,
+    nameOf: (r) => r.title || '', nameFallbackKey: 'pages.dashboard.untitled' },
+  { key: 'report-templates', labelKey: 'nav.reportTemplates', icon: FileText, path: '/report-templates', service: reportTemplateService,
+    nameOf: (r) => r.name || '', nameFallbackKey: 'pages.dashboard.unnamed' },
 ];
 
 const ts = (v?: string) => (v ? Date.parse(v) : NaN);
@@ -121,10 +127,11 @@ export function toActivityItem(source: ActivitySource, r: RawRecord): ActivityIt
   return {
     id: r.id,
     domainKey: source.key,
-    domainLabel: source.label,
+    domainLabelKey: source.labelKey,
     icon: source.icon,
     verb: deriveVerb(source.key, r),
     name: source.nameOf(r),
+    nameFallbackKey: source.nameFallbackKey,
     code: source.codeOf?.(r),
     who: extractWho(r),
     at,

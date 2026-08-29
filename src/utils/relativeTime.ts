@@ -8,9 +8,12 @@
 // relativeTime.test.ts passing unchanged and leaves dashboard/ActivityStream.tsx — the
 // only other caller, on a page with no useI18n() yet — rendering as before.
 //
-// `dayGroup` and `formatClock` are deliberately NOT given the same treatment: their only
-// caller is that untranslated dashboard, so translating them would put Thai labels on an
-// otherwise English page — the exact mixed-language defect this change exists to remove.
+// `dayGroup` got the same optional `t` in slice 10b, when its only caller — the dashboard
+// activity stream — was itself translated. Until then it was deliberately left English:
+// translating it earlier would have put Thai day headers on an otherwise English page.
+//
+// `formatClock` stays untranslated on purpose: 'HH:MM' in 24-hour form is identical in both
+// languages, so there is nothing to translate and no locale to pick.
 import type { TFunction } from '../i18n/types';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -32,18 +35,35 @@ export interface DayGroup {
   label: string;
 }
 
-/** Stable group key + human label for the day an event happened, relative to `now`. */
-export function dayGroup(iso?: string | null, now: Date = new Date()): DayGroup {
-  if (!iso) return { key: 'unknown', label: 'Earlier' };
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+const MONTH_KEYS = [
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+] as const;
+
+/**
+ * Stable group key + human label for the day an event happened, relative to `now`.
+ * Pass `t` to translate the label; the `key` never changes, so grouping is language-stable
+ * (two rows on the same day stay one group even if the user switches language mid-render).
+ */
+export function dayGroup(iso?: string | null, now: Date = new Date(), t?: TFunction): DayGroup {
+  const earlier = () => ({ key: 'unknown', label: t ? t('common.dayGroup.earlier') : 'Earlier' });
+  if (!iso) return earlier();
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { key: 'unknown', label: 'Earlier' };
+  if (Number.isNaN(d.getTime())) return earlier();
   const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const days = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
   let label: string;
-  if (days <= 0) label = 'Today';
-  else if (days === 1) label = 'Yesterday';
-  else if (days < 7) label = WEEKDAYS[d.getDay()];
-  else label = `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  if (days <= 0) label = t ? t('common.dayGroup.today') : 'Today';
+  else if (days === 1) label = t ? t('common.dayGroup.yesterday') : 'Yesterday';
+  else if (days < 7) label = t ? t(`common.weekday.${WEEKDAY_KEYS[d.getDay()]}`) : WEEKDAYS[d.getDay()];
+  else {
+    label = t
+      ? t('common.dayGroup.monthDay', {
+          month: t(`common.monthShort.${MONTH_KEYS[d.getMonth()]}`),
+          day: d.getDate(),
+        })
+      : `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  }
   return { key, label };
 }
 
