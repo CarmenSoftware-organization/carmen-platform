@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Textarea } from './ui/textarea';
+import { useI18n } from '../hooks/useI18n';
 
 interface MarkdownEditorProps {
   value: string;
@@ -21,6 +22,7 @@ const proseClass =
   '[&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground';
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange, readOnly, placeholder, id }) => {
+  const { t } = useI18n();
   if (readOnly) {
     return (
       <div className="rounded-md border border-input bg-muted/50 px-3 py-2 min-h-[120px]">
@@ -38,8 +40,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange,
   return (
     <Tabs defaultValue="write" className="w-full">
       <TabsList>
-        <TabsTrigger value="write">Write</TabsTrigger>
-        <TabsTrigger value="preview">Preview</TabsTrigger>
+        <TabsTrigger value="write">{t('components.markdownEditor.writeTab')}</TabsTrigger>
+        <TabsTrigger value="preview">{t('common.action.preview')}</TabsTrigger>
       </TabsList>
       <TabsContent value="write">
         <Textarea
@@ -47,7 +49,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange,
           data-testid="markdown-textarea"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder || 'Write your news content in Markdown...'}
+          placeholder={placeholder || t('components.markdownEditor.defaultPlaceholder')}
           className="min-h-[200px] font-mono"
         />
       </TabsContent>
@@ -58,7 +60,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ value, onChange,
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
             </div>
           ) : (
-            <span className="text-sm text-muted-foreground">Nothing to preview</span>
+            <span className="text-sm text-muted-foreground">{t('components.markdownEditor.nothingToPreview')}</span>
           )}
         </div>
       </TabsContent>

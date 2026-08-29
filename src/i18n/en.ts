@@ -97,7 +97,6 @@ export const en = {
     noClustersFound: 'No clusters found.',
     switchBu: 'Switch business unit',
     chooseBu: 'Search and select the tenant business unit you want to operate on.',
-    searchBu: 'Search business units',
     buList: 'Business units',
     searchBuPlaceholder: 'Search {{count}} business units by code, name or cluster…',
     buCount: '{{count}} BUs',
@@ -203,6 +202,26 @@ export const en = {
       // was nothing for the three copies to diverge on. All three page-local keys deleted, all
       // call sites repointed here.
       rowActions: 'Actions for {{name}}',
+      // i18n phase-2 slice-5.5 (shared components): generic verb-only button labels used
+      // by XmlEditor.tsx in both its editable and read-only modes. Kept bare (not nested
+      // under a feature-specific object) since these mean the same thing anywhere a
+      // copy/upload/download/format action appears.
+      copy: 'Copy',
+      copied: 'Copied',
+      copyFailed: 'Copy failed',
+      copiedToClipboard: 'Copied to clipboard',
+      download: 'Download',
+      upload: 'Upload',
+      format: 'Format',
+      // Pairs with clearAll above — PermissionPicker.tsx's per-resource toggle button.
+      selectAll: 'Select all',
+      // BusinessUnitMultiSelect.tsx / UserMultiSelect.tsx's selected-chip remove
+      // aria-label — byte-identical template in both files.
+      removeAria: 'Remove {{name}}',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared status-check button
+      // (three-way ternary with busy.checking above).
+      checkStatus: 'Check status',
+      recheckStatus: 'Re-check status',
     },
     // Spinner/busy labels, split out of `action` — that namespace was conflating verbs
     // (delete), verb phrases (saveChanges) and these `...`-suffixed spinner labels. The
@@ -210,9 +229,16 @@ export const en = {
     // check here first.
     busy: {
       saving: 'Saving...',
+      // Distinct from `saving` above by ellipsis form (…, U+2026 vs ASCII '...'), same
+      // reasoning as loading/loadingEllipsis below. InterfaceEntitlementCard.tsx's own
+      // save button uses this glyph in the source ('Saving…').
+      savingEllipsis: 'Saving…',
       deleting: 'Deleting...',
       adding: 'Adding...',
       creating: 'Creating...',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared status-check button label
+      // (three-way ternary alongside common.action.checkStatus/recheckStatus below).
+      checking: 'Checking...',
       loading: 'Loading...',
       // Distinct from `loading` above on purpose, not a casing/whitespace slip: this one
       // uses the single-character ellipsis (…, U+2026), `loading` uses three ASCII dots
@@ -425,6 +451,23 @@ export const en = {
       // clearAllFilters/filtersLabel/showDeleted).
       nSelected: '{{count}} selected',
       summaryStale: "Couldn't refresh — showing the last known numbers.",
+      // BusinessUnitMultiSelect.tsx's search-input aria-label — same concept as
+      // searchBusinessUnits above (the placeholder, with trailing dots) but this one has
+      // none, matching the source's separate aria-label string.
+      searchBusinessUnitsAria: 'Search business units',
+      noBusinessUnitsFound: 'No business units found.',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx all
+      // gate on isSuperAdmin with this exact disabledReason string — byte-identical
+      // across all three files, so one shared key rather than three copies.
+      superAdminRequired: 'Super-admin required.',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared precondition message
+      // (byte-identical in both).
+      configureDbPoolFirst: 'Configure a database pool and schema first.',
+      // InterfaceEntitlementCard.tsx's own precondition message — same disabledReason
+      // family as configureDbPoolFirst above, kept alongside it.
+      saveBusinessUnitFirst: 'Save the business unit first.',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared "last checked HH:MM:SS" caption.
+      lastChecked: 'Last checked {{time}}',
     },
     validation: {
       // `requiredMessage` replaces the former nameRequired/clusterRequired pair. Neither had
@@ -535,6 +578,178 @@ export const en = {
     exported: 'Data exported successfully',
   },
 
+  /**
+   * Strings owned by shared components under src/components/ (excluding ui/). A shared
+   * component must never read a `pages.*` key — it renders under many pages, so its own
+   * copy lives here instead, split by component name (i18n phase-2 slice-5.5).
+   */
+  components: {
+    dialogPreview: {
+      title: 'Dialog Preview',
+      noXmlProvided: 'No XML provided',
+      parseError: 'Parse error',
+      // `<Dialog>` names the XML root element this component requires — an element name,
+      // not prose, so it stays untranslated inside the sentence.
+      requiresDialogRoot: 'Preview requires a <Dialog> root element',
+      // {{source}} is the cleaned DataSource attribute (e.g. "Vendor") — data pulled from
+      // the XML being previewed, not a translatable label, so it never becomes a catalog
+      // value itself.
+      selectPlaceholder: 'Select {{source}}…',
+      // Fallback noun substituted for {{source}} when the XML carries no DataSource
+      // attribute at all.
+      genericValue: 'value',
+      noControl: '(no control)',
+      previewUnavailable: 'Preview unavailable',
+      // Plurals stay in the English value only — Thai does not inflect for number, same
+      // pattern as pages.news.articleTotal/articlesTotal and
+      // pages.broadcasts.sendToUserSingular/Plural.
+      fieldCountSingular: '{{count}} field',
+      fieldCountPlural: '{{count}} fields',
+      previewOnlyNote: 'Preview only. Controls are disabled and lookup data is not loaded.',
+    },
+    // Shared between DialogPreview.tsx and XmlEditor.tsx — both render this exact fallback
+    // when a document fails XML parsing with no more specific message available.
+    xml: {
+      invalidXml: 'Invalid XML',
+    },
+    xmlEditor: {
+      alreadyFormatted: 'Already formatted',
+      formatted: 'XML formatted',
+      nothingToDownload: 'Nothing to download',
+      downloaded: 'Downloaded {{name}}',
+      fileLoaded: '{{name}} loaded',
+      cleared: 'Cleared',
+      validXml: 'Valid XML',
+      // Composed as "{{line}}" then optionally ", col {{column}}" then a literal ": " —
+      // two fragments because the column half only renders when the parser reports one.
+      lineLabel: 'Line {{line}}',
+      colLabel: ', col {{column}}',
+      linesCount: '{{count}} lines',
+      clearDialogTitle: 'Clear editor?',
+      // "Ctrl/⌘+Z" is a keyboard-shortcut notation, not prose — kept as-is inside the
+      // translated sentence, same treatment shortcuts.* gets elsewhere.
+      clearDialogDescription: 'This removes all content from the editor. You can undo this with Ctrl/⌘+Z.',
+    },
+    markdownEditor: {
+      writeTab: 'Write',
+      defaultPlaceholder: 'Write your news content in Markdown...',
+      nothingToPreview: 'Nothing to preview',
+    },
+    tenantSeedCard: {
+      // Kept alongside breadcrumb.tenantMigrations's precedent of leaving Tenant-prefixed
+      // infra names in English rather than translating "Tenant" — see th.ts.
+      title: 'Tenant Seed Data',
+      description: "Check and seed default master data into this BU's tenant database.",
+      seeded: 'Seeded',
+      missingCount: '{{count}} missing',
+      hideMissingRowsAria: 'Hide missing rows for {{label}}',
+      showMissingRowsAria: 'Show missing rows for {{label}}',
+      nothingToSeed: 'Nothing to seed',
+      seedRowsButton: 'Seed {{count}} row(s)',
+      seedingEllipsis: 'Seeding…',
+      // toast.info no-op message ("nothing happened") — kept at that severity, only the
+      // text is translated.
+      nothingToSeedUpToDate: 'Nothing to seed. Already up to date.',
+      createdRowsToast: 'Created {{count}} row(s) for {{buCode}} (skipped {{skipped}}).',
+      confirmTitle: 'Seed tenant data',
+      confirmDescription: 'Seed {{count}} default row(s) into {{name}} ({{code}})? This creates missing default master data in the tenant database. Existing rows are left unchanged.',
+      seedButton: 'Seed',
+    },
+    tenantMigrationCard: {
+      // CardTitle text ('Tenant Migrations') reuses breadcrumb.tenantMigrations directly
+      // — byte-identical, no key added here for it. See task-1-report.md.
+      description: "Check and apply database schema migrations for this BU's tenant database.",
+      upToDate: 'Up to date',
+      pendingCount: '{{count}} pending',
+      // The count is NOT interpolated here: the source renders it in its own
+      // `text-muted-foreground` span, and folding it into the string would silently drop that
+      // styling. Punctuation and a number are not translatable content anyway.
+      pendingMigrationsHeading: 'Pending migrations',
+      applyMigrationsButton: 'Apply {{count}} migration(s)',
+      applyingEllipsis: 'Applying migrations…',
+      // toast.info no-op message, same convention as tenantSeedCard.nothingToSeedUpToDate.
+      alreadyUpToDateToast: 'Already up to date.',
+      appliedToast: 'Applied {{count}} migration(s) to {{buCode}}.',
+      hideRawOutput: 'Hide raw output',
+      showRawOutput: 'Show raw output',
+      confirmTitle: 'Apply tenant migrations',
+      confirmDescription: 'Apply {{count}} pending migration(s) to {{name}} ({{code}})? This applies schema changes to the tenant database and cannot be undone.',
+      applyButton: 'Apply migrations',
+    },
+    interfaceEntitlementCard: {
+      title: 'Interface Entitlement',
+      description: 'Which external-system interfaces this business unit may configure. Leave empty to allow every interface; select specific brands to restrict the BU to those.',
+      toggleNone: 'None',
+      saveButton: 'Save entitlement',
+      savedToast: 'Interface entitlement saved',
+      notRestrictedNote: 'Not restricted. BU sees all interfaces.',
+      // INTERFACE_CATALOG group label (interfaceCatalog.ts). 'POS'/'PMS' and every brand
+      // name (Carmen GL, Oracle Micros, …) are deliberately left untranslated — industry
+      // abbreviations and product names — so only this one group label needs a key.
+      catalogAccounting: 'Accounting',
+      // INTERFACE_CATALOG brand label for accounting_external — the one brand name that is
+      // a generic noun phrase rather than a product name, so it gets translated.
+      catalogExternalSystem: 'External system',
+    },
+    businessUnitMultiSelect: {
+      noneSelected: 'No business units selected',
+    },
+    userMultiSelect: {
+      defaultPlaceholder: 'Search users by name or email',
+      alreadySelected: 'Selected',
+    },
+    userPicker: {
+      defaultPlaceholder: 'Search users by username or email',
+      disabledLabel: 'Unavailable',
+      clearSelectedAria: 'Clear selected user {{name}}',
+    },
+    // Shared between UserMultiSelect.tsx and UserPicker.tsx — both wrap useUserSearch and
+    // render byte-identical dropdown copy.
+    userSearch: {
+      searchingEllipsis: 'Searching…',
+      noMatch: 'No users match "{{query}}"',
+      typeToSearch: 'Type to search users',
+    },
+    imageUpload: {
+      uploadAriaLabel: 'Upload image',
+      // ImageUpload.tsx has exactly one real importer today — src/pages/NewsEdit.tsx:319
+      // (verified by import statement, comments stripped) — so this alt text is accurate.
+      // A second caller would make this an `alt` prop instead of a hardcoded key; do not
+      // add the prop speculatively.
+      newsAlt: 'News',
+      // Split in two because the source splits it: a plain text node followed by a nested
+      // <span> styled as a link (no separate click handler — the whole drop zone is
+      // already clickable). The implementer inserts a literal space between the two.
+      dragDropText: 'Drag & drop an image here, or',
+      browse: 'browse',
+      uploadingImage: 'Uploading image…',
+    },
+    // AuditMeta.tsx's ActorPhrase ('header' variant) — free to call useI18n() itself per
+    // the plan's 5a. This fragment was missed by the plan's own file-string count (an
+    // under-6-characters blind spot): ` by ${who}` is a real English literal, not
+    // punctuation like the middle-dot separator the 'compact' variant uses instead.
+    auditMeta: {
+      byActor: 'by {{name}}',
+    },
+    // DateRangeFilter.tsx runs the opposite direction: no prior English at all — its
+    // labels are Thai and English users read Thai today. Every value below is NEW COPY,
+    // not a translation — see task-1-report.md. RANGE_PRESETS' 'custom' entry (in
+    // src/utils/analyticsRange.ts, DateRangeFilter's only importer) reuses
+    // common.option.custom instead of a key here: its Thai already reads byte-identical
+    // to this file's own literal ('กำหนดเอง').
+    dateRangeFilter: {
+      dateRangeLabel: 'Date range',
+      fromLabel: 'From',
+      toLabel: 'To',
+      endBeforeStart: 'End date must not be before the start date',
+      maxRangeDays: 'You can select at most {{max}} days',
+      viewingRange: 'Viewing {{range}}',
+      last7Days: 'Last 7 days',
+      last30Days: 'Last 30 days',
+      last90Days: 'Last 90 days',
+    },
+  },
+
   /** Per-slice page vocabulary. One child object per phase-2 slice. */
   pages: {
     users: {
@@ -622,7 +837,6 @@ export const en = {
       removeBuConfirm: 'Are you sure you want to remove "{{name}}" from this user?',
       // English fallback for when the BU record itself carries no name/code (task F).
       thisBusinessUnit: 'this business unit',
-      removeBuAria: 'Remove {{name}}',
       addBu: 'Add BU',
       recentlyAdded: 'Recently added',
       activeInactiveSummary: '{{active}} active, {{inactive}} inactive',
@@ -1977,14 +2191,13 @@ export const en = {
       // that one with different capitalisation spliced in.
       sharedBadgeTooltip: 'Also active in another business unit in this cluster',
       buStatusLabel: 'BU Status',
-      // "Edit"/"Remove" aria-label templates for the per-row icon buttons, with the
-      // `entity.user.lower` ('user') fallback when the row has neither a username nor an
-      // email. editUserAria has no sibling anywhere in the catalog (fresh key); removeUserAria
-      // is byte-identical to pages.users.removeBuAria ('Remove {{name}}') — a promotion
-      // signal, but only 2 files / 2 slices, below the promote bar, so kept page-local with
-      // Thai copied verbatim from that sibling.
+      // "Edit" aria-label template for the per-row icon button, with the `entity.user.lower`
+      // ('user') fallback when the row has neither a username nor an email. No sibling
+      // anywhere in the catalog (fresh key). The matching "Remove" aria-label uses
+      // common.action.removeAria instead — it was byte-identical to this file's own
+      // removeUserAria and to pages.users.removeBuAria across 4 files / 3 slices, above the
+      // promote bar, so it was promoted (moved, not copied) rather than kept page-local.
       editUserAria: 'Edit {{name}}',
-      removeUserAria: 'Remove {{name}}',
       editUserInBuTitle: 'Edit User in Business Unit',
       // Bare "Save" — distinct from common.action.saveChanges ('Save Changes'), a different
       // (longer) button label used by every Edit page's own primary save action; this dialog's

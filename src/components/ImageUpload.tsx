@@ -3,6 +3,7 @@ import { Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
+import { useI18n } from '../hooks/useI18n';
 
 const DEFAULT_ACCEPT = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -30,6 +31,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   accept = DEFAULT_ACCEPT,
   resetSignal,
 }) => {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [localPreview, setLocalPreview] = useState('');
@@ -54,10 +56,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const validate = (file: File): string => {
     if (!accept.includes(file.type)) {
-      return `Unsupported file type. Allowed: ${accept.map((t) => t.replace('image/', '')).join(', ')}.`;
+      return t('common.upload.unsupportedType', {
+        types: accept.map((a) => a.replace('image/', '')).join(', '),
+      });
     }
     if (file.size > maxSizeMB * 1024 * 1024) {
-      return `File is too large. Maximum size is ${maxSizeMB} MB.`;
+      return t('common.upload.tooLarge', { size: maxSizeMB });
     }
     return '';
   };
@@ -97,7 +101,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       <div className="mt-1">
         <img
           src={value}
-          alt="News"
+          // 'News' is accurate today because ImageUpload has exactly one real importer,
+          // src/pages/NewsEdit.tsx:319 (verified by import statement). A second caller
+          // would make this an `alt` prop instead of a hardcoded key — do not add the
+          // prop speculatively for a single caller.
+          alt={t('components.imageUpload.newsAlt')}
           data-testid="image-preview"
           className="h-16 w-auto rounded object-contain border"
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -114,7 +122,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         data-testid="image-drop-zone"
         role="button"
         tabIndex={uploading ? -1 : 0}
-        aria-label="Upload image"
+        aria-label={t('components.imageUpload.uploadAriaLabel')}
         aria-disabled={uploading}
         onClick={() => { if (!uploading) inputRef.current?.click(); }}
         onKeyDown={(e) => {
@@ -138,10 +146,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       >
         <Upload className="h-5 w-5" />
         <span>
-          Drag &amp; drop an image here, or <span className="text-primary underline">browse</span>
+          {t('components.imageUpload.dragDropText')}{' '}
+          <span className="text-primary underline">{t('components.imageUpload.browse')}</span>
         </span>
         <span className="text-xs">
-          {accept.map((t) => t.replace('image/', '').toUpperCase()).join(', ')} · up to {maxSizeMB} MB
+          {accept.map((a) => a.replace('image/', '').toUpperCase()).join(', ')} ·{' '}
+          {t('common.upload.maxSizeHint', { size: maxSizeMB })}
         </span>
         <input
           ref={inputRef}
@@ -158,7 +168,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       {uploading && (
         <div role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Uploading image…
+          {t('components.imageUpload.uploadingImage')}
         </div>
       )}
 
@@ -166,7 +176,9 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         <div className="flex items-center gap-3">
           <img
             src={previewSrc}
-            alt="News"
+            // See the comment on the read-only-mode <img> above: 'News' is accurate only
+            // because NewsEdit.tsx:319 is this component's sole real importer today.
+            alt={t('components.imageUpload.newsAlt')}
             data-testid="image-preview"
             className="h-16 w-auto rounded object-contain border"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -180,7 +192,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               onClick={clearSelection}
             >
               <X className="mr-2 h-4 w-4" />
-              Remove
+              {t('common.action.remove')}
             </Button>
           )}
         </div>

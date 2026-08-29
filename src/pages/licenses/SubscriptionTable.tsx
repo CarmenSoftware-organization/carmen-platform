@@ -296,12 +296,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   };
 
   const columns = useMemo<ColumnDef<Subscription, unknown>[]>(() => {
-    // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
-    // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
-    // see broadcastColumns.tsx's own note). Override just the header here so this table's
-    // Thai header row has no English hole. `hideUpdatedOnCard` keeps the mobile-card
-    // behaviour identical to before this change.
-    const [createdColumn, updatedColumn] = auditColumns<Subscription>({ hideUpdatedOnCard: true });
+    // `hideUpdatedOnCard` keeps the mobile-card behaviour identical to before this change.
+    const [createdColumn, updatedColumn] = auditColumns<Subscription>({ hideUpdatedOnCard: true, t });
     return [
       {
         accessorKey: 'subscription_number',
@@ -391,8 +387,8 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
           </div>
         ),
       },
-      { ...createdColumn, header: t('common.audit.created') },
-      { ...updatedColumn, header: t('common.audit.updatedDate') },
+      createdColumn,
+      updatedColumn,
     ];
   }, [t, stateLabel]);
   // No actions column: with Delete removed (review B2#1 — the backend can never surface a

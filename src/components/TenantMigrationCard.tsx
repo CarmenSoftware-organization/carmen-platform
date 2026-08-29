@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { handleMigrationError } from '../utils/migrationError';
 import tenantMigrationService from '../services/tenantMigrationService';
 import type { TenantMigrationStatus, ProgressEvent } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface TenantMigrationCardProps {
   buId: string;
@@ -25,6 +26,7 @@ export const TenantMigrationCard = ({
   hasDbConnection,
   isSuperAdmin,
 }: TenantMigrationCardProps) => {
+  const { t } = useI18n();
   const [status, setStatus] = useState<TenantMigrationStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [deploying, setDeploying] = useState(false);
@@ -35,9 +37,9 @@ export const TenantMigrationCard = ({
   const [logLines, setLogLines] = useState<string[]>([]);
 
   const disabledReason = !isSuperAdmin
-    ? 'Super-admin required.'
+    ? t('common.state.superAdminRequired')
     : !hasDbConnection
-    ? 'Configure a database pool and schema first.'
+    ? t('common.state.configureDbPoolFirst')
     : null;
   const busy = loadingStatus || deploying;
   const actionsDisabled = disabledReason !== null || busy;
@@ -72,8 +74,9 @@ export const TenantMigrationCard = ({
       };
       const summary = await tenantMigrationService.deployStream(buId, onEvent);
       const applied = 'applied_migrations' in summary ? summary.applied_migrations : [];
-      if (applied.length === 0) toast.info('Already up to date.');
-      else toast.success(`Applied ${applied.length} migration(s) to ${buCode}.`);
+      if (applied.length === 0) toast.info(t('components.tenantMigrationCard.alreadyUpToDateToast'));
+      else
+        toast.success(t('components.tenantMigrationCard.appliedToast', { count: applied.length, buCode }));
       await fetchStatus();
     } catch (err) {
       handleMigrationError(err);
@@ -103,10 +106,10 @@ export const TenantMigrationCard = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Database className="h-4 w-4" /> Tenant Migrations
+          <Database className="h-4 w-4" /> {t('breadcrumb.tenantMigrations')}
         </CardTitle>
         <CardDescription>
-          Check and apply database schema migrations for this BU&apos;s tenant database.
+          {t('components.tenantMigrationCard.description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -124,21 +127,32 @@ export const TenantMigrationCard = ({
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              {loadingStatus ? 'Checking...' : status ? 'Re-check status' : 'Check status'}
+              {loadingStatus
+                ? t('common.busy.checking')
+                : status
+                ? t('common.action.recheckStatus')
+                : t('common.action.checkStatus')}
             </Button>,
           )}
 
-          {status?.up_to_date && <Badge variant="success">Up to date</Badge>}
-          {status?.has_pending && <Badge variant="secondary">{pending.length} pending</Badge>}
+          {status?.up_to_date && <Badge variant="success">{t('components.tenantMigrationCard.upToDate')}</Badge>}
+          {status?.has_pending && (
+            <Badge variant="secondary">
+              {t('components.tenantMigrationCard.pendingCount', { count: pending.length })}
+            </Badge>
+          )}
           {lastChecked && (
-            <span className="text-xs text-muted-foreground">Last checked {lastChecked}</span>
+            <span className="text-xs text-muted-foreground">
+              {t('common.state.lastChecked', { time: lastChecked })}
+            </span>
           )}
         </div>
 
         {status?.has_pending && (
           <div className="space-y-2">
             <p className="text-sm font-medium">
-              Pending migrations <span className="text-muted-foreground">({pending.length})</span>
+              {t('components.tenantMigrationCard.pendingMigrationsHeading')}{' '}
+              <span className="text-muted-foreground">({pending.length})</span>
             </p>
             <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
               {pending.map((name) => (
@@ -156,7 +170,7 @@ export const TenantMigrationCard = ({
                 disabled={actionsDisabled}
               >
                 <Play className="mr-2 h-4 w-4" />
-                Apply {pending.length} migration(s)
+                {t('components.tenantMigrationCard.applyMigrationsButton', { count: pending.length })}
               </Button>,
             )}
           </div>
@@ -165,7 +179,7 @@ export const TenantMigrationCard = ({
         {deploying && progress && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Applying migrations…</span>
+              <span className="font-medium">{t('components.tenantMigrationCard.applyingEllipsis')}</span>
               <span className="text-muted-foreground">
                 {progress.applied} / {progress.total}
               </span>
@@ -202,7 +216,9 @@ export const TenantMigrationCard = ({
               className="text-xs text-muted-foreground underline"
               onClick={() => setShowRaw((v) => !v)}
             >
-              {showRaw ? 'Hide' : 'Show'} raw output
+              {showRaw
+                ? t('components.tenantMigrationCard.hideRawOutput')
+                : t('components.tenantMigrationCard.showRawOutput')}
             </button>
             {showRaw && (
               <pre className="mt-2 max-h-60 w-full overflow-auto whitespace-pre-wrap break-all rounded-md border border-input bg-muted/50 px-3 py-2 font-mono text-xs">
@@ -216,9 +232,13 @@ export const TenantMigrationCard = ({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Apply tenant migrations"
-        description={`Apply ${pending.length} pending migration(s) to ${buName} (${buCode})? This applies schema changes to the tenant database and cannot be undone.`}
-        confirmText="Apply migrations"
+        title={t('components.tenantMigrationCard.confirmTitle')}
+        description={t('components.tenantMigrationCard.confirmDescription', {
+          count: pending.length,
+          name: buName,
+          code: buCode,
+        })}
+        confirmText={t('components.tenantMigrationCard.applyButton')}
         confirmVariant="destructive"
         onConfirm={runDeploy}
       />

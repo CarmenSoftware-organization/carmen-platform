@@ -4,8 +4,10 @@ import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
   customRange, presetRange, rangeSpanDays, todayInTz, ymdInTz,
-  ANALYTICS_TZ, MAX_RANGE_DAYS, RANGE_PRESETS, type DateRange,
+  ANALYTICS_TZ, MAX_RANGE_DAYS, RANGE_PRESET_DAY_VALUES, getRangePresets, type DateRange,
 } from '../../utils/analyticsRange';
+import { useI18n } from '../../hooks/useI18n';
+import type { Lang } from '../../i18n/types';
 
 interface DateRangeFilterProps {
   value: DateRange;
@@ -13,30 +15,35 @@ interface DateRangeFilterProps {
 }
 
 /**
- * อธิบายช่วงที่กำลังใช้อยู่เป็นข้อความไทย — ขอบบนเป็น exclusive จึงถอยหนึ่งวันก่อนแสดง
+ * อธิบายช่วงที่กำลังใช้อยู่เป็นข้อความ — ขอบบนเป็น exclusive จึงถอยหนึ่งวันก่อนแสดง
  * ทำหน้าที่สองอย่าง: บอกผู้ใช้ว่ากำลังดูช่วงไหนจริง ๆ (preset ไม่ได้บอก) และเป็นที่ที่ prop
  * `value` ถูกใช้ ทำให้ component เป็น controlled จริงไม่ใช่แค่รับค่ามาทิ้ง
+ *
+ * รับ `lang` เพิ่มเข้ามา (i18n phase-2 slice 5.5 Task 5c) — เดิม hardcode locale 'th-TH' ไว้
+ * ตัวเดียว ทำให้ผู้ใช้ที่สลับเป็นอังกฤษยังเห็นชื่อเดือนย่อเป็นภาษาไทย ('ส.ค.') ปนอยู่ในข้อความ
+ * "Viewing ..." ที่ควรเป็นอังกฤษล้วน
  */
-function describeRange(range: DateRange): string {
+function describeRange(range: DateRange, lang: Lang): string {
   const opts: Intl.DateTimeFormatOptions = {
     day: 'numeric', month: 'short', year: 'numeric', timeZone: ANALYTICS_TZ,
   };
   const start = new Date(range.from);
   const lastDay = new Date(new Date(range.to).getTime() - 1);
   // 'th-TH' เพียว ๆ จะให้ปี พ.ศ. (ปฏิทินพุทธเป็นค่าเริ่มต้นของ locale นี้) ซึ่งขัดกับที่อื่นทั้งแอป
-  // ที่แสดง ค.ศ. — บังคับปฏิทินเกรกอเรียนด้วย -u-ca-gregory
-  const f = new Intl.DateTimeFormat('th-TH-u-ca-gregory', opts);
+  // ที่แสดง ค.ศ. — บังคับปฏิทินเกรกอเรียนด้วย -u-ca-gregory เมื่อภาษาปัจจุบันเป็นไทย
+  // 'en-GB' ให้ลำดับวัน-เดือน-ปีแบบเดียวกันไม่มีจุลภาค และปฏิทินเกรกอเรียนเป็นค่าเริ่มต้นอยู่แล้ว
+  const locale = lang === 'th' ? 'th-TH-u-ca-gregory' : 'en-GB';
+  const f = new Intl.DateTimeFormat(locale, opts);
   return `${f.format(start)} – ${f.format(lastDay)}`;
 }
 
 /** หา preset ที่ตรงกับ range ที่ให้มา เทียบกับ 7/30/90 วันล่าสุด — ถ้าไม่ตรงเลยถือว่าเป็นกำหนดเอง */
 function presetOf(range: DateRange): string {
-  const match = RANGE_PRESETS.find((p) => {
-    if (p.value === 'custom') return false;
-    const candidate = presetRange(Number(p.value));
+  const match = RANGE_PRESET_DAY_VALUES.find((days) => {
+    const candidate = presetRange(Number(days));
     return candidate.from === range.from && candidate.to === range.to;
   });
-  return match ? match.value : 'custom';
+  return match ?? 'custom';
 }
 
 /**
@@ -73,6 +80,7 @@ function ymdPairOf(range: DateRange): { fromYmd: string; toYmd: string } {
  * ซ้ำจะไปเขียนทับค่าที่ผู้ใช้กำลังพิมพ์ค้างอยู่ในโหมดกำหนดเอง
  */
 export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChange }) => {
+  const { t, lang } = useI18n();
   const [preset, setPreset] = useState<string>(() => presetOf(value));
   const [fromYmd, setFromYmd] = useState<string>(() => ymdPairOf(value).fromYmd);
   const [toYmd, setToYmd] = useState<string>(() => ymdPairOf(value).toYmd);
@@ -98,11 +106,11 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
     setFromYmd(nextFrom);
     setToYmd(nextTo);
     if (!nextFrom || !nextTo) { setError(''); return; }
-    if (nextTo < nextFrom) { setError('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม'); return; }
+    if (nextTo < nextFrom) { setError(t('components.dateRangeFilter.endBeforeStart')); return; }
 
     const range = customRange(nextFrom, nextTo);
     if (rangeSpanDays(range) > MAX_RANGE_DAYS) {
-      setError(`เลือกได้สูงสุด ${MAX_RANGE_DAYS} วัน`);
+      setError(t('components.dateRangeFilter.maxRangeDays', { max: MAX_RANGE_DAYS }));
       return;
     }
     setError('');
@@ -112,13 +120,13 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="range-preset">ช่วงวัน</Label>
+        <Label htmlFor="range-preset">{t('components.dateRangeFilter.dateRangeLabel')}</Label>
         <Select value={preset} onValueChange={handlePreset}>
           <SelectTrigger id="range-preset" className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {RANGE_PRESETS.map((p) => (
+            {getRangePresets(t).map((p) => (
               <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
             ))}
           </SelectContent>
@@ -128,7 +136,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
       {preset === 'custom' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="range-from">ตั้งแต่</Label>
+            <Label htmlFor="range-from">{t('components.dateRangeFilter.fromLabel')}</Label>
             <Input
               id="range-from" type="date" max={todayInTz()} value={fromYmd}
               onChange={(e) => handleCustom(e.target.value, toYmd)}
@@ -136,7 +144,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="range-to">ถึง</Label>
+            <Label htmlFor="range-to">{t('components.dateRangeFilter.toLabel')}</Label>
             <Input
               id="range-to" type="date" max={todayInTz()} value={toYmd}
               onChange={(e) => handleCustom(fromYmd, e.target.value)}
@@ -150,7 +158,7 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ value, onChang
         className={`order-last basis-full text-xs ${error ? 'text-destructive' : 'text-muted-foreground'}`}
         aria-live="polite"
       >
-        {error || `กำลังดู ${describeRange(value)}`}
+        {error || t('components.dateRangeFilter.viewingRange', { range: describeRange(value, lang) })}
       </p>
     </>
   );

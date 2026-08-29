@@ -21,6 +21,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { auditColumns } from '../components/auditColumns';
+import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { DatabasePool, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -36,6 +37,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const DatabasePoolManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [items, setItems] = useState<DatabasePool[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -198,7 +200,7 @@ const DatabasePoolManagement: React.FC = () => {
         </Badge>
       ),
     },
-    ...auditColumns<DatabasePool>(),
+    ...auditColumns<DatabasePool>({ t }),
     {
       id: 'actions',
       header: '',
@@ -228,7 +230,7 @@ const DatabasePoolManagement: React.FC = () => {
         </Can>
       ),
     },
-  ], [navigate]);
+  ], [navigate, t]);
 
   return (
     <Layout>

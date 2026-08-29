@@ -6,6 +6,7 @@ import { Skeleton } from './ui/skeleton';
 import { devLog } from '../utils/errorParser';
 import { Search, X } from 'lucide-react';
 import type { BusinessUnit } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface BusinessUnitMultiSelectProps {
   value: string[];
@@ -14,6 +15,7 @@ interface BusinessUnitMultiSelectProps {
 }
 
 export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = ({ value, onChange, disabled }) => {
+  const { t } = useI18n();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,12 +35,13 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
         if (active) setBusinessUnits(sorted);
       } catch (err) {
         devLog('Failed to load business units:', err);
-        if (active) setError('Failed to load business units');
+        if (active) setError(t('common.state.failedToLoadBusinessUnits'));
       } finally {
         if (active) setLoading(false);
       }
     })();
     return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedBus = useMemo(
@@ -67,7 +70,7 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
         {selectedBus.length === 0 ? (
-          <span className="text-xs text-muted-foreground">No business units selected</span>
+          <span className="text-xs text-muted-foreground">{t('components.businessUnitMultiSelect.noneSelected')}</span>
         ) : (
           selectedBus.map((bu) => (
             <Badge key={bu.id} variant="secondary" className="text-xs gap-1 pr-1">
@@ -77,7 +80,7 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
                   type="button"
                   onClick={() => toggle(bu.id)}
                   className="ml-0.5 hover:text-foreground"
-                  aria-label={`Remove ${bu.name}`}
+                  aria-label={t('common.action.removeAria', { name: bu.name })}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -92,16 +95,16 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search business units..."
+              placeholder={t('common.state.searchBusinessUnits')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
-              aria-label="Search business units"
+              aria-label={t('common.state.searchBusinessUnitsAria')}
             />
           </div>
           <div className="border rounded-md max-h-52 overflow-y-auto divide-y">
             {filtered.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">No business units found.</p>
+              <p className="text-sm text-muted-foreground text-center py-4">{t('common.state.noBusinessUnitsFound')}</p>
             ) : (
               filtered.map((bu) => (
                 <label key={bu.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer">

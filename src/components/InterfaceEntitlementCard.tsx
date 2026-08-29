@@ -6,7 +6,8 @@ import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 import { parseApiError } from '../utils/errorParser';
 import interfaceEntitlementService from '../services/interfaceEntitlementService';
-import { INTERFACE_CATALOG } from '../utils/interfaceCatalog';
+import { getInterfaceCatalog } from '../utils/interfaceCatalog';
+import { useI18n } from '../hooks/useI18n';
 
 interface InterfaceEntitlementCardProps {
   buCode: string;
@@ -25,6 +26,8 @@ export const InterfaceEntitlementCard = ({
   buCode,
   isSuperAdmin,
 }: InterfaceEntitlementCardProps): ReactElement => {
+  const { t } = useI18n();
+  const catalog = useMemo(() => getInterfaceCatalog(t), [t]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [initial, setInitial] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -32,9 +35,9 @@ export const InterfaceEntitlementCard = ({
   const [loaded, setLoaded] = useState(false);
 
   const disabledReason = !isSuperAdmin
-    ? 'Super-admin required.'
+    ? t('common.state.superAdminRequired')
     : !buCode
-    ? 'Save the business unit first.'
+    ? t('common.state.saveBusinessUnitFirst')
     : null;
 
   useEffect(() => {
@@ -92,7 +95,7 @@ export const InterfaceEntitlementCard = ({
       const next = new Set(stored);
       setSelected(next);
       setInitial(next);
-      toast.success('Interface entitlement saved');
+      toast.success(t('components.interfaceEntitlementCard.savedToast'));
     } catch (err) {
       const { message } = parseApiError(err);
       toast.error(message);
@@ -105,11 +108,10 @@ export const InterfaceEntitlementCard = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Plug className="h-4 w-4" /> Interface Entitlement
+          <Plug className="h-4 w-4" /> {t('components.interfaceEntitlementCard.title')}
         </CardTitle>
         <CardDescription>
-          Which external-system interfaces this business unit may configure. Leave empty to
-          allow every interface; select specific brands to restrict the BU to those.
+          {t('components.interfaceEntitlementCard.description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -117,11 +119,11 @@ export const InterfaceEntitlementCard = ({
           <p className="text-sm text-muted-foreground">{disabledReason}</p>
         ) : loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            <Loader2 className="h-4 w-4 animate-spin" /> {t('common.busy.loadingEllipsis')}
           </div>
         ) : (
           <>
-            {INTERFACE_CATALOG.map((group) => {
+            {catalog.map((group) => {
               const keys = group.brands.map((b) => b.key);
               const selectedCount = keys.filter((k) => selected.has(k)).length;
               const allOn = selectedCount === keys.length;
@@ -141,7 +143,9 @@ export const InterfaceEntitlementCard = ({
                       disabled={saving}
                       onClick={() => setGroup(keys, !allOn)}
                     >
-                      {allOn ? 'None' : 'All'}
+                      {allOn
+                        ? t('components.interfaceEntitlementCard.toggleNone')
+                        : t('common.option.all')}
                     </Button>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -172,11 +176,11 @@ export const InterfaceEntitlementCard = ({
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
-                {saving ? 'Saving…' : 'Save entitlement'}
+                {saving ? t('common.busy.savingEllipsis') : t('components.interfaceEntitlementCard.saveButton')}
               </Button>
               {selected.size === 0 && loaded && (
                 <span className="text-xs text-muted-foreground">
-                  Not restricted. BU sees all interfaces.
+                  {t('components.interfaceEntitlementCard.notRestrictedNote')}
                 </span>
               )}
             </div>

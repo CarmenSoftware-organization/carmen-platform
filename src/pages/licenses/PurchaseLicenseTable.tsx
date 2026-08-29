@@ -347,7 +347,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     // BU มีข้อมูลจริง คอลัมน์ Updated ที่นี่จะว่างถาวรเพราะ mapping เป็นตัวกั้น ไม่ใช่รอ backend
     // ส่งเพิ่มในอนาคตเหมือนตาราง licenses/ อื่น (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement
     // และ broadcastColumns.tsx) จึงหยิบมาแค่คอลัมน์ Created ตัวเดียว
-    const [createdColumn] = auditColumns<FleetLicenseRow>();
+    const [createdColumn] = auditColumns<FleetLicenseRow>({ t });
     return [
       {
         accessorKey: 'license_number',
@@ -439,13 +439,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
         enableSorting: false,
         cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.reference_no}</span>,
       },
-      // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
-      // pages — see ClusterLicenseTable.tsx's identical note). Override it here so this
-      // table's Thai header row has no English hole. This table only ever spreads the one
-      // `createdColumn` (see the comment above `const [createdColumn]` — Updated is never
-      // populated for either license kind, so it isn't rendered here at all), so there is no
-      // second header to forget, unlike a table that renders both.
-      { ...createdColumn, header: t('common.audit.created') },
+      createdColumn,
     ];
   }, [config, t, ownerLabel, amountLabel, statusLabel]);
 

@@ -46,7 +46,7 @@ export const createBroadcastColumns = ({
   // BroadcastListItem ไม่มี updated_at/updated_by เลย (src/types/index.ts:827) — สเปรดคู่เต็มของ
   // auditColumns จะได้คอลัมน์ Updated ที่ว่างถาวร (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement)
   // จึงหยิบมาแค่คอลัมน์ Created ตัวเดียว
-  const [createdColumn] = auditColumns<BroadcastListItem>();
+  const [createdColumn] = auditColumns<BroadcastListItem>({ t });
 
   const columns: ColumnDef<BroadcastListItem, unknown>[] = [
     {
@@ -150,11 +150,6 @@ export const createBroadcastColumns = ({
     // endpoint ที่ไม่รู้จักพารามิเตอร์นั้น กลายเป็นหัวคอลัมน์กดได้แต่ไม่มีอะไรเกิดขึ้นจริง
     {
       ...createdColumn,
-      // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
-      // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice —
-      // see broadcastColumns.tsx's own note above). Override just the header here so this
-      // table's Thai header row has no English hole.
-      header: t('common.audit.created'),
       enableSorting: false,
       meta: { ...createdColumn.meta, headerClassName: 'w-32', cellClassName: 'w-32', card: 'hidden' },
     },

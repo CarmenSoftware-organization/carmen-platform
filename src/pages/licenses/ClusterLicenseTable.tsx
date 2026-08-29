@@ -242,11 +242,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
     statusFilter.length + licenseFilter.length + (expiringSoonFilter ? 1 : 0);
 
   const columns = useMemo<ColumnDef<Cluster, unknown>[]>(() => {
-    // auditColumns.tsx hardcodes header: 'Created' as an English literal (shared by ~15
-    // pages; rewriting it to take `t` is the shared-infrastructure pass, not this slice).
-    // Override both headers here so this table's Thai header row has no English hole —
-    // this table renders both Created and Updated, unlike tables that only override one.
-    const [createdColumn, updatedColumn] = auditColumns<Cluster>({ hideUpdatedOnCard: true });
+    const [createdColumn, updatedColumn] = auditColumns<Cluster>({ hideUpdatedOnCard: true, t });
     return [
       {
         accessorKey: 'code',
@@ -314,8 +310,8 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
           </Badge>
         ),
       },
-      { ...createdColumn, header: t('common.audit.created') },
-      { ...updatedColumn, header: t('common.audit.updatedDate') },
+      createdColumn,
+      updatedColumn,
     ];
   }, [t]);
 

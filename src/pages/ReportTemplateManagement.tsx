@@ -21,6 +21,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { auditColumns } from '../components/auditColumns';
+import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -36,6 +37,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const ReportTemplateManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -276,7 +278,7 @@ const ReportTemplateManagement: React.FC = () => {
         </Badge>
       ),
     },
-    ...auditColumns<ReportTemplate>(),
+    ...auditColumns<ReportTemplate>({ t }),
     {
       id: 'actions',
       header: '',
@@ -306,7 +308,7 @@ const ReportTemplateManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete]);
+  ], [navigate, handleDelete, t]);
 
   return (
     <Layout>

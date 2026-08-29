@@ -3,6 +3,7 @@ import { Search, X, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useUserSearch } from '../hooks/useUserSearch';
 import type { UserOption } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface UserPickerProps {
   value: UserOption | null;
@@ -32,14 +33,17 @@ export const UserPicker: React.FC<UserPickerProps> = ({
   value,
   onChange,
   disabledIds,
-  disabledLabel = 'Unavailable',
-  placeholder = 'Search users by username or email',
+  disabledLabel,
+  placeholder,
   disabled = false,
   error = false,
   id,
   ariaLabel,
   onDropdownOpenChange,
 }) => {
+  const { t } = useI18n();
+  const effectiveDisabledLabel = disabledLabel ?? t('components.userPicker.disabledLabel');
+  const effectivePlaceholder = placeholder ?? t('components.userPicker.defaultPlaceholder');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -120,7 +124,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
             type="button"
             onClick={clearSelection}
             className="shrink-0 rounded hover:text-destructive"
-            aria-label={`Clear selected user ${value.name}`}
+            aria-label={t('components.userPicker.clearSelectedAria', { name: value.name })}
           >
             <X className="h-4 w-4" />
           </button>
@@ -150,7 +154,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
             changeOpen(true);
           }}
           onFocus={() => changeOpen(true)}
-          placeholder={placeholder}
+          placeholder={effectivePlaceholder}
           aria-label={ariaLabel}
           className="flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground"
         />
@@ -160,7 +164,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
         <div className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-input bg-popover shadow-md">
           {loading && (
             <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('components.userSearch.searchingEllipsis')}
             </div>
           )}
           {!loading && searchError && (
@@ -168,7 +172,9 @@ export const UserPicker: React.FC<UserPickerProps> = ({
           )}
           {!loading && !searchError && results.length === 0 && (
             <div className="px-3 py-4 text-sm text-muted-foreground">
-              {query ? `No users match "${query}"` : 'Type to search users'}
+              {query
+                ? t('components.userSearch.noMatch', { query })
+                : t('components.userSearch.typeToSearch')}
             </div>
           )}
           {!loading && !searchError && results.length > 0 && (
@@ -196,7 +202,7 @@ export const UserPicker: React.FC<UserPickerProps> = ({
                       </span>
                       {isDisabled && (
                         <span className="shrink-0 text-xs text-muted-foreground">
-                          {disabledLabel}
+                          {effectiveDisabledLabel}
                         </span>
                       )}
                     </button>
