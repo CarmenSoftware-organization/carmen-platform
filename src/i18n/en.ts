@@ -1420,8 +1420,10 @@ export const en = {
 
       // --- Task 3: InviteUserDialog.tsx ---
       // Hazard 1 (InviteUserDialog.tsx:22,23): CLUSTER_ROLES/BU_ROLES render via
-      // ROLE_LABEL_KEYS (src/pages/clusterAdmin/roleLabels.ts), shared with MembersTable.tsx
-      // and InvitationsTable.tsx — see common.role.* above for the two label values.
+      // ROLE_LABEL_KEYS (src/utils/roleLabels.ts — moved out of clusterAdmin/ in i18n
+      // phase-2 slice-5 Task 4 fix round 1, since businessUnitEdit/BusinessUnitUsersCard.tsx
+      // reuses it too), shared with MembersTable.tsx and InvitationsTable.tsx — see
+      // common.role.* above for the two label values.
       enterValidEmail: 'Enter a valid email address',
       invitationSent: 'Invitation sent',
       invitationAlreadyPending: 'Invitation already pending',

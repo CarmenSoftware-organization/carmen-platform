@@ -20,7 +20,7 @@ import { selectClassName } from './shared';
 import { BU_ROLES } from './types';
 import { useBusinessUnitUsers } from './useBusinessUnitUsers';
 import { useI18n } from '../../hooks/useI18n';
-import { ROLE_LABEL_KEYS, roleLabel } from '../clusterAdmin/roleLabels';
+import { ROLE_LABEL_KEYS, roleLabel } from '../../utils/roleLabels';
 
 interface BusinessUnitUsersCardProps {
   users: ReturnType<typeof useBusinessUnitUsers>;

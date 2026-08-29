@@ -18,7 +18,7 @@ import { parseApiError } from '../../utils/errorParser';
 import { AuditMeta } from '../../components/AuditMeta';
 import { normalizeAudit } from '../../utils/audit';
 import { useI18n } from '../../hooks/useI18n';
-import { roleLabel } from './roleLabels';
+import { roleLabel } from '../../utils/roleLabels';
 import type { ClusterInvitation } from '../../types';
 import type { TKey } from '../../i18n/types';
 import type { ColumnDef } from '@tanstack/react-table';

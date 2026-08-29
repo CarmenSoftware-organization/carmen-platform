@@ -1,4 +1,4 @@
-import type { TFunction, TKey } from '../../i18n/types';
+import type { TFunction, TKey } from '../i18n/types';
 
 /**
  * The membership-role enum shared by three module-scope arrays that must never drift apart:

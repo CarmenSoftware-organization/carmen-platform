@@ -53,6 +53,10 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
     return () => {
       cancelled = true;
     };
+    // Mount-once fetch: adding `t` here would refetch the pool list on every language
+    // switch. Nothing in the effect renders translated text, so there is nothing to
+    // re-resolve.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // pool ที่ผูกอยู่แต่ถูกปิดใช้งานต้องยังอยู่ในตัวเลือก ไม่งั้นจะดูเหมือนไม่เคยตั้งค่า
