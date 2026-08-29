@@ -367,7 +367,7 @@ const UserEdit: React.FC = () => {
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchUser();
       } else {
         setError(t('toast.saveFailed', { entity: t('entity.user.lower') }) + ': ' + getErrorDetail(err, t));

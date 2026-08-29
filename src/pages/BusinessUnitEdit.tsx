@@ -492,7 +492,7 @@ const BusinessUnitEdit: React.FC = () => {
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchBusinessUnit();
       } else {
         setError(t('toast.saveFailed', { entity: t('entity.businessUnit.lower') }) + ': ' + getErrorDetail(err, t));

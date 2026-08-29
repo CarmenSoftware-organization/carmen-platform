@@ -53,7 +53,7 @@ export const TenantMigrationCard = ({
       const p = (n: number) => String(n).padStart(2, '0');
       setLastChecked(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
     } catch (err) {
-      handleMigrationError(err);
+      handleMigrationError(err, t);
     } finally {
       setLoadingStatus(false);
     }
@@ -79,7 +79,7 @@ export const TenantMigrationCard = ({
         toast.success(t('components.tenantMigrationCard.appliedToast', { count: applied.length, buCode }));
       await fetchStatus();
     } catch (err) {
-      handleMigrationError(err);
+      handleMigrationError(err, t);
     } finally {
       setProgress(null);
       setDeploying(false);

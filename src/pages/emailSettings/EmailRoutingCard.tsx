@@ -134,7 +134,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
         ) : (
           <>
             <div className="space-y-2">
-              <Label htmlFor="routing-default">Default</Label>
+              <Label htmlFor="routing-default">{t('common.label.default')}</Label>
               {isEditing ? (
                 <Select
                   value={draft.default}

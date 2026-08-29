@@ -313,7 +313,7 @@ export function CompanyProfilePanel({
       await load();
     } catch (err) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await load();
       } else {
         toast.error(parseApiError(err).message);
@@ -439,7 +439,7 @@ export function CompanyProfilePanel({
                     <td className="px-3 py-2">-</td>
                     <td className="px-3 py-2">-</td>
                     <td className="px-3 py-2">
-                      <Badge variant="outline">Not applied</Badge>
+                      <Badge variant="outline">{t('pages.tenantImport.notApplied')}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -451,7 +451,7 @@ export function CompanyProfilePanel({
 
       {sheetErrors.length > 0 && (
         <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
-          <p className="font-medium">The workbook has values this step cannot use</p>
+          <p className="font-medium">{t('pages.tenantImport.workbookUnusableValues')}</p>
           <ul className="mt-1 space-y-0.5 text-xs">
             {sheetErrors.map((e) => (
               <li key={e.column}>

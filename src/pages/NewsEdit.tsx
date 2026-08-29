@@ -244,7 +244,7 @@ const NewsEdit: React.FC = () => {
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         discardSelectedImage();
         await fetchNews();
       } else {

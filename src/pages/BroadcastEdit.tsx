@@ -253,7 +253,7 @@ const BroadcastEdit: React.FC = () => {
       setEditing(false);
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchBroadcast();
       } else {
         const { message, fields } = parseApiError(err, t);

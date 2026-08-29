@@ -496,7 +496,7 @@ const BusinessUnitForm: React.FC = () => {
       await fetchBusinessUnit();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchBusinessUnit();
       } else {
         const { message, fields } = parseApiError(err, t);

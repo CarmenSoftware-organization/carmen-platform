@@ -297,7 +297,7 @@ const SubscriptionForm: React.FC = () => {
       await load();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await load();
       } else if (isNotFoundError(err)) {
         setNotFound(true);

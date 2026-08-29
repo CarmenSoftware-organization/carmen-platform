@@ -256,7 +256,7 @@ const ApplicationEdit: React.FC = () => {
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchApplication();
       } else {
         setError(t('pages.applications.saveFailed', { detail: getErrorDetail(err, t) }));
@@ -609,7 +609,7 @@ const ApplicationEdit: React.FC = () => {
                       )}
                     </div>
                   ) : formData.api_names.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No endpoints granted.</p>
+                    <p className="text-muted-foreground text-sm">{t('pages.applications.noEndpointsGranted')}</p>
                   ) : (
                     <div className="space-y-3">
                       {groupApiNames(formData.api_names).map((g) => (
@@ -731,10 +731,10 @@ const ApplicationEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">

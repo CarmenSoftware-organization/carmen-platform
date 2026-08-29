@@ -314,7 +314,7 @@ const ClusterEdit: React.FC = () => {
       await fetchCluster();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchCluster();
       } else {
         setError(t('pages.clusters.saveFailed', { detail: getErrorDetail(err, t) }));

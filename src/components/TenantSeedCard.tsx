@@ -85,7 +85,7 @@ export const TenantSeedCard = ({
       const p = (n: number) => String(n).padStart(2, '0');
       setLastChecked(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
     } catch (err) {
-      handleSeedError(err);
+      handleSeedError(err, t);
     } finally {
       setLoadingStatus(false);
     }
@@ -116,7 +116,7 @@ export const TenantSeedCard = ({
         );
       await fetchStatus();
     } catch (err) {
-      handleSeedError(err);
+      handleSeedError(err, t);
     } finally {
       setProgress(null);
       setSeeding(false);

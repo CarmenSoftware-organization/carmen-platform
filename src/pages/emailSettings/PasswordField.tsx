@@ -45,7 +45,7 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
   if (!editing) {
     return (
       <div className="space-y-2">
-        <Label>SMTP password</Label>
+        <Label>{t('pages.emailSettings.smtpPassword')}</Label>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">
             {hasStoredPassword ? t('pages.emailSettings.passwordSet') : t('pages.emailSettings.passwordNotSet')}
@@ -65,7 +65,7 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="smtp_password">SMTP password</Label>
+      <Label htmlFor="smtp_password">{t('pages.emailSettings.smtpPassword')}</Label>
       <div className="flex items-center gap-3">
         <Input
           id="smtp_password"

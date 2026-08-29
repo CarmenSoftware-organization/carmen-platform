@@ -213,7 +213,7 @@ const ClusterProfile: React.FC = () => {
       await fetchCluster();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchCluster();
       } else {
         const { message, fields } = parseApiError(err, t);

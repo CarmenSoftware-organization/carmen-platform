@@ -279,15 +279,15 @@ const DatabasePoolManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter database pools by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.databasePools.filterDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearFilters}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearFilters}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -320,7 +320,7 @@ const DatabasePoolManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                     {s === "true" ? "Active" : "Inactive"}
@@ -364,7 +364,7 @@ const DatabasePoolManagement: React.FC = () => {
                 <>
                 {loading && (
                   <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.databasePools.loadingAria')}>
-                    <div className="text-muted-foreground">Loading database pools...</div>
+                    <div className="text-muted-foreground">{t('pages.databasePools.loading')}</div>
                   </div>
                 )}
                 <DataTable

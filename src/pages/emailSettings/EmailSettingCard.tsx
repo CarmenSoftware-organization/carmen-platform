@@ -153,7 +153,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
       const message = validateField('from_email', formData.from_email);
       if (message) errors.from_email = message;
     }
-    if (!formData.smtp_host.trim()) errors.smtp_host = 'SMTP host is required';
+    if (!formData.smtp_host.trim()) errors.smtp_host = t('pages.emailSettings.smtpHostRequired');
     const port = Number(formData.smtp_port);
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
       errors.smtp_port = 'Port must be a whole number between 1 and 65535';
@@ -194,7 +194,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
       if (isVersionConflict(err)) {
         // Reload to latest but stay in edit mode — standard optimistic-lock UX.
         // The page re-keys this card on doc_version, so the remount refreshes the form.
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         onSaved({ keepEditing: true });
       } else {
         const parsed = parseApiError(err);
@@ -305,7 +305,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`from_name_${profileKey}`}>From name</Label>
+              <Label htmlFor={`from_name_${profileKey}`}>{t('pages.emailSettings.fromName')}</Label>
               <Input
                 id={`from_name_${profileKey}`}
                 aria-label={t('pages.emailSettings.fromName')}
@@ -315,7 +315,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`smtp_host_${profileKey}`}>SMTP host</Label>
+              <Label htmlFor={`smtp_host_${profileKey}`}>{t('pages.emailSettings.smtpHost')}</Label>
               <Input
                 id={`smtp_host_${profileKey}`}
                 aria-label={t('pages.emailSettings.smtpHost')}
@@ -384,7 +384,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </label>
 
             <div className="space-y-2 lg:col-span-2">
-              <Label htmlFor={`note_${profileKey}`}>Note</Label>
+              <Label htmlFor={`note_${profileKey}`}>{t('common.field.note')}</Label>
               <Input
                 id={`note_${profileKey}`}
                 aria-label={t('pages.databasePools.columnNote')}
@@ -399,11 +399,11 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
         {!isEditing && !isNew && (
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">SMTP username</Label>
+              <Label className="text-xs text-muted-foreground">{t('pages.emailSettings.smtpUsername')}</Label>
               <ReadOnlyText value={setting.smtp_username ?? ''} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Note</Label>
+              <Label className="text-xs text-muted-foreground">{t('common.field.note')}</Label>
               <ReadOnlyText value={setting.note ?? ''} />
             </div>
           </div>
