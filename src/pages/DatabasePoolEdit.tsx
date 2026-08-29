@@ -24,6 +24,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
 import { useAuth } from '../context/AuthContext';
 import type { DatabasePoolWriteInput } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface DatabasePoolFormData {
   name: string;
@@ -79,6 +80,7 @@ const buildPayload = (data: DatabasePoolFormData): DatabasePoolWriteInput => {
 const DatabasePoolEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isNew = !id;
   const { hasPermission } = useAuth();
 
@@ -157,12 +159,12 @@ const DatabasePoolEdit: React.FC = () => {
         setNotFound(true);
       } else {
         const { message } = parseApiError(err);
-        setError('Failed to load database pool: ' + message);
+        setError(t('pages.databasePools.loadFailedOne', { detail: message }));
       }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (!isNew) {
@@ -188,7 +190,7 @@ const DatabasePoolEdit: React.FC = () => {
     let err = '';
     if (name === 'port') {
       // validateField has no 'port' case — check the TCP range directly.
-      err = value.trim() === '' || isValidPort(value) ? '' : 'Port must be a number between 1 and 65535';
+      err = value.trim() === '' || isValidPort(value) ? '' : t('pages.databasePools.portInvalid');
     } else if (name === 'username') {
       // This is a raw database login, not the platform's email-shaped username — the
       // shared validateField 'username' case enforces email format for the User page,
@@ -204,12 +206,12 @@ const DatabasePoolEdit: React.FC = () => {
 
   const validateBeforeSubmit = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = 'Name is required';
-    if (!formData.host.trim()) errors.host = 'Host is required';
-    if (!formData.database.trim()) errors.database = 'Database is required';
-    if (!formData.username.trim()) errors.username = 'Username is required';
-    if (!isValidPort(formData.port)) errors.port = 'Port must be a number between 1 and 65535';
-    if (isNew && !formData.password) errors.password = 'Password is required';
+    if (!formData.name.trim()) errors.name = t('common.validation.requiredMessage', { label: t('common.field.name') });
+    if (!formData.host.trim()) errors.host = t('pages.databasePools.hostRequired');
+    if (!formData.database.trim()) errors.database = t('pages.databasePools.databaseRequired');
+    if (!formData.username.trim()) errors.username = t('pages.databasePools.usernameRequired');
+    if (!isValidPort(formData.port)) errors.port = t('pages.databasePools.portInvalid');
+    if (isNew && !formData.password) errors.password = t('pages.databasePools.passwordRequired');
     if (Object.keys(errors).length > 0) {
       setFieldErrors(prev => ({ ...prev, ...errors }));
       return false;
@@ -236,14 +238,14 @@ const DatabasePoolEdit: React.FC = () => {
           password: formData.password,
         });
         const row = created?.data ?? created;
-        toast.success('Database pool created');
+        toast.success(t('pages.databasePools.createdToast'));
         navigate(`/platform/database-pools/${row.id}/edit`, { replace: true });
       } else {
         // doc_version is required by the backend on update, so it's sent every time —
         // unlike other entities in this repo where it's only sent when present. The 0
         // fallback matches the column's @default(0), used when the GET never returned one.
         await databasePoolService.update(id!, { ...buildPayload(formData), doc_version: docVersion ?? 0 });
-        toast.success('Changes saved');
+        toast.success(t('pages.databasePools.savedToast'));
         setSavedFormData(formData);
         setEditing(false);
         setShowPassword(false);
@@ -282,7 +284,7 @@ const DatabasePoolEdit: React.FC = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading database pool">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.databasePools.loadingOneAria')}>
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
             <div className="flex-1">
@@ -314,16 +316,16 @@ const DatabasePoolEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/platform/database-pools" title="Database Pool" />
+          <PageHeader backTo="/platform/database-pools" title={t('pages.databasePools.singularTitle')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Database pool not found"
-                description="This database pool doesn't exist, or it may have been deleted. Check the link, or pick one from the list."
+                title={t('pages.databasePools.notFoundTitle')}
+                description={t('pages.databasePools.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/platform/database-pools')}>
-                    Back to database pools
+                    {t('pages.databasePools.backToList')}
                   </Button>
                 }
               />
@@ -342,19 +344,19 @@ const DatabasePoolEdit: React.FC = () => {
           className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Database Pools
+          {t('pages.databasePools.title')}
         </Link>
 
         <PageHeader
-          title={isNew ? 'New Database Pool' : formData.name || 'Database Pool'}
-          subtitle={isNew ? 'Create a shared database connection profile' : formData.host}
+          title={isNew ? t('pages.databasePools.newTitle') : formData.name || t('pages.databasePools.singularTitle')}
+          subtitle={isNew ? t('pages.databasePools.newSubtitle') : formData.host}
           audit={normalizeAudit(poolRecord)}
           actions={
             !isNew && !editing && (
               <Can permission="database_pool.manage">
                 <Button variant="outline" size="sm" onClick={handleEditToggle}>
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t('common.action.edit')}
                 </Button>
               </Can>
             )
@@ -368,13 +370,13 @@ const DatabasePoolEdit: React.FC = () => {
         <form ref={formRef} onSubmit={handleSubmit}>
           <Card>
             <CardHeader>
-              <CardTitle>Connection Details</CardTitle>
-              <CardDescription>Name, credentials, and endpoint for this shared connection profile.</CardDescription>
+              <CardTitle>{t('pages.databasePools.connectionDetails')}</CardTitle>
+              <CardDescription>{t('pages.databasePools.connectionDetailsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name {editing && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="name">{t('common.field.name')} {editing && <span className="text-destructive">*</span>}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -383,7 +385,7 @@ const DatabasePoolEdit: React.FC = () => {
                         value={formData.name}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="tenant-primary"
+                        placeholder={t('pages.databasePools.namePlaceholder')}
                         className={fieldErrors.name ? 'border-destructive' : ''}
                       />
                       {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
@@ -394,7 +396,7 @@ const DatabasePoolEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="is_active">Status</Label>
+                  <Label htmlFor="is_active">{t('common.status.label')}</Label>
                   {editing ? (
                     <label className="flex min-h-11 items-center gap-2">
                       <input
@@ -405,19 +407,19 @@ const DatabasePoolEdit: React.FC = () => {
                         onChange={handleChange}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm">Active</span>
+                      <span className="text-sm">{t('common.status.active')}</span>
                     </label>
                   ) : (
                     <div>
                       <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                        {formData.is_active ? 'Active' : 'Inactive'}
+                        {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
                       </Badge>
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t('common.field.description')}</Label>
                   {editing ? (
                     <Textarea
                       id="description"
@@ -425,7 +427,7 @@ const DatabasePoolEdit: React.FC = () => {
                       value={formData.description}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      placeholder="Optional description"
+                      placeholder={t('pages.databasePools.descriptionPlaceholder')}
                       rows={2}
                       className={fieldErrors.description ? 'border-destructive' : ''}
                     />
@@ -435,7 +437,7 @@ const DatabasePoolEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="host">Host {editing && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="host">{t('pages.databasePools.columnHost')} {editing && <span className="text-destructive">*</span>}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -444,7 +446,7 @@ const DatabasePoolEdit: React.FC = () => {
                         value={formData.host}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="tenant-db.internal"
+                        placeholder={t('pages.databasePools.hostPlaceholder')}
                         className={fieldErrors.host ? 'border-destructive' : ''}
                       />
                       {fieldErrors.host && <p className="text-xs text-destructive">{fieldErrors.host}</p>}
@@ -455,7 +457,7 @@ const DatabasePoolEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="port">Port {editing && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="port">{t('pages.databasePools.columnPort')} {editing && <span className="text-destructive">*</span>}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -465,7 +467,7 @@ const DatabasePoolEdit: React.FC = () => {
                         value={formData.port}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="5432"
+                        placeholder={t('pages.databasePools.portPlaceholder')}
                         min={1}
                         max={65535}
                         className={fieldErrors.port ? 'border-destructive' : ''}
@@ -478,7 +480,7 @@ const DatabasePoolEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="database">Database {editing && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="database">{t('pages.databasePools.columnDatabase')} {editing && <span className="text-destructive">*</span>}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -487,7 +489,7 @@ const DatabasePoolEdit: React.FC = () => {
                         value={formData.database}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="carmen_tenant"
+                        placeholder={t('pages.databasePools.databasePlaceholder')}
                         className={fieldErrors.database ? 'border-destructive' : ''}
                       />
                       {fieldErrors.database && <p className="text-xs text-destructive">{fieldErrors.database}</p>}
@@ -498,7 +500,7 @@ const DatabasePoolEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username {editing && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="username">{t('common.field.username')} {editing && <span className="text-destructive">*</span>}</Label>
                   {editing ? (
                     <>
                       <Input
@@ -507,7 +509,7 @@ const DatabasePoolEdit: React.FC = () => {
                         value={formData.username}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="app_user"
+                        placeholder={t('pages.databasePools.usernamePlaceholder')}
                         className={fieldErrors.username ? 'border-destructive' : ''}
                       />
                       {fieldErrors.username && <p className="text-xs text-destructive">{fieldErrors.username}</p>}
@@ -518,7 +520,7 @@ const DatabasePoolEdit: React.FC = () => {
                 </div>
 
                 <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="password">Password {editing && isNew && <span className="text-destructive">*</span>}</Label>
+                  <Label htmlFor="password">{t('pages.databasePools.passwordLabel')} {editing && isNew && <span className="text-destructive">*</span>}</Label>
                   {editing ? (
                     <>
                       <div className="relative">
@@ -528,7 +530,7 @@ const DatabasePoolEdit: React.FC = () => {
                           name="password"
                           value={formData.password}
                           onChange={handleChange}
-                          placeholder={isNew ? 'Enter a password' : ''}
+                          placeholder={isNew ? t('pages.databasePools.passwordPlaceholder') : ''}
                           className={`pr-9 ${fieldErrors.password ? 'border-destructive' : ''}`}
                         />
                         <Button
@@ -537,25 +539,25 @@ const DatabasePoolEdit: React.FC = () => {
                           size="icon"
                           className="absolute right-0 top-0 h-9 w-9"
                           onClick={() => setShowPassword((s) => !s)}
-                          aria-label={showPassword ? 'Hide password' : 'Reveal password'}
+                          aria-label={showPassword ? t('pages.databasePools.hidePassword') : t('pages.databasePools.revealPassword')}
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
                       {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
                       {!isNew && (
-                        <p className="text-xs text-muted-foreground">Leave blank to keep the current password.</p>
+                        <p className="text-xs text-muted-foreground">{t('pages.databasePools.passwordKeepHint')}</p>
                       )}
                     </>
                   ) : (
                     // The API masks password in every response and offers no reveal endpoint —
                     // there is nothing to show, so no field renders here at all.
-                    <p className="text-sm text-muted-foreground">Stored, hidden</p>
+                    <p className="text-sm text-muted-foreground">{t('pages.databasePools.passwordStoredHidden')}</p>
                   )}
                 </div>
 
                 <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="note">Note</Label>
+                  <Label htmlFor="note">{t('pages.databasePools.columnNote')}</Label>
                   {editing ? (
                     <Textarea
                       id="note"
@@ -563,7 +565,7 @@ const DatabasePoolEdit: React.FC = () => {
                       value={formData.note}
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      placeholder="Optional note"
+                      placeholder={t('pages.databasePools.notePlaceholder')}
                       rows={2}
                       className={fieldErrors.note ? 'border-destructive' : ''}
                     />
@@ -599,12 +601,12 @@ const DatabasePoolEdit: React.FC = () => {
                 disabled={saving}
               >
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Can permission="database_pool.manage">
                 <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
                   {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  {saving ? 'Saving...' : isNew ? 'Create Pool' : 'Save Changes'}
+                  {saving ? t('common.busy.saving') : isNew ? t('pages.databasePools.createPool') : t('common.action.saveChanges')}
                 </Button>
               </Can>
             </div>

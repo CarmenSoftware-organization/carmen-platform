@@ -30,6 +30,7 @@ const SEGMENT_KEYS: Record<string, TKey> = {
   'super-admins': 'breadcrumb.superAdmins',
   'user-platform': 'breadcrumb.userPlatform',
   'sql-workbench': 'breadcrumb.sqlWorkbench',
+  'database-pools': 'breadcrumb.databasePools',
   'cluster-admin': 'breadcrumb.clusterAdmin',
   profile: 'breadcrumb.profile',
   changelog: 'breadcrumb.changelog',

@@ -24,12 +24,15 @@ import { ResultPanel } from './ResultPanel';
 import { DbObjectTree } from './DbObjectTree';
 import { ConnectionBar } from './ConnectionBar';
 import { BuSwitcher } from '../../components/BuSwitcher';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 
+// เก็บ TKey ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้
 const QUERY_TYPES = [
-  { value: 'view', label: 'View' },
-  { value: 'stored_procedure', label: 'Stored Procedure' },
-  { value: 'function', label: 'Function' },
-] as const;
+  { value: 'view', labelKey: 'pages.sqlWorkbench.typeView' },
+  { value: 'stored_procedure', labelKey: 'pages.sqlWorkbench.typeProcedure' },
+  { value: 'function', labelKey: 'pages.sqlWorkbench.typeFunction' },
+] as const satisfies readonly { value: string; labelKey: TKey }[];
 
 type QueryType = 'view' | 'stored_procedure' | 'function';
 
@@ -40,6 +43,7 @@ type LoadedObject = {
 } | null;
 
 export default function SqlWorkbench() {
+  const { t } = useI18n();
   const { hasPermission } = useAuth();
   const canManage = hasPermission('sql_workbench.manage');
 
@@ -74,12 +78,12 @@ export default function SqlWorkbench() {
         if (!cancelled) setBusinessUnits(res.data ?? []);
       })
       .catch(() => {
-        if (!cancelled) toast.error('Failed to load business units');
+        if (!cancelled) toast.error(t('pages.sqlWorkbench.loadBuFailed'));
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   // Always holds the latest selected BU so async handlers can detect a BU switch
   // that happened mid-flight and discard their stale response.
@@ -175,7 +179,7 @@ export default function SqlWorkbench() {
     } catch (e) {
       if (controller.signal.aborted) return; // aborted on unmount — nothing left to update
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale error
-      setExecuteError(e instanceof Error ? e.message : 'Failed to execute SQL');
+      setExecuteError(e instanceof Error ? e.message : t('pages.sqlWorkbench.executeFailed'));
     } finally {
       if (runAbortControllerRef.current === controller) runAbortControllerRef.current = null;
       if (!controller.signal.aborted) setIsRunning(false);
@@ -185,13 +189,13 @@ export default function SqlWorkbench() {
 
   const handleRun = async (sqlToRun: string) => {
     if (!buCode) {
-      toast.error('Select a business unit first');
+      toast.error(t('pages.sqlWorkbench.selectBuFirst'));
       return;
     }
     try {
       validateSqlSafety(sqlToRun, { allowMultiple: true });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Invalid SQL');
+      toast.error(e instanceof Error ? e.message : t('pages.sqlWorkbench.invalidSql'));
       return;
     }
     if (classifyStatements(sqlToRun).destructive) {
@@ -237,7 +241,7 @@ export default function SqlWorkbench() {
       toast.success(`Loaded ${def.type}: ${def.schema}.${def.name}`);
     } catch (e) {
       if (code !== buCodeRef.current) return; // BU changed mid-flight — discard stale error
-      toast.error(e instanceof Error ? e.message : 'Failed to load definition');
+      toast.error(e instanceof Error ? e.message : t('pages.sqlWorkbench.loadDefinitionFailed'));
     } finally {
       setLoadingObjectKey(null);
     }
@@ -245,11 +249,11 @@ export default function SqlWorkbench() {
 
   const handleSave = async () => {
     if (!buCode) {
-      toast.error('Select a business unit first');
+      toast.error(t('pages.sqlWorkbench.selectBuFirst'));
       return;
     }
     if (!formSqlText.trim()) {
-      toast.error('Please enter SQL');
+      toast.error(t('pages.sqlWorkbench.enterSql'));
       return;
     }
     const stripped = formSqlText.trimStart();
@@ -258,13 +262,13 @@ export default function SqlWorkbench() {
         stripped,
       );
     if (formQueryType === 'view' && !formName.trim() && !startsWithCreate) {
-      toast.error('Please enter a name for the view');
+      toast.error(t('pages.sqlWorkbench.enterViewName'));
       return;
     }
     try {
       validateSqlSafety(formSqlText, { allowMultiple: true });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Invalid SQL', { duration: 8000 });
+      toast.error(e instanceof Error ? e.message : t('pages.sqlWorkbench.invalidSql'), { duration: 8000 });
       return;
     }
     setIsSaving(true);
@@ -275,17 +279,21 @@ export default function SqlWorkbench() {
         query_type: formQueryType,
       });
       toast.success(
-        `${
-          formQueryType === 'view'
-            ? 'View'
-            : formQueryType === 'function'
-              ? 'Function'
-              : 'Stored procedure'
-        } "${result.name || '(unnamed)'}" saved to schema "${result.schema}"`,
+        t('pages.sqlWorkbench.savedToast', {
+          type: t(
+            formQueryType === 'view'
+              ? 'pages.sqlWorkbench.typeView'
+              : formQueryType === 'function'
+                ? 'pages.sqlWorkbench.typeFunction'
+                : 'pages.sqlWorkbench.typeProcedure',
+          ),
+          name: result.name || t('pages.sqlWorkbench.unnamedObject'),
+          schema: result.schema,
+        }),
       );
       loadDbObjects(buCode);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save', { duration: 8000 });
+      toast.error(e instanceof Error ? e.message : t('pages.sqlWorkbench.saveFailed'), { duration: 8000 });
     } finally {
       setIsSaving(false);
     }
@@ -296,11 +304,11 @@ export default function SqlWorkbench() {
     setIsDropping(true);
     try {
       await sqlQueryService.dropObject(buCode, loadedObject);
-      toast.success(`Dropped ${loadedObject.type}: ${loadedObject.name}`);
+      toast.success(t('pages.sqlWorkbench.droppedToast', { type: loadedObject.type, name: loadedObject.name }));
       handleNew();
       loadDbObjects(buCode);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to drop');
+      toast.error(e instanceof Error ? e.message : t('pages.sqlWorkbench.dropFailed'));
     } finally {
       setIsDropping(false);
     }
@@ -310,8 +318,8 @@ export default function SqlWorkbench() {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="SQL Workbench"
-          subtitle="Run queries · create views, stored procedures and functions in a tenant database"
+          title={t('pages.sqlWorkbench.title')}
+          subtitle={t('pages.sqlWorkbench.subtitle')}
           actions={
             <>
               {canManage && loadedObject && (
@@ -327,7 +335,7 @@ export default function SqlWorkbench() {
                   ) : (
                     <Trash2 className="mr-1 size-4" />
                   )}
-                  Drop
+                  {t('pages.sqlWorkbench.drop')}
                 </Button>
               )}
               {canManage && (
@@ -337,7 +345,7 @@ export default function SqlWorkbench() {
                   ) : (
                     <Save className="mr-1 size-4" />
                   )}
-                  Save
+                  {t('pages.sqlWorkbench.save')}
                 </Button>
               )}
             </>
@@ -367,15 +375,14 @@ export default function SqlWorkbench() {
                 onOpenChange={(o) => {
                   if (!o) setConfirmSql(null);
                 }}
-                title="Run destructive SQL?"
+                title={t('pages.sqlWorkbench.destructiveTitle')}
                 description={
-                  `This runs ${c.destructiveKeywords.join(', ')} on the ` +
-                  `${selectedBu?.code ?? 'tenant'} database and cannot be undone.` +
-                  (c.unguardedWrite
-                    ? ' A DELETE/UPDATE has no WHERE clause and will affect ALL rows.'
-                    : '')
+                  t('pages.sqlWorkbench.destructiveDescription', {
+                    keywords: c.destructiveKeywords.join(', '),
+                    bu: selectedBu?.code ?? t('pages.sqlWorkbench.tenantFallback'),
+                  }) + (c.unguardedWrite ? t('pages.sqlWorkbench.destructiveUnguarded') : '')
                 }
-                confirmText="Run anyway"
+                confirmText={t('pages.sqlWorkbench.runAnyway')}
                 confirmVariant="destructive"
                 onConfirm={async () => {
                   await runSql(buCode, confirmSql);
@@ -391,13 +398,13 @@ export default function SqlWorkbench() {
             onOpenChange={(o) => {
               if (!o) setDropConfirm(false);
             }}
-            title={`Drop ${loadedObject.type}?`}
-            description={
-              `This permanently drops ${loadedObject.type} ` +
-              `"${loadedObject.schema}.${loadedObject.name}" from the ` +
-              `${selectedBu?.code ?? 'tenant'} database. This cannot be undone.`
-            }
-            confirmText="Drop"
+            title={t('pages.sqlWorkbench.dropTitle', { type: loadedObject.type })}
+            description={t('pages.sqlWorkbench.dropDescription', {
+              type: loadedObject.type,
+              qualified: `${loadedObject.schema}.${loadedObject.name}`,
+              bu: selectedBu?.code ?? t('pages.sqlWorkbench.tenantFallback'),
+            })}
+            confirmText={t('pages.sqlWorkbench.drop')}
             confirmVariant="destructive"
             onConfirm={async () => {
               await doDrop();
@@ -412,7 +419,7 @@ export default function SqlWorkbench() {
             onClick={() => setSwitcherOpen(true)}
             className="text-muted-foreground hover:border-border/80 hover:text-foreground flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
           >
-            Select a business unit to begin.
+            {t('pages.sqlWorkbench.selectBuToBegin')}
           </button>
         ) : (
           <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -431,19 +438,19 @@ export default function SqlWorkbench() {
               <div className="grid grid-cols-1 gap-4 rounded-lg border p-4 sm:grid-cols-3">
                 <div>
                   <Label htmlFor="qd-object-name" className="mb-1 block text-xs font-semibold">
-                    Object Name
+                    {t('pages.sqlWorkbench.objectName')}
                   </Label>
                   <Input
                     id="qd-object-name"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g. v_pr_summary"
+                    placeholder={t('pages.sqlWorkbench.objectNamePlaceholder')}
                   />
                 </div>
                 <div>
                   {/* ผูกกับ Select ด้านล่างผ่าน aria-labelledby ไม่ใช่ htmlFor หรือการห่อ */}
                   <Label id="qd-type-label" className="mb-1 block text-xs font-semibold">
-                    Type
+                    {t('pages.sqlWorkbench.typeLabel')}
                   </Label>
                   <Select
                     value={formQueryType}
@@ -453,9 +460,9 @@ export default function SqlWorkbench() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {QUERY_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
+                      {QUERY_TYPES.map((qt) => (
+                        <SelectItem key={qt.value} value={qt.value}>
+                          {t(qt.labelKey)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -464,7 +471,7 @@ export default function SqlWorkbench() {
                 <div className="flex flex-col justify-end">
                   {loadedObject && (
                     <p className="text-muted-foreground truncate text-xs">
-                      Editing:{' '}
+                      {t('pages.sqlWorkbench.editingPrefix')}{' '}
                       <span className="text-foreground">
                         {loadedObject.name}
                       </span>{' '}
@@ -477,7 +484,7 @@ export default function SqlWorkbench() {
               <div className="rounded-lg border">
                 <div className="flex items-center gap-2 border-b px-4 py-2">
                   <Database className="text-muted-foreground size-4" />
-                  <span className="text-sm font-semibold">SQL Editor</span>
+                  <span className="text-sm font-semibold">{t('pages.sqlWorkbench.sqlEditor')}</span>
                 </div>
                 <SqlEditor
                   value={formSqlText}

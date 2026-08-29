@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import type { BusinessUnit } from '../../types';
 import { buHueColor, buInitials } from '../../utils/buHue';
+import { useI18n } from '../../hooks/useI18n';
 
 interface ConnectionBarProps {
   /** The currently connected BU, or null when none is selected yet. */
@@ -20,6 +21,7 @@ interface ConnectionBarProps {
  * signal, so an operator can't Drop objects in the wrong tenant by accident.
  */
 export function ConnectionBar({ bu, canWrite, onSwitch }: ConnectionBarProps) {
+  const { t } = useI18n();
   const rail = bu ? buHueColor(bu.code) : 'hsl(var(--border))';
 
   return (
@@ -63,24 +65,24 @@ export function ConnectionBar({ bu, canWrite, onSwitch }: ConnectionBarProps) {
                 <span>tenant db{bu.cluster_name ? ` · ${bu.cluster_name}` : ''}</span>
                 <span className="opacity-40">·</span>
                 <Badge variant={canWrite ? 'warning' : 'secondary'} className="px-1.5 py-0 text-[10px] font-mono">
-                  {canWrite ? 'read / write' : 'read-only'}
+                  {canWrite ? t('pages.sqlWorkbench.readWrite') : t('pages.sqlWorkbench.readOnly')}
                 </Badge>
               </div>
             </>
           ) : (
             <>
-              <div className="text-sm font-semibold">No tenant selected</div>
+              <div className="text-sm font-semibold">{t('pages.sqlWorkbench.noTenantSelected')}</div>
               <div className="text-muted-foreground text-xs">
-                Choose the business unit you want to operate on
+                {t('pages.sqlWorkbench.chooseBuHint')}
               </div>
             </>
           )}
         </div>
 
         <div className="ml-auto shrink-0 pl-2">
-          <Button size="sm" variant="outline" onClick={onSwitch} aria-label="Switch business unit">
+          <Button size="sm" variant="outline" onClick={onSwitch} aria-label={t('pages.sqlWorkbench.switchBuAria')}>
             <ChevronsUpDown className="mr-2 size-4" />
-            {bu ? 'Switch' : 'Choose BU'}
+            {bu ? t('pages.sqlWorkbench.switchBu') : t('pages.sqlWorkbench.chooseBu')}
             <kbd className="bg-muted text-muted-foreground ml-2 hidden rounded px-1.5 py-0.5 font-mono text-[10px] sm:inline">
               ⌘B
             </kbd>
