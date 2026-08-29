@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { handleSeedError } from '../utils/seedError';
 import tenantSeedService from '../services/tenantSeedService';
 import type { TenantSeedStatus, SeedProgressEvent } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface TenantSeedCardProps {
   buId: string;
@@ -25,6 +26,7 @@ export const TenantSeedCard = ({
   hasDbConnection,
   isSuperAdmin,
 }: TenantSeedCardProps): ReactElement => {
+  const { t } = useI18n();
   const [status, setStatus] = useState<TenantSeedStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -36,9 +38,9 @@ export const TenantSeedCard = ({
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   const disabledReason = !isSuperAdmin
-    ? 'Super-admin required.'
+    ? t('common.state.superAdminRequired')
     : !hasDbConnection
-    ? 'Configure a database pool and schema first.'
+    ? t('common.state.configureDbPoolFirst')
     : null;
   const busy = loadingStatus || seeding;
   const actionsDisabled = disabledReason !== null || busy;
@@ -103,8 +105,15 @@ export const TenantSeedCard = ({
         }
       };
       const summary = await tenantSeedService.deployStream(buId, onEvent, Array.from(selectedKeys));
-      if (summary.created === 0) toast.info('Nothing to seed. Already up to date.');
-      else toast.success(`Created ${summary.created} row(s) for ${buCode} (skipped ${summary.skipped}).`);
+      if (summary.created === 0) toast.info(t('components.tenantSeedCard.nothingToSeedUpToDate'));
+      else
+        toast.success(
+          t('components.tenantSeedCard.createdRowsToast', {
+            count: summary.created,
+            buCode,
+            skipped: summary.skipped,
+          }),
+        );
       await fetchStatus();
     } catch (err) {
       handleSeedError(err);
@@ -130,10 +139,10 @@ export const TenantSeedCard = ({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Sprout className="h-4 w-4" /> Tenant Seed Data
+          <Sprout className="h-4 w-4" /> {t('components.tenantSeedCard.title')}
         </CardTitle>
         <CardDescription>
-          Check and seed default master data into this BU&apos;s tenant database.
+          {t('components.tenantSeedCard.description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -145,13 +154,23 @@ export const TenantSeedCard = ({
               ) : (
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
-              {loadingStatus ? 'Checking...' : status ? 'Re-check status' : 'Check status'}
+              {loadingStatus
+                ? t('common.busy.checking')
+                : status
+                ? t('common.action.recheckStatus')
+                : t('common.action.checkStatus')}
             </Button>,
           )}
 
-          {status?.all_seeded && <Badge variant="success">Seeded</Badge>}
-          {status && !status.all_seeded && <Badge variant="secondary">{totalMissing} missing</Badge>}
-          {lastChecked && <span className="text-xs text-muted-foreground">Last checked {lastChecked}</span>}
+          {status?.all_seeded && <Badge variant="success">{t('components.tenantSeedCard.seeded')}</Badge>}
+          {status && !status.all_seeded && (
+            <Badge variant="secondary">{t('components.tenantSeedCard.missingCount', { count: totalMissing })}</Badge>
+          )}
+          {lastChecked && (
+            <span className="text-xs text-muted-foreground">
+              {t('common.state.lastChecked', { time: lastChecked })}
+            </span>
+          )}
         </div>
 
         {status && (
@@ -176,9 +195,11 @@ export const TenantSeedCard = ({
                       </span>
                     </label>
                     {complete ? (
-                      <Badge variant="success">Seeded</Badge>
+                      <Badge variant="success">{t('components.tenantSeedCard.seeded')}</Badge>
                     ) : (
-                      <Badge variant="secondary">{s.missing.length} missing</Badge>
+                      <Badge variant="secondary">
+                        {t('components.tenantSeedCard.missingCount', { count: s.missing.length })}
+                      </Badge>
                     )}
                     {!complete && (
                       <Button
@@ -187,7 +208,11 @@ export const TenantSeedCard = ({
                         variant="ghost"
                         className="h-6 w-6 shrink-0"
                         aria-expanded={expanded}
-                        aria-label={`${expanded ? 'Hide' : 'Show'} missing rows for ${s.label}`}
+                        aria-label={
+                          expanded
+                            ? t('components.tenantSeedCard.hideMissingRowsAria', { label: s.label })
+                            : t('components.tenantSeedCard.showMissingRowsAria', { label: s.label })
+                        }
                         onClick={() => toggleExpanded(s.key)}
                       >
                         {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -214,7 +239,9 @@ export const TenantSeedCard = ({
                 disabled={actionsDisabled || selectedMissing === 0}
               >
                 <Play className="mr-2 h-4 w-4" />
-                {selectedMissing === 0 ? 'Nothing to seed' : `Seed ${selectedMissing} row(s)`}
+                {selectedMissing === 0
+                  ? t('components.tenantSeedCard.nothingToSeed')
+                  : t('components.tenantSeedCard.seedRowsButton', { count: selectedMissing })}
               </Button>,
             )}
           </div>
@@ -223,7 +250,7 @@ export const TenantSeedCard = ({
         {seeding && progress && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Seeding…</span>
+              <span className="font-medium">{t('components.tenantSeedCard.seedingEllipsis')}</span>
               <span className="text-muted-foreground">
                 {progress.done} / {progress.total}
               </span>
@@ -257,9 +284,13 @@ export const TenantSeedCard = ({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Seed tenant data"
-        description={`Seed ${selectedMissing} default row(s) into ${buName} (${buCode})? This creates missing default master data in the tenant database. Existing rows are left unchanged.`}
-        confirmText="Seed"
+        title={t('components.tenantSeedCard.confirmTitle')}
+        description={t('components.tenantSeedCard.confirmDescription', {
+          count: selectedMissing,
+          name: buName,
+          code: buCode,
+        })}
+        confirmText={t('components.tenantSeedCard.seedButton')}
         onConfirm={runSeed}
       />
     </Card>
