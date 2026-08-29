@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { BrandingImageUpload } from '../../components/BrandingImageUpload';
+import { useI18n } from '../../hooks/useI18n';
 
 interface BusinessUnitBrandingCardProps {
   logoUrl: string;
@@ -14,22 +15,24 @@ interface BusinessUnitBrandingCardProps {
   onUploadAvatar: (f: File) => Promise<void>;
 }
 
-const BusinessUnitBrandingCard: React.FC<BusinessUnitBrandingCardProps> = ({ logoUrl, avatarUrl, editing, name, code, onUploadLogo, onUploadAvatar }) => (
+const BusinessUnitBrandingCard: React.FC<BusinessUnitBrandingCardProps> = ({ logoUrl, avatarUrl, editing, name, code, onUploadLogo, onUploadAvatar }) => {
+  const { t } = useI18n();
+  return (
   <Card>
     <CardHeader>
-      <CardTitle className="text-base">Branding</CardTitle>
-      <CardDescription>Logo and avatar shown across the platform</CardDescription>
+      <CardTitle className="text-base">{t('common.section.branding')}</CardTitle>
+      <CardDescription>{t('pages.businessUnits.brandingDescription')}</CardDescription>
     </CardHeader>
     <CardContent className="flex flex-col gap-6 sm:flex-row sm:gap-10">
       <BrandingImageUpload
-        label="Logo"
+        label={t('pages.businessUnits.logoLabel')}
         value={logoUrl}
         disabled={!editing}
         shape="rect"
         onUpload={onUploadLogo}
       />
       <BrandingImageUpload
-        label="Avatar"
+        label={t('common.field.avatar')}
         value={avatarUrl}
         disabled={!editing}
         shape="square"
@@ -39,6 +42,7 @@ const BusinessUnitBrandingCard: React.FC<BusinessUnitBrandingCardProps> = ({ log
       />
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default BusinessUnitBrandingCard;

@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import databasePoolService from '../../../services/databasePoolService';
 import { getErrorDetail } from '../../../utils/errorParser';
 import { CollapsibleSection, ReadOnlyText, selectClassName } from '../shared';
+import { useI18n } from '../../../hooks/useI18n';
 import type { DatabasePool } from '../../../types';
 import type { SectionFieldProps } from '../types';
 
@@ -25,6 +26,7 @@ type PoolPickerProps = Pick<DatabaseConnectionSectionProps, 'formData' | 'fieldE
  * (which would otherwise 403 and pop a toast despite the fallback view rendering fine).
  */
 const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, onPoolChange }) => {
+  const { t } = useI18n();
   const [pools, setPools] = useState<DatabasePool[]>([]);
   const [loadingPools, setLoadingPools] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -43,7 +45,7 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
       .catch((err) => {
         if (cancelled) return;
         setLoadFailed(true);
-        toast.error(getErrorDetail(err));
+        toast.error(getErrorDetail(err, t));
       })
       .finally(() => {
         if (!cancelled) setLoadingPools(false);
@@ -82,11 +84,11 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
   return (
     <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
       <div className="space-y-2">
-        <Label htmlFor="database_pool_id">Database Pool</Label>
+        <Label htmlFor="database_pool_id">{t('common.label.databasePool')}</Label>
         {loadingPools ? (
           <div className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading pools…
+            {t('pages.businessUnits.loadingPoolsText')}
           </div>
         ) : loadFailed ? (
           <ReadOnlyText value={formData.database_pool_name} />
@@ -97,10 +99,10 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
             onChange={(e) => onPoolChange('database_pool_id', e.target.value)}
             className={selectClassName}
           >
-            <option value="">— Not set —</option>
+            <option value="">{t('pages.businessUnits.notSetOption')}</option>
             {options.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}{p.is_active ? '' : ' (inactive)'}
+                {p.name}{p.is_active ? '' : t('pages.businessUnits.inactiveSuffix')}
               </option>
             ))}
           </select>
@@ -108,14 +110,14 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="db_schema">Schema</Label>
+        <Label htmlFor="db_schema">{t('pages.businessUnits.schemaLabel')}</Label>
         <Input
           id="db_schema"
           name="db_schema"
           value={formData.db_schema}
           onChange={(e) => onPoolChange('db_schema', e.target.value)}
           onBlur={onBlur}
-          placeholder="cbr_prod"
+          placeholder={t('pages.businessUnits.schemaPlaceholder')}
           className={fieldErrors.db_schema ? 'border-destructive' : ''}
         />
         {fieldErrors.db_schema && (
@@ -140,14 +142,15 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
   onBlur,
   onPoolChange,
 }) => {
+  const { t } = useI18n();
   const readOnlyView = (
     <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
       <div className="space-y-2">
-        <Label>Database Pool</Label>
+        <Label>{t('common.label.databasePool')}</Label>
         <ReadOnlyText value={formData.database_pool_name} />
       </div>
       <div className="space-y-2">
-        <Label>Schema</Label>
+        <Label>{t('pages.businessUnits.schemaLabel')}</Label>
         <ReadOnlyText value={formData.db_schema} />
       </div>
     </div>
@@ -155,19 +158,19 @@ const DatabaseConnectionSection: React.FC<DatabaseConnectionSectionProps> = ({
 
   if (!editing) {
     return (
-      <CollapsibleSection title="Database Connection" description="Shared database pool and schema" forceOpen>
+      <CollapsibleSection title={t('pages.businessUnits.databaseConnectionTitle')} description={t('pages.businessUnits.databaseConnectionDescription')} forceOpen>
         {readOnlyView}
       </CollapsibleSection>
     );
   }
 
   return (
-    <CollapsibleSection title="Database Connection" description="Shared database pool and schema" forceOpen>
+    <CollapsibleSection title={t('pages.businessUnits.databaseConnectionTitle')} description={t('pages.businessUnits.databaseConnectionDescription')} forceOpen>
       <Can permission="database_pool.read" fallback={
         <div className="space-y-3">
           {readOnlyView}
           <p className="text-xs text-muted-foreground">
-            Changing the database pool requires a platform-level permission.
+            {t('pages.businessUnits.databasePoolPermissionRequired')}
           </p>
         </div>
       }>

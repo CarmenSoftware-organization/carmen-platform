@@ -1884,6 +1884,177 @@ export const en = {
       // Promotion signal vs pages.clusterAdmin.copiedHotelAddressToCompany (2 files / 2
       // slices).
       copiedHotelAddressToCompany: 'Copied hotel address to company address',
+
+      // --- Task 4: BusinessUnitBrandingCard.tsx ---
+      brandingDescription: 'Logo and avatar shown across the platform',
+      // Promotion signal vs pages.clusterAdmin.logoLabel (2 files / 2 slices) — same
+      // BrandingImageUpload label, same shape as ClusterBuDocument.tsx's call site.
+      logoLabel: 'Logo',
+
+      // --- Task 4: BusinessUnitLicensesCard.tsx ---
+      userLicensesTitle: 'User Licenses',
+      // One/Many pair for the "{{seats}} seats from {{count}} active license(s)" ternary
+      // (`activeCount === 1 ? 'license' : 'licenses'`) — the seat count itself is always
+      // rendered plural in the source ("seats", never "seat"), so only the license-count axis
+      // needs a pair here, unlike pages.licenses' own two-axis seatFromLicense{One,Many}
+      // {One,Many} template family. Renamed the params to match that family's own
+      // (count/activeCount) so the English is byte-identical to its ManyOne/ManyMany members —
+      // a promotion signal, but only 2 files / 2 slices (this file + licenses/sections/
+      // SeatSection.tsx), below the promote bar. Thai copied verbatim from
+      // pages.licenses.seatFromLicenseManyOne/ManyMany (identical Thai across all four
+      // variants there, since Thai doesn't inflect for number).
+      seatsFromActiveLicenseOne: '{{count}} seats from {{activeCount}} active license',
+      seatsFromActiveLicenseMany: '{{count}} seats from {{activeCount}} active licenses',
+      // NOT the same sentence as pages.businessUnits.clusterSeatsUsed below
+      // (BusinessUnitUsersCard.tsx) — different word order and this one carries a
+      // "Cluster pool:" label prefix the other doesn't. Task 1 flagged the two as a
+      // near-duplicate pair to decide on deliberately; kept as two keys, see the comment at
+      // clusterSeatsUsed for the full reasoning.
+      clusterPoolSeatsUsed: 'Cluster pool: {{used}} / {{cap}} seats used',
+      seatsManagedInLicenseCenter: 'Seats are managed in the License Center.',
+
+      // --- Task 4: BusinessUnitUsersCard.tsx ---
+      activeCountBadge: '{{count}} Active',
+      ofTotalUsers: 'of {{total}} total',
+      // NOT the same sentence as pages.businessUnits.clusterPoolSeatsUsed above
+      // (BusinessUnitLicensesCard.tsx): that one reads "Cluster pool: {{used}} / {{cap}}
+      // seats used" (label prefix, "seats used" last); this one reads "{{used}} / {{cap}}
+      // cluster seats used" (no prefix, "cluster seats used" as one trailing phrase).
+      // Different sentences, not a casing/whitespace slip — two files in this slice describe
+      // the same cluster-wide seat pool with genuinely different wording, so this stays split
+      // into two keys rather than being silently normalised into one.
+      clusterSeatsUsed: '{{used}} / {{cap}} cluster seats used',
+      // The leading "· " bullet stays a literal separator in the JSX (only rendered when
+      // `over` is true), matching the established "joined with a literal ' · ' in code, not
+      // composed into one template" convention (see pages.clusterAdmin's buNote comment) —
+      // this key holds only the text that follows the bullet.
+      deactivateMoreHint: 'deactivate {{count}} more who belong to no other BU in this cluster',
+      noUsersAssignedYet: 'No users assigned yet.',
+      // The bold lead word of the "Shared — ..." explanation paragraph, and the identical
+      // text on the row Badge — both bind here, one key for the one word.
+      sharedLabel: 'Shared',
+      // The rest of the explanation paragraph, after the bold "Shared" span and the em dash
+      // (which stays a literal JSX separator, same convention as deactivateMoreHint above).
+      // NOT byte-identical to sharedBadgeTooltip below (different case on "also", and this
+      // one carries the extra "so deactivating here frees no seat" clause the tooltip omits).
+      sharedExplanation: 'also active in another business unit in this cluster, so deactivating here frees no seat.',
+      // The Badge `title` tooltip — a standalone sentence, not a fragment continuing the bold
+      // "Shared" span the way sharedExplanation is, so it gets its own key rather than reusing
+      // that one with different capitalisation spliced in.
+      sharedBadgeTooltip: 'Also active in another business unit in this cluster',
+      buStatusLabel: 'BU Status',
+      // "Edit"/"Remove" aria-label templates for the per-row icon buttons, with the
+      // `entity.user.lower` ('user') fallback when the row has neither a username nor an
+      // email. editUserAria has no sibling anywhere in the catalog (fresh key); removeUserAria
+      // is byte-identical to pages.users.removeBuAria ('Remove {{name}}') — a promotion
+      // signal, but only 2 files / 2 slices, below the promote bar, so kept page-local with
+      // Thai copied verbatim from that sibling.
+      editUserAria: 'Edit {{name}}',
+      removeUserAria: 'Remove {{name}}',
+      editUserInBuTitle: 'Edit User in Business Unit',
+      // Bare "Save" — distinct from common.action.saveChanges ('Save Changes'), a different
+      // (longer) button label used by every Edit page's own primary save action; this dialog's
+      // Save button is scoped to just the BU-membership edit, not the whole page.
+      saveButton: 'Save',
+      removeUserTitle: 'Remove User',
+      // Mirror-image template of pages.users.removeBuConfirm ('Are you sure you want to
+      // remove "{{name}}" from this user?', removing a BU from a user) — this one removes a
+      // USER from a BU, so the trailing noun differs ("this business unit" vs "this user").
+      // Not byte-identical, so not a promotion candidate; own key, own Thai.
+      removeUserConfirm: 'Are you sure you want to remove "{{name}}" from this business unit?',
+      // English fallback when the user being removed has no name/username/email — mirrors
+      // pages.users.thisBusinessUnit ('this business unit'), the same fallback shape for the
+      // opposite direction. Not byte-identical (different noun), so own key, own Thai.
+      thisUser: 'this user',
+      addUserToBuTitle: 'Add User to Business Unit',
+      selectUserFromClusterDesc: 'Select a user from this cluster to add',
+      searchClusterUsersPlaceholder: 'Search cluster users...',
+      loadingClusterUsers: 'Loading cluster users...',
+      allClusterUsersAdded: 'All cluster users are already in this business unit.',
+      noUsersInCluster: 'No users in this cluster.',
+      availableOfTotalClusterUsers: '{{available}} available of {{total}} cluster users',
+
+      // --- Task 4: useBusinessUnitUsers.ts ---
+      // Six CRUD toast strings. None clears even the below-bar 2-file threshold against a
+      // byte-identical sibling: pages.users.buRemoved/buRemoveFailed/buAssigned/
+      // buAssignFailed exist for the mirror-image action (removing/adding a BU on a user
+      // record) but use different verbs ("assigned" vs "added") and omit the "from/to
+      // business unit" phrase this hook's messages carry — not byte matches, so fresh keys.
+      userRemovedFromBu: 'User removed from business unit',
+      removeUserFailed: 'Failed to remove user',
+      userRoleUpdated: 'User role updated successfully',
+      updateUserFailed: 'Failed to update user',
+      userAddedToBu: 'User added to business unit',
+      addUserFailed: 'Failed to add user',
+
+      // --- Task 4: ConfigurationSection.tsx ---
+      configDescription: 'Key-value configuration entries',
+      // Bare "Key"/"Label"/"Value" field labels, reused as-is for the read-only table's
+      // column headers too (same word, same job, one key each). Composed with
+      // common.field.required ('{{label}} *') for the two required edit-mode Labels, the
+      // same way UserEdit.tsx/LicensePurchaseForm.tsx already compose that template.
+      configKeyLabel: 'Key',
+      configLabelField: 'Label',
+      configDataTypeLabel: 'Data Type',
+      configValueLabel: 'Value',
+      configKeyPlaceholder: 'Config key',
+      configLabelPlaceholder: 'Config label',
+      configValuePlaceholder: 'Config value',
+      configSelectType: 'Select type',
+      // The six <option> datatype names are schema/programming-language type vocabulary, not
+      // prose — the same register as common.option.fifo (an acronym left untranslated). Kept
+      // identical in both languages for internal consistency of the one list (translating
+      // "Number"/"Boolean" while leaving "Enum"/"JSON" as acronyms would split one dropdown's
+      // options across two conventions).
+      datatypeString: 'String',
+      datatypeNumber: 'Number',
+      datatypeBoolean: 'Boolean',
+      datatypeDate: 'Date',
+      datatypeEnum: 'Enum',
+      datatypeJson: 'JSON',
+      addConfigEntry: 'Add Config Entry',
+      noConfigEntries: 'No configuration entries.',
+
+      // --- Task 4: CalculationSettingsSection.tsx ---
+      calculationSettingsTitle: 'Calculation Settings',
+      calculationSettingsDescription: 'Calculation method and currency configuration',
+      loadingCurrencies: 'Loading currencies…',
+      calculationMethodLabel: 'Calculation Method',
+      selectMethodOption: 'Select method',
+      defaultCurrencyIdLabel: 'Default Currency ID',
+      selectCurrencyOption: 'Select currency',
+      // The fallback text-input's placeholder (shown only when the currency catalog fetch
+      // failed) — a lowercase "currency" in the source, NOT byte-identical to
+      // defaultCurrencyIdLabel above ("Currency", Title Case), so it gets its own key rather
+      // than reusing that one.
+      defaultCurrencyIdPlaceholder: 'Default currency ID',
+      symbolLabel: 'Symbol',
+      decimalPlacesLabel: 'Decimal Places',
+      // Shared with DatabaseConnectionSection.tsx's own pool-name " (inactive)" suffix —
+      // byte-identical leading-space suffix, same file group (this task), same meaning; one
+      // key for both call sites rather than two copies.
+      inactiveSuffix: ' (inactive)',
+
+      // --- Task 4: DatabaseConnectionSection.tsx ---
+      loadingPoolsText: 'Loading pools…',
+      notSetOption: '— Not set —',
+      // "Schema" is a database-technical term, same register as common.label.databasePool
+      // ('Database Pool', left untranslated in Thai) — kept identical in both languages.
+      schemaLabel: 'Schema',
+      // Format-example placeholder, not prose — identical value in both languages, same
+      // rationale as pages.clusterAdmin.emailPlaceholder ('name@example.com').
+      schemaPlaceholder: 'cbr_prod',
+      databaseConnectionTitle: 'Database Connection',
+      databaseConnectionDescription: 'Shared database pool and schema',
+      databasePoolPermissionRequired: 'Changing the database pool requires a platform-level permission.',
+
+      // --- Task 4: NumberFormatsSection.tsx ---
+      numberFormatsTitle: 'Number Formats',
+      numberFormatsDescription: 'Numeric display format configuration',
+      perPageFormatLabel: 'Per Page Format',
+      amountFormatLabel: 'Amount Format',
+      quantityFormatLabel: 'Quantity Format',
+      recipeFormatLabel: 'Recipe Format',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

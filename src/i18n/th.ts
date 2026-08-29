@@ -1232,6 +1232,103 @@ export const th: Translations = {
       repointButton: 'ย้ายจุดเชื่อมต่อ',
       // Copied verbatim from pages.clusterAdmin.copiedHotelAddressToCompany.
       copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
+
+      // --- Task 4: BusinessUnitBrandingCard.tsx ---
+      brandingDescription: 'โลโก้และรูปประจำตัวที่แสดงทั่วทั้งแพลตฟอร์ม',
+      // Copied verbatim from pages.clusterAdmin.logoLabel.
+      logoLabel: 'โลโก้',
+
+      // --- Task 4: BusinessUnitLicensesCard.tsx ---
+      userLicensesTitle: 'ไลเซนส์ผู้ใช้',
+      // Copied verbatim from pages.licenses.seatFromLicenseManyOne/ManyMany (identical Thai
+      // across all four variants there).
+      seatsFromActiveLicenseOne: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      seatsFromActiveLicenseMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
+      clusterPoolSeatsUsed: 'พูลระดับ cluster: ใช้ไป {{used}} / {{cap}} ที่นั่ง',
+      seatsManagedInLicenseCenter: 'จัดการที่นั่งได้ที่ License Center',
+
+      // --- Task 4: BusinessUnitUsersCard.tsx ---
+      activeCountBadge: 'ใช้งาน {{count}} ราย',
+      ofTotalUsers: 'จากทั้งหมด {{total}} คน',
+      clusterSeatsUsed: 'ใช้ที่นั่งระดับ cluster ไป {{used}} / {{cap}}',
+      deactivateMoreHint: 'ต้องปิดใช้งานเพิ่มอีก {{count}} คนที่ไม่ได้สังกัดหน่วยธุรกิจอื่นใน cluster นี้',
+      noUsersAssignedYet: 'ยังไม่มีผู้ใช้ที่มอบหมาย',
+      sharedLabel: 'ใช้ร่วมกัน',
+      sharedExplanation: 'ยังใช้งานอยู่ในหน่วยธุรกิจอื่นใน cluster นี้ด้วย การปิดใช้งานที่นี่จึงไม่คืนที่นั่ง',
+      sharedBadgeTooltip: 'ยังใช้งานอยู่ในหน่วยธุรกิจอื่นใน cluster นี้ด้วย',
+      buStatusLabel: 'สถานะ BU',
+      editUserAria: 'แก้ไข {{name}}',
+      // Copied verbatim from pages.users.removeBuAria.
+      removeUserAria: 'นำ {{name}} ออก',
+      editUserInBuTitle: 'แก้ไขผู้ใช้ในหน่วยธุรกิจ',
+      saveButton: 'บันทึก',
+      removeUserTitle: 'นำผู้ใช้ออก',
+      removeUserConfirm: 'ต้องการนำ "{{name}}" ออกจากหน่วยธุรกิจนี้ใช่หรือไม่',
+      thisUser: 'ผู้ใช้รายนี้',
+      addUserToBuTitle: 'เพิ่มผู้ใช้เข้าหน่วยธุรกิจ',
+      selectUserFromClusterDesc: 'เลือกผู้ใช้จาก cluster นี้เพื่อเพิ่ม',
+      searchClusterUsersPlaceholder: 'ค้นหาผู้ใช้ใน cluster...',
+      loadingClusterUsers: 'กำลังโหลดผู้ใช้ใน cluster...',
+      allClusterUsersAdded: 'ผู้ใช้ทั้งหมดใน cluster นี้อยู่ในหน่วยธุรกิจนี้แล้ว',
+      noUsersInCluster: 'ไม่มีผู้ใช้ใน cluster นี้',
+      availableOfTotalClusterUsers: 'ว่าง {{available}} จากผู้ใช้ทั้งหมด {{total}} คนใน cluster',
+
+      // --- Task 4: useBusinessUnitUsers.ts ---
+      userRemovedFromBu: 'นำผู้ใช้ออกจากหน่วยธุรกิจแล้ว',
+      removeUserFailed: 'นำผู้ใช้ออกไม่สำเร็จ',
+      userRoleUpdated: 'อัปเดตบทบาทผู้ใช้สำเร็จ',
+      updateUserFailed: 'อัปเดตผู้ใช้ไม่สำเร็จ',
+      userAddedToBu: 'เพิ่มผู้ใช้เข้าหน่วยธุรกิจแล้ว',
+      addUserFailed: 'เพิ่มผู้ใช้ไม่สำเร็จ',
+
+      // --- Task 4: ConfigurationSection.tsx ---
+      configDescription: 'รายการตั้งค่าแบบคีย์-ค่า',
+      configKeyLabel: 'คีย์',
+      configLabelField: 'ป้ายกำกับ',
+      configDataTypeLabel: 'ประเภทข้อมูล',
+      configValueLabel: 'ค่า',
+      configKeyPlaceholder: 'คีย์การตั้งค่า',
+      configLabelPlaceholder: 'ป้ายกำกับการตั้งค่า',
+      configValuePlaceholder: 'ค่าการตั้งค่า',
+      configSelectType: 'เลือกประเภท',
+      datatypeString: 'String',
+      datatypeNumber: 'Number',
+      datatypeBoolean: 'Boolean',
+      datatypeDate: 'Date',
+      datatypeEnum: 'Enum',
+      datatypeJson: 'JSON',
+      addConfigEntry: 'เพิ่มรายการตั้งค่า',
+      noConfigEntries: 'ไม่มีรายการตั้งค่า',
+
+      // --- Task 4: CalculationSettingsSection.tsx ---
+      calculationSettingsTitle: 'ตั้งค่าการคำนวณ',
+      calculationSettingsDescription: 'วิธีคำนวณและการตั้งค่าสกุลเงิน',
+      loadingCurrencies: 'กำลังโหลดสกุลเงิน…',
+      calculationMethodLabel: 'วิธีคำนวณ',
+      selectMethodOption: 'เลือกวิธีคำนวณ',
+      defaultCurrencyIdLabel: 'รหัสสกุลเงินเริ่มต้น',
+      selectCurrencyOption: 'เลือกสกุลเงิน',
+      defaultCurrencyIdPlaceholder: 'รหัสสกุลเงินเริ่มต้น',
+      symbolLabel: 'สัญลักษณ์',
+      decimalPlacesLabel: 'จำนวนทศนิยม',
+      inactiveSuffix: ' (ปิดใช้งาน)',
+
+      // --- Task 4: DatabaseConnectionSection.tsx ---
+      loadingPoolsText: 'กำลังโหลด pool…',
+      notSetOption: '— ยังไม่ได้ตั้งค่า —',
+      schemaLabel: 'Schema',
+      schemaPlaceholder: 'cbr_prod',
+      databaseConnectionTitle: 'การเชื่อมต่อฐานข้อมูล',
+      databaseConnectionDescription: 'Database pool และ schema ที่ใช้ร่วมกัน',
+      databasePoolPermissionRequired: 'การเปลี่ยน database pool ต้องมีสิทธิ์ระดับแพลตฟอร์ม',
+
+      // --- Task 4: NumberFormatsSection.tsx ---
+      numberFormatsTitle: 'รูปแบบตัวเลข',
+      numberFormatsDescription: 'ตั้งค่ารูปแบบการแสดงตัวเลข',
+      perPageFormatLabel: 'รูปแบบต่อหน้า',
+      amountFormatLabel: 'รูปแบบจำนวนเงิน',
+      quantityFormatLabel: 'รูปแบบจำนวน',
+      recipeFormatLabel: 'รูปแบบสูตร',
     },
   },
   error: {
