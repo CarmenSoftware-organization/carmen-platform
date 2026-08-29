@@ -1768,6 +1768,122 @@ export const en = {
       // Promotion signal vs pages.users.activeInactiveSummary (2 files / 2 slices) — byte-
       // identical aria-label template.
       activeInactiveSummary: '{{active}} active, {{inactive}} inactive',
+
+      // --- Task 3: BusinessUnitDocument.tsx ---
+      // Hazard site (BusinessUnitDocument.tsx:139): `f.code.slice(0, 8).toUpperCase() || 'BU'`
+      // — the `.toUpperCase()` operates on `code`, an open-ended free-text field (not a closed
+      // union, so no Record here), but the `|| 'BU'` fallback shown when `code` is empty is a
+      // real hardcoded label. Promotion signal vs pages.users.buColumn (2 files / 2 slices) —
+      // same abbreviation, different job (a table column header there vs. this hero's
+      // logo-placeholder fallback). Thai copied verbatim ('BU' is an abbreviation, not
+      // translated in either language, same as common.label.hq).
+      logoFallback: 'BU',
+      // Hazard site (BusinessUnitDocument.tsx:146):
+      // `(f.name || f.code || '?').slice(0, 1).toUpperCase()` — investigated and found NOT to
+      // back a closed union, same as slice 4's BuPropertyPlate.tsx:60 finding (see this
+      // object's own SeatMeter.tsx comment above): `name`/`code` are open-ended user text and
+      // '?' is a universal placeholder glyph. Left untranslated, no key added — a Record here
+      // would be fiction.
+      detailsGroup: 'Details',
+      maxUsersLabel: 'Max users',
+      // One/Many pair for the "From N active license(s) · change these in the Users tab" hint
+      // under the read-only Max users value — an English-only plural the source built with a
+      // ternary (`activeLicenseCount === 1 ? 'license' : 'licenses'`), same hazard class as
+      // BuSummary.tsx's acrossClustersOne/Many above (Task 2).
+      maxUsersFromLicenseOne: 'From {{count}} active license · change these in the Users tab',
+      maxUsersFromLicenseMany: 'From {{count}} active licenses · change these in the Users tab',
+      // The AddressBlock.tsx-style field labels named in the Task 1 intro comment above —
+      // promotion signals vs pages.clusterAdmin.*Label (2 files / 2 slices each).
+      hotelNameLabel: 'Hotel name',
+      addressLine1Label: 'Address line 1',
+      addressLine2Label: 'Address line 2',
+      subDistrictLabel: 'Sub-district',
+      districtLabel: 'District',
+      cityLabel: 'City',
+      provinceLabel: 'Province',
+      postalCodeLabel: 'Postal code',
+      countryLabel: 'Country',
+      latitudeLabel: 'Latitude',
+      longitudeLabel: 'Longitude',
+      phoneLabel: 'Phone',
+      // Promotion signal vs pages.clusterAdmin.copyFromHotelAddress (2 files / 2 slices).
+      copyFromHotelAddress: 'Copy from hotel address',
+      // The company_* mirror of the fields above has no sibling anywhere in the catalog:
+      // ClusterBuDocument.tsx reuses its own bare phoneLabel/common.field.email for BOTH
+      // hotel_tel/company_tel and hotel_email/company_email (see ClusterBuDocument.tsx:
+      // 181-182) rather than carrying a "Company X" variant — this file's design genuinely
+      // differs. Fresh keys, fresh Thai.
+      companyPhoneLabel: 'Company phone',
+      companyEmailLabel: 'Company email',
+      companyAddressLine1Label: 'Company address line 1',
+      companyAddressLine2Label: 'Company address line 2',
+      companySubDistrictLabel: 'Company sub-district',
+      companyDistrictLabel: 'Company district',
+      companyCityLabel: 'Company city',
+      companyProvinceLabel: 'Company province',
+      companyPostalCodeLabel: 'Company postal code',
+      companyCountryLabel: 'Company country',
+      companyLatitudeLabel: 'Company latitude',
+      companyLongitudeLabel: 'Company longitude',
+      taxGroup: 'Tax',
+      // Promotion signal vs pages.clusterAdmin.taxIdLabel/branchLabel (2 files / 2 slices
+      // each).
+      taxIdLabel: 'Tax ID',
+      branchLabel: 'Branch',
+      dateAndTimeGroup: 'Date & time',
+      // The six regional-format labels named in the Task 1 intro comment above — promotion
+      // signals vs pages.clusterAdmin.timezone/dateFormat/dateTimeFormat/timeFormat/
+      // longTimeFormat/shortTimeFormat (2 files / 2 slices each).
+      timezoneLabel: 'Timezone',
+      dateFormatLabel: 'Date format',
+      dateTimeFormatLabel: 'Date-time format',
+      timeFormatLabel: 'Time format',
+      longTimeFormatLabel: 'Long time format',
+      shortTimeFormatLabel: 'Short time format',
+
+      // --- Task 3: HeroName.tsx ---
+      // Shared beyond this slice: src/pages/clusterAdmin/businessUnitForm/BuPropertyPlate.tsx
+      // (slice 4) renders this same component and passes neither `label` nor `emptyText`, so
+      // it inherits these defaults too — matching the doc comment already on HeroName.tsx
+      // ("They default to the business unit strings so this file's original call sites read
+      // exactly as before").
+      heroNameLabel: 'Business unit name',
+      heroNameEmptyText: '(unnamed business unit)',
+
+      // --- Task 3: InlineField.tsx ---
+      // The read-mode/select-prompt/edit-placeholder text every InlineField falls back to
+      // when its caller passes no explicit `placeholder`. Byte-identical shape to
+      // src/pages/clusterEdit/PlateField.tsx:63's own `Set ${label.toLowerCase()}…` — but that
+      // file has no `useI18n` import and isn't otherwise in the catalog, so there is nothing
+      // to promote from; fresh key. InlineField.tsx is imported outside this slice too
+      // (src/pages/clusterEdit/sections/DetailsSection.tsx directly, and
+      // src/pages/clusterAdmin/businessUnitForm/ClusterBuDocument.tsx via shared.tsx's
+      // re-export) — this key's English value must stay byte-identical to the old literal so
+      // those cross-slice call sites render unchanged.
+      setFieldPlaceholder: 'Set {{field}}…',
+
+      // --- Task 3: BusinessUnitEdit.tsx ---
+      generalTab: 'General',
+      locationTab: 'Location',
+      formatsTab: 'Formats',
+      technicalTab: 'Technical',
+      createSubtitle: 'Create a new business unit',
+      editSubtitle: 'Business unit details',
+      // Prefix-concatenation, matching this object's own loadFailedPrefix (Task 2) — the
+      // validateRequired() error banner appends Object.values(active).join(', ') after this.
+      // NOT byte-identical to pages.clusterAdmin.fixHighlightedFields ('Please fix the
+      // highlighted fields', no colon, used as a toast title with a separate description) —
+      // different composition, so no reuse/promotion here despite the similar wording.
+      fixHighlightedFieldsPrefix: 'Please fix the highlighted fields: ',
+      clusterLicenseLimitReached: 'Cannot create business unit: cluster has reached its license limit ({{used}}/{{cap}})',
+      createButton: 'Create Business Unit',
+      repointTitle: 'Repoint this business unit?',
+      repointDescription: 'This business unit will read and write {{schema}} in the selected database pool. Data in the previous location stays where it is and will no longer be reachable from this screen.',
+      noSchemaFallback: '(no schema)',
+      repointButton: 'Repoint',
+      // Promotion signal vs pages.clusterAdmin.copiedHotelAddressToCompany (2 files / 2
+      // slices).
+      copiedHotelAddressToCompany: 'Copied hotel address to company address',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three

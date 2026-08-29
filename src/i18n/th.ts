@@ -1158,6 +1158,80 @@ export const th: Translations = {
       acrossClustersMany: 'ครอบคลุม {{count}} cluster',
       // Copied verbatim from pages.users.activeInactiveSummary.
       activeInactiveSummary: 'ใช้งาน {{active}} ราย ไม่ใช้งาน {{inactive}} ราย',
+
+      // --- Task 3: BusinessUnitDocument.tsx ---
+      // Copied verbatim from pages.users.buColumn ('BU' is an abbreviation, not translated).
+      logoFallback: 'BU',
+      detailsGroup: 'รายละเอียด',
+      maxUsersLabel: 'จำนวนผู้ใช้สูงสุด',
+      maxUsersFromLicenseOne: 'จาก {{count}} ไลเซนส์ที่ใช้งานอยู่ · แก้ไขได้ที่แท็บผู้ใช้งาน',
+      maxUsersFromLicenseMany: 'จาก {{count}} ไลเซนส์ที่ใช้งานอยู่ · แก้ไขได้ที่แท็บผู้ใช้งาน',
+      // Copied verbatim from pages.clusterAdmin.hotelNameLabel/addressLine1Label/
+      // addressLine2Label/subDistrictLabel/districtLabel/cityLabel/provinceLabel/
+      // postalCodeLabel/countryLabel/latitudeLabel/longitudeLabel/phoneLabel.
+      hotelNameLabel: 'ชื่อโรงแรม',
+      addressLine1Label: 'ที่อยู่บรรทัดที่ 1',
+      addressLine2Label: 'ที่อยู่บรรทัดที่ 2',
+      subDistrictLabel: 'ตำบล/แขวง',
+      districtLabel: 'อำเภอ/เขต',
+      cityLabel: 'เมือง',
+      provinceLabel: 'จังหวัด',
+      postalCodeLabel: 'รหัสไปรษณีย์',
+      countryLabel: 'ประเทศ',
+      latitudeLabel: 'ละติจูด',
+      longitudeLabel: 'ลองจิจูด',
+      phoneLabel: 'โทรศัพท์',
+      // Copied verbatim from pages.clusterAdmin.copyFromHotelAddress.
+      copyFromHotelAddress: 'คัดลอกจากที่อยู่โรงแรม',
+      companyPhoneLabel: 'โทรศัพท์บริษัท',
+      companyEmailLabel: 'อีเมลบริษัท',
+      companyAddressLine1Label: 'ที่อยู่บริษัท บรรทัดที่ 1',
+      companyAddressLine2Label: 'ที่อยู่บริษัท บรรทัดที่ 2',
+      companySubDistrictLabel: 'ตำบล/แขวงบริษัท',
+      companyDistrictLabel: 'อำเภอ/เขตบริษัท',
+      companyCityLabel: 'เมืองบริษัท',
+      companyProvinceLabel: 'จังหวัดบริษัท',
+      companyPostalCodeLabel: 'รหัสไปรษณีย์บริษัท',
+      companyCountryLabel: 'ประเทศบริษัท',
+      companyLatitudeLabel: 'ละติจูดบริษัท',
+      companyLongitudeLabel: 'ลองจิจูดบริษัท',
+      taxGroup: 'ภาษี',
+      // Copied verbatim from pages.clusterAdmin.taxIdLabel/branchLabel.
+      taxIdLabel: 'เลขประจำตัวผู้เสียภาษี',
+      branchLabel: 'สาขา',
+      dateAndTimeGroup: 'วันและเวลา',
+      // Copied verbatim from pages.clusterAdmin.timezone/dateFormat/dateTimeFormat/
+      // timeFormat/longTimeFormat/shortTimeFormat.
+      timezoneLabel: 'เขตเวลา',
+      dateFormatLabel: 'รูปแบบวันที่',
+      dateTimeFormatLabel: 'รูปแบบวันที่-เวลา',
+      timeFormatLabel: 'รูปแบบเวลา',
+      longTimeFormatLabel: 'รูปแบบเวลาแบบยาว',
+      shortTimeFormatLabel: 'รูปแบบเวลาแบบสั้น',
+
+      // --- Task 3: HeroName.tsx ---
+      heroNameLabel: 'ชื่อหน่วยธุรกิจ',
+      heroNameEmptyText: '(หน่วยธุรกิจที่ยังไม่มีชื่อ)',
+
+      // --- Task 3: InlineField.tsx ---
+      setFieldPlaceholder: 'ตั้งค่า{{field}}…',
+
+      // --- Task 3: BusinessUnitEdit.tsx ---
+      generalTab: 'ทั่วไป',
+      locationTab: 'ที่ตั้ง',
+      formatsTab: 'รูปแบบ',
+      technicalTab: 'เทคนิค',
+      createSubtitle: 'สร้างหน่วยธุรกิจใหม่',
+      editSubtitle: 'รายละเอียดหน่วยธุรกิจ',
+      fixHighlightedFieldsPrefix: 'กรุณาแก้ไขช่องที่มีข้อผิดพลาด: ',
+      clusterLicenseLimitReached: 'ไม่สามารถสร้างหน่วยธุรกิจได้: cluster มีไลเซนส์ครบโควตาแล้ว ({{used}}/{{cap}})',
+      createButton: 'สร้างหน่วยธุรกิจ',
+      repointTitle: 'ย้ายจุดเชื่อมต่อของหน่วยธุรกิจนี้หรือไม่',
+      repointDescription: 'หน่วยธุรกิจนี้จะอ่านและเขียนข้อมูลที่ {{schema}} ใน database pool ที่เลือกไว้ ข้อมูลในตำแหน่งเดิมจะยังอยู่ที่เดิม แต่จะไม่สามารถเข้าถึงได้จากหน้านี้อีกต่อไป',
+      noSchemaFallback: '(ไม่มี schema)',
+      repointButton: 'ย้ายจุดเชื่อมต่อ',
+      // Copied verbatim from pages.clusterAdmin.copiedHotelAddressToCompany.
+      copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
     },
   },
   error: {

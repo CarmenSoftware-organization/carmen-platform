@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Copy } from 'lucide-react';
+import { useI18n } from '../../hooks/useI18n';
 import type { Cluster, BusinessUnitConfig, TenantCurrency } from '../../types';
 import type { BusinessUnitFormData, DefaultCurrency } from './types';
 import { BU_ALIAS_MAX } from './types';
@@ -56,6 +57,7 @@ interface BusinessUnitDocumentProps {
 }
 
 export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
+  const { t } = useI18n();
   const {
     formData: f,
     fieldErrors,
@@ -136,7 +138,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
               <img src={logoUrl} alt="" className="h-11 w-16 rounded-lg border object-cover" />
             ) : (
               <div className="from-primary to-info grid h-11 w-16 place-items-center rounded-lg bg-linear-to-br text-[11px] font-bold text-white">
-                {f.code.slice(0, 8).toUpperCase() || 'BU'}
+                {f.code.slice(0, 8).toUpperCase() || t('pages.businessUnits.logoFallback')}
               </div>
             )}
             {avatarUrl ? (
@@ -163,7 +165,9 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
                 onClick={() => onToggle('is_active', !f.is_active)}
                 className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
               >
-                <Badge variant={f.is_active ? 'success' : 'secondary'}>{f.is_active ? 'Active' : 'Inactive'}</Badge>
+                <Badge variant={f.is_active ? 'success' : 'secondary'}>
+                  {f.is_active ? t('common.status.active') : t('common.status.inactive')}
+                </Badge>
               </button>
               <button
                 type="button"
@@ -172,7 +176,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
                 onClick={() => onToggle('is_hq', !f.is_hq)}
                 className="focus-visible:ring-ring -my-2 rounded-full py-2 focus-visible:outline-hidden focus-visible:ring-1"
               >
-                <Badge variant={f.is_hq ? 'default' : 'secondary'}>HQ</Badge>
+                <Badge variant={f.is_hq ? 'default' : 'secondary'}>{t('common.label.hq')}</Badge>
               </button>
             </div>
           </div>
@@ -190,23 +194,25 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
             {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
                 validateRequired() enforces — they are the only ones marked required. */}
-            <Group label="Details">
-              {inline('code', 'Code', { mono: true, validate: true, required: true, maxLength: 20 })}
-              {inline('alias_name', 'Alias', { validate: true, maxLength: BU_ALIAS_MAX })}
-              {inline('cluster_id', 'Cluster', { type: 'select', options: clusterOptions, required: true })}
+            <Group label={t('pages.businessUnits.detailsGroup')}>
+              {inline('code', t('common.field.code'), { mono: true, validate: true, required: true, maxLength: 20 })}
+              {inline('alias_name', t('common.field.alias'), { validate: true, maxLength: BU_ALIAS_MAX })}
+              {inline('cluster_id', t('common.label.cluster'), { type: 'select', options: clusterOptions, required: true })}
               {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
                   this BU's dated license rows, edited only in the User Licenses card. Not an
                   InlineField: there is nothing here to click into edit mode. */}
               <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
-                <span className="text-muted-foreground pt-2 text-xs">Max users</span>
+                <span className="text-muted-foreground pt-2 text-xs">{t('pages.businessUnits.maxUsersLabel')}</span>
                 <div className="min-w-0">
                   <ReadOnlyText value={`${activeSeats}`} />
                   <p className="text-muted-foreground mt-1 text-[11px]">
-                    From {activeLicenseCount} active {activeLicenseCount === 1 ? 'license' : 'licenses'} · change these in the Users tab
+                    {activeLicenseCount === 1
+                      ? t('pages.businessUnits.maxUsersFromLicenseOne', { count: activeLicenseCount })
+                      : t('pages.businessUnits.maxUsersFromLicenseMany', { count: activeLicenseCount })}
                   </p>
                 </div>
               </div>
-              {inline('description', 'Description', { type: 'textarea', maxLength: 500 })}
+              {inline('description', t('common.field.description'), { type: 'textarea', maxLength: 500 })}
             </Group>
           </Card>
 
@@ -227,51 +233,51 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           {/* Hotel first, company second: the company block copies from it, so the source has
               to be the one already read. Phone and email belong to the hotel — they used to
               sit in a "Contact" group of their own between the two addresses. */}
-          <Group label="Hotel">
-            {inline('hotel_name', 'Hotel name', { maxLength: 100 })}
-            {inline('hotel_address_line1', 'Address line 1')}
-            {inline('hotel_address_line2', 'Address line 2')}
-            {inline('hotel_sub_district', 'Sub-district')}
-            {inline('hotel_district', 'District')}
-            {inline('hotel_city', 'City')}
-            {inline('hotel_province', 'Province')}
-            {inline('hotel_postal_code', 'Postal code', { mono: true })}
-            {inline('hotel_country', 'Country')}
-            {inline('hotel_latitude', 'Latitude', { mono: true })}
-            {inline('hotel_longitude', 'Longitude', { mono: true })}
-            {inline('hotel_tel', 'Phone', { mono: true })}
-            {inline('hotel_email', 'Email', { type: 'email' })}
+          <Group label={t('common.section.hotel')}>
+            {inline('hotel_name', t('pages.businessUnits.hotelNameLabel'), { maxLength: 100 })}
+            {inline('hotel_address_line1', t('pages.businessUnits.addressLine1Label'))}
+            {inline('hotel_address_line2', t('pages.businessUnits.addressLine2Label'))}
+            {inline('hotel_sub_district', t('pages.businessUnits.subDistrictLabel'))}
+            {inline('hotel_district', t('pages.businessUnits.districtLabel'))}
+            {inline('hotel_city', t('pages.businessUnits.cityLabel'))}
+            {inline('hotel_province', t('pages.businessUnits.provinceLabel'))}
+            {inline('hotel_postal_code', t('pages.businessUnits.postalCodeLabel'), { mono: true })}
+            {inline('hotel_country', t('pages.businessUnits.countryLabel'))}
+            {inline('hotel_latitude', t('pages.businessUnits.latitudeLabel'), { mono: true })}
+            {inline('hotel_longitude', t('pages.businessUnits.longitudeLabel'), { mono: true })}
+            {inline('hotel_tel', t('pages.businessUnits.phoneLabel'), { mono: true })}
+            {inline('hotel_email', t('common.field.email'), { type: 'email' })}
           </Group>
 
           <Group
-            label="Company"
+            label={t('common.section.company')}
             action={
               canEdit && (
                 <Button type="button" variant="ghost" size="sm" onClick={onCopyHotelAddress}>
                   <Copy className="mr-2 h-4 w-4" />
-                  Copy from hotel address
+                  {t('pages.businessUnits.copyFromHotelAddress')}
                 </Button>
               )
             }
           >
-            {inline('company_name', 'Company', { maxLength: 100 })}
-            {inline('company_tel', 'Company phone', { mono: true })}
-            {inline('company_email', 'Company email', { type: 'email' })}
-            {inline('company_address_line1', 'Company address line 1')}
-            {inline('company_address_line2', 'Company address line 2')}
-            {inline('company_sub_district', 'Company sub-district')}
-            {inline('company_district', 'Company district')}
-            {inline('company_city', 'Company city')}
-            {inline('company_province', 'Company province')}
-            {inline('company_postal_code', 'Company postal code', { mono: true })}
-            {inline('company_country', 'Company country')}
-            {inline('company_latitude', 'Company latitude', { mono: true })}
-            {inline('company_longitude', 'Company longitude', { mono: true })}
+            {inline('company_name', t('common.field.company'), { maxLength: 100 })}
+            {inline('company_tel', t('pages.businessUnits.companyPhoneLabel'), { mono: true })}
+            {inline('company_email', t('pages.businessUnits.companyEmailLabel'), { type: 'email' })}
+            {inline('company_address_line1', t('pages.businessUnits.companyAddressLine1Label'))}
+            {inline('company_address_line2', t('pages.businessUnits.companyAddressLine2Label'))}
+            {inline('company_sub_district', t('pages.businessUnits.companySubDistrictLabel'))}
+            {inline('company_district', t('pages.businessUnits.companyDistrictLabel'))}
+            {inline('company_city', t('pages.businessUnits.companyCityLabel'))}
+            {inline('company_province', t('pages.businessUnits.companyProvinceLabel'))}
+            {inline('company_postal_code', t('pages.businessUnits.companyPostalCodeLabel'), { mono: true })}
+            {inline('company_country', t('pages.businessUnits.companyCountryLabel'))}
+            {inline('company_latitude', t('pages.businessUnits.companyLatitudeLabel'), { mono: true })}
+            {inline('company_longitude', t('pages.businessUnits.companyLongitudeLabel'), { mono: true })}
           </Group>
 
-          <Group label="Tax">
-            {inline('tax_no', 'Tax ID', { mono: true })}
-            {inline('branch_no', 'Branch', { mono: true })}
+          <Group label={t('pages.businessUnits.taxGroup')}>
+            {inline('tax_no', t('pages.businessUnits.taxIdLabel'), { mono: true })}
+            {inline('branch_no', t('pages.businessUnits.branchLabel'), { mono: true })}
           </Group>
         </Card>
       )}
@@ -279,13 +285,13 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       {activeTab === 'formats' && (
         <>
           <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
-            <Group label="Date & time">
-              {inline('timezone', 'Timezone')}
-              {inline('date_format', 'Date format', { mono: true })}
-              {inline('date_time_format', 'Date-time format', { mono: true })}
-              {inline('time_format', 'Time format', { mono: true })}
-              {inline('long_time_format', 'Long time format', { mono: true })}
-              {inline('short_time_format', 'Short time format', { mono: true })}
+            <Group label={t('pages.businessUnits.dateAndTimeGroup')}>
+              {inline('timezone', t('pages.businessUnits.timezoneLabel'))}
+              {inline('date_format', t('pages.businessUnits.dateFormatLabel'), { mono: true })}
+              {inline('date_time_format', t('pages.businessUnits.dateTimeFormatLabel'), { mono: true })}
+              {inline('time_format', t('pages.businessUnits.timeFormatLabel'), { mono: true })}
+              {inline('long_time_format', t('pages.businessUnits.longTimeFormatLabel'), { mono: true })}
+              {inline('short_time_format', t('pages.businessUnits.shortTimeFormatLabel'), { mono: true })}
             </Group>
           </Card>
           <NumberFormatsSection {...sectionField} />
