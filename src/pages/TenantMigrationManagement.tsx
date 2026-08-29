@@ -27,6 +27,7 @@ import { mapWithConcurrency } from '../utils/concurrent';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FleetSync } from './tenantMigration/FleetSync';
 import { DeployConsole } from './tenantMigration/DeployConsole';
+import { useI18n } from '../hooks/useI18n';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -118,6 +119,7 @@ const iconAction = ({
 };
 
 const TenantMigrationManagement: React.FC = () => {
+  const { t } = useI18n();
   const { isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
@@ -152,7 +154,7 @@ const TenantMigrationManagement: React.FC = () => {
 
   useGlobalShortcuts({ onSearch: () => searchInputRef.current?.focus() });
 
-  const disabledReason = !isSuperAdmin ? 'Super-admin required.' : null;
+  const disabledReason = !isSuperAdmin ? t('pages.tenantMigration.superAdminRequired') : null;
 
   const batchRunning = batch !== null;
 
@@ -240,7 +242,7 @@ const TenantMigrationManagement: React.FC = () => {
       };
       const result = await tenantMigrationService.deployStream(bu.id, onEvent, controller.signal);
       const applied = 'applied_migrations' in result ? result.applied_migrations : [];
-      if (applied.length === 0) toast.info('Already up to date.');
+      if (applied.length === 0) toast.info(t('pages.tenantMigration.alreadyUpToDate'));
       else toast.success(`Applied ${applied.length} migration(s) to ${bu.code}.`);
       setRowState((prev) => ({ ...prev, [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined } }));
       await checkOne(bu);
@@ -256,7 +258,7 @@ const TenantMigrationManagement: React.FC = () => {
     } finally {
       if (activeStreamControllersRef.current.get(bu.id) === controller) activeStreamControllersRef.current.delete(bu.id);
     }
-  }, [checkOne, isSuperAdmin]);
+  }, [checkOne, isSuperAdmin, t]);
 
   const deployAll = useCallback(async () => {
     // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Deploy all
@@ -278,7 +280,7 @@ const TenantMigrationManagement: React.FC = () => {
         } else if (e.type === 'applying') {
           setBatch((b) => (b ? { ...b, applied: e.index, total: e.total, current: e.name, buCode: e.bu_code } : b));
         } else if (e.type === 'bu-complete') {
-          const line = `${e.bu_code}: ${e.error ? 'failed' : e.already_up_to_date ? 'up to date' : `applied ${e.applied.length}`}`;
+          const line = `${e.bu_code}: ${e.error ? 'failed' : e.already_up_to_date ? t('pages.tenantMigration.upToDate') : `applied ${e.applied.length}`}`;
           setBatch((b) => (b ? { ...b, log: [...b.log, line] } : b));
           setRowState((prev) => ({
             ...prev,
@@ -305,7 +307,7 @@ const TenantMigrationManagement: React.FC = () => {
         if (s.failed > 0) toast.warning(msg);
         else toast.success(msg);
       } else {
-        toast.success('Deploy completed.');
+        toast.success(t('pages.tenantMigration.deployCompleted'));
       }
     } catch (err) {
       // Aborted on unmount — the BU currently mid-migration keeps running to completion
@@ -316,7 +318,7 @@ const TenantMigrationManagement: React.FC = () => {
       activeStreamControllersRef.current.delete(ALL_BU_STREAM_KEY);
       if (!controller.signal.aborted) setBatch(null);
     }
-  }, [isSuperAdmin]);
+  }, [isSuperAdmin, t]);
 
   useEffect(() => {
     (async () => {
@@ -333,12 +335,12 @@ const TenantMigrationManagement: React.FC = () => {
         }
         setError('');
       } catch (err) {
-        setError('Failed to load business units: ' + getErrorDetail(err));
+        setError(t('pages.tenantMigration.loadBuFailed', { detail: getErrorDetail(err, t) }));
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [t]);
 
   const summary = useMemo(() => {
     const acc = { up_to_date: 0, pending: 0, unknown: 0, error: 0, pendingMigrations: 0 };
@@ -361,20 +363,20 @@ const TenantMigrationManagement: React.FC = () => {
       };
     });
     const csv = generateCSV(rows, [
-      { key: 'code', label: 'Code' },
-      { key: 'name', label: 'Name' },
-      { key: 'status', label: 'Status' },
-      { key: 'pending', label: 'Pending' },
-      { key: 'last_checked', label: 'Last Checked' },
+      { key: 'code', label: t('common.field.code') },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'status', label: t('common.status.label') },
+      { key: 'pending', label: t('pages.tenantMigration.columnPending') },
+      { key: 'last_checked', label: t('pages.tenantMigration.columnLastChecked') },
     ]);
     downloadCSV(csv, `tenant-migrations-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<BusinessUnit, unknown>[]>(() => [
     {
       accessorKey: 'code',
-      header: 'Code',
+      header: t('common.field.code'),
       // Fixed width so the sticky offset of the 3rd frozen column (Name) is
       // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
       meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
@@ -384,10 +386,10 @@ const TenantMigrationManagement: React.FC = () => {
         </Link>
       ),
     },
-    { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span className="whitespace-nowrap">{row.original.name}</span> },
+    { accessorKey: 'name', header: t('common.field.name'), cell: ({ row }) => <span className="whitespace-nowrap">{row.original.name}</span> },
     {
       id: 'status',
-      header: 'Status',
+      header: t('common.status.label'),
       enableSorting: false,
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => {
@@ -405,9 +407,9 @@ const TenantMigrationManagement: React.FC = () => {
         }[st] as 'success' | 'secondary' | 'destructive' | 'outline';
         const text =
           st === 'pending' ? `${pending} behind`
-          : st === 'up_to_date' ? 'In sync'
+          : st === 'up_to_date' ? t('pages.tenantMigration.inSync')
           : st === 'error' ? 'Error'
-          : 'Not checked';
+          : t('pages.tenantMigration.statusNotChecked');
         return (
           <div className="space-y-1">
             <Badge variant={variant}>{text}</Badge>
@@ -428,7 +430,7 @@ const TenantMigrationManagement: React.FC = () => {
     },
     {
       id: 'pending',
-      header: 'Pending',
+      header: t('pages.tenantMigration.columnPending'),
       enableSorting: false,
       meta: { cellClassName: 'text-center' },
       cell: ({ row }) => {
@@ -438,7 +440,7 @@ const TenantMigrationManagement: React.FC = () => {
     },
     {
       id: 'last_checked',
-      header: 'Last Checked',
+      header: t('pages.tenantMigration.columnLastChecked'),
       enableSorting: false,
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
@@ -458,7 +460,7 @@ const TenantMigrationManagement: React.FC = () => {
         return (
           <div className="flex items-center justify-end gap-1.5">
             {iconAction({
-              label: 'Check',
+              label: t('pages.tenantMigration.check'),
               icon: rs?.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />,
               onClick: () => checkOne(bu),
               disabled,
@@ -467,7 +469,7 @@ const TenantMigrationManagement: React.FC = () => {
             })}
             {rs?.status?.has_pending &&
               iconAction({
-                label: 'Apply',
+                label: t('pages.tenantMigration.apply'),
                 icon: <Play className="h-4 w-4" />,
                 onClick: () => setApplyTarget(bu),
                 disabled,
@@ -478,14 +480,14 @@ const TenantMigrationManagement: React.FC = () => {
         );
       },
     },
-  ], [rowState, disabledReason, checkOne, batchRunning]);
+  ], [rowState, disabledReason, checkOne, batchRunning, t]);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Tenant migrations"
-          subtitle="Check which tenant databases are behind on schema migrations, and roll them out."
+          title={t('pages.tenantMigration.title')}
+          subtitle={t('pages.tenantMigration.subtitle')}
         />
 
         <FleetSync
@@ -501,7 +503,7 @@ const TenantMigrationManagement: React.FC = () => {
                   disabled={!!disabledReason || anyBusy || bus.length === 0}
                 >
                   {checkingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                  {checkingAll ? 'Checking...' : 'Check all'}
+                  {checkingAll ? t('pages.tenantMigration.checking') : t('pages.tenantMigration.checkAll')}
                 </Button>,
                 disabledReason,
               )}
@@ -513,13 +515,13 @@ const TenantMigrationManagement: React.FC = () => {
                   disabled={!!disabledReason || anyBusy || bus.length === 0}
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  Deploy all
+                  {t('pages.tenantMigration.deployAll')}
                 </Button>,
                 disabledReason,
               )}
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
             </>
           }
@@ -540,7 +542,7 @@ const TenantMigrationManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={setSearchTerm}
-                placeholder="Search business units..."
+                placeholder={t('pages.tenantMigration.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
             </div>
@@ -555,9 +557,9 @@ const TenantMigrationManagement: React.FC = () => {
             {!error && bus.length === 0 && !loading ? (
               <EmptyState
                 icon={Database}
-                title="No business units"
-                description="Create a business unit first to manage its tenant migrations."
-                action={<Button variant="outline" size="sm" onClick={() => navigate('/business-units')}>Go to Business Units</Button>}
+                title={t('pages.tenantMigration.emptyTitle')}
+                description={t('pages.tenantMigration.emptyDescription')}
+                action={<Button variant="outline" size="sm" onClick={() => navigate('/business-units')}>{t('pages.tenantMigration.goToBusinessUnits')}</Button>}
               />
             ) : !error ? (
               loading && bus.length === 0 ? (
@@ -582,13 +584,17 @@ const TenantMigrationManagement: React.FC = () => {
       <ConfirmDialog
         open={applyTarget !== null}
         onOpenChange={(open) => { if (!open) setApplyTarget(null); }}
-        title="Apply tenant migrations"
+        title={t('pages.tenantMigration.applyTitle')}
         description={
           applyTarget
-            ? `Apply ${rowState[applyTarget.id]?.status?.pending.length ?? 0} pending migration(s) to ${applyTarget.name} (${applyTarget.code})? This applies schema changes to the tenant database and cannot be undone.`
+            ? t('pages.tenantMigration.applyDescription', {
+                count: rowState[applyTarget.id]?.status?.pending.length ?? 0,
+                name: applyTarget.name,
+                code: applyTarget.code,
+              })
             : ''
         }
-        confirmText="Apply migrations"
+        confirmText={t('pages.tenantMigration.applyAction')}
         confirmVariant="destructive"
         onConfirm={() => (applyTarget ? applyOne(applyTarget) : undefined)}
       />
@@ -596,9 +602,9 @@ const TenantMigrationManagement: React.FC = () => {
       <ConfirmDialog
         open={confirmAll}
         onOpenChange={setConfirmAll}
-        title="Deploy migrations to all BUs"
-        description={`Apply all pending migrations to every business unit (${bus.length} total)? This applies schema changes to every tenant database and cannot be undone.`}
-        confirmText="Deploy all"
+        title={t('pages.tenantMigration.deployAllTitle')}
+        description={t('pages.tenantMigration.deployAllDescription', { count: bus.length })}
+        confirmText={t('pages.tenantMigration.deployAll')}
         confirmVariant="destructive"
         onConfirm={deployAll}
       />

@@ -2,6 +2,7 @@ import { Check, Circle, CircleDot, Loader2, SkipForward, X } from 'lucide-react'
 import { cn } from '../../lib/utils';
 import type { PreconfigStepMeta } from '../../types';
 import type { StepState } from './StepPanel';
+import { useI18n } from '../../hooks/useI18n';
 
 const ICONS = {
   pending: Circle,
@@ -28,10 +29,11 @@ export function StepRail({
   activeId: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <>
       <select
-        aria-label="Import step"
+        aria-label={t('pages.tenantImport.importStepAria')}
         className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm lg:hidden"
         value={activeId}
         onChange={(e) => onSelect(e.target.value)}

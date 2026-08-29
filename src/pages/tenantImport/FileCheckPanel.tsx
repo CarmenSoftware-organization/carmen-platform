@@ -1,11 +1,14 @@
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import type { PreconfigCheckReport, PreconfigStepMeta } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 
-const STATUS_LABEL: Record<PreconfigCheckReport['steps'][number]['status'], string> = {
-  ready: 'Ready',
-  sheet_missing: 'Sheet missing',
-  columns_missing: 'Columns missing',
+// เก็บ TKey ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้
+const STATUS_LABEL: Record<PreconfigCheckReport['steps'][number]['status'], TKey> = {
+  ready: 'pages.tenantImport.statusReady',
+  sheet_missing: 'pages.tenantImport.statusSheetMissing',
+  columns_missing: 'pages.tenantImport.statusColumnsMissing',
 };
 
 /**
@@ -23,6 +26,7 @@ export function FileCheckPanel({
   onContinue: () => void;
   onReset: () => void;
 }) {
+  const { t } = useI18n();
   const metaById = new Map(steps.map((s) => [s.id, s]));
   const readyCount = report.steps.filter((s) => s.status === 'ready').length;
 
@@ -32,12 +36,16 @@ export function FileCheckPanel({
         <div>
           <p className="text-sm font-medium">{report.file_name}</p>
           <p className="text-xs text-muted-foreground">
-            {report.sheets_found.length} sheets found · {readyCount} of {report.steps.length} steps ready
+            {t('pages.tenantImport.fileSummary', {
+              sheets: report.sheets_found.length,
+              ready: readyCount,
+              total: report.steps.length,
+            })}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onReset}>Choose another file</Button>
-          <Button onClick={onContinue} disabled={readyCount === 0}>Continue</Button>
+          <Button variant="outline" onClick={onReset}>{t('pages.tenantImport.chooseAnotherFile')}</Button>
+          <Button onClick={onContinue} disabled={readyCount === 0}>{t('pages.tenantImport.continueAction')}</Button>
         </div>
       </div>
 
@@ -45,11 +53,11 @@ export function FileCheckPanel({
         <table className="w-full text-sm [&_th]:whitespace-nowrap">
           <thead className="bg-muted/50 text-xs text-muted-foreground">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">Step</th>
-              <th className="px-3 py-2 text-left font-medium">Sheet</th>
-              <th className="px-3 py-2 text-right font-medium">Rows</th>
-              <th className="px-3 py-2 text-left font-medium">Missing</th>
-              <th className="px-3 py-2 text-left font-medium">Status</th>
+              <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.columnStep')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.columnSheet')}</th>
+              <th className="px-3 py-2 text-right font-medium">{t('pages.tenantImport.columnRows')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.columnMissing')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('common.status.label')}</th>
             </tr>
           </thead>
           <tbody>
@@ -66,7 +74,7 @@ export function FileCheckPanel({
                   </td>
                   <td className="px-3 py-2">
                     <Badge variant={s.status === 'ready' ? 'success' : 'secondary'}>
-                      {STATUS_LABEL[s.status]}
+                      {t(STATUS_LABEL[s.status])}
                     </Badge>
                   </td>
                 </tr>

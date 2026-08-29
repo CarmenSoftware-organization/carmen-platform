@@ -12,6 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 import type {
   PreconfigDuplicateMode,
   PreconfigImportOptions,
@@ -43,10 +45,11 @@ export interface StepState {
 }
 
 const MODES: PreconfigDuplicateMode[] = ['skip', 'upsert', 'error'];
-const MODE_LABEL: Record<PreconfigDuplicateMode, string> = {
-  skip: 'Skip duplicates',
-  upsert: 'Update duplicates',
-  error: 'Report duplicates as errors',
+// เก็บ TKey ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้
+const MODE_LABEL: Record<PreconfigDuplicateMode, TKey> = {
+  skip: 'pages.tenantImport.dupSkip',
+  upsert: 'pages.tenantImport.dupUpsert',
+  error: 'pages.tenantImport.dupError',
 };
 const VERDICT_VARIANT = { new: 'success', duplicate: 'secondary', error: 'destructive' } as const;
 
@@ -81,6 +84,7 @@ export function StepPanel({
   onOptionsChange: (next: PreconfigImportOptions) => void;
   onAcceptLookups: (next: PreconfigImportOptions) => void;
 }) {
+  const { t } = useI18n();
   const preview = state.preview;
   const running = state.status === 'importing';
   const previewing = state.status === 'previewing';
@@ -219,18 +223,18 @@ export function StepPanel({
             ) : (
               <RefreshCw className="mr-2 h-4 w-4" />
             )}
-            Preview
+            {t('pages.tenantImport.preview')}
           </Button>
           <Button onClick={onImport} disabled={!preview || running || importBlockedByLookups}>
             {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-            {running ? 'Importing…' : 'Import'}
+            {running ? t('pages.tenantImport.importing') : t('pages.tenantImport.importAction')}
           </Button>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">On duplicate</span>
+          <span className="text-muted-foreground">{t('pages.tenantImport.onDuplicate')}</span>
           <select
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             value={state.options.duplicate_mode ?? step.default_duplicate_mode}
@@ -240,7 +244,7 @@ export function StepPanel({
             disabled={running || previewing}
           >
             {MODES.map((m) => (
-              <option key={m} value={m}>{MODE_LABEL[m]}</option>
+              <option key={m} value={m}>{t(MODE_LABEL[m])}</option>
             ))}
           </select>
         </label>
@@ -270,9 +274,9 @@ export function StepPanel({
               }
             }}
           />
-          Soft-delete existing rows first
+          {t('pages.tenantImport.softDeleteFirst')}
           {!preview && !clearExisting && (
-            <span className="text-xs text-muted-foreground">(run a preview first)</span>
+            <span className="text-xs text-muted-foreground">{t('pages.tenantImport.runPreviewFirst')}</span>
           )}
         </label>
       )}
@@ -393,23 +397,30 @@ export function StepPanel({
 
       {preview && preview.rows.length > 0 && visibleRows.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          No {selectedVerdicts.join(' or ')} rows in this preview.
+          {t('pages.tenantImport.noRowsOfVerdict', { verdicts: selectedVerdicts.join(' / ') })}
         </p>
       )}
 
       {preview && preview.rows.length === 0 && (
         <p className="text-xs text-muted-foreground">
           {preview.total_rows > 0
-            ? `No preview rows were returned for the ${preview.total_rows} row${preview.total_rows === 1 ? '' : 's'} in this sheet.`
-            : 'This sheet has no data rows.'}
+            ? (preview.total_rows === 1
+                ? t('pages.tenantImport.noPreviewRows', { count: preview.total_rows })
+                : t('pages.tenantImport.noPreviewRowsPlural', { count: preview.total_rows }))
+            : t('pages.tenantImport.noDataRows')}
         </p>
       )}
 
       {state.summary && (
         <p className="text-sm">
-          Imported {state.summary.inserted} · updated {state.summary.updated} · skipped{' '}
-          {state.summary.skipped} · failed {state.summary.failed}
-          {state.summary.lookups_created > 0 && <> · created {state.summary.lookups_created} lookups</>}
+          {t('pages.tenantImport.importedSummary', {
+            inserted: state.summary.inserted,
+            updated: state.summary.updated,
+            skipped: state.summary.skipped,
+            failed: state.summary.failed,
+          })}
+          {state.summary.lookups_created > 0 &&
+            t('pages.tenantImport.createdLookups', { count: state.summary.lookups_created })}
           {state.cleared && (
             <>
               {' '}
@@ -439,47 +450,53 @@ export function StepPanel({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Soft-delete existing rows?</DialogTitle>
+            <DialogTitle>{t('pages.tenantImport.softDeleteTitle')}</DialogTitle>
             <DialogDescription>
               {clearCountKnown ? (
                 clearWillSoftDelete === 0 ? (
                   <>
-                    There are no active rows in{' '}
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
-                    <strong className="font-semibold text-foreground">{buCode}</strong> to soft-delete right
-                    now. Type the BU code to confirm.
+                    {t('pages.tenantImport.softDeleteNone1')}{' '}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code>{' '}
+                    {t('pages.tenantImport.softDeleteNone2')}{' '}
+                    <strong className="font-semibold text-foreground">{buCode}</strong>{' '}
+                    {t('pages.tenantImport.softDeleteNone3')}
                   </>
                 ) : (
                   <>
-                    This soft-deletes{' '}
-                    <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong> existing
-                    rows in <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
-                    <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
+                    {t('pages.tenantImport.softDeleteSome1')}{' '}
+                    <strong className="font-semibold text-foreground">{clearWillSoftDelete}</strong>{' '}
+                    {t('pages.tenantImport.softDeleteSome2')}{' '}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code>{' '}
+                    {t('pages.tenantImport.softDeleteSome3')}{' '}
+                    <strong className="font-semibold text-foreground">{buCode}</strong>{' '}
+                    {t('pages.tenantImport.softDeleteSome4')}{' '}
                     <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>.
                     {clearWillSoftDeleteRelated > 0 && (
                       <>
-                        {' '}It also soft-deletes{' '}
+                        {' '}{t('pages.tenantImport.softDeleteRelated1')}{' '}
                         <strong className="font-semibold text-foreground">{clearWillSoftDeleteRelated}</strong>{' '}
-                        dependent rows in related tables.
+                        {t('pages.tenantImport.softDeleteRelated2')}
                       </>
                     )}{' '}
-                    Existing documents that reference them keep working. Type the BU code to confirm.
+                    {t('pages.tenantImport.softDeleteConfirmHint')}
                   </>
                 )
               ) : (
                 <>
-                  This soft-deletes every currently-active row in{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code> for{' '}
-                  <strong className="font-semibold text-foreground">{buCode}</strong> by setting{' '}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>. Existing documents
-                  that reference them keep working. Type the BU code to confirm.
+                  {t('pages.tenantImport.softDeleteUnknown1')}{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">{step.table_name}</code>{' '}
+                  {t('pages.tenantImport.softDeleteUnknown2')}{' '}
+                  <strong className="font-semibold text-foreground">{buCode}</strong>{' '}
+                  {t('pages.tenantImport.softDeleteUnknown3')}{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs">deleted_at</code>.{' '}
+                  {t('pages.tenantImport.softDeleteConfirmHint')}
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="clear-existing-bu-code" className="text-sm font-medium">
-              BU code
+              {t('pages.tenantImport.buCodeLabel')}
             </Label>
             <Input
               ref={clearCodeInputRef}
@@ -492,7 +509,7 @@ export function StepPanel({
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" size="sm" onClick={closeClearDialog}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -503,7 +520,7 @@ export function StepPanel({
                 closeClearDialog();
               }}
             >
-              Confirm
+              {t('pages.tenantImport.confirmAction')}
             </Button>
           </DialogFooter>
         </DialogContent>
