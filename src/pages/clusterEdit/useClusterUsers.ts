@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import api from '../../services/api';
 import userService from '../../services/userService';
 import { getErrorDetail } from '../../utils/errorParser';
+import { useI18n } from '../../hooks/useI18n';
 import type { ClusterUser } from '../../types';
 
 export interface SearchUser {
@@ -28,6 +29,7 @@ function sortByName(list: ClusterUser[]): ClusterUser[] {
 }
 
 export function useClusterUsers(clusterId: string | undefined) {
+  const { t } = useI18n();
   const [clusterUsers, setClusterUsers] = useState<ClusterUser[]>([]);
   // Mirrors `clusterUsers` synchronously (plain ref write, not routed through React's
   // deferred state-update scheduling). `updateUser`'s rollback needs to read the list
@@ -125,12 +127,12 @@ export function useClusterUsers(clusterId: string | undefined) {
         is_active: true,
       });
     } catch (err) {
-      toast.error('Failed to add user', { description: getErrorDetail(err) });
+      toast.error(t('pages.clusters.addUserFailed'), { description: getErrorDetail(err) });
       throw err;
     }
-    toast.success('User added to cluster');
+    toast.success(t('pages.clusters.userAdded'));
     await fetchClusterUsers();
-  }, [clusterId, fetchClusterUsers]);
+  }, [clusterId, fetchClusterUsers, t]);
 
   // Toast-free: on failure it rolls back the optimistic update and rethrows.
   // Callers own error toasting — single-use callers toast, bulkRun aggregates a summary.

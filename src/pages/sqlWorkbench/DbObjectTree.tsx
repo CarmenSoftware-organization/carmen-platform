@@ -68,7 +68,7 @@ export function DbObjectTree({
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <Database className="text-muted-foreground size-4" />
-        <span className="text-sm font-semibold">Database Objects</span>
+        <span className="text-sm font-semibold">{t('pages.sqlWorkbench.databaseObjects')}</span>
       </div>
       <div className="border-b p-2">
         <div className="relative">

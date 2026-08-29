@@ -173,7 +173,7 @@ const ClusterUsers: React.FC = () => {
       />
 
       <DevDebugSheet
-        title="Cluster Users"
+        title={t('pages.clusterAdmin.clusterUsersTitle')}
         tabs={[
           { key: 'members', label: 'Members', endpoint: `GET /api-system/user/clusters/${clusterId}`, data: rawResponse },
           { key: 'invitations', label: 'Invitations', endpoint: `GET /api-system/clusters/${clusterId}/invitations`, data: rawInvitationsResponse },

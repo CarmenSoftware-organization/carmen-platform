@@ -336,7 +336,7 @@ export function StepPanel({
 
       {lookupsToCreate.length > 0 && (
         <div className="space-y-3 rounded-md border border-warning/50 bg-warning/5 p-3 text-sm">
-          <p className="font-medium">New reference data will be created</p>
+          <p className="font-medium">{t('pages.tenantImport.newReferenceDataWillBeCreated')}</p>
           <ul className="space-y-1 text-xs text-muted-foreground">
             {lookupsToCreate.map((entry) => (
               <li key={`${entry.table}.${entry.column}`} className="break-words">
@@ -370,7 +370,7 @@ export function StepPanel({
                 {columns.map((c) => (
                   <th key={c} className="px-3 py-2 text-left font-medium">{c}</th>
                 ))}
-                <th className="px-3 py-2 text-left font-medium">Verdict</th>
+                <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.columnVerdict')}</th>
               </tr>
             </thead>
             <tbody>

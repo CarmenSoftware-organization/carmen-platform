@@ -172,13 +172,13 @@ const TenantMigrationManagement: React.FC = () => {
         [bu.id]: { ...prev[bu.id], status, checking: false, lastChecked: nowTime(), errorMsg: undefined },
       }));
     } catch (err) {
-      handleMigrationError(err);
+      handleMigrationError(err, t);
       setRowState((prev) => ({
         ...prev,
         [bu.id]: { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() },
       }));
     }
-  }, []);
+  }, [t]);
 
   const checkAll = useCallback(async () => {
     setCheckingAll(true);
@@ -250,7 +250,7 @@ const TenantMigrationManagement: React.FC = () => {
       // Aborted on unmount — the migration itself keeps running server-side (see
       // tenantMigrationService.ts), but this page is gone, so there's nothing left to update.
       if (controller.signal.aborted) return;
-      handleMigrationError(err);
+      handleMigrationError(err, t);
       setRowState((prev) => ({
         ...prev,
         [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
@@ -313,7 +313,7 @@ const TenantMigrationManagement: React.FC = () => {
       // Aborted on unmount — the BU currently mid-migration keeps running to completion
       // server-side (see tenantMigrationService.ts); this page is gone either way.
       if (controller.signal.aborted) return;
-      handleMigrationError(err);
+      handleMigrationError(err, t);
     } finally {
       activeStreamControllersRef.current.delete(ALL_BU_STREAM_KEY);
       if (!controller.signal.aborted) setBatch(null);

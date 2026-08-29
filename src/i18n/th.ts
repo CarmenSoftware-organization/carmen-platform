@@ -358,6 +358,8 @@ export const th: Translations = {
       dec: 'ธ.ค.',
     },
     state: {
+      versionConflictTitle: 'ระเบียนนี้ถูกแก้ไขโดยผู้อื่น',
+      versionConflictBody: 'กำลังโหลดเวอร์ชันล่าสุด กรุณาแก้ไขใหม่อีกครั้ง',
       noExpiry: 'ไม่มีวันหมดอายุ',
       expires: 'วันหมดอายุ',
       quotaExpires: 'โควตาหมดอายุ',
@@ -1304,6 +1306,7 @@ export const th: Translations = {
     },
 
     clusterAdmin: {
+      clusterUsersTitle: 'ผู้ใช้ใน Cluster',
       people: 'บุคคล',
       viewLicenses: 'ดูไลเซนส์',
       clusterHasNoBusinessUnitsYet: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ',
@@ -1741,6 +1744,7 @@ export const th: Translations = {
     // ไม่ได้เรียบเรียงใหม่ ส่วนคีย์ที่ค่าไทยเท่ากับอังกฤษเป็นความตั้งใจ (หน้าเดิมแสดงคำเหล่านั้น
     // เป็นอังกฤษกับผู้ใช้ไทยอยู่แล้ว รอบนี้เพิ่มภาษา ไม่ได้แก้ภาษาไทย)
     sqlWorkbench: {
+      databaseObjects: 'Database Objects',
       title: 'SQL Workbench',
       subtitle: 'รันคิวรี · สร้าง view, stored procedure และ function ในฐานข้อมูล tenant',
       readWrite: 'อ่าน / เขียน',
@@ -1814,6 +1818,9 @@ export const th: Translations = {
       sqlEditor: 'ตัวแก้ไข SQL',
     },
     emailSettings: {
+      senderProfiles: 'โปรไฟล์ผู้ส่ง',
+      smtpPassword: 'รหัสผ่าน SMTP',
+      smtpHostRequired: 'ต้องระบุ SMTP host',
       title: 'ตั้งค่าอีเมล',
       subtitle: 'โปรไฟล์ผู้ส่งอีเมลระดับ platform — ที่อยู่ผู้ส่งและค่า SMTP ที่ระบบใช้ส่งเมลออก',
       addProfile: 'เพิ่มโปรไฟล์',
@@ -1878,6 +1885,10 @@ export const th: Translations = {
       unsetDescription: 'หลังจากนี้ระบบจะกลับไปใช้ค่า SMTP จาก environment ของเซิร์ฟเวอร์ ถ้าไม่ได้ตั้งค่านั้นไว้ อีเมลของช่องทางนี้จะหยุดส่ง และต้องตั้งรหัสผ่านใหม่ทั้งหมดหากจะสร้างโปรไฟล์นี้อีกครั้ง',
     },
     tenantImport: {
+      newReferenceDataWillBeCreated: 'จะมีการสร้างข้อมูลอ้างอิงใหม่',
+      columnVerdict: 'ผลตรวจ',
+      notApplied: 'ไม่ได้นำไปใช้',
+      workbookUnusableValues: 'ไฟล์มีค่าที่ขั้นตอนนี้ใช้ไม่ได้',
       importStepAria: 'ขั้นตอนการนำเข้า',
       onlyXlsx: 'รองรับเฉพาะไฟล์ .xlsx เท่านั้น',
       uploadAria: 'อัปโหลดไฟล์ Preconfig',
@@ -1971,6 +1982,10 @@ export const th: Translations = {
       cpMismatch6: 'ไม่ใช่ property ที่ไฟล์นี้บรรยายไว้ ตรวจสอบให้แน่ใจก่อนไปต่อ',
     },
     tenantMigration: {
+      startingDeploy: 'กำลังเริ่ม deploy…',
+      disabledOrSuperAdmin: 'migration ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      alreadyRunning: 'มี migration ทำงานอยู่แล้ว กรุณาลองใหม่ในอีกสักครู่',
+      seedDisabledOrSuperAdmin: 'การ seed ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
       deployingAll: 'กำลัง deploy ทุก tenant…',
       title: 'Tenant migration',
       subtitle: 'ตรวจว่าฐานข้อมูล tenant ใดตามหลัง schema migration อยู่ แล้วสั่งอัปเดต',
@@ -2103,6 +2118,8 @@ export const th: Translations = {
       confirmEnableAction: 'เปิดการบังคับใช้',
     },
     databasePools: {
+      filterDescription: 'กรอง database pool ตามสถานะ',
+      loading: 'กำลังโหลด database pool...',
       title: 'Database Pool',
       subtitle: 'จัดการโปรไฟล์การเชื่อมต่อฐานข้อมูลที่ใช้ร่วมกัน',
       addPool: 'เพิ่ม Pool',
@@ -2175,6 +2192,7 @@ export const th: Translations = {
       removeDescription: 'ต้องการถอนสิทธิ์ผู้ดูแลระบบสูงสุดของผู้ใช้รายนี้หรือไม่ ผู้ใช้จะไม่ข้ามการตรวจสิทธิ์อีกต่อไป',
     },
     userPlatform: {
+      filterDescription: 'กรองผู้ถือสิทธิ์ตามบทบาท ขอบเขต และสถานะ',
       scopePlatform: 'ทั้งแพลตฟอร์ม',
       title: 'ผู้ใช้ Platform',
       subtitle: 'ผู้ใช้ที่ถือบทบาทของ Platform',
@@ -2251,6 +2269,7 @@ export const th: Translations = {
       grantAccess: 'มอบสิทธิ์',
     },
     roles: {
+      emptyPermissions: 'ยังไม่ได้ให้สิทธิ์ใด',
       title: 'บทบาท Platform',
       subtitle: 'จัดการบทบาทของ Platform และสิทธิ์ของแต่ละบทบาท',
       addRole: 'เพิ่มบทบาท',
@@ -2312,6 +2331,7 @@ export const th: Translations = {
       readOnly: 'อ่านอย่างเดียว',
     },
     applications: {
+      noEndpointsGranted: 'ยังไม่ได้ให้สิทธิ์ endpoint ใด',
       title: 'จัดการแอปพลิเคชัน',
       subtitle: 'จัดการแอปพลิเคชันและสิทธิ์เข้าถึง API',
       addApplication: 'เพิ่มแอปพลิเคชัน',
@@ -2382,6 +2402,8 @@ export const th: Translations = {
       createApplication: 'สร้างแอปพลิเคชัน',
     },
     clusters: {
+      addUserFailed: 'เพิ่มผู้ใช้ไม่สำเร็จ',
+      userAdded: 'เพิ่มผู้ใช้เข้า cluster แล้ว',
       title: 'จัดการ Cluster',
       subtitle: 'จัดการและตั้งค่า Cluster',
       addCluster: 'เพิ่ม Cluster',

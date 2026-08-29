@@ -47,7 +47,7 @@ export function DeployConsole({ batch }: { batch: BatchProgress | null }) {
             {line}
           </div>
         ))}
-        {batch.log.length === 0 && !batch.current && <div className="text-slate-500">Starting deploy…</div>}
+        {batch.log.length === 0 && !batch.current && <div className="text-slate-500">{t('pages.tenantMigration.startingDeploy')}</div>}
       </div>
     </div>
   );

@@ -109,7 +109,7 @@ const EmailSettingManagement: React.FC = () => {
             />
 
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-muted-foreground">Sender profiles</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.emailSettings.senderProfiles')}</h2>
               {canManage && !addingProfile && (
                 <Button variant="outline" size="sm" onClick={() => { setAddingProfile(true); requestEdit('new'); }}>
                   <Plus className="mr-2 h-4 w-4" />

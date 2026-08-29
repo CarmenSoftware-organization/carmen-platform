@@ -480,6 +480,8 @@ export const en = {
       dec: 'Dec',
     },
     state: {
+      versionConflictTitle: 'This record was changed by someone else',
+      versionConflictBody: 'Reloading the latest version. Please re-apply your changes.',
       noExpiry: 'No expiry',
       expires: 'Expires',
       quotaExpires: 'Quota Expires',
@@ -1781,6 +1783,7 @@ export const en = {
     // company_* field group. Same class of mismatch the phase-2 final review already fixed
     // once for entity.* vs common.label.*.
     clusterAdmin: {
+      clusterUsersTitle: 'Cluster Users',
       people: 'People',
       viewLicenses: 'View licenses',
       clusterHasNoBusinessUnitsYet: 'This cluster has no business units yet.',
@@ -2659,6 +2662,7 @@ export const en = {
     },
     // ── slice 9b: SQL Workbench ──
     sqlWorkbench: {
+      databaseObjects: 'Database Objects',
       title: 'SQL Workbench',
       subtitle: 'Run queries · create views, stored procedures and functions in a tenant database',
       // ConnectionBar
@@ -2740,6 +2744,9 @@ export const en = {
     // ── slice 9c: Email Settings ──
     // เช่นเดียวกับ platformConfig — หน้านี้เป็นไทยล้วนมาก่อน อังกฤษเป็นคำใหม่ทั้งหมด
     emailSettings: {
+      senderProfiles: 'Sender profiles',
+      smtpPassword: 'SMTP password',
+      smtpHostRequired: 'SMTP host is required',
       title: 'Email Settings',
       subtitle: 'Platform-level sender profiles — the from-address and SMTP values the system uses to send mail',
       addProfile: 'Add profile',
@@ -2810,6 +2817,10 @@ export const en = {
     },
     // ── slice 10a: Tenant Import + Tenant Migration ──
     tenantImport: {
+      newReferenceDataWillBeCreated: 'New reference data will be created',
+      columnVerdict: 'Verdict',
+      notApplied: 'Not applied',
+      workbookUnusableValues: 'The workbook has values this step cannot use',
       // StepRail
       importStepAria: 'Import step',
       // WorkbookDropzone
@@ -2911,6 +2922,10 @@ export const en = {
       cpMismatch6: ', not the property the workbook describes. Double-check before continuing.',
     },
     tenantMigration: {
+      startingDeploy: 'Starting deploy…',
+      disabledOrSuperAdmin: 'Migrations are disabled or require super-admin.',
+      alreadyRunning: 'A migration is already running. Try again shortly.',
+      seedDisabledOrSuperAdmin: 'Seeding is disabled or requires super-admin.',
       deployingAll: 'Deploying all tenants…',
       // TenantMigrationManagement
       title: 'Tenant migrations',
@@ -3059,6 +3074,8 @@ export const en = {
     },
     // ── slice 9b: Database Pools ──
     databasePools: {
+      filterDescription: 'Filter database pools by status',
+      loading: 'Loading database pools...',
       title: 'Database Pools',
       subtitle: 'Manage shared database connection profiles',
       addPool: 'Add Pool',
@@ -3134,6 +3151,7 @@ export const en = {
     },
     // ── slice 9a: User Platform ──
     userPlatform: {
+      filterDescription: 'Filter holders by role, scope and status',
       // roleChips.tsx — ป้ายขอบเขต 'Platform' ใช้ทั้งเป็นค่าที่แสดงและเป็นคีย์เรียงลำดับ
       // ตัวเรียงเทียบกับ 'Platform' ตรง ๆ จึงต้องเทียบกับค่าที่แปลแล้วด้วย ไม่ใช่ literal
       scopePlatform: 'Platform',
@@ -3217,6 +3235,7 @@ export const en = {
     },
     // ── slice 8: Platform Roles + Permission Catalog ──
     roles: {
+      emptyPermissions: 'No permissions granted.',
       title: 'Platform Roles',
       subtitle: 'Manage platform roles and their permissions',
       addRole: 'Add Role',
@@ -3286,6 +3305,7 @@ export const en = {
     },
     // ── slice 8: Applications ──
     applications: {
+      noEndpointsGranted: 'No endpoints granted.',
       title: 'Application Management',
       subtitle: 'Manage applications and their API access',
       addApplication: 'Add Application',
@@ -3361,6 +3381,8 @@ export const en = {
     },
     // ── slice 7: Clusters ──
     clusters: {
+      addUserFailed: 'Failed to add user',
+      userAdded: 'User added to cluster',
       title: 'Cluster Management',
       subtitle: 'Manage and configure clusters',
       addCluster: 'Add Cluster',

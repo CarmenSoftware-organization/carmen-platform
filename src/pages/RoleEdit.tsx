@@ -238,7 +238,7 @@ const RoleEdit: React.FC = () => {
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchRole();
       } else {
         const { message, fields } = parseApiError(err);
@@ -307,7 +307,7 @@ const RoleEdit: React.FC = () => {
   // action really is `read` — never inferred from the role's name or description.
   const grantSummary = useMemo(() => {
     const n = formData.permissions.length;
-    if (n === 0) return t('pages.roles.noPermissionsGranted');
+    if (n === 0) return t('pages.roles.emptyPermissions');
     const parts = [
       n === 1 ? t('pages.roles.nPermissions', { count: n }) : t('pages.roles.nPermissionsPlural', { count: n }),
     ];
@@ -457,7 +457,7 @@ const RoleEdit: React.FC = () => {
                       />
                     )
                   ) : formData.permissions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">No permissions granted.</p>
+                    <p className="text-sm text-muted-foreground py-4 text-center">{t('pages.roles.emptyPermissions')}</p>
                   ) : (
                     <div>
                       {/* One grid for the whole list: the tracks are the container's, so every

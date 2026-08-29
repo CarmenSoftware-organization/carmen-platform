@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import type { TFunction } from '../i18n/types';
 
 // Optimistic-locking helpers for doc_version. The backend (carmen-turborepo-backend-v2)
 // guards updates with a numeric doc_version and returns HTTP 409 (code DOC_VERSION_CONFLICT,
@@ -33,9 +34,16 @@ export const isVersionConflict = (err: unknown): boolean => {
   return code === 'DOC_VERSION_CONFLICT' || /modified by another request|doc_version/i.test(msg);
 };
 
-/** Canonical conflict toast. The caller refetches the record after calling this. */
-export const notifyVersionConflict = (): void => {
-  toast.error('This record was changed by someone else', {
-    description: 'Reloading the latest version. Please re-apply your changes.',
+/**
+ * Canonical conflict toast. The caller refetches the record after calling this.
+ *
+ * `t` เป็นพารามิเตอร์ท้ายแบบไม่บังคับ (แบบเดียวกับ relativeTime / auditColumns) เพราะโมดูลนี้
+ * บริสุทธิ์ เรียก hook ไม่ได้ — ไม่ส่ง `t` จะได้ข้อความอังกฤษเดิมทุก byte
+ */
+export const notifyVersionConflict = (t?: TFunction): void => {
+  toast.error(t ? t('common.state.versionConflictTitle') : 'This record was changed by someone else', {
+    description: t
+      ? t('common.state.versionConflictBody')
+      : 'Reloading the latest version. Please re-apply your changes.',
   });
 };

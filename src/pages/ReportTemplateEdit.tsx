@@ -380,7 +380,7 @@ const ReportTemplateEdit: React.FC = () => {
       }
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchTemplate();
       } else {
         setError(t('pages.reportTemplates.saveFailed', { detail: getErrorDetail(err, t) }));

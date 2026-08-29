@@ -171,7 +171,7 @@ const ReportFormGroupManagement: React.FC = () => {
       setPendingDefault(null);
       await fetchAll();
     } catch (err: unknown) {
-      if (isVersionConflict(err)) notifyVersionConflict();
+      if (isVersionConflict(err)) notifyVersionConflict(t);
       else toast.error(t('pages.reportFormGroups.toastDefaultFailed', { detail: getErrorDetail(err, t) }));
       setPendingDefault(null);
       await fetchAll();
@@ -198,7 +198,7 @@ const ReportFormGroupManagement: React.FC = () => {
       await fetchAll();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         await fetchAll();
       } else {
         toast.error(t('pages.reportFormGroups.toastUpdateFailed', { detail: getErrorDetail(err, t) }));

@@ -262,7 +262,7 @@ const DatabasePoolEdit: React.FC = () => {
       if (isVersionConflict(err)) {
         // Checks code + message, not just the 409 status, so it doesn't swallow the
         // name-collision 409 handled just below.
-        notifyVersionConflict();
+        notifyVersionConflict(t);
         fetchPool();
         return;
       }
@@ -586,10 +586,10 @@ const DatabasePoolEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">

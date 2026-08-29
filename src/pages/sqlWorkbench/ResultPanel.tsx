@@ -217,7 +217,7 @@ export function ResultPanel({
           {/* Pagination */}
           {totalRows > pageSize && (
             <div className="bg-muted/30 flex items-center gap-2 border-t px-3 py-1.5 text-xs">
-              <span className="text-muted-foreground">Rows per page:</span>
+              <span className="text-muted-foreground">{t('table.rowsPerPage')}:</span>
               <select
                 className="bg-background rounded border px-1 py-0.5 text-xs"
                 value={pageSize}

@@ -436,13 +436,13 @@ const UserPlatformManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter holders by role, scope and status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.userPlatform.filterDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
                           <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>{t('common.action.clear')}</Button>
                         )}
