@@ -662,7 +662,10 @@ export const en = {
       description: "Check and apply database schema migrations for this BU's tenant database.",
       upToDate: 'Up to date',
       pendingCount: '{{count}} pending',
-      pendingMigrationsHeading: 'Pending migrations ({{count}})',
+      // The count is NOT interpolated here: the source renders it in its own
+      // `text-muted-foreground` span, and folding it into the string would silently drop that
+      // styling. Punctuation and a number are not translatable content anyway.
+      pendingMigrationsHeading: 'Pending migrations',
       applyMigrationsButton: 'Apply {{count}} migration(s)',
       applyingEllipsis: 'Applying migrations…',
       // toast.info no-op message, same convention as tenantSeedCard.nothingToSeedUpToDate.

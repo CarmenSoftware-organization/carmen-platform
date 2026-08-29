@@ -151,7 +151,8 @@ export const TenantMigrationCard = ({
         {status?.has_pending && (
           <div className="space-y-2">
             <p className="text-sm font-medium">
-              {t('components.tenantMigrationCard.pendingMigrationsHeading', { count: pending.length })}
+              {t('components.tenantMigrationCard.pendingMigrationsHeading')}{' '}
+              <span className="text-muted-foreground">({pending.length})</span>
             </p>
             <ul className="max-h-48 space-y-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
               {pending.map((name) => (

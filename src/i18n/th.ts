@@ -491,7 +491,9 @@ export const th: Translations = {
       description: 'ตรวจสอบและอัปเดตโครงสร้างฐานข้อมูล (migration) ให้กับฐานข้อมูล tenant ของ BU นี้',
       upToDate: 'เป็นปัจจุบัน',
       pendingCount: 'ค้างอยู่ {{count}} รายการ',
-      pendingMigrationsHeading: 'Migration ที่ค้างอยู่ ({{count}})',
+      // ไม่ interpolate จำนวนไว้ในคีย์ ต้นฉบับ render มันในสแปน text-muted-foreground ของตัวเอง
+      // ยุบรวมเข้ามาจะทำให้สีจางหายไปเงียบ ๆ — วงเล็บกับตัวเลขไม่ใช่ข้อความที่ต้องแปลอยู่แล้ว
+      pendingMigrationsHeading: 'Migration ที่ค้างอยู่',
       applyMigrationsButton: 'ใช้งาน Migration {{count}} รายการ',
       applyingEllipsis: 'กำลังใช้งาน Migration…',
       // ข้อความ toast.info แบบ no-op เหมือนกับ tenantSeedCard.nothingToSeedUpToDate
