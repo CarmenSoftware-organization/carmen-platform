@@ -10,6 +10,7 @@ import applicationService from '../services/applicationService';
 import newsService from '../services/newsService';
 import reportTemplateService from '../services/reportTemplateService';
 import { parseApiError } from '../utils/errorParser';
+import { useI18n } from '../hooks/useI18n';
 import type { PaginateParams } from '../types';
 import { fetchActivity, ACTIVITY_SOURCES, unwrapTotal, type ActivityItem } from './dashboard/activity';
 import { ActivityStream } from './dashboard/ActivityStream';
@@ -21,6 +22,7 @@ const emptyCounts = (): Record<string, DomainCount> =>
   Object.fromEntries(ACTIVITY_SOURCES.map((s) => [s.key, { active: null, total: null }]));
 
 const Dashboard: React.FC = () => {
+  const { t } = useI18n();
   const [counts, setCounts] = useState<Record<string, DomainCount>>(emptyCounts);
   const [countsLoading, setCountsLoading] = useState(true);
   const [countsError, setCountsError] = useState(false);
@@ -76,7 +78,7 @@ const Dashboard: React.FC = () => {
       .then((items) => {
         setActivity(items);
         if (activityHadErrorRef.current) {
-          toast.success('Activity reloaded');
+          toast.success(t('pages.dashboard.activityReloaded'));
         }
         activityHadErrorRef.current = false;
       })
@@ -88,7 +90,7 @@ const Dashboard: React.FC = () => {
         setActivityError(true);
       })
       .finally(() => setActivityLoading(false));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadActivity();
@@ -100,7 +102,7 @@ const Dashboard: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <PageHeader title="Dashboard" subtitle="What changed across everything you run." />
+        <PageHeader title={t('pages.dashboard.title')} subtitle={t('pages.dashboard.subtitle')} />
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_236px]">
           <ActivityStream
@@ -115,7 +117,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         <DevDebugSheet
-          title="Dashboard Data"
+          title={t('pages.dashboard.debugTitle')}
           endpoint="GET /api-system/*/list?sort=updated_at:desc"
           data={{ counts, activity }}
         />

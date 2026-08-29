@@ -37,7 +37,7 @@ describe('ActivityStream', () => {
       {
         id: 'c1',
         domainKey: 'clusters',
-        domainLabel: 'Clusters',
+        domainLabelKey: 'nav.clusters',
         icon: Network,
         verb: 'created',
         name: 'Acme Cluster',

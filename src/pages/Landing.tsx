@@ -4,54 +4,59 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import VersionBadge from '../components/VersionBadge';
+import { useI18n } from '../hooks/useI18n';
+import type { TKey } from '../i18n/types';
 
 const env = import.meta.env.REACT_APP_ENV as string | undefined;
 
 interface OpsItem {
-  name: string;
-  desc: string;
+  nameKey: TKey;
+  descKey: TKey;
 }
 
 interface OpsGroup {
-  label: string;
-  caption: string;
+  labelKey: TKey;
+  captionKey: TKey;
   items: OpsItem[];
 }
 
 // The console's real table of contents — mirrors the sidebar groups in Layout.tsx.
+// เป็น const ระดับโมดูล จึงเรียก hook ไม่ได้ — เก็บ TKey แล้วค่อยแปลตอน render
+// ชื่อหมวดและชื่อรายการใช้คีย์ navGroup.* / nav.* ร่วมกับแถบเมนู เพราะเป็นคำเดียวกันจริง
 const groups: OpsGroup[] = [
   {
-    label: 'Organization',
-    caption: 'Who and what you operate.',
+    labelKey: 'navGroup.organization',
+    captionKey: 'pages.landing.captionOrganization',
     items: [
-      { name: 'Clusters', desc: 'Tenant groups & license limits' },
-      { name: 'Business Units', desc: 'Properties, formats, connections' },
-      { name: 'Users', desc: 'Accounts, roles, BU assignments' },
-      { name: 'Tenant Migrations', desc: 'Batch deploys, live progress' },
+      { nameKey: 'nav.clusters', descKey: 'pages.landing.descClusters' },
+      { nameKey: 'nav.businessUnits', descKey: 'pages.landing.descBusinessUnits' },
+      { nameKey: 'nav.users', descKey: 'pages.landing.descUsers' },
+      { nameKey: 'nav.tenantMigrations', descKey: 'pages.landing.descTenantMigrations' },
     ],
   },
   {
-    label: 'Content',
-    caption: 'The documents and messages that run the day.',
+    labelKey: 'navGroup.content',
+    captionKey: 'pages.landing.captionContent',
     items: [
-      { name: 'Report Templates', desc: 'XML report definitions' },
-      { name: 'Print Mapping', desc: 'Document → template rules' },
-      { name: 'News', desc: 'Announcements & posts' },
-      { name: 'Broadcasts', desc: 'System & per-unit notices' },
+      { nameKey: 'nav.reportTemplates', descKey: 'pages.landing.descReportTemplates' },
+      { nameKey: 'pages.landing.itemPrintMapping', descKey: 'pages.landing.descPrintMapping' },
+      { nameKey: 'nav.news', descKey: 'pages.landing.descNews' },
+      { nameKey: 'nav.broadcasts', descKey: 'pages.landing.descBroadcasts' },
     ],
   },
   {
-    label: 'Platform',
-    caption: 'Access, clients, and administration.',
+    labelKey: 'navGroup.platform',
+    captionKey: 'pages.landing.captionPlatform',
     items: [
-      { name: 'Applications', desc: 'API clients (x-app-id)' },
-      { name: 'Roles & Access', desc: 'Permissions & platform RBAC' },
-      { name: 'Super Admins', desc: 'Top-level administration' },
+      { nameKey: 'nav.applications', descKey: 'pages.landing.descApplications' },
+      { nameKey: 'pages.landing.itemRolesAccess', descKey: 'pages.landing.descRolesAccess' },
+      { nameKey: 'nav.superAdmins', descKey: 'pages.landing.descSuperAdmins' },
     ],
   },
 ];
 
 const Landing: React.FC = () => {
+  const { t } = useI18n();
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -65,7 +70,7 @@ const Landing: React.FC = () => {
     return (
       <div
         role="status"
-        aria-label="Loading"
+        aria-label={t('pages.landing.loading')}
         className="min-h-dvh flex items-center justify-center bg-background"
       >
         <div className="space-y-4 text-center">
@@ -73,7 +78,7 @@ const Landing: React.FC = () => {
             C
           </div>
           <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">{t('pages.landing.loading')}</p>
         </div>
       </div>
     );
@@ -88,14 +93,14 @@ const Landing: React.FC = () => {
             C
           </div>
           <div className="leading-none">
-            <div className="text-base font-bold tracking-tight text-foreground">Carmen Platform</div>
+            <div className="text-base font-bold tracking-tight text-foreground">{t('pages.landing.brand')}</div>
             <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-              Operations console
+              {t('pages.landing.console')}
             </div>
           </div>
         </div>
         <Button asChild variant="outline" className="bg-transparent">
-          <Link to="/login">Sign in</Link>
+          <Link to="/login">{t('pages.landing.signIn')}</Link>
         </Button>
       </header>
 
@@ -111,20 +116,19 @@ const Landing: React.FC = () => {
           <div className="container relative mx-auto px-4 pt-14 pb-16 sm:pt-20 sm:pb-20">
             <div className="max-w-3xl">
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.28em] text-primary">
-                Operations console
+                {t('pages.landing.console')}
               </p>
               <h1 className="text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl">
-                Run the whole operation from{' '}
-                <span className="text-primary">one console.</span>
+                {t('pages.landing.heroTitle')}{' '}
+                <span className="text-primary">{t('pages.landing.heroTitleAccent')}</span>
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Carmen brings your clusters, business units, users, and the documents
-                that keep them running into a single admin platform.
+                {t('pages.landing.heroBody')}
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <Button asChild className="gap-2 px-6">
                   <Link to="/login">
-                    Sign in
+                    {t('pages.landing.signIn')}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -132,7 +136,7 @@ const Landing: React.FC = () => {
                   to="/changelog"
                   className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  See what's new
+                  {t('pages.landing.whatsNew')}
                 </Link>
               </div>
             </div>
@@ -142,25 +146,25 @@ const Landing: React.FC = () => {
         {/* Operations index — what the console governs, laid out like its own contents */}
         <section className="container mx-auto px-4 pb-20 sm:pb-28">
           <p className="mb-8 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-            Inside the console
+            {t('pages.landing.insideConsole')}
           </p>
           <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 md:grid-cols-3">
             {groups.map((group) => (
-              <div key={group.label} className="border-t border-border pt-5">
+              <div key={group.labelKey} className="border-t border-border pt-5">
                 <div className="flex items-baseline justify-between">
                   <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    {group.label}
+                    {t(group.labelKey)}
                   </h2>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {String(group.items.length).padStart(2, '0')}
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{group.caption}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t(group.captionKey)}</p>
                 <ul className="mt-5 space-y-4">
                   {group.items.map((item) => (
-                    <li key={item.name} className="flex flex-col">
-                      <span className="text-sm font-medium text-foreground">{item.name}</span>
-                      <span className="text-xs text-muted-foreground">{item.desc}</span>
+                    <li key={item.nameKey} className="flex flex-col">
+                      <span className="text-sm font-medium text-foreground">{t(item.nameKey)}</span>
+                      <span className="text-xs text-muted-foreground">{t(item.descKey)}</span>
                     </li>
                   ))}
                 </ul>
@@ -182,10 +186,10 @@ const Landing: React.FC = () => {
             )}
           </div>
           <p className="text-center text-xs text-muted-foreground sm:text-right">
-            design by @carmensoftware {new Date().getFullYear()}
+            {t('pages.landing.designBy')} {new Date().getFullYear()}
             {import.meta.env.REACT_APP_BUILD_DATE && (
               <span className="ml-2 text-muted-foreground/70">
-                · build {import.meta.env.REACT_APP_BUILD_DATE}
+                · {t('pages.landing.build')} {import.meta.env.REACT_APP_BUILD_DATE}
               </span>
             )}
           </p>

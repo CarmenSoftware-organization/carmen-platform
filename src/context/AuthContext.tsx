@@ -6,6 +6,7 @@ import clusterAdminService from '../services/clusterAdminService';
 import type { User, LoginCredentials, LoginResult, LoginResponse, AuthContextValue, EffectivePermissions, AdminScope } from '../types';
 import { checkPermission, checkPlatformAuthority } from '../utils/permissions';
 import { clearListViewState } from '../utils/clearListViewState';
+import { useI18n } from '../hooks/useI18n';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -16,6 +17,8 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // I18nProvider ครอบ AuthProvider ใน App.tsx จึงเรียก useI18n ตรงนี้ได้
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginResponse, setLoginResponse] = useState<LoginResponse | null>(null);
@@ -146,7 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = loginData.access_token;
 
       if (!token) {
-        throw new Error('No token received from server');
+        throw new Error(t('login.noToken'));
       }
 
       // Authenticate the session first so the permission/count requests are authorized.
@@ -179,7 +182,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAdminScope(null);
         return {
           success: false,
-          error: 'Access Denied. You are not authorized to access this platform.',
+          error: t('login.accessDeniedPlatform'),
         };
       }
 
@@ -213,17 +216,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else if (err.message) {
           devMessage += err.message;
         } else {
-          devMessage += 'Unknown error';
+          devMessage += t('error.unknown');
         }
         return { success: false, error: devMessage };
       }
 
       // Production: generic messages only
-      let errorMessage = 'Unable to login. Please try again later.';
+      let errorMessage = t('login.unableToLogin');
       if (err.response?.status === 401) {
-        errorMessage = 'Invalid email/username or password.';
+        errorMessage = t('login.invalidCredentials');
       } else if (err.response?.status === 429) {
-        errorMessage = 'Too many login attempts. Please try again later.';
+        errorMessage = t('login.tooManyAttempts');
       }
       return { success: false, error: errorMessage };
     }

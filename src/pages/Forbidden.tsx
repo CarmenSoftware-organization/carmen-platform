@@ -6,6 +6,7 @@ import { StatusPage } from '../components/StatusPage';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
 import { useBackOrFallback } from '../hooks/useBackOrFallback';
+import { useI18n } from '../hooks/useI18n';
 
 /**
  * 403. Reached two ways, both of which guarantee an authenticated user:
@@ -18,6 +19,7 @@ import { useBackOrFallback } from '../hooks/useBackOrFallback';
  * a contract, not a wording choice.
  */
 const Forbidden: React.FC = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { hasPlatformAuthority, hasClusterAdminScope } = useAuth();
   // Only a user who is *confined* to the cluster-admin space goes there. A user with neither
@@ -33,19 +35,19 @@ const Forbidden: React.FC = () => {
         icon={ShieldX}
         tone="danger"
         code="403"
-        title="Access Denied"
-        description="You don't have permission to access this page."
+        title={t('pages.statusPage.forbiddenTitle')}
+        description={t('pages.statusPage.forbiddenBody')}
         actions={
           <>
             <Button variant="outline" onClick={goBack}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
+              {t('pages.statusPage.goBack')}
             </Button>
             <Button variant="ghost" onClick={() => navigate(home)}>
               {isClusterAdminOnly
                 ? <Network className="mr-2 h-4 w-4" />
                 : <LayoutDashboard className="mr-2 h-4 w-4" />}
-              {isClusterAdminOnly ? 'Go to Cluster Admin' : 'Go to Dashboard'}
+              {isClusterAdminOnly ? t('pages.statusPage.goToClusterAdmin') : t('pages.statusPage.goToDashboard')}
             </Button>
           </>
         }
