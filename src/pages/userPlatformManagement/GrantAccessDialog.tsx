@@ -12,6 +12,7 @@ import { parseApiError } from '../../utils/errorParser';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UserOption, PlatformUserScope } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
@@ -26,6 +27,7 @@ interface GrantAccessDialogProps {
 export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
   open, onOpenChange, onGranted,
 }) => {
+  const { t } = useI18n();
   const [user, setUser] = useState<UserOption | null>(null);
   const [roleOptions, setRoleOptions] = useState<{ id: string; name: string }[]>([]);
   const [clusterOptions, setClusterOptions] = useState<{ id: string; name: string }[]>([]);
@@ -81,9 +83,9 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!user) { toast.error('Select a user'); return; }
-    if (selectedRoleIds.length === 0) { toast.error('Select at least one role'); return; }
-    if (scopeType === 'cluster' && !clusterId) { toast.error('Select a cluster'); return; }
+    if (!user) { toast.error(t('pages.userPlatform.selectUserError')); return; }
+    if (selectedRoleIds.length === 0) { toast.error(t('pages.userPlatform.selectRoleError')); return; }
+    if (scopeType === 'cluster' && !clusterId) { toast.error(t('pages.userPlatform.selectClusterError')); return; }
 
     setSaving(true);
     setConflictRoleIds([]);
@@ -91,7 +93,7 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
       const scope: PlatformUserScope =
         scopeType === 'cluster' ? { type: 'cluster', cluster_id: clusterId } : { type: 'platform' };
       await userPlatformService.assignBulk(user.id, { role_ids: selectedRoleIds, scope });
-      toast.success('Access granted');
+      toast.success(t('pages.userPlatform.accessGranted'));
       onOpenChange(false);
       pickerOpenRef.current = false;
       onGranted();
@@ -114,18 +116,18 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
         onEscapeKeyDown={(e) => { if (pickerOpenRef.current) e.preventDefault(); }}
       >
         <DialogHeader>
-          <DialogTitle>Grant platform access</DialogTitle>
+          <DialogTitle>{t('pages.userPlatform.grantTitle')}</DialogTitle>
           <DialogDescription>
-            Assign platform roles to a user. Every role in this request gets the same scope.
+            {t('pages.userPlatform.grantDescription')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="grant_user">User</Label>
+            <Label htmlFor="grant_user">{t('pages.userPlatform.userLabel')}</Label>
             <UserPicker
               id="grant_user"
-              ariaLabel="User to grant access to"
+              ariaLabel={t('pages.userPlatform.userPickerAria')}
               value={user}
               onChange={setUser}
               onDropdownOpenChange={(o) => { pickerOpenRef.current = o; }}
@@ -134,10 +136,10 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Roles</Label>
+            <Label>{t('pages.userPlatform.rolesLabel')}</Label>
             <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
               {roleOptions.length === 0 ? (
-                <p className="text-muted-foreground p-2 text-sm">No platform roles available.</p>
+                <p className="text-muted-foreground p-2 text-sm">{t('pages.userPlatform.noPlatformRoles')}</p>
               ) : roleOptions.map((role) => (
                 <label
                   key={role.id}
@@ -154,7 +156,7 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
                     {role.name}
                   </span>
                   {conflictRoleIds.includes(role.id) && (
-                    <span className="text-destructive text-xs">Already granted</span>
+                    <span className="text-destructive text-xs">{t('pages.userPlatform.alreadyGranted')}</span>
                   )}
                 </label>
               ))}
@@ -162,7 +164,7 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="grant_scope">Scope</Label>
+            <Label htmlFor="grant_scope">{t('pages.userPlatform.scopeLabel')}</Label>
             <select
               id="grant_scope"
               value={scopeType}
@@ -174,14 +176,14 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
               disabled={saving}
               className={selectClassName}
             >
-              <option value="platform">Platform-wide</option>
-              <option value="cluster">A specific cluster</option>
+              <option value="platform">{t('pages.userPlatform.platformWide')}</option>
+              <option value="cluster">{t('pages.userPlatform.scopeCluster')}</option>
             </select>
           </div>
 
           {scopeType === 'cluster' && (
             <div className="space-y-2">
-              <Label htmlFor="grant_cluster">Cluster</Label>
+              <Label htmlFor="grant_cluster">{t('pages.userPlatform.clusterLabel')}</Label>
               <select
                 id="grant_cluster"
                 value={clusterId}
@@ -189,7 +191,7 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
                 disabled={saving}
                 className={selectClassName}
               >
-                <option value="">Select cluster…</option>
+                <option value="">{t('pages.userPlatform.selectCluster')}</option>
                 {clusterOptions.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -200,13 +202,13 @@ export const GrantAccessDialog: React.FC<GrantAccessDialogProps> = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={saving}>
             {saving
               ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               : <ShieldCheck className="mr-2 h-4 w-4" />}
-            {saving ? 'Granting…' : 'Grant access'}
+            {saving ? t('pages.userPlatform.granting') : t('pages.userPlatform.grantAccess')}
           </Button>
         </DialogFooter>
       </DialogContent>

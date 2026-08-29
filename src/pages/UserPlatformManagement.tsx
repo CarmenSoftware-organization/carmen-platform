@@ -31,6 +31,7 @@ import Can from '../components/Can';
 import { normalizeAudit } from '../utils/audit';
 import type { PaginateParams, PlatformUserRow, PlatformUserRegistrySummary } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useI18n } from '../hooks/useI18n';
 
 const selectClassName =
   'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
@@ -53,6 +54,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const UserPlatformManagement: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [rows, setRows] = useState<PlatformUserRow[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -128,11 +130,11 @@ const UserPlatformManagement: React.FC = () => {
       setRows([]);
       setTotalRows(0);
       setSummary(null);
-      toast.error('Failed to load platform users', { description: message });
+      toast.error(t('pages.userPlatform.loadFailed'), { description: message });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchRows(paginate);
@@ -252,8 +254,8 @@ const UserPlatformManagement: React.FC = () => {
         failed.push(role.role_name || role.role_id);
       }
     }
-    if (failed.length === 0) toast.success('Access revoked');
-    else toast.error(`Could not revoke: ${failed.join(', ')}`);
+    if (failed.length === 0) toast.success(t('pages.userPlatform.accessRevoked'));
+    else toast.error(t('pages.userPlatform.revokeFailed', { roles: failed.join(', ') }));
     setRevokeTarget(null);
     fetchRows(paginate);
   };
@@ -264,32 +266,32 @@ const UserPlatformManagement: React.FC = () => {
       r.roles.map((role) => ({
         username: r.username ?? '',
         email: r.email ?? '',
-        is_active: r.is_active ? 'Active' : 'Inactive',
+        is_active: r.is_active ? t('common.status.active') : t('common.status.inactive'),
         role: role.role_name ?? role.role_id,
         scope: role.scope.type === 'platform'
-          ? 'Platform'
+          ? t('pages.userPlatform.scopePlatform')
           : (role.scope.cluster_name || role.scope.cluster_id),
         granted_at: normalizeAudit(role).created?.at ?? '',
         granted_by: normalizeAudit(role).created?.name ?? '',
       })),
     );
     const csv = generateCSV(flat, [
-      { key: 'username', label: 'Username' },
-      { key: 'email', label: 'Email' },
-      { key: 'is_active', label: 'Status' },
-      { key: 'role', label: 'Role' },
-      { key: 'scope', label: 'Scope' },
-      { key: 'granted_at', label: 'Granted at' },
-      { key: 'granted_by', label: 'Granted by' },
+      { key: 'username', label: t('common.field.username') },
+      { key: 'email', label: t('common.field.email') },
+      { key: 'is_active', label: t('common.status.label') },
+      { key: 'role', label: t('pages.userPlatform.csvRole') },
+      { key: 'scope', label: t('pages.userPlatform.csvScope') },
+      { key: 'granted_at', label: t('pages.userPlatform.csvGrantedAt') },
+      { key: 'granted_by', label: t('pages.userPlatform.csvGrantedBy') },
     ]);
     downloadCSV(csv, `user-platform-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<PlatformUserRow, unknown>[]>(() => [
     {
       accessorKey: 'username',
-      header: 'User',
+      header: t('pages.userPlatform.columnUser'),
       meta: { card: 'title' },
       cell: ({ row }) => {
         const r = row.original;
@@ -305,7 +307,7 @@ const UserPlatformManagement: React.FC = () => {
                 {name || r.username || '-'}
               </Link>
               {!r.is_active && (
-                <Badge variant="secondary" className="ml-2 text-xs">Inactive</Badge>
+                <Badge variant="secondary" className="ml-2 text-xs">{t('common.status.inactive')}</Badge>
               )}
               <div className="text-muted-foreground truncate text-xs">{r.email || '-'}</div>
             </div>
@@ -315,14 +317,14 @@ const UserPlatformManagement: React.FC = () => {
     },
     {
       id: 'roles',
-      header: 'Roles & scope',
+      header: t('pages.userPlatform.columnRolesScope'),
       enableSorting: false,
       cell: ({ row }) => <RoleChips roles={row.original.roles} />,
     },
     {
       accessorKey: 'last_granted_at',
       id: 'last_granted_at',
-      header: 'Granted',
+      header: t('pages.userPlatform.columnGranted'),
       meta: { headerClassName: 'w-44' },
       cell: ({ row }) => {
         const roles = row.original.roles;
@@ -338,7 +340,7 @@ const UserPlatformManagement: React.FC = () => {
         return (
           <div className="text-muted-foreground space-y-0.5 text-[11px] leading-tight">
             <div>{fmtDateTime(row.original.last_granted_at ?? undefined)}</div>
-            <div>{by ? `by ${by}` : 'by —'}</div>
+            <div>{by ? t('pages.userPlatform.grantedBy', { name: by }) : t('pages.userPlatform.grantedByUnknown')}</div>
           </div>
         );
       },
@@ -352,7 +354,7 @@ const UserPlatformManagement: React.FC = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8"
-              aria-label={`Actions for ${row.original.username || 'user'}`}>
+              aria-label={t('common.action.rowActions', { name: row.original.username || t('entity.user.lower') })}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -362,7 +364,7 @@ const UserPlatformManagement: React.FC = () => {
               className="cursor-pointer"
             >
               <Pencil className="mr-2 h-4 w-4" />
-              Manage roles
+              {t('pages.userPlatform.manageRoles')}
             </DropdownMenuItem>
             <Can permission="user_platform.manage">
               <DropdownMenuItem
@@ -370,31 +372,31 @@ const UserPlatformManagement: React.FC = () => {
                 className="cursor-pointer text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Revoke all access
+                {t('pages.userPlatform.revokeAllAccess')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
-  ], [navigate]);
+  ], [navigate, t]);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="User Platform"
-          subtitle="Users holding platform roles"
+          title={t('pages.userPlatform.title')}
+          subtitle={t('pages.userPlatform.subtitle')}
           actions={
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || rows.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="user_platform.manage">
                 <Button size="sm" onClick={() => setShowGrant(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Grant access
+                  {t('pages.userPlatform.grantAccess')}
                 </Button>
               </Can>
             </div>
@@ -417,14 +419,14 @@ const UserPlatformManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search users..."
+                placeholder={t('pages.userPlatform.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -442,7 +444,7 @@ const UserPlatformManagement: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Status</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearStatusFilter}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -452,7 +454,7 @@ const UserPlatformManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("true")}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes("false") ? "default" : "outline"}
@@ -460,21 +462,21 @@ const UserPlatformManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("false")}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Role</span>
+                        <span className="text-sm font-medium">{t('pages.userPlatform.roleFilterLabel')}</span>
                         {roleFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearRoleFilter}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearRoleFilter}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {roleOptions.length === 0 ? (
-                          <p className="text-muted-foreground text-xs">No platform roles available.</p>
+                          <p className="text-muted-foreground text-xs">{t('pages.userPlatform.noPlatformRoles')}</p>
                         ) : roleOptions.map((role) => (
                           <Button
                             key={role.id}
@@ -490,15 +492,15 @@ const UserPlatformManagement: React.FC = () => {
                     </div>
 
                     <div className="space-y-3">
-                      <Label htmlFor="scope_filter">Scope</Label>
+                      <Label htmlFor="scope_filter">{t('pages.userPlatform.scopeLabel')}</Label>
                       <select
                         id="scope_filter"
                         value={scopeFilter}
                         onChange={(e) => handleScopeFilter(e.target.value)}
                         className={selectClassName}
                       >
-                        <option value="">Any scope</option>
-                        <option value="platform">Platform-wide</option>
+                        <option value="">{t('pages.userPlatform.anyScope')}</option>
+                        <option value="platform">{t('pages.userPlatform.platformWide')}</option>
                         {clusterOptions.map((c) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
@@ -507,7 +509,7 @@ const UserPlatformManagement: React.FC = () => {
 
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -516,7 +518,7 @@ const UserPlatformManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {roleFilter.map((id) => (
                   <Badge key={`role-${id}`} variant="secondary" className="text-xs gap-1 pr-1">
                     {roleOptions.find((r) => r.id === id)?.name || id}
@@ -527,7 +529,9 @@ const UserPlatformManagement: React.FC = () => {
                 ))}
                 {scopeFilter && (
                   <Badge variant="secondary" className="text-xs gap-1 pr-1">
-                    {scopeFilter === 'platform' ? 'Platform-wide' : (clusterOptions.find((c) => c.id === scopeFilter)?.name || scopeFilter)}
+                    {scopeFilter === 'platform'
+                      ? t('pages.userPlatform.platformWide')
+                      : (clusterOptions.find((c) => c.id === scopeFilter)?.name || scopeFilter)}
                     <button onClick={() => handleScopeFilter('')} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
@@ -535,14 +539,14 @@ const UserPlatformManagement: React.FC = () => {
                 )}
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === "true" ? "Active" : "Inactive"}
+                    {s === "true" ? t('common.status.active') : t('common.status.inactive')}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -554,13 +558,13 @@ const UserPlatformManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Users}
-                emptyTitle="No one holds platform roles yet"
-                emptyDescription="Grant access to give someone a platform role."
+                emptyTitle={t('pages.userPlatform.emptyTitle')}
+                emptyDescription={t('pages.userPlatform.emptyDescription')}
                 addAction={
                   <Can permission="user_platform.manage">
                     <Button size="sm" onClick={() => setShowGrant(true)}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Grant access
+                      {t('pages.userPlatform.grantAccess')}
                     </Button>
                   </Can>
                 }
@@ -574,8 +578,8 @@ const UserPlatformManagement: React.FC = () => {
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading platform users">
-                    <div className="text-muted-foreground">Loading...</div>
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.userPlatform.loadingAria')}>
+                    <div className="text-muted-foreground">{t('common.busy.loading')}</div>
                   </div>
                 )}
                 <DataTable
@@ -602,13 +606,21 @@ const UserPlatformManagement: React.FC = () => {
       <ConfirmDialog
         open={!!revokeTarget}
         onOpenChange={(open) => { if (!open) setRevokeTarget(null); }}
-        title="Revoke all platform access"
+        title={t('pages.userPlatform.revokeAllTitle')}
         description={
           revokeTarget
-            ? `Remove all ${revokeTarget.roles.length} role assignment${revokeTarget.roles.length === 1 ? '' : 's'} from ${revokeTarget.username || revokeTarget.email}? They will no longer appear in this registry.`
+            ? (revokeTarget.roles.length === 1
+                ? t('pages.userPlatform.revokeAllConfirm', {
+                    count: revokeTarget.roles.length,
+                    name: revokeTarget.username || revokeTarget.email || '',
+                  })
+                : t('pages.userPlatform.revokeAllConfirmPlural', {
+                    count: revokeTarget.roles.length,
+                    name: revokeTarget.username || revokeTarget.email || '',
+                  }))
             : ''
         }
-        confirmText="Revoke all"
+        confirmText={t('pages.userPlatform.revokeAll')}
         confirmVariant="destructive"
         onConfirm={handleRevokeAll}
       />
