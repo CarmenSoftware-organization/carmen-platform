@@ -77,6 +77,11 @@ export const en = {
     reportTemplates: 'Report Templates',
     news: 'News',
     broadcasts: 'Broadcasts',
+    // เติมตอน browser pass ของ fix wave 2: /analytics กับ /activity-events ไม่เคยอยู่ใน
+    // SEGMENT_KEYS ของ Breadcrumbs.tsx เลย ตัว titleCase() จึงคืนคำอังกฤษให้ทุกภาษา —
+    // ป้ายบนหัวหน้ายังเป็น 'Activity Events' ทั้งที่ทั้งหน้าเป็นไทยแล้ว
+    usageAnalytics: 'Usage Analytics',
+    activityEvents: 'Activity Events',
     applications: 'Applications',
     platform: 'Platform',
     roles: 'Roles',

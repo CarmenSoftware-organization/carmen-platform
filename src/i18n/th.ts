@@ -76,6 +76,8 @@ export const th: Translations = {
     reportTemplates: 'เทมเพลตรายงาน',
     news: 'ข่าวสาร',
     broadcasts: 'ประกาศ',
+    usageAnalytics: 'สถิติการใช้งาน',
+    activityEvents: 'บันทึกกิจกรรม',
     applications: 'แอปพลิเคชัน',
     platform: 'Platform',
     roles: 'บทบาท',
