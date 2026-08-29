@@ -32,6 +32,7 @@ import {
   downloadText,
   type XmlValidation,
 } from '../utils/xml';
+import { useI18n } from '../hooks/useI18n';
 
 export interface XmlEditorProps {
   value: string;
@@ -93,6 +94,7 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
   readOnly = false,
   uploadAccept = '.xml,.txt',
 }) => {
+  const { t } = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -164,11 +166,11 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
   const handleFormat = () => {
     const formatted = formatXml(latestValueRef.current);
     if (formatted === latestValueRef.current) {
-      toast.info('Already formatted');
+      toast.info(t('components.xmlEditor.alreadyFormatted'));
       return;
     }
     replaceAll(formatted);
-    toast.success('XML formatted');
+    toast.success(t('components.xmlEditor.formatted'));
   };
 
   const handleCopy = async () => {
@@ -176,20 +178,20 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       await navigator.clipboard.writeText(latestValueRef.current);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast.success('Copied to clipboard');
+      toast.success(t('common.action.copiedToClipboard'));
     } catch {
-      toast.error('Copy failed');
+      toast.error(t('common.action.copyFailed'));
     }
   };
 
   const handleDownload = () => {
     if (!latestValueRef.current) {
-      toast.info('Nothing to download');
+      toast.info(t('components.xmlEditor.nothingToDownload'));
       return;
     }
     const name = filename || `${label.toLowerCase().replace(/\s+/g, '-')}.xml`;
     downloadText(latestValueRef.current, name);
-    toast.success(`Downloaded ${name}`);
+    toast.success(t('components.xmlEditor.downloaded', { name }));
   };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,7 +202,7 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       const text = reader.result as string;
       const formatted = formatXml(text);
       replaceAll(formatted);
-      toast.success(`${file.name} loaded`);
+      toast.success(t('components.xmlEditor.fileLoaded', { name: file.name }));
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -214,7 +216,7 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
   const confirmClear = () => {
     replaceAll('');
     setConfirmClearOpen(false);
-    toast.success('Cleared');
+    toast.success(t('components.xmlEditor.cleared'));
   };
 
   const lines = countLines(latestValueRef.current);
@@ -234,19 +236,19 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
                 onChange={handleUpload}
               />
               <Upload className="mr-1.5 h-3.5 w-3.5" />
-              Upload
+              {t('common.action.upload')}
             </label>
             <Button type="button" size="sm" variant="outline" className="h-8" onClick={handleFormat}>
               <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-              Format
+              {t('common.action.format')}
             </Button>
             <Button type="button" size="sm" variant="outline" className="h-8" onClick={handleCopy}>
               {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? t('common.action.copied') : t('common.action.copy')}
             </Button>
             <Button type="button" size="sm" variant="outline" className="h-8" onClick={handleDownload}>
               <Download className="mr-1.5 h-3.5 w-3.5" />
-              Download
+              {t('common.action.download')}
             </Button>
             <Button
               type="button"
@@ -256,7 +258,7 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
               onClick={handleClear}
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Clear
+              {t('common.action.clear')}
             </Button>
           </div>
         </div>
@@ -265,11 +267,11 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
         <div className="flex items-center gap-1.5">
           <Button type="button" size="sm" variant="outline" className="h-8" onClick={handleCopy}>
             {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? t('common.action.copied') : t('common.action.copy')}
           </Button>
           <Button type="button" size="sm" variant="outline" className="h-8" onClick={handleDownload}>
             <Download className="mr-1.5 h-3.5 w-3.5" />
-            Download
+            {t('common.action.download')}
           </Button>
         </div>
       )}
@@ -283,22 +285,24 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
         {validation.valid ? (
           <div className="flex items-center gap-2 text-success">
             <Check className="h-3.5 w-3.5" />
-            <span>Valid XML</span>
+            <span>{t('components.xmlEditor.validXml')}</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
               {validation.line
-                ? `Line ${validation.line}${validation.column ? `, col ${validation.column}` : ''}: `
+                ? `${t('components.xmlEditor.lineLabel', { line: validation.line })}${
+                    validation.column ? t('components.xmlEditor.colLabel', { column: validation.column }) : ''
+                  }: `
                 : ''}
-              {validation.message || 'Invalid XML'}
+              {validation.message || t('components.xml.invalidXml')}
             </span>
           </div>
         )}
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Badge variant="outline" className="text-xs">
-            {lines} lines
+            {t('components.xmlEditor.linesCount', { count: lines })}
           </Badge>
           <Badge variant="outline" className="text-xs">
             {formatBytes(size)}
@@ -308,10 +312,10 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
       <ConfirmDialog
         open={confirmClearOpen}
         onOpenChange={setConfirmClearOpen}
-        title="Clear editor?"
-        description="This removes all content from the editor. You can undo this with Ctrl/⌘+Z."
-        confirmText="Clear"
-        cancelText="Cancel"
+        title={t('components.xmlEditor.clearDialogTitle')}
+        description={t('components.xmlEditor.clearDialogDescription')}
+        confirmText={t('common.action.clear')}
+        cancelText={t('common.cancel')}
         confirmVariant="destructive"
         onConfirm={confirmClear}
       />

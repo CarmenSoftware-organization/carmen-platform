@@ -3,6 +3,8 @@ import { AlertCircle, Eye } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { useI18n } from '../hooks/useI18n';
+import type { TFunction } from '../i18n/types';
 
 export interface DialogPreviewProps {
   xml: string;
@@ -30,9 +32,9 @@ function cleanDataSource(src: string | null | undefined): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function parseDialogXml(xml: string): ParseResult {
+function parseDialogXml(xml: string, t: TFunction): ParseResult {
   if (!xml.trim()) {
-    return { ok: false, error: 'No XML provided', rows: [], counts: {} };
+    return { ok: false, error: t('components.dialogPreview.noXmlProvided'), rows: [], counts: {} };
   }
   let doc: Document;
   try {
@@ -40,7 +42,7 @@ function parseDialogXml(xml: string): ParseResult {
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : 'Parse error',
+      error: e instanceof Error ? e.message : t('components.dialogPreview.parseError'),
       rows: [],
       counts: {},
     };
@@ -49,7 +51,7 @@ function parseDialogXml(xml: string): ParseResult {
   if (parserError) {
     return {
       ok: false,
-      error: (parserError.textContent || 'Invalid XML')
+      error: (parserError.textContent || t('components.xml.invalidXml'))
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 240),
@@ -61,7 +63,7 @@ function parseDialogXml(xml: string): ParseResult {
   if (!root || root.tagName !== 'Dialog') {
     return {
       ok: false,
-      error: 'Preview requires a <Dialog> root element',
+      error: t('components.dialogPreview.requiresDialogRoot'),
       rows: [],
       counts: {},
     };
@@ -89,7 +91,7 @@ function parseDialogXml(xml: string): ParseResult {
   return { ok: true, rows, counts };
 }
 
-function renderControl(el: Element): React.ReactNode {
+function renderControl(el: Element, t: TFunction): React.ReactNode {
   const tag = el.tagName;
   const name = el.getAttribute('Name') || '';
   if (tag === 'Date') {
@@ -102,7 +104,11 @@ function renderControl(el: Element): React.ReactNode {
         disabled
         className="flex h-9 w-full rounded-md border border-input bg-muted/30 px-3 py-1 text-sm text-muted-foreground shadow-xs"
       >
-        <option>Select {source || 'value'}…</option>
+        <option>
+          {t('components.dialogPreview.selectPlaceholder', {
+            source: source || t('components.dialogPreview.genericValue'),
+          })}
+        </option>
       </select>
     );
   }
@@ -124,7 +130,8 @@ function renderControl(el: Element): React.ReactNode {
 }
 
 export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
-  const parsed = useMemo(() => parseDialogXml(xml), [xml]);
+  const { t } = useI18n();
+  const parsed = useMemo(() => parseDialogXml(xml, t), [xml, t]);
 
   if (!parsed.ok) {
     return (
@@ -132,7 +139,7 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 shrink-0 text-destructive" />
           <div>
-            <div className="text-sm font-medium text-destructive">Preview unavailable</div>
+            <div className="text-sm font-medium text-destructive">{t('components.dialogPreview.previewUnavailable')}</div>
             <div className="mt-1 text-xs text-muted-foreground">{parsed.error}</div>
           </div>
         </div>
@@ -154,9 +161,11 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm">
           <Eye className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">Dialog Preview</span>
+          <span className="font-medium">{t('components.dialogPreview.title')}</span>
           <Badge variant="secondary" className="text-xs">
-            {fieldCount} {fieldCount === 1 ? 'field' : 'fields'}
+            {fieldCount === 1
+              ? t('components.dialogPreview.fieldCountSingular', { count: fieldCount })
+              : t('components.dialogPreview.fieldCountPlural', { count: fieldCount })}
           </Badge>
         </div>
         <div className="flex flex-wrap gap-1">{countBadges}</div>
@@ -169,15 +178,15 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
                 <Label className="text-xs text-muted-foreground">{row.label || '\u00A0'}</Label>
               )}
               {row.element ? (
-                renderControl(row.element)
+                renderControl(row.element, t)
               ) : (
-                <div className="text-xs text-muted-foreground italic">(no control)</div>
+                <div className="text-xs text-muted-foreground italic">{t('components.dialogPreview.noControl')}</div>
               )}
             </div>
           ))}
         </div>
         <p className="mt-4 text-[11px] text-muted-foreground italic">
-          Preview only. Controls are disabled and lookup data is not loaded.
+          {t('components.dialogPreview.previewOnlyNote')}
         </p>
       </div>
     </div>
