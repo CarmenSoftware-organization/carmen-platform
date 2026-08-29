@@ -4,6 +4,7 @@ import { Badge } from './ui/badge';
 import { actionRank } from '../utils/permissionOrder';
 import { resourceRank } from './nav/platformNav';
 import { cn } from '../lib/utils';
+import { useI18n } from '../hooks/useI18n';
 
 interface PermissionPickerProps {
   catalog: PermissionCatalogItem[];
@@ -13,6 +14,7 @@ interface PermissionPickerProps {
 }
 
 const PermissionPicker: React.FC<PermissionPickerProps> = ({ catalog, value, onChange, disabled }) => {
+  const { t } = useI18n();
   // group by resource, preserving catalog order
   const groups = useMemo(() => {
     const map = new Map<string, PermissionCatalogItem[]>();
@@ -64,7 +66,7 @@ const PermissionPicker: React.FC<PermissionPickerProps> = ({ catalog, value, onC
                   className="text-xs text-primary hover:underline"
                   onClick={(e) => { e.preventDefault(); toggleAll(resource, keys); }}
                 >
-                  {allOn ? 'Clear all' : 'Select all'}
+                  {allOn ? t('common.action.clearAll') : t('common.action.selectAll')}
                 </button>
               )}
             </summary>

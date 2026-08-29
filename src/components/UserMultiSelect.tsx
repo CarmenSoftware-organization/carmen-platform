@@ -4,6 +4,7 @@ import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
 import { useUserSearch } from '../hooks/useUserSearch';
 import type { UserOption } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface UserMultiSelectProps {
   value: UserOption[];
@@ -17,11 +18,13 @@ interface UserMultiSelectProps {
 export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
   value,
   onChange,
-  placeholder = 'Search users by name or email',
+  placeholder,
   disabled = false,
   error = false,
   id,
 }) => {
+  const { t } = useI18n();
+  const effectivePlaceholder = placeholder ?? t('components.userMultiSelect.defaultPlaceholder');
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -84,7 +87,7 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
                   removeUser(u.id);
                 }}
                 className="ml-0.5 rounded hover:text-destructive"
-                aria-label={`Remove ${u.name}`}
+                aria-label={t('common.action.removeAria', { name: u.name })}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -105,7 +108,7 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={handleKeyDown}
-            placeholder={value.length === 0 ? placeholder : ''}
+            placeholder={value.length === 0 ? effectivePlaceholder : ''}
             className="flex-1 bg-transparent outline-hidden placeholder:text-muted-foreground"
           />
         </div>
@@ -115,7 +118,7 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
         <div className="absolute z-50 mt-1 w-full rounded-md border border-input bg-popover shadow-md max-h-64 overflow-y-auto">
           {loading && (
             <div className="px-3 py-4 text-sm text-muted-foreground flex items-center gap-2">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('components.userSearch.searchingEllipsis')}
             </div>
           )}
           {!loading && searchError && (
@@ -123,7 +126,9 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
           )}
           {!loading && !searchError && results.length === 0 && (
             <div className="px-3 py-4 text-sm text-muted-foreground">
-              {query ? `No users match "${query}"` : 'Type to search users'}
+              {query
+                ? t('components.userSearch.noMatch', { query })
+                : t('components.userSearch.typeToSearch')}
             </div>
           )}
           {!loading && !searchError && results.length > 0 && (
@@ -148,7 +153,9 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
                         )}
                       </span>
                       {alreadySelected && (
-                        <span className="text-xs text-muted-foreground shrink-0">Selected</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {t('components.userMultiSelect.alreadySelected')}
+                        </span>
                       )}
                     </button>
                   </li>
