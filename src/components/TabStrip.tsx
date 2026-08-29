@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
+import { useI18n } from '../hooks/useI18n';
 
 export interface TabStripItem<Id extends string> {
   id: Id;
@@ -26,6 +27,7 @@ interface TabStripProps<Id extends string> {
  * on the other. What is genuinely shared is the drawing, which lives here alone.
  */
 export function TabStrip<Id extends string>({ tabs, value, onChange }: TabStripProps<Id>) {
+  const { t } = useI18n();
   const stripRef = useRef<HTMLDivElement>(null);
 
   // Switching tabs from deep inside a long one (Settings runs several screens) otherwise
@@ -49,22 +51,22 @@ export function TabStrip<Id extends string>({ tabs, value, onChange }: TabStripP
         ref={stripRef}
         className="scroll-mt-20 flex h-auto w-full items-stretch justify-start overflow-x-auto rounded-none bg-transparent p-0"
       >
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <TabsTrigger
-            key={t.id}
-            value={t.id}
+            key={tab.id}
+            value={tab.id}
             className="data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground shrink-0 rounded-none border-b-2 border-transparent px-3 py-2.5 data-[state=active]:shadow-none"
           >
-            {t.label}
-            {t.count !== undefined && (
+            {tab.label}
+            {tab.count !== undefined && (
               <Badge variant="outline" className="ml-2 text-xs">
-                {t.count}
+                {tab.count}
               </Badge>
             )}
-            {t.hasError && (
+            {tab.hasError && (
               <span
                 className="bg-destructive ml-1.5 h-1.5 w-1.5 rounded-full"
-                aria-label="Has errors"
+                aria-label={t('common.state.hasErrors')}
               />
             )}
           </TabsTrigger>

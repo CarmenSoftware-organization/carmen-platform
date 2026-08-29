@@ -186,8 +186,8 @@ const BusinessUnitForm: React.FC = () => {
     const base: ClusterBuTab[] = [
       { id: 'overview', label: t('pages.clusterAdmin.overview') },
       { id: 'people', label: t('pages.clusterAdmin.people'), count: users.buUsers.length },
-      { id: 'hotel', label: t('pages.clusterAdmin.hotel') },
-      { id: 'company', label: t('pages.clusterAdmin.company') },
+      { id: 'hotel', label: t('common.section.hotel') },
+      { id: 'company', label: t('common.section.company') },
       { id: 'configuration', label: t('common.section.configuration') },
     ];
     return base.map((tab) => ({ ...tab, hasError: errored.includes(tab.id) }));
@@ -381,7 +381,7 @@ const BusinessUnitForm: React.FC = () => {
   const getCalculationMethodLabel = (method: string): string => {
     switch (method) {
       case 'average': return t('common.option.average');
-      case 'fifo': return t('pages.clusterAdmin.fifo');
+      case 'fifo': return t('common.option.fifo');
       default: return '-';
     }
   };
@@ -526,14 +526,14 @@ const BusinessUnitForm: React.FC = () => {
     },
     {
       id: 'hotel',
-      label: t('pages.clusterAdmin.hotel'),
+      label: t('common.section.hotel'),
       value:
         [formData.hotel_tel, formData.hotel_email].filter(Boolean).join(' · ') ||
         t('pages.clusterAdmin.noContactDetails'),
     },
     {
       id: 'company',
-      label: t('pages.clusterAdmin.company'),
+      label: t('common.section.company'),
       value:
         [formData.company_name, formData.tax_no && t('pages.clusterAdmin.taxLabel', { taxNo: formData.tax_no })]
           .filter(Boolean).join(' · ') || t('pages.clusterAdmin.notSet'),

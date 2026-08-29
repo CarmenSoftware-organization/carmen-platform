@@ -159,6 +159,12 @@ export const en = {
       unknown: 'Unknown',
     },
     action: {
+      // PageHeader.tsx's own back-link aria-label (i18n phase-2 slice-5 fix wave FIX 4):
+      // rendered inside the component's own render with no caller override point (same
+      // "caller cannot override" test BrandingImageUpload.tsx was fixed under), so it needs
+      // a shared home rather than a page-local key. Checked existing keys first — nothing
+      // held the bare word 'Back' — before adding this one.
+      back: 'Back',
       saveChanges: 'Save Changes',
       delete: 'Delete',
       remove: 'Remove',
@@ -296,13 +302,14 @@ export const en = {
       // BusinessUnitForm.tsx's (dead, defensive-only) code-required check — same shape as
       // the existing title/name entries above, added on demand rather than up front.
       code: 'Code',
-      // Promoted from pages.clusterAdmin.aliasLabel (i18n phase-2 slice-5 Task 1): this bare
-      // 'Alias' label recurs at 3 files across 2 slices — ClusterBuDocument.tsx
-      // (clusterAdmin, slice 4) plus BusinessUnitManagement.tsx's column header and
-      // BusinessUnitDocument.tsx's InlineField label (both slice 5, businessUnits) —
-      // clearing the promote-to-common bar. NOT the same key as aliasName ('Alias Name')
-      // above: that one is the Title-Case two-word CSV/full-form label; this is the bare
-      // single word used as a column header and a compact InlineField label — the same
+      // Promoted from pages.clusterAdmin.aliasLabel (i18n phase-2 slice-5 Task 1); the old
+      // key has been deleted and every former reader repointed here. Verified by grep for
+      // t('common.field.alias') across src/, excluding src/i18n/ and comment lines: 3 call
+      // sites in 3 files across 2 slices — ClusterBuDocument.tsx (clusterAdmin) plus
+      // BusinessUnitManagement.tsx's column header and BusinessUnitDocument.tsx's
+      // InlineField label (both businessUnits). NOT the same key as aliasName ('Alias
+      // Name') above: that one is the Title-Case two-word CSV/full-form label; this is the
+      // bare single word used as a column header and a compact InlineField label — the same
       // form-label/column-header register this whole namespace already covers. Thai copied
       // verbatim from pages.clusterAdmin.aliasLabel, unchanged.
       alias: 'Alias',
@@ -316,15 +323,16 @@ export const en = {
       configuration: 'Configuration',
       access: 'Access',
       // Promoted from pages.clusterAdmin.hotel / pages.clusterAdmin.company (i18n phase-2
-      // slice-5 Task 1): both are Group/tab section headings — see the doc comment that used
-      // to sit at pages.clusterAdmin.company explaining `company` is a SECTION heading for
-      // the whole company_* field group, NOT a reuse of common.field.company (the
-      // single-input field label, still unbound) — and byte-identical to this slice's own
-      // BusinessUnitDocument.tsx `<Group label="Hotel">` / `<Group label="Company">`
-      // headings. clusterAdmin already binds each at 2 files of its own (BusinessUnitForm.tsx
-      // tab labels, ClusterBuDocument.tsx Group headings); adding businessUnits' one file
-      // each clears the >=3-files-AND->=2-slices bar. Thai copied verbatim from the sibling
-      // keys, unchanged.
+      // slice-5 Task 1); both old keys have been deleted and every former reader repointed
+      // here. Both are Group/tab section headings — see the doc comment that used to sit at
+      // pages.clusterAdmin.company explaining `company` is a SECTION heading for the whole
+      // company_* field group, NOT a reuse of common.field.company (the single-input field
+      // label, still unbound). Verified by grep for each key across src/, excluding
+      // src/i18n/ and comment lines: each key has 4 call sites in 3 files across 2 slices —
+      // BusinessUnitForm.tsx (2 sites: tab label + hero label) and ClusterBuDocument.tsx (1
+      // site: Group heading) in clusterAdmin, plus BusinessUnitDocument.tsx's own Group
+      // heading (1 site) in businessUnits. Thai copied verbatim from the sibling keys,
+      // unchanged.
       hotel: 'Hotel',
       company: 'Company',
     },
@@ -339,13 +347,14 @@ export const en = {
       // A broadcast's scope of `system` means platform-wide; the theme's means
       // "follow the OS". English spells both "System"; Thai must not.
       system: 'System',
-      // Promoted from pages.clusterAdmin.fifo (i18n phase-2 slice-5 Task 1): the
-      // calculation-method option label recurs at 3 files across 2 slices —
-      // BusinessUnitForm.tsx (clusterAdmin, slice 4) plus BusinessUnitEdit.tsx's
-      // getCalculationMethodLabel() and CalculationSettingsSection.tsx's <option> (both
-      // slice 5, businessUnits) — clearing the promote bar. Thai copied verbatim from
-      // pages.clusterAdmin.fifo (identical to English; FIFO is not translated in either
-      // language).
+      // Promoted from pages.clusterAdmin.fifo (i18n phase-2 slice-5 Task 1); the old key
+      // has been deleted and its reader repointed here. Verified by grep for
+      // t('common.option.fifo') across src/, excluding src/i18n/ and comment lines: 3 call
+      // sites in 3 files across 2 slices — BusinessUnitForm.tsx (clusterAdmin) plus
+      // BusinessUnitEdit.tsx's getCalculationMethodLabel() and
+      // CalculationSettingsSection.tsx's <option> (both businessUnits). Thai copied
+      // verbatim from pages.clusterAdmin.fifo (identical to English; FIFO is not translated
+      // in either language).
       fifo: 'FIFO',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
@@ -367,13 +376,14 @@ export const en = {
       businessUnitsLabel: 'Business units',
       filters: 'Filters',
       default: 'Default',
-      // Promoted from pages.clusterAdmin.hq (i18n phase-2 slice-5 Task 1): the HQ badge/
-      // column value for the is_hq flag recurs at 5 files across 2 slices —
-      // BusinessUnitList.tsx, BuPropertyPlate.tsx, BuRankingCard.tsx, SeatsByBuTable.tsx
-      // (all clusterAdmin, slice 4) plus BusinessUnitDocument.tsx's hero Badge (slice 5,
-      // businessUnits) — clearing the promote bar by a wide margin. Thai copied verbatim
-      // from pages.clusterAdmin.hq (identical to English; HQ is an abbreviation, not
-      // translated in either language).
+      // Promoted from pages.clusterAdmin.hq (i18n phase-2 slice-5 Task 1); the old key has
+      // been deleted and every former reader repointed here. Verified by grep for
+      // t('common.label.hq') across src/, excluding src/i18n/ and comment lines: 8 call
+      // sites in 5 files across 2 slices — BusinessUnitList.tsx (4 sites), BuPropertyPlate.tsx,
+      // BuRankingCard.tsx and SeatsByBuTable.tsx (1 site each) in clusterAdmin, plus
+      // BusinessUnitDocument.tsx's hero Badge (1 site) in businessUnits. Thai copied
+      // verbatim from pages.clusterAdmin.hq (identical to English; HQ is an abbreviation,
+      // not translated in either language).
       hq: 'HQ',
     },
     state: {
@@ -396,6 +406,11 @@ export const en = {
       daysLeft: '{{count}} days left',
       unsavedChanges: 'Unsaved changes',
       noChanges: 'No changes',
+      // TabStrip.tsx's own error-dot aria-label (i18n phase-2 slice-5 fix wave FIX 4):
+      // rendered inside the component's own render with no caller override point, same
+      // reasoning as common.action.back above. Same register as unsavedChanges/noChanges
+      // above — a short state phrase, not a field name.
+      hasErrors: 'Has errors',
       unknownUser: 'Unknown user',
       noBusinessUnits: 'No business units',
       noBusinessUnitsYet: 'No business units yet',
@@ -1320,10 +1335,7 @@ export const en = {
     // company_* field group. Same class of mismatch the phase-2 final review already fixed
     // once for entity.* vs common.label.*.
     clusterAdmin: {
-      hotel: 'Hotel',
-      company: 'Company',
       people: 'People',
-      hq: 'HQ',
       viewLicenses: 'View licenses',
       clusterHasNoBusinessUnitsYet: 'This cluster has no business units yet.',
       inviteToAccessHint: 'Invite a user to give them access to this cluster.',
@@ -1374,9 +1386,6 @@ export const en = {
       loadFailedDetail: 'Failed to load business unit: ',
       updateFailed: 'Failed to update business unit',
       copiedHotelAddressToCompany: 'Copied hotel address to company address',
-      // Calculation-method option label. 'Average' reuses common.option.average; FIFO has
-      // no existing key anywhere in the catalog (checked before adding).
-      fifo: 'FIFO',
       overview: 'Overview',
       regionalFormats: 'Regional formats',
       timezone: 'Timezone',
@@ -1505,9 +1514,6 @@ export const en = {
       // --- Task 4: ClusterBuDocument.tsx ---
       elsewhere: 'Elsewhere',
       addressLabel: 'Address',
-      // NOT a byte match for common.field.aliasName ('Alias Name') — this file's InlineField
-      // label is the bare word.
-      aliasLabel: 'Alias',
       logoLabel: 'Logo',
       hotelNameLabel: 'Hotel name',
       // Shared by hotel_tel and company_tel — both InlineField calls pass the identical
@@ -2068,6 +2074,12 @@ export const en = {
       notSetOption: '— Not set —',
       // "Schema" is a database-technical term, same register as common.label.databasePool
       // ('Database Pool', left untranslated in Thai) — kept identical in both languages.
+      // Byte-duplicates common.validation.schema ('Schema', line ~473) — that is
+      // deliberate, not an oversight: same split as common.field.startDate /
+      // common.validation.startDate above (see the comment there). This is the form LABEL
+      // register (Title Case, used as a form label / column header); common.validation.schema
+      // is the default field NAME substituted into a validation message when no `label` is
+      // passed. Different job, same English word, kept as two keys rather than merged.
       schemaLabel: 'Schema',
       // Format-example placeholder, not prose — identical value in both languages, same
       // rationale as pages.clusterAdmin.emailPlaceholder ('name@example.com').

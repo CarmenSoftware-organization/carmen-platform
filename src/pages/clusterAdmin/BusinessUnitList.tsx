@@ -203,12 +203,12 @@ const BusinessUnitList: React.FC = () => {
     const rows = items.map((bu) => ({
       ...bu,
       ...auditCsvFields(normalizeAudit(bu)),
-      is_hq: bu.is_hq ? t('pages.clusterAdmin.hq') : '',
+      is_hq: bu.is_hq ? t('common.label.hq') : '',
       is_active: bu.is_active ? t('common.status.active') : t('common.status.inactive'),
     }));
     const csv = generateCSV(rows, [
       { key: 'name', label: t('common.field.name') },
-      { key: 'is_hq', label: t('pages.clusterAdmin.hq') },
+      { key: 'is_hq', label: t('common.label.hq') },
       { key: 'is_active', label: t('common.status.label') },
       { key: 'created_at', label: t('common.audit.createdAt') },
       { key: 'created_by', label: t('common.audit.createdBy') },
@@ -260,9 +260,9 @@ const BusinessUnitList: React.FC = () => {
       },
       {
         accessorKey: 'is_hq',
-        header: t('pages.clusterAdmin.hq'),
+        header: t('common.label.hq'),
         meta: { headerClassName: 'w-20', cellClassName: 'w-20' },
-        cell: ({ row }) => (row.original.is_hq ? <Badge variant="secondary">{t('pages.clusterAdmin.hq')}</Badge> : null),
+        cell: ({ row }) => (row.original.is_hq ? <Badge variant="secondary">{t('common.label.hq')}</Badge> : null),
         enableSorting: false,
       },
       {

@@ -159,6 +159,9 @@ export const th: Translations = {
       unknown: 'ไม่ทราบ',
     },
     action: {
+      // Promoted from PageHeader.tsx's own back-link aria-label (i18n phase-2 slice-5 fix
+      // wave FIX 4) — see en.ts for the reasoning.
+      back: 'กลับ',
       saveChanges: 'บันทึกการแก้ไข',
       delete: 'ลบ',
       remove: 'นำออก',
@@ -300,6 +303,9 @@ export const th: Translations = {
       daysLeft: 'เหลืออีก {{count}} วัน',
       unsavedChanges: 'มีการแก้ไขที่ยังไม่บันทึก',
       noChanges: 'ไม่มีการแก้ไข',
+      // Promoted from TabStrip.tsx's own error-dot aria-label (i18n phase-2 slice-5 fix
+      // wave FIX 4) — see en.ts for the reasoning.
+      hasErrors: 'มีข้อผิดพลาด',
       unknownUser: 'ไม่ระบุชื่อ',
       noBusinessUnits: 'ไม่มีหน่วยธุรกิจ',
       noBusinessUnitsYet: 'ยังไม่มีหน่วยธุรกิจ',
@@ -911,10 +917,7 @@ export const th: Translations = {
     },
 
     clusterAdmin: {
-      hotel: 'โรงแรม',
-      company: 'บริษัท',
       people: 'บุคคล',
-      hq: 'HQ',
       viewLicenses: 'ดูไลเซนส์',
       clusterHasNoBusinessUnitsYet: 'Cluster นี้ยังไม่มีหน่วยธุรกิจ',
       inviteToAccessHint: 'เชิญผู้ใช้เพื่อให้สิทธิ์เข้าถึง cluster นี้',
@@ -939,7 +942,6 @@ export const th: Translations = {
       loadFailedDetail: 'โหลดหน่วยธุรกิจไม่สำเร็จ: ',
       updateFailed: 'อัปเดตหน่วยธุรกิจไม่สำเร็จ',
       copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
-      fifo: 'FIFO',
       overview: 'ภาพรวม',
       regionalFormats: 'รูปแบบตามภูมิภาค',
       timezone: 'เขตเวลา',
@@ -1030,7 +1032,6 @@ export const th: Translations = {
       // --- Task 4: ClusterBuDocument.tsx ---
       elsewhere: 'ที่อื่น',
       addressLabel: 'ที่อยู่',
-      aliasLabel: 'ชื่อแฝง',
       logoLabel: 'โลโก้',
       hotelNameLabel: 'ชื่อโรงแรม',
       phoneLabel: 'โทรศัพท์',
@@ -1235,7 +1236,7 @@ export const th: Translations = {
       heroNameEmptyText: '(หน่วยธุรกิจที่ยังไม่มีชื่อ)',
 
       // --- Task 3: InlineField.tsx ---
-      setFieldPlaceholder: 'ตั้งค่า{{field}}…',
+      setFieldPlaceholder: 'ตั้งค่า {{field}}…',
 
       // --- Task 3: BusinessUnitEdit.tsx ---
       generalTab: 'ทั่วไป',

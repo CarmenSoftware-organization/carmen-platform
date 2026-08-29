@@ -95,7 +95,7 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
                         </Link>
                         {row.bu.is_hq && (
                           <Badge variant="secondary" className="ml-2 text-[10px]">
-                            {t('pages.clusterAdmin.hq')}
+                            {t('common.label.hq')}
                           </Badge>
                         )}
                       </td>
