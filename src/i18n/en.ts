@@ -593,6 +593,8 @@ export const en = {
     subscription: { title: 'Subscription', sentence: 'Subscription', lower: 'subscription' },
     // slice 6 — ป้อนให้ toast.deleted/deleteFailed ของหน้า ReportTemplateManagement
     reportTemplate: { title: 'Report template', sentence: 'Report template', lower: 'report template' },
+    // slice 7 — ป้อนให้ toast.deleted/deleteFailed ของหน้า ClusterManagement
+    cluster: { title: 'Cluster', sentence: 'Cluster', lower: 'cluster' },
   },
 
   /**
@@ -621,6 +623,28 @@ export const en = {
    * copy lives here instead, split by component name (i18n phase-2 slice-5.5).
    */
   components: {
+    // FleetCapacity / CapacityGauge / CapacityMeter (i18n slice 7)
+    // อยู่ใต้ src/pages/clusterManagement/ ก็จริง แต่เป็น component ร่วม: LicenseCenter
+    // (slice 3b) import ข้าม slice มาใช้ และ meter ทั้งสองตัวถูกใช้ใน 8 ไฟล์ 4 slice
+    // ที่ตั้งไฟล์จึงหลอก — ข้อความของมันต้องอยู่ที่นี่ ไม่ใช่ใน pages.clusters
+    fleetCapacity: {
+      heading: 'Fleet capacity',
+      unavailable: 'Capacity unavailable',
+      businessUnits: 'Business units',
+      clusters: 'clusters',
+      active: 'active',
+      nearLimit: 'near limit',
+      // ค่าเริ่มต้นของ prop `expiringLabel` — LicenseCenter ส่งป้ายของตัวเองมาทับ
+      quotaExpiring: 'quota expiring',
+      // ประกอบตอนรันจากสองตัวเลข แยกเอกพจน์/พหูพจน์ที่ call site (ไทยไม่ผันตามจำนวน)
+      uncappedNote: '+ {{count}} cluster with no cap ({{used}} in use)',
+      uncappedNotePlural: '+ {{count}} clusters with no cap ({{used}} in use)',
+      // CapacityGauge — ต่อท้ายตัวเลข cap
+      noCap: '∞ (no cap)',
+      licensedSuffix: '{{cap}} licensed',
+      // CapacityMeter — ป้ายเตือนเมื่อใกล้เต็ม (uppercase มาจาก CSS ค่าจึงเป็นตัวเล็ก)
+      nearTag: 'near',
+    },
     dialogPreview: {
       title: 'Dialog Preview',
       noXmlProvided: 'No XML provided',
@@ -2461,6 +2485,135 @@ export const en = {
       // ป้ายฟิลด์บังคับ ป้อนเข้า common.validation.requiredMessage
       fieldLabelReportGroup: 'Report group',
       fieldLabelTemplateType: 'Template type',
+    },
+    // ── slice 7: Clusters ──
+    clusters: {
+      title: 'Cluster Management',
+      subtitle: 'Manage and configure clusters',
+      addCluster: 'Add Cluster',
+      searchPlaceholder: 'Search clusters...',
+      filtersDescription: 'Filter clusters by status',
+      deletedSectionLabel: 'Deleted',
+      showSoftDeleted: 'Show soft-deleted clusters',
+      deletedByTitle: 'Deleted by {{name}}',
+      columnBusinessUnits: 'Business Units',
+      // ป้ายคอลัมน์ CSV เท่านั้น — บนตารางคอลัมน์นี้ใช้หัวว่า Business Units
+      columnBuQuota: 'BU Quota',
+      columnMaxLicensedUsers: 'Max Licensed Users',
+      emptyTitle: 'No clusters yet',
+      emptyDescription: 'Get started by creating your first cluster to organize business units.',
+      loadingAria: 'Loading clusters',
+      loadingText: 'Loading clusters...',
+      loadFailed: 'Failed to load clusters: {{detail}}',
+      deleteTitle: 'Delete Cluster',
+      deleteDescription: 'Are you sure you want to delete this cluster? This action cannot be undone.',
+      // การ์ดกันลบ cluster ที่ยังมี BU อยู่ — ชื่ออาจว่างจึงมี fallback เป็นวลีของตัวเอง
+      cantDelete: "Can't delete {{name}}",
+      thisCluster: 'this cluster',
+      // แยกเอกพจน์/พหูพจน์ที่ call site เพราะ catalog ไม่มีระบบพหูพจน์ (ไทยไม่ผันตามจำนวน)
+      stillHasBu: 'It still has {{count}} business unit. Delete or move them to another cluster first.',
+      stillHasBus: 'It still has {{count}} business units. Delete or move them to another cluster first.',
+      // ── ClusterEdit + clusterManagement/ClusterCreateForm + clusterEdit/* ──
+      identity: 'Identity',
+      codePlaceholder: 'Cluster code',
+      aliasPlaceholder: 'PEN',
+      namePlaceholder: 'Cluster name',
+      firstQuotaLicence: 'First quota licence',
+      firstQuotaLicenceNote: 'Sets how many business units this cluster may create. Without one it can create none.',
+      licensedBus: 'Business units *',
+      licensedBusPlaceholder: 'e.g. 5',
+      expires: 'Expires',
+      neverExpires: 'Never expires',
+      creating: 'Creating...',
+      createCluster: 'Create cluster',
+      // ── ClusterEdit shell ──
+      loadFailedOne: 'Failed to load cluster: {{detail}}',
+      saveFailed: 'Failed to save cluster: {{detail}}',
+      updateUserFailed: 'Failed to update user',
+      removeUserFailed: 'Failed to remove user',
+      loadingOneAria: 'Loading cluster',
+      singularTitle: 'Cluster',
+      notFoundTitle: 'Cluster not found',
+      notFoundDescription: "This cluster doesn't exist, or it may have been deleted. Check the link, or pick one from the cluster list.",
+      backToList: 'Back to clusters',
+      tabLicensing: 'Licensing',
+      tabBusinessUnits: 'Business Units',
+      tabUsers: 'Users',
+      licencesNote: 'The latest licences covering this cluster, newest expiry first',
+      removeUsersTitle: 'Remove users',
+      clearSelectedUser: 'Clear selected user',
+      userSearchPlaceholder: 'Search by username or email...',
+      allUsersAlreadyIn: 'All matching users are already in this cluster.',
+      noUsersFound: 'No users found.',
+      adding: 'Adding...',
+      // ── clusterEdit/* ──
+      clearSelection: 'Clear selection',
+      sectionsNav: 'Cluster sections',
+      logo: 'Logo',
+      noLogo: 'No logo',
+      noQuotaYet: 'No quota entered yet',
+      setExpiryBelow: 'Set an expiry below',
+      newCluster: 'New cluster',
+      businessUnitsLower: 'Business units',
+      aliasName: 'Alias name',
+      maxThreeChars: 'Max 3 chars',
+      notSet: 'Not set',
+      notCreatedYet: 'Not created yet',
+      runsTo: 'Runs to {{date}}',
+      // แยกเอกพจน์/พหูพจน์ที่ call site — เดิมปั้น 's' ตอนรัน
+      licence: 'licence',
+      licences: 'licences',
+      buLicenceCount: '{{count}} business unit licence',
+      buLicenceCountPlural: '{{count}} business unit licences',
+      unnamedCluster: '(unnamed cluster)',
+      seats: 'Seats',
+      licensedSuffix: 'licensed',
+      // แถบสรุปใต้ plate — ประกอบจากหลายท่อน ผูกเป็นคีย์ทั้งท่อนแทนการต่อสตริง
+      activeCount: '{{count}} active',
+      inactiveCount: '{{count}} inactive',
+      licenceFree: '{{count}} licence free',
+      licencesFree: '{{count}} licences free',
+      seatFree: '{{count}} seat free',
+      seatsFree: '{{count}} seats free',
+      noSeatCap: 'no seat cap set',
+      searchBusinessUnits: 'Search business units',
+      refreshBusinessUnits: 'Refresh business units',
+      noBuInCluster: 'No business units found in this cluster.',
+      noBuMatchFilters: 'No business units match your filters.',
+      overLimit: 'Over limit',
+      licenseLimitReached: 'License limit reached ({{used}}/{{cap}})',
+      overLimitNote: '{{count}} business units are beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      overLimitRankTitle: 'Quota {{cap}} · this unit ranks {{rank}}',
+      editBuAria: 'Edit {{name}}',
+      buSingularLower: 'business unit',
+      searchUsers: 'Search users',
+      refreshUsers: 'Refresh users',
+      noUsersInCluster: 'No users found in this cluster.',
+      noUsersMatchFilters: 'No users match your filters.',
+      selectAllUsers: 'Select all users',
+      removeSelectedUsers: 'Remove selected users',
+      removeUserFromCluster: 'Remove User from Cluster',
+      selectUserAria: 'Select {{name}}',
+      roleForAria: 'Role for {{name}}',
+      removeUserAria: 'Remove {{name}} from this cluster',
+      removeSelectedConfirm: 'Remove {{count}} user(s) from this cluster?',
+      removeOneConfirm: 'Remove "{{name}}" from this cluster?',
+      columnRole: 'Role',
+      subscriptionsHeading: 'Subscriptions',
+      addUserTitle: 'Add User to Cluster',
+      addUserDescription: 'Search and select a user to add',
+      clusterRole: 'Cluster Role',
+      showingUsers: 'Showing {{shown}} of {{total}} users',
+      clusterLimitReached: 'Cluster license limit reached ({{used}}/{{cap}})',
+      licensedUsersInCluster: '{{used}} of {{cap}} licensed users in this cluster',
+      noSubscriptions: 'No subscriptions',
+      noSubscriptionsNote: 'Create a subscription to grant this cluster its features and seats.',
+      createSubscription: 'Create subscription',
+      manage: 'Manage',
+      subscriptionCardDescription: 'License subscriptions for this cluster',
+      // สรุปหนึ่งบรรทัดใต้เลขที่สัญญา — เดิมต่อสตริงและปั้น 's' ตอนรัน
+      subscriptionSummary: 'Expires {{date}} · {{count}} feature · {{used}}/{{cap}} seats',
+      subscriptionSummaryPlural: 'Expires {{date}} · {{count}} features · {{used}}/{{cap}} seats',
     },
     // ── slice 6: Report Templates ──
     // สองหน้าของฟีเจอร์เดียวกัน แยก namespace ตามหน้าเหมือน slice ก่อน ๆ

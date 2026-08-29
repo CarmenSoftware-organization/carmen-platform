@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { useI18n } from '../../hooks/useI18n';
 import type { ClusterFormData } from './ClusterIdentityFields';
 
 export interface ClusterCreateFormProps {
@@ -51,12 +52,13 @@ export function ClusterCreateForm({
   onSubmit,
   onCancel,
 }: ClusterCreateFormProps) {
+  const { t } = useI18n();
   const noExpiry = !!formData.license_no_expiry;
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
       <Card>
-        <h2 className="text-sm font-medium">Identity</h2>
+        <h2 className="text-sm font-medium">{t('pages.clusters.identity')}</h2>
 
         {/* All three on one row, in the order the plate above reads them. Stacked, the code
          *  and the alias each claimed a line of their own and left two thirds of the card
@@ -69,7 +71,7 @@ export function ClusterCreateForm({
            *  between 596 and 640px there is room to spare, and a code field four hundred
            *  pixels wide breaks the rule the rest of this form follows. */}
           <div className="min-w-0 max-w-56 flex-1 space-y-2 sm:w-56 sm:flex-none">
-            <Label htmlFor="code">Code *</Label>
+            <Label htmlFor="code">{t('common.field.code')} *</Label>
             <Input
               id="code"
               name="code"
@@ -77,7 +79,7 @@ export function ClusterCreateForm({
               onChange={onChange}
               onBlur={onBlur}
               onFocus={onFocus}
-              placeholder="Cluster code"
+              placeholder={t('pages.clusters.codePlaceholder')}
               className={`font-mono ${fieldErrors.code ? 'border-destructive' : ''}`}
               required
             />
@@ -85,7 +87,7 @@ export function ClusterCreateForm({
           </div>
 
           <div className="w-24 space-y-2">
-            <Label htmlFor="alias_name">Alias</Label>
+            <Label htmlFor="alias_name">{t('common.field.alias')}</Label>
             {/* An example, not the constraint: `maxLength` already enforces three characters,
              *  so the placeholder's job is to show what one looks like. */}
             <Input
@@ -95,7 +97,7 @@ export function ClusterCreateForm({
               onChange={onChange}
               onBlur={onBlur}
               onFocus={onFocus}
-              placeholder="PEN"
+              placeholder={t('pages.clusters.aliasPlaceholder')}
               maxLength={3}
               className={`font-mono ${fieldErrors.alias_name ? 'border-destructive' : ''}`}
             />
@@ -105,13 +107,13 @@ export function ClusterCreateForm({
           </div>
 
           <div className="w-full space-y-2 sm:min-w-64 sm:flex-1">
-            <Label htmlFor="name">Name *</Label>
+            <Label htmlFor="name">{t('common.field.name')} *</Label>
             <Input
               id="name"
               name="name"
               value={formData.name}
               onChange={onChange}
-              placeholder="Cluster name"
+              placeholder={t('pages.clusters.namePlaceholder')}
               required
             />
           </div>
@@ -120,15 +122,15 @@ export function ClusterCreateForm({
 
       <Card>
         <div>
-          <h2 className="text-sm font-medium">First quota licence</h2>
+          <h2 className="text-sm font-medium">{t('pages.clusters.firstQuotaLicence')}</h2>
           <p className="text-muted-foreground text-xs">
-            Sets how many business units this cluster may create. Without one it can create none.
+            {t('pages.clusters.firstQuotaLicenceNote')}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-4">
           <div className="w-28 space-y-2">
-            <Label htmlFor="licensed_bus">Business units *</Label>
+            <Label htmlFor="licensed_bus">{t('pages.clusters.licensedBus')}</Label>
             <Input
               id="licensed_bus"
               name="licensed_bus"
@@ -136,7 +138,7 @@ export function ClusterCreateForm({
               min={1}
               value={formData.licensed_bus}
               onChange={onChange}
-              placeholder="e.g. 5"
+              placeholder={t('pages.clusters.licensedBusPlaceholder')}
               className="tabular-nums"
               required
             />
@@ -146,7 +148,7 @@ export function ClusterCreateForm({
             {/* The marker tracks the actual constraint: a disabled input is barred from
              *  validation, so "Expires *" over a greyed-out box asks for something the form
              *  will not ask for. */}
-            <Label htmlFor="license_end_date">Expires{noExpiry ? '' : ' *'}</Label>
+            <Label htmlFor="license_end_date">{t('pages.clusters.expires')}{noExpiry ? '' : ' *'}</Label>
             {/* The date input stays mounted and goes disabled rather than unmounting, so
              *  ticking the box does not yank the row out from under the pointer. */}
             <div className="flex items-center gap-3">
@@ -167,9 +169,9 @@ export function ClusterCreateForm({
                   className="border-input h-4 w-4 rounded"
                   checked={noExpiry}
                   onChange={(e) => onNoExpiryChange(e.target.checked)}
-                  aria-label="Never expires"
+                  aria-label={t('pages.clusters.neverExpires')}
                 />
-                Never expires
+                {t('pages.clusters.neverExpires')}
               </label>
             </div>
           </div>
@@ -185,10 +187,10 @@ export function ClusterCreateForm({
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          {saving ? 'Creating...' : 'Create cluster'}
+          {saving ? t('pages.clusters.creating') : t('pages.clusters.createCluster')}
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={saving}>
-          Cancel
+          {t('common.cancel')}
         </Button>
       </div>
     </form>

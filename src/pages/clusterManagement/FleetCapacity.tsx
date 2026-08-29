@@ -2,6 +2,8 @@ import { Building2, Users } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Skeleton } from '../../components/ui/skeleton';
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
+import type { TFunction } from '../../i18n/types';
 import type { FleetSummary, FleetCapacityTotals } from '../../types';
 import { CapacityGauge } from './CapacityGauge';
 
@@ -9,9 +11,13 @@ import { CapacityGauge } from './CapacityGauge';
 // payload — see the `!summary.bu || !summary.users` branch below. There is no ErrorBoundary
 // anywhere in this app, so an unguarded `.uncapped_count`/`.uncapped_used` read here would blank
 // the whole page instead of just this band.
-function uncappedNote(t?: FleetCapacityTotals): string | undefined {
-  if (!t || !t.uncapped_count || t.uncapped_count <= 0) return undefined;
-  return `+ ${t.uncapped_count} cluster${t.uncapped_count > 1 ? 's' : ''} with no cap (${(t.uncapped_used ?? 0).toLocaleString()} in use)`;
+// พารามิเตอร์ชื่อ `totals` ไม่ใช่ `t` แล้ว — `t` ถูกจองให้ตัวแปลตามธรรมเนียมทั้งโปรเจกต์
+function uncappedNote(t: TFunction, totals?: FleetCapacityTotals): string | undefined {
+  if (!totals || !totals.uncapped_count || totals.uncapped_count <= 0) return undefined;
+  const params = { count: totals.uncapped_count, used: (totals.uncapped_used ?? 0).toLocaleString() };
+  return totals.uncapped_count === 1
+    ? t('components.fleetCapacity.uncappedNote', params)
+    : t('components.fleetCapacity.uncappedNotePlural', params);
 }
 
 function Stat({
@@ -66,7 +72,7 @@ export function FleetCapacity({
   // ใบสัญญา — ดูคอมเมนต์ที่ `FleetSummary.expiring_soon` ใน src/types/index.ts) ค่าเริ่มต้นนี้จึง
   // ไม่ได้แปลว่า /clusters นับกว้างกว่า License Center — แค่ยังไม่เคยเปลี่ยนป้ายให้ระบุมิติชัดเจน
   // ผู้เรียกที่ต้องการป้ายที่พูดถึงมิติ BU ตรง ๆ (เช่น License Center) ต้องส่ง label ของตัวเองมา
-  expiringLabel = 'quota expiring',
+  expiringLabel,
 }: {
   summary: FleetSummary | null;
   loading: boolean;
@@ -92,14 +98,16 @@ export function FleetCapacity({
   expiringSoonActive?: boolean;
   expiringLabel?: string;
 }) {
+  const { t } = useI18n();
+  const expiring = expiringLabel ?? t('components.fleetCapacity.quotaExpiring');
   return (
     <Card className="p-4 sm:p-5">
       <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">
-        Fleet capacity
+        {t('components.fleetCapacity.heading')}
       </div>
 
       {error && !summary ? (
-        <p className="text-muted-foreground text-xs" role="alert">Capacity unavailable</p>
+        <p className="text-muted-foreground text-xs" role="alert">{t('components.fleetCapacity.unavailable')}</p>
       ) : loading || !summary ? (
         <div className="grid gap-6 sm:grid-cols-[1fr_1fr_auto]">
           <Skeleton className="h-12" />
@@ -111,7 +119,7 @@ export function FleetCapacity({
         // `clusterService.getFleetSummary`'s `response.data.data || response.data` fallback)
         // would otherwise throw reading `.bu.used` etc. below with no ErrorBoundary to catch it.
         // Degrade to the same message a fetch failure shows rather than blanking the page.
-        <p className="text-muted-foreground text-xs" role="alert">Capacity unavailable</p>
+        <p className="text-muted-foreground text-xs" role="alert">{t('components.fleetCapacity.unavailable')}</p>
       ) : (
         <>
           {/* Stale-but-plausible, not broken: the previous successful numbers are kept on a
@@ -120,23 +128,23 @@ export function FleetCapacity({
               assistive tech, keep the register calm. */}
           {error && (
             <p className="text-muted-foreground mb-2 text-xs" role="alert">
-              Couldn&apos;t refresh — showing the last known numbers.
+              {t('common.state.summaryStale')}
             </p>
           )}
           <div className={cn('grid gap-6 sm:grid-cols-[1fr_1fr_auto] sm:items-center', error && 'opacity-70')}>
             {/* BU quota is seat-ruled now (fleet total of `bu_cap`) — 0 is a real zero, not
                 "unlimited"; `uncappedNote` is a no-op here since `uncapped_count` stays 0 for bu. */}
-            <CapacityGauge icon={Building2} label="Business units" used={summary.bu.used ?? 0} cap={summary.bu.cap ?? 0} finite note={uncappedNote(summary.bu)} />
-            <CapacityGauge icon={Users} label="Users" used={summary.users.used ?? 0} cap={summary.users.cap ?? null} note={uncappedNote(summary.users)} />
+            <CapacityGauge icon={Building2} label={t('components.fleetCapacity.businessUnits')} used={summary.bu.used ?? 0} cap={summary.bu.cap ?? 0} finite note={uncappedNote(t, summary.bu)} />
+            <CapacityGauge icon={Users} label={t('nav.users')} used={summary.users.used ?? 0} cap={summary.users.cap ?? null} note={uncappedNote(t, summary.users)} />
             <div className="flex gap-6 border-border sm:flex-col sm:gap-1.5 sm:border-l sm:pl-6">
-              <Stat value={summary.total} label="clusters" />
-              <Stat value={summary.active} label="active" />
-              <Stat value={summary.near_limit} label="near limit" alert />
+              <Stat value={summary.total} label={t('components.fleetCapacity.clusters')} />
+              <Stat value={summary.active} label={t('components.fleetCapacity.active')} />
+              <Stat value={summary.near_limit} label={t('components.fleetCapacity.nearLimit')} alert />
               {/* คลิกได้เมื่อมีค่ามากกว่า 0 เท่านั้น — ปุ่มที่กดแล้วกรองได้ 0 แถวคือทางตัน
                   Clickable only when non-zero: a filter that yields nothing is a dead end. */}
               <Stat
                 value={summary.expiring_soon ?? 0}
-                label={expiringLabel}
+                label={expiring}
                 alert
                 onClick={summary.expiring_soon ? onExpiringSoonClick : undefined}
                 active={expiringSoonActive}

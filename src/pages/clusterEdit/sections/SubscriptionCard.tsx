@@ -11,6 +11,7 @@ import subscriptionService from '../../../services/subscriptionService';
 import { seatUtilization } from '../../../utils/capacity';
 import { devLog } from '../../../utils/errorParser';
 import type { Subscription } from '../../../types';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface SubscriptionCardProps {
   clusterId: string;
@@ -52,6 +53,7 @@ const fmtDate = (v?: string) => {
  */
 export function SubscriptionCard({ clusterId, embedded = false }: SubscriptionCardProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { hasPermission } = useAuth();
   const canRead = hasPermission('subscription.read');
   const [items, setItems] = useState<Subscription[]>([]);
@@ -90,17 +92,17 @@ export function SubscriptionCard({ clusterId, embedded = false }: SubscriptionCa
 
   const body = loading ? (
     <p className="text-muted-foreground py-6 text-center text-sm" role="status">
-      Loading…
+      {t('common.busy.loadingEllipsis')}
     </p>
   ) : items.length === 0 ? (
     <EmptyState
       icon={CreditCard}
-      title="No subscriptions"
-      description="Create a subscription to grant this cluster its features and seats."
+      title={t('pages.clusters.noSubscriptions')}
+      description={t('pages.clusters.noSubscriptionsNote')}
       action={
         <Can permission="subscription.manage">
           <Button size="sm" onClick={() => navigate(`/licenses/subscriptions/new?cluster_id=${clusterId}`)}>
-            Create subscription
+            {t('pages.clusters.createSubscription')}
           </Button>
         </Can>
       }
@@ -123,8 +125,19 @@ export function SubscriptionCard({ clusterId, embedded = false }: SubscriptionCa
                 </Badge>
               </div>
               <p className="text-muted-foreground text-xs">
-                Expires {fmtDate(sub.end_date)} · {sub.feature_count} feature{sub.feature_count === 1 ? '' : 's'} ·{' '}
-                {seats.used}/{seats.cap} seats
+                {(sub.feature_count === 1
+                  ? t('pages.clusters.subscriptionSummary', {
+                      date: fmtDate(sub.end_date),
+                      count: sub.feature_count,
+                      used: seats.used,
+                      cap: seats.cap,
+                    })
+                  : t('pages.clusters.subscriptionSummaryPlural', {
+                      date: fmtDate(sub.end_date),
+                      count: sub.feature_count,
+                      used: seats.used,
+                      cap: seats.cap,
+                    }))}
               </p>
             </div>
             <Button
@@ -132,7 +145,7 @@ export function SubscriptionCard({ clusterId, embedded = false }: SubscriptionCa
               size="sm"
               onClick={() => navigate(`/licenses/subscriptions/${sub.id}/edit`)}
             >
-              Manage
+              {t('pages.clusters.manage')}
             </Button>
           </li>
         );
@@ -147,9 +160,9 @@ export function SubscriptionCard({ clusterId, embedded = false }: SubscriptionCa
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
-          Subscription
+          {t('entity.subscription.title')}
         </CardTitle>
-        <CardDescription>License subscriptions for this cluster</CardDescription>
+        <CardDescription>{t('pages.clusters.subscriptionCardDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="p-0">{body}</CardContent>
     </Card>

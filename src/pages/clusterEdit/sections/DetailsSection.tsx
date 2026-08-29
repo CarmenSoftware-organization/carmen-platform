@@ -1,5 +1,6 @@
 import { InlineField } from '../../businessUnitEdit/InlineField';
 import type { ClusterFormData } from '../../clusterManagement/ClusterIdentityFields';
+import { useI18n } from '../../../hooks/useI18n';
 
 export interface DetailsSectionProps {
   formData: ClusterFormData;
@@ -50,6 +51,7 @@ export function DetailsSection({
   onCommit,
   onValidate,
 }: DetailsSectionProps) {
+  const { t } = useI18n();
   const disabled = !canEdit;
   const platformFieldsDisabled = !canEditPlatformFields;
   return (
@@ -57,7 +59,7 @@ export function DetailsSection({
       {showCode && (
         <InlineField
           name="code"
-          label="Code"
+          label={t('common.field.code')}
           value={formData.code}
           mono
           required
@@ -69,7 +71,7 @@ export function DetailsSection({
       )}
       <InlineField
         name="name"
-        label="Name"
+        label={t('common.field.name')}
         value={formData.name}
         required
         disabled={disabled}
@@ -79,24 +81,24 @@ export function DetailsSection({
       />
       <InlineField
         name="alias_name"
-        label="Alias name"
+        label={t('pages.clusters.aliasName')}
         value={formData.alias_name}
         mono
         disabled={disabled}
-        placeholder="Max 3 chars"
+        placeholder={t('pages.clusters.maxThreeChars')}
         error={fieldErrors.alias_name}
         onCommit={onCommit}
         onValidate={onValidate}
       />
       <InlineField
         name="is_active"
-        label="Status"
+        label={t('common.status.label')}
         type="select"
         disabled={platformFieldsDisabled}
         value={formData.is_active ? 'true' : 'false'}
         options={[
-          { value: 'true', label: 'Active' },
-          { value: 'false', label: 'Inactive' },
+          { value: 'true', label: t('common.status.active') },
+          { value: 'false', label: t('common.status.inactive') },
         ]}
         onCommit={onCommit}
       />

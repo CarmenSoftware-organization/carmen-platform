@@ -1,4 +1,6 @@
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
+import type { TKey } from '../../i18n/types';
 import { utilization, seatUtilization, type CapLevel } from '../../utils/capacity';
 
 const FILL: Record<CapLevel, string> = {
@@ -8,8 +10,9 @@ const FILL: Record<CapLevel, string> = {
   none: 'bg-transparent',
 };
 
-const TAG: Partial<Record<CapLevel, { text: string; cls: string }>> = {
-  warn: { text: 'near', cls: 'text-warning bg-warning/15' },
+// เก็บ TKey ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้
+const TAG: Partial<Record<CapLevel, { textKey: TKey; cls: string }>> = {
+  warn: { textKey: 'components.fleetCapacity.nearTag', cls: 'text-warning bg-warning/15' },
 };
 
 interface CapacityMeterProps {
@@ -27,6 +30,7 @@ interface CapacityMeterProps {
 
 /** A cluster's license utilization: a bar coloured by headroom + `used / cap`. */
 export function CapacityMeter({ used, cap, finite = false }: CapacityMeterProps) {
+  const { t } = useI18n();
   const u = finite ? seatUtilization(used ?? 0, cap ?? 0) : utilization(used, cap);
   const tag = TAG[u.level];
 
@@ -47,7 +51,7 @@ export function CapacityMeter({ used, cap, finite = false }: CapacityMeterProps)
       </span>
       {tag && (
         <span className={cn('rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide', tag.cls)}>
-          {tag.text}
+          {t(tag.textKey)}
         </span>
       )}
     </div>

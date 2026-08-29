@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface FilterChip {
   key: string;
@@ -23,6 +24,7 @@ export interface TableToolbarProps {
  * data), so search here is instant — no debounce needed without a network round-trip.
  */
 export function TableToolbar({ search, onSearchChange, placeholder, filters, right }: TableToolbarProps) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-1 flex-wrap items-center gap-2">
@@ -31,7 +33,7 @@ export function TableToolbar({ search, onSearchChange, placeholder, filters, rig
           <Input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={placeholder ?? 'Search...'}
+            placeholder={placeholder ?? t('common.searchPlaceholder')}
             className="pl-9"
           />
         </div>

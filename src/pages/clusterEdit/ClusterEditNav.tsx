@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { cn } from '../../lib/utils';
 import { useScrollSpy } from './useScrollSpy';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface NavItem {
   id: string;
@@ -19,9 +20,10 @@ export interface ClusterEditNavProps {
 export function ClusterEditNav({ items }: ClusterEditNavProps) {
   const ids = useMemo(() => items.map((i) => i.id), [items]);
   const { activeId, scrollTo } = useScrollSpy(ids);
+  const { t } = useI18n();
 
   return (
-    <nav aria-label="Cluster sections" className="lg:sticky lg:top-4">
+    <nav aria-label={t('pages.clusters.sectionsNav')} className="lg:sticky lg:top-4">
       <ul className="flex gap-1 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
         {items.map((item) => {
           const active = item.id === activeId;

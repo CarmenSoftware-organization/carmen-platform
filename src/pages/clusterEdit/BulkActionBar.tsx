@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface BulkAction {
   key: string;
@@ -19,14 +20,15 @@ export interface BulkActionBarProps {
 
 /** A compact selection bar shown above a table when one or more rows are selected. */
 export function BulkActionBar({ count, onClear, actions }: BulkActionBarProps) {
+  const { t } = useI18n();
   if (count <= 0) return null;
   return (
     <div className="bg-primary/5 border-primary/20 flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
       <div className="flex items-center gap-2 text-sm">
-        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Clear selection" onClick={onClear}>
+        <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={t('pages.clusters.clearSelection')} onClick={onClear}>
           <X className="h-3.5 w-3.5" />
         </Button>
-        <span className="font-medium">{count} selected</span>
+        <span className="font-medium">{t('common.state.nSelected', { count })}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {actions.map((a) => {
