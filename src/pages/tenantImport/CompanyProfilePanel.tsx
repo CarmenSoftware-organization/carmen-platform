@@ -10,6 +10,8 @@ import preconfigImportService from '../../services/preconfigImportService';
 import { parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import type { BusinessUnit, PreconfigStepMeta, TenantCurrency } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
+import type { TFunction } from '../../i18n/types';
 
 // The one "Company Profile" label the backend catalog (preconfig-catalog.ts) still excludes
 // from `step.columns`, so the preview response carries no signal about it — it appears in
@@ -18,6 +20,9 @@ import type { BusinessUnit, PreconfigStepMeta, TenantCurrency } from '../../type
 // business unit. Keep this aligned with the catalog — if the catalog starts mapping a label
 // listed here, this list is what goes stale.
 // ป้ายกำกับเดียวที่แคตตาล็อกยังไม่แมป เพราะชื่อหน่วยธุรกิจเป็นข้อมูลระบุตัวตน
+// ค่านี้เป็น "ค่าเปรียบเทียบ" ไม่ใช่ป้ายที่แสดง — เทียบกับผลของ humanizeColumn() ซึ่งสร้าง
+// ป้ายจากชื่อคอลัมน์ในไฟล์ (เป็นอังกฤษเสมอ) ถ้าแปลค่านี้ การเทียบจะไม่ตรงและฟิลด์ที่ควร
+// ถูกกันไว้จะหลุดไปเขียนลงหน่วยธุรกิจ — คลาสเดียวกับกับดัก scopeLabel ใน roleChips (slice 9a)
 const NOT_APPLIED_LABELS = ['BU Name'];
 
 // The catalog's virtual column for `Default Currency`. There is no such column on
@@ -66,10 +71,10 @@ function humanizeColumn(column: string): string {
  * pending rather than holding up the seven fields that do not depend on it.
  * แถวสกุลเงินก่อนที่รายการสกุลเงินจะมาถึง เพื่อไม่ให้ถ่วงฟิลด์อื่นที่ไม่ต้องใช้ฐานข้อมูลผู้เช่า
  */
-function pendingCurrencyRow(sheetValue: string): FieldRow {
+function pendingCurrencyRow(sheetValue: string, t: TFunction): FieldRow {
   return {
     key: CURRENCY_CODE_KEY,
-    label: 'Default Currency',
+    label: t('pages.tenantImport.cpDefaultCurrency'),
     buValue: '',
     sheetValue,
     changed: false,
@@ -94,8 +99,9 @@ function currencyRow(
   sheetValue: string,
   currentId: string | undefined,
   currencies: TenantCurrency[] | null,
+  t: TFunction,
 ): FieldRow {
-  const base = { key: CURRENCY_CODE_KEY, label: 'Default Currency', sheetValue };
+  const base = { key: CURRENCY_CODE_KEY, label: t('pages.tenantImport.cpDefaultCurrency'), sheetValue };
   if (!currencies) {
     return { ...base, buValue: '', changed: false, currency: { state: 'unreachable' } };
   }
@@ -113,11 +119,11 @@ function currencyRow(
 }
 
 /** Status cell for one diff row. / ช่องสถานะของหนึ่งแถว */
-function renderStatus(r: FieldRow) {
+function renderStatus(r: FieldRow, t: TFunction) {
   if (r.currency?.state === 'pending') {
     return (
-      <Badge variant="outline" title="Reading the tenant database to resolve this currency code.">
-        Resolving…
+      <Badge variant="outline" title={t('pages.tenantImport.cpResolvingTitle')}>
+        {t('pages.tenantImport.cpResolving')}
       </Badge>
     );
   }
@@ -125,20 +131,20 @@ function renderStatus(r: FieldRow) {
     return (
       <Badge
         variant="outline"
-        title="The tenant database could not be reached, so this currency code cannot be resolved to an id."
+        title={t('pages.tenantImport.cpUnreachableTitle')}
       >
-        Cannot resolve
+        {t('pages.tenantImport.cpCannotResolve')}
       </Badge>
     );
   }
   if (r.currency?.state === 'not_found') {
     return (
-      <Badge variant="outline" title="Run the Currency step first, then press Refresh.">
-        Not found — run Currency first
+      <Badge variant="outline" title={t('pages.tenantImport.cpNotFoundTitle')}>
+        {t('pages.tenantImport.cpNotFound')}
       </Badge>
     );
   }
-  return <Badge variant={r.changed ? 'warning' : 'secondary'}>{r.changed ? 'Changed' : 'Same'}</Badge>;
+  return <Badge variant={r.changed ? 'warning' : 'secondary'}>{r.changed ? t('pages.tenantImport.cpStatusChanged') : t('pages.tenantImport.cpStatusSame')}</Badge>;
 }
 
 /**
@@ -162,6 +168,7 @@ export function CompanyProfilePanel({
   bu: BusinessUnit;
   file: File;
 }) {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [rows, setRows] = useState<FieldRow[]>([]);
@@ -206,7 +213,7 @@ export function CompanyProfilePanel({
           // after this pass, once the tenant currency list has arrived (see below).
           // คอลัมน์สกุลเงินเสมือนเทียบกับฟิลด์ชื่อเดียวกันในเรกคอร์ดไม่ได้ เพราะไม่มีฟิลด์นั้น
           if (key === CURRENCY_CODE_KEY) {
-            return pendingCurrencyRow(sheetValue);
+            return pendingCurrencyRow(sheetValue, t);
           }
           const buValue = String(recordFields[key] ?? '').trim();
           return {
@@ -233,7 +240,7 @@ export function CompanyProfilePanel({
       setRows((prev) =>
         prev.map((r) =>
           r.key === CURRENCY_CODE_KEY
-            ? currencyRow(r.sheetValue, record.default_currency_id, currencies)
+            ? currencyRow(r.sheetValue, record.default_currency_id, currencies, t)
             : r,
         ),
       );
@@ -245,7 +252,7 @@ export function CompanyProfilePanel({
     } finally {
       if (token === loadTokenRef.current) setLoading(false);
     }
-  }, [bu.id, bu.code, step.id, file]);
+  }, [bu.id, bu.code, step.id, file, t]);
 
   useEffect(() => {
     load();
@@ -302,7 +309,7 @@ export function CompanyProfilePanel({
         ...changedFields,
         ...(docVersion != null ? { doc_version: docVersion } : {}),
       } as Partial<BusinessUnit>);
-      toast.success('Company Profile applied to the business unit.');
+      toast.success(t('pages.tenantImport.cpApplied'));
       await load();
     } catch (err) {
       if (isVersionConflict(err)) {
@@ -314,7 +321,7 @@ export function CompanyProfilePanel({
     } finally {
       setApplying(false);
     }
-  }, [bu.id, docVersion, load, rows]);
+  }, [bu.id, docVersion, load, rows, t]);
 
   return (
     <div className="min-w-0 flex-1 space-y-4">
@@ -322,24 +329,24 @@ export function CompanyProfilePanel({
         <div className="min-w-0">
           <h2 className="text-base font-semibold">{step.display_name}</h2>
           <p className="text-xs text-muted-foreground">
-            {step.sheet_name} → business unit record ({bu.code})
+            {t('pages.tenantImport.cpTarget', { sheet: step.sheet_name, code: bu.code })}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={load} disabled={loading || applying}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Refresh
+            {t('pages.tenantImport.cpRefresh')}
           </Button>
           <Button onClick={handleApply} disabled={loading || applying || currencyPending || changedCount === 0}>
             {applying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {applying ? 'Applying…' : 'Apply to BU'}
+            {applying ? t('pages.tenantImport.cpApplying') : t('pages.tenantImport.cpApplyToBu')}
           </Button>
         </div>
       </div>
 
       {loading && rows.length === 0 && (
         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading Company Profile…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('pages.tenantImport.cpLoading')}
         </div>
       )}
 
@@ -361,32 +368,34 @@ export function CompanyProfilePanel({
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
-            The workbook&apos;s <strong>BU Code</strong> is{' '}
-            <strong className="font-mono">{sheetCode}</strong>, not the selected business unit&apos;s{' '}
-            <strong className="font-mono">{bu.code}</strong>. This usually means the wrong file or the
-            wrong business unit was selected. Applying will <strong>not</strong> rename anything — the BU
-            code is never written back — but every other field below would still be written onto{' '}
-            <strong>{bu.code}</strong>, not the property the workbook describes. Double-check before
-            continuing.
+            {t('pages.tenantImport.cpMismatch1')} <strong>{t('pages.tenantImport.cpBuCode')}</strong>{' '}
+            {t('pages.tenantImport.cpMismatch2')}{' '}
+            <strong className="font-mono">{sheetCode}</strong>
+            {t('pages.tenantImport.cpMismatch3')}{' '}
+            <strong className="font-mono">{bu.code}</strong>
+            {t('pages.tenantImport.cpMismatch4')} <strong>{t('pages.tenantImport.cpMismatchNot')}</strong>{' '}
+            {t('pages.tenantImport.cpMismatch5')}{' '}
+            <strong>{bu.code}</strong>
+            {t('pages.tenantImport.cpMismatch6')}
           </span>
         </div>
       )}
 
       {!loading && !error && rows.length === 0 && sheetCode == null && (
-        <p className="text-xs text-muted-foreground">No mapped fields were returned for this sheet.</p>
+        <p className="text-xs text-muted-foreground">{t('pages.tenantImport.cpNoMappedFields')}</p>
       )}
 
       {(rows.length > 0 || sheetCode != null) && (
         <>
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant={changedCount > 0 ? 'warning' : 'secondary'}>{changedCount} changed</Badge>
-            <Badge variant="secondary">{rows.length - changedCount - unresolvedCount} same</Badge>
+            <Badge variant={changedCount > 0 ? 'warning' : 'secondary'}>{t('pages.tenantImport.cpChanged', { count: changedCount })}</Badge>
+            <Badge variant="secondary">{t('pages.tenantImport.cpSame', { count: rows.length - changedCount - unresolvedCount })}</Badge>
             {unresolvedCount > 0 && (
-              <Badge variant="outline">{unresolvedCount} unresolved</Badge>
+              <Badge variant="outline">{t('pages.tenantImport.cpUnresolved', { count: unresolvedCount })}</Badge>
             )}
             {changedCount === 0 && unresolvedCount === 0 && (
               <span className="text-xs text-muted-foreground">
-                Every field already matches — nothing to apply.
+                {t('pages.tenantImport.cpNothingToApply')}
               </span>
             )}
           </div>
@@ -395,10 +404,10 @@ export function CompanyProfilePanel({
             <table className="w-full text-sm [&_th]:whitespace-nowrap">
               <thead className="bg-muted/50 text-xs text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">Field</th>
-                  <th className="px-3 py-2 text-left font-medium">Current (BU)</th>
-                  <th className="px-3 py-2 text-left font-medium">Workbook</th>
-                  <th className="px-3 py-2 text-left font-medium">Status</th>
+                  <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.cpColumnField')}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.cpColumnCurrent')}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t('pages.tenantImport.cpColumnWorkbook')}</th>
+                  <th className="px-3 py-2 text-left font-medium">{t('common.status.label')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -406,12 +415,12 @@ export function CompanyProfilePanel({
                   // Read-only identity row — deliberately not a `FieldRow`: it never has a
                   // Changed/Same verdict and can never be applied (see IMPORTANT 1 above).
                   <tr className={cn('border-t', codeMismatch && 'bg-destructive/5')}>
-                    <td className="px-3 py-2 font-medium">BU Code</td>
+                    <td className="px-3 py-2 font-medium">{t('pages.tenantImport.cpBuCode')}</td>
                     <td className="px-3 py-2 text-muted-foreground">{bu.code}</td>
                     <td className="px-3 py-2">{sheetCode || '-'}</td>
                     <td className="px-3 py-2">
                       <Badge variant={codeMismatch ? 'destructive' : 'secondary'}>
-                        {codeMismatch ? 'Mismatch — read-only' : 'Match — read-only'}
+                        {codeMismatch ? t('pages.tenantImport.cpMismatchReadOnly') : t('pages.tenantImport.cpMatchReadOnly')}
                       </Badge>
                     </td>
                   </tr>
@@ -421,7 +430,7 @@ export function CompanyProfilePanel({
                     <td className="px-3 py-2">{r.label}</td>
                     <td className="px-3 py-2 text-muted-foreground">{r.buValue || '-'}</td>
                     <td className="px-3 py-2">{r.sheetValue || '-'}</td>
-                    <td className="px-3 py-2">{renderStatus(r)}</td>
+                    <td className="px-3 py-2">{renderStatus(r, t)}</td>
                   </tr>
                 ))}
                 {NOT_APPLIED_LABELS.map((label) => (

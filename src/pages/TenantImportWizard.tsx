@@ -22,10 +22,12 @@ import { FileCheckPanel } from './tenantImport/FileCheckPanel';
 import { StepRail } from './tenantImport/StepRail';
 import { StepPanel, type StepState } from './tenantImport/StepPanel';
 import { CompanyProfilePanel } from './tenantImport/CompanyProfilePanel';
+import { useI18n } from '../hooks/useI18n';
 
 type Screen = 'pick-bu' | 'upload' | 'check' | 'steps';
 
 export default function TenantImportWizard() {
+  const { t } = useI18n();
   const [screen, setScreen] = useState<Screen>('pick-bu');
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [buOpen, setBuOpen] = useState(false);
@@ -195,7 +197,7 @@ export default function TenantImportWizard() {
       // reader mid-stream. Block instead of silently cancelling the other step's run.
       const anotherRunning = Object.entries(states).some(([sid, s]) => sid !== id && s.status === 'importing');
       if (anotherRunning) {
-        toast.error('Another step is still importing — wait for it to finish before starting this one.');
+        toast.error(t('pages.tenantImport.anotherStepImporting'));
         return;
       }
       if (states[id]?.status === 'importing') return;
@@ -248,7 +250,7 @@ export default function TenantImportWizard() {
         if (gen === genOf(id)) toast.error(message);
       }
     },
-    [bu, file, genOf, patch, patchIfCurrent, states],
+    [bu, file, genOf, patch, patchIfCurrent, states, t],
   );
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -274,11 +276,11 @@ export default function TenantImportWizard() {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Tenant Data Import"
-          subtitle="Load Preconfig.xlsx master data into a business unit's database"
+          title={t('pages.tenantImport.title')}
+          subtitle={t('pages.tenantImport.subtitle')}
           actions={
             <Button variant="outline" onClick={() => setBuOpen(true)}>
-              {bu ? `BU: ${bu.code}` : 'Select business unit'}
+              {bu ? t('pages.tenantImport.buPrefix', { code: bu.code }) : t('pages.tenantImport.selectBu')}
             </Button>
           }
         />
@@ -289,9 +291,9 @@ export default function TenantImportWizard() {
               <div className="flex flex-col items-center gap-3 py-10 text-center">
                 <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Pick the business unit that will receive the data.
+                  {t('pages.tenantImport.pickBuHint')}
                 </p>
-                <Button onClick={() => setBuOpen(true)}>Select business unit</Button>
+                <Button onClick={() => setBuOpen(true)}>{t('pages.tenantImport.selectBu')}</Button>
               </div>
             )}
 
@@ -304,14 +306,12 @@ export default function TenantImportWizard() {
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span>
-                      The import step catalog could not be loaded ({catalogError}). The wizard cannot
-                      proceed until this is fixed — this usually means the platform permission for
-                      Preconfig imports has not been granted yet.
+                      {t('pages.tenantImport.catalogError', { detail: catalogError })}
                     </span>
                   </div>
                 ) : busy ? (
                   <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Checking workbook…
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t('pages.tenantImport.checkingWorkbook')}
                   </div>
                 ) : (
                   <WorkbookDropzone onFile={handleFile} />
@@ -379,9 +379,9 @@ export default function TenantImportWizard() {
                 </div>
 
                 <div className="rounded-md border p-3 text-sm">
-                  <p className="mb-2 font-medium">Run summary</p>
+                  <p className="mb-2 font-medium">{t('pages.tenantImport.runSummary')}</p>
                   {readySteps.filter((s) => states[s.id]?.summary).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No step has been imported yet.</p>
+                    <p className="text-xs text-muted-foreground">{t('pages.tenantImport.noStepImported')}</p>
                   ) : (
                     <ul className="space-y-1">
                       {readySteps
@@ -393,7 +393,12 @@ export default function TenantImportWizard() {
                             <li key={s.id} className="flex flex-wrap items-center gap-2">
                               <span className="min-w-40">{s.display_name}</span>
                               <span className="tabular-nums text-muted-foreground">
-                                +{sum.inserted} · ~{sum.updated} · skip {sum.skipped} · fail {sum.failed}
+                                {t('pages.tenantImport.stepCounts', {
+                                  inserted: sum.inserted,
+                                  updated: sum.updated,
+                                  skipped: sum.skipped,
+                                  failed: sum.failed,
+                                })}
                               </span>
                               <Button
                                 variant="ghost"
@@ -404,7 +409,7 @@ export default function TenantImportWizard() {
                                 {stepStatus === 'importing' && (
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 )}
-                                Re-run
+                                {t('pages.tenantImport.rerun')}
                               </Button>
                             </li>
                           );
@@ -419,7 +424,7 @@ export default function TenantImportWizard() {
 
         {process.env.NODE_ENV === 'development' && (
           <DevDebugSheet
-            title="Tenant Data Import"
+            title={t('pages.tenantImport.title')}
             endpoint="POST /api-system/tenant/preconfig-imports"
             data={{ bu, steps, report, fileName: file?.name, catalogError, states, activeId }}
           />

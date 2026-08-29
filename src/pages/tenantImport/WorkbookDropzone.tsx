@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -16,13 +17,14 @@ export function WorkbookDropzone({
   onFile: (file: File) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
   const accept = (file?: File | null) => {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith('.xlsx')) {
-      toast.error('Only .xlsx workbooks are supported');
+      toast.error(t('pages.tenantImport.onlyXlsx'));
       return;
     }
     onFile(file);
@@ -32,7 +34,7 @@ export function WorkbookDropzone({
     <div
       role="button"
       tabIndex={0}
-      aria-label="Upload Preconfig workbook"
+      aria-label={t('pages.tenantImport.uploadAria')}
       onClick={() => !disabled && inputRef.current?.click()}
       onKeyDown={(e) => {
         if (!disabled && (e.key === 'Enter' || e.key === ' ')) inputRef.current?.click();
@@ -55,8 +57,8 @@ export function WorkbookDropzone({
     >
       <Upload className="h-8 w-8 text-muted-foreground" />
       <div className="space-y-1">
-        <p className="text-sm font-medium">Drop Preconfig.xlsx here</p>
-        <p className="text-xs text-muted-foreground">or click to browse — .xlsx only, max 10 MB</p>
+        <p className="text-sm font-medium">{t('pages.tenantImport.dropHere')}</p>
+        <p className="text-xs text-muted-foreground">{t('pages.tenantImport.dropHint')}</p>
       </div>
       <input
         ref={inputRef}

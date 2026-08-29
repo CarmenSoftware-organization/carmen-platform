@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { BatchProgress } from '../TenantMigrationManagement';
+import { useI18n } from '../../hooks/useI18n';
 
 /** Colour a streamed log line by what it reports. */
 function lineTone(line: string): string {
@@ -11,6 +12,7 @@ function lineTone(line: string): string {
 
 /** Live terminal for deploy-all: progress + a streaming log of each tenant's migrations. */
 export function DeployConsole({ batch }: { batch: BatchProgress | null }) {
+  const { t } = useI18n();
   if (!batch) return null;
   const pct = batch.total ? (batch.applied / batch.total) * 100 : 0;
 
@@ -19,7 +21,7 @@ export function DeployConsole({ batch }: { batch: BatchProgress | null }) {
       <div className="bg-card flex items-center justify-between gap-2 border-b px-4 py-3">
         <div className="flex items-center gap-2.5 text-sm font-semibold">
           <Loader2 className="text-warning size-3.5 animate-spin" />
-          Deploying all tenants…
+          {t('pages.tenantMigration.deployingAll')}
           {batch.buCode && <span className="text-muted-foreground font-mono text-xs">({batch.buCode})</span>}
         </div>
         <span className="text-muted-foreground font-mono text-xs tabular-nums">
