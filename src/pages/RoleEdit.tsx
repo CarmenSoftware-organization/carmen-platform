@@ -29,6 +29,7 @@ import { actionRank } from '../utils/permissionOrder';
 import { resourceRank } from '../components/nav/platformNav';
 import { ReadOnlyField } from '../components/ReadOnlyField';
 import type { PermissionCatalogItem } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 interface RoleFormData {
   name: string;
@@ -40,6 +41,7 @@ interface RoleFormData {
 const RoleEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isNew = !id;
 
   const [formData, setFormData] = useState<RoleFormData>({
@@ -128,12 +130,12 @@ const RoleEdit: React.FC = () => {
         setNotFound(true);
       } else {
         const { message } = parseApiError(err);
-        setError('Failed to load role: ' + message);
+        setError(t('pages.roles.loadFailedOne', { detail: message }));
       }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const fetchCatalog = useCallback(() => {
     setCatalogLoading(true);
@@ -150,16 +152,16 @@ const RoleEdit: React.FC = () => {
         // แยกออกมาเพราะผู้ใช้แก้ชื่อ/สถานะ role ต่อได้ ต่างจาก error อื่นที่เป็นความผิดพลาดชั่วคราว
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 403) {
-          toast.error('ไม่มีสิทธิ์ platform_role.read จึงโหลดรายการสิทธิ์ไม่ได้', {
-            description: 'แก้ชื่อและสถานะของ role ได้ตามปกติ แต่เลือกสิทธิ์ไม่ได้',
+          toast.error(t('pages.roles.catalogForbidden'), {
+            description: t('pages.roles.catalogForbiddenDetail'),
           });
           return;
         }
         const { message } = parseApiError(err);
-        toast.error('Failed to load permission catalog: ' + message);
+        toast.error(t('pages.roles.catalogLoadFailedDetail', { detail: message }));
       })
       .finally(() => setCatalogLoading(false));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     // Always load the permission catalog
@@ -195,7 +197,9 @@ const RoleEdit: React.FC = () => {
     e.preventDefault();
 
     // Pre-submit validation
-    const nameError = validateField('name', formData.name) || (formData.name.trim() === '' ? 'Name is required' : '');
+    const nameError = validateField('name', formData.name) || (formData.name.trim() === ''
+        ? t('common.validation.requiredMessage', { label: t('common.field.name') })
+        : '');
     if (nameError) {
       setFieldErrors(prev => ({ ...prev, name: nameError }));
       return;
@@ -215,7 +219,7 @@ const RoleEdit: React.FC = () => {
           permissions: { add: desired },
         });
         const created = result.data || result;
-        toast.success('Role created successfully');
+        toast.success(t('toast.created', { entity: t('entity.role.title') }));
         navigate(created?.id ? `/platform/roles/${created.id}/edit` : '/platform/roles', { replace: true });
       } else {
         // Compute delta vs original permissions (loaded at fetch time)
@@ -228,7 +232,7 @@ const RoleEdit: React.FC = () => {
           permissions: { add, remove },
           ...(docVersion != null ? { doc_version: docVersion } : {}),
         });
-        toast.success('Changes saved successfully');
+        toast.success(t('toast.saved'));
         await fetchRole(); // reloads formData/savedFormData/originalPermissions
         setEditing(false);
       }
@@ -303,19 +307,23 @@ const RoleEdit: React.FC = () => {
   // action really is `read` — never inferred from the role's name or description.
   const grantSummary = useMemo(() => {
     const n = formData.permissions.length;
-    if (n === 0) return 'No permissions granted';
-    const parts = [`${n} permission${n === 1 ? '' : 's'}`];
-    if (grantView.complete) parts.push(`${grantView.rows.length} of ${grantView.totalResources} resources`);
+    if (n === 0) return t('pages.roles.noPermissionsGranted');
+    const parts = [
+      n === 1 ? t('pages.roles.nPermissions', { count: n }) : t('pages.roles.nPermissionsPlural', { count: n }),
+    ];
+    if (grantView.complete)
+      parts.push(t('pages.roles.resourceSpread', { shown: grantView.rows.length, total: grantView.totalResources }));
     const verbs = new Set(grantView.rows.flatMap((r) => r.actions.map((a) => a.action)));
-    if (verbs.size === 1 && verbs.has('read')) parts.push('read only');
+    // `verbs` เป็นค่า action ของ API (read/create/update/…) ไม่แปล — แปลเฉพาะวลี 'read only'
+    if (verbs.size === 1 && verbs.has('read')) parts.push(t('pages.roles.readOnly'));
     else if (verbs.size > 1 && verbs.size <= 3) parts.push(Array.from(verbs).sort().join(' · '));
     return parts.join(' · ');
-  }, [formData.permissions.length, grantView]);
+  }, [formData.permissions.length, grantView, t]);
 
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading role">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.roles.loadingOneAria')}>
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
             <div className="flex-1">
@@ -361,16 +369,16 @@ const RoleEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/platform/roles" title="Role" />
+          <PageHeader backTo="/platform/roles" title={t('pages.roles.singularTitle')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Role not found"
-                description="This role doesn't exist, or it may have been deleted. Check the link, or pick one from the role list."
+                title={t('pages.roles.notFoundTitle')}
+                description={t('pages.roles.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/platform/roles')}>
-                    Back to roles
+                    {t('pages.roles.backToList')}
                   </Button>
                 }
               />
@@ -389,7 +397,7 @@ const RoleEdit: React.FC = () => {
           className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Roles
+          {t('breadcrumb.roles')}
         </Link>
 
         <RoleIdentityHero
@@ -403,7 +411,7 @@ const RoleEdit: React.FC = () => {
               <Can permission="platform_role.update">
                 <Button variant="outline" size="sm" onClick={handleEditToggle}>
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t('common.action.edit')}
                 </Button>
               </Can>
             )
@@ -420,26 +428,26 @@ const RoleEdit: React.FC = () => {
             <div className="min-w-0 space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Permissions</CardTitle>
+                  <CardTitle>{t('pages.roles.permissionsHeading')}</CardTitle>
                   <CardDescription>
-                    {editing ? 'Select the permissions this role grants.' : grantSummary}
+                    {editing ? t('pages.roles.selectPermissions') : grantSummary}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {editing ? (
                     catalogFailed ? (
                       <FetchErrorState
-                        message="Couldn't load the permission catalog."
+                        message={t('pages.roles.catalogFetchFailed')}
                         onRetry={fetchCatalog}
                       />
                     ) : catalogLoading ? (
                       <div className="flex items-center justify-center py-8 text-sm text-muted-foreground" role="status">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading permission catalog…
+                        {t('pages.roles.catalogLoading')}
                       </div>
                     ) : catalog.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-4 text-center">
-                        No permissions are defined in the catalog yet.
+                        {t('pages.roles.catalogEmpty')}
                       </p>
                     ) : (
                       <PermissionPicker
@@ -483,7 +491,9 @@ const RoleEdit: React.FC = () => {
                       </div>
                       {grantView.complete && grantView.untouched > 0 && (
                         <p className="pt-3 text-xs text-muted-foreground">
-                          No access to {grantView.untouched} other resource{grantView.untouched === 1 ? '' : 's'}.
+                          {grantView.untouched === 1
+                            ? t('pages.roles.noAccessOther', { count: grantView.untouched })
+                            : t('pages.roles.noAccessOtherPlural', { count: grantView.untouched })}
                         </p>
                       )}
                     </div>
@@ -496,11 +506,11 @@ const RoleEdit: React.FC = () => {
             <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
               <Card>
                 <CardHeader>
-                  <CardTitle>Settings</CardTitle>
+                  <CardTitle>{t('pages.roles.settings')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Name {editing && <span className="text-destructive">*</span>}</Label>
+                    <Label htmlFor="name">{t('common.field.name')} {editing && <span className="text-destructive">*</span>}</Label>
                     {editing ? (
                       <>
                         <Input
@@ -510,7 +520,7 @@ const RoleEdit: React.FC = () => {
                           value={formData.name}
                           onChange={handleChange}
                           onBlur={handleBlur}
-                          placeholder="Role name"
+                          placeholder={t('pages.roles.namePlaceholder')}
                           className={fieldErrors.name ? 'border-destructive' : ''}
                           required
                         />
@@ -524,7 +534,7 @@ const RoleEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t('common.field.description')}</Label>
                     {editing ? (
                       <Textarea
                         id="description"
@@ -532,7 +542,7 @@ const RoleEdit: React.FC = () => {
                         value={formData.description}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="Optional description"
+                        placeholder={t('pages.roles.descriptionPlaceholder')}
                         rows={3}
                         className={fieldErrors.description ? 'border-destructive' : ''}
                       />
@@ -542,7 +552,7 @@ const RoleEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="is_active">Status</Label>
+                    <Label htmlFor="is_active">{t('common.status.label')}</Label>
                     {editing ? (
                       <label className="flex min-h-11 items-center gap-2">
                         <input
@@ -553,12 +563,12 @@ const RoleEdit: React.FC = () => {
                           onChange={handleChange}
                           className="h-4 w-4 rounded border-input"
                         />
-                        <span className="text-sm">Active</span>
+                        <span className="text-sm">{t('common.status.active')}</span>
                       </label>
                     ) : (
                       <div>
                         <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                          {formData.is_active ? 'Active' : 'Inactive'}
+                          {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
                         </Badge>
                       </div>
                     )}
@@ -577,10 +587,10 @@ const RoleEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -592,11 +602,15 @@ const RoleEdit: React.FC = () => {
                 disabled={saving}
               >
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : isNew ? 'Create Role' : 'Save Changes'}
+                {saving
+                  ? t('common.busy.saving')
+                  : isNew
+                    ? t('pages.roles.createRole')
+                    : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>

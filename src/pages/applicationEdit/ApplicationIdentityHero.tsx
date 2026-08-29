@@ -5,17 +5,29 @@ import { Badge } from '../../components/ui/badge';
 import { moduleOf } from '../../utils/apiCatalog';
 import { AuditMeta } from '../../components/AuditMeta';
 import type { NormalizedAudit } from '../../utils/audit';
+import type { TFunction } from '../../i18n/types';
+import { useI18n } from '../../hooks/useI18n';
 
 /** One-line summary of an app's API reach — full access, or the granted endpoint/module count. */
-export function accessSummary(allowAll: boolean, apiNames: string[]): string {
-  if (allowAll) return 'Full access to every endpoint';
+export function accessSummary(allowAll: boolean, apiNames: string[], t?: TFunction): string {
+  if (allowAll) return t ? t('pages.applications.fullAccessEndpoints') : 'Full access to every endpoint';
   const n = apiNames.length;
-  if (n === 0) return 'No endpoints granted yet';
+  if (n === 0) return t ? t('pages.applications.noEndpointsYet') : 'No endpoints granted yet';
   const modules = new Set(apiNames.map(moduleOf)).size;
-  return `${n} endpoint${n === 1 ? '' : 's'} across ${modules} module${modules === 1 ? '' : 's'}`;
+  if (!t) return `${n} endpoint${n === 1 ? '' : 's'} across ${modules} module${modules === 1 ? '' : 's'}`;
+  const key =
+    n === 1
+      ? modules === 1
+        ? 'pages.applications.endpointSpread'
+        : 'pages.applications.endpointSpreadSP'
+      : modules === 1
+        ? 'pages.applications.endpointSpreadPS'
+        : 'pages.applications.endpointSpreadPP';
+  return t(key, { endpoints: n, modules });
 }
 
 function AppIdChip({ appId }: { appId: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -32,7 +44,7 @@ function AppIdChip({ appId }: { appId: string }) {
       <button
         type="button"
         onClick={copy}
-        aria-label={copied ? 'App ID copied' : 'Copy App ID'}
+        aria-label={copied ? t('pages.applications.appIdCopied') : t('pages.applications.copyAppId')}
         className="hover:text-foreground grid size-5 shrink-0 place-items-center rounded transition-colors"
       >
         {copied ? <Check className="text-success size-3" /> : <Copy className="size-3" />}
@@ -63,6 +75,7 @@ export function ApplicationIdentityHero({
   audit = {},
   actions,
 }: ApplicationIdentityHeroProps) {
+  const { t } = useI18n();
   const hasAuditMeta = Boolean(audit.created || audit.updated);
 
   return (
@@ -73,17 +86,17 @@ export function ApplicationIdentityHero({
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || '(unnamed application)'}</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || t('pages.applications.unnamedApplication')}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant="secondary" className="capitalize">{device || 'web'}</Badge>
-            <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
+            <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>
             {appId && <AppIdChip appId={appId} />}
           </div>
           <div
             className={`mt-2 flex items-center gap-1.5 text-[11px] ${allowAll ? 'text-warning' : 'text-muted-foreground/80'}`}
           >
             {allowAll && <AlertTriangle className="size-3.5 shrink-0" />}
-            {accessSummary(allowAll, apiNames)}
+            {accessSummary(allowAll, apiNames, t)}
           </div>
           {hasAuditMeta && (
             <AuditMeta variant="header" audit={audit} className="text-muted-foreground mt-2 text-[11px] leading-tight" />

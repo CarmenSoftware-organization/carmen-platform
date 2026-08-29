@@ -28,6 +28,7 @@ import { groupApiNames, actionOf } from '../utils/apiCatalog';
 import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
+import { useI18n } from '../hooks/useI18n';
 
 interface ApplicationFormData {
   name: string;
@@ -50,6 +51,7 @@ const emptyForm: ApplicationFormData = {
 const ApplicationEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isNew = !id;
 
   const [formData, setFormData] = useState<ApplicationFormData>(emptyForm);
@@ -149,7 +151,7 @@ const ApplicationEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError('Failed to load application: ' + getErrorDetail(err));
+        setError(t('pages.applications.loadFailedOne', { detail: getErrorDetail(err, t) }));
       }
     } finally {
       setLoading(false);
@@ -218,7 +220,9 @@ const ApplicationEdit: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Pre-submit validation: name is required.
-    const nameError = validateField('name', formData.name) || (!formData.name.trim() ? 'Name is required' : '');
+    const nameError = validateField('name', formData.name) || (!formData.name.trim()
+        ? t('common.validation.requiredMessage', { label: t('common.field.name') })
+        : '');
     if (nameError) {
       setFieldErrors(prev => ({ ...prev, name: nameError }));
       return;
@@ -238,7 +242,7 @@ const ApplicationEdit: React.FC = () => {
       if (isNew) {
         const result = await applicationService.create(payload);
         const created = result.data || result;
-        toast.success('Application created successfully');
+        toast.success(t('toast.created', { entity: t('entity.application.title') }));
         if (created?.id) {
           navigate(`/applications/${created.id}/edit`, { replace: true });
         } else {
@@ -246,7 +250,7 @@ const ApplicationEdit: React.FC = () => {
         }
       } else {
         await applicationService.update(id!, payload);
-        toast.success('Changes saved successfully');
+        toast.success(t('toast.saved'));
         await fetchApplication();
         setEditing(false);
       }
@@ -255,7 +259,7 @@ const ApplicationEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchApplication();
       } else {
-        setError('Failed to save application: ' + getErrorDetail(err));
+        setError(t('pages.applications.saveFailed', { detail: getErrorDetail(err, t) }));
       }
     } finally {
       setSaving(false);
@@ -267,7 +271,7 @@ const ApplicationEdit: React.FC = () => {
     // snaps sideways when the data lands.
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading application">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.applications.loadingOneAria')}>
           <Skeleton className="h-4 w-24" />
 
           {/* Hero skeleton */}
@@ -325,16 +329,16 @@ const ApplicationEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/applications" title="Application" />
+          <PageHeader backTo="/applications" title={t('pages.applications.singularTitle')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Application not found"
-                description="This application doesn't exist, or it may have been deleted. Check the link, or pick one from the application list."
+                title={t('pages.applications.notFoundTitle')}
+                description={t('pages.applications.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/applications')}>
-                    Back to applications
+                    {t('pages.applications.backToList')}
                   </Button>
                 }
               />
@@ -349,7 +353,11 @@ const ApplicationEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
         {isNew ? (
-          <PageHeader backTo="/applications" title="Add Application" subtitle="Create a new application" />
+          <PageHeader
+            backTo="/applications"
+            title={t('pages.applications.addApplication')}
+            subtitle={t('pages.applications.newSubtitle')}
+          />
         ) : (
           <>
             <Link
@@ -357,7 +365,7 @@ const ApplicationEdit: React.FC = () => {
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Applications
+              {t('breadcrumb.applications')}
             </Link>
 
             <ApplicationIdentityHero
@@ -373,7 +381,7 @@ const ApplicationEdit: React.FC = () => {
                   <Can permission="application.update">
                     <Button variant="outline" size="sm" onClick={handleEditToggle}>
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit
+                      {t('common.action.edit')}
                     </Button>
                   </Can>
                 )
@@ -392,8 +400,8 @@ const ApplicationEdit: React.FC = () => {
             <div className="min-w-0 space-y-4 sm:space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>API access</CardTitle>
-                  <CardDescription>Which endpoints this app may call.</CardDescription>
+                  <CardTitle>{t('pages.applications.apiAccess')}</CardTitle>
+                  <CardDescription>{t('pages.applications.apiAccessDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {editing && (
@@ -407,9 +415,9 @@ const ApplicationEdit: React.FC = () => {
                         className="mt-0.5 h-4 w-4 rounded border-input"
                       />
                       <div>
-                        <Label htmlFor="allow_all" className="cursor-pointer">Full access to every API</Label>
+                        <Label htmlFor="allow_all" className="cursor-pointer">{t('pages.applications.allowAllLabel')}</Label>
                         <p className="text-muted-foreground text-xs">
-                          The app can call every endpoint. Turn off to grant specific endpoints only.
+                          {t('pages.applications.allowAllNote')}
                         </p>
                       </div>
                     </div>
@@ -418,14 +426,14 @@ const ApplicationEdit: React.FC = () => {
                   {formData.allow_all ? (
                     <div className="text-warning bg-warning/10 flex items-start gap-2 rounded-md px-3 py-2.5 text-sm">
                       <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                      <span>This app is not restricted to specific endpoints. It can call every API in the platform.</span>
+                      <span>{t('pages.applications.allowAllWarning')}</span>
                     </div>
                   ) : editing ? (
                     <div className="space-y-2 border-t pt-4">
                       {catalogFailed ? (
                         <div className="space-y-2">
                           <FetchErrorState
-                            message="Couldn't load the API catalog."
+                            message={t('pages.applications.catalogFetchFailed')}
                             onRetry={fetchApiCatalog}
                             className="justify-start rounded-md border border-input p-3"
                           />
@@ -434,7 +442,7 @@ const ApplicationEdit: React.FC = () => {
                             name="api_names"
                             value={formData.api_names.join(',')}
                             onChange={(v) => setFormData(prev => ({ ...prev, api_names: v ? v.split(',').map(s => s.trim()).filter(Boolean) : [] }))}
-                            placeholder="Type an api_name and press Enter"
+                            placeholder={t('pages.applications.apiNamesPlaceholder')}
                           />
                         </div>
                       ) : (
@@ -446,16 +454,16 @@ const ApplicationEdit: React.FC = () => {
                                 type="text"
                                 value={apiSearch}
                                 onChange={(e) => setApiSearch(e.target.value)}
-                                placeholder="Filter by module or api_name..."
+                                placeholder={t('pages.applications.filterPlaceholder')}
                                 className="pl-9 pr-9"
-                                aria-label="Filter API names"
+                                aria-label={t('pages.applications.filterAria')}
                               />
                               {apiSearch && (
                                 <button
                                   type="button"
                                   onClick={() => setApiSearch('')}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                                  aria-label="Clear filter"
+                                  aria-label={t('pages.applications.clearFilter')}
                                 >
                                   <X className="h-4 w-4" />
                                 </button>
@@ -464,11 +472,11 @@ const ApplicationEdit: React.FC = () => {
 
                           {catalogLoading ? (
                             <div className="rounded-md border border-input p-2" role="status">
-                              <p className="text-sm text-muted-foreground text-center py-4">Loading catalog…</p>
+                              <p className="text-sm text-muted-foreground text-center py-4">{t('pages.applications.catalogLoading')}</p>
                             </div>
                           ) : catalogGroups.length === 0 ? (
                             <div className="rounded-md border border-input p-2">
-                              <p className="text-sm text-muted-foreground text-center py-4">No API endpoints are defined in the catalog yet.</p>
+                              <p className="text-sm text-muted-foreground text-center py-4">{t('pages.applications.catalogEmpty')}</p>
                             </div>
                           ) : (() => {
                             const q = apiSearch.trim().toLowerCase();
@@ -487,7 +495,7 @@ const ApplicationEdit: React.FC = () => {
                             if (visibleGroups.length === 0) {
                               return (
                                 <div className="rounded-md border border-input p-2">
-                                  <p className="text-sm text-muted-foreground text-center py-4">No API names matching &ldquo;{apiSearch}&rdquo;</p>
+                                  <p className="text-sm text-muted-foreground text-center py-4">{t('pages.applications.noApiNamesMatching', { query: apiSearch })}</p>
                                 </div>
                               );
                             }
@@ -508,7 +516,9 @@ const ApplicationEdit: React.FC = () => {
                                         : expandModules(allVisibleModules)
                                     }
                                   >
-                                    {allVisibleExpanded ? 'Collapse all' : 'Expand all'}
+                                    {allVisibleExpanded
+                                      ? t('pages.applications.collapseAll')
+                                      : t('pages.applications.expandAll')}
                                   </Button>
                                 </div>
                                 <div className="rounded-md border border-input max-h-80 overflow-y-auto divide-y">
@@ -544,10 +554,16 @@ const ApplicationEdit: React.FC = () => {
                                             variant="ghost"
                                             size="sm"
                                             className={`h-6 text-xs ${HIT_SLOP_44}`}
-                                            aria-label={allSelected ? `Deselect all ${g.module}` : `Select all ${g.module}`}
+                                            aria-label={
+                                              allSelected
+                                                ? t('pages.applications.deselectAllModule', { module: g.module })
+                                                : t('pages.applications.selectAllModule', { module: g.module })
+                                            }
                                             onClick={() => toggleModuleSelection(g.api_names)}
                                           >
-                                            {allSelected ? 'None' : 'All'}
+                                            {allSelected
+                                              ? t('pages.applications.moduleNone')
+                                              : t('pages.applications.moduleAll')}
                                           </Button>
                                         </div>
                                         {expanded && (
@@ -618,11 +634,11 @@ const ApplicationEdit: React.FC = () => {
             <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
               <Card>
                 <CardHeader>
-                  <CardTitle>Settings</CardTitle>
+                  <CardTitle>{t('pages.applications.settings')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Name {editing && '*'}</Label>
+                    <Label htmlFor="name">{t('common.field.name')} {editing && '*'}</Label>
                     {editing ? (
                       <>
                         <Input
@@ -633,7 +649,7 @@ const ApplicationEdit: React.FC = () => {
                           onChange={handleChange}
                           onBlur={handleBlur}
                           onFocus={handleFocus}
-                          placeholder="Application name"
+                          placeholder={t('pages.applications.namePlaceholder')}
                           className={fieldErrors.name ? 'border-destructive' : ''}
                           required
                         />
@@ -645,7 +661,7 @@ const ApplicationEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">{t('common.field.description')}</Label>
                     {editing ? (
                       <Input
                         type="text"
@@ -653,7 +669,7 @@ const ApplicationEdit: React.FC = () => {
                         name="description"
                         value={formData.description}
                         onChange={handleChange}
-                        placeholder="Description"
+                        placeholder={t('common.field.description')}
                       />
                     ) : (
                       <ReadOnlyField value={formData.description} />
@@ -661,7 +677,7 @@ const ApplicationEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="device">Device</Label>
+                    <Label htmlFor="device">{t('pages.applications.device')}</Label>
                     {editing ? (
                       <select
                         id="device"
@@ -680,7 +696,7 @@ const ApplicationEdit: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="is_active">Status</Label>
+                    <Label htmlFor="is_active">{t('common.status.label')}</Label>
                     {editing ? (
                       <label className="flex items-center gap-2">
                         <input
@@ -691,12 +707,12 @@ const ApplicationEdit: React.FC = () => {
                           onChange={handleChange}
                           className="h-4 w-4 rounded border-input"
                         />
-                        <span className="text-sm">Active</span>
+                        <span className="text-sm">{t('common.status.active')}</span>
                       </label>
                     ) : (
                       <div>
                         <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                          {formData.is_active ? 'Active' : 'Inactive'}
+                          {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
                         </Badge>
                       </div>
                     )}
@@ -730,11 +746,15 @@ const ApplicationEdit: React.FC = () => {
                 disabled={saving}
               >
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="button" size="sm" disabled={saving || (!isNew && !hasChanges)} onClick={() => formRef.current?.requestSubmit()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {saving ? 'Saving...' : isNew ? 'Create Application' : 'Save Changes'}
+                {saving
+                  ? t('common.busy.saving')
+                  : isNew
+                    ? t('pages.applications.createApplication')
+                    : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>

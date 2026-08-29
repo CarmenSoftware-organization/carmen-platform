@@ -105,12 +105,12 @@ const RoleManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load roles: ' + getErrorDetail(err));
+      setError(t('pages.roles.loadFailed', { detail: getErrorDetail(err, t) }));
       devLog('Error fetching roles:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchRoles(paginate);
@@ -195,36 +195,36 @@ const RoleManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await roleService.delete(deleteId);
-      toast.success('Role deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.role.title') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
-      toast.error('Failed to delete role', { description: parsed.message });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.role.lower') }), { description: parsed.message });
     }
   };
 
   const handleExport = () => {
     const rows = roles.map((r) => ({ ...r, ...auditCsvFields(normalizeAudit(r)) }));
     const csv = generateCSV(rows, [
-      { key: 'name', label: 'Name' },
-      { key: 'description', label: 'Description' },
-      { key: 'permission_count', label: 'Permissions' },
-      { key: 'is_active', label: 'Active' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'description', label: t('common.field.description') },
+      { key: 'permission_count', label: t('pages.roles.columnPermissions') },
+      { key: 'is_active', label: t('common.status.active') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `roles-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<RoleRow, unknown>[]>(() => [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('common.field.name'),
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
           <Link
@@ -247,7 +247,7 @@ const RoleManagement: React.FC = () => {
     },
     {
       id: 'permission_count',
-      header: 'Permissions',
+      header: t('pages.roles.columnPermissions'),
       enableSorting: false,
       meta: { cellClassName: 'text-center' },
       cell: ({ row }) => (
@@ -258,11 +258,11 @@ const RoleManagement: React.FC = () => {
     },
     {
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
+          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
@@ -291,7 +291,7 @@ const RoleManagement: React.FC = () => {
                 className="cursor-pointer"
               >
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
             <Can permission="platform_role.delete">
@@ -300,7 +300,7 @@ const RoleManagement: React.FC = () => {
                 className="cursor-pointer text-destructive focus:text-destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
@@ -314,8 +314,8 @@ const RoleManagement: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {/* Header row */}
         <PageHeader
-          title="Platform Roles"
-          subtitle="Manage platform roles and their permissions"
+          title={t('pages.roles.title')}
+          subtitle={t('pages.roles.subtitle')}
           actions={
             <>
               <Button
@@ -324,7 +324,7 @@ const RoleManagement: React.FC = () => {
                 onClick={() => navigate('/platform/category-permissions')}
               >
                 <BookOpen className="mr-2 h-4 w-4" />
-                Permission Catalog
+                {t('pages.roles.permissionCatalog')}
               </Button>
               <Button
                 variant="outline"
@@ -333,13 +333,13 @@ const RoleManagement: React.FC = () => {
                 disabled={loading || roles.length === 0}
               >
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="platform_role.create">
                 <Button onClick={() => navigate('/platform/roles/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Role</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t('pages.roles.addRole')}</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -356,14 +356,14 @@ const RoleManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search roles..."
+                placeholder={t('pages.roles.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -373,13 +373,13 @@ const RoleManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter roles by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.roles.filtersDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
                           <Button
                             variant="ghost"
@@ -387,7 +387,7 @@ const RoleManagement: React.FC = () => {
                             className="h-6 text-xs"
                             onClick={handleClearStatusFilter}
                           >
-                            Clear
+                            {t('common.action.clear')}
                           </Button>
                         )}
                       </div>
@@ -398,7 +398,7 @@ const RoleManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter('true')}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes('false') ? 'default' : 'outline'}
@@ -406,7 +406,7 @@ const RoleManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter('false')}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
@@ -417,7 +417,7 @@ const RoleManagement: React.FC = () => {
                         className="w-full"
                         onClick={handleClearAllFilters}
                       >
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -428,16 +428,16 @@ const RoleManagement: React.FC = () => {
             {/* Active filter badges */}
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => {
-                  const label = s === 'true' ? 'Active' : 'Inactive';
+                  const label = s === 'true' ? t('common.status.active') : t('common.status.inactive');
                   return (
                     <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
                       {label}
                       <button
                         onClick={() => handleStatusFilter(s)}
                         className="ml-0.5 hover:text-foreground"
-                        aria-label={`Remove ${label} filter`}
+                        aria-label={t('pages.roles.removeFilterAria', { label })}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -448,7 +448,7 @@ const RoleManagement: React.FC = () => {
                   onClick={handleClearAllFilters}
                   className="text-xs text-muted-foreground hover:text-foreground underline"
                 >
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -466,13 +466,13 @@ const RoleManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={ShieldCheck}
-                emptyTitle="No roles yet"
-                emptyDescription="Get started by creating your first role to manage platform permissions."
+                emptyTitle={t('pages.roles.emptyTitle')}
+                emptyDescription={t('pages.roles.emptyDescription')}
                 addAction={
                   <Can permission="platform_role.create">
                     <Button size="sm" onClick={() => navigate('/platform/roles/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Role
+                      {t('pages.roles.addRole')}
                     </Button>
                   </Can>
                 }
@@ -489,9 +489,9 @@ const RoleManagement: React.FC = () => {
                       <div
                         className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
                         role="status"
-                        aria-label="Loading roles"
+                        aria-label={t('pages.roles.loadingAria')}
                       >
-                        <div className="text-muted-foreground">Loading roles...</div>
+                        <div className="text-muted-foreground">{t('pages.roles.loadingText')}</div>
                       </div>
                     )}
                     <DataTable
@@ -519,9 +519,9 @@ const RoleManagement: React.FC = () => {
         onOpenChange={(open) => {
           if (!open) setDeleteId(null);
         }}
-        title="Delete Role"
-        description="Are you sure you want to delete this role? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.roles.deleteTitle')}
+        description={t('pages.roles.deleteDescription')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
