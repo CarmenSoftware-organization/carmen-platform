@@ -187,6 +187,27 @@ export const th: Translations = {
       // ดูคอมเมนต์ที่ en.ts — ต่างจาก `loading` ข้างบนด้วยตัวจุดไข่ปลา (…, U+2026) ไม่ใช่จุด
       // ASCII สามตัว ('...') ทั้งสองรูปแบบมีอยู่จริงในซอร์สคนละจุด เลยต้องแยกคีย์กัน ไม่รวมเป็นคีย์เดียว
       loadingEllipsis: 'กำลังโหลด…',
+      // สถานะ busy ของปุ่มใน BrandingImageUpload.tsx — ใช้ตัวจุดไข่ปลา U+2026 ตัวเดียวกับ
+      // ต้นฉบับ ('Uploading…') และตัวเดียวกับ loadingEllipsis ข้างบน
+      uploading: 'กำลังอัปโหลด…',
+    },
+    // ข้อความของ BrandingImageUpload.tsx เอง (ปุ่ม/aria-label/validate/toast) — คอมโพเนนต์กลาง
+    // ที่ผู้เรียกไม่มีช่องแทนที่ได้ (ข้อความอยู่ใน JSX/toast() ของคอมโพเนนต์เอง ไม่ใช่ label ที่
+    // รับมาจากผู้เรียก) จึงเลื่อนไปทำทีหลังแบบ auditColumns.tsx/AuditMeta.tsx/relativeTime.ts
+    // ไม่ได้ ดูคอมเมนต์ที่ en.ts
+    upload: {
+      // `.toLowerCase()` ยังคงเรียกกับ `label` ก่อน interpolate เหมือนต้นฉบับ — กับข้อความไทย
+      // ไม่มีผล (ภาษาไทยไม่มีตัวพิมพ์เล็ก-ใหญ่) แต่จำเป็นเพื่อให้ผลลัพธ์ภาษาอังกฤษเหมือนเดิมทุก
+      // ตัวอักษร ('Upload logo' ไม่ใช่ 'Upload Logo')
+      uploadLabel: 'อัปโหลด {{label}}',
+      replaceLabel: 'แทนที่ {{label}}',
+      unsupportedType: 'ไม่รองรับประเภทไฟล์นี้ อนุญาต: {{types}}',
+      tooLarge: 'ไฟล์มีขนาดใหญ่เกินไป ขนาดสูงสุดคือ {{size}} MB',
+      // คู่กับรายการชนิดไฟล์ที่ไม่แปล (ข้อมูล ไม่ใช่ข้อความ เช่น 'JPEG, PNG, WEBP') — คีย์นี้
+      // ให้แค่ครึ่งหลัง: '{{types}} · {{คีย์นี้}}'
+      maxSizeHint: 'ไม่เกิน {{size}} MB',
+      updated: 'อัปเดต {{label}} แล้ว',
+      uploadFailed: 'อัปโหลด {{label}} ไม่สำเร็จ',
     },
     audit: {
       createdAt: 'สร้างเมื่อ',

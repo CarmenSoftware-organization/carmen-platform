@@ -218,6 +218,32 @@ export const en = {
       // ≥3-files-AND-≥2-slices promotion bar. Call sites: SubscriptionInfoCard.tsx (x2),
       // ClusterLicenseDetail.tsx, SeatSection.tsx.
       loadingEllipsis: 'Loading…',
+      // BrandingImageUpload.tsx's busy-state button caption — a distinct verb from
+      // `loading` above, not a duplicate. Uses the U+2026 ellipsis to match the literal
+      // that was already in the source ('Uploading…'), same glyph as loadingEllipsis.
+      uploading: 'Uploading…',
+    },
+    // BrandingImageUpload.tsx's own render/validate/toast copy — a shared component with
+    // no per-call-site override (label text lands inside its own JSX and toast() calls,
+    // not something a caller can swap), so unlike auditColumns.tsx/AuditMeta.tsx/
+    // relativeTime.ts this cannot be deferred. `label` arrives already translated from the
+    // caller (e.g. pages.businessUnits.logoLabel, common.field.avatar); these templates
+    // supply only the surrounding frame. No exact or near match existed anywhere in the
+    // catalog for any of these six values — fresh keys, fresh Thai.
+    upload: {
+      // `.toLowerCase()` still runs on `label` before interpolation (kept from the
+      // original source): a no-op on Thai text (Thai has no case) but required to keep
+      // the English output byte-identical ('Upload logo', not 'Upload Logo').
+      uploadLabel: 'Upload {{label}}',
+      replaceLabel: 'Replace {{label}}',
+      unsupportedType: 'Unsupported file type. Allowed: {{types}}.',
+      tooLarge: 'File is too large. Maximum size is {{size}} MB.',
+      // Paired with the accept-types list, which stays untranslated data (MIME types
+      // upper-cased, e.g. 'JPEG, PNG, WEBP') — this key supplies only the trailing half:
+      // '{{types}} · {{this key}}'.
+      maxSizeHint: 'up to {{size}} MB',
+      updated: '{{label}} updated',
+      uploadFailed: '{{label}} upload failed',
     },
     audit: {
       createdAt: 'Created at',
