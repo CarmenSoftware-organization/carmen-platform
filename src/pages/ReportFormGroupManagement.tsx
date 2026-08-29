@@ -8,6 +8,7 @@ import { getErrorDetail, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../hooks/useI18n';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -36,6 +37,7 @@ const NONE_CODE = '(none)';
 const ReportFormGroupManagement: React.FC = () => {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const { t } = useI18n();
   const canWrite = hasPermission('report_template.update');
   const canCreate = hasPermission('report_template.create');
 
@@ -92,12 +94,12 @@ const ReportFormGroupManagement: React.FC = () => {
       setTemplates(all);
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load form templates: ' + getErrorDetail(err));
+      setError(t('pages.reportFormGroups.loadFailed', { detail: getErrorDetail(err, t) }));
       devLog('Error fetching form templates:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchAll();
@@ -165,12 +167,12 @@ const ReportFormGroupManagement: React.FC = () => {
         current: current ? { id: current.id, doc_version: getDocVersion(current) } : null,
         target: { id: target.id, doc_version: getDocVersion(target) },
       });
-      toast.success(`Set "${target.name}" as default for ${code}`);
+      toast.success(t('pages.reportFormGroups.toastDefaultSet', { name: target.name, code }));
       setPendingDefault(null);
       await fetchAll();
     } catch (err: unknown) {
       if (isVersionConflict(err)) notifyVersionConflict();
-      else toast.error('Failed to set default: ' + getErrorDetail(err));
+      else toast.error(t('pages.reportFormGroups.toastDefaultFailed', { detail: getErrorDetail(err, t) }));
       setPendingDefault(null);
       await fetchAll();
     } finally {
@@ -178,23 +180,28 @@ const ReportFormGroupManagement: React.FC = () => {
     }
   };
 
-  const toggleActive = async (t: ReportTemplate) => {
-    const code = t.report_group || NONE_CODE;
-    const version = getDocVersion(t);
+  // พารามิเตอร์ชื่อ `tpl` ไม่ใช่ `t` — `t` ถูกจองไว้ให้ useI18n() แล้วทั้งไฟล์
+  const toggleActive = async (tpl: ReportTemplate) => {
+    const code = tpl.report_group || NONE_CODE;
+    const version = getDocVersion(tpl);
     setBusyGroup(code);
     try {
-      await reportTemplateService.update(t.id, {
-        is_active: !t.is_active,
+      await reportTemplateService.update(tpl.id, {
+        is_active: !tpl.is_active,
         ...(version != null ? { doc_version: version } : {}),
       });
-      toast.success(t.is_active ? `Deactivated "${t.name}"` : `Activated "${t.name}"`);
+      toast.success(
+        tpl.is_active
+          ? t('pages.reportFormGroups.toastDeactivated', { name: tpl.name })
+          : t('pages.reportFormGroups.toastActivated', { name: tpl.name }),
+      );
       await fetchAll();
     } catch (err: unknown) {
       if (isVersionConflict(err)) {
         notifyVersionConflict();
         await fetchAll();
       } else {
-        toast.error('Failed to update: ' + getErrorDetail(err));
+        toast.error(t('pages.reportFormGroups.toastUpdateFailed', { detail: getErrorDetail(err, t) }));
       }
     } finally {
       setBusyGroup(null);
@@ -211,13 +218,13 @@ const ReportFormGroupManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Form Groups"
-          subtitle="Manage the default form template for each report group"
+          title={t('nav.formGroups')}
+          subtitle={t('pages.reportFormGroups.subtitle')}
           actions={
             <Can permission="report_template.create">
               <Button size="sm" onClick={() => handleAdd()}>
                 <Plus className="mr-2 h-4 w-4" />
-                New Form Template
+                {t('pages.reportFormGroups.newFormTemplate')}
               </Button>
             </Can>
           }
@@ -231,9 +238,9 @@ const ReportFormGroupManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search group code or template name…"
+                placeholder={t('pages.reportFormGroups.searchPlaceholder')}
                 className="pl-9"
-                aria-label="Search form groups"
+                aria-label={t('pages.reportFormGroups.searchAria')}
               />
             </div>
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -243,7 +250,7 @@ const ReportFormGroupManagement: React.FC = () => {
                 checked={activeOnly}
                 onChange={(e) => setActiveOnly(e.target.checked)}
               />
-              Active only
+              {t('pages.reportFormGroups.activeOnly')}
             </label>
           </CardContent>
         </Card>
@@ -263,7 +270,7 @@ const ReportFormGroupManagement: React.FC = () => {
         ) : groups.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No groups match your search.
+              {t('pages.reportFormGroups.noGroupsMatch')}
             </CardContent>
           </Card>
         ) : (
@@ -290,17 +297,24 @@ const ReportFormGroupManagement: React.FC = () => {
         onOpenChange={(v) => {
           if (!v) setPendingDefault(null);
         }}
-        title="Set default form template"
+        title={t('pages.reportFormGroups.setDefaultTitle')}
         description={
           pendingDefault
-            ? `Set "${pendingDefault.target.name}" as the default for ${pendingDefault.code}?` +
-              (pendingDefault.current ? ` Replaces "${pendingDefault.current.name}".` : '')
+            ? t('pages.reportFormGroups.setDefaultConfirm', {
+                name: pendingDefault.target.name,
+                code: pendingDefault.code,
+              }) +
+              (pendingDefault.current
+                ? t('pages.reportFormGroups.setDefaultReplaces', { name: pendingDefault.current.name })
+                : '')
             : ''
         }
-        confirmText="Set default"
+        confirmText={t('pages.reportFormGroups.setDefaultAction')}
         onConfirm={confirmDefault}
       />
 
+      {/* ป้าย DevDebugSheet ไม่แปล — ตรงกับอีก 16 หน้าที่แปลไปแล้วซึ่งคง 'API Response'
+          ไว้เป็นอังกฤษ เป็นเครื่องมือ dev ไม่ใช่ข้อความสำหรับผู้ใช้ */}
       <DevDebugSheet title="Form Groups — raw" data={rawResponse} />
     </Layout>
   );

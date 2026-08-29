@@ -2,7 +2,7 @@ import { relativeTime } from '../utils/relativeTime';
 import type { AuditActor, NormalizedAudit } from '../utils/audit';
 import { isUnknownActor } from '../utils/audit';
 import { useI18n } from '../hooks/useI18n';
-import type { TFunction } from '../i18n/types';
+import type { TFunction, TKey } from '../i18n/types';
 
 // ไม่มี date library ในโปรเจกต์นี้ (CLAUDE.md · DateTime) — formatter แบบ inline
 const absolute = (iso?: string): string | undefined => {
@@ -22,7 +22,7 @@ const displayName = (t: TFunction, name?: string): string | undefined => {
 type AuditMetaProps =
   | { variant: 'header'; audit: NormalizedAudit; now?: Date; className?: string }
   | { variant: 'cell'; actor?: AuditActor; now?: Date; className?: string }
-  | { variant: 'compact'; actor?: AuditActor; now?: Date; className?: string; verb?: string };
+  | { variant: 'compact'; actor?: AuditActor; now?: Date; className?: string; verbKey?: TKey };
 
 /**
  * แสดง "ใครทำเมื่อไหร่" ด้วยรูปแบบเดียวกันทั้งแอป
@@ -62,8 +62,8 @@ export function AuditMeta(props: AuditMetaProps) {
   if (props.variant === 'compact') {
     return (
       <span className={props.className ?? 'text-muted-foreground text-xs'} title={absolute(actor.at)}>
-        {props.verb && <span className="font-medium">{props.verb}</span>}
-        {props.verb && ' '}
+        {props.verbKey && <span className="font-medium">{t(props.verbKey)}</span>}
+        {props.verbKey && ' '}
         {when || '-'}
         {who && ` · ${who}`}
       </span>

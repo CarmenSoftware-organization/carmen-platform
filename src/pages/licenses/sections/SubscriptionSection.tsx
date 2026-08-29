@@ -166,7 +166,7 @@ export function SubscriptionSection({ clusterId, canManage }: SubscriptionSectio
                         </div>
                         <AuditMeta
                           variant="compact"
-                          verb={latest?.verb}
+                          verbKey={latest?.verbKey}
                           actor={latest?.actor}
                           className="text-muted-foreground text-[11px]"
                         />

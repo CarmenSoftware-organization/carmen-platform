@@ -114,7 +114,7 @@ function BuRow({ bu, onDelete }: { bu: AccessBU; onDelete: (bu: AccessBU) => voi
         {unit?.code && <span className="text-muted-foreground ml-2 font-mono text-[11px]">{unit.code}</span>}
         <AuditMeta
           variant="compact"
-          verb={latest?.verb}
+          verbKey={latest?.verbKey}
           actor={latest?.actor}
           className="text-muted-foreground mt-0.5 block text-[11px]"
         />

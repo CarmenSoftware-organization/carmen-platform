@@ -110,7 +110,7 @@ const PermissionCatalog: React.FC = () => {
                         )}
                         <AuditMeta
                           variant="compact"
-                          verb={latest?.verb}
+                          verbKey={latest?.verbKey}
                           actor={latest?.actor}
                           className="text-muted-foreground pl-1 text-xs"
                         />

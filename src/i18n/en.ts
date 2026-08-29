@@ -75,6 +75,10 @@ export const en = {
     dataImport: 'Data Import',
     users: 'Users',
     reportTemplates: 'Report Templates',
+    // เติมตอนตรวจเบราว์เซอร์ slice 6 — ช่องว่างแบบเดียวกับ analytics: route
+    // /report-form-groups ไม่เคยอยู่ใน SEGMENT_KEYS ป้ายจึงมาจาก titleCase() เป็น
+    // 'Report Form Groups' ทุกภาษา ค่าใหม่ตรงกับ nav.formGroups และหัวเรื่องของหน้า
+    formGroups: 'Form Groups',
     news: 'News',
     broadcasts: 'Broadcasts',
     // เติมตอน browser pass ของ fix wave 2: /analytics กับ /activity-events ไม่เคยอยู่ใน
@@ -587,6 +591,8 @@ export const en = {
     // was counted, clearing the promote bar. pages.subscriptions.subscription and
     // pages.licenses.subscriptionColumn were both deleted.
     subscription: { title: 'Subscription', sentence: 'Subscription', lower: 'subscription' },
+    // slice 6 — ป้อนให้ toast.deleted/deleteFailed ของหน้า ReportTemplateManagement
+    reportTemplate: { title: 'Report template', sentence: 'Report template', lower: 'report template' },
   },
 
   /**
@@ -2348,6 +2354,150 @@ export const en = {
     // already held the same English but a different Thai word (common.field.type is
     // 'ประเภท'; this page's column says 'ชนิด'), a page-local key preserves the page's own
     // word instead of silently rewording the Thai UI — flagged for the owner's read.
+    reportTemplates: {
+      subtitle: 'Manage report templates with dialog (XML) and content (.frx to XML)',
+      addTemplate: 'Add Template',
+      searchPlaceholder: 'Search report templates...',
+      filtersDescription: 'Filter report templates by status',
+      sourceTypeLabel: 'Source Type',
+      templateTypeLabel: 'Template Type',
+      // ป้ายของค่า enum ฝั่ง API — เดิม render ค่าดิบแล้วพึ่ง `capitalize` ของ CSS ทำให้
+      // ตัวอักษรใหญ่มาจาก stylesheet ไม่ใช่จากข้อความ (จุดบอด "ป้ายที่โค้ดปั้นตอนรัน")
+      // ผูกเป็น Record<union, TKey> ที่ call site ไม่ใช่ t(`...${v}`) เพราะชุดค่าปิดตายแล้ว
+      sourceTypeView: 'View',
+      sourceTypeFunction: 'Function',
+      sourceTypeProcedure: 'Procedure',
+      templateTypeForm: 'Form',
+      templateTypeList: 'List',
+      removeFilterAria: 'Remove {{label}} filter',
+      columnTemplateType: 'Template Type',
+      columnReportGroup: 'Report Group',
+      columnStandard: 'Standard',
+      standard: 'Standard',
+      emptyTitle: 'No report templates yet',
+      emptyDescription: 'Get started by creating your first report template.',
+      loadingAria: 'Loading report templates',
+      loadingText: 'Loading report templates...',
+      loadFailed: 'Failed to load report templates: {{detail}}',
+      deleteTitle: 'Delete Report Template',
+      deleteDescription: 'Are you sure you want to delete this report template? This action cannot be undone.',
+      // ── ReportTemplateEdit.tsx — หน้าเดียวกันของฟีเจอร์เดียวกัน จึงอยู่ namespace เดียวกัน ──
+      notFoundTitle: 'Report template not found',
+      notFoundDescription: "This report template doesn't exist, or it may have been deleted. Check the link, or pick one from the report template list.",
+      backToList: 'Back to report templates',
+      // เอกพจน์ ต่างจาก loadingAria/loadingText ของหน้ารายการซึ่งเป็นพหูพจน์
+      loadingOneAria: 'Loading report template',
+      newTitle: 'New Report Template',
+      singularTitle: 'Report Template',
+      newSubtitle: 'Create a new report template',
+      editSubtitle: 'View and edit report template details',
+      loadFailedOne: 'Failed to load report template: {{detail}}',
+      saveFailed: 'Failed to save report template: {{detail}}',
+      templateInfo: 'Template Info',
+      selectTypePlaceholder: 'Select type…',
+      namePlaceholder: 'Template name',
+      descriptionPlaceholder: 'Template description',
+      selectGroupPlaceholder: 'Select group…',
+      reportGroupPlaceholder: 'e.g. inventory, procurement',
+      defaultForGroup: 'Default for this report group',
+      defaultNote: 'Only one template per report group can be the default. If another template in this group is already marked default, saving here will fail — unset it there first.',
+      kind: 'Kind',
+      groupDefault: 'Group Default',
+      notDefault: 'Not default',
+      buScope: 'Business Unit Scope',
+      allow: 'Allow',
+      deny: 'Deny',
+      allowPlaceholderForm: 'All business units (form template)',
+      allowPlaceholder: 'Type BU code + Enter (blank = all)',
+      denyPlaceholder: 'Type BU code + Enter (blank = none)',
+      dataSource: 'Data Source',
+      sourceName: 'Source Name',
+      sourceNamePlaceholderView: 'e.g. v_pr_summary',
+      sourceNamePlaceholderFunction: 'e.g. fn_pr_report',
+      sourceNamePlaceholderProcedure: 'e.g. sp_pr_report',
+      browseInBu: 'Browse in BU:',
+      probeBuPlaceholder: 'e.g. T03',
+      load: 'Load',
+      dbObjectsFailed: "Couldn't load DB objects from {{bu}}.",
+      dbObjectsToastFailed: 'Failed to load DB objects from {{bu}}: {{detail}}',
+      // ชื่อชนิดวัตถุในฐานข้อมูล แยกเอกพจน์/พหูพจน์เป็นคีย์ต่างหาก เพราะเดิมโค้ดปั้น 's'
+      // ต่อท้ายค่า enum ตอนรัน (`${type}s`) ซึ่งไม่มีสตริงไหนให้สกัดเลย และภาษาไทยไม่เติม s
+      objectView: 'view',
+      objectFunction: 'function',
+      objectProcedure: 'procedure',
+      objectsView: 'views',
+      objectsFunction: 'functions',
+      objectsProcedure: 'procedures',
+      noObjectsFound: 'No {{objects}} found in {{bu}}.',
+      pickFromAria: 'Pick from available {{objects}} in {{bu}}',
+      pickFromOption: 'Pick from {{count}} {{objects}} in {{bu}}',
+      identifierNote: "Plain identifier only. No schema prefix, no quotes. Resolved against each tenant's schema at runtime.",
+      sourceParams: 'Source Parameters',
+      notUsedForViews: '(not used for views)',
+      addParam: '+ Add Param',
+      viewsNoParams: 'Views do not take parameters. Filters apply via WHERE clause.',
+      noParamsYet: 'No parameters defined yet. Add one to bind a dialog filter to the function/procedure argument list.',
+      paramFilterField: 'Filter Field (ReportFilters)',
+      paramPgType: 'PG Type',
+      paramNullable: 'Nullable',
+      paramFilterAria: 'Parameter {{n}} filter field',
+      paramTypeAria: 'Parameter {{n}} PG type',
+      paramNullableAria: 'Parameter {{n}} nullable',
+      removeParamNamedAria: 'Remove parameter "{{name}}"',
+      removeParamAria: 'Remove parameter {{n}}',
+      paramFilterPlaceholder: 'e.g. DateFrom',
+      paramTypePlaceholder: 'date / uuid / text...',
+      // ตัวพิมพ์เล็กตามที่ render อยู่จริงในตารางพารามิเตอร์ ไม่ใช่ Yes/No
+      yes: 'yes',
+      no: 'no',
+      procedureNote: 'Procedure must accept these positional args plus an INOUT refcursor at the end (default name "rs"). Filters are applied inside the procedure. The executor will not add a WHERE clause.',
+      builderKey: 'Builder Key (optional)',
+      builderKeyPlaceholder: 'e.g. pr-summary',
+      dialogXmlTab: 'Dialog XML',
+      contentXmlTab: 'Content XML',
+      previewTab: 'Preview',
+      invalidAria: 'Invalid',
+      createTemplate: 'Create Template',
+      // ป้ายฟิลด์บังคับ ป้อนเข้า common.validation.requiredMessage
+      fieldLabelReportGroup: 'Report group',
+      fieldLabelTemplateType: 'Template type',
+    },
+    // ── slice 6: Report Templates ──
+    // สองหน้าของฟีเจอร์เดียวกัน แยก namespace ตามหน้าเหมือน slice ก่อน ๆ
+    reportFormGroups: {
+      subtitle: 'Manage the default form template for each report group',
+      newFormTemplate: 'New Form Template',
+      searchPlaceholder: 'Search group code or template name…',
+      searchAria: 'Search form groups',
+      activeOnly: 'Active only',
+      noGroupsMatch: 'No groups match your search.',
+      loadFailed: 'Failed to load form templates: {{detail}}',
+      // GroupCard.tsx — การ์ดหนึ่งใบต่อหนึ่ง report group
+      // catalog ไม่มีระบบพหูพจน์ การแตกกิ่ง singular/plural จึงอยู่ที่ call site
+      // (แบบเดียวกับ pages.news.articleTotal/articlesTotal) ไทยไม่ผันตามจำนวนจึงค่าเดียวกัน
+      templateCount: '{{count}} template',
+      templatesCount: '{{count}} templates',
+      noTemplatesTitle: 'No form templates',
+      noTemplatesDescription: 'No form templates in {{code}} yet.',
+      noDefaultSet: 'No default set — pick one.',
+      activateFirstTitle: 'Activate the template to make it the default',
+      setAsDefaultAria: 'Set {{name}} as default for {{code}}',
+      standard: 'Standard',
+      activate: 'Activate',
+      deactivate: 'Deactivate',
+      // ต่อท้ายชื่อเมนู Deactivate ตอนที่กดไม่ได้เพราะเป็นค่าเริ่มต้นอยู่ — ขึ้นต้นด้วยช่องว่าง
+      // เพราะถูกต่อกับคำก่อนหน้าโดยตรง ไม่ได้อยู่ใน template เดียวกัน
+      defaultSuffix: ' (default)',
+      setDefaultTitle: 'Set default form template',
+      setDefaultConfirm: 'Set "{{name}}" as the default for {{code}}?',
+      setDefaultReplaces: ' Replaces "{{name}}".',
+      setDefaultAction: 'Set default',
+      toastDefaultSet: 'Set "{{name}}" as default for {{code}}',
+      toastDefaultFailed: 'Failed to set default: {{detail}}',
+      toastActivated: 'Activated "{{name}}"',
+      toastDeactivated: 'Deactivated "{{name}}"',
+      toastUpdateFailed: 'Failed to update: {{detail}}',
+    },
     usageAnalytics: {
       subtitle: 'Usage overview from UI telemetry',
       // TopList's emptyLabel. Deliberately NOT table.noResultsFound: that key's Thai is

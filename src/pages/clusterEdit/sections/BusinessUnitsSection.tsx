@@ -141,7 +141,7 @@ export function BusinessUnitsSection({
                     </div>
                     <AuditMeta
                       variant="compact"
-                      verb={latest?.verb}
+                      verbKey={latest?.verbKey}
                       actor={latest?.actor}
                     />
                   </TableCell>

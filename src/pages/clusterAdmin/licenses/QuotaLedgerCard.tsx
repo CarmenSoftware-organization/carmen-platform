@@ -115,7 +115,7 @@ export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: Quot
                       <div>{l.reference_no || '-'}</div>
                       <AuditMeta
                         variant="compact"
-                        verb={latest?.verb}
+                        verbKey={latest?.verbKey}
                         actor={latest?.actor}
                         className="text-muted-foreground text-[11px]"
                       />

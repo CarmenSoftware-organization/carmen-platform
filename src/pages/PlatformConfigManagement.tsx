@@ -144,7 +144,7 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={invitationLatest?.verb}
+                    verbKey={invitationLatest?.verbKey}
                     actor={invitationLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
@@ -162,7 +162,7 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={signupLatest?.verb}
+                    verbKey={signupLatest?.verbKey}
                     actor={signupLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
@@ -184,7 +184,7 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={emailVerificationLatest?.verb}
+                    verbKey={emailVerificationLatest?.verbKey}
                     actor={emailVerificationLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
@@ -206,7 +206,7 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={passwordResetLatest?.verb}
+                    verbKey={passwordResetLatest?.verbKey}
                     actor={passwordResetLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
@@ -230,7 +230,7 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={invitationLatest?.verb}
+                    verbKey={invitationLatest?.verbKey}
                     actor={invitationLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
@@ -270,7 +270,7 @@ const PlatformConfigManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={licenseLatest?.verb}
+                    verbKey={licenseLatest?.verbKey}
                     actor={licenseLatest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />
