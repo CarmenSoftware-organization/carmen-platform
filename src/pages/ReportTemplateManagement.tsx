@@ -25,6 +25,21 @@ import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import type { TKey } from '../i18n/types';
+
+/**
+ * ค่า enum ของ API → คีย์ป้าย ผูกเป็นตารางตายตัวไม่ใช่ t(`...${v}`) เพราะชุดค่าปิดแล้ว
+ * และการต่อสตริงเป็นคีย์จะทำให้คีย์ที่หายไปเงียบจนถึง runtime
+ */
+const SOURCE_TYPE_KEYS: Record<'view' | 'function' | 'procedure', TKey> = {
+  view: 'pages.reportTemplates.sourceTypeView',
+  function: 'pages.reportTemplates.sourceTypeFunction',
+  procedure: 'pages.reportTemplates.sourceTypeProcedure',
+};
+const TEMPLATE_TYPE_KEYS: Record<'form' | 'list', TKey> = {
+  form: 'pages.reportTemplates.templateTypeForm',
+  list: 'pages.reportTemplates.templateTypeList',
+};
 
 const getStoredJSON = <T,>(key: string, fallback: T): T => {
   try {
@@ -107,12 +122,12 @@ const ReportTemplateManagement: React.FC = () => {
       setTotalRows(pagInfo?.total ?? items.length);
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load report templates: ' + getErrorDetail(err));
+      setError(t('pages.reportTemplates.loadFailed', { detail: getErrorDetail(err, t) }));
       devLog('Error fetching report templates:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchTemplates(paginate);
@@ -191,35 +206,37 @@ const ReportTemplateManagement: React.FC = () => {
     if (!deleteId) return;
     try {
       await reportTemplateService.delete(deleteId);
-      toast.success('Report template deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.reportTemplate.title') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
     } catch (err: unknown) {
-      toast.error('Failed to delete report template', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.reportTemplate.lower') }), {
+        description: getErrorDetail(err, t),
+      });
     }
   };
 
   const handleExport = () => {
     const rows = templates.map((t) => ({ ...t, ...auditCsvFields(normalizeAudit(t)) }));
     const csv = generateCSV(rows, [
-      { key: 'name', label: 'Name' },
-      { key: 'description', label: 'Description' },
-      { key: 'report_group', label: 'Report Group' },
-      { key: 'is_standard', label: 'Standard' },
-      { key: 'is_active', label: 'Status' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'description', label: t('common.field.description') },
+      { key: 'report_group', label: t('pages.reportTemplates.columnReportGroup') },
+      { key: 'is_standard', label: t('pages.reportTemplates.columnStandard') },
+      { key: 'is_active', label: t('common.status.label') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `report-templates-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<ReportTemplate, unknown>[]>(() => [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('common.field.name'),
       cell: ({ row }) => (
         <div className="flex flex-col gap-0.5">
           <Link
@@ -242,39 +259,39 @@ const ReportTemplateManagement: React.FC = () => {
     },
     {
       accessorKey: 'template_type',
-      header: 'Template Type',
+      header: t('pages.reportTemplates.columnTemplateType'),
       cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">{row.original.template_type ?? 'list'}</Badge>
+        <Badge variant="outline">{t(TEMPLATE_TYPE_KEYS[row.original.template_type ?? 'list'])}</Badge>
       ),
     },
     {
       accessorKey: 'report_group',
-      header: 'Report Group',
+      header: t('pages.reportTemplates.columnReportGroup'),
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5">
           <Badge variant="outline">{row.original.report_group}</Badge>
           {row.original.template_type === 'form' && row.original.is_default && (
-            <Badge variant="default">Default</Badge>
+            <Badge variant="default">{t('common.label.default')}</Badge>
           )}
         </div>
       ),
     },
     {
       accessorKey: 'is_standard',
-      header: 'Standard',
+      header: t('pages.reportTemplates.columnStandard'),
       cell: ({ row }) => (
         <Badge variant={row.original.is_standard ? 'default' : 'secondary'}>
-          {row.original.is_standard ? 'Standard' : 'Custom'}
+          {row.original.is_standard ? t('pages.reportTemplates.standard') : t('common.option.custom')}
         </Badge>
       ),
     },
     {
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
+          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
@@ -287,7 +304,7 @@ const ReportTemplateManagement: React.FC = () => {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${row.original.name}`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('common.action.rowActions', { name: row.original.name })}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -295,13 +312,13 @@ const ReportTemplateManagement: React.FC = () => {
             <Can permission="report_template.update">
               <DropdownMenuItem onClick={() => navigate(`/report-templates/${row.original.id}/edit`)} className="cursor-pointer">
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
             <Can permission="report_template.delete">
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
@@ -314,19 +331,19 @@ const ReportTemplateManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Report Templates"
-          subtitle="Manage report templates with dialog (XML) and content (.frx to XML)"
+          title={t('breadcrumb.reportTemplates')}
+          subtitle={t('pages.reportTemplates.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || templates.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="report_template.create">
                 <Button onClick={() => navigate('/report-templates/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Template</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t('pages.reportTemplates.addTemplate')}</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -340,14 +357,14 @@ const ReportTemplateManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search report templates..."
+                placeholder={t('pages.reportTemplates.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -357,13 +374,13 @@ const ReportTemplateManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter report templates by status</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.reportTemplates.filtersDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         <Button
@@ -372,7 +389,7 @@ const ReportTemplateManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("true")}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes("false") ? "default" : "outline"}
@@ -380,25 +397,25 @@ const ReportTemplateManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("false")}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Source Type</span>
+                        <span className="text-sm font-medium">{t('pages.reportTemplates.sourceTypeLabel')}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {(['view', 'function', 'procedure'] as const).map((t) => (
+                        {(['view', 'function', 'procedure'] as const).map((v) => (
                           <Button
-                            key={t}
-                            variant={sourceTypeFilter.includes(t) ? "default" : "outline"}
+                            key={v}
+                            variant={sourceTypeFilter.includes(v) ? "default" : "outline"}
                             size="sm"
-                            className="h-7 text-xs capitalize"
-                            onClick={() => handleSourceTypeFilter(t)}
+                            className="h-7 text-xs"
+                            onClick={() => handleSourceTypeFilter(v)}
                           >
-                            {t}
+                            {t(SOURCE_TYPE_KEYS[v])}
                           </Button>
                         ))}
                       </div>
@@ -406,18 +423,18 @@ const ReportTemplateManagement: React.FC = () => {
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Template Type</span>
+                        <span className="text-sm font-medium">{t('pages.reportTemplates.templateTypeLabel')}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {(['form', 'list'] as const).map((t) => (
+                        {(['form', 'list'] as const).map((v) => (
                           <Button
-                            key={t}
-                            variant={templateTypeFilter.includes(t) ? "default" : "outline"}
+                            key={v}
+                            variant={templateTypeFilter.includes(v) ? "default" : "outline"}
                             size="sm"
-                            className="h-7 text-xs capitalize"
-                            onClick={() => handleTemplateTypeFilter(t)}
+                            className="h-7 text-xs"
+                            onClick={() => handleTemplateTypeFilter(v)}
                           >
-                            {t}
+                            {t(TEMPLATE_TYPE_KEYS[v])}
                           </Button>
                         ))}
                       </div>
@@ -425,7 +442,7 @@ const ReportTemplateManagement: React.FC = () => {
 
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearAllFilters}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -434,45 +451,51 @@ const ReportTemplateManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={`status-${s}`} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === "true" ? "Active" : "Inactive"}
+                    {s === "true" ? t('common.status.active') : t('common.status.inactive')}
                     <button
                       onClick={() => handleStatusFilter(s)}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label={`Remove ${s === "true" ? "Active" : "Inactive"} filter`}
+                      aria-label={t('pages.reportTemplates.removeFilterAria', {
+                        label: s === "true" ? t('common.status.active') : t('common.status.inactive'),
+                      })}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
-                {sourceTypeFilter.map((t) => (
-                  <Badge key={`source-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
-                    {t}
+                {sourceTypeFilter.map((v) => (
+                  <Badge key={`source-${v}`} variant="secondary" className="text-xs gap-1 pr-1">
+                    {t(SOURCE_TYPE_KEYS[v as keyof typeof SOURCE_TYPE_KEYS])}
                     <button
-                      onClick={() => handleSourceTypeFilter(t)}
+                      onClick={() => handleSourceTypeFilter(v)}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label={`Remove ${t} filter`}
+                      aria-label={t('pages.reportTemplates.removeFilterAria', {
+                        label: t(SOURCE_TYPE_KEYS[v as keyof typeof SOURCE_TYPE_KEYS]),
+                      })}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
-                {templateTypeFilter.map((t) => (
-                  <Badge key={`template-type-${t}`} variant="secondary" className="text-xs gap-1 pr-1 capitalize">
-                    {t}
+                {templateTypeFilter.map((v) => (
+                  <Badge key={`template-type-${v}`} variant="secondary" className="text-xs gap-1 pr-1">
+                    {t(TEMPLATE_TYPE_KEYS[v as keyof typeof TEMPLATE_TYPE_KEYS])}
                     <button
-                      onClick={() => handleTemplateTypeFilter(t)}
+                      onClick={() => handleTemplateTypeFilter(v)}
                       className="ml-0.5 hover:text-foreground"
-                      aria-label={`Remove ${t} filter`}
+                      aria-label={t('pages.reportTemplates.removeFilterAria', {
+                        label: t(TEMPLATE_TYPE_KEYS[v as keyof typeof TEMPLATE_TYPE_KEYS]),
+                      })}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -485,13 +508,13 @@ const ReportTemplateManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={FileText}
-                emptyTitle="No report templates yet"
-                emptyDescription="Get started by creating your first report template."
+                emptyTitle={t('pages.reportTemplates.emptyTitle')}
+                emptyDescription={t('pages.reportTemplates.emptyDescription')}
                 addAction={
                   <Can permission="report_template.create">
                     <Button size="sm" onClick={() => navigate('/report-templates/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Template
+                      {t('pages.reportTemplates.addTemplate')}
                     </Button>
                   </Can>
                 }
@@ -505,8 +528,8 @@ const ReportTemplateManagement: React.FC = () => {
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading report templates">
-                    <div className="text-muted-foreground">Loading report templates...</div>
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.reportTemplates.loadingAria')}>
+                    <div className="text-muted-foreground">{t('pages.reportTemplates.loadingText')}</div>
                   </div>
                 )}
                 <DataTable
@@ -532,9 +555,9 @@ const ReportTemplateManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Report Template"
-        description="Are you sure you want to delete this report template? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.reportTemplates.deleteTitle')}
+        description={t('pages.reportTemplates.deleteDescription')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />

@@ -158,7 +158,7 @@ const EmailSettingManagement: React.FC = () => {
                   />
                   <AuditMeta
                     variant="compact"
-                    verb={latest?.verb}
+                    verbKey={latest?.verbKey}
                     actor={latest?.actor}
                     className="text-muted-foreground px-1 text-xs"
                   />

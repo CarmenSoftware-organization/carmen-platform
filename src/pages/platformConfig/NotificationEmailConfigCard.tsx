@@ -250,7 +250,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
 
         <AuditMeta
           variant="compact"
-          verb={latest?.verb}
+          verbKey={latest?.verbKey}
           actor={latest?.actor}
         />
     </ConfigCardShell>

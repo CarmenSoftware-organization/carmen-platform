@@ -89,11 +89,21 @@ export function normalizeAudit(record: unknown): NormalizedAudit {
   return out;
 }
 
-/** actor ล่าสุดพร้อมคำกริยาที่ตรงกับมัน — สำหรับที่ที่มีพื้นที่บรรทัดเดียว (variant `compact`) */
-export function latestActor(record: unknown): { verb: 'Created' | 'Updated'; actor: AuditActor } | null {
+/**
+ * actor ล่าสุดพร้อมคำกริยาที่ตรงกับมัน — สำหรับที่ที่มีพื้นที่บรรทัดเดียว (variant `compact`)
+ *
+ * คืน **คีย์** ไม่ใช่ข้อความ (i18n slice 6): เดิมคืน 'Created'/'Updated' เป็นอังกฤษตายตัว
+ * ผู้เรียกทั้ง 11 ไฟล์ส่งต่อเข้า `AuditMeta` ตรง ๆ ผลคือในโหมดไทยได้ "Updated 23 วันที่แล้ว"
+ * — ครึ่งอังกฤษครึ่งไทยในบรรทัดเดียว เพราะ `relativeTime` แปลไปแล้วแต่คำกริยาไม่ได้แปล
+ * โมดูลนี้เป็น pure จึงเรียก hook ไม่ได้ ให้ `AuditMeta` (ซึ่งมี `t` อยู่แล้ว) แปลปลายทาง
+ * ผู้เรียกจึงไม่ต้องรับ `t` เพิ่มแม้แต่ไฟล์เดียว
+ */
+export function latestActor(
+  record: unknown,
+): { verbKey: 'common.audit.created' | 'common.audit.updatedDate'; actor: AuditActor } | null {
   const a = normalizeAudit(record);
-  if (a.updated) return { verb: 'Updated', actor: a.updated };
-  if (a.created) return { verb: 'Created', actor: a.created };
+  if (a.updated) return { verbKey: 'common.audit.updatedDate', actor: a.updated };
+  if (a.created) return { verbKey: 'common.audit.created', actor: a.created };
   return null;
 }
 

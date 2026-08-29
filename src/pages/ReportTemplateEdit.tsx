@@ -29,11 +29,38 @@ import { countLines, type XmlValidation } from '../utils/xml';
 import { ReadOnlyField } from '../components/ReadOnlyField';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
 import { FORM_REPORT_GROUPS } from '../constants/reportGroups';
+import { useI18n } from '../hooks/useI18n';
+import type { TKey } from '../i18n/types';
 
-const REQUIRED_FIELD_LABELS: Record<string, string> = {
-  name: 'Name',
-  report_group: 'Report group',
-  template_type: 'Template type',
+/** ป้ายฟิลด์บังคับ เก็บเป็นคีย์ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้ */
+const REQUIRED_FIELD_LABEL_KEYS: Record<string, TKey> = {
+  name: 'common.field.name',
+  report_group: 'pages.reportTemplates.fieldLabelReportGroup',
+  template_type: 'pages.reportTemplates.fieldLabelTemplateType',
+};
+
+const SOURCE_NAME_PLACEHOLDER_KEYS: Record<'view' | 'function' | 'procedure', TKey> = {
+  view: 'pages.reportTemplates.sourceNamePlaceholderView',
+  function: 'pages.reportTemplates.sourceNamePlaceholderFunction',
+  procedure: 'pages.reportTemplates.sourceNamePlaceholderProcedure',
+};
+
+/** ชื่อชนิดวัตถุ DB เอกพจน์/พหูพจน์ — เดิมโค้ดปั้น 's' ต่อท้ายค่า enum ตอนรัน */
+const OBJECT_LABEL_KEYS: Record<'view' | 'function' | 'procedure', { one: TKey; many: TKey }> = {
+  view: { one: 'pages.reportTemplates.objectView', many: 'pages.reportTemplates.objectsView' },
+  function: { one: 'pages.reportTemplates.objectFunction', many: 'pages.reportTemplates.objectsFunction' },
+  procedure: { one: 'pages.reportTemplates.objectProcedure', many: 'pages.reportTemplates.objectsProcedure' },
+};
+
+const TEMPLATE_TYPE_OPTION_KEYS: Record<'form' | 'list', TKey> = {
+  form: 'pages.reportTemplates.templateTypeForm',
+  list: 'pages.reportTemplates.templateTypeList',
+};
+
+const SOURCE_TYPE_OPTION_KEYS: Record<'view' | 'function' | 'procedure', TKey> = {
+  view: 'pages.reportTemplates.sourceTypeView',
+  function: 'pages.reportTemplates.sourceTypeFunction',
+  procedure: 'pages.reportTemplates.sourceTypeProcedure',
 };
 
 interface SourceParamRow {
@@ -97,6 +124,7 @@ function seedInitialFormData(
 const ReportTemplateEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isNew = !id;
   const location = useLocation();
 
@@ -144,7 +172,7 @@ const ReportTemplateEdit: React.FC = () => {
       const data = await reportTemplateService.listDbObjects(bu);
       setDbObjects(data);
     } catch (err) {
-      toast.error(`Failed to load DB objects from ${bu}: ${getErrorDetail(err)}`);
+      toast.error(t('pages.reportTemplates.dbObjectsToastFailed', { bu, detail: getErrorDetail(err, t) }));
       setDbObjects(null);
       setDbObjectsFailed(true);
     } finally {
@@ -237,13 +265,13 @@ const ReportTemplateEdit: React.FC = () => {
       if (isNotFoundError(err)) {
         setNotFound(true);
       } else {
-        setError('Failed to load report template: ' + getErrorDetail(err));
+        setError(t('pages.reportTemplates.loadFailedOne', { detail: getErrorDetail(err, t) }));
         devLog('Error fetching report template:', err);
       }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (!isNew) fetchTemplate();
@@ -263,8 +291,12 @@ const ReportTemplateEdit: React.FC = () => {
     // validateField has no case for name/report_group (it can't express
     // required-ness), so the required check layers on top — same OR-pattern
     // ApplicationEdit's pre-submit validation uses.
-    const requiredLabel = REQUIRED_FIELD_LABELS[name];
-    const error = validateField(name, value) || (requiredLabel && !value.trim() ? `${requiredLabel} is required` : '');
+    const labelKey = REQUIRED_FIELD_LABEL_KEYS[name];
+    const error =
+      validateField(name, value) ||
+      (labelKey && !value.trim()
+        ? t('common.validation.requiredMessage', { label: t(labelKey) })
+        : '');
     setFieldErrors((prev) => ({ ...prev, [name]: error }));
   };
 
@@ -288,9 +320,16 @@ const ReportTemplateEdit: React.FC = () => {
     setSaving(true);
     setError('');
     const errs: Record<string, string> = {};
-    if (!formData.template_type) errs.template_type = 'Template type is required';
-    if (!formData.name.trim()) errs.name = 'Name is required';
-    if (!formData.report_group.trim()) errs.report_group = 'Report group is required';
+    if (!formData.template_type)
+      errs.template_type = t('common.validation.selectRequired', {
+        label: t('pages.reportTemplates.fieldLabelTemplateType'),
+      });
+    if (!formData.name.trim())
+      errs.name = t('common.validation.requiredMessage', { label: t('common.field.name') });
+    if (!formData.report_group.trim())
+      errs.report_group = t('common.validation.requiredMessage', {
+        label: t('pages.reportTemplates.fieldLabelReportGroup'),
+      });
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
       setSaving(false);
@@ -327,7 +366,7 @@ const ReportTemplateEdit: React.FC = () => {
       if (isNew) {
         const result = await reportTemplateService.create(payload);
         const created = result.data || result;
-        toast.success('Report template created successfully');
+        toast.success(t('toast.created', { entity: t('entity.reportTemplate.title') }));
         if (created?.id) {
           navigate(`/report-templates/${created.id}/edit`, { replace: true });
         } else {
@@ -335,7 +374,7 @@ const ReportTemplateEdit: React.FC = () => {
         }
       } else {
         await reportTemplateService.update(id!, { ...payload, ...(docVersion != null ? { doc_version: docVersion } : {}) });
-        toast.success('Changes saved successfully');
+        toast.success(t('toast.saved'));
         await fetchTemplate();
         setEditing(false);
       }
@@ -344,7 +383,7 @@ const ReportTemplateEdit: React.FC = () => {
         notifyVersionConflict();
         await fetchTemplate();
       } else {
-        setError('Failed to save report template: ' + getErrorDetail(err));
+        setError(t('pages.reportTemplates.saveFailed', { detail: getErrorDetail(err, t) }));
       }
     } finally {
       setSaving(false);
@@ -357,16 +396,16 @@ const ReportTemplateEdit: React.FC = () => {
     return (
       <Layout>
         <div className="space-y-4 sm:space-y-6">
-          <PageHeader backTo="/report-templates" title="Report Template" />
+          <PageHeader backTo="/report-templates" title={t('pages.reportTemplates.singularTitle')} />
           <Card>
             <CardContent className="p-0">
               <EmptyState
                 icon={SearchX}
-                title="Report template not found"
-                description="This report template doesn't exist, or it may have been deleted. Check the link, or pick one from the report template list."
+                title={t('pages.reportTemplates.notFoundTitle')}
+                description={t('pages.reportTemplates.notFoundDescription')}
                 action={
                   <Button size="sm" onClick={() => navigate('/report-templates')}>
-                    Back to report templates
+                    {t('pages.reportTemplates.backToList')}
                   </Button>
                 }
               />
@@ -386,7 +425,7 @@ const ReportTemplateEdit: React.FC = () => {
       <div
         className="space-y-4 sm:space-y-6 pb-24"
         role={loading ? 'status' : undefined}
-        aria-label={loading ? 'Loading report template' : undefined}
+        aria-label={loading ? t('pages.reportTemplates.loadingOneAria') : undefined}
       >
         {/* Header */}
         <PageHeader
@@ -395,24 +434,28 @@ const ReportTemplateEdit: React.FC = () => {
             loading ? (
               <Skeleton className="h-8 w-48" />
             ) : isNew ? (
-              'New Report Template'
+              t('pages.reportTemplates.newTitle')
             ) : (
-              formData.name || 'Report Template'
+              formData.name || t('pages.reportTemplates.singularTitle')
             )
           }
-          subtitle={isNew ? 'Create a new report template' : 'View and edit report template details'}
+          subtitle={
+            isNew
+              ? t('pages.reportTemplates.newSubtitle')
+              : t('pages.reportTemplates.editSubtitle')
+          }
           audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
           actions={!isNew && !loading && (
             editing ? (
               <Button variant="outline" size="sm" onClick={handleCancelEdit}>
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {t('common.cancel')}
               </Button>
             ) : (
               <Can permission="report_template.update">
                 <Button variant="outline" size="sm" onClick={handleEditToggle}>
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t('common.action.edit')}
                 </Button>
               </Can>
             )
@@ -421,15 +464,15 @@ const ReportTemplateEdit: React.FC = () => {
         {!isNew && !loading && (
           <div className="flex flex-wrap items-center gap-2 -mt-2 sm:-mt-4">
             <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-              {formData.is_active ? 'Active' : 'Inactive'}
+              {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
             </Badge>
             {!isForm && (
               <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                {formData.is_standard ? 'Standard' : 'Custom'}
+                {formData.is_standard ? t('pages.reportTemplates.standard') : t('common.option.custom')}
               </Badge>
             )}
             {isForm && formData.is_default && (
-              <Badge variant="default">Default</Badge>
+              <Badge variant="default">{t('common.label.default')}</Badge>
             )}
             {formData.report_group && (
               <Badge variant="outline">{formData.report_group}</Badge>
@@ -450,7 +493,7 @@ const ReportTemplateEdit: React.FC = () => {
             <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Template Info</CardTitle>
+                  <CardTitle className="text-base">{t('pages.reportTemplates.templateInfo')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {loading ? (
@@ -462,7 +505,7 @@ const ReportTemplateEdit: React.FC = () => {
                   ) : (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="template_type">Template Type {editing && '*'}</Label>
+                        <Label htmlFor="template_type">{t('pages.reportTemplates.templateTypeLabel')} {editing && '*'}</Label>
                         {editing ? (
                           <>
                             <select
@@ -482,21 +525,25 @@ const ReportTemplateEdit: React.FC = () => {
                                 fieldErrors.template_type ? 'border-destructive' : 'border-input'
                               }`}
                             >
-                              <option value="" disabled>Select type…</option>
-                              <option value="list">List</option>
-                              <option value="form">Form</option>
+                              <option value="" disabled>{t('pages.reportTemplates.selectTypePlaceholder')}</option>
+                              <option value="list">{t('pages.reportTemplates.templateTypeList')}</option>
+                              <option value="form">{t('pages.reportTemplates.templateTypeForm')}</option>
                             </select>
                             {fieldErrors.template_type && (
                               <p className="text-xs text-destructive">{fieldErrors.template_type}</p>
                             )}
                           </>
                         ) : (
-                          <Badge variant="outline">{formData.template_type || '-'}</Badge>
+                          <Badge variant="outline">
+                            {formData.template_type
+                              ? t(TEMPLATE_TYPE_OPTION_KEYS[formData.template_type])
+                              : '-'}
+                          </Badge>
                         )}
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="name">Name {editing && '*'}</Label>
+                        <Label htmlFor="name">{t('common.field.name')} {editing && '*'}</Label>
                         {editing ? (
                           <>
                             <Input
@@ -507,7 +554,7 @@ const ReportTemplateEdit: React.FC = () => {
                               onChange={handleChange}
                               onBlur={handleBlur}
                               onFocus={handleFocus}
-                              placeholder="Template name"
+                              placeholder={t('pages.reportTemplates.namePlaceholder')}
                               className={fieldErrors.name ? 'border-destructive' : ''}
                               required
                             />
@@ -521,14 +568,14 @@ const ReportTemplateEdit: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description">{t('common.field.description')}</Label>
                         {editing ? (
                           <textarea
                             id="description"
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
-                            placeholder="Template description"
+                            placeholder={t('pages.reportTemplates.descriptionPlaceholder')}
                             rows={3}
                             className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring resize-none"
                           />
@@ -541,7 +588,7 @@ const ReportTemplateEdit: React.FC = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="report_group">Report Group {editing && '*'}</Label>
+                        <Label htmlFor="report_group">{t('pages.reportTemplates.columnReportGroup')} {editing && '*'}</Label>
                         {editing ? (
                           isForm ? (
                             <>
@@ -559,7 +606,7 @@ const ReportTemplateEdit: React.FC = () => {
                                   fieldErrors.report_group ? 'border-destructive' : 'border-input'
                                 }`}
                               >
-                                <option value="" disabled>Select group…</option>
+                                <option value="" disabled>{t('pages.reportTemplates.selectGroupPlaceholder')}</option>
                                 {formData.report_group &&
                                   !FORM_REPORT_GROUPS.includes(
                                     formData.report_group as typeof FORM_REPORT_GROUPS[number],
@@ -584,7 +631,7 @@ const ReportTemplateEdit: React.FC = () => {
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                                 onFocus={handleFocus}
-                                placeholder="e.g. inventory, procurement"
+                                placeholder={t('pages.reportTemplates.reportGroupPlaceholder')}
                                 className={fieldErrors.report_group ? 'border-destructive' : ''}
                                 required
                               />
@@ -613,7 +660,7 @@ const ReportTemplateEdit: React.FC = () => {
                                   onChange={handleChange}
                                   className="h-4 w-4 rounded border-input"
                                 />
-                                Standard
+                                {t('pages.reportTemplates.standard')}
                               </label>
                             )}
                             {isForm && (
@@ -626,7 +673,7 @@ const ReportTemplateEdit: React.FC = () => {
                                   onChange={handleChange}
                                   className="h-4 w-4 rounded border-input"
                                 />
-                                Default for this report group
+                                {t('pages.reportTemplates.defaultForGroup')}
                               </label>
                             )}
                             <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -638,14 +685,12 @@ const ReportTemplateEdit: React.FC = () => {
                                 onChange={handleChange}
                                 className="h-4 w-4 rounded border-input"
                               />
-                              Active
+                              {t('common.status.active')}
                             </label>
                           </div>
                           {isForm && (
                             <p className="text-xs text-muted-foreground">
-                              Only one template per report group can be the default. If another
-                              template in this group is already marked default, saving here will
-                              fail — unset it there first.
+                              {t('pages.reportTemplates.defaultNote')}
                             </p>
                           )}
                         </div>
@@ -653,29 +698,29 @@ const ReportTemplateEdit: React.FC = () => {
                         <div className="grid grid-cols-2 gap-3">
                           {!isForm && (
                             <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Kind</Label>
+                              <Label className="text-xs text-muted-foreground">{t('pages.reportTemplates.kind')}</Label>
                               <div>
                                 <Badge variant={formData.is_standard ? 'default' : 'outline'}>
-                                  {formData.is_standard ? 'Standard' : 'Custom'}
+                                  {formData.is_standard ? t('pages.reportTemplates.standard') : t('common.option.custom')}
                                 </Badge>
                               </div>
                             </div>
                           )}
                           {isForm && (
                             <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Group Default</Label>
+                              <Label className="text-xs text-muted-foreground">{t('pages.reportTemplates.groupDefault')}</Label>
                               <div>
                                 <Badge variant={formData.is_default ? 'default' : 'outline'}>
-                                  {formData.is_default ? 'Default' : 'Not default'}
+                                  {formData.is_default ? t('common.label.default') : t('pages.reportTemplates.notDefault')}
                                 </Badge>
                               </div>
                             </div>
                           )}
                           <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground">Status</Label>
+                            <Label className="text-xs text-muted-foreground">{t('common.status.label')}</Label>
                             <div>
                               <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                                {formData.is_active ? 'Active' : 'Inactive'}
+                                {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
                               </Badge>
                             </div>
                           </div>
@@ -688,7 +733,7 @@ const ReportTemplateEdit: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Business Unit Scope</CardTitle>
+                  <CardTitle className="text-base">{t('pages.reportTemplates.buScope')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {loading ? (
@@ -699,24 +744,28 @@ const ReportTemplateEdit: React.FC = () => {
                   ) : (
                     <>
                       <div className="space-y-2">
-                        <Label htmlFor="allow_business_unit">Allow</Label>
+                        <Label htmlFor="allow_business_unit">{t('pages.reportTemplates.allow')}</Label>
                         <ChipInput
                           id="allow_business_unit"
                           name="allow_business_unit"
                           value={isForm ? '' : formData.allow_business_unit}
                           onChange={handleChipChange('allow_business_unit')}
-                          placeholder={isForm ? 'All business units (form template)' : 'Type BU code + Enter (blank = all)'}
+                          placeholder={
+                            isForm
+                              ? t('pages.reportTemplates.allowPlaceholderForm')
+                              : t('pages.reportTemplates.allowPlaceholder')
+                          }
                           disabled={!editing || isForm}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="deny_business_unit">Deny</Label>
+                        <Label htmlFor="deny_business_unit">{t('pages.reportTemplates.deny')}</Label>
                         <ChipInput
                           id="deny_business_unit"
                           name="deny_business_unit"
                           value={isForm ? '' : formData.deny_business_unit}
                           onChange={handleChipChange('deny_business_unit')}
-                          placeholder={isForm ? '—' : 'Type BU code + Enter (blank = none)'}
+                          placeholder={isForm ? '—' : t('pages.reportTemplates.denyPlaceholder')}
                           disabled={!editing || isForm}
                         />
                       </div>
@@ -727,11 +776,11 @@ const ReportTemplateEdit: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Data Source</CardTitle>
+                  <CardTitle className="text-base">{t('pages.reportTemplates.dataSource')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="source_type">Source Type</Label>
+                    <Label htmlFor="source_type">{t('pages.reportTemplates.sourceTypeLabel')}</Label>
                     {editing ? (
                       <select
                         id="source_type"
@@ -745,18 +794,18 @@ const ReportTemplateEdit: React.FC = () => {
                         }
                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        <option value="view">View</option>
-                        <option value="function">Function</option>
-                        <option value="procedure">Procedure</option>
+                        <option value="view">{t('pages.reportTemplates.sourceTypeView')}</option>
+                        <option value="function">{t('pages.reportTemplates.sourceTypeFunction')}</option>
+                        <option value="procedure">{t('pages.reportTemplates.sourceTypeProcedure')}</option>
                       </select>
                     ) : (
-                      <Badge variant="outline">{formData.source_type}</Badge>
+                      <Badge variant="outline">{t(SOURCE_TYPE_OPTION_KEYS[formData.source_type])}</Badge>
                     )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="source_name">
-                      Source Name {formData.source_type !== 'view' && editing && '*'}
+                      {t('pages.reportTemplates.sourceName')} {formData.source_type !== 'view' && editing && '*'}
                     </Label>
                     {editing ? (
                       <>
@@ -767,13 +816,7 @@ const ReportTemplateEdit: React.FC = () => {
                           value={formData.source_name}
                           onChange={handleChange}
                           onFocus={handleFocus}
-                          placeholder={
-                            formData.source_type === 'view'
-                              ? 'e.g. v_pr_summary'
-                              : formData.source_type === 'function'
-                                ? 'e.g. fn_pr_report'
-                                : 'e.g. sp_pr_report'
-                          }
+                          placeholder={t(SOURCE_NAME_PLACEHOLDER_KEYS[formData.source_type])}
                           className={fieldErrors.source_name ? 'border-destructive' : ''}
                         />
                         {fieldErrors.source_name && (
@@ -784,7 +827,7 @@ const ReportTemplateEdit: React.FC = () => {
                         <div className="rounded-md border border-dashed border-border p-2 bg-muted/30">
                           <div className="flex items-center gap-2">
                             <Label htmlFor="probe_bu" className="text-xs whitespace-nowrap">
-                              Browse in BU:
+                              {t('pages.reportTemplates.browseInBu')}
                             </Label>
                             <Input
                               id="probe_bu"
@@ -794,7 +837,7 @@ const ReportTemplateEdit: React.FC = () => {
                                 setProbeBuCode(e.target.value);
                                 localStorage.setItem('report_template_probe_bu', e.target.value);
                               }}
-                              placeholder="e.g. T03"
+                              placeholder={t('pages.reportTemplates.probeBuPlaceholder')}
                               className="h-9 text-xs"
                             />
                             <Button
@@ -805,12 +848,12 @@ const ReportTemplateEdit: React.FC = () => {
                               onClick={() => loadDbObjects(probeBuCode)}
                               disabled={!probeBuCode || loadingDbObjects}
                             >
-                              {loadingDbObjects ? 'Loading…' : 'Load'}
+                              {loadingDbObjects ? t('common.busy.loadingEllipsis') : t('pages.reportTemplates.load')}
                             </Button>
                           </div>
                           {dbObjectsFailed && !loadingDbObjects && (
                             <FetchErrorState
-                              message={`Couldn't load DB objects from ${probeBuCode}.`}
+                              message={t('pages.reportTemplates.dbObjectsFailed', { bu: probeBuCode })}
                               onRetry={() => loadDbObjects(probeBuCode)}
                               className="mt-2 justify-start"
                             />
@@ -824,16 +867,23 @@ const ReportTemplateEdit: React.FC = () => {
                                     : formData.source_type === 'function'
                                       ? dbObjects.functions
                                       : dbObjects.procedures;
+                                const objectsLabel = t(OBJECT_LABEL_KEYS[formData.source_type].many);
                                 if (list.length === 0) {
                                   return (
                                     <p className="text-[11px] text-muted-foreground italic">
-                                      No {formData.source_type}s found in {probeBuCode}.
+                                      {t('pages.reportTemplates.noObjectsFound', {
+                                        objects: objectsLabel,
+                                        bu: probeBuCode,
+                                      })}
                                     </p>
                                   );
                                 }
                                 return (
                                   <select
-                                    aria-label={`Pick from available ${formData.source_type}s in ${probeBuCode}`}
+                                    aria-label={t('pages.reportTemplates.pickFromAria', {
+                                      objects: objectsLabel,
+                                      bu: probeBuCode,
+                                    })}
                                     className="flex h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
                                     value={
                                       list.some((o) => o.name === formData.source_name)
@@ -847,8 +897,14 @@ const ReportTemplateEdit: React.FC = () => {
                                     }}
                                   >
                                     <option value="">
-                                      Pick from {list.length} {formData.source_type}
-                                      {list.length === 1 ? '' : 's'} in {probeBuCode}
+                                      {t('pages.reportTemplates.pickFromOption', {
+                                        count: list.length,
+                                        objects:
+                                          list.length === 1
+                                            ? t(OBJECT_LABEL_KEYS[formData.source_type].one)
+                                            : objectsLabel,
+                                        bu: probeBuCode,
+                                      })}
                                     </option>
                                     {list.map((o) => (
                                       <option key={o.name} value={o.name}>
@@ -863,7 +919,7 @@ const ReportTemplateEdit: React.FC = () => {
                         </div>
 
                         <p className="text-xs text-muted-foreground">
-                          Plain identifier only. No schema prefix, no quotes. Resolved against each tenant&apos;s schema at runtime.
+                          {t('pages.reportTemplates.identifierNote')}
                         </p>
                       </>
                     ) : (
@@ -873,7 +929,14 @@ const ReportTemplateEdit: React.FC = () => {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>Source Parameters {formData.source_type === 'view' && <span className="text-xs text-muted-foreground">(not used for views)</span>}</Label>
+                      <Label>
+                        {t('pages.reportTemplates.sourceParams')}{' '}
+                        {formData.source_type === 'view' && (
+                          <span className="text-xs text-muted-foreground">
+                            {t('pages.reportTemplates.notUsedForViews')}
+                          </span>
+                        )}
+                      </Label>
                       {editing && formData.source_type !== 'view' && (
                         <Button
                           type="button"
@@ -886,7 +949,7 @@ const ReportTemplateEdit: React.FC = () => {
                             }))
                           }
                         >
-                          + Add Param
+                          {t('pages.reportTemplates.addParam')}
                         </Button>
                       )}
                     </div>
@@ -894,15 +957,15 @@ const ReportTemplateEdit: React.FC = () => {
                     {formData.source_params.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
                         {formData.source_type === 'view'
-                          ? 'Views do not take parameters. Filters apply via WHERE clause.'
-                          : 'No parameters defined yet. Add one to bind a dialog filter to the function/procedure argument list.'}
+                          ? t('pages.reportTemplates.viewsNoParams')
+                          : t('pages.reportTemplates.noParamsYet')}
                       </p>
                     ) : (
                       <div className="space-y-2">
                         <div className="grid grid-cols-[2fr_1fr_auto_auto] gap-2 text-xs font-medium text-muted-foreground">
-                          <div>Filter Field (ReportFilters)</div>
-                          <div>PG Type</div>
-                          <div>Nullable</div>
+                          <div>{t('pages.reportTemplates.paramFilterField')}</div>
+                          <div>{t('pages.reportTemplates.paramPgType')}</div>
+                          <div>{t('pages.reportTemplates.paramNullable')}</div>
                           <div></div>
                         </div>
                         {formData.source_params.map((p, i) => (
@@ -911,7 +974,7 @@ const ReportTemplateEdit: React.FC = () => {
                               <>
                                 <Input
                                   type="text"
-                                  aria-label={`Parameter ${i + 1} filter field`}
+                                  aria-label={t('pages.reportTemplates.paramFilterAria', { n: i + 1 })}
                                   value={p.filter}
                                   onChange={(e) =>
                                     setFormData((prev) => {
@@ -920,11 +983,11 @@ const ReportTemplateEdit: React.FC = () => {
                                       return { ...prev, source_params: next };
                                     })
                                   }
-                                  placeholder="e.g. DateFrom"
+                                  placeholder={t('pages.reportTemplates.paramFilterPlaceholder')}
                                 />
                                 <Input
                                   type="text"
-                                  aria-label={`Parameter ${i + 1} PG type`}
+                                  aria-label={t('pages.reportTemplates.paramTypeAria', { n: i + 1 })}
                                   value={p.type}
                                   onChange={(e) =>
                                     setFormData((prev) => {
@@ -933,11 +996,11 @@ const ReportTemplateEdit: React.FC = () => {
                                       return { ...prev, source_params: next };
                                     })
                                   }
-                                  placeholder="date / uuid / text..."
+                                  placeholder={t('pages.reportTemplates.paramTypePlaceholder')}
                                 />
                                 <input
                                   type="checkbox"
-                                  aria-label={`Parameter ${i + 1} nullable`}
+                                  aria-label={t('pages.reportTemplates.paramNullableAria', { n: i + 1 })}
                                   checked={p.nullable}
                                   onChange={(e) =>
                                     setFormData((prev) => {
@@ -952,7 +1015,11 @@ const ReportTemplateEdit: React.FC = () => {
                                   type="button"
                                   size="sm"
                                   variant="ghost"
-                                  aria-label={`Remove parameter${p.filter ? ` "${p.filter}"` : ` ${i + 1}`}`}
+                                  aria-label={
+                                    p.filter
+                                      ? t('pages.reportTemplates.removeParamNamedAria', { name: p.filter })
+                                      : t('pages.reportTemplates.removeParamAria', { n: i + 1 })
+                                  }
                                   className={HIT_SLOP_44}
                                   onClick={() =>
                                     setFormData((prev) => ({
@@ -968,7 +1035,7 @@ const ReportTemplateEdit: React.FC = () => {
                               <>
                                 <div className="text-sm font-mono">{p.filter}</div>
                                 <div className="text-sm font-mono text-muted-foreground">{p.type || '-'}</div>
-                                <div className="text-xs">{p.nullable ? 'yes' : 'no'}</div>
+                                <div className="text-xs">{p.nullable ? t('pages.reportTemplates.yes') : t('pages.reportTemplates.no')}</div>
                                 <div></div>
                               </>
                             )}
@@ -979,13 +1046,13 @@ const ReportTemplateEdit: React.FC = () => {
 
                     {formData.source_type === 'procedure' && editing && (
                       <p className="text-xs text-muted-foreground italic">
-                        Procedure must accept these positional args plus an INOUT refcursor at the end (default name "rs"). Filters are applied inside the procedure. The executor will not add a WHERE clause.
+                        {t('pages.reportTemplates.procedureNote')}
                       </p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="builder_key">Builder Key (optional)</Label>
+                    <Label htmlFor="builder_key">{t('pages.reportTemplates.builderKey')}</Label>
                     {editing ? (
                       <Input
                         type="text"
@@ -993,7 +1060,7 @@ const ReportTemplateEdit: React.FC = () => {
                         name="builder_key"
                         value={formData.builder_key}
                         onChange={handleChange}
-                        placeholder="e.g. pr-summary"
+                        placeholder={t('pages.reportTemplates.builderKeyPlaceholder')}
                       />
                     ) : (
                       <ReadOnlyField value={formData.builder_key} />
@@ -1014,30 +1081,30 @@ const ReportTemplateEdit: React.FC = () => {
                   >
                     <TabsList>
                       <TabsTrigger value="dialog">
-                        Dialog XML
+                        {t('pages.reportTemplates.dialogXmlTab')}
                         <Badge variant="outline" className="ml-2 text-xs">
                           {dialogLines}
                         </Badge>
                         {!dialogValidation.valid && (
                           <span
                             className="ml-1.5 h-1.5 w-1.5 rounded-full bg-destructive"
-                            aria-label="Invalid"
+                            aria-label={t('pages.reportTemplates.invalidAria')}
                           />
                         )}
                       </TabsTrigger>
                       <TabsTrigger value="content">
-                        Content XML
+                        {t('pages.reportTemplates.contentXmlTab')}
                         <Badge variant="outline" className="ml-2 text-xs">
                           {contentLines}
                         </Badge>
                         {!contentValidation.valid && (
                           <span
                             className="ml-1.5 h-1.5 w-1.5 rounded-full bg-destructive"
-                            aria-label="Invalid"
+                            aria-label={t('pages.reportTemplates.invalidAria')}
                           />
                         )}
                       </TabsTrigger>
-                      <TabsTrigger value="preview">Preview</TabsTrigger>
+                      <TabsTrigger value="preview">{t('pages.reportTemplates.previewTab')}</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </CardHeader>
@@ -1046,6 +1113,10 @@ const ReportTemplateEdit: React.FC = () => {
                     <Skeleton className="h-80 w-full" />
                   ) : (
                     <>
+                      {/* `label` ของ XmlEditor ไม่ถูก render ที่ไหนเลย — ใช้ตั้งชื่อไฟล์ดาวน์โหลด
+                          เมื่อไม่ได้ส่ง `filename` มา (XmlEditor.tsx:192) ที่นี่ส่ง filename มาแล้ว
+                          จึงไม่แปล: แปลไปผู้ใช้ไม่เห็นอะไรต่างเลย แต่ถ้าวันหลังมีใครถอด filename ออก
+                          ชื่อไฟล์จะกลายเป็นภาษาไทย */}
                       <div hidden={activeTab !== 'dialog'}>
                         <XmlEditor
                           value={formData.dialog}
@@ -1092,10 +1163,10 @@ const ReportTemplateEdit: React.FC = () => {
               {hasChanges ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                  <span>Unsaved changes</span>
+                  <span>{t('common.state.unsavedChanges')}</span>
                 </>
               ) : (
-                <span className="text-muted-foreground">No changes</span>
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -1108,7 +1179,7 @@ const ReportTemplateEdit: React.FC = () => {
                   disabled={saving}
                 >
                   <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               )}
               <Button
@@ -1122,7 +1193,11 @@ const ReportTemplateEdit: React.FC = () => {
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
-                {saving ? 'Saving...' : isNew ? 'Create Template' : 'Save Changes'}
+                {saving
+                  ? t('common.busy.saving')
+                  : isNew
+                    ? t('pages.reportTemplates.createTemplate')
+                    : t('common.action.saveChanges')}
               </Button>
             </div>
           </div>

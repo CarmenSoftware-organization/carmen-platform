@@ -19,6 +19,7 @@ const SEGMENT_KEYS: Record<string, TKey> = {
   'tenant-imports': 'breadcrumb.dataImport',
   users: 'breadcrumb.users',
   'report-templates': 'breadcrumb.reportTemplates',
+  'report-form-groups': 'breadcrumb.formGroups',
   news: 'breadcrumb.news',
   broadcasts: 'breadcrumb.broadcasts',
   analytics: 'breadcrumb.usageAnalytics',

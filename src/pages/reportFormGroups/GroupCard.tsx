@@ -14,6 +14,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { AuditMeta } from '../../components/AuditMeta';
 import { latestActor } from '../../utils/audit';
 import { Plus, Pencil, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
+import { useI18n } from '../../hooks/useI18n';
 
 export interface GroupCardProps {
   code: string;
@@ -37,6 +38,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
   onToggleActive,
   onAdd,
 }) => {
+  const { t: tr } = useI18n();
   const hasDefault = templates.some((t) => t.is_default);
 
   return (
@@ -45,13 +47,15 @@ export const GroupCard: React.FC<GroupCardProps> = ({
         <CardTitle className="flex items-center gap-2 text-base">
           <Badge variant="outline" className="font-mono">{code}</Badge>
           <span className="text-xs font-normal text-muted-foreground">
-            {templates.length} {templates.length === 1 ? 'template' : 'templates'}
+            {templates.length === 1
+              ? tr('pages.reportFormGroups.templateCount', { count: templates.length })
+              : tr('pages.reportFormGroups.templatesCount', { count: templates.length })}
           </span>
         </CardTitle>
         {canCreate && (
           <Button variant="outline" size="sm" onClick={() => onAdd(code)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add
+            {tr('common.action.add')}
           </Button>
         )}
       </CardHeader>
@@ -59,8 +63,8 @@ export const GroupCard: React.FC<GroupCardProps> = ({
         {templates.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="No form templates"
-            description={`No form templates in ${code} yet.`}
+            title={tr('pages.reportFormGroups.noTemplatesTitle')}
+            description={tr('pages.reportFormGroups.noTemplatesDescription', { code })}
           />
         ) : (
           <div className="space-y-1">
@@ -70,7 +74,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                 className="mb-2 flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                No default set — pick one.
+                {tr('pages.reportFormGroups.noDefaultSet')}
               </div>
             )}
             {templates.map((t) => {
@@ -84,7 +88,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                 >
                   <label
                     className="flex items-center"
-                    title={!t.is_active ? 'Activate the template to make it the default' : undefined}
+                    title={!t.is_active ? tr('pages.reportFormGroups.activateFirstTitle') : undefined}
                   >
                     <input
                       type="radio"
@@ -93,7 +97,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                       checked={!!t.is_default}
                       disabled={disableRadio}
                       onChange={() => onRequestDefault(t)}
-                      aria-label={`Set ${t.name} as default for ${code}`}
+                      aria-label={tr('pages.reportFormGroups.setAsDefaultAria', { name: t.name, code })}
                     />
                   </label>
 
@@ -101,23 +105,23 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                     <div className="truncate text-sm font-medium">{t.name}</div>
                     <AuditMeta
                       variant="compact"
-                      verb={latest?.verb}
+                      verbKey={latest?.verbKey}
                       actor={latest?.actor}
                       className="text-muted-foreground text-[11px]"
                     />
                   </div>
 
                   <Badge variant={t.is_active ? 'success' : 'secondary'}>
-                    {t.is_active ? 'Active' : 'Inactive'}
+                    {t.is_active ? tr('common.status.active') : tr('common.status.inactive')}
                   </Badge>
                   <Badge variant={t.is_standard ? 'default' : 'outline'}>
-                    {t.is_standard ? 'Standard' : 'Custom'}
+                    {t.is_standard ? tr('pages.reportFormGroups.standard') : tr('common.option.custom')}
                   </Badge>
 
                   <Button variant="ghost" size="sm" asChild>
                     <Link to={`/report-templates/${t.id}/edit`}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                      Edit
+                      {tr('common.action.edit')}
                     </Link>
                   </Button>
 
@@ -127,7 +131,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={`Actions for ${t.name}`}
+                          aria-label={tr('common.action.rowActions', { name: t.name })}
                           disabled={busy}
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -138,8 +142,10 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                           disabled={lockDeactivate}
                           onClick={() => onToggleActive(t)}
                         >
-                          {t.is_active ? 'Deactivate' : 'Activate'}
-                          {lockDeactivate ? ' (default)' : ''}
+                          {t.is_active
+                            ? tr('pages.reportFormGroups.deactivate')
+                            : tr('pages.reportFormGroups.activate')}
+                          {lockDeactivate ? tr('pages.reportFormGroups.defaultSuffix') : ''}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

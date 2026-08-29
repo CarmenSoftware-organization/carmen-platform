@@ -211,7 +211,7 @@ export function BuQuotaSection({ clusterId, clusterCode, clusterName, canManage,
                           <div className="truncate" title={l.note || undefined}>{l.note || '-'}</div>
                           <AuditMeta
                             variant="compact"
-                            verb={latest?.verb}
+                            verbKey={latest?.verbKey}
                             actor={latest?.actor}
                             className="text-muted-foreground text-[11px]"
                           />

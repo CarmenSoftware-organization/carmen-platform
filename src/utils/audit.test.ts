@@ -141,12 +141,12 @@ describe('latestActor', () => {
       created_at: CREATED_AT, created_by_name: 'สมชาย',
       updated_at: UPDATED_AT, updated_by_name: 'ธมนูญ',
     });
-    expect(result).toEqual({ verb: 'Updated', actor: { at: UPDATED_AT, name: 'ธมนูญ' } });
+    expect(result).toEqual({ verbKey: 'common.audit.updatedDate', actor: { at: UPDATED_AT, name: 'ธมนูญ' } });
   });
 
   it('คืน Created เมื่อมีแต่ created (ยังไม่เคยแก้)', () => {
     const result = latestActor({ created_at: CREATED_AT, created_by_name: 'สมชาย' });
-    expect(result).toEqual({ verb: 'Created', actor: { at: CREATED_AT, name: 'สมชาย' } });
+    expect(result).toEqual({ verbKey: 'common.audit.created', actor: { at: CREATED_AT, name: 'สมชาย' } });
   });
 
   it('คืน null เมื่อไม่มีข้อมูล audit เลย', () => {
