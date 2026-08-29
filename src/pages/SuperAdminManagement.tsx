@@ -24,6 +24,7 @@ import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { SuperAdmin, UserOption } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useI18n } from '../hooks/useI18n';
 
 // The name to show for a row. Falls back to email, then to nothing at all —
 // deliberately NOT to a phrase like "Unknown user": when the frontend is deployed
@@ -43,6 +44,7 @@ const extractArray = <T,>(body: unknown): T[] => {
 };
 
 const SuperAdminManagement: React.FC = () => {
+  const { t } = useI18n();
   const [rows, setRows] = useState<SuperAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,11 +84,11 @@ const SuperAdminManagement: React.FC = () => {
     } catch (err: unknown) {
       const parsed = parseApiError(err);
       setError(parsed.message);
-      toast.error('Failed to load super admins', { description: parsed.message });
+      toast.error(t('pages.superAdmins.loadFailed'), { description: parsed.message });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -122,14 +124,14 @@ const SuperAdminManagement: React.FC = () => {
     try {
       setAdding(true);
       await superAdminService.add(selectedUser.id);
-      toast.success('Super admin added successfully');
+      toast.success(t('pages.superAdmins.addSuccess'));
       setSelectedUser(null);
       setShowAddDialog(false);
       pickerOpenRef.current = false;
       await fetchData();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
-      toast.error('Failed to add super admin', { description: parsed.message });
+      toast.error(t('pages.superAdmins.addFailed'), { description: parsed.message });
       // Refetch on 409 only. A 409 here means someone else granted it first, so the
       // table on screen is provably stale. Any other failure changed nothing on the
       // server, and refetching after it would throw away nothing but cost a request.
@@ -149,12 +151,12 @@ const SuperAdminManagement: React.FC = () => {
     if (!removeId) return;
     try {
       await superAdminService.remove(removeId);
-      toast.success('Super admin removed successfully');
+      toast.success(t('pages.superAdmins.removeSuccess'));
       setRemoveId(null);
       await fetchData();
     } catch (err: unknown) {
       const parsed = parseApiError(err);
-      toast.error('Failed to remove super admin', { description: parsed.message });
+      toast.error(t('pages.superAdmins.removeFailed'), { description: parsed.message });
     }
   };
 
@@ -163,27 +165,27 @@ const SuperAdminManagement: React.FC = () => {
       user: rowLabel(r),
       email: r.email || '',
       user_id: r.user_id,
-      status: r.is_active !== false ? 'Active' : 'Inactive',
+      status: r.is_active !== false ? t('common.status.active') : t('common.status.inactive'),
       ...auditCsvFields(normalizeAudit(r)),
     }));
     const csv = generateCSV(data, [
-      { key: 'user', label: 'User' },
-      { key: 'email', label: 'Email' },
-      { key: 'user_id', label: 'User ID' },
-      { key: 'status', label: 'Status' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'user', label: t('pages.superAdmins.columnUser') },
+      { key: 'email', label: t('common.field.email') },
+      { key: 'user_id', label: t('pages.superAdmins.columnUserId') },
+      { key: 'status', label: t('common.status.label') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `super-admins-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<SuperAdmin, unknown>[]>(() => [
     {
       id: 'user',
-      header: 'User',
+      header: t('pages.superAdmins.columnUser'),
       cell: ({ row }) => {
         const label = rowLabel(row.original);
         return (
@@ -201,7 +203,7 @@ const SuperAdminManagement: React.FC = () => {
     {
       id: 'email',
       accessorKey: 'email',
-      header: 'Email',
+      header: t('common.field.email'),
       cell: ({ row }) => (
         <div className="min-w-0 truncate text-sm">
           {row.original.email || <span className="text-muted-foreground">—</span>}
@@ -211,18 +213,18 @@ const SuperAdminManagement: React.FC = () => {
     {
       id: 'is_active',
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active !== false ? 'success' : 'secondary'}>
-          {row.original.is_active !== false ? 'Active' : 'Inactive'}
+          {row.original.is_active !== false ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
     {
       id: 'created_at',
       accessorFn: (row) => normalizeAudit(row).created?.at ?? '',
-      header: 'Added',
+      header: t('pages.superAdmins.columnAdded'),
       cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).created} />,
     },
     {
@@ -237,7 +239,7 @@ const SuperAdminManagement: React.FC = () => {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              aria-label={`Actions for ${rowLabel(row.original) || row.original.user_id}`}
+              aria-label={t('common.action.rowActions', { name: rowLabel(row.original) || row.original.user_id })}
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -248,31 +250,31 @@ const SuperAdminManagement: React.FC = () => {
               className="cursor-pointer text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Remove
+              {t('common.action.remove')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
     },
-  ], []);
+  ], [t]);
 
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <PageHeader
-          title="Super Admins"
-          subtitle="Platform users who bypass all permission checks"
+          title={t('pages.superAdmins.title')}
+          subtitle={t('pages.superAdmins.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || rows.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Button onClick={openAddDialog}>
                 <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Add Super Admin</span>
-                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">{t('pages.superAdmins.addSuperAdmin')}</span>
+                <span className="sm:hidden">{t('common.action.add')}</span>
               </Button>
             </>
           }
@@ -291,7 +293,7 @@ const SuperAdminManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search super admins..."
+                placeholder={t('pages.superAdmins.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
             </div>
@@ -302,12 +304,12 @@ const SuperAdminManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={0}
                 icon={ShieldAlert}
-                emptyTitle="No super admins"
-                emptyDescription="No platform users have super-admin privileges yet."
+                emptyTitle={t('pages.superAdmins.emptyTitle')}
+                emptyDescription={t('pages.superAdmins.emptyDescription')}
                 addAction={
                   <Button size="sm" onClick={openAddDialog}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Super Admin
+                    {t('pages.superAdmins.addSuperAdmin')}
                   </Button>
                 }
               />
@@ -323,9 +325,9 @@ const SuperAdminManagement: React.FC = () => {
                       <div
                         className="absolute inset-0 bg-background/50 flex items-center justify-center z-10"
                         role="status"
-                        aria-label="Loading super admins"
+                        aria-label={t('pages.superAdmins.loadingAria')}
                       >
-                        <div className="text-muted-foreground">Loading super admins...</div>
+                        <div className="text-muted-foreground">{t('pages.superAdmins.loadingText')}</div>
                       </div>
                     )}
                     <DataTable columns={columns} data={filteredRows} />
@@ -357,9 +359,9 @@ const SuperAdminManagement: React.FC = () => {
           }}
         >
           <DialogHeader>
-            <DialogTitle>Add Super Admin</DialogTitle>
+            <DialogTitle>{t('pages.superAdmins.addSuperAdmin')}</DialogTitle>
             <DialogDescription>
-              Grant a platform user full super-admin privileges (bypasses all permission checks).
+              {t('pages.superAdmins.addDialogDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -368,9 +370,9 @@ const SuperAdminManagement: React.FC = () => {
               value={selectedUser}
               onChange={setSelectedUser}
               disabledIds={superAdminUserIds}
-              disabledLabel="Already super admin"
-              placeholder="Search users by username or email"
-              ariaLabel="Select user to add as super admin"
+              disabledLabel={t('pages.superAdmins.alreadySuperAdmin')}
+              placeholder={t('pages.superAdmins.pickerPlaceholder')}
+              ariaLabel={t('pages.superAdmins.pickerAria')}
               disabled={adding}
               onDropdownOpenChange={(v) => {
                 pickerOpenRef.current = v;
@@ -388,7 +390,7 @@ const SuperAdminManagement: React.FC = () => {
               }}
               disabled={adding}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button size="sm" onClick={handleAdd} disabled={adding || !selectedUser}>
               {adding ? (
@@ -396,7 +398,7 @@ const SuperAdminManagement: React.FC = () => {
               ) : (
                 <Plus className="mr-2 h-4 w-4" />
               )}
-              {adding ? 'Adding...' : 'Add Super Admin'}
+              {adding ? t('common.busy.adding') : t('pages.superAdmins.addSuperAdmin')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -407,9 +409,9 @@ const SuperAdminManagement: React.FC = () => {
         onOpenChange={(open) => {
           if (!open) setRemoveId(null);
         }}
-        title="Remove Super Admin"
-        description="Are you sure you want to remove this user's super-admin privileges? They will no longer bypass permission checks."
-        confirmText="Remove"
+        title={t('pages.superAdmins.removeTitle')}
+        description={t('pages.superAdmins.removeDescription')}
+        confirmText={t('common.action.remove')}
         confirmVariant="destructive"
         onConfirm={handleConfirmRemove}
       />

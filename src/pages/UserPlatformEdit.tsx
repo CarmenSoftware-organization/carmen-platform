@@ -21,12 +21,14 @@ import Can from "../components/Can";
 import { ShieldCheck, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { UserRoleAssignment, Scope } from "../types";
+import { useI18n } from '../hooks/useI18n';
 
 const selectClassName =
   "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 
 const UserPlatformEdit: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -97,23 +99,23 @@ const UserPlatformEdit: React.FC = () => {
         setClusterOptions((Array.isArray(items) ? items : []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
       } catch { /* ignore */ }
     } catch (err: unknown) {
-      setError("Failed to load user: " + getErrorDetail(err));
+      setError(t('pages.userPlatform.loadUserFailed', { detail: getErrorDetail(err, t) }));
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleAddRole = async () => {
     if (!selectedRoleId) {
-      setFieldErrors((prev) => ({ ...prev, role_id: "Role is required" }));
-      toast.error("Select a role");
+      setFieldErrors((prev) => ({ ...prev, role_id: t('pages.userPlatform.roleRequired') }));
+      toast.error(t('pages.userPlatform.selectRole'));
       return;
     }
     if (scopeType === "cluster" && !scopeClusterId) {
-      setFieldErrors((prev) => ({ ...prev, cluster_id: "Cluster is required" }));
-      toast.error("Select a cluster");
+      setFieldErrors((prev) => ({ ...prev, cluster_id: t('pages.userPlatform.clusterRequired') }));
+      toast.error(t('pages.userPlatform.selectClusterError'));
       return;
     }
     setAddingRole(true);
@@ -122,7 +124,7 @@ const UserPlatformEdit: React.FC = () => {
         ? { type: "cluster", cluster_id: scopeClusterId }
         : { type: "platform" };
       await userRoleService.add(userId!, { role_id: selectedRoleId, scope });
-      toast.success("Role assigned");
+      toast.success(t('pages.userPlatform.roleAssigned'));
       handleCancelAddRole();
       setRoleAssignments(await userRoleService.list(userId!));
     } catch (err: unknown) {
@@ -137,7 +139,7 @@ const UserPlatformEdit: React.FC = () => {
     if (!deleteRoleAssignment) return;
     try {
       await userRoleService.remove(userId!, deleteRoleAssignment.id);
-      toast.success("Role removed");
+      toast.success(t('pages.userPlatform.roleRemoved'));
       setRoleAssignments(await userRoleService.list(userId!));
     } catch (err: unknown) {
       const { message } = parseApiError(err);
@@ -150,7 +152,7 @@ const UserPlatformEdit: React.FC = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="space-y-4 sm:space-y-6" role="status" aria-label="Loading user roles">
+        <div className="space-y-4 sm:space-y-6" role="status" aria-label={t('pages.userPlatform.loadingRolesAria')}>
           {/* Header skeleton */}
           <div className="flex items-center gap-3 sm:gap-4">
             <Skeleton className="h-9 w-9 rounded-md" />
@@ -193,8 +195,8 @@ const UserPlatformEdit: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           backTo="/platform/user-platform"
-          title={userName || "User"}
-          subtitle={userEmail || "Manage roles and scope"}
+          title={userName || t('pages.userPlatform.userLabel')}
+          subtitle={userEmail || t('pages.userPlatform.editSubtitle')}
           audit={normalizeAudit(userRecord)}
         />
 
@@ -213,28 +215,28 @@ const UserPlatformEdit: React.FC = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <ShieldCheck className="h-5 w-5" />
-                  Roles &amp; Scope
+                  {t('pages.userPlatform.rolesAndScope')}
                 </CardTitle>
-                <CardDescription>Platform roles assigned to this user</CardDescription>
+                <CardDescription>{t('pages.userPlatform.rolesAndScopeDescription')}</CardDescription>
               </div>
               <Can permission="user_platform.manage">
                 <Button variant="outline" size="sm" onClick={() => setShowAddRole(true)} disabled={loading}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Role
+                  {t('pages.userPlatform.addRole')}
                 </Button>
               </Can>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {roleAssignments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No roles assigned.</p>
+              <p className="text-sm text-muted-foreground">{t('pages.userPlatform.noRolesAssigned')}</p>
             ) : (
               <div className="space-y-2">
                 {roleAssignments.map((assignment) => {
                   const scopeBadge = assignment.scope.type === "cluster"
                     ? (clusterOptions.find(c => c.id === (assignment.scope as { type: "cluster"; cluster_id: string }).cluster_id)?.name
                         || (assignment.scope as { type: "cluster"; cluster_id: string }).cluster_id)
-                    : "Platform";
+                    : t('pages.userPlatform.scopePlatform');
                   return (
                     <div key={assignment.id} className="flex items-center justify-between rounded-md border px-3 py-2">
                       <div className="flex items-center gap-2">
@@ -247,7 +249,7 @@ const UserPlatformEdit: React.FC = () => {
                           size="icon"
                           className="h-6 w-6 text-destructive hover:text-destructive"
                           onClick={() => setDeleteRoleAssignment(assignment)}
-                          aria-label={`Remove ${assignment.role_name || "role"}`}
+                          aria-label={t('pages.userPlatform.removeRoleAria', { name: assignment.role_name || t('entity.role.lower') })}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -262,21 +264,21 @@ const UserPlatformEdit: React.FC = () => {
               {showAddRole && (
                 <div className="rounded-md border p-3 space-y-3 mt-2">
                   <div className="space-y-2">
-                    <Label htmlFor="role_id">Role *</Label>
+                    <Label htmlFor="role_id">{t('pages.userPlatform.roleFieldLabel')}</Label>
                     <select
                       id="role_id"
                       value={selectedRoleId}
                       onChange={(e) => { setSelectedRoleId(e.target.value); setFieldErrors((prev) => ({ ...prev, role_id: "" })); }}
-                      onBlur={() => setFieldErrors((prev) => ({ ...prev, role_id: selectedRoleId ? "" : "Role is required" }))}
+                      onBlur={() => setFieldErrors((prev) => ({ ...prev, role_id: selectedRoleId ? "" : t('pages.userPlatform.roleRequired') }))}
                       className={`${selectClassName} ${fieldErrors.role_id ? "border-destructive" : ""}`}
                     >
-                      <option value="">Select role…</option>
+                      <option value="">{t('pages.userPlatform.selectRole')}</option>
                       {roleOptions.map((r) => (<option key={r.id} value={r.id}>{r.name}</option>))}
                     </select>
                     {fieldErrors.role_id && <p className="text-xs text-destructive">{fieldErrors.role_id}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="scope_type">Scope</Label>
+                    <Label htmlFor="scope_type">{t('pages.userPlatform.scopeLabel')}</Label>
                     <select
                       id="scope_type"
                       value={scopeType}
@@ -287,21 +289,21 @@ const UserPlatformEdit: React.FC = () => {
                       }}
                       className={selectClassName}
                     >
-                      <option value="platform">Platform</option>
-                      <option value="cluster">Specific cluster</option>
+                      <option value="platform">{t('pages.userPlatform.scopePlatform')}</option>
+                      <option value="cluster">{t('pages.userPlatform.scopeSpecificCluster')}</option>
                     </select>
                   </div>
                   {scopeType === "cluster" && (
                     <div className="space-y-2">
-                      <Label htmlFor="cluster_id">Cluster *</Label>
+                      <Label htmlFor="cluster_id">{t('pages.userPlatform.clusterFieldLabel')}</Label>
                       <select
                         id="cluster_id"
                         value={scopeClusterId}
                         onChange={(e) => { setScopeClusterId(e.target.value); setFieldErrors((prev) => ({ ...prev, cluster_id: "" })); }}
-                        onBlur={() => setFieldErrors((prev) => ({ ...prev, cluster_id: scopeClusterId ? "" : "Cluster is required" }))}
+                        onBlur={() => setFieldErrors((prev) => ({ ...prev, cluster_id: scopeClusterId ? "" : t('pages.userPlatform.clusterRequired') }))}
                         className={`${selectClassName} ${fieldErrors.cluster_id ? "border-destructive" : ""}`}
                       >
-                        <option value="">Select cluster…</option>
+                        <option value="">{t('pages.userPlatform.selectCluster')}</option>
                         {clusterOptions.map((c) => (<option key={c.id} value={c.id}>{c.name}</option>))}
                       </select>
                       {fieldErrors.cluster_id && <p className="text-xs text-destructive">{fieldErrors.cluster_id}</p>}
@@ -310,10 +312,10 @@ const UserPlatformEdit: React.FC = () => {
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleAddRole} disabled={addingRole}>
                       {addingRole ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                      {addingRole ? "Adding…" : "Add"}
+                      {addingRole ? t('pages.userPlatform.adding') : t('common.action.add')}
                     </Button>
                     <Button size="sm" variant="outline" onClick={handleCancelAddRole}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -323,9 +325,13 @@ const UserPlatformEdit: React.FC = () => {
             <ConfirmDialog
               open={!!deleteRoleAssignment}
               onOpenChange={(open) => { if (!open) setDeleteRoleAssignment(null); }}
-              title="Remove role"
-              description={`Are you sure you want to remove the role "${deleteRoleAssignment?.role_name || deleteRoleAssignment?.role_id}" from this user?${roleAssignments.length === 1 ? ' This is their last platform role — they will no longer appear in the User Platform registry.' : ''}`}
-              confirmText="Remove"
+              title={t('pages.userPlatform.removeRoleTitle')}
+              description={
+                t('pages.userPlatform.removeRoleConfirm', {
+                  role: deleteRoleAssignment?.role_name || deleteRoleAssignment?.role_id || '',
+                }) + (roleAssignments.length === 1 ? t('pages.userPlatform.removeRoleLastSuffix') : '')
+              }
+              confirmText={t('common.action.remove')}
               confirmVariant="destructive"
               onConfirm={handleRemoveRole}
             />

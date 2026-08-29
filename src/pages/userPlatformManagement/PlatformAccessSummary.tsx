@@ -3,6 +3,7 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
 import { AlertTriangle, Info } from 'lucide-react';
 import type { PlatformUserRegistrySummary } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface PlatformAccessSummaryProps {
   /**
@@ -44,10 +45,11 @@ export function PlatformAccessSummary({
   onRetry = () => {},
   onShowInactive,
 }: PlatformAccessSummaryProps) {
+  const { t } = useI18n();
   return (
     <Card className="p-4 sm:p-5">
       {error ? (
-        <FetchErrorState message="Couldn't load the registry summary." onRetry={onRetry} className="py-3" />
+        <FetchErrorState message={t('pages.userPlatform.summaryStale')} onRetry={onRetry} className="py-3" />
       ) : loading ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <Skeleton className="h-14 w-28" />
@@ -59,13 +61,13 @@ export function PlatformAccessSummary({
             <HolderHeadline count={fallbackHolderTotal} />
             <div className="text-muted-foreground flex items-center gap-2 text-sm">
               <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-              Scope breakdown isn&apos;t available yet.
+              {t('pages.userPlatform.scopeBreakdownUnavailable')}
             </div>
           </div>
         ) : (
           <div className="text-muted-foreground flex items-center gap-2 py-3 text-sm">
             <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Registry summary isn&apos;t available yet.
+            {t('pages.userPlatform.registrySummaryUnavailable')}
           </div>
         )
       ) : (
@@ -74,15 +76,15 @@ export function PlatformAccessSummary({
 
           <dl className="flex flex-wrap gap-x-8 gap-y-3">
             <div>
-              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Platform-wide</dt>
+              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">{t('pages.userPlatform.platformWide')}</dt>
               <dd className="font-mono text-xl font-semibold tabular-nums">{summary.platform_wide}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Cluster-scoped</dt>
+              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">{t('pages.userPlatform.clusterScoped')}</dt>
               <dd className="font-mono text-xl font-semibold tabular-nums">{summary.cluster_only}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">Assignments</dt>
+              <dt className="text-muted-foreground text-[11px] uppercase tracking-[0.1em]">{t('pages.userPlatform.assignments')}</dt>
               <dd className="font-mono text-xl font-semibold tabular-nums">{summary.assignments}</dd>
             </div>
           </dl>
@@ -94,7 +96,9 @@ export function PlatformAccessSummary({
               className="text-warning ml-auto inline-flex items-center gap-2 rounded-md border border-warning/40 px-3 py-1.5 text-sm hover:bg-warning/10"
             >
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-              {summary.inactive} inactive {summary.inactive === 1 ? 'holder' : 'holders'} still hold access
+              {summary.inactive === 1
+                ? t('pages.userPlatform.inactiveHoldersWarning', { count: summary.inactive })
+                : t('pages.userPlatform.inactiveHoldersWarningPlural', { count: summary.inactive })}
             </button>
           )}
         </div>
@@ -105,11 +109,12 @@ export function PlatformAccessSummary({
 
 /** The large headline number + "holder(s)" label, shared by the full and fallback renders. */
 function HolderHeadline({ count }: { count: number }) {
+  const { t } = useI18n();
   return (
     <div className="border-border sm:border-r sm:pr-8">
       <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{count}</div>
       <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">
-        {count === 1 ? 'holder' : 'holders'}
+        {count === 1 ? t('pages.userPlatform.holder') : t('pages.userPlatform.holders')}
       </div>
     </div>
   );
