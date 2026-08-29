@@ -18,6 +18,7 @@ import Can from '../components/Can';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useI18n } from '../hooks/useI18n';
+import type { Lang } from '../i18n/types';
 import broadcastService from '../services/broadcastService';
 import businessUnitService from '../services/businessUnitService';
 import { parseApiError } from '../utils/errorParser';
@@ -107,8 +108,25 @@ function buildBuPayload(form: BroadcastFormData): BroadcastBuPayload {
   return payload;
 }
 
+/**
+ * วันที่+เวลาที่ผูกกับภาษาที่เลือก ไม่ใช่ locale ของเบราว์เซอร์
+ *
+ * เดิมทั้งสี่จุดเรียก `toLocaleString()` เปล่า ๆ ซึ่งอ่าน locale จากเบราว์เซอร์ ไม่ใช่จาก `lang`
+ * ของแอป — เครื่องที่ตั้งเป็น en-US จึงแสดง '9/28/2026, 1:38:24 PM' คาอยู่กลางหน้าที่แปล
+ * เป็นไทยครบแล้ว (พบตอน browser pass ของ F6) และผลลัพธ์ยังต่างกันไปตามเครื่องผู้ใช้ด้วย
+ *
+ * 'th-TH' เพียว ๆ ให้ปี พ.ศ. จึงบังคับปฏิทินเกรกอเรียนด้วย -u-ca-gregory เหมือนที่
+ * `describeRange()` ใน DateRangeFilter.tsx ทำ — ที่นั่นใช้ 'en-GB' เพราะสตริงเดิมเป็น
+ * วัน-เดือน-ปี ส่วนที่นี่สตริงเดิมไม่มีรูปแบบตายตัวให้รักษา (ขึ้นกับเบราว์เซอร์) จึงเลือก
+ * 'en-GB' ให้เหมือนกันทั้งแอปแทนที่จะคง en-US ของเครื่องใครเครื่องมัน
+ */
+const formatDateTime = (d: Date, lang: Lang): string =>
+  new Intl.DateTimeFormat(lang === 'th' ? 'th-TH-u-ca-gregory' : 'en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(d);
+
 const BroadcastCompose: React.FC = () => {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { hasPermission } = useAuth();
   // broadcast.send is checked unscoped here — a cluster-scoped grantee reaches
   // system-wide send modes. As of backend PR #239, both broadcast endpoints now
@@ -291,7 +309,7 @@ const BroadcastCompose: React.FC = () => {
 
   const confirmDescription = (): string => {
     const base = formData.sendMode === 'schedule'
-      ? t('pages.broadcasts.scheduledForNote', { when: new Date(formData.scheduledAtLocal).toLocaleString() })
+      ? t('pages.broadcasts.scheduledForNote', { when: formatDateTime(new Date(formData.scheduledAtLocal), lang) })
       : t('pages.broadcasts.deliveredImmediately');
     if (targetMode === 'system_all') {
       return `${base} ${t('pages.broadcasts.systemAllReachNote', { title: formData.title.trim() })}`;
@@ -337,7 +355,7 @@ const BroadcastCompose: React.FC = () => {
       setRawResponse(response);
       const scheduledMsg =
         formData.sendMode === 'schedule'
-          ? t('pages.broadcasts.toastScheduled', { when: new Date(formData.scheduledAtLocal).toLocaleString() })
+          ? t('pages.broadcasts.toastScheduled', { when: formatDateTime(new Date(formData.scheduledAtLocal), lang) })
           : t('pages.broadcasts.toastSent');
       toast.success(scheduledMsg);
       setFormData(initialForm);
@@ -393,11 +411,11 @@ const BroadcastCompose: React.FC = () => {
   const scheduledLabel = (() => {
     if (formData.sendMode !== 'schedule' || !formData.scheduledAtLocal) return undefined;
     const dt = new Date(formData.scheduledAtLocal);
-    return Number.isNaN(dt.getTime()) ? undefined : dt.toLocaleString();
+    return Number.isNaN(dt.getTime()) ? undefined : formatDateTime(dt, lang);
   })();
   const expiresLabel = (() => {
     const dt = new Date(resolveExpiryIso(formData));
-    return Number.isNaN(dt.getTime()) ? undefined : dt.toLocaleString();
+    return Number.isNaN(dt.getTime()) ? undefined : formatDateTime(dt, lang);
   })();
 
   return (

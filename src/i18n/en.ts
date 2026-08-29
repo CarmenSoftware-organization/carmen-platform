@@ -421,6 +421,24 @@ export const en = {
       // not translated in either language).
       hq: 'HQ',
     },
+    // AuditMeta.tsx's relative timestamps, reached through relativeTime()'s trailing
+    // optional `t` (same shape as auditColumns.tsx). English values are byte-identical to
+    // the literals relativeTime() returned before this change: the function still produces
+    // them verbatim when no `t` is passed, so relativeTime.test.ts keeps passing untouched
+    // and dashboard/ActivityStream.tsx — a page with no useI18n() yet — is unaffected.
+    // Distinct from pages.news.time.* ('{{count}} min ago'), which is that page's own
+    // longer-form register; these are the compact 'Nd ago' forms AuditMeta renders inline.
+    timeAgo: {
+      justNow: 'just now',
+      // No space before the unit in English ('30m ago'), a space in Thai — the Thai
+      // convention spaces around an interpolated parameter (see the note above `toast:`
+      // in th.ts) and Thai has no compact unit suffix to butt against the number.
+      minutes: '{{count}}m ago',
+      hours: '{{count}}h ago',
+      days: '{{count}}d ago',
+      months: '{{count}}mo ago',
+      years: '{{count}}y ago',
+    },
     state: {
       noExpiry: 'No expiry',
       expires: 'Expires',

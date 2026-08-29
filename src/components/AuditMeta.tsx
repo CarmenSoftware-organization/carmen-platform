@@ -56,7 +56,7 @@ export function AuditMeta(props: AuditMetaProps) {
   if (!actor?.at && !actor?.name) {
     return <span className="text-muted-foreground">-</span>;
   }
-  const when = relativeTime(actor.at, now);
+  const when = relativeTime(actor.at, now, t);
   const who = displayName(t, actor.name);
 
   if (props.variant === 'compact') {
@@ -88,7 +88,7 @@ function ActorPhrase({ t, verb, actor, now }: { t: TFunction; verb: string; acto
   const who = displayName(t, actor.name);
   return (
     <span title={absolute(actor.at)}>
-      <span className="font-medium">{verb}</span> {relativeTime(actor.at, now) || '-'}
+      <span className="font-medium">{verb}</span> {relativeTime(actor.at, now, t) || '-'}
       {who && ` ${t('components.auditMeta.byActor', { name: who })}`}
     </span>
   );

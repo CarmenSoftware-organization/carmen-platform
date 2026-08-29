@@ -315,6 +315,14 @@ export const th: Translations = {
       // rationale.
       hq: 'HQ',
     },
+    timeAgo: {
+      justNow: 'เมื่อสักครู่',
+      minutes: '{{count}} นาทีที่แล้ว',
+      hours: '{{count}} ชั่วโมงที่แล้ว',
+      days: '{{count}} วันที่แล้ว',
+      months: '{{count}} เดือนที่แล้ว',
+      years: '{{count}} ปีที่แล้ว',
+    },
     state: {
       noExpiry: 'ไม่มีวันหมดอายุ',
       expires: 'วันหมดอายุ',
