@@ -102,7 +102,7 @@ describe('EmailSettingManagement', () => {
     renderPage();
     expect(await screen.findByText(/no-reply@carmen\.io/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'ส่งเมลทดสอบ' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send test email' })).not.toBeInTheDocument();
   });
 
   it('surfaces a load failure with a retry affordance', async () => {
@@ -121,7 +121,7 @@ describe('EmailSettingManagement', () => {
     await user.clear(screen.getByLabelText('From name'));
     await user.type(screen.getByLabelText('From name'), 'changed');
     await user.click(screen.getByRole('button', { name: 'Edit' }));
-    expect(await screen.findByText(/ทิ้งการแก้ไขที่ยังไม่บันทึก/)).toBeInTheDocument();
+    expect(await screen.findByText(/Discard unsaved changes/)).toBeInTheDocument();
   });
 
   it('reloads and stays in edit mode when the save hits a version conflict', async () => {
@@ -191,9 +191,9 @@ describe('EmailSettingManagement', () => {
     await user.type(screen.getByLabelText('From name'), 'UnsavedNoReplyEdit');
 
     // Unset the second, unrelated card (Support) and confirm.
-    await user.click(screen.getByRole('button', { name: 'ยกเลิกการตั้งค่า' }));
+    await user.click(screen.getByRole('button', { name: 'Clear setting' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: 'ยกเลิกการตั้งค่า' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Clear setting' }));
 
     await waitFor(() => expect(svc.remove).toHaveBeenCalledWith('s2'));
     await waitFor(() => expect(svc.getAll).toHaveBeenCalledTimes(2));
@@ -221,18 +221,18 @@ describe('EmailSettingManagement', () => {
     // Edit No-reply, open the password field, type a new password — then never save it.
     const editButtons = await screen.findAllByRole('button', { name: 'Edit' });
     await user.click(editButtons[0]);
-    await user.click(screen.getByRole('button', { name: 'เปลี่ยนรหัสผ่าน' }));
+    await user.click(screen.getByRole('button', { name: 'Change password' }));
     await user.type(screen.getByLabelText('SMTP password'), 'abandoned-secret');
 
     // Switch to Support, confirming the "discard unsaved edits?" prompt.
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     let dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Discard changes' }));
 
     // Switch back to No-reply, confirming discard again — matching the reviewer's repro.
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Discard changes' }));
 
     // Save without ever reopening the password field — the abandoned password must not ride along.
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -257,11 +257,11 @@ describe('EmailSettingManagement', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     let dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Discard changes' }));
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: 'ทิ้งการแก้ไข' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Discard changes' }));
 
     expect(screen.getByLabelText('From name')).toHaveValue(noReply.from_name);
   });

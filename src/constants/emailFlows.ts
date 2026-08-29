@@ -1,4 +1,5 @@
 import type { EmailFlow } from '../types';
+import type { TKey } from '../i18n/types';
 
 /**
  * เส้นทางอีเมลทั้งหมดที่เลือกโปรไฟล์ผู้ส่งแยกกันได้
@@ -10,33 +11,34 @@ import type { EmailFlow } from '../types';
 export interface EmailFlowMeta {
   value: EmailFlow;
   label: string;
-  description: string;
+  /** คีย์ ไม่ใช่ข้อความ — const ระดับโมดูลเรียก hook ไม่ได้ ผู้เรนเดอร์เป็นคนแปล */
+  descriptionKey: TKey;
 }
 
 export const EMAIL_FLOWS: EmailFlowMeta[] = [
   {
     value: 'register',
     label: 'Register',
-    description: 'ลิงก์ยืนยันอีเมลก่อนสร้างบัญชี และอีเมลแจ้งว่ามีบัญชีอยู่แล้ว',
+    descriptionKey: 'pages.emailSettings.flowRegisterDescription',
   },
   {
     value: 'verify_email',
     label: 'Verify email',
-    description: 'ลิงก์ยืนยันอีเมลของบัญชีที่สร้างก่อนกลับลำดับ และเส้นทางผู้ดูแลสร้างให้',
+    descriptionKey: 'pages.emailSettings.flowVerifyEmailDescription',
   },
   {
     value: 'invitation',
     label: 'Invitation',
-    description: 'คำเชิญเข้าคลัสเตอร์ และอีเมลแจ้งเมื่อบัญชีถูกสร้างจากคำเชิญ',
+    descriptionKey: 'pages.emailSettings.flowInvitationDescription',
   },
   {
     value: 'forgot_password',
     label: 'Forgot password',
-    description: 'ลิงก์ตั้งรหัสผ่านใหม่',
+    descriptionKey: 'pages.emailSettings.flowForgotPasswordDescription',
   },
   {
     value: 'notification',
     label: 'Notification',
-    description: 'อีเมลแจ้งเตือนภายใน เช่น รายงานและการแจ้งเตือนระดับหน่วยธุรกิจ',
+    descriptionKey: 'pages.emailSettings.flowNotificationDescription',
   },
 ];

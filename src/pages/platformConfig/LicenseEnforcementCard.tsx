@@ -7,6 +7,7 @@ import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { LicenseConfig, PlatformConfig } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface LicenseEnforcementCardProps {
   config: PlatformConfig | null;
@@ -52,6 +53,7 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<LicenseConfig>(() => toForm(config));
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -73,8 +75,8 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
       });
       toast.success(
         formData.enforcement_enabled
-          ? 'เปิดการบังคับใช้ license แล้ว — มีผลภายใน 60 วินาที'
-          : 'ปิดการบังคับใช้ license แล้ว (shadow mode) — มีผลภายใน 60 วินาที',
+          ? t('pages.platformConfig.enforcementEnabledToast')
+          : t('pages.platformConfig.enforcementDisabledToast'),
       );
       await onSaved();
     } catch (err: unknown) {
@@ -98,12 +100,14 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
   return (
     <>
       <ConfigCardShell
-        title="License Enforcement"
+        title={t('pages.platformConfig.licenseTitle')}
         description={
           <>
-            สวิตช์เดียวที่ตัดสินว่า licensing บังคับใช้จริงหรือแค่บันทึกไว้เฉย ๆ (shadow mode) ·
-            ต้องมีสิทธิ์ <code className="font-mono">license.manage</code> เพิ่มจาก{' '}
-            <code className="font-mono">platform_config.manage</code> จึงจะแก้ได้
+            {t('pages.platformConfig.licenseDesc1')}{' '}
+            <code className="font-mono">license.manage</code>{' '}
+            {t('pages.platformConfig.licenseDesc2')}{' '}
+            <code className="font-mono">platform_config.manage</code>
+            {t('pages.platformConfig.licenseDesc3')}
           </>
         }
         canManage={canManage}
@@ -115,9 +119,9 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
       >
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label htmlFor="license-enforcement-enabled">Enforcement</Label>
+            <Label htmlFor="license-enforcement-enabled">{t('pages.platformConfig.enforcement')}</Label>
             <Badge variant={saved.enforcement_enabled ? 'success' : 'secondary'}>
-              {saved.enforcement_enabled ? 'บังคับใช้จริง' : 'shadow mode'}
+              {saved.enforcement_enabled ? t('pages.platformConfig.enforced') : t('pages.platformConfig.shadowMode')}
             </Badge>
           </div>
           {isEditing ? (
@@ -132,23 +136,28 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
                   setFormData({ enforcement_enabled: e.target.checked })
                 }
               />
-              บังคับใช้ license จริง (ปิดไว้ = บันทึกอย่างเดียว ไม่บล็อกใคร)
+              {t('pages.platformConfig.enforceCheckbox')}
             </label>
           ) : (
-            <ReadOnlyText value={saved.enforcement_enabled ? 'เปิด' : 'ปิด'} />
+            <ReadOnlyText value={saved.enforcement_enabled ? t('pages.platformConfig.on') : t('pages.platformConfig.off')} />
           )}
           <p className="text-xs text-muted-foreground">
-            <strong>ปิด (ค่าเริ่มต้น)</strong> = ระบบตรวจสิทธิ์ตามปกติแต่ไม่ปฏิเสธใคร เขียนเป็น log{' '}
-            <code className="font-mono">LICENSE shadow-mode</code> ไว้ให้ตรวจย้อนหลังได้ ·{' '}
-            <strong>เปิด</strong> = หน่วยธุรกิจที่ไม่มีสัญญาครอบคลุมฟีเจอร์นั้นจะได้{' '}
-            <code className="font-mono">403 LICENSE_REQUIRED</code> สัญญาที่หมดอายุจะอ่านได้แต่เขียนไม่ได้
-            (<code className="font-mono">LICENSE_EXPIRED</code>) และการเชิญผู้ใช้เกินเพดานที่นั่งจะได้{' '}
+            <strong>{t('pages.platformConfig.licenseNote1Strong')}</strong>{' '}
+            {t('pages.platformConfig.licenseNote1')}{' '}
+            <code className="font-mono">LICENSE shadow-mode</code>{' '}
+            {t('pages.platformConfig.licenseNote2')}{' '}
+            <strong>{t('pages.platformConfig.licenseNote2Strong')}</strong>{' '}
+            {t('pages.platformConfig.licenseNote3')}{' '}
+            <code className="font-mono">403 LICENSE_REQUIRED</code>{' '}
+            {t('pages.platformConfig.licenseNote4')}{' '}
+            (<code className="font-mono">LICENSE_EXPIRED</code>){' '}
+            {t('pages.platformConfig.licenseNote5')}{' '}
             <code className="font-mono">403 SEAT_LIMIT_REACHED</code>
           </p>
           <p className="text-xs text-muted-foreground">
-            มีผลภายใน 60 วินาที ไม่ต้อง deploy ใหม่ และปิดกลับได้ทันทีด้วยวิธีเดียวกัน ·
-            ครอบคลุมเฉพาะเส้นทางของแอปหน่วยธุรกิจ (
-            <code className="font-mono">/api/:bu_code/…</code>) หน้าจอผู้ดูแลนี้ไม่อยู่ในขอบเขต
+            {t('pages.platformConfig.licenseNote6')}
+            <code className="font-mono">/api/:bu_code/…</code>
+            {t('pages.platformConfig.licenseNote7')}
           </p>
         </div>
       </ConfigCardShell>
@@ -156,13 +165,9 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="เปิดการบังคับใช้ license?"
-        description={
-          'ทุกหน่วยธุรกิจที่ไม่มีสัญญาครอบคลุมฟีเจอร์ที่กำลังใช้อยู่จะถูกปฏิเสธทันทีภายใน 60 วินาที ' +
-          'และการเชิญผู้ใช้เกินเพดานที่นั่งจะทำไม่ได้อีก · ตรวจให้แน่ใจก่อนว่าทุกหน่วยธุรกิจมีสัญญาที่ยัง ' +
-          'active และถือฟีเจอร์ครบแล้ว (ดูหน้า Licenses) · ปิดกลับได้ทันทีด้วยการเอาเครื่องหมายถูกออก'
-        }
-        confirmText="เปิดการบังคับใช้"
+        title={t('pages.platformConfig.confirmEnableTitle')}
+        description={t('pages.platformConfig.confirmEnableDescription')}
+        confirmText={t('pages.platformConfig.confirmEnableAction')}
         confirmVariant="destructive"
         onConfirm={persist}
       />

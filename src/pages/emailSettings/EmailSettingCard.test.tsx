@@ -53,9 +53,9 @@ describe('EmailSettingCard', () => {
 
   it('shows the unconfigured state with a setup button when there is no profile', () => {
     render(<EmailSettingCard {...baseProps} setting={null} />);
-    expect(screen.getByText('ยังไม่ตั้งค่า')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'ตั้งค่า' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'ส่งเมลทดสอบ' })).not.toBeInTheDocument();
+    expect(screen.getByText('Not configured')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Configure' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send test email' })).not.toBeInTheDocument();
   });
 
   it('summarises a configured profile without revealing the password', () => {
@@ -72,8 +72,8 @@ describe('EmailSettingCard', () => {
   it('hides every mutating control when the user lacks manage permission', () => {
     render(<EmailSettingCard {...baseProps} canManage={false} setting={setting} />);
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'ส่งเมลทดสอบ' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'ยกเลิกการตั้งค่า' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send test email' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Clear setting' })).not.toBeInTheDocument();
     expect(screen.getByText(/no-reply@carmen\.io/)).toBeInTheDocument();
   });
 
@@ -86,8 +86,8 @@ describe('EmailSettingCard', () => {
     // credential inputs themselves are gone, which is the thing the fix actually controls.
     expect(screen.queryByLabelText('From email')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('SMTP host')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'เปลี่ยนรหัสผ่าน' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'ตั้งรหัสผ่าน' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change password' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Set password' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
   });
@@ -95,8 +95,8 @@ describe('EmailSettingCard', () => {
 
   it('replaces the test button with an explanation while editing', () => {
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
-    expect(screen.queryByRole('button', { name: 'ส่งเมลทดสอบ' })).not.toBeInTheDocument();
-    expect(screen.getByText('บันทึกก่อนจึงจะทดสอบได้')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send test email' })).not.toBeInTheDocument();
+    expect(screen.getByText('Save before you can test')).toBeInTheDocument();
   });
 
   it('sends doc_version on update and reports success', async () => {
@@ -127,7 +127,7 @@ describe('EmailSettingCard', () => {
     const user = userEvent.setup();
     svc.update.mockResolvedValue({ data: { id: 's1' } });
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
-    await user.click(screen.getByRole('button', { name: 'เปลี่ยนรหัสผ่าน' }));
+    await user.click(screen.getByRole('button', { name: 'Change password' }));
     await user.type(screen.getByLabelText('SMTP password'), 'hunter2');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(svc.update).toHaveBeenCalled());
@@ -138,7 +138,7 @@ describe('EmailSettingCard', () => {
     const user = userEvent.setup();
     svc.update.mockResolvedValue({ data: { id: 's1' } });
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
-    await user.click(screen.getByRole('button', { name: 'เปลี่ยนรหัสผ่าน' }));
+    await user.click(screen.getByRole('button', { name: 'Change password' }));
     await user.type(screen.getByLabelText('SMTP password'), 'temporary');
     await user.clear(screen.getByLabelText('SMTP password'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -230,7 +230,7 @@ describe('EmailSettingCard', () => {
   it('explains the env fallback before unsetting a profile', async () => {
     const user = userEvent.setup();
     render(<EmailSettingCard {...baseProps} setting={setting} />);
-    await user.click(screen.getByRole('button', { name: 'ยกเลิกการตั้งค่า' }));
-    expect(await screen.findByText(/กลับไปใช้ค่า SMTP จาก environment/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Clear setting' }));
+    expect(await screen.findByText(/falls back to the SMTP values from the server environment/)).toBeInTheDocument();
   });
 });

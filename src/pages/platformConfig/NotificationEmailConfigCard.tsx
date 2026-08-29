@@ -8,6 +8,7 @@ import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import { latestActor } from '../../utils/audit';
 import type { NotificationEmailConfig, PlatformConfig } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface NotificationEmailConfigCardProps {
   config: PlatformConfig | null;
@@ -71,6 +72,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<NotificationEmailFormData>(() => toForm(config));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -85,10 +87,10 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
     value: string,
   ): string => {
     if (name === 'subject_prefix') {
-      return value.length > 64 ? 'ยาวเกิน 64 ตัวอักษร' : '';
+      return value.length > 64 ? t('pages.platformConfig.tooLong64') : '';
     }
     const bad = splitCsv(value).filter((e) => !EMAIL_PATTERN.test(e));
-    return bad.length > 0 ? `อีเมลไม่ถูกต้อง: ${bad.join(', ')}` : '';
+    return bad.length > 0 ? t('pages.platformConfig.invalidEmails', { list: bad.join(', ') }) : '';
   };
 
   const handleChange = (
@@ -130,7 +132,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
         cc: splitCsv(formData.cc),
         subject_prefix: formData.subject_prefix.trim(),
       });
-      toast.success('บันทึกการตั้งค่าอีเมลแจ้งเตือนแล้ว');
+      toast.success(t('pages.platformConfig.savedNotificationToast'));
       await onSaved();
     } catch (err: unknown) {
       const { message, fields } = parseApiError(err);
@@ -145,8 +147,8 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
 
   return (
     <ConfigCardShell
-      title="Notification Email"
-      description="ผู้รับอีเมลแจ้งเตือนภายใน (รายงาน / การแจ้งเตือนระดับหน่วยธุรกิจ)"
+      title={t('pages.platformConfig.notificationTitle')}
+      description={t('pages.platformConfig.notificationDescription')}
       canManage={canManage}
       isEditing={isEditing}
       saving={saving}
@@ -155,7 +157,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
       onCancel={handleCancel}
     >
         <div className="space-y-2">
-          <Label htmlFor="notification-email-enabled">Sending</Label>
+          <Label htmlFor="notification-email-enabled">{t('pages.platformConfig.sending')}</Label>
           {isEditing ? (
             <label className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
               <input
@@ -168,19 +170,20 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
                   setFormData((prev) => ({ ...prev, enabled: e.target.checked }))
                 }
               />
-              ส่งอีเมลแจ้งเตือนภายใน
+              {t('pages.platformConfig.sendInternalEmail')}
             </label>
           ) : (
-            <ReadOnlyText value={form.enabled ? 'เปิด' : 'ปิด'} />
+            <ReadOnlyText value={form.enabled ? t('pages.platformConfig.on') : t('pages.platformConfig.off')} />
           )}
           <p className="text-xs text-muted-foreground">
-            ปิดไว้ = ไม่ส่งอีเมลแจ้งเตือนภายในเลย (เดิมคือ env <code className="font-mono">SMTP_ENABLED</code>)
-            · ไม่กระทบอีเมลของระบบอย่างลิงก์สมัครหรือตั้งรหัสผ่านใหม่ ซึ่งส่งเสมอ
+            {t('pages.platformConfig.sendingHint1')}{' '}
+            <code className="font-mono">SMTP_ENABLED</code>
+            {t('pages.platformConfig.sendingHint2')}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notification-email-recipients">Recipients</Label>
+          <Label htmlFor="notification-email-recipients">{t('pages.platformConfig.recipients')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -189,7 +192,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
                 onChange={(e) => handleChange('recipients', e.target.value)}
                 onBlur={() => handleBlur('recipients')}
                 className={fieldErrors.recipients ? 'border-destructive' : ''}
-                placeholder="ops@example.com, finance@example.com"
+                placeholder={t('pages.platformConfig.recipientsPlaceholder')}
               />
               {fieldErrors.recipients && (
                 <p className="text-xs text-destructive">{fieldErrors.recipients}</p>
@@ -199,13 +202,12 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
             <ReadOnlyText value={form.recipients} />
           )}
           <p className="text-xs text-muted-foreground">
-            คั่นหลายอีเมลด้วยจุลภาค เว้นว่างไว้เพื่อให้ส่งถึงผู้รับที่การแจ้งเตือนแต่ละใบคำนวณเองจาก
-            อีเมลของผู้ใช้ปลายทาง
+            {t('pages.platformConfig.recipientsHint')}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notification-email-cc">CC</Label>
+          <Label htmlFor="notification-email-cc">{t('pages.platformConfig.cc')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -214,7 +216,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
                 onChange={(e) => handleChange('cc', e.target.value)}
                 onBlur={() => handleBlur('cc')}
                 className={fieldErrors.cc ? 'border-destructive' : ''}
-                placeholder="audit@example.com"
+                placeholder={t('pages.platformConfig.ccPlaceholder')}
               />
               {fieldErrors.cc && <p className="text-xs text-destructive">{fieldErrors.cc}</p>}
             </>
@@ -224,7 +226,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notification-email-subject-prefix">Subject prefix</Label>
+          <Label htmlFor="notification-email-subject-prefix">{t('pages.platformConfig.subjectPrefix')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -243,8 +245,7 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
             <ReadOnlyText value={form.subject_prefix} />
           )}
           <p className="text-xs text-muted-foreground">
-            ข้อความที่เติมหน้าหัวเรื่องอีเมล เว้นว่างไว้ = ไม่เติมอะไร · ค่า SMTP (host / ผู้ใช้ /
-            รหัสผ่าน) ไม่ได้อยู่ที่นี่ — ตั้งที่หน้า Email Setting
+            {t('pages.platformConfig.subjectPrefixHint')}
           </p>
         </div>
 

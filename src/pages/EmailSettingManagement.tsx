@@ -17,8 +17,10 @@ import { getErrorDetail } from '../utils/errorParser';
 import { AuditMeta } from '../components/AuditMeta';
 import { latestActor } from '../utils/audit';
 import type { EmailSetting } from '../types';
+import { useI18n } from '../hooks/useI18n';
 
 const EmailSettingManagement: React.FC = () => {
+  const { t } = useI18n();
   const { hasPermission, user } = useAuth();
   const canManage = hasPermission('email_setting.manage');
 
@@ -79,8 +81,8 @@ const EmailSettingManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Email Settings"
-          subtitle="โปรไฟล์ผู้ส่งอีเมลระดับ platform — ที่อยู่ผู้ส่งและค่า SMTP ที่ระบบใช้ส่งเมลออก"
+          title={t('pages.emailSettings.title')}
+          subtitle={t('pages.emailSettings.subtitle')}
         />
 
         {error ? (
@@ -111,7 +113,7 @@ const EmailSettingManagement: React.FC = () => {
               {canManage && !addingProfile && (
                 <Button variant="outline" size="sm" onClick={() => { setAddingProfile(true); requestEdit('new'); }}>
                   <Plus className="mr-2 h-4 w-4" />
-                  เพิ่มโปรไฟล์
+                  {t('pages.emailSettings.addProfile')}
                 </Button>
               )}
             </div>
@@ -121,8 +123,8 @@ const EmailSettingManagement: React.FC = () => {
                 <EmailSettingCard
                   key="new"
                   profileKey="new"
-                  label="โปรไฟล์ใหม่"
-                  description="ตั้งชื่อและใส่ค่า SMTP แล้วบันทึก จากนั้นจึงเลือกใช้ในตาราง mapping ด้านบน"
+                  label={t('pages.emailSettings.newProfileLabel')}
+                  description={t('pages.emailSettings.newProfileDescription')}
                   setting={null}
                   canManage={canManage}
                   isEditing={editingPurpose === 'new'}
@@ -146,7 +148,7 @@ const EmailSettingManagement: React.FC = () => {
                   <EmailSettingCard
                     profileKey={setting.id}
                     label={setting.name}
-                    description={setting.note ?? 'โปรไฟล์ผู้ส่งอีเมล'}
+                    description={setting.note ?? t('pages.emailSettings.defaultProfileNote')}
                     setting={setting}
                     canManage={canManage}
                     isEditing={editingPurpose === setting.id}
@@ -175,9 +177,9 @@ const EmailSettingManagement: React.FC = () => {
         onOpenChange={(open) => {
           if (!open) setPendingSwitch(null);
         }}
-        title="ทิ้งการแก้ไขที่ยังไม่บันทึก?"
-        description="คุณกำลังแก้โปรไฟล์อื่นอยู่ ถ้าไปต่อ การแก้ไขที่ยังไม่บันทึกจะหายไป"
-        confirmText="ทิ้งการแก้ไข"
+        title={t('pages.emailSettings.discardTitle')}
+        description={t('pages.emailSettings.discardDescription')}
+        confirmText={t('pages.emailSettings.discardAction')}
         confirmVariant="destructive"
         onConfirm={() => {
           setEditingPurpose(pendingSwitch);

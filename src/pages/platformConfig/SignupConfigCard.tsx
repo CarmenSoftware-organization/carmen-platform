@@ -6,6 +6,7 @@ import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { PlatformConfig, SignupConfig } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface SignupConfigCardProps {
   config: PlatformConfig | null;
@@ -53,6 +54,7 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const [formData, setFormData] = useState<SignupFormData>(() => toForm(config));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -64,17 +66,17 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
    */
   const validate = (name: keyof SignupFormData, value: string): string => {
     if (name === 'verify_base_url') {
-      if (!value.trim()) return 'ต้องระบุ Verify URL';
+      if (!value.trim()) return t('pages.platformConfig.verifyUrlRequired');
       try {
         new URL(value);
         return '';
       } catch {
-        return 'รูปแบบ URL ไม่ถูกต้อง (ต้องมี scheme เช่น https://)';
+        return t('pages.platformConfig.urlInvalid');
       }
     }
     const n = Number(value);
-    if (!value.trim()) return 'ต้องระบุจำนวนชั่วโมง';
-    if (!Number.isInteger(n) || n < 1 || n > 720) return 'ต้องเป็นจำนวนเต็ม 1–720';
+    if (!value.trim()) return t('pages.platformConfig.hoursRequired');
+    if (!Number.isInteger(n) || n < 1 || n > 720) return t('pages.platformConfig.hoursRange');
     return '';
   };
 
@@ -111,7 +113,7 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
         verify_base_url: formData.verify_base_url.trim(),
         link_expiry_hours: Number(formData.link_expiry_hours),
       });
-      toast.success('บันทึกการตั้งค่าการสมัครแล้ว');
+      toast.success(t('pages.platformConfig.savedSignupToast'));
       await onSaved();
     } catch (err: unknown) {
       const { message, fields } = parseApiError(err);
@@ -126,8 +128,8 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
 
   return (
     <ConfigCardShell
-      title="Sign-up"
-      description="ลิงก์ปลายทางของอีเมลยืนยันอีเมลก่อนสร้างบัญชี"
+      title={t('pages.platformConfig.signupTitle')}
+      description={t('pages.platformConfig.signupDescription')}
       canManage={canManage}
       isEditing={isEditing}
       saving={saving}
@@ -136,7 +138,7 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
       onCancel={handleCancel}
     >
         <div className="space-y-2">
-          <Label htmlFor="signup-verify-base-url">Verify URL</Label>
+          <Label htmlFor="signup-verify-base-url">{t('pages.platformConfig.verifyUrl')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -145,7 +147,7 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
                 onChange={(e) => handleChange('verify_base_url', e.target.value)}
                 onBlur={() => handleBlur('verify_base_url')}
                 className={fieldErrors.verify_base_url ? 'border-destructive' : ''}
-                placeholder="https://inventory.carmen.io/register/verify"
+                placeholder={t('pages.platformConfig.signupUrlPlaceholder')}
               />
               {fieldErrors.verify_base_url && (
                 <p className="text-xs text-destructive">{fieldErrors.verify_base_url}</p>
@@ -155,16 +157,14 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
             <ReadOnlyText value={form.verify_base_url} />
           )}
           <p className="text-xs text-muted-foreground">
-            Where the link in the sign-up verification email points. This is the Carmen inventory
-            app, not this console — the recipient sets their password there and the account is
-            created only at that point. The system appends{' '}
-            <code className="font-mono">?token=…</code> itself, so enter the page URL only, e.g.{' '}
+            {t('pages.platformConfig.signupHint1')}{' '}
+            <code className="font-mono">?token=…</code> {t('pages.platformConfig.signupHint2')}{' '}
             <code className="font-mono">https://inventory.example.com/register/verify</code>.
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="signup-link-expiry-hours">Expiry (hours)</Label>
+          <Label htmlFor="signup-link-expiry-hours">{t('pages.platformConfig.expiryHours')}</Label>
           {isEditing ? (
             <>
               <Input
@@ -182,7 +182,7 @@ export const SignupConfigCard: React.FC<SignupConfigCardProps> = ({
               )}
             </>
           ) : (
-            <ReadOnlyText value={`${form.link_expiry_hours} ชั่วโมง`} />
+            <ReadOnlyText value={t('pages.platformConfig.hoursValue', { count: form.link_expiry_hours })} />
           )}
         </div>
     </ConfigCardShell>

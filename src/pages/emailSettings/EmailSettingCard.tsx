@@ -15,6 +15,7 @@ import { validateField } from '../../utils/validation';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import type { EmailSetting } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface EmailSettingCardProps {
   /** id ของโปรไฟล์ หรือ 'new' เมื่อยังไม่ได้บันทึก — ใช้ตั้ง id ของ input ให้ไม่ชนกันข้ามการ์ด */
@@ -96,6 +97,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   onCancelEdit,
   onSaved,
 }) => {
+  const { t } = useI18n();
   const isNew = setting === null;
   const [formData, setFormData] = useState<EmailSettingFormData>(() => toForm(setting));
   const [password, setPassword] = useState<string | undefined>(undefined);
@@ -178,13 +180,13 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
     try {
       if (isNew) {
         await emailSettingService.create(payload);
-        toast.success(`ตั้งค่าโปรไฟล์ ${label} แล้ว`);
+        toast.success(t('pages.emailSettings.profileConfiguredToast', { label }));
       } else {
         await emailSettingService.update(setting.id, {
           ...payload,
           ...(docVersion != null ? { doc_version: docVersion } : {}),
         });
-        toast.success(`บันทึกโปรไฟล์ ${label} แล้ว`);
+        toast.success(t('pages.emailSettings.profileSavedToast', { label }));
       }
       setPassword(undefined);
       onSaved();
@@ -208,7 +210,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
     if (!setting) return;
     try {
       await emailSettingService.remove(setting.id);
-      toast.success(`ยกเลิกการตั้งค่าโปรไฟล์ ${label} แล้ว`);
+      toast.success(t('pages.emailSettings.profileUnsetToast', { label }));
       setConfirmUnset(false);
       onSaved();
     } catch (err: unknown) {
@@ -245,7 +247,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         {isNew ? (
-          <Badge variant="secondary">ยังไม่ตั้งค่า</Badge>
+          <Badge variant="secondary">{t('pages.emailSettings.notConfigured')}</Badge>
         ) : (
           <Badge variant={setting.is_active ? 'success' : 'secondary'}>
             {setting.is_active ? 'Active' : 'Inactive'}
@@ -268,30 +270,30 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
 
         {!isEditing && isNew && (
           <p className="text-sm text-muted-foreground">
-            ยังไม่มีโปรไฟล์สำหรับช่องทางนี้ — ระบบจะใช้ค่า SMTP จาก environment ของเซิร์ฟเวอร์แทน
+            {t('pages.emailSettings.noProfileNote')}
           </p>
         )}
 
         {isEditing && canManage && (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor={`name_${profileKey}`}>Profile name</Label>
+              <Label htmlFor={`name_${profileKey}`}>{t('pages.emailSettings.profileName')}</Label>
               <Input
                 id={`name_${profileKey}`}
                 value={formData.name}
                 onChange={(e) => setValue('name', e.target.value)}
                 onBlur={(e) => handleBlur('name', e.target.value)}
                 className={fieldErrors.name ? 'border-destructive' : ''}
-                placeholder="No-reply"
+                placeholder={t('pages.emailSettings.profileNamePlaceholder')}
               />
               {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`from_email_${profileKey}`}>From email</Label>
+              <Label htmlFor={`from_email_${profileKey}`}>{t('pages.emailSettings.fromEmail')}</Label>
               <Input
                 id={`from_email_${profileKey}`}
-                aria-label="From email"
+                aria-label={t('pages.emailSettings.fromEmail')}
                 value={formData.from_email}
                 onChange={(e) => setValue('from_email', e.target.value)}
                 onBlur={(e) => handleBlur('from_email', e.target.value)}
@@ -306,7 +308,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
               <Label htmlFor={`from_name_${profileKey}`}>From name</Label>
               <Input
                 id={`from_name_${profileKey}`}
-                aria-label="From name"
+                aria-label={t('pages.emailSettings.fromName')}
                 value={formData.from_name}
                 onChange={(e) => setValue('from_name', e.target.value)}
               />
@@ -316,7 +318,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
               <Label htmlFor={`smtp_host_${profileKey}`}>SMTP host</Label>
               <Input
                 id={`smtp_host_${profileKey}`}
-                aria-label="SMTP host"
+                aria-label={t('pages.emailSettings.smtpHost')}
                 value={formData.smtp_host}
                 onChange={(e) => setValue('smtp_host', e.target.value)}
                 className={fieldErrors.smtp_host ? 'border-destructive' : ''}
@@ -327,10 +329,10 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`smtp_port_${profileKey}`}>SMTP port</Label>
+              <Label htmlFor={`smtp_port_${profileKey}`}>{t('pages.emailSettings.smtpPort')}</Label>
               <Input
                 id={`smtp_port_${profileKey}`}
-                aria-label="SMTP port"
+                aria-label={t('pages.emailSettings.smtpPort')}
                 value={formData.smtp_port}
                 onChange={(e) => setValue('smtp_port', e.target.value)}
                 className={fieldErrors.smtp_port ? 'border-destructive' : ''}
@@ -341,10 +343,10 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`smtp_username_${profileKey}`}>SMTP username</Label>
+              <Label htmlFor={`smtp_username_${profileKey}`}>{t('pages.emailSettings.smtpUsername')}</Label>
               <Input
                 id={`smtp_username_${profileKey}`}
-                aria-label="SMTP username"
+                aria-label={t('pages.emailSettings.smtpUsername')}
                 value={formData.smtp_username}
                 onChange={(e) => setValue('smtp_username', e.target.value)}
               />
@@ -362,12 +364,12 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
                 className="h-4 w-4 accent-primary"
                 checked={formData.smtp_secure}
                 onChange={(e) => setValue('smtp_secure', e.target.checked)}
-                aria-label="Use implicit TLS"
+                aria-label={t('pages.emailSettings.implicitTls')}
               />
-              Implicit TLS
+              {t('pages.emailSettings.implicitTls')}
             </label>
             <p className="text-xs text-muted-foreground lg:col-span-2">
-              เปิดเมื่อใช้ implicit TLS (มักเป็นพอร์ต 465) — พอร์ต 587 ปกติใช้ STARTTLS ให้ปิดไว้
+              {t('pages.emailSettings.implicitTlsHint')}
             </p>
 
             <label className="flex items-center gap-2 text-sm">
@@ -376,19 +378,19 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
                 className="h-4 w-4 accent-primary"
                 checked={formData.is_active}
                 onChange={(e) => setValue('is_active', e.target.checked)}
-                aria-label="Active"
+                aria-label={t('common.status.active')}
               />
-              Active
+              {t('common.status.active')}
             </label>
 
             <div className="space-y-2 lg:col-span-2">
               <Label htmlFor={`note_${profileKey}`}>Note</Label>
               <Input
                 id={`note_${profileKey}`}
-                aria-label="Note"
+                aria-label={t('pages.databasePools.columnNote')}
                 value={formData.note}
                 onChange={(e) => setValue('note', e.target.value)}
-                placeholder="ใครเป็นเจ้าของ mailbox นี้ / ใช้ provider อะไร"
+                placeholder={t('pages.emailSettings.notePlaceholder')}
               />
             </div>
           </div>
@@ -420,20 +422,20 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
-                <span className="text-xs text-muted-foreground">บันทึกก่อนจึงจะทดสอบได้</span>
+                <span className="text-xs text-muted-foreground">{t('pages.emailSettings.saveBeforeTest')}</span>
               </>
             ) : (
               <>
                 <Button size="sm" variant="outline" onClick={onRequestEdit}>
-                  {isNew ? 'ตั้งค่า' : 'Edit'}
+                  {isNew ? t('pages.emailSettings.configure') : t('common.action.edit')}
                 </Button>
                 {!isNew && (
                   <>
                     <Button size="sm" variant="outline" onClick={() => setTestOpen(true)}>
                       <Send className="mr-2 h-4 w-4" />
-                      ส่งเมลทดสอบ
+                      {t('pages.emailSettings.sendTestEmail')}
                     </Button>
                     <Button
                       size="sm"
@@ -442,7 +444,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
                       onClick={() => setConfirmUnset(true)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      ยกเลิกการตั้งค่า
+                      {t('pages.emailSettings.unset')}
                     </Button>
                   </>
                 )}
@@ -457,13 +459,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
           <ConfirmDialog
             open={confirmUnset}
             onOpenChange={setConfirmUnset}
-            title={`ยกเลิกการตั้งค่าโปรไฟล์ ${label}`}
-            description={
-              `หลังจากนี้ระบบจะกลับไปใช้ค่า SMTP จาก environment ของเซิร์ฟเวอร์ ` +
-              `ถ้าไม่ได้ตั้งค่านั้นไว้ อีเมลของช่องทางนี้จะหยุดส่ง ` +
-              `และต้องตั้งรหัสผ่านใหม่ทั้งหมดหากจะสร้างโปรไฟล์นี้อีกครั้ง`
-            }
-            confirmText="ยกเลิกการตั้งค่า"
+            title={t('pages.emailSettings.unsetTitle', { label })}
+            description={t('pages.emailSettings.unsetDescription')}
+            confirmText={t('pages.emailSettings.unset')}
             confirmVariant="destructive"
             onConfirm={handleUnset}
           />

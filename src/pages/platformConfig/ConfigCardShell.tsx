@@ -2,6 +2,7 @@ import React from 'react';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import { useI18n } from '../../hooks/useI18n';
 
 interface ConfigCardShellProps {
   title: string;
@@ -34,7 +35,9 @@ export const ConfigCardShell: React.FC<ConfigCardShellProps> = ({
   onSave,
   onCancel,
   children,
-}) => (
+}) => {
+  const { t } = useI18n();
+  return (
   <Card>
     <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
       <div className="min-w-0">
@@ -44,7 +47,7 @@ export const ConfigCardShell: React.FC<ConfigCardShellProps> = ({
       {canManage && !isEditing && (
         <Button variant="outline" size="sm" onClick={onRequestEdit}>
           <Pencil className="mr-2 h-4 w-4" />
-          Edit
+          {t('common.action.edit')}
         </Button>
       )}
     </CardHeader>
@@ -59,17 +62,18 @@ export const ConfigCardShell: React.FC<ConfigCardShellProps> = ({
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={saving}>
             <X className="mr-2 h-4 w-4" />
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       )}
     </CardContent>
   </Card>
-);
+  );
+};
 
 /** ช่องอ่านอย่างเดียวของฟอร์ม config — เดิมประกาศซ้ำในทุกการ์ด */
 export const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
