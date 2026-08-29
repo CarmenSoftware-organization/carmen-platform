@@ -97,9 +97,17 @@ Both cards render `'Checking...' : 'Re-check status' : 'Check status'` — a thr
 **Verified false positives in this group — do NOT translate:**
 `UserMultiSelect.tsx:57,60` (`'Backspace'`, `'Escape'`) and `UserPicker.tsx:75` (`'Escape'`) are `KeyboardEvent.key` comparisons. `ImageUpload.tsx:122` (`'Enter'`) is the same. Translating any of these breaks the handler silently, and no test covers it.
 
-**Two real findings in `ImageUpload.tsx` beyond plain translation:**
-- `:117` `aria-label="Upload image"` — translate.
-- `:100` and `:169` `alt="News"` — a **generic** image-upload component hardcodes the alt text `News`. This is wrong independently of language: the component is used for more than news images. Add an optional `alt`/`label` prop defaulting to a generic translated string, and report the change. Do not simply translate the word `News`.
+**`ImageUpload.tsx` — `aria-label="Upload image"` at `:117` translates normally.**
+
+`alt="News"` at `:100` and `:169` needs a judgment, and the judgment rests on a fact worth checking
+yourself: **`ImageUpload` has exactly one real importer, `src/pages/NewsEdit.tsx:319`** (verified by
+import statement; the two other grep hits are comments). So the alt text is accurate today — this is
+a latent trap, not a live bug, and an earlier draft of this plan called it a live bug by assuming the
+component was generic without counting its callers.
+
+Translate it under a `components.imageUpload.*` key, and add a comment naming the single caller and
+saying that a second caller would make this an `alt` prop. Do **not** add the prop now — one caller
+does not justify the API, and speculative generality is its own defect.
 
 `UserMultiSelect.tsx:126` and `UserPicker.tsx:171` both render `No users match …` / `Type to search users` as a ternary — two strings each, not one.
 
