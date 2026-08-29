@@ -4,6 +4,7 @@ import { Download, AlertTriangle, Table as TableIcon, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import type { SqlExecuteResult } from '../../types';
 import { cn } from '../../lib/utils';
+import { useI18n } from '../../hooks/useI18n';
 
 interface ResultPanelProps {
   result: SqlExecuteResult | null;
@@ -58,6 +59,7 @@ export function ResultPanel({
   isRunning,
   onClose,
 }: ResultPanelProps) {
+  const { t } = useI18n();
   const [pageSize, setPageSize] = useState(100);
   const [page, setPage] = useState(0);
 
@@ -85,20 +87,22 @@ export function ResultPanel({
           <TableIcon className="text-muted-foreground size-4" />
         )}
         <span className="text-sm font-semibold">
-          {error ? "Error" : isRunning ? "Running…" : "Results"}
+          {error ? t('pages.sqlWorkbench.resultError') : isRunning ? t('pages.sqlWorkbench.resultRunning') : t('pages.sqlWorkbench.results')}
         </span>
         {result && (
           <>
             <span className="text-muted-foreground text-xs">
-              <span className="text-foreground">{result.rowCount}</span> row
-              {result.rowCount === 1 ? "" : "s"}
+              {result.rowCount === 1
+                ? t('pages.sqlWorkbench.rowCount', { count: result.rowCount })
+                : t('pages.sqlWorkbench.rowCountPlural', { count: result.rowCount })}
             </span>
             <span className="text-muted-foreground text-xs">
-              <span className="text-foreground">{result.durationMs}</span> ms
+              {t('pages.sqlWorkbench.msSuffix', { ms: result.durationMs })}
             </span>
             <span className="text-muted-foreground text-xs">
-              <span className="text-foreground">{result.columns.length}</span>{" "}
-              col{result.columns.length === 1 ? "" : "s"}
+              {result.columns.length === 1
+                ? t('pages.sqlWorkbench.colCount', { count: result.columns.length })
+                : t('pages.sqlWorkbench.colCountPlural', { count: result.columns.length })}
             </span>
           </>
         )}
@@ -109,7 +113,7 @@ export function ResultPanel({
               variant="ghost"
               className="h-7"
               onClick={() => exportCsv(result)}
-              title="Export CSV"
+              title={t('common.action.exportCsv')}
             >
               <Download className="mr-1 size-3.5" />
               CSV
@@ -121,8 +125,8 @@ export function ResultPanel({
               variant="ghost"
               className="size-7"
               onClick={onClose}
-              title="Close results"
-              aria-label="Close results"
+              title={t('pages.sqlWorkbench.closeResults')}
+              aria-label={t('pages.sqlWorkbench.closeResults')}
             >
               <X className="size-3.5" />
             </Button>
@@ -152,11 +156,11 @@ export function ResultPanel({
           aria-live="polite"
           className="text-muted-foreground flex items-center justify-center py-10 text-sm"
         >
-          Running query…
+          {t('pages.sqlWorkbench.runningQuery')}
         </div>
       ) : result && result.rowCount === 0 ? (
         <div className="text-muted-foreground flex items-center justify-center py-10 text-sm">
-          Query executed successfully. No rows returned.
+          {t('pages.sqlWorkbench.noRowsReturned')}
         </div>
       ) : result ? (
         <>
@@ -229,8 +233,11 @@ export function ResultPanel({
                 ))}
               </select>
               <span className="text-muted-foreground ml-auto">
-                {safePage * pageSize + 1}-
-                {Math.min((safePage + 1) * pageSize, totalRows)} of {totalRows}
+                {t('pages.sqlWorkbench.rangeOfTotal', {
+                  from: safePage * pageSize + 1,
+                  to: Math.min((safePage + 1) * pageSize, totalRows),
+                  total: totalRows,
+                })}
               </span>
               <Button
                 size="sm"
@@ -239,7 +246,7 @@ export function ResultPanel({
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={safePage === 0}
               >
-                Prev
+                {t('pages.sqlWorkbench.prev')}
               </Button>
               <Button
                 size="sm"
@@ -248,7 +255,7 @@ export function ResultPanel({
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={safePage >= totalPages - 1}
               >
-                Next
+                {t('pages.sqlWorkbench.next')}
               </Button>
             </div>
           )}

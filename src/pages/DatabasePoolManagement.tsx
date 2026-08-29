@@ -85,12 +85,12 @@ const DatabasePoolManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? data.total ?? list.length);
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load database pools: ' + getErrorDetail(err));
+      setError(t('pages.databasePools.loadFailed', { detail: getErrorDetail(err, t) }));
       devLog('Error fetching database pools:', err);
     } finally {
       setLoading(false);
     }
-  }, [paginate]);
+  }, [paginate, t]);
 
   useEffect(() => {
     fetchPools(paginate);
@@ -156,26 +156,26 @@ const DatabasePoolManagement: React.FC = () => {
   const handleExport = () => {
     const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
     const csv = generateCSV(rows, [
-      { key: 'name', label: 'Name' },
-      { key: 'host', label: 'Host' },
-      { key: 'port', label: 'Port' },
-      { key: 'database', label: 'Database' },
-      { key: 'username', label: 'Username' },
-      { key: 'is_active', label: 'Status' },
-      { key: 'note', label: 'Note' },
-      { key: 'created_at', label: 'Created at' },
-      { key: 'created_by', label: 'Created by' },
-      { key: 'updated_at', label: 'Updated at' },
-      { key: 'updated_by', label: 'Updated by' },
+      { key: 'name', label: t('common.field.name') },
+      { key: 'host', label: t('pages.databasePools.columnHost') },
+      { key: 'port', label: t('pages.databasePools.columnPort') },
+      { key: 'database', label: t('pages.databasePools.columnDatabase') },
+      { key: 'username', label: t('common.field.username') },
+      { key: 'is_active', label: t('common.status.label') },
+      { key: 'note', label: t('pages.databasePools.columnNote') },
+      { key: 'created_at', label: t('common.audit.createdAt') },
+      { key: 'created_by', label: t('common.audit.createdBy') },
+      { key: 'updated_at', label: t('common.audit.updatedAt') },
+      { key: 'updated_by', label: t('common.audit.updatedBy') },
     ]);
     downloadCSV(csv, `database-pools-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<DatabasePool, unknown>[]>(() => [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('common.field.name'),
       cell: ({ row }) => (
         <Link to={`/platform/database-pools/${row.original.id}/edit`} className="font-medium hover:underline">
           {row.original.name}
@@ -184,19 +184,19 @@ const DatabasePoolManagement: React.FC = () => {
     },
     {
       id: 'endpoint',
-      header: 'Host',
+      header: t('pages.databasePools.columnHost'),
       cell: ({ row }) => (
         <span className="font-mono text-xs">{row.original.host}:{row.original.port}</span>
       ),
     },
-    { accessorKey: 'database', header: 'Database' },
-    { accessorKey: 'username', header: 'Username' },
+    { accessorKey: 'database', header: t('pages.databasePools.columnDatabase') },
+    { accessorKey: 'username', header: t('common.field.username') },
     {
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
+          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
@@ -209,21 +209,21 @@ const DatabasePoolManagement: React.FC = () => {
         <Can permission="database_pool.manage">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Actions">
+              <Button variant="ghost" size="icon" aria-label={t('pages.databasePools.actionsAria')}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => navigate(`/platform/database-pools/${row.original.id}/edit`)}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => setDeleteTarget(row.original)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -236,19 +236,19 @@ const DatabasePoolManagement: React.FC = () => {
     <Layout>
       <div className="space-y-6 sm:space-y-8">
         <PageHeader
-          title="Database Pools"
-          subtitle="Manage shared database connection profiles"
+          title={t('pages.databasePools.title')}
+          subtitle={t('pages.databasePools.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || items.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export CSV
+                {t('common.action.exportCsv')}
               </Button>
               <Can permission="database_pool.manage">
                 <Button onClick={() => navigate('/platform/database-pools/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Pool</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t('pages.databasePools.addPool')}</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -262,14 +262,14 @@ const DatabasePoolManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search database pools..."
+                placeholder={t('pages.databasePools.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -297,7 +297,7 @@ const DatabasePoolManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("true")}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes("false") ? "default" : "outline"}
@@ -305,13 +305,13 @@ const DatabasePoolManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter("false")}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
                     {activeFilterCount > 0 && (
                       <Button variant="outline" size="sm" className="w-full" onClick={handleClearFilters}>
-                        Clear All Filters
+                        {t('common.action.clearAllFilters')}
                       </Button>
                     )}
                   </div>
@@ -330,7 +330,7 @@ const DatabasePoolManagement: React.FC = () => {
                   </Badge>
                 ))}
                 <button onClick={handleClearFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -343,13 +343,13 @@ const DatabasePoolManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={Server}
-                emptyTitle="No database pools yet"
-                emptyDescription="Get started by creating your first shared database connection profile."
+                emptyTitle={t('pages.databasePools.emptyTitle')}
+                emptyDescription={t('pages.databasePools.emptyDescription')}
                 addAction={
                   <Can permission="database_pool.manage">
                     <Button size="sm" onClick={() => navigate('/platform/database-pools/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Pool
+                      {t('pages.databasePools.addPool')}
                     </Button>
                   </Can>
                 }
@@ -363,7 +363,7 @@ const DatabasePoolManagement: React.FC = () => {
                 ) : (
                 <>
                 {loading && (
-                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading database pools">
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.databasePools.loadingAria')}>
                     <div className="text-muted-foreground">Loading database pools...</div>
                   </div>
                 )}
@@ -390,9 +390,9 @@ const DatabasePoolManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-        title="Delete Database Pool"
-        description="Are you sure you want to delete this database pool? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.databasePools.deleteTitle')}
+        description={t('pages.databasePools.deleteDescription')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleDelete}
       />

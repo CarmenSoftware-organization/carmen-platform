@@ -13,6 +13,7 @@ import {
 import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
 import type { DbObject, DbObjectsResponse } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface DbObjectTreeProps {
   data: DbObjectsResponse | null;
@@ -35,6 +36,7 @@ export function DbObjectTree({
   onSelect,
   loadingKey,
 }: DbObjectTreeProps) {
+  const { t } = useI18n();
   const [search, setSearch] = useState('');
   const [openTables, setOpenTables] = useState(true);
   const [openViews, setOpenViews] = useState(true);
@@ -74,7 +76,7 @@ export function DbObjectTree({
           <input
             type="text"
             className="bg-background ring-offset-background focus:ring-ring h-7 w-full rounded border pr-2 pl-7 text-xs outline-hidden focus:ring-2"
-            placeholder="Search tables, views, procedures..."
+            placeholder={t('pages.sqlWorkbench.treeSearchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             autoComplete="off"
@@ -85,7 +87,7 @@ export function DbObjectTree({
         {isLoading ? (
           <div
             role="status"
-            aria-label="Loading database objects"
+            aria-label={t('pages.sqlWorkbench.loadingObjectsAria')}
             className="text-muted-foreground flex items-center justify-center py-8"
           >
             <Loader2 className="size-4 animate-spin" />
@@ -98,13 +100,13 @@ export function DbObjectTree({
               onClick={onRetry}
               type="button"
             >
-              Retry
+              {t('common.action.retry')}
             </button>
           </div>
         ) : (
           <>
             <Section
-              title="Tables"
+              title={t('pages.sqlWorkbench.tables')}
               icon={<Table className="size-3.5" />}
               count={filtered.tables.length}
               total={data?.tables.length ?? 0}
@@ -122,11 +124,11 @@ export function DbObjectTree({
                 />
               ))}
               {filtered.tables.length === 0 && (
-                <EmptyHint>{search ? "No matches" : "No tables"}</EmptyHint>
+                <EmptyHint>{search ? t('pages.sqlWorkbench.noMatches') : t('pages.sqlWorkbench.noTables')}</EmptyHint>
               )}
             </Section>
             <Section
-              title="Views"
+              title={t('pages.sqlWorkbench.views')}
               icon={<Eye className="size-3.5" />}
               count={filtered.views.length}
               total={data?.views.length ?? 0}
@@ -144,11 +146,11 @@ export function DbObjectTree({
                 />
               ))}
               {filtered.views.length === 0 && (
-                <EmptyHint>{search ? "No matches" : "No views"}</EmptyHint>
+                <EmptyHint>{search ? t('pages.sqlWorkbench.noMatches') : t('pages.sqlWorkbench.noViews')}</EmptyHint>
               )}
             </Section>
             <Section
-              title="Procedures / Functions"
+              title={t('pages.sqlWorkbench.proceduresFunctions')}
               icon={<FunctionSquare className="size-3.5" />}
               count={filtered.procedures.length}
               total={data?.procedures.length ?? 0}
@@ -171,7 +173,7 @@ export function DbObjectTree({
               })}
               {filtered.procedures.length === 0 && (
                 <EmptyHint>
-                  {search ? "No matches" : "No procedures/functions"}
+                  {search ? t('pages.sqlWorkbench.noMatches') : t('pages.sqlWorkbench.noProcedures')}
                 </EmptyHint>
               )}
             </Section>

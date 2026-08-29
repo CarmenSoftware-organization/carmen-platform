@@ -23,6 +23,7 @@ import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import type { DbObjectsResponse } from '../../types';
 import { countStatements, findStatementAt } from './sqlEditorHelpers';
+import { useI18n } from '../../hooks/useI18n';
 
 interface SqlEditorProps {
   value: string;
@@ -51,6 +52,7 @@ export function SqlEditor({
   schema,
   height = 360,
 }: SqlEditorProps) {
+  const { t } = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const latestValueRef = useRef(value);
@@ -186,7 +188,7 @@ export function SqlEditor({
       });
       replaceAll(formatted);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to format SQL. Check for syntax errors.');
+      toast.error(e instanceof Error ? e.message : t('pages.sqlWorkbench.formatFailed'));
     }
   };
 
@@ -211,24 +213,24 @@ export function SqlEditor({
             className="h-7"
             onClick={handleRun}
             disabled={isRunning}
-            title="Run (Ctrl/⌘+Enter)"
+            title={t('pages.sqlWorkbench.runTitle')}
           >
             {isRunning ? (
               <Loader2 className="mr-1 size-3.5 animate-spin" />
             ) : (
               <Play className="mr-1 size-3.5" />
             )}
-            Run
+            {t('pages.sqlWorkbench.run')}
           </Button>
         )}
         <div className="bg-border mx-1 h-5 w-px" />
-        <Button size="sm" variant="ghost" className="h-7" onClick={handleFormat} title="Format SQL">
+        <Button size="sm" variant="ghost" className="h-7" onClick={handleFormat} title={t('pages.sqlWorkbench.formatSqlTitle')}>
           <Wand2 className="mr-1 size-3.5" />
-          Format
+          {t('pages.sqlWorkbench.format')}
         </Button>
-        <Button size="sm" variant="ghost" className="h-7" onClick={handleFind} title="Find (Ctrl/⌘+F)">
+        <Button size="sm" variant="ghost" className="h-7" onClick={handleFind} title={t('pages.sqlWorkbench.findTitle')}>
           <SearchIcon className="mr-1 size-3.5" />
-          Find
+          {t('pages.sqlWorkbench.find')}
         </Button>
         <div className="ml-auto" />
         <Button
@@ -236,10 +238,10 @@ export function SqlEditor({
           variant="ghost"
           className="h-7 text-destructive"
           onClick={handleClear}
-          title="Clear editor"
+          title={t('pages.sqlWorkbench.clearEditorTitle')}
         >
           <Eraser className="mr-1 size-3.5" />
-          Clear
+          {t('pages.sqlWorkbench.clear')}
         </Button>
       </div>
 
