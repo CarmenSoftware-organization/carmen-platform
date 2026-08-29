@@ -11,9 +11,11 @@ import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { AuditMeta } from '../components/AuditMeta';
 import { latestActor } from '../utils/audit';
+import { useI18n } from '../hooks/useI18n';
 import type { PermissionCatalogItem } from '../types';
 
 const PermissionCatalog: React.FC = () => {
+  const { t } = useI18n();
   const [items, setItems] = useState<PermissionCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,13 +32,13 @@ const PermissionCatalog: React.FC = () => {
       } catch (err: unknown) {
         const parsed = parseApiError(err);
         setError(parsed.message);
-        toast.error('Failed to load permissions', { description: parsed.message });
+        toast.error(t('pages.roles.catalogLoadFailed'), { description: parsed.message });
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [t]);
 
   // Group items by resource, preserving catalog order. Avoid [...Set] spread
   // (tsconfig targets ES5/2015 without downlevelIteration).
@@ -58,8 +60,8 @@ const PermissionCatalog: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <PageHeader
-          title="Permission Catalog"
-          subtitle="Read-only reference of all platform permissions"
+          title={t('pages.roles.permissionCatalog')}
+          subtitle={t('pages.roles.catalogSubtitle')}
           backTo="/platform/roles"
         />
 
@@ -81,8 +83,8 @@ const PermissionCatalog: React.FC = () => {
         {!loading && !error && items.length === 0 && (
           <EmptyState
             icon={ShieldCheck}
-            title="No permissions"
-            description="No platform permissions are defined in the catalog yet."
+            title={t('pages.roles.catalogEmptyTitle')}
+            description={t('pages.roles.catalogEmptyDescription')}
           />
         )}
 

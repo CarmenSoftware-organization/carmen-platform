@@ -3,6 +3,8 @@ import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { AuditMeta } from '../../components/AuditMeta';
 import type { NormalizedAudit } from '../../utils/audit';
+import type { TFunction } from '../../i18n/types';
+import { useI18n } from '../../hooks/useI18n';
 
 const resourceOf = (key: string) => {
   const i = key.indexOf('.');
@@ -14,15 +16,35 @@ const resourceOf = (key: string) => {
  * or the granted permission/resource spread. `catalogSize` lets it detect a role
  * that grants the entire catalog — the most powerful, audit-worthy kind.
  */
-export function permissionSummary(permissions: string[], catalogSize: number): { text: string; full: boolean } {
+export function permissionSummary(
+  permissions: string[],
+  catalogSize: number,
+  t?: TFunction,
+): { text: string; full: boolean } {
   const n = permissions.length;
-  if (catalogSize > 0 && n >= catalogSize) return { text: 'Full access to every permission', full: true };
-  if (n === 0) return { text: 'No permissions granted yet', full: false };
+  if (catalogSize > 0 && n >= catalogSize) {
+    return { text: t ? t('pages.roles.fullAccessPermissions') : 'Full access to every permission', full: true };
+  }
+  if (n === 0) {
+    return { text: t ? t('pages.roles.noPermissionsYet') : 'No permissions granted yet', full: false };
+  }
   const resources = new Set(permissions.map(resourceOf)).size;
-  return {
-    text: `${n} permission${n === 1 ? '' : 's'} across ${resources} resource${resources === 1 ? '' : 's'}`,
-    full: false,
-  };
+  if (!t) {
+    return {
+      text: `${n} permission${n === 1 ? '' : 's'} across ${resources} resource${resources === 1 ? '' : 's'}`,
+      full: false,
+    };
+  }
+  // อังกฤษผันสองที่อิสระกัน (permission/resource) จึงต้องมีสี่คีย์ ไทยใช้ค่าเดียวกันทั้งสี่
+  const key =
+    n === 1
+      ? resources === 1
+        ? 'pages.roles.permissionSpread'
+        : 'pages.roles.permissionSpreadSP'
+      : resources === 1
+        ? 'pages.roles.permissionSpreadPS'
+        : 'pages.roles.permissionSpreadPP';
+  return { text: t(key, { permissions: n, resources }), full: false };
 }
 
 interface RoleIdentityHeroProps {
@@ -36,7 +58,8 @@ interface RoleIdentityHeroProps {
 
 /** Read-first identity header for a platform role: who it is + how much it can do. */
 export function RoleIdentityHero({ name, isActive, permissions, catalogSize, audit, actions }: RoleIdentityHeroProps) {
-  const reach = permissionSummary(permissions, catalogSize);
+  const { t } = useI18n();
+  const reach = permissionSummary(permissions, catalogSize, t);
 
   return (
     <Card className="overflow-hidden p-0">
@@ -46,9 +69,9 @@ export function RoleIdentityHero({ name, isActive, permissions, catalogSize, aud
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || '(unnamed role)'}</h1>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || t('pages.roles.unnamedRole')}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
+            <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>
           </div>
           <div
             className={`mt-2 flex items-center gap-1.5 text-[11px] ${reach.full ? 'text-warning' : 'text-muted-foreground/80'}`}

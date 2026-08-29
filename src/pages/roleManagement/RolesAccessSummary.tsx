@@ -5,6 +5,7 @@ import { Skeleton } from '../../components/ui/skeleton';
 import { FetchErrorState } from '../../components/FetchErrorState';
 import { cn } from '../../lib/utils';
 import type { RolesSummaryData } from '../../types';
+import { useI18n } from '../../hooks/useI18n';
 
 interface RolesAccessSummaryProps {
   summary: RolesSummaryData | null;
@@ -17,12 +18,13 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
   // The widest role anchors the bar scale. Derived here rather than carried on the wire —
   // it is always `top_roles[0].permission_count`, so sending it would be a second copy of a
   // number already present, free to drift.
+  const { t } = useI18n();
   const barScale = summary?.top_roles?.[0]?.permission_count ?? 0;
 
   return (
     <Card className="p-4 sm:p-5">
       {error && !summary ? (
-        <FetchErrorState message="Couldn't load the roles summary." onRetry={onRetry} className="py-3" />
+        <FetchErrorState message={t('pages.roles.summaryStale')} onRetry={onRetry} className="py-3" />
       ) : loading || !summary ? (
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <Skeleton className="h-14 w-24" />
@@ -36,22 +38,23 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
               register calm. Matches ClusterManagement's FleetCapacity. */}
           {error && (
             <p className="text-muted-foreground mb-2 text-xs" role="alert">
-              Couldn&apos;t refresh — showing the last known numbers.
+              {t('common.state.summaryStale')}
             </p>
           )}
           <div className={cn('flex flex-wrap items-center gap-x-8 gap-y-5', error && 'opacity-70')}>
             <div className="border-border sm:border-r sm:pr-8">
               <div className="font-mono text-4xl font-semibold tabular-nums tracking-tight">{summary.total}</div>
-              <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">roles</div>
+              <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">{t('pages.roles.rolesLower')}</div>
               <div className="text-foreground/80 mt-0.5 text-xs">
-                {summary.active} active{summary.inactive > 0 ? ` · ${summary.inactive} inactive` : ''}
+                {t('pages.roles.activeCount', { count: summary.active })}
+                {summary.inactive > 0 ? ` · ${t('pages.roles.inactiveCount', { count: summary.inactive })}` : ''}
               </div>
             </div>
 
             <div className="min-w-[16rem] flex-1">
-              <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">Broadest roles</div>
+              <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">{t('pages.roles.broadestRoles')}</div>
               {(summary.top_roles ?? []).length === 0 ? (
-                <p className="text-muted-foreground text-sm">No roles yet.</p>
+                <p className="text-muted-foreground text-sm">{t('pages.roles.noRolesYet')}</p>
               ) : (
                 <div className="grid grid-cols-[minmax(0,max-content)_1fr_auto] items-center gap-x-3 gap-y-2">
                   {(summary.top_roles ?? []).map((r) => (
@@ -66,7 +69,11 @@ export function RolesAccessSummary({ summary, loading, error = false, onRetry = 
                       <div
                         className="bg-muted h-2 overflow-hidden rounded-full"
                         role="img"
-                        aria-label={`${r.name}: ${r.permission_count} permission${r.permission_count === 1 ? '' : 's'}`}
+                        aria-label={
+                          r.permission_count === 1
+                            ? t('pages.roles.roleBarAria', { name: r.name, count: r.permission_count })
+                            : t('pages.roles.roleBarAriaPlural', { name: r.name, count: r.permission_count })
+                        }
                       >
                         <span
                           className="bg-primary block h-full rounded-full"

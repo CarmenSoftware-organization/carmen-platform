@@ -101,12 +101,12 @@ const ApplicationManagement: React.FC = () => {
       setTotalRows(data.paginate?.total ?? (data as { total?: number }).total ?? (Array.isArray(items) ? items.length : 0));
       setError('');
     } catch (err: unknown) {
-      setError('Failed to load applications: ' + getErrorDetail(err));
+      setError(t('pages.applications.loadFailed', { detail: getErrorDetail(err, t) }));
       devLog('Error fetching applications:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchApplications(paginate);
@@ -195,22 +195,24 @@ const ApplicationManagement: React.FC = () => {
       await navigator.clipboard.writeText(id);
       setCopiedId(id);
       setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 2000);
-      toast.success('App ID copied');
+      toast.success(t('pages.applications.appIdCopied'));
     } catch {
-      toast.error('Could not copy App ID');
+      toast.error(t('pages.applications.copyFailed'));
     }
-  }, []);
+  }, [t]);
 
   const handleConfirmDelete = async () => {
     if (!deleteId) return;
     try {
       await applicationService.delete(deleteId);
-      toast.success('Application deleted successfully');
+      toast.success(t('toast.deleted', { entity: t('entity.application.title') }));
       setDeleteId(null);
       setPaginate(prev => ({ ...prev }));
       loadSummary();
     } catch (err: unknown) {
-      toast.error('Failed to delete application', { description: getErrorDetail(err) });
+      toast.error(t('toast.deleteFailed', { entity: t('entity.application.lower') }), {
+        description: getErrorDetail(err, t),
+      });
     }
   };
 
@@ -220,30 +222,32 @@ const ApplicationManagement: React.FC = () => {
         name: a.name,
         app_id: a.id,
         description: a.description ?? '',
-        access: a.allow_all ? 'All APIs' : String(a.api_names?.length ?? 0) + ' APIs',
-        is_active: a.is_active ? 'Active' : 'Inactive',
+        access: a.allow_all
+          ? t('pages.applications.allApis')
+          : t('pages.applications.nApis', { count: a.api_names?.length ?? 0 }),
+        is_active: a.is_active ? t('common.status.active') : t('common.status.inactive'),
         ...auditCsvFields(normalizeAudit(a)),
       })),
       [
-        { key: 'name', label: 'Name' },
-        { key: 'app_id', label: 'App ID' },
-        { key: 'description', label: 'Description' },
-        { key: 'access', label: 'Access' },
-        { key: 'is_active', label: 'Status' },
-        { key: 'created_at', label: 'Created at' },
-        { key: 'created_by', label: 'Created by' },
-        { key: 'updated_at', label: 'Updated at' },
-        { key: 'updated_by', label: 'Updated by' },
+        { key: 'name', label: t('common.field.name') },
+        { key: 'app_id', label: t('pages.applications.appId') },
+        { key: 'description', label: t('common.field.description') },
+        { key: 'access', label: t('pages.applications.columnAccess') },
+        { key: 'is_active', label: t('common.status.label') },
+        { key: 'created_at', label: t('common.audit.createdAt') },
+        { key: 'created_by', label: t('common.audit.createdBy') },
+        { key: 'updated_at', label: t('common.audit.updatedAt') },
+        { key: 'updated_by', label: t('common.audit.updatedBy') },
       ],
     );
     downloadCSV(csv, `applications-${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Data exported successfully');
+    toast.success(t('toast.exported'));
   };
 
   const columns = useMemo<ColumnDef<Application, unknown>[]>(() => [
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('common.field.name'),
       cell: ({ row }) => {
         const id = row.original.id;
         const copied = copiedId === id;
@@ -264,7 +268,7 @@ const ApplicationManagement: React.FC = () => {
                 variant="ghost"
                 size="icon"
                 className="h-auto w-auto shrink-0 -m-2 p-2 text-muted-foreground hover:text-foreground"
-                aria-label={copied ? 'App ID copied' : 'Copy App ID'}
+                aria-label={copied ? t('pages.applications.appIdCopied') : t('pages.applications.copyAppId')}
                 onClick={() => handleCopyId(id)}
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
@@ -284,27 +288,27 @@ const ApplicationManagement: React.FC = () => {
     },
     {
       id: 'access',
-      header: 'Access',
+      header: t('pages.applications.columnAccess'),
       enableSorting: false,
       meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
       cell: ({ row }) => (
         row.original.allow_all
-          ? <Badge variant="outline">All APIs</Badge>
-          : <Badge variant="outline">{row.original.api_names?.length ?? 0} APIs</Badge>
+          ? <Badge variant="outline">{t('pages.applications.allApis')}</Badge>
+          : <Badge variant="outline">{t('pages.applications.nApis', { count: row.original.api_names?.length ?? 0 })}</Badge>
       ),
     },
     {
       accessorKey: 'device',
-      header: 'Device',
+      header: t('pages.applications.device'),
       cell: ({ row }) => <Badge variant="secondary">{row.original.device || 'web'}</Badge>,
     },
     {
       accessorKey: 'is_active',
-      header: 'Status',
+      header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
+          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
       ),
     },
@@ -325,13 +329,13 @@ const ApplicationManagement: React.FC = () => {
             <Can permission="application.update">
               <DropdownMenuItem onClick={() => navigate(`/applications/${row.original.id}/edit`)} className="cursor-pointer">
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
             <Can permission="application.delete">
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {t('common.action.delete')}
               </DropdownMenuItem>
             </Can>
           </DropdownMenuContent>
@@ -344,19 +348,19 @@ const ApplicationManagement: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
-          title="Application Management"
-          subtitle="Manage applications and their API access"
+          title={t('pages.applications.title')}
+          subtitle={t('pages.applications.subtitle')}
           actions={
             <>
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || applications.length === 0}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                {t('common.action.export')}
               </Button>
               <Can permission="application.create">
                 <Button onClick={() => navigate('/applications/new')}>
                   <Plus className="mr-2 h-4 w-4" />
-                  <span className="hidden sm:inline">Add Application</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t('pages.applications.addApplication')}</span>
+                  <span className="sm:hidden">{t('common.action.add')}</span>
                 </Button>
               </Can>
             </>
@@ -372,14 +376,14 @@ const ApplicationManagement: React.FC = () => {
                 ref={searchInputRef}
                 value={searchTerm}
                 onValueChange={handleSearchChange}
-                placeholder="Search applications..."
+                placeholder={t('pages.applications.searchPlaceholder')}
                 className="flex-1 sm:max-w-sm"
               />
               <Sheet open={showFilters} onOpenChange={setShowFilters}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="sm" className="shrink-0">
                     <Filter className="mr-2 h-4 w-4" />
-                    Filters
+                    {t('common.label.filters')}
                     {activeFilterCount > 0 && (
                       <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFilterCount}
@@ -389,15 +393,15 @@ const ApplicationManagement: React.FC = () => {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:max-w-sm p-4 sm:p-6">
                   <SheetHeader>
-                    <SheetTitle>Filters</SheetTitle>
-                    <SheetDescription>Filter applications by status and device</SheetDescription>
+                    <SheetTitle>{t('common.label.filters')}</SheetTitle>
+                    <SheetDescription>{t('pages.applications.filtersDescription')}</SheetDescription>
                   </SheetHeader>
                   <div className="mt-6 space-y-6 px-1">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Status</span>
+                        <span className="text-sm font-medium">{t('common.status.label')}</span>
                         {statusFilter.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearAllFilters}>Clear</Button>
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={handleClearAllFilters}>{t('common.action.clear')}</Button>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -407,7 +411,7 @@ const ApplicationManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter('true')}
                         >
-                          Active
+                          {t('common.status.active')}
                         </Button>
                         <Button
                           variant={statusFilter.includes('false') ? 'default' : 'outline'}
@@ -415,18 +419,18 @@ const ApplicationManagement: React.FC = () => {
                           className="h-7 text-xs"
                           onClick={() => handleStatusFilter('false')}
                         >
-                          Inactive
+                          {t('common.status.inactive')}
                         </Button>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <span className="text-sm font-medium">Device</span>
+                      <span className="text-sm font-medium">{t('pages.applications.device')}</span>
                       <select
                         value={deviceFilter}
                         onChange={(e) => handleDeviceFilterChange(e.target.value)}
                         className={selectClassName}
                       >
-                        <option value="">All devices</option>
+                        <option value="">{t('pages.applications.allDevices')}</option>
                         {DEVICE_OPTIONS.map((d) => (
                           <option key={d} value={d}>{d}</option>
                         ))}
@@ -438,17 +442,17 @@ const ApplicationManagement: React.FC = () => {
             </div>
             {activeFilterCount > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Filters:</span>
+                <span className="text-xs text-muted-foreground">{t('common.action.filtersLabel')}</span>
                 {statusFilter.map((s) => (
                   <Badge key={s} variant="secondary" className="text-xs gap-1 pr-1">
-                    {s === 'true' ? 'Active' : 'Inactive'}
+                    {s === 'true' ? t('common.status.active') : t('common.status.inactive')}
                     <button onClick={() => handleStatusFilter(s)} className="ml-0.5 hover:text-foreground">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
                 <button onClick={handleClearAllFilters} className="text-xs text-muted-foreground hover:text-foreground underline">
-                  Clear all
+                  {t('common.action.clearAll')}
                 </button>
               </div>
             )}
@@ -461,13 +465,13 @@ const ApplicationManagement: React.FC = () => {
                 searchTerm={searchTerm}
                 activeFilterCount={activeFilterCount}
                 icon={AppWindow}
-                emptyTitle="No applications yet"
-                emptyDescription="Get started by creating your first application."
+                emptyTitle={t('pages.applications.emptyTitle')}
+                emptyDescription={t('pages.applications.emptyDescription')}
                 addAction={
                   <Can permission="application.create">
                     <Button size="sm" onClick={() => navigate('/applications/new')}>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Application
+                      {t('pages.applications.addApplication')}
                     </Button>
                   </Can>
                 }
@@ -481,8 +485,8 @@ const ApplicationManagement: React.FC = () => {
                 ) : (
                   <>
                     {loading && (
-                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label="Loading applications">
-                        <div className="text-muted-foreground">Loading applications...</div>
+                      <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10" role="status" aria-label={t('pages.applications.loadingAria')}>
+                        <div className="text-muted-foreground">{t('pages.applications.loadingText')}</div>
                       </div>
                     )}
                     <DataTable
@@ -508,9 +512,9 @@ const ApplicationManagement: React.FC = () => {
       <ConfirmDialog
         open={deleteId !== null}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Delete Application"
-        description="Are you sure you want to delete this application? This action cannot be undone."
-        confirmText="Delete"
+        title={t('pages.applications.deleteTitle')}
+        description={t('pages.applications.deleteDescription')}
+        confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
