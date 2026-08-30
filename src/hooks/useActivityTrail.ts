@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import activityLogService from '../../services/activityLogService';
-import { getErrorDetail } from '../../utils/errorParser';
-import type { ActivityLogDetail, ActivityLogEntry } from '../../types';
+import activityLogService from '../services/activityLogService';
+import { getErrorDetail } from '../utils/errorParser';
+import type { ActivityLogDetail, ActivityLogEntry } from '../types';
 
 const PER_PAGE = 20;
 

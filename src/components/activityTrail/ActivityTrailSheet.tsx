@@ -6,16 +6,16 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '../../components/ui/sheet';
-import { Button } from '../../components/ui/button';
-import { Skeleton } from '../../components/ui/skeleton';
-import { EmptyState } from '../../components/EmptyState';
-import { AuditMeta } from '../../components/AuditMeta';
+} from '../ui/sheet';
+import { Button } from '../ui/button';
+import { Skeleton } from '../ui/skeleton';
+import { EmptyState } from '../EmptyState';
+import { AuditMeta } from '../AuditMeta';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
 import type { TKey } from '../../i18n/types';
 import type { ActivityDiff, ActivityLogEntry } from '../../types';
-import { useActivityTrail } from './useActivityTrail';
+import { useActivityTrail } from '../../hooks/useActivityTrail';
 import { ActivityDiffView, visibleFieldChanges } from './ActivityDiffView';
 
 interface ActivityTrailSheetProps {

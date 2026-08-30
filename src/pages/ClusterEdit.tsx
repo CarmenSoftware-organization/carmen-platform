@@ -31,7 +31,7 @@ import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSectio
 import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
-import { ActivityTrailSheet } from './clusterEdit/ActivityTrailSheet';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
 import Can from '../components/Can';
 import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import { PERPETUAL_END_DATE } from '../utils/clusterLicense';
