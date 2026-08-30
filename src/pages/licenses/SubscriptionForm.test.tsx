@@ -410,7 +410,9 @@ describe('SubscriptionForm — the cluster picker is paged, not capped', () => {
 
     renderAt('/licenses/subscriptions/new');
 
-    expect(await screen.findByText(/โหลดรายชื่อ cluster ไม่สำเร็จ/)).toBeInTheDocument();
+    // ข้อความย้ายเข้าพจนานุกรมแล้ว (`pages.licenses.loadFailedPrefix`) — เทสต์ไม่ห่อ
+    // I18nProvider จึงได้ค่า en ตาม fallback ที่ `useI18n()` ตั้งใจคืน
+    expect(await screen.findByText(/Failed to load clusters/)).toBeInTheDocument();
   });
 
   it('does not fetch clusters at all when editing an existing subscription', async () => {
