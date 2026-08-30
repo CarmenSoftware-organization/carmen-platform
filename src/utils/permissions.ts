@@ -27,6 +27,20 @@ export const PERMISSIONS = {
 export const UNRESOLVED_CLUSTER_ID = '__unresolved_cluster__';
 
 /**
+ * `clusterId` สำหรับเรคอร์ดที่ **ไม่สังกัด cluster ใดเลยโดยธรรมชาติ** — application,
+ * platform role, report template, news, user
+ *
+ * ค่าเดียวกับ UNRESOLVED_CLUSTER_ID เพราะกลไกที่ต้องการเหมือนกันทุกประการ: บังคับให้
+ * checkPermission เข้ากิ่ง scoped ซึ่ง `clusters[ค่านี้]` เป็น false เสมอ เหลือทางเดียว
+ * คือสิทธิ์ระดับ platform หรือ super admin — ตรงกับที่ backend บังคับสำหรับเรคอร์ดกลุ่มนี้
+ * (ดู EntityOwnership กิ่ง 'platform' ที่ platform-activity-logs.controller.ts)
+ *
+ * แยกชื่อไว้เพราะเจตนาต่างกัน: UNRESOLVED_CLUSTER_ID คือ "หา cluster ไม่ได้ตอนนี้"
+ * ส่วนตัวนี้คือ "เรคอร์ดชนิดนี้ไม่มี cluster" — อ่าน call site แล้วต้องรู้ว่ากำลังพูดถึงอันไหน
+ */
+export const PLATFORM_SCOPED_RECORD = UNRESOLVED_CLUSTER_ID;
+
+/**
  * Pure membership check (no React, no context) so it can be unit-tested when Vitest lands.
  * Rules:
  *  - platform-scoped permission applies everywhere.

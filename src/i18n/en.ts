@@ -3627,6 +3627,10 @@ export const en = {
       actionCreate: 'created',
       actionUpdate: 'updated',
       actionDelete: 'deleted',
+      membershipGranted: 'added {{name}}',
+      membershipRevoked: 'removed {{name}}',
+      // แถวที่มาจากคำเชิญไม่ได้เก็บว่าใครถูกเพิ่ม — พูดตามที่รู้ ไม่เดาชื่อ
+      membershipUnknownSubject: 'a user',
       loadError: 'Could not load the change history',
     },
     activityEvents: {

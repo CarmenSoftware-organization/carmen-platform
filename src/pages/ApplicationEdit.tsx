@@ -3,6 +3,9 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import applicationService from '../services/applicationService';
 import { ApplicationIdentityHero } from './applicationEdit/ApplicationIdentityHero';
 import { Button } from '../components/ui/button';
@@ -377,14 +380,26 @@ const ApplicationEdit: React.FC = () => {
               apiNames={formData.api_names}
               audit={normalizeAudit(appRecord)}
               actions={
-                !editing && (
+                <>
+                  {/* ปุ่มอ่านประวัติแสดงเสมอ ไม่ผูกกับโหมดแก้ไข — application ไม่สังกัด cluster
+                      จึงส่ง PLATFORM_SCOPED_RECORD ให้เหลือทางเดียวคือสิทธิ์ระดับ platform
+                      ตรงกับที่ backend บังคับ */}
+                  <Can permission="activity_log.read" clusterId={PLATFORM_SCOPED_RECORD}>
+                    <ActivityTrailSheet
+                      entityType="application"
+                      entityId={id}
+                      recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+                    />
+                  </Can>
+                  {!editing && (
                   <Can permission="application.update">
                     <Button variant="outline" size="sm" onClick={handleEditToggle}>
                       <Pencil className="mr-2 h-4 w-4" />
                       {t('common.action.edit')}
                     </Button>
                   </Can>
-                )
+                  )}
+                </>
               }
             />
           </>

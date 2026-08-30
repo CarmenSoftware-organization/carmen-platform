@@ -2718,6 +2718,9 @@ export const th: Translations = {
       actionCreate: 'สร้าง',
       actionUpdate: 'แก้ไข',
       actionDelete: 'ลบ',
+      membershipGranted: 'เพิ่ม {{name}}',
+      membershipRevoked: 'ถอด {{name}} ออก',
+      membershipUnknownSubject: 'ผู้ใช้รายหนึ่ง',
       loadError: 'โหลดประวัติการเปลี่ยนแปลงไม่สำเร็จ',
     },
     activityEvents: {

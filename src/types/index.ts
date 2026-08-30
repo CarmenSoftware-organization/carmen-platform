@@ -1205,6 +1205,17 @@ export interface ActivityLogEntry {
   user_agent?: string | null;
   description?: string | null;
   audit?: Audit;
+  /**
+   * metadata ที่ผู้บันทึกใส่ไว้ — รูปไม่คงที่ ขึ้นกับว่าโค้ดจุดไหนเป็นคนเขียน
+   * แถวการเปลี่ยนสมาชิกมี `event_type` ขึ้นต้นด้วย `membership.`
+   */
+  meta_data?: Record<string, unknown>;
+  /**
+   * ชื่อของคนที่ถูกเพิ่ม/ถอดในแถว membership — ต่างจาก audit.created ที่เป็นคนลงมือ
+   * null เมื่อแถวไม่ใช่ membership event หรือ backend หาผู้ใช้ไม่เจอ
+   * (แถวที่มาจากคำเชิญไม่มี subject_user_id ให้ resolve ตั้งแต่ต้น)
+   */
+  subject_name?: string | null;
 }
 
 export type ActivityLogDetail = ActivityLogEntry & { changes?: ActivityDiff };
