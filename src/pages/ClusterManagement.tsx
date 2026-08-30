@@ -12,7 +12,7 @@ import { Label } from '../components/ui/label';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Network, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Network, Download, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -21,6 +21,9 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { useRowActivityTrail } from '../components/activityTrail/useRowActivityTrail';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import { BrandMark } from '../components/BrandMark';
 import { FleetCapacity } from './clusterManagement/FleetCapacity';
 import { CapacityMeter } from './clusterManagement/CapacityMeter';
@@ -54,6 +57,7 @@ const fmtDate = (v?: string | null): string => {
 
 const ClusterManagement: React.FC = () => {
   const navigate = useNavigate();
+  const activityTrail = useRowActivityTrail();
   const { t } = useI18n();
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -462,6 +466,17 @@ const ClusterManagement: React.FC = () => {
                 {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
+            <Can permission="activity_log.read" clusterId={row.original.id}>
+              {/* onSelect ไม่ใช่ onClick — ให้เมนูปิดเสร็จก่อนแผ่นเปิด ไม่งั้น focus trap
+                  ของ Radix สองชั้นจะชนกัน */}
+              <DropdownMenuItem
+                onSelect={() => activityTrail.openFor(row.original.id)}
+                className="cursor-pointer"
+              >
+                <History className="mr-2 h-4 w-4" />
+                {t('pages.activityTrail.buttonLabel')}
+              </DropdownMenuItem>
+            </Can>
             <Can permission="cluster.delete" clusterId={row.original.id}>
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -472,7 +487,7 @@ const ClusterManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, showDeleted, t]);
+  ], [navigate, handleDelete, showDeleted, t, activityTrail]);
 
   return (
     <Layout>
@@ -670,6 +685,14 @@ const ClusterManagement: React.FC = () => {
         confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* แผ่นตัวเดียวสำหรับทั้งตาราง — สลับ entityId ตามแถวที่เลือก
+          เรนเดอร์ตัวละแถวจะ mount คอมโพเนนต์เป็นร้อยตัวโดยเปล่าประโยชน์ */}
+      <ActivityTrailSheet
+        entityType="cluster"
+        recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+        {...activityTrail.sheetProps}
       />
 
       <DevDebugSheet title="API Response" endpoint="GET /api-system/clusters" data={rawResponse} />

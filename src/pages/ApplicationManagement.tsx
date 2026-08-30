@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, AppWindow, Download, Copy, Check, History } from "lucide-react";
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -22,6 +22,10 @@ import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { useRowActivityTrail } from '../components/activityTrail/useRowActivityTrail';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import { auditColumns } from '../components/auditColumns';
 import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
@@ -40,6 +44,7 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
 
 const ApplicationManagement: React.FC = () => {
   const navigate = useNavigate();
+  const activityTrail = useRowActivityTrail();
   const { t } = useI18n();
   const [applications, setApplications] = useState<Application[]>([]);
   const [totalRows, setTotalRows] = useState(0);
@@ -332,6 +337,17 @@ const ApplicationManagement: React.FC = () => {
                 {t('common.action.edit')}
               </DropdownMenuItem>
             </Can>
+            <Can permission="activity_log.read" clusterId={PLATFORM_SCOPED_RECORD}>
+              {/* onSelect ไม่ใช่ onClick — ให้เมนูปิดเสร็จก่อนแผ่นเปิด ไม่งั้น focus trap
+                  ของ Radix สองชั้นจะชนกัน */}
+              <DropdownMenuItem
+                onSelect={() => activityTrail.openFor(row.original.id)}
+                className="cursor-pointer"
+              >
+                <History className="mr-2 h-4 w-4" />
+                {t('pages.activityTrail.buttonLabel')}
+              </DropdownMenuItem>
+            </Can>
             <Can permission="application.delete">
               <DropdownMenuItem onClick={() => handleDelete(row.original.id)} className="cursor-pointer text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -342,7 +358,7 @@ const ApplicationManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, handleCopyId, copiedId, t]);
+  ], [navigate, handleDelete, handleCopyId, copiedId, t, activityTrail]);
 
   return (
     <Layout>
@@ -518,6 +534,17 @@ const ApplicationManagement: React.FC = () => {
         confirmVariant="destructive"
         onConfirm={handleConfirmDelete}
       />
+
+      <ActivityTrailSheet
+
+        entityType="application"
+
+        recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+
+        {...activityTrail.sheetProps}
+
+      />
+
 
       <DevDebugSheet title="API Response" endpoint="GET /api-system/applications" data={rawResponse} />
     </Layout>

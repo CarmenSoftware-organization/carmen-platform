@@ -27,6 +27,17 @@ interface ActivityTrailSheetProps {
   recordingStartedOn: string;
   /** ส่ง response ดิบกลับให้หน้าแม่ใส่ DevDebugSheet — hook อยู่ในนี้ หน้าแม่เข้าถึงตรงไม่ได้ */
   onRawResponse?: (raw: unknown) => void;
+  /**
+   * สถานะเปิด/ปิดที่ควบคุมจากภายนอก — ส่งมาแล้วปุ่มในตัวจะหายไป
+   *
+   * มีไว้ให้หน้า Management ที่เปิดแผ่นจากเมนูในแถวตาราง: `DropdownMenuItem` ใส่ปุ่มซ้อน
+   * ไม่ได้ และแผ่นที่เรนเดอร์ในเมนูจะถูก unmount ทันทีที่เมนูปิด หน้าแม่จึงถือสถานะเองแล้ว
+   * เรนเดอร์แผ่น **ตัวเดียวนอกตาราง** ไม่ใช่ตัวละแถว
+   *
+   * ไม่ส่ง = พฤติกรรมเดิมทุกประการ (ปุ่มในตัว + สถานะในตัว)
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const VERB_KEYS: Record<string, TKey> = {
@@ -140,9 +151,17 @@ export const ActivityTrailSheet: React.FC<ActivityTrailSheetProps> = ({
   entityId,
   recordingStartedOn,
   onRawResponse,
+  open: controlledOpen,
+  onOpenChange,
 }) => {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  // controlled เมื่อหน้าแม่ส่ง open มา — ปุ่มในตัวหายไปพร้อมกัน
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled
+    ? (next: boolean) => onOpenChange?.(next)
+    : setInternalOpen;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const trail = useActivityTrail(entityType, entityId, open);
 
@@ -167,10 +186,12 @@ export const ActivityTrailSheet: React.FC<ActivityTrailSheetProps> = ({
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-        <History className="mr-2 h-4 w-4" />
-        {t('pages.activityTrail.buttonLabel')}
-      </Button>
+      {!isControlled && (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          <History className="mr-2 h-4 w-4" />
+          {t('pages.activityTrail.buttonLabel')}
+        </Button>
+      )}
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
