@@ -16,7 +16,7 @@ import { useI18n } from '../../hooks/useI18n';
 import type { TKey } from '../../i18n/types';
 import type { ActivityDiff, ActivityLogEntry } from '../../types';
 import { useActivityTrail } from './useActivityTrail';
-import { ActivityDiffView } from './ActivityDiffView';
+import { ActivityDiffView, visibleFieldChanges } from './ActivityDiffView';
 
 interface ActivityTrailSheetProps {
   /** ชื่อตารางที่ตัด prefix tb_ ออกแล้ว เช่น "cluster" */
@@ -44,7 +44,9 @@ const TrailRow: React.FC<{
   const { t } = useI18n();
   const contentId = useId();
   // จำนวนฟิลด์รู้ได้หลังโหลด detail เท่านั้น — ก่อนกางจึงยังไม่มีตัวเลขให้แสดง
-  const fieldCount = changes?.fields?.length;
+  // นับเฉพาะฟิลด์ที่จะแสดงจริง ไม่ใช่ทั้งหมดที่ backend ส่งมา ไม่งั้นหัวแถวจะบอก "3 ฟิลด์"
+  // แล้วกางออกมาเห็นฟิลด์เดียว
+  const fieldCount = changes ? visibleFieldChanges(changes).length : undefined;
 
   return (
     <div className="border-border border-b last:border-b-0">

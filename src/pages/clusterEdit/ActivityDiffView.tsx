@@ -11,6 +11,17 @@ import type { ActivityDiff, ActivityFieldChange } from '../../types';
  */
 const HOUSEKEEPING = new Set(['updated_at', 'updated_by_id', 'doc_version']);
 
+/**
+ * ฟิลด์ที่จะถูกแสดงจริง หลังตัดฟิลด์ระบบออก
+ *
+ * export ออกไปเพราะหัวแถวที่ยุบอยู่ต้องบอกจำนวนเดียวกับที่กางออกมาแล้วเห็น — นับจาก
+ * `changes.fields` ตรง ๆ จะได้ตัวเลขที่มากกว่าของที่แสดงเสมอ (ทุกการแก้มีฟิลด์ระบบ 3 ตัว)
+ * @param changes - ผลต่างที่ backend คำนวณมา
+ * @returns เฉพาะฟิลด์ที่ผู้ใช้จะได้เห็น
+ */
+export const visibleFieldChanges = (changes?: ActivityDiff): ActivityFieldChange[] =>
+  (changes?.fields ?? []).filter((f) => !HOUSEKEEPING.has(f.field));
+
 /** ค่าที่ writer ปิดบังตอนบันทึก — เก็บเป็นสตริงนี้ตรง ๆ ใน JSONB */
 const REDACTED = '[REDACTED]';
 
@@ -45,7 +56,7 @@ const FieldRow: React.FC<{ change: ActivityFieldChange }> = ({ change }) => {
  */
 export const ActivityDiffView: React.FC<{ changes?: ActivityDiff }> = ({ changes }) => {
   const { t } = useI18n();
-  const fields = (changes?.fields ?? []).filter((f) => !HOUSEKEEPING.has(f.field));
+  const fields = visibleFieldChanges(changes);
   const children = changes?.children ?? [];
 
   if (fields.length === 0 && children.length === 0) {
