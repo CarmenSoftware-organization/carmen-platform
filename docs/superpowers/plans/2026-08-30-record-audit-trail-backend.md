@@ -89,7 +89,16 @@ snapshot ก่อน/หลัง handler แล้วเรียก `logPlatf
 - Modify: `packages/log-events-library/src/index.ts`
 - Modify: `apps/micro-business/src/log/activity-log/activity-log.service.ts:8`
 - Delete: `apps/micro-business/src/log/activity-log/activity-diff.ts`
-- Move: `apps/micro-business/src/log/activity-log/activity-diff.spec.ts` → `packages/log-events-library/src/activity/activity-diff.spec.ts`
+- Modify: `apps/micro-business/src/log/activity-log/activity-diff.spec.ts:1` (แค่บรรทัด import)
+
+**`activity-diff.spec.ts` อยู่ที่เดิม ไม่ย้าย** — `packages/log-events-library/vitest.config.ts`
+ตั้ง `include: ['tests/**/*.spec.ts']` และไม่ได้เปิด `globals: true` ส่วน spec ตัวนี้เขียนแบบ
+jest globals (ไม่ import จาก `'vitest'`) — ย้ายไปวางใน `src/activity/` แล้วจะไม่ถูกรันเลย
+และถ้าฝืนให้รันก็พังที่ `describe is not defined`
+
+ทิ้งไว้ที่ micro-business แล้วเปลี่ยนแค่ import ได้ประโยชน์มากกว่า: มันจะรันผ่าน
+`moduleNameMapper` → `dist/index.js` จึงพิสูจน์ทั้ง "การย้ายไม่เปลี่ยนพฤติกรรม"
+และ "`build:package` ทำงานจริง" ในการรันครั้งเดียว
 
 **Interfaces:**
 - Produces: `buildActivityDiff(oldData: unknown, newData: unknown): ActivityDiff` ·
@@ -100,27 +109,34 @@ snapshot ก่อน/หลัง handler แล้วเรียก `logPlatf
 
 - [ ] **Step 1: ย้ายไฟล์**
 
+กิ่ง `feature/platform-record-audit-trail` ถูกแตกไว้ให้แล้ว — ตรวจด้วย
+`git branch --show-current` ก่อนเริ่ม **ห้ามทำงานบน `main`**
+
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-git checkout -b feature/platform-record-audit-trail
 mkdir -p packages/log-events-library/src/activity
 git mv apps/micro-business/src/log/activity-log/activity-diff.ts \
        packages/log-events-library/src/activity/activity-diff.ts
-git mv apps/micro-business/src/log/activity-log/activity-diff.spec.ts \
-       packages/log-events-library/src/activity/activity-diff.spec.ts
 ```
 
 `activity-diff.ts` **ไม่มี import statement เลยทั้งไฟล์** จึงย้ายได้โดยไม่ต้องแก้อะไรข้างใน
 
-- [ ] **Step 2: แก้ import ของ spec ที่ย้ายมา**
+- [ ] **Step 2: แก้ import ของ spec (spec อยู่ที่เดิม)**
 
-`activity-diff.spec.ts:1` เดิมคือ `from './activity-diff'` → ต้องเป็น `'./activity-diff.js'`
-(แพ็กเกจใช้ `moduleResolution: Node16`)
+`apps/micro-business/src/log/activity-log/activity-diff.spec.ts:1` เดิมคือ:
 
-```bash
-sed -i '' "s|from './activity-diff'|from './activity-diff.js'|" \
-  packages/log-events-library/src/activity/activity-diff.spec.ts
+```ts
+import { buildActivityDiff } from './activity-diff';
 ```
+
+เป็น:
+
+```ts
+import { buildActivityDiff } from '@repo/log-events-library';
+```
+
+**ห้ามแตะบรรทัดอื่นในไฟล์นี้** — ทั้งไฟล์คือหลักฐานว่าพฤติกรรมไม่เปลี่ยน แก้เนื้อเทสต์
+แล้วหลักฐานนั้นหายไป
 
 - [ ] **Step 3: สร้าง barrel**
 
@@ -163,25 +179,22 @@ cd apps/micro-business && npx tsc --noEmit
 Expected: ผ่านทั้งคู่ ถ้า `tsc` บ่นว่าหา `buildActivityDiff` ไม่เจอ แปลว่า `build:package`
 ไม่ได้อัปเดต `dist/` — รัน `bun run build:package` ซ้ำก่อนสงสัยโค้ด
 
-- [ ] **Step 7: รัน suite ที่ย้ายมา (existing suite ต้องเขียว)**
-
-```bash
-cd packages/log-events-library && bunx vitest run src/activity/activity-diff.spec.ts
-```
-
-Expected: PASS ทุกเคส (แพ็กเกจใช้ vitest ไม่ใช่ jest — `package.json` มี `"test": "vitest run"`)
-
-- [ ] **Step 8: ตรวจว่า micro-business ไม่พัง**
+- [ ] **Step 7: รัน suite เดิม — ด่านชี้ขาดของ task นี้**
 
 ```bash
 cd apps/micro-business && npx jest src/log/activity-log --runInBand --forceExit --ci
 ```
 
-Expected: PASS — ถ้าแดงเพราะหา module ไม่เจอ ให้ตรวจ `moduleNameMapper` ของ
-`apps/micro-business/package.json` ที่ map `^@repo/log-events-library$` → `dist/index.js`
-(ต้อง `build:package` มาก่อน)
+Expected: PASS ทุกเคส
 
-- [ ] **Step 9: Commit**
+การรันครั้งนี้พิสูจน์สองอย่างพร้อมกัน: (1) `buildActivityDiff` ที่ย้ายไปแล้วยังให้ผลเหมือนเดิม
+(2) `moduleNameMapper` ที่ map `^@repo/log-events-library$` → `dist/index.js` resolve ได้
+แปลว่า `build:package` ทำงานจริง
+
+ถ้าแดงด้วย "Cannot find module '@repo/log-events-library'" แปลว่ายังไม่ได้
+`bun run build:package` หรือ dist ค้างของเก่า — รันใหม่ก่อนสงสัยโค้ด
+
+- [ ] **Step 8: Commit**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
