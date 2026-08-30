@@ -1388,3 +1388,49 @@ export interface BuQuotaLicensesResponse {
   data: BuQuotaLicenseRow[];
   paginate: { total: number; page: number; perpage: number; pages: number };
 }
+
+// ==================== License Feature Groups (tb_license_feature_group) ====================
+
+/**
+ * กลุ่ม feature ที่ผู้ดูแลจัดเอง — หน่วยของการขายที่จะมาแทนการติ๊ก feature ทีละตัว
+ *
+ * ต่างจาก "module" ซึ่งมาจาก key prefix ของ `LicenseFeature` (`moduleOf()` ใน
+ * `pages/licenses/subscriptionEdit/featureSelection.ts`): group ข้าม module ได้อย่างอิสระ
+ * หยิบ `inventory.count` กับ `report.daily` มาอยู่กลุ่มเดียวกันได้
+ */
+export interface LicenseFeatureGroup {
+  id: string;
+  /** ห้ามซ้ำ และแก้ไม่ได้หลังสร้าง — การเปลี่ยนรหัสคือการเปลี่ยนตัวตนของกลุ่ม ไม่ใช่การแก้ชื่อ */
+  code: string;
+  name: string;
+  description?: string | null;
+  sort_order: number;
+  is_active: boolean;
+  /** จำนวน feature ในกลุ่ม — backend นับให้ */
+  feature_count: number;
+  /** จำนวนสัญญาที่อ้างกลุ่มนี้ — **ตอนนี้เป็น 0 เสมอ** เพราะสัญญายังอ้างกลุ่มไม่ได้จนถึงเฟสถัดไป */
+  subscription_count: number;
+  doc_version: number;
+  created_at?: string | null;
+  created_by_id?: string | null;
+  updated_at?: string | null;
+  updated_by_id?: string | null;
+}
+
+export interface LicenseFeatureGroupDetail extends LicenseFeatureGroup {
+  /** เรียงจากน้อยไปมาก · รวม module แม่ที่ backend เติมให้เองด้วย ไม่ใช่เฉพาะที่ผู้ใช้ติ๊ก */
+  feature_keys: string[];
+}
+
+export interface LicenseFeatureGroupsResponse {
+  data: LicenseFeatureGroup[];
+  paginate: { total: number; page: number; perpage: number; pages: number };
+}
+
+/** ฟิลด์ที่แก้ได้ — `code` ตั้งได้ตอนสร้างเท่านั้น backend ไม่รับใน PATCH */
+export interface LicenseFeatureGroupWriteInput {
+  name: string;
+  description?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+}

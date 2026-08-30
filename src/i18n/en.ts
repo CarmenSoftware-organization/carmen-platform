@@ -23,6 +23,7 @@ export const en = {
     users: 'Users',
     reportTemplates: 'Report Templates',
     formGroups: 'Form Groups',
+    licenseFeatureGroups: 'License Feature Groups',
     news: 'News',
     broadcasts: 'Broadcasts',
     usageAnalytics: 'Usage Analytics',
@@ -79,6 +80,7 @@ export const en = {
     // /report-form-groups ไม่เคยอยู่ใน SEGMENT_KEYS ป้ายจึงมาจาก titleCase() เป็น
     // 'Report Form Groups' ทุกภาษา ค่าใหม่ตรงกับ nav.formGroups และหัวเรื่องของหน้า
     formGroups: 'Form Groups',
+    licenseFeatureGroups: 'License Feature Groups',
     news: 'News',
     broadcasts: 'Broadcasts',
     // เติมตอน browser pass ของ fix wave 2: /analytics กับ /activity-events ไม่เคยอยู่ใน
@@ -1497,6 +1499,32 @@ export const en = {
     // (e.g. 'No expiry' -> common.state.noExpiry, 'Status' -> common.status.label,
     // 'Active'/'Scheduled'/'Expired' -> common.status.*, 'Reference' -> common.field.reference,
     // 'Filters' -> common.label.filters, 'Cluster' -> common.label.cluster).
+    licenseFeatureGroups: {
+      title: 'License Feature Groups',
+      subtitle: 'Curated bundles of licence features, used when selling a subscription',
+      searchPlaceholder: 'Search by code or name',
+      newGroup: 'New group',
+      editGroup: 'Edit group',
+      code: 'Code',
+      codeHint: 'Cannot be changed after the group is created',
+      name: 'Name',
+      description: 'Description',
+      sortOrder: 'Sort order',
+      active: 'Active',
+      featureCount: 'Features',
+      subscriptionCount: 'Subscriptions',
+      activeOnly: 'Active only',
+      emptyTitle: 'No feature groups yet',
+      emptyDescription: 'Create a group to bundle licence features for sale.',
+      featuresCard: 'Features in this group',
+      noFeaturesSelected: 'No features in this group yet.',
+      created: 'Group created',
+      updated: 'Group updated',
+      deleted: 'Group deleted',
+      deleteTitle: 'Delete this group?',
+      deleteBody: 'The group and its feature list will be removed. This cannot be undone.',
+      parentAutoAdded: 'Selecting a feature also grants its module, so the saved list can be longer than what you ticked.',
+    },
     licenses: {
       // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts
       // (BU_QUOTA_CONFIG.amountLabel) — both literally 'BU quota'.

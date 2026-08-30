@@ -27,6 +27,8 @@ const ClusterLicenseDetail = lazy(() => import("./pages/licenses/ClusterLicenseD
 const ClusterAdminLicenses = lazy(() => import("./pages/clusterAdmin/ClusterAdminLicenses"));
 const SubscriptionForm = lazy(() => import("./pages/licenses/SubscriptionForm"));
 const LicensePurchaseForm = lazy(() => import("./pages/licenses/LicensePurchaseForm"));
+const LicenseFeatureGroupManagement = lazy(() => import("./pages/LicenseFeatureGroupManagement"));
+const LicenseFeatureGroupEdit = lazy(() => import("./pages/LicenseFeatureGroupEdit"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
@@ -271,6 +273,30 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="user.update">
                   <UserEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/license-feature-groups"
+              element={
+                <PrivateRoute requiredPermission="license_feature_group.read">
+                  <LicenseFeatureGroupManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/license-feature-groups/new"
+              element={
+                <PrivateRoute requiredPermission="license_feature_group.manage">
+                  <LicenseFeatureGroupEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/license-feature-groups/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="license_feature_group.read">
+                  <LicenseFeatureGroupEdit />
                 </PrivateRoute>
               }
             />
