@@ -1359,6 +1359,21 @@ bun run dev:dev
 
 ลบ `TEST_CROSS` → ต้องหายจากรายการ และ `GET /license-feature-groups/:id` ของ id นั้นต้องคืน 404
 
+
+### สถานะที่วัดได้จริงบน DEV (2026-08-30)
+
+ยิงผ่าน gateway ในเครื่องที่ชี้ DEV DB — ใช้เป็นค่าอ้างอิงแทนการเดา:
+
+| กรณี | สถานะจริง | หมายเหตุ |
+|---|---|---|
+| POST สร้างสำเร็จ | **201** | ต้อง `handleResult(result, HttpStatus.CREATED)` ฝั่ง micro-business ไม่งั้น gateway ตีเป็นล้มเหลวและคืน `data: null` |
+| `code` ซ้ำ | 400 | ข้อความ `code ซ้ำ: <code>` |
+| ไม่ส่ง `doc_version` | 400 | ข้อความ `ต้องระบุ doc_version` |
+| `doc_version` เก่า | 409 | ข้อความจาก extension `withOptimisticLock()` |
+| feature key ที่ไม่มีจริง | **422** | ไม่ใช่ 400 — `ErrorCode.VALIDATION_FAILURE` แม็ปเป็น 422 ในรีโปนี้ |
+| GET id ที่ไม่มี | 404 | |
+| DELETE แล้ว GET ซ้ำ | 200 แล้ว 404 | soft delete ทำงานถูก |
+
 - [ ] **Step 8: รายงานผล**
 
 รายงานผลทั้ง 7 ข้อพร้อมสิ่งที่เห็นจริง ข้อไหนไม่ผ่าน รายงานตามจริงพร้อม output — ห้ามรายงานว่าผ่านทั้งหมดโดยไม่ได้ทำครบ

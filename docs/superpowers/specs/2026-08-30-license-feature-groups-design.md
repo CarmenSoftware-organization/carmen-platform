@@ -154,6 +154,10 @@ base path `/api-system` (platform backend) ตามแบบ `src/services/subs
 | PUT | `/platform/license-feature-groups/:id/features` | ตั้งชุด feature ทั้งชุด (แบบเดียวกับ `setFeatures` เดิม) |
 | DELETE | `/platform/license-feature-groups/:id` | soft delete; **409 ถ้ายังมีใบอ้างอยู่** |
 
+สถานะที่วัดได้จริงบน DEV (2026-08-30): สร้างสำเร็จ **201** · `code` ซ้ำ 400 · ไม่ส่ง `doc_version` 400 ·
+`doc_version` เก่า 409 · feature key ที่ไม่รู้จัก **422** (ไม่ใช่ 400 — `VALIDATION_FAILURE` แม็ปเป็น 422
+ในรีโปนี้) · id ที่ไม่มี 404
+
 `PUT /platform/subscriptions/:id/features` เดิม เปลี่ยนเป็น
 `PUT /platform/subscriptions/:id/groups` รับ `{ group_ids: string[], doc_version: number }`
 โดย `doc_version` **บังคับ** (backend คืน 400 ถ้าไม่ส่ง) และเป็น replace semantics —
