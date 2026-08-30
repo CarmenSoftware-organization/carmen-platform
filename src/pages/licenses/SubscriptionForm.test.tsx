@@ -344,19 +344,9 @@ describe('SubscriptionForm — permission gating', () => {
   });
 });
 
-describe('SubscriptionForm — Seats card (cluster-level pool, never "unlimited")', () => {
-  it('always shows used/cap and warns when pending invites would exceed cap', async () => {
-    asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
-    renderAt('/licenses/subscriptions/sub1/edit');
-
-    expect(await screen.findByText('8 / 10')).toBeInTheDocument();
-    expect(screen.queryByText(/unlimited/i)).toBeNull();
-    expect(screen.queryByText(/ไม่จำกัด/)).toBeNull();
-    // seat.used(8) + pending_invites(1) = 9, not > cap(10) — no overflow warning expected.
-    expect(screen.getByText(/1 pending/)).toBeInTheDocument();
-    expect(screen.queryByText(/up to/)).toBeNull();
-  });
-});
+// เดิมมี describe 'Seats card' ตรงนี้ ทดสอบว่าหน้าแสดง used/cap และเตือนเมื่อ pending invites
+// จะล้น cap — ถูกลบพร้อม section 'Seats' ที่ถอดออกจากหน้าแก้สัญญา ตรรกะที่มันทดสอบยังอยู่ครบใน
+// SeatsCard.test.tsx (component ยังไม่ถูกลบ ยังใช้ที่ License Center)
 
 describe('SubscriptionForm — cluster BU roster pagination (bounded, never perpage: -1)', () => {
   it('pages through businessUnitService.getAll with perpage: 100 until paginate.total is reached', async () => {

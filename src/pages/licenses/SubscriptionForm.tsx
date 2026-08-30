@@ -23,7 +23,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../hooks/useI18n';
 import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
-import { SeatsCard } from './subscriptionEdit/SeatsCard';
 import { GroupSelectionCard } from './subscriptionEdit/GroupSelectionCard';
 import type { BusinessUnit, SubscriptionDetail } from '../../types';
 
@@ -379,7 +378,6 @@ const SubscriptionForm: React.FC = () => {
   const navItems: NavItem[] = [
     { id: 'info', label: t('pages.subscriptions.detailsTitle') },
     { id: 'features', label: t('pages.subscriptions.purchasedGroups'), count: groupIds.length },
-    { id: 'seats', label: t('common.field.seats') },
   ];
 
   return (
@@ -483,9 +481,6 @@ const SubscriptionForm: React.FC = () => {
                   </Card>
                 </section>
 
-                <section id="seats" className="scroll-mt-20">
-                  {detail && <SeatsCard seat={detail.seat} bu={detail.bu} />}
-                </section>
               </div>
             </div>
           </>
