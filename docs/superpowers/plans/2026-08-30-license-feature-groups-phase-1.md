@@ -157,10 +157,17 @@ model tb_license_feature_group_item {
 
 - [ ] **Step 2: สร้าง migration**
 
+**ห้ามใช้ `bun run db:migrate`** — สคริปต์นั้นคือ `prisma migrate dev` และ `.env` ของ package นี้
+ชี้ไปที่ **DEV** (`dev.blueledgers.com:6432`) ซึ่งเป็นฐานที่ใช้ร่วมกัน `migrate dev` ไม่ได้แค่
+apply: เมื่อเจอ schema drift มันเสนอ **reset ทั้งฐาน** ใช้ `--create-only` เท่านั้น ซึ่งเขียนแต่ไฟล์
+ไม่แตะฐานเลย:
+
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2/packages/prisma-shared-schema-platform
-bun run db:migrate --name license_feature_group
+bunx prisma migrate dev --create-only --skip-generate --name license_feature_group
 ```
+
+migration จะถูก apply ตอน push กิ่ง ตาม workflow ปกติ ไม่ใช่จากเครื่องนี้
 
 ตรวจไฟล์ SQL ที่ได้: ต้องมีเฉพาะ `CREATE TABLE` สองตัว กับ `CREATE UNIQUE INDEX` / `CREATE INDEX` **ห้ามมี `DROP` หรือ `ALTER` ตารางอื่นเด็ดขาด** ถ้ามี แปลว่า schema ในเครื่องเพี้ยนจาก DEV ให้หยุดแล้วรายงาน
 
