@@ -1156,6 +1156,61 @@ export interface PlatformConfig {
   updated_by_id?: string | null;
 }
 
+// ==================== Record Audit Trail (tb_activity) ====================
+// คนละตารางกับ Usage Analytics ด้านล่าง: ตรงนั้นคือ tb_activity_event (คลิก/เปิดหน้า)
+// ส่วนนี่คือประวัติการแก้เรคอร์ดจริง พร้อมค่าก่อน/หลังรายฟิลด์
+
+/** ฟิลด์หนึ่งที่ค่าเปลี่ยนระหว่างภาพก่อนกับภาพหลัง */
+export interface ActivityFieldChange {
+  field: string;
+  /** ค่าที่ถูกปิดบังตอนบันทึกจะมาเป็นสตริง "[REDACTED]" */
+  old?: unknown;
+  new?: unknown;
+}
+
+/** แถวในตารางลูกที่ถูกเพิ่ม ลบ หรือแก้ */
+export interface ActivityChildChange {
+  relation: string;
+  added?: Record<string, unknown>[];
+  removed?: Record<string, unknown>[];
+  updated?: { id: string; fields: ActivityFieldChange[] }[];
+}
+
+export interface ActivityDiff {
+  fields?: ActivityFieldChange[];
+  children?: ActivityChildChange[];
+  /** false เมื่อต่างกันเฉพาะฟิลด์ระบบ (updated_at, updated_by_id, doc_version) */
+  has_changes?: boolean;
+}
+
+/**
+ * หนึ่งรายการในประวัติการเปลี่ยนแปลงของเรคอร์ด
+ *
+ * เวลาและชื่อผู้ทำอ่านจาก `audit.created` ไม่ใช่ `created_at` — backend ไม่ส่ง `created_at`
+ * มาเลย แต่ส่ง `audit` ที่ @EnrichAuditUsers() ประกอบชื่อเต็มให้แล้ว ส่วน actor_* ที่ยัง
+ * ส่งมาด้วยเป็นวัตถุดิบก่อนประกอบ ใช้เป็นทางสำรองได้
+ */
+export interface ActivityLogEntry {
+  id: string;
+  action?: string;
+  /** ชื่อตารางที่ตัด prefix tb_ ออกแล้ว เช่น "cluster" */
+  entity_type?: string;
+  entity_id?: string;
+  actor_id?: string | null;
+  actor_username?: string | null;
+  actor_firstname?: string | null;
+  actor_middlename?: string | null;
+  actor_lastname?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  description?: string | null;
+  audit?: Audit;
+}
+
+export type ActivityLogDetail = ActivityLogEntry & { changes?: ActivityDiff };
+
+export type ActivityLogsResponse = ApiListResponse<ActivityLogEntry>;
+
 // ==================== Usage Analytics (tb_activity_event) ====================
 
 export interface AnalyticsSummary {
