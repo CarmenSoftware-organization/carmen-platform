@@ -28,6 +28,12 @@ export interface FeatureSelectionCardProps {
   onChange: (featureKeys: string[]) => void;
   /** No `subscription.manage` — read-only grouped display, no checkboxes / All-None. */
   readOnly: boolean;
+  /**
+   * ข้อความตอนยังไม่มี feature ถูกเลือก — ถ้าให้มาจะชนะข้อความที่ประกอบจาก `buName`
+   * มีไว้ให้หน้าที่ไม่มี BU (เช่นหน้าแก้กลุ่มสิทธิ์ license) ใช้ component นี้ซ้ำได้
+   * โดยไม่ต้องแตะ prop เดิมที่หน้าขายสัญญายังใช้อยู่
+   */
+  emptyMessage?: string;
 }
 
 /**
@@ -47,6 +53,7 @@ export function FeatureSelectionCard({
   buName,
   onChange,
   readOnly,
+  emptyMessage,
 }: FeatureSelectionCardProps) {
   const { t } = useI18n();
   const [catalog, setCatalog] = useState<LicenseFeature[]>([]);
@@ -164,9 +171,11 @@ export function FeatureSelectionCard({
       <div className="space-y-4">
         {selected.size === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {buName
-              ? t('pages.subscriptions.noFeaturesAssignedToBu', { bu: buName })
-              : t('pages.subscriptions.noFeaturesAssignedToThis')}
+            {emptyMessage
+              ? emptyMessage
+              : buName
+                ? t('pages.subscriptions.noFeaturesAssignedToBu', { bu: buName })
+                : t('pages.subscriptions.noFeaturesAssignedToThis')}
           </p>
         ) : (
           <div className="space-y-3">
