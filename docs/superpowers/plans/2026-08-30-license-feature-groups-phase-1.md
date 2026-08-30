@@ -1416,3 +1416,40 @@ bun run dev:dev
 ตัวเลขนี้มาจาก **DEV เท่านั้น** และรูปของมัน (ทุกใบได้เกือบทุก feature เหมือนกันหมด) บอกว่านี่คือ
 ข้อมูลทดสอบ ไม่ใช่ภาพการขายจริงที่ควรมีความหลากหลาย **ก่อนรันเฟส 2 บนสภาพแวดล้อมอื่น
 ต้องวัดซ้ำบนสภาพแวดล้อมนั้นเอง** — สรุปจาก DEV แล้วเหมาว่า UAT/production เหมือนกันคือการเดา
+
+## ผลการตรวจ Task 8 (2026-08-30)
+
+ตรวจบน gateway + micro-business ที่รันในเครื่อง ชี้ DEV DB (migration apply แล้ว)
+frontend `bun run start` โหมด localhost
+
+| ข้อ | ผล |
+|---|---|
+| สร้างกลุ่มข้าม module ผ่าน UI | ✅ toast "Group created" + redirect ไปหน้า edit |
+| **กฎ "ลูกลากพ่อ"** | ✅ ส่งลูก 2 ตัว (`report.list`, `inventory_management.cost`) ได้กลับ 4 keys — server เติม `report` และ `inventory_management` ให้เอง · หน้า list แสดง "จำนวน feature = 4" |
+| optimistic lock (`doc_version` เก่า) | ✅ 409 |
+| ไม่ส่ง `doc_version` | ✅ 400 `ต้องระบุ doc_version` |
+| feature key ที่ไม่มีจริง | ✅ 422 |
+| `code` ซ้ำ | ✅ 400 `code ซ้ำ: TEST_CROSS` |
+| GET id ที่ไม่มี | ✅ 404 |
+| ลบผ่าน UI + ConfirmDialog | ✅ dialog ขึ้นเป็นภาษาไทย → toast "ลบกลุ่มแล้ว" → EmptyState |
+| DELETE แล้ว GET ซ้ำ | ✅ 200 แล้ว 404 |
+| `useUnsavedChanges` | ✅ บล็อกการออกจากหน้าเมื่อมีการแก้ค้าง และปล่อยเมื่อถอน feature ครบ (พิสูจน์ว่าเทียบ featureKeys ด้วย ไม่ใช่แค่ formData) |
+| viewport 390px (list + edit) | ✅ วัดด้วย iframe probe: `scrollWidth` ไม่เกิน `clientWidth` ทั้งสองหน้า |
+| สลับภาษา TH/EN | ✅ ทุกคีย์แปลครบ ไม่มีคีย์ดิบโผล่ (ชื่อ module เป็นอังกฤษเพราะมาจาก backend catalog ไม่ใช่ i18n) |
+| ไม่มี token / token ปลอม | ✅ 401 ทั้งคู่ |
+| ไม่มี `x-app-id` | ✅ 400 |
+| ข้อมูลทดสอบ | ✅ ลบหมด DEV เหลือ 0 กลุ่ม |
+
+### บั๊กที่เจอและแก้ระหว่างตรวจ
+
+`create` ฝั่ง micro-business คืน 200 แทน 201 → gateway (`toResult` เทียบกับ `HttpStatus.CREATED`)
+ตีเป็นล้มเหลวแล้วส่ง `data: null` ทั้งที่แถวถูกสร้างจริง → หน้าได้ `id` เป็น `undefined` แล้วยิง
+`PUT /:id/features` ต่อจน `ParseUUIDPipe` ตอบ 400 "uuid v 4 is expected"
+แก้ด้วย `handleResult(result, HttpStatus.CREATED)` (commit `d325e14f6`)
+
+### ข้อที่ยังตรวจไม่ได้จริง
+
+**การกัน 403 ของผู้ใช้ที่ไม่มี `license_feature_group.read`** — เครื่องนี้มีแต่บัญชี super admin
+ที่ล็อกอินอยู่ จึงยืนยันได้แค่เชิงโครงสร้าง (route ใช้ `requiredPermission`, nav ใช้ `permission`,
+และ `check.api-system-permission-coverage` รายงาน COVERED) ไม่ได้ยืนยันด้วยการล็อกอินจริง
+ด้วยบัญชีที่ไม่มีสิทธิ์
