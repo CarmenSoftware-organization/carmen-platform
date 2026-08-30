@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import reportTemplateService from '../services/reportTemplateService';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { Button } from '../components/ui/button';
@@ -446,7 +449,17 @@ const ReportTemplateEdit: React.FC = () => {
           }
           audit={!isNew && !loading ? normalizeAudit(templateRecord) : undefined}
           actions={!isNew && !loading && (
-            editing ? (
+            <>
+              {/* report template ไม่สังกัด cluster — PLATFORM_SCOPED_RECORD ทำให้เหลือ
+                  ทางเดียวคือสิทธิ์ระดับ platform ตรงกับที่ backend บังคับ */}
+              <Can permission="activity_log.read" clusterId={PLATFORM_SCOPED_RECORD}>
+                <ActivityTrailSheet
+                  entityType="report_template"
+                  entityId={id}
+                  recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+                />
+              </Can>
+              {editing ? (
               <Button variant="outline" size="sm" onClick={handleCancelEdit}>
                 <X className="mr-2 h-4 w-4" />
                 {t('common.cancel')}
@@ -458,7 +471,8 @@ const ReportTemplateEdit: React.FC = () => {
                   {t('common.action.edit')}
                 </Button>
               </Can>
-            )
+              )}
+            </>
           )}
         />
         {!isNew && !loading && (

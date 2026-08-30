@@ -7,6 +7,8 @@ import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
 import businessUnitService from "../services/businessUnitService";
 import Can from "../components/Can";
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -24,7 +26,7 @@ import { validateField } from '../utils/validation';
 import { getErrorDetail, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { normalizeAudit } from '../utils/audit';
-import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
+import { UNRESOLVED_CLUSTER_ID, PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -532,8 +534,20 @@ const UserEdit: React.FC = () => {
               buCount={businessUnits.length}
               clusterCount={userClusters.length}
               audit={normalizeAudit(userRecord)}
-              actions={!editing && (
+              actions={
                 <div className="flex items-center gap-3">
+                  {/* ปุ่มอ่านประวัติแสดงเสมอ ไม่ผูกกับโหมดแก้ไข — user ไม่สังกัด cluster เดียว
+                      (อยู่ได้หลาย cluster ผ่าน tb_cluster_user) จึงใช้ PLATFORM_SCOPED_RECORD
+                      ให้เหลือทางเดียวคือสิทธิ์ระดับ platform ตรงกับที่ backend บังคับ */}
+                  <Can permission="activity_log.read" clusterId={PLATFORM_SCOPED_RECORD}>
+                    <ActivityTrailSheet
+                      entityType="user"
+                      entityId={id}
+                      recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+                    />
+                  </Can>
+                  {!editing && (
+                  <>
                   <Can permission="user.update">
                     <Button variant="outline" size="sm" onClick={handleOpenPasswordDialog}>
                       <KeyRound className="mr-2 h-4 w-4" />
@@ -546,8 +560,10 @@ const UserEdit: React.FC = () => {
                       {t('common.action.edit')}
                     </Button>
                   </Can>
+                  </>
+                  )}
                 </div>
-              )}
+              }
             />
           </>
         )}

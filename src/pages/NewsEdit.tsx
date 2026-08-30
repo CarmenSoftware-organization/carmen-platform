@@ -13,6 +13,9 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { Save, Pencil, X, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import Can from '../components/Can';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import { cn } from '../lib/utils';
 import { NewsMasthead } from './newsEdit/NewsMasthead';
 import { validateField } from '../utils/validation';
@@ -292,13 +295,26 @@ const NewsEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        <Link
-          to="/news"
-          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('breadcrumb.news')}
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            to="/news"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t('breadcrumb.news')}
+          </Link>
+          {!isNew && (
+            /* news ผูกได้หลาย BU จึงไม่มี cluster เดียว — PLATFORM_SCOPED_RECORD ทำให้
+               เหลือทางเดียวคือสิทธิ์ระดับ platform ตรงกับที่ backend บังคับ */
+            <Can permission="activity_log.read" clusterId={PLATFORM_SCOPED_RECORD}>
+              <ActivityTrailSheet
+                entityType="news"
+                entityId={id}
+                recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+              />
+            </Can>
+          )}
+        </div>
 
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>

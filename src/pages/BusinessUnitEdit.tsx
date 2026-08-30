@@ -3,6 +3,9 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
+import Can from '../components/Can';
+import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
+import { AUDIT_RECORDING_STARTED_ON_PHASE_2 } from '../components/activityTrail/constants';
 import businessUnitService from '../services/businessUnitService';
 import clusterService from '../services/clusterService';
 import currencyService from '../services/currencyService';
@@ -614,6 +617,22 @@ const BusinessUnitEdit: React.FC = () => {
           }
           subtitle={isNew ? t('pages.businessUnits.createSubtitle') : t('pages.businessUnits.editSubtitle')}
           audit={normalizeAudit(buRecord)}
+          actions={
+            !isNew && (
+              /* BU สังกัด cluster จริง จึงส่ง cluster id ของมัน — ยังไม่โหลดให้ส่ง
+                 UNRESOLVED_CLUSTER_ID ไม่ใช่ undefined ซึ่งจะตกไปกิ่ง any-cluster ที่ไม่เข้ม */
+              <Can
+                permission="activity_log.read"
+                clusterId={formData.cluster_id || UNRESOLVED_CLUSTER_ID}
+              >
+                <ActivityTrailSheet
+                  entityType="business_unit"
+                  entityId={id}
+                  recordingStartedOn={AUDIT_RECORDING_STARTED_ON_PHASE_2}
+                />
+              </Can>
+            )
+          }
         />
 
         {error && (
