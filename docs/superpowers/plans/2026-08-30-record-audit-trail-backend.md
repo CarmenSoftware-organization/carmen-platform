@@ -482,13 +482,13 @@ export const PLATFORM_SNAPSHOT_INCLUDES = {
 } as const;
 ```
 
-⚠️ **ต้องยืนยันชื่อ cmd จริงก่อน** — `clusters.create/update/delete` เป็นค่าที่คาดไว้
-รันคำสั่งนี้แล้วแก้รายการให้ตรงของจริง:
+✅ **ชื่อ cmd ยืนยันแล้ว** — `packages/rpc-contract/src/contracts/clusters.ts` มี
+`create: rpc('clusters.create', 'micro-cluster')`, `update: rpc('clusters.update', ...)`,
+`delete: rpc('clusters.delete', ...)` และ `cluster.controller.ts:44/66/88` ใช้
+`Clusters.create.pattern` / `.update` / `.delete` ตามลำดับ
 
-```bash
-cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
-grep -rn "@MessagePattern" apps/micro-cluster/src/cluster/cluster/cluster.controller.ts
-```
+หมายเหตุ: `clusters.create-user` / `.update-user` / `.delete-user` เป็นคนละ entity
+(`tb_cluster_user`) **ไม่ต้องลงทะเบียนในรอบนี้** — จะเข้ามาในเฟส 2
 
 - [ ] **Step 2: เขียน interceptor**
 
@@ -681,25 +681,34 @@ import { PlatformActivityInterceptor } from '@/common/activity/platform-activity
       // ต้องระบุครบทุกคีย์ที่นี่ ไม่ใช่พึ่ง default ของแพ็กเกจ — LogEventsService ใช้ `??`
       // (แทนที่ทั้งชุด) ไม่ใช่ spread ต่างจาก prisma-audit.middleware ที่รวมกับ default
       sensitiveFields: [
+        // ห้าตัวแรกคือ default ของแพ็กเกจ ต้องเขียนซ้ำเพราะ LogEventsService ใช้ `??`
+        // (แทนที่ทั้งชุด) ไม่ใช่ spread — ละไว้แล้วจะหายไปทั้งหมด
         'password',
         'hash',
         'token',
         'secret',
         'api_key',
-        'avatar_token',
-        'logo_token',
-        'signature',
-        'refresh_token',
-        'access_token',
+        // คอลัมน์จริงของ tb_cluster (ยืนยันกับ schema.prisma แล้ว) — ชื่อลงท้าย
+        // `_file_token` ไม่ใช่ `_token` และคีย์ `token` ข้างบนไม่ครอบมัน
+        'logo_file_token',
+        'avatar_file_token',
       ],
 ```
 
-⚠️ `redactSensitiveFields` เทียบด้วย `fields.has(key.toLowerCase())` แบบ **ตรงตัวเป๊ะ ไม่ใช่ prefix
-match** — `*_token` เป็นแค่คำอธิบาย ต้องเขียนชื่อคอลัมน์จริงทุกตัว ตรวจชื่อคอลัมน์จริงด้วย:
+⚠️ **`redactSensitiveFields` เทียบ `fields.has(key.toLowerCase())` แบบตรงตัวทั้งชื่อ
+ไม่ใช่ prefix/substring match** — คีย์ `token` **ไม่ครอบ** `logo_file_token` ต้องเขียนชื่อเต็ม
+ทุกคอลัมน์ นี่คือกับดักที่ทำให้ redact ดูเหมือนทำงานแต่ไม่ได้ทำ
+
+**ยืนยันแล้วว่า `tb_cluster` มีคอลัมน์อ่อนไหวแค่สองตัวนี้** — `code`, `name`, `alias_name`,
+`is_active`, `info` (Json) ที่เหลือไม่ใช่ความลับ และไม่มี `password`/`secret`/`signature`
+ในตารางนี้เลย
+
+**เฟส 2 ที่เพิ่ม entity อื่นต้องไล่ schema ใหม่ทุกครั้ง** — รายการนี้ผูกกับตารางที่ลงทะเบียน
+ไม่ใช่ค่าคงที่ที่ตั้งครั้งเดียวจบ:
 
 ```bash
-grep -n "token\|signature\|password\|secret" \
-  packages/prisma-shared-schema-platform/prisma/schema.prisma | grep -i "cluster" 
+awk '/^model tb_<ชื่อตาราง> \{/,/^\}/' \
+  packages/prisma-shared-schema-platform/prisma/schema.prisma
 ```
 
 - [ ] **Step 4: typecheck + boot-check**
