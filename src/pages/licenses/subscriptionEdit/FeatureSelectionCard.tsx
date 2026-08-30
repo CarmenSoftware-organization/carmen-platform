@@ -45,8 +45,10 @@ export interface FeatureSelectionCardProps {
  * หายไปทั้งแกน — การ "เปลี่ยนคู่สัญญา" ไม่ใช่การกระทำที่ทำผ่านหน้าแก้สิทธิ์ได้อีกต่อไป
  *
  * Everything here mutates the parent's `featureKeys` via `onChange` — there is no per-card Save.
- * The shared bottom Save bar on SubscriptionEdit persists it (PUT .../features, replace
- * semantics) alongside the subscription-info PATCH.
+ *
+ * หน้าขายสัญญาไม่ใช้การ์ดนี้แล้ว — เฟส 4 ถอดสิทธิ์ราย feature ออกจากสัญญาทั้งหมด การ์ดนี้เหลือ
+ * ผู้เรียกเดียวคือ `LicenseFeatureGroupEdit` ซึ่งบันทึกผ่าน `licenseFeatureGroupService.setFeatures`
+ * (`PUT /license-feature-groups/:id/features`, replace semantics)
  */
 export function FeatureSelectionCard({
   featureKeys,

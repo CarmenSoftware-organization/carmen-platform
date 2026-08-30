@@ -56,7 +56,6 @@ vi.mock('../../services/subscriptionService', () => ({
     getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-    setFeatures: vi.fn(),
     delete: vi.fn(),
     getFeatureCatalog: vi.fn(),
   },

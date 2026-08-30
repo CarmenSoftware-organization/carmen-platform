@@ -60,7 +60,7 @@ export function groupCatalog(catalog: LicenseFeature[]): FeatureGroup[] {
  * feature key ของ BU ที่ไม่มีอยู่ใน catalog ที่ active — เกิดขึ้นเมื่อ feature ถูก `is_active: false`
  * หลังจากสัญญาผูกมันไว้แล้ว (catalog กรองเฉพาะ active, contract §5)
  *
- * ต้องแสดงให้เห็น ไม่ใช่กรองทิ้งเงียบ ๆ: `PUT .../features` เป็น replace semantics และ backend
+ * ต้องแสดงให้เห็น ไม่ใช่กรองทิ้งเงียบ ๆ: `PUT /license-feature-groups/:id/features` เป็น replace semantics และ backend
  * ตอบ **422 "feature key ที่ไม่รู้จัก: …"** ทุกครั้งที่ยังส่งคีย์นั้นกลับไป → ตกสาขา generic →
  * `getErrorDetail` redact ใน production → ผู้ใช้เห็นแค่ "Please try again later." กดกี่ครั้งก็เหมือนเดิม
  * โดยไม่มีปุ่มไหนถอดมันออกได้เลย (review I3)

@@ -59,28 +59,10 @@ const subscriptionService = {
   },
 
   /**
-   * แทนที่สิทธิ์ทั้งชุด — replace semantics ส่ง desired set ทั้งหมด ไม่ใช่ diff
-   *
-   * ไม่มี BU ใน payload อีกแล้ว — หนึ่งสัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนไม่ได้
-   * (เดิม endpoint นี้ถอด/เพิ่ม BU ได้ด้วย ซึ่งทำให้ "แก้สิทธิ์" กับ "เปลี่ยนคู่สัญญา" เป็นการกระทำเดียวกัน)
-   */
-  setFeatures: async (
-    id: string,
-    featureKeys: string[],
-    docVersion: number, // บังคับ — backend คืน 400 ถ้าไม่ส่ง
-  ): Promise<{ data: SubscriptionDetail }> => {
-    const response = await api.put(`${BASE}/${id}/features`, {
-      feature_keys: featureKeys,
-      doc_version: docVersion,
-    });
-    return response.data;
-  },
-
-  /**
    * แทนที่ชุด **กลุ่มสิทธิ์** ทั้งชุดของสัญญา — replace semantics ส่ง desired set ทั้งหมด ไม่ใช่ diff
    *
-   * ตัวนี้มาแทน `setFeatures` ในหน้าขาย: การขายเลือกเป็นกลุ่ม ไม่ใช่ติ๊ก feature ทีละตัวอีกแล้ว
-   * `setFeatures` ยังอยู่เพราะ backend ยังรับ และใบที่ยังไม่ถูก backfill ยังพึ่งมัน
+   * การขายผูกเป็นกลุ่มอย่างเดียวแล้ว — เฟส 4 DROP ตารางสิทธิ์ราย feature ทิ้งและถอด
+   * endpoint `PUT /:id/features` ออกจาก backend พร้อมกัน จึงไม่มี `setFeatures` ให้เรียกอีก
    */
   setGroups: async (
     id: string,

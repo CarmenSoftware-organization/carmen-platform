@@ -277,7 +277,7 @@ const SubscriptionForm: React.FC = () => {
     setError('');
     try {
       // Two independent endpoints share one doc_version — PATCH bumps it, so a subsequent
-      // PUT .../features in the same save must carry the bumped value, not the one this page
+      // PUT .../groups in the same save must carry the bumped value, not the one this page
       // loaded with, or it 409s against itself.
       let currentDocVersion = docVersion;
       if (infoChanged) {
