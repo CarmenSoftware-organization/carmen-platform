@@ -242,8 +242,13 @@ SELECT keys, count(*) FROM (
 **เฟส 4 ต้องอยู่คนละกิ่งกับเฟส 1-2** เพราะ `prisma migrate deploy` ลง migration ทั้งชุดที่ค้าง
 พร้อมกัน — CREATE กับ DROP ในกิ่งเดียวกันเคยทำให้ของหายมาแล้ว
 
-**การ push กิ่งที่มี migration ทำให้ migration ถูก apply ลง DEV ภายในราว 2 นาทีโดยไม่ต้อง merge**
-(`deploy-gcp.yml` มี job migrate อัตโนมัติ) ดังนั้นห้าม push เฟส 4 จนกว่าจะพร้อมจริง
+**การ push กิ่ง feature ไม่ apply migration และไม่ deploy อะไรเลย** — ตรวจ `.github/workflows/`
+เมื่อ 2026-08-30 แล้ว: `build.yml` (deploy DEV) ทริกเกอร์จาก push `main` เท่านั้น,
+`deploy-gcp.yml` (deploy + migrate) เป็น `workflow_dispatch` เท่านั้น, `pr-checks.yml` ตรวจอย่างเดียว
+migration จึงขึ้น DEV เมื่อ **merge เข้า main** หรือเมื่อสั่ง `deploy-gcp.yml` ด้วยมือ
+
+(เอกสารฉบับก่อนหน้าเขียนว่า push กิ่งใดก็ตาม = apply ภายใน 2 นาที ซึ่ง **ผิด** — ยืนยันด้วย
+`gh run list` หลัง push จริงแล้วว่าไม่มี run ใดถูกทริกเกอร์)
 
 ฝั่ง frontend: push เข้า `main` deploy ลง DEV อัตโนมัติ (`deploy-dev.yml`) ส่วน production ที่
 ผู้ใช้จริงเห็นคือ Vercel ซึ่งตาม branch `vercel` ต้อง `git push origin main:vercel` เป็นขั้นแยก

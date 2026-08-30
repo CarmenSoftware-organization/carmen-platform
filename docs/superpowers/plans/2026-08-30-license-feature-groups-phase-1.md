@@ -19,7 +19,7 @@
 - **ข้ามขั้นเขียนเทสต์อัตโนมัติ** ตามที่เจ้าของงานกำหนด — ห้ามสร้าง `*.spec.ts` / `*.test.tsx` ใหม่ ยกเว้นเจ้าของงานสั่งในเทิร์นนั้น แต่ **static check ไม่ใช่เทสต์ ต้องรันทุกงาน**
 - frontend: `bun run typecheck` และ `bun run lint` ต้องผ่านก่อน commit ทุกครั้ง
 - backend: `bun run check-types` และ `bun run lint` ต้องผ่านก่อน commit ทุกครั้ง
-- **ห้าม push กิ่ง backend ที่มีไฟล์ migration จนกว่าจะตั้งใจให้ apply** — การ push ทำให้ migration ถูก apply ลง DEV ภายในราว 2 นาทีโดยไม่ต้อง merge
+- **การ push กิ่ง feature ของ backend ไม่ apply migration และไม่ deploy** — `build.yml` ทริกเกอร์จาก push `main` เท่านั้น, `deploy-gcp.yml` เป็น `workflow_dispatch`, `pr-checks.yml` ตรวจอย่างเดียว (ยืนยันด้วย `gh run list` หลัง push จริง 2026-08-30) migration ขึ้น DEV เมื่อ **merge เข้า main** หรือสั่ง deploy ด้วยมือ
 - ทุก schema ใหม่ใช้แบบแผนเดิมของ platform schema: `deleted_at` อยู่ในทุก unique key, `doc_version Int @default(0)`, audit columns ครบ 6 คอลัมน์ (`created_at`, `created_by_id`, `updated_at`, `updated_by_id`, `deleted_at`, `deleted_by_id`)
 - ทุก platform endpoint ต้องมี `@RequirePlatformPermission(...)` คู่กับ `PlatformPermissionGuard` เสมอ — `PlatformPermissionGuard` คืน `true` เมื่อไม่มี decorator ซึ่งเปิด endpoint ให้ทุกคนที่ล็อกอินโดยไม่มีสัญญาณเตือน และ `check.api-system-permission-coverage.ts` จะทำให้ CI แดง
 - frontend: `Ctrl/⌘+S` = save, `Escape` = cancel, `useUnsavedChanges(hasChanges)`, dev debug Sheet, `validateField` on blur — ครบทุก Edit page (Rule 14)
