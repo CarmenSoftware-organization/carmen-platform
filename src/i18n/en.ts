@@ -1360,6 +1360,12 @@ export const en = {
       reachMany: '{{count}} business units',
     },
     subscriptions: {
+      notMigratedToGroups: 'This contract still holds {{count}} features directly and no group yet. Picking a group replaces them.',
+      noGroupsAvailable: 'No licence feature groups exist yet. Create one in',
+      groupsSelectedSummary: '{{groups}} groups selected · {{features}} features in total',
+      manageGroups: 'Manage groups',
+      purchasedGroups: 'Purchased groups',
+      groupEntitlementsForBu: 'Licence groups granted to {{code}}',
       // --- authored English for strings that existed only in Thai ---
       // `clearSearch` and `selectedCount` were dropped from this object (fix round 1):
       // both duplicated an existing common.* key's English exactly while carrying different

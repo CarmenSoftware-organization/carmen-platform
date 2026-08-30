@@ -76,6 +76,24 @@ const subscriptionService = {
     return response.data;
   },
 
+  /**
+   * แทนที่ชุด **กลุ่มสิทธิ์** ทั้งชุดของสัญญา — replace semantics ส่ง desired set ทั้งหมด ไม่ใช่ diff
+   *
+   * ตัวนี้มาแทน `setFeatures` ในหน้าขาย: การขายเลือกเป็นกลุ่ม ไม่ใช่ติ๊ก feature ทีละตัวอีกแล้ว
+   * `setFeatures` ยังอยู่เพราะ backend ยังรับ และใบที่ยังไม่ถูก backfill ยังพึ่งมัน
+   */
+  setGroups: async (
+    id: string,
+    groupIds: string[],
+    docVersion: number, // บังคับ — backend คืน 400 ถ้าไม่ส่ง
+  ): Promise<{ data: SubscriptionDetail }> => {
+    const response = await api.put(`${BASE}/${id}/groups`, {
+      group_ids: groupIds,
+      doc_version: docVersion,
+    });
+    return response.data;
+  },
+
   delete: async (id: string) => {
     const response = await api.delete(`${BASE}/${id}`);
     return response.data;

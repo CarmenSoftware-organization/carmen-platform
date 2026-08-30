@@ -24,7 +24,7 @@ import { useI18n } from '../../hooks/useI18n';
 import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { SeatsCard } from './subscriptionEdit/SeatsCard';
-import { FeatureSelectionCard } from './subscriptionEdit/FeatureSelectionCard';
+import { GroupSelectionCard } from './subscriptionEdit/GroupSelectionCard';
 import type { BusinessUnit, SubscriptionDetail } from '../../types';
 
 // ISO 8601 Z <-> the plain 'YYYY-MM-DD' an <input type="date"> wants.
@@ -88,9 +88,14 @@ const SubscriptionForm: React.FC = () => {
   const [detail, setDetail] = useState<SubscriptionDetail | null>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
-  // สิทธิ์ของสัญญา — หนึ่งใบผูก BU เดียว จึงเป็น array ของ feature key ตรง ๆ ไม่ใช่ราย BU
+  // สิทธิ์ของสัญญา — หนึ่งใบผูก BU เดียว
+  //
+  // `featureKeys` เป็นผลลัพธ์ที่ backend คำนวณให้ ไม่ใช่สิ่งที่หน้านี้แก้อีกแล้ว: การขายเลือกเป็น
+  // "กลุ่ม" ส่วนรายการ feature ใช้แสดงว่าสรุปแล้วลูกค้าได้อะไร และใช้เตือนเมื่อใบยังไม่ถูกย้าย
+  // เข้าระบบกลุ่ม (มี feature แต่ไม่มีกลุ่ม) ซึ่งเกิดได้ระหว่างเฟสย้ายข้อมูล
   const [featureKeys, setFeatureKeys] = useState<string[]>([]);
-  const [savedFeatureKeys, setSavedFeatureKeys] = useState<string[]>([]);
+  const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [savedGroupIds, setSavedGroupIds] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -108,7 +113,7 @@ const SubscriptionForm: React.FC = () => {
 
   const hasChanges = !isNew && (
     JSON.stringify(formData) !== JSON.stringify(savedFormData) ||
-    JSON.stringify(featureKeys) !== JSON.stringify(savedFeatureKeys)
+    JSON.stringify([...groupIds].sort()) !== JSON.stringify([...savedGroupIds].sort())
   );
   useUnsavedChanges(hasChanges);
 
@@ -137,7 +142,9 @@ const SubscriptionForm: React.FC = () => {
       setFormData(loaded);
       setSavedFormData(loaded);
       setFeatureKeys(data.bu?.feature_keys ?? []);
-      setSavedFeatureKeys(data.bu?.feature_keys ?? []);
+      // `group_ids` เป็น optional เพราะใบที่ยังไม่ถูก backfill ไม่มีค่านี้ — ต้องถอยเป็น [] ไม่ใช่ crash
+      setGroupIds(data.bu?.group_ids ?? []);
+      setSavedGroupIds(data.bu?.group_ids ?? []);
       setFieldErrors({});
     } catch (err: unknown) {
       if (isNotFoundError(err)) {
@@ -184,7 +191,7 @@ const SubscriptionForm: React.FC = () => {
 
   const handleCancelEdit = () => {
     setFormData(savedFormData);
-    setFeatureKeys(savedFeatureKeys);
+    setGroupIds(savedGroupIds);
     setFieldErrors({});
     setError('');
   };
@@ -265,7 +272,8 @@ const SubscriptionForm: React.FC = () => {
       return;
     }
     const infoChanged = JSON.stringify(formData) !== JSON.stringify(savedFormData);
-    const featuresChanged = JSON.stringify(featureKeys) !== JSON.stringify(savedFeatureKeys);
+    const groupsChanged =
+      JSON.stringify([...groupIds].sort()) !== JSON.stringify([...savedGroupIds].sort());
     setSaving(true);
     setError('');
     try {
@@ -288,10 +296,10 @@ const SubscriptionForm: React.FC = () => {
           setDocVersion(nextVersion);
         }
       }
-      if (featuresChanged) {
-        // Replace semantics — the full desired key set, not a diff. ไม่มี BU ใน payload:
-        // สัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนที่นี่ไม่ได้
-        await subscriptionService.setFeatures(id!, featureKeys, currentDocVersion);
+      if (groupsChanged) {
+        // Replace semantics — ส่งชุดกลุ่มที่ต้องการทั้งหมด ไม่ใช่ diff · ไม่มี BU ใน payload
+        // เพราะสัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนที่นี่ไม่ได้
+        await subscriptionService.setGroups(id!, groupIds, currentDocVersion);
       }
       toast.success(t('toast.saved'));
       await load();
@@ -370,7 +378,7 @@ const SubscriptionForm: React.FC = () => {
 
   const navItems: NavItem[] = [
     { id: 'info', label: t('pages.subscriptions.detailsTitle') },
-    { id: 'features', label: t('pages.subscriptions.purchasedModules'), count: featureKeys.length },
+    { id: 'features', label: t('pages.subscriptions.purchasedGroups'), count: groupIds.length },
     { id: 'seats', label: t('common.field.seats') },
   ];
 
@@ -457,19 +465,19 @@ const SubscriptionForm: React.FC = () => {
                 <section id="features" className="scroll-mt-20">
                   <Card>
                     <CardHeader>
-                      <CardTitle>{t('pages.subscriptions.purchasedModules')}</CardTitle>
+                      <CardTitle>{t('pages.subscriptions.purchasedGroups')}</CardTitle>
                       <CardDescription>
                         {detail?.bu
-                          ? t('pages.subscriptions.featureEntitlementsForBu', { code: detail.bu.bu_code })
+                          ? t('pages.subscriptions.groupEntitlementsForBu', { code: detail.bu.bu_code })
                           : t('pages.subscriptions.featureEntitlementsGeneric')}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <FeatureSelectionCard
-                        featureKeys={featureKeys}
-                        buName={detail?.bu?.bu_name ?? null}
-                        onChange={setFeatureKeys}
+                      <GroupSelectionCard
+                        groupIds={groupIds}
+                        onChange={setGroupIds}
                         readOnly={!canEdit}
+                        currentFeatureKeys={featureKeys}
                       />
                     </CardContent>
                   </Card>
