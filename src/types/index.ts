@@ -1279,7 +1279,15 @@ export interface SubscriptionBu {
   business_unit_id: string;
   bu_code: string;
   bu_name: string;
+  /**
+   * สิทธิ์ที่คลี่เป็นราย feature — ยังคืนมาระหว่างเฟสย้ายข้อมูล แต่**ไม่ใช่สิ่งที่หน้าขายแก้อีกแล้ว**
+   * หน้าขายแก้ `group_ids` ส่วนนี้ใช้แสดงผลว่าสรุปแล้วลูกค้าได้อะไรบ้าง
+   */
   feature_keys: string[];
+  /** กลุ่มสิทธิ์ที่ใบนี้ถืออยู่ — ว่างสำหรับใบที่ยังไม่ถูก backfill เข้าระบบกลุ่ม */
+  group_ids?: string[];
+  /** กลุ่มเดียวกันพร้อม code/name สำหรับแสดงผลโดยไม่ต้องยิงซ้ำ */
+  groups?: { id: string; code: string; name: string }[];
   /** ใบนี้ซื้อไปเท่าไร (สมทบ pool) — แทนที่ `seat` เดิม ผลรวมทุกใบ = SubscriptionDetail.seat.cap */
   licensed_users: number;
 }

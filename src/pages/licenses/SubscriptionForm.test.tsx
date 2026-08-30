@@ -29,9 +29,14 @@ vi.mock('../../services/subscriptionService', () => ({
     create: vi.fn(),
     update: vi.fn(),
     setFeatures: vi.fn(),
+    setGroups: vi.fn(),
     delete: vi.fn(),
     getFeatureCatalog: vi.fn(),
   },
+}));
+// หน้าขายเลือก "กลุ่ม" แล้ว ไม่ใช่ติ๊ก feature ทีละตัว — GroupSelectionCard ดึงรายการกลุ่มเอง
+vi.mock('../../services/licenseFeatureGroupService', () => ({
+  default: { getAll: vi.fn(), getById: vi.fn() },
 }));
 vi.mock('../../services/businessUnitService', () => ({
   default: { getAll: vi.fn() },
@@ -42,6 +47,7 @@ vi.mock('../../services/clusterService', () => ({
 
 import SubscriptionForm from './SubscriptionForm';
 import subscriptionService from '../../services/subscriptionService';
+import licenseFeatureGroupService from '../../services/licenseFeatureGroupService';
 import businessUnitService from '../../services/businessUnitService';
 import clusterService from '../../services/clusterService';
 import type { SubscriptionDetail } from '../../types';
@@ -65,6 +71,8 @@ const sampleDetail: SubscriptionDetail = {
     bu_code: 'BU1',
     bu_name: 'Acme BU',
     feature_keys: [],
+    group_ids: [],
+    groups: [],
     licensed_users: 10,
   },
 };
@@ -210,70 +218,73 @@ describe('SubscriptionForm — update sends doc_version plus only the allowed fi
   });
 });
 
-describe('SubscriptionForm — Save persists FeatureSelectionCard edits too', () => {
+describe('SubscriptionForm — Save persists GroupSelectionCard edits too', () => {
   beforeEach(() => {
     asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
     asMock(businessUnitService.getAll).mockResolvedValue(buList);
+    asMock(licenseFeatureGroupService.getAll).mockResolvedValue({
+      data: [
+        {
+          id: 'grp1',
+          code: 'FULL',
+          name: 'Full Access',
+          description: null,
+          sort_order: 0,
+          is_active: true,
+          feature_count: 75,
+          subscription_count: 14,
+          doc_version: 0,
+        },
+      ],
+      paginate: { total: 1, page: 1, perpage: 200, pages: 1 },
+    });
   });
 
-  /**
-   * Expands the one module in `catalog` and ticks its child.
-   *
-   * `expanded: false` แยกปุ่มกางโมดูลออกจากปุ่ม "ทั้งหมด/ไม่เอา" ที่อยู่แถวเดียวกัน — ทั้งคู่มีคำว่า
-   * Procurement อยู่ในชื่อ (ปุ่มหลังผ่าน aria-label) การจับด้วยชื่ออย่างเดียวจึงกำกวม
-   */
-  async function tickPurchaseRequest(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(await screen.findByRole('button', { name: /Procurement/, expanded: false }));
-    await user.click(await screen.findByRole('button', { name: 'Purchase Request' }));
+  /** ติ๊กกลุ่ม FULL ใน GroupSelectionCard — หน้าขายเลือกเป็นกลุ่มแล้ว ไม่ใช่ feature ทีละตัว */
+  async function tickFullGroup(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('checkbox', { name: 'Full Access' }));
   }
 
-  it('features-only change: calls setFeatures with the key list + current doc_version, never touches update', async () => {
-    asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
+  it('groups-only change: calls setGroups with the id list + current doc_version, never touches update', async () => {
+    asMock(subscriptionService.setGroups).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
     renderAt('/licenses/subscriptions/sub1/edit');
 
     await screen.findByRole('heading', { name: 'SUB-0001' });
-    await tickPurchaseRequest(user);
+    await tickFullGroup(user);
 
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
-    await waitFor(() => expect(subscriptionService.setFeatures).toHaveBeenCalledTimes(1));
-    // ติ๊กลูกตัวเดียวได้สองคีย์ — โมดูลแม่ถูกเติมให้ตามกติกา child-implies-parent
-    expect(subscriptionService.setFeatures).toHaveBeenCalledWith(
-      'sub1',
-      ['procurement', 'procurement.purchase_request'],
-      3,
-    );
+    await waitFor(() => expect(subscriptionService.setGroups).toHaveBeenCalledTimes(1));
+    expect(subscriptionService.setGroups).toHaveBeenCalledWith('sub1', ['grp1'], 3);
     expect(subscriptionService.update).not.toHaveBeenCalled();
+    // setFeatures ไม่ถูกเรียกอีกแล้วจากหน้านี้ — การขายผูกกลุ่ม ไม่ได้ตั้ง feature ตรง ๆ
+    expect(subscriptionService.setFeatures).not.toHaveBeenCalled();
   });
 
-  it('both changed: PATCHes first, then calls setFeatures with the doc_version the PATCH response returned', async () => {
+  it('both changed: PATCHes first, then calls setGroups with the doc_version the PATCH response returned', async () => {
     asMock(subscriptionService.update).mockResolvedValue({
       data: { ...sampleDetail, subscription_number: 'SUB-0002', doc_version: 4 },
     });
-    asMock(subscriptionService.setFeatures).mockResolvedValue({ data: sampleDetail });
+    asMock(subscriptionService.setGroups).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
     renderAt('/licenses/subscriptions/sub1/edit');
 
     await screen.findByRole('heading', { name: 'SUB-0001' });
     await user.selectOptions(await screen.findByLabelText(/^status$/i), 'inactive');
-    await tickPurchaseRequest(user);
+    await tickFullGroup(user);
 
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
-    await waitFor(() => expect(subscriptionService.setFeatures).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(subscriptionService.setGroups).toHaveBeenCalledTimes(1));
     expect(subscriptionService.update).toHaveBeenCalledTimes(1);
     // The bumped doc_version (4) from update()'s own response, not the stale value (3) this
-    // page loaded with — calling setFeatures with 3 here would 409 against the PATCH that just
+    // page loaded with — calling setGroups with 3 here would 409 against the PATCH that just
     // ran in the same save.
-    expect(subscriptionService.setFeatures).toHaveBeenCalledWith(
-      'sub1',
-      ['procurement', 'procurement.purchase_request'],
-      4,
-    );
+    expect(subscriptionService.setGroups).toHaveBeenCalledWith('sub1', ['grp1'], 4);
   });
 
-  it('no feature change: Save never calls setFeatures at all', async () => {
+  it('no group change: Save never calls setGroups at all', async () => {
     asMock(subscriptionService.update).mockResolvedValue({ data: sampleDetail });
     const user = userEvent.setup();
     renderAt('/licenses/subscriptions/sub1/edit');
@@ -282,7 +293,7 @@ describe('SubscriptionForm — Save persists FeatureSelectionCard edits too', ()
     await user.click(await screen.findByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(subscriptionService.update).toHaveBeenCalledTimes(1));
-    expect(subscriptionService.setFeatures).not.toHaveBeenCalled();
+    expect(subscriptionService.setGroups).not.toHaveBeenCalled();
   });
 });
 
