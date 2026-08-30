@@ -57,7 +57,9 @@ describe('useAllClusters', () => {
     const { result } = renderHook(() => useAllClusters());
 
     await waitFor(() => expect(result.current.error).not.toBe(''));
-    expect(result.current.error).toContain('โหลดรายชื่อ cluster ไม่สำเร็จ');
+    // renderHook ไม่ห่อ I18nProvider — `useI18n()` จึงคืนบริบทอังกฤษ (ตั้งใจ ดู useI18n.tsx)
+    // ข้อความจึงเป็นค่า en ของ `pages.licenses.loadFailedPrefix` ไม่ใช่ไทยที่เคย hardcode ไว้
+    expect(result.current.error).toContain('Failed to load clusters');
     expect(result.current.clusters).toEqual([]);
     expect(result.current.loading).toBe(false);
   });
