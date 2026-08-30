@@ -28,7 +28,6 @@ vi.mock('../../services/subscriptionService', () => ({
     getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
-    setFeatures: vi.fn(),
     setGroups: vi.fn(),
     delete: vi.fn(),
     getFeatureCatalog: vi.fn(),
@@ -258,8 +257,6 @@ describe('SubscriptionForm — Save persists GroupSelectionCard edits too', () =
     await waitFor(() => expect(subscriptionService.setGroups).toHaveBeenCalledTimes(1));
     expect(subscriptionService.setGroups).toHaveBeenCalledWith('sub1', ['grp1'], 3);
     expect(subscriptionService.update).not.toHaveBeenCalled();
-    // setFeatures ไม่ถูกเรียกอีกแล้วจากหน้านี้ — การขายผูกกลุ่ม ไม่ได้ตั้ง feature ตรง ๆ
-    expect(subscriptionService.setFeatures).not.toHaveBeenCalled();
   });
 
   it('both changed: PATCHes first, then calls setGroups with the doc_version the PATCH response returned', async () => {

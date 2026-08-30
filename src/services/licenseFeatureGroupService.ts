@@ -19,7 +19,7 @@ const BASE = '/api-system/platform/license-feature-groups';
  * รหัสกลุ่มที่ขายไปแล้วคือการเปลี่ยนตัวตนของกลุ่ม ไม่ใช่การแก้ชื่อ
  *
  * `setFeatures` เป็น replace semantics และ **รายการที่ได้กลับมายาวกว่าที่ส่งไปได้** เพราะ backend
- * เติม module แม่ของทุก feature ลูกให้เอง (กฎ "ลูกลากพ่อ" เดียวกับ subscriptionService.setFeatures)
+ * เติม module แม่ของทุก feature ลูกให้เอง (กฎ "ลูกลากพ่อ")
  * ผู้เรียกจึงต้องใช้ค่าที่ response คืนมา ไม่ใช่ค่าที่ตัวเองส่งไป
  */
 const licenseFeatureGroupService = {
