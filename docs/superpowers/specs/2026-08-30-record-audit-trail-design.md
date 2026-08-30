@@ -70,23 +70,58 @@ handler ทำงาน — ฝั่ง platform ยังไม่มีชั
 
 ## เฟส 1 — Backend: ชั้นเก็บข้อมูล
 
-### 1.1 ย้ายชั้น activity ขึ้น shared package
+### 1.1 ย้ายเฉพาะส่วนที่แชร์ได้จริงขึ้น shared package
 
-ย้าย `apps/micro-business/src/common/activity/` (`activity.interceptor.ts`,
-`activity-registry.ts`, `entity-snapshot.ts`, `comment-activity.ts`) และ
-`apps/micro-business/src/log/activity-log/activity-diff.ts` + `activity-diff.spec.ts`
-ไปที่ `packages/log-events-library/src/activity/`
+ย้ายขึ้น `packages/log-events-library/src/activity/`:
 
-`micro-business` import กลับจาก package — เป็นการแก้ import ล้วน ไม่แตะพฤติกรรม
-`activity-diff.spec.ts` ที่ย้ายตามไปคือหลักประกันว่าการย้ายไม่ทำอะไรพัง
+- `apps/micro-business/src/log/activity-log/activity-diff.ts` — **ไม่มี import เลยทั้งไฟล์** ย้ายได้ 1:1
+- แกนของ `apps/micro-business/src/common/activity/entity-snapshot.ts` — **ไม่มี import เลย** รับ prisma client
+  เป็น parameter ชนิด `unknown` ไม่ผูก client ตัวไหน
+  **ยกเว้น `SNAPSHOT_INCLUDES` (`:19-68`) ที่ hardcode ตาราง tenant ล้วน** — ต้องเปลี่ยนเป็นรับ include map
+  เข้ามาเป็น parameter แล้วให้ host แต่ละแอปจ่ายของตัวเอง
 
-**ไม่ copy** เพราะสองชุดที่ต้องแก้คู่กันจะเพี้ยนออกจากกันภายในไม่กี่เดือน
+`micro-business` แก้ import ให้ชี้ package (กระทบไฟล์นอกโฟลเดอร์แค่ 1 ไฟล์ 1 บรรทัด: `app.module.ts:15`)
+
+**ข้อบังคับของแพ็กเกจที่ต้องทำตาม:**
+- ทุก relative import ในโค้ดที่ย้ายเข้ามาต้องเติมนามสกุล `.js` (`moduleResolution: Node16`)
+- เติมบรรทัด `export * from './activity/index.js';` ใน `packages/log-events-library/src/index.ts`
+- apps คอมไพล์กับ `dist/` ไม่ใช่ `src/` — ต้อง `bun run build:package` ก่อนเสมอ
+
+### 1.1b ไม่ย้าย `ActivityInterceptor` — เขียนตัวใหม่ของ platform แทน
+
+`apps/micro-business/src/common/activity/activity.interceptor.ts` (547 บรรทัด) **ย้ายไม่ได้**
+ผูกกับ tenant 4 จุด:
+
+| ตัวบล็อก | file:line |
+|---|---|
+| `import { TenantService } from '@/tenant/tenant.service'` + `moduleRef.get(TenantService)` — micro-cluster ไม่มีคลาสนี้ | `:15`, `:344-350` |
+| `saveActivity` เรียก `logTenantEvent` แบบตายตัว — ไม่มีทางเลือก platform และ**ไม่ crash แต่เขียนผิด scope เงียบ ๆ** | `:526` |
+| `ACTIVITY_COMMANDS` เป็น module-level const ประกอบตอน import — ไม่มี API ให้แอปอื่นลงทะเบียน entity | `activity-registry.ts:718-745` |
+| `SNAPSHOT_INCLUDES` hardcode ตาราง tenant | `entity-snapshot.ts:19-68` |
+
+**ตัดสินใจ: เขียน `PlatformActivityInterceptor` ใหม่ใน `apps/micro-cluster/src/common/activity/`**
+
+เหตุผล: 547 บรรทัดนั้นส่วนใหญ่คือ comment handling / `idRollup` / `entitySwitch` / tenant-client resolution
+ซึ่งฝั่ง platform ไม่ใช้เลย — มันไม่ใช่ชุดเดียวกันตั้งแต่แรก การ generalize จะสร้าง abstraction
+ที่รับใช้สองกรณีที่ต่างกันมาก แลกกับการเอาความเสี่ยง regression ไปวางบน `micro-business` ทั้งแอป
+(ทุก request ผ่าน interceptor นี้ และมี `activity.interceptor.spec.ts` 727 บรรทัดที่ต้องยังเขียว)
+
+ตัวใหม่ต่างจากของเดิม:
+- ใช้ `PrismaClient_SYSTEM` ตัวเดียว ไม่ต้อง resolve tenant client เลย
+- เรียก `logPlatformEvent` ไม่ใช่ `logTenantEvent`
+- registry เป็นรูปย่อ: ไม่มี comment / `idRollup` / `entitySwitch`
+- ยืม `resolveIds` / `readPath` / รูป `runWithActivities` (อ่าน before แบบ await → fire-and-forget after) มาเป็นแบบ
 
 ### 1.2 ผูก interceptor เข้า micro-cluster
 
-ลงทะเบียน `ActivityInterceptor` เป็น `APP_INTERCEPTOR` ใน `apps/micro-cluster/src/app.module.ts`
-แบบเดียวกับ `apps/micro-business/src/app.module.ts:395`
-ชี้ writer ไปที่ `PrismaClient_SYSTEM` ซึ่ง `LogEventsModule.forRoot` ที่นั่นตั้งไว้แล้ว
+ลงทะเบียน `PlatformActivityInterceptor` เป็น `APP_INTERCEPTOR` ใน
+`apps/micro-cluster/src/app.module.ts` — แทรกใน `providers` **หลัง** `AuditContextInterceptor`
+(ลำดับเดียวกับ micro-business: Trace → AuditContext → Activity)
+
+`LogEventsModule.forRoot` ที่ `app.module.ts:60-71` ชี้ `platformPrismaClient: PrismaClient_SYSTEM` ไว้แล้ว
+ไม่ต้องแก้
+
+ถ้า interceptor ใหม่ต้องการ `ModuleRef` ต้องเติมใน import บรรทัด 2 (ตอนนี้มีแค่ `APP_INTERCEPTOR`)
 
 **ไม่แตะ `PrismaClient_SYSTEM` และไม่ผูก Prisma extension**
 
@@ -99,8 +134,17 @@ registry เป็นตัวจำกัดขอบเขตจริง — 
 
 ### 1.4 Redaction
 
-ขยาย denylist ของ `redactSensitiveFields` (default: `password, secret, token, api_key, hash`)
-ให้ครอบ `*_token`, `signature`, `avatar_token`
+ขยาย denylist ของ `redactSensitiveFields` ให้ครอบ `*_token`, `signature`, `avatar_token`
+
+**กับดัก: `DEFAULT_SENSITIVE_FIELDS` ประกาศซ้ำ 2 ที่** — `services/log-events.service.ts:19` และ
+`middleware/prisma-audit.middleware.ts:7` (ค่าเท่ากัน: `password, secret, token, api_key, hash`)
+และประกอบ config ต่างกัน: service ใช้ `??` (**แทนที่**) ส่วน middleware ใช้ spread (**รวม**)
+
+ทางที่เลือก: ตั้ง `sensitiveFields` ให้ครบใน `LogEventsModule.forRoot(...)` ของ `micro-cluster`
+(`app.module.ts:67`) — ไม่แก้ default ในแพ็กเกจ เพราะการแก้ตรงนั้นกระทบ `micro-business` ด้วย
+
+`redactSensitiveFields(value, fieldNames)` รับ `ReadonlySet<string>` ที่ **ต้อง lowercase มาแล้ว**
+และแทนค่าด้วย `'[REDACTED]'`
 
 **บังคับใช้ตอนเขียน ไม่ใช่ตอนอ่าน** — redact ตอนอ่านแปลว่าข้อมูลดิบยังนอนอยู่ใน DB
 
@@ -126,8 +170,19 @@ registry เป็นตัวจำกัดขอบเขตจริง — 
 
 **เรียง `created_at desc`** ต่างจากฝั่ง tenant ที่เรียง `asc` — Sheet ต้องเห็นของใหม่สุดก่อน
 
-ลอกรูป service จาก `apps/micro-business/src/log/activity-log/activity-log.service.ts:286-333`
-(`findByEntityId`) และ `:346-363` (`findOneDetail`)
+**service ต้องเขียนใหม่ ไม่ใช่ reuse ของเดิม** — `ActivityLogService` ของ `micro-business` เรียก
+`initializePrismaService(bu_code, user_id)` ซึ่งเปิด **tenant DB ตาม bu_code**
+(`activity-log.service.ts:52-57`) แล้วอ่าน `this.prismaService.tb_activity` ของ tenant
+
+ตัวใหม่อยู่ใน `micro-cluster` และ `@Inject('PRISMA_SYSTEM')` ตรง ๆ — **ไม่ต้องมี `bu_code` เลย**
+โครงให้ลอกจาก `apps/micro-cluster/src/cluster/currency/` (module/controller/service ชุดเล็กสุด
+ที่ไม่แตะ tenant — `currency.module.ts` ไม่มี `imports` เลย)
+
+ตรรกะ query ลอกจาก `activity-log.service.ts:285-333` (`findByEntityId`) และ `:345-363`
+(`findOneDetail`) รวม `mapActorInfo` (`:243-272`) ที่เติมชื่อผู้ทำจาก `tb_user` + `tb_user_profile`
+
+**กับดัก:** controller ต้องใช้ `handlePaginatedResult` สำหรับ list และ `handleResult` สำหรับ detail
+— เลือกผิดแล้ว `paginate` หายเงียบ
 
 ### 2.2 Guard และ permission
 
@@ -156,7 +211,10 @@ Permission key ใหม่ 2 ตัวลงใน
 - `activity_log.detail` — ดูค่าเก่า/ค่าใหม่รายฟิลด์
 
 แยกสอง key เพราะ `detail` คือที่ที่ค่าเก่าของทุกฟิลด์โผล่ออกมา ควรปิดแยกได้
-seed ให้ super admin เป็นค่าเริ่มต้น
+
+**ต้องแตะไฟล์ที่สองด้วย** — `seed.platform-role-permission.data.ts` เพิ่มคีย์ใหม่ให้ Platform Admin
+มิฉะนั้น permission จะมีอยู่ในระบบแต่**ไม่มี role ไหนถือเลย** (รูปของที่มีอยู่: Platform Admin ได้
+`"activity_event.*"` ที่ `:14`, Support Manager ได้ `"activity_event.read"` ที่ `:31`)
 
 **ห้ามใช้ `activity_event.read/detail` ซ้ำ** — เป็นของ UI telemetry คนละตาราง
 
@@ -169,16 +227,57 @@ handler ต้องอ่าน effective permissions จาก `RequestWithPla
 **ตรวจว่า `entity_id` ที่ขอมาอยู่ในคลัสเตอร์ที่ผู้ใช้เข้าถึงได้จริง**
 มี permission key แต่ไม่มีสิทธิ์ในคลัสเตอร์นั้น → 403 ไม่ใช่ข้อมูล
 
+**`resolveAllowedClusterIds` ไม่ใช่ helper กลาง** — อยู่ใน
+`apps/backend-gateway/src/platform/platform-analytics/analytics-scope.ts:58-83`
+ใช้แค่ 2 จุดในไฟล์ analytics เท่านั้น ต้องยกขึ้นที่กลางหรือ copy
+
+สัญญาของมันสำคัญและห้ามตีความผิด: **`null` = ไม่จำกัด (super admin หรือมี permission ระดับ platform),
+`[]` = ไม่เหลืออะไร (fail closed)** และ `RequestWithPlatformPermissions.platformPermissions`
+เป็น optional เสมอ — "ไม่มีค่า" แปลว่าไม่มีสิทธิ์ ห้ามตีความว่าไม่จำกัด
+(`auth.interface.ts:66-67` เขียนเตือนไว้)
+
+`PlatformPermissionGuard` set `request.platformPermissions` ที่
+`platform-permission.guard.ts:98` — วางไว้ก่อนทุก branch ที่ `return true` โดยเจตนา
+
+**เทียบ cluster กับ entity:** สำหรับ `tb_cluster` ตัว `entity_id` **คือ cluster id เอง** จึงเทียบตรงได้
+เฟส 2 ที่เป็น entity อื่นจะต้องแปลง entity → cluster ก่อน ซึ่งต้องยิง RPC ไป
+`ClusterAdminAuthzService.clusterIdForBusinessUnit` (`apps/micro-cluster/src/common/cluster-admin-authz.service.ts:258`)
+— gateway เรียกตรงไม่ได้
+
 ### 2.4 RPC contract
 
 `packages/rpc-contract/src/contracts/activity-logs.ts` เป็นไฟล์ generated — ห้ามแก้มือ
 ทำ 3 ขั้นตามหัวไฟล์ (`:1-11`) แล้วรัน `bun run gen:rpc-contract`
-route ใหม่ต้องผูก `.rest(...)` ไม่ใช่ `.restTodo()`
+**`.rest(...)` เขียนมือไม่ได้** — generator สร้างเองจาก `proposeRest()` ใน `scripts/rest-path-rules.ts:42`
+suffix แบบ `find-by-entity-id` / `find-detail` ไม่ตรงกฎไหน จึงได้ `.restTodo()` ซึ่ง **ถูกต้องแล้ว**
+(`.restTodo()` แปลว่า "ยังไม่ตัดสิน" ไม่ใช่ "ลืม" — มีไว้ให้ `audit:rest-contract` นับได้)
+การไปแก้กฎเพื่อให้ได้ `.rest()` จะกระทบ cmd อื่นทั้งรีโป — ไม่ทำ
+
+**generator ไม่มีไฟล์รายการให้แก้** — มันสแกน `@MessagePattern` ในซอร์สจริง แล้วเขียนทับทั้งโฟลเดอร์
+`packages/rpc-contract/src/contracts` ดังนั้น "ขั้นที่ 1" คือเขียน `@MessagePattern` เป็น object literal
+ชั่วคราวใน controller ของ micro service → รัน `bun run gen:rpc-contract` → เปลี่ยน literal เป็น
+`ActivityLogs.xxx.pattern`
 
 ### 2.5 App API catalog
 
-ชื่อที่ส่งให้ `AppIdGuard` (`activityLog.findByEntity`, `activityLog.findOneDetail`)
-ต้องเพิ่มลง app-api catalog ด้วย ไม่งั้น `audit:app-api-catalog-drift` แดง
+ชื่อที่ส่งให้ `AppIdGuard` ต้องอยู่ใน
+`apps/backend-gateway/src/platform/applications/app-api-catalog.generated.ts`
+
+**ไฟล์นี้เป็น generated ห้ามแก้มือ** — regenerate ด้วย
+`bun run scripts/generate-app-api-catalog/run.ts` แล้ว commit
+
+ลืมแล้วจะพังเงียบ: `isAllowed()` เป็น false → **401 ทุก endpoint** สำหรับ app ที่ไม่ใช่ `allow_all`
+และหน้า Applications จะไม่มี api_name ให้ติ๊ก
+
+`AppIdGuard` คืน **400** เมื่อไม่มี header หรือไม่ใช่ UUID และ **401** (ไม่ใช่ 403) เมื่อไม่อยู่ allowlist
+
+### 2.6 Module registration — ทำ gateway crash ตอน boot ได้
+
+`PlatformPermissionGuard` ต้องการทั้ง `PlatformPermissionService` และ BUSINESS_SERVICE
+module ของ controller ใหม่ต้อง register ครบ 3 providers:
+`[PlatformActivityLogService, PlatformPermissionGuard, PlatformPermissionService]`
+ลืมตัวใดตัวหนึ่ง **gateway crash ตอน boot** (มี comment เตือนไว้ใน `platform-analytics.module.ts:11-12`
+จาก PR #239) — `boot-check` คือด่านที่จับเรื่องนี้ และมันไม่อยู่ใน CI
 
 ---
 
@@ -189,8 +288,8 @@ route ใหม่ต้องผูก `.rest(...)` ไม่ใช่ `.restTo
 | ไฟล์ | หน้าที่ |
 |---|---|
 | `src/services/activityLogService.ts` | `getRecordTrail(entityType, entityId, paginate)` + `getDetail(id)` — base path `/api-system` ตาม `src/services/CLAUDE.md` |
-| `src/hooks/useActivityTrail.ts` | fetch + race guard + โหลดเพิ่ม ตาม `agent-os/standards/hooks/` |
-| `src/components/ActivityTrailSheet.tsx` | ปุ่ม + Sheet ในตัวเดียว รับ `entityType` / `entityId` |
+| `src/pages/clusterEdit/useActivityTrail.ts` | fetch + race guard + โหลดเพิ่ม — **page-local ไม่ใช่ `src/hooks/`** ตาม `agent-os/standards/hooks/hook-placement.md` (ย้ายขึ้นเมื่อมีหน้าที่สองใช้) |
+| `src/pages/clusterEdit/ActivityTrailSheet.tsx` | ปุ่ม + Sheet ในตัวเดียว รับ `entityType` / `entityId` |
 | `src/types/index.ts` | เพิ่ม `ActivityLogEntry`, `ActivityDiff`, `ActivityFieldChange`, `ActivityChildChange` — ฟิลด์ใหม่เป็น optional (กฎ 11) |
 
 ### 3.2 ปุ่ม
@@ -201,8 +300,15 @@ route ใหม่ต้องผูก `.rest(...)` ไม่ใช่ `.restTo
 ### 3.3 เนื้อใน Sheet
 
 - รายการเรียงใหม่→เก่า แต่ละแถว = `<AuditMeta variant="compact">` + `<Badge>` บอก action
-- คลิกแถวแล้ว**กางลงในตัว** (accordion) ไม่เปิด Sheet ซ้อน
+- คลิกแถวแล้ว**กางลงในตัว** ไม่เปิด Sheet ซ้อน
   ตอนกางค่อยเรียก `detail` ครั้งแรกแล้ว cache ไว้ — ปิด-เปิดซ้ำไม่ยิงใหม่
+
+  **ไม่มี Accordion/Collapsible ใน `src/components/ui/`** และห้ามเพิ่มไลบรารี (กฎ 6) —
+  ลอกท่าจาก `src/pages/clusterAdmin/licenses/CollapsibleGroupCard.tsx` (49 บรรทัด:
+  `useState` + `useId` + `aria-expanded`/`aria-controls` + `ChevronDown` หมุน 180°)
+
+  คอมเมนต์ที่ `:19` ของไฟล์นั้นระบุว่า `summary` ไม่ใช่ของประดับ — หัวข้อเปล่าบังคับให้กางทุกใบ
+  เพื่อรู้ว่าข้างในมีอะไร **แถวที่ยุบอยู่จึงต้องบอกได้ว่ามีกี่ฟิลด์เปลี่ยน**
 - diff แสดงเป็นคู่ `ชื่อฟิลด์: ค่าเก่า → ค่าใหม่`
 - ค่าที่ถูก redact แสดงว่า "เปลี่ยนแปลง (ซ่อนค่า)" ไม่ใช่ `[redacted]` ดิบ
 - `children` (ตารางลูก) สรุปเป็น "เพิ่ม 2 / ลบ 1 / แก้ 3 รายการ" — กางลึกกว่านั้นอ่านไม่ไหวในแผ่นแคบ
@@ -213,8 +319,21 @@ route ใหม่ต้องผูก `.rest(...)` ไม่ใช่ `.restTo
 
 ตามตารางใน `src/pages/CLAUDE.md`:
 
-- skeleton แบบ timeline เฉพาะตอน `loading && items.length === 0`
+- **ไม่มี skeleton แบบ timeline สำเร็จรูป** — ประกอบเองจาก `<Skeleton>`
+  (`src/components/ui/skeleton.tsx`) ให้ **กระจกกับเลย์เอาต์จริง** ตามหลักที่
+  `ClusterEdit.tsx:388-390` เขียนไว้ ("nothing snaps sideways when the data lands")
+  แสดงเฉพาะตอน `loading && items.length === 0`
 - โหลดเพิ่มใช้ปุ่ม "โหลดเพิ่ม" ท้ายรายการ ไม่ใช่ pagination bar (เปลืองที่ในแผ่นแคบ)
+
+**race guard บังคับ** — `agent-os/standards/hooks/fetch-race-guards.md`: refetch ตาม input
+ต้องใช้ **generation counter** ไม่ใช่ `cancelled` flag และต้อง guard **ทุกกิ่ง — `then`, `catch`,
+และ `finally`** (`setLoading(false)` จาก response ที่ถูกทิ้งจะดับ spinner ทั้งที่ตัวจริงยังบินอยู่)
+ตัวแบบให้ลอก: `src/hooks/useUserSearch.ts`
+
+⚠️ `src/pages/clusterEdit/useClusterUsers.ts:75-115` มีท่า append/`loadMore` ให้ลอกแต่
+**ไม่มี race guard** — ลอกท่า append ได้ แต่ต้องเติม generation counter เอง
+
+`enabled` flag: Sheet ปิด = ไม่ยิง request แต่ **ห้ามล้าง state** — เปิดใหม่ต้องเห็นของเดิม
 
 ### 3.5 Empty state ต้องพูดความจริง
 
@@ -230,9 +349,24 @@ route ใหม่ต้องผูก `.rest(...)` ไม่ใช่ `.restTo
 
 ### 3.6 i18n
 
-คีย์ใหม่ทั้งหมดลงพจนานุกรมทั้งสองภาษา ห้าม hardcode
+คีย์ใหม่ลง `src/i18n/en.ts` (source of truth) และ `src/i18n/th.ts` ห้าม hardcode
 
-### 3.7 ไม่ทำรอบนี้
+**ไม่ต้องรัน script ใด ๆ** — `TKey` เป็น type-level derive จาก `en.ts` (`src/i18n/types.ts:18-25`)
+และ `th.ts:10` ประกาศ `const th: Translations` ทำให้ key ที่ขาดเป็น compile error
+⇒ **`bun run typecheck` คือด่านตรวจ i18n**
+
+`t` ผูก identity กับ `lang` โดยตั้งใจ — `useMemo` ใดที่ใช้ `t` ต้องใส่ `t` ใน deps
+และ **ห้ามใส่ `t` ใน deps ของ `useEffect` ที่ยิง API** (จะยิงใหม่ทุกครั้งที่สลับภาษา —
+แปลข้อความ error ตอน render แทน ตามท่าใน `useAllClusters.ts:68`)
+
+### 3.7 Debug Sheet — เติม tab ไม่ใช่สร้างใหม่
+
+`ClusterEdit.tsx:744-757` มี `DevDebugSheet` อยู่แล้วพร้อม 3 tab
+hook ใหม่ต้อง expose `rawHistoryResponse` ออกมา (เหมือน `users.rawUsersResponse`)
+แล้วเติมเป็น tab ที่ 4 — `DevDebugSheet` คืน `null` เองถ้าไม่มี tab ไหนมี data
+จึงปลอดภัยที่จะเติมตอนค่ายังเป็น `null`
+
+### 3.8 ไม่ทำรอบนี้
 
 ไม่แตะหน้า Management · ไม่มีเมนู "ดูประวัติ" ในแถวตาราง ·
 ไม่มี filter/ค้นหาใน Sheet · ไม่มี CSV export
