@@ -86,6 +86,11 @@ export interface ClusterPlateProps {
   onUploadLogo: (f: File) => Promise<void>;
   onUploadAvatar: (f: File) => Promise<void>;
   onTabChange: (tab: ClusterTabId) => void;
+  /**
+   * ปุ่มที่วางคู่กับ back link — ทางเดียวที่จะแทรกของเข้าหัวแผ่นได้ เพราะแผ่นนี้ไม่รับ children
+   * และการยัดลงแถวชื่อถูกห้ามไว้โดยเจตนา (ดูคอมเมนต์ที่ HeroName)
+   */
+  headerAction?: React.ReactNode;
 }
 
 /**
@@ -115,6 +120,7 @@ export function ClusterPlate({
   onUploadLogo,
   onUploadAvatar,
   onTabChange,
+  headerAction,
 }: ClusterPlateProps) {
   const { t } = useI18n();
   const buFree = Math.max(0, bu.cap - bu.used);
@@ -125,13 +131,16 @@ export function ClusterPlate({
     <div className="space-y-3">
       {/* ::before stretches the tap area to 44px while the link stays 20px tall — the same
        *  measured fix `InlineField` and `BuPropertyPlate` carry. */}
-      <Link
-        to={backTo}
-        className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
-      >
-        <ArrowLeft className="size-4" />
-        {t('breadcrumb.clusters')}
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          to={backTo}
+          className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
+        >
+          <ArrowLeft className="size-4" />
+          {t('breadcrumb.clusters')}
+        </Link>
+        {headerAction}
+      </div>
 
       <Card className="overflow-hidden p-0">
         <div className="flex gap-4 p-4 sm:p-5">

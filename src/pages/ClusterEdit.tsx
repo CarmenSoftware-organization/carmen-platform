@@ -31,12 +31,24 @@ import { BusinessUnitsSection } from './clusterEdit/sections/BusinessUnitsSectio
 import { SubscriptionCard } from './clusterEdit/sections/SubscriptionCard';
 import { UsersSection } from './clusterEdit/sections/UsersSection';
 import { useClusterUsers, type SearchUser } from './clusterEdit/useClusterUsers';
+import { ActivityTrailSheet } from './clusterEdit/ActivityTrailSheet';
+import Can from '../components/Can';
+import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import { PERPETUAL_END_DATE } from '../utils/clusterLicense';
 import { toIsoEndOfDay } from './licenses/licenseDates';
 import type { BusinessUnit } from '../types';
 import { useI18n } from '../hooks/useI18n';
 
 const CLUSTER_ROLES = ['admin', 'user'] as const;
+
+/**
+ * วันที่ระบบเริ่มบันทึกประวัติการเปลี่ยนแปลงของ cluster
+ *
+ * เป็นค่าคงที่ในโค้ดโดยเจตนา ไม่ได้ดึงจาก API: backend ไม่มีข้อมูลนี้ และการถามว่า
+ * "แถวเก่าสุดใน tb_activity คือเมื่อไหร่" จะให้คำตอบผิดสำหรับเรคอร์ดที่ไม่เคยถูกแก้เลย —
+ * ผู้ใช้จะเห็นแผ่นว่างแล้วสรุปว่าไม่เคยมีใครแก้ ทั้งที่จริงคือระบบยังไม่ได้บันทึกตอนนั้น
+ */
+const AUDIT_RECORDING_STARTED_ON = '2026-08-31';
 
 const ClusterEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +76,7 @@ const ClusterEdit: React.FC = () => {
   const [notFound, setNotFound] = useState(false);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [rawBuResponse, setRawBuResponse] = useState<unknown>(null);
+  const [rawHistoryResponse, setRawHistoryResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   // Raw cluster record from the last successful fetch — kept separate from `formData` (the
   // useUnsavedChanges diff target) and separate from `clusterMeta` below, purely so
@@ -531,6 +544,18 @@ const ClusterEdit: React.FC = () => {
               onUploadLogo={handleUploadLogo}
               onUploadAvatar={handleUploadAvatar}
               onTabChange={handleTabChange}
+              headerAction={
+                /* clusterId ต้องไม่เป็น undefined — Can จะตกไปกิ่ง "cluster ไหนก็ได้" ซึ่งตั้งใจไว้
+                   สำหรับ nav/page visibility ไม่ใช่การเช็คแบบเข้ม (utils/permissions.ts) */
+                <Can permission="activity_log.read" clusterId={id ?? UNRESOLVED_CLUSTER_ID}>
+                  <ActivityTrailSheet
+                    entityType="cluster"
+                    entityId={id}
+                    recordingStartedOn={AUDIT_RECORDING_STARTED_ON}
+                    onRawResponse={setRawHistoryResponse}
+                  />
+                </Can>
+              }
             />
 
             {error && (
@@ -750,6 +775,7 @@ const ClusterEdit: React.FC = () => {
             { key: 'cluster', label: 'Cluster', data: rawResponse, endpoint: `GET /api-system/clusters/${id}` },
             { key: 'bu', label: 'Business Units', data: rawBuResponse, endpoint: 'GET /api-system/business-units' },
             { key: 'users', label: 'Users', data: users.rawUsersResponse, endpoint: `GET /api-system/user/clusters/${id}` },
+            { key: 'history', label: 'Change History', data: rawHistoryResponse, endpoint: `GET /api-system/platform/activity-logs/record/${id}?entity_type=cluster` },
           ]}
         />
       )}

@@ -3608,6 +3608,27 @@ export const en = {
       // source and no text sweep can see it (blind spot 2 of the fix brief).
       topPageSub: '{{sessions}} sessions · {{users}} users',
     },
+    activityTrail: {
+      buttonLabel: 'Change history',
+      title: 'Change history',
+      description: 'Every recorded change to this record — who changed it, when, and what changed',
+      // ไม่ใช่ "ไม่มีประวัติ" โดยเจตนา: เรคอร์ดที่ไม่เคยถูกแก้กับเรคอร์ดที่ถูกแก้ก่อนระบบเริ่ม
+      // บันทึก หน้าตาเหมือนกันทุกประการ การเขียนว่า "ไม่มี" จะทำให้ผู้ใช้สรุปผิดในหน้าจอ audit
+      emptyTitle: 'No recorded changes',
+      emptyDescription: 'Recording started on {{date}}. Changes made before then were not kept.',
+      loadMore: 'Load more',
+      // ไม่มีระบบ plural ใน translate() — ใช้รูปเดียวที่อ่านได้ทั้ง 1 และหลายฟิลด์
+      changedFields: '{{count}} field(s) changed',
+      noFieldChanges: 'No field changes recorded',
+      // ค่าที่ถูกปิดบังตอนบันทึก — บอกได้ว่าฟิลด์นี้เปลี่ยน แต่บอกไม่ได้ว่าเปลี่ยนเป็นอะไร
+      redactedValue: 'changed (value hidden)',
+      emptyValue: 'empty',
+      childSummary: '{{relation}}: {{added}} added, {{removed}} removed, {{updated}} changed',
+      actionCreate: 'created',
+      actionUpdate: 'updated',
+      actionDelete: 'deleted',
+      loadError: 'Could not load the change history',
+    },
     activityEvents: {
       subtitle: 'Per-event UI telemetry — who clicked what, on which page, and when',
       searchLabel: 'Search',
