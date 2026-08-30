@@ -424,7 +424,7 @@ const ActivityEventManagement: React.FC = () => {
       {process.env.NODE_ENV === 'development' && (
         <DevDebugSheet
           title="API Response"
-          endpoint="GET /api-system/platform/analytics/events"
+          endpoint="GET /api-system/platform/analytics/records"
           data={rawResponse}
         />
       )}

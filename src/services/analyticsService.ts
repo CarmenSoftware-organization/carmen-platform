@@ -44,7 +44,13 @@ const analyticsService = {
     const response = await api.get(
       // ตั้งใจส่งเป็น filter_bu_code ไม่ใช่ bu_code (เหตุผลเดียวกับ getOverview ด้านบน) —
       // KeycloakGuard ที่ gateway ดักคีย์ bu_code เป๊ะ ๆ แล้วบังคับ BU membership / super-admin
-      `/api-system/platform/analytics/events?${toQuery({
+      //
+      // path ต้องเป็น `records` ไม่ใช่ `events` — **ห้ามเปลี่ยนกลับ** ตัวบล็อกโฆษณาฝั่งเบราว์เซอร์
+      // (uBlock/AdGuard/Brave และ filter list สาย EasyPrivacy) กรอง URL ที่มีสตริง
+      // `analytics/event` ทิ้ง **ก่อน request ออกจากเครื่องผู้ใช้** ผลคือหน้านี้ขึ้น "Network Error"
+      // ถาวรสำหรับคนที่ติดตั้งตัวบล็อก ขณะที่ `curl` ผ่านปกติและ log ฝั่ง backend ว่างเปล่า
+      // วัดแล้ว: `analytics/event*` ถูกบล็อก · `analytics/records`, `analytics/overview` ผ่าน
+      `/api-system/platform/analytics/records?${toQuery({
         ...filters,
         ...(bu_code ? { filter_bu_code: bu_code } : {}),
         page: page ?? 1,
