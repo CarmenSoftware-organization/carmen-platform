@@ -17,6 +17,7 @@ import type { TKey } from '../../i18n/types';
 import type { ActivityDiff, ActivityLogEntry } from '../../types';
 import { useActivityTrail } from '../../hooks/useActivityTrail';
 import { ActivityDiffView, visibleFieldChanges } from './ActivityDiffView';
+import { isMembershipEntry, membershipKey } from './membership';
 
 interface ActivityTrailSheetProps {
   /** ชื่อตารางที่ตัด prefix tb_ ออกแล้ว เช่น "cluster" */
@@ -43,10 +44,13 @@ const TrailRow: React.FC<{
 }> = ({ entry, expanded, onToggle, loading, changes }) => {
   const { t } = useI18n();
   const contentId = useId();
+  // แถวการเปลี่ยนสมาชิกไม่มีฟิลด์เปลี่ยน — บอกจำนวนฟิลด์จะสื่อผิด
+  const isMembership = isMembershipEntry(entry);
   // จำนวนฟิลด์รู้ได้หลังโหลด detail เท่านั้น — ก่อนกางจึงยังไม่มีตัวเลขให้แสดง
   // นับเฉพาะฟิลด์ที่จะแสดงจริง ไม่ใช่ทั้งหมดที่ backend ส่งมา ไม่งั้นหัวแถวจะบอก "3 ฟิลด์"
   // แล้วกางออกมาเห็นฟิลด์เดียว
-  const fieldCount = changes ? visibleFieldChanges(changes).length : undefined;
+  const fieldCount =
+    !isMembership && changes ? visibleFieldChanges(changes).length : undefined;
 
   return (
     <div className="border-border border-b last:border-b-0">
@@ -79,10 +83,34 @@ const TrailRow: React.FC<{
       </button>
       {expanded && (
         <div id={contentId} className="pb-3">
-          {loading ? <Skeleton className="h-16 w-full" /> : <ActivityDiffView changes={changes} />}
+          {isMembership ? (
+            <MembershipDetail entry={entry} />
+          ) : loading ? (
+            <Skeleton className="h-16 w-full" />
+          ) : (
+            <ActivityDiffView changes={changes} />
+          )}
         </div>
       )}
     </div>
+  );
+};
+
+/**
+ * เนื้อในของแถวการเปลี่ยนสมาชิก — ประโยคเดียว ไม่ใช่ตาราง diff
+ *
+ * ไม่ต้องโหลด detail เพราะข้อมูลที่ต้องใช้ (event_type, subject_name) มากับแถวใน list แล้ว
+ */
+const MembershipDetail: React.FC<{ entry: ActivityLogEntry }> = ({ entry }) => {
+  const { t } = useI18n();
+  const key = membershipKey(entry);
+  if (!key) return null;
+  return (
+    <p className="text-muted-foreground text-xs">
+      {t(key, {
+        name: entry.subject_name || t('pages.activityTrail.membershipUnknownSubject'),
+      })}
+    </p>
   );
 };
 
@@ -122,13 +150,17 @@ export const ActivityTrailSheet: React.FC<ActivityTrailSheetProps> = ({
     if (trail.rawResponse !== null) onRawResponse?.(trail.rawResponse);
   }, [trail.rawResponse, onRawResponse]);
 
-  const toggle = (id: string) => {
+  const toggle = (entry: ActivityLogEntry) => {
+    const id = entry.id;
     if (expandedId === id) {
       setExpandedId(null);
       return;
     }
     setExpandedId(id);
-    trail.loadDetail(id); // มี cache ในตัว — กางซ้ำไม่ยิงใหม่
+    // แถว membership อ่านทุกอย่างจาก list ได้แล้ว ไม่ต้องยิง detail ให้เปล่าประโยชน์
+    if (!isMembershipEntry(entry)) {
+      trail.loadDetail(id); // มี cache ในตัว — กางซ้ำไม่ยิงใหม่
+    }
   };
 
   const isEmpty = !trail.loading && trail.entries.length === 0 && !trail.error;
@@ -174,7 +206,7 @@ export const ActivityTrailSheet: React.FC<ActivityTrailSheetProps> = ({
                     key={entry.id}
                     entry={entry}
                     expanded={expandedId === entry.id}
-                    onToggle={() => toggle(entry.id)}
+                    onToggle={() => toggle(entry)}
                     loading={!!trail.detailLoading[entry.id]}
                     changes={trail.details[entry.id]?.changes}
                   />
