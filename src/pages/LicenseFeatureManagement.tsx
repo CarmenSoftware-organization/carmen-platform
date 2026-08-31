@@ -20,6 +20,7 @@ import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FeatureStateToggle } from '../components/FeatureStateToggle';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import {
   Select,
   SelectContent,
@@ -75,6 +76,11 @@ const LicenseFeatureManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState<FeatureState | 'all'>('all');
   const [savingId, setSavingId] = useState<string | null>(null);
+  /**
+   * แถวที่รอคำยืนยันก่อนซ่อน — `null` = ไม่มีกล่องเปิดอยู่
+   * เก็บทั้งแถวไว้ ไม่ใช่แค่ id เพราะกล่องต้องใช้ทั้ง label และ affected_bu_count
+   */
+  const [pendingHide, setPendingHide] = useState<LicenseFeatureAdminRow | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,12 +130,11 @@ const LicenseFeatureManagement: React.FC = () => {
   };
 
   /**
-   * เปลี่ยนสถานะหนึ่งแถวแล้วบันทึกทันที — ปิด toggle ระหว่างรอเพื่อไม่ให้ยิงซ้อน
+   * ยิงการเปลี่ยนสถานะจริง — ปิด toggle ระหว่างรอเพื่อไม่ให้ยิงซ้อน
    * 409 หมายถึงมีคนอื่นแก้แถวนี้ไปแล้ว: แจ้งแล้วดึงใหม่ทั้งชุด ไม่ใช่เขียนทับของเขา
    */
-  const handleChange = useCallback(
+  const applyChange = useCallback(
     async (row: LicenseFeatureAdminRow, next: FeatureState) => {
-      if (next === row.state) return;
       setSavingId(row.id);
       try {
         const response = await licenseFeatureService.setState(row.id, next, row.doc_version);
@@ -148,6 +153,29 @@ const LicenseFeatureManagement: React.FC = () => {
       }
     },
     [t, fetchAll],
+  );
+
+  /**
+   * ตัวกั้นก่อนบันทึก — `hide` เท่านั้นที่ต้องยืนยัน
+   *
+   * `hide` ลบเมนูออกจาก **ทุก BU ที่ถือคีย์นี้พร้อมกัน รวมลูกค้าที่จ่ายเงินไปแล้ว** เพราะ
+   * `state` เป็นค่า global ไม่แยกตาม BU ส่วน `inactive` ไม่มีผลกับ runtime เลย (แค่ห้ามติ๊ก
+   * เพิ่มใหม่ตอนขาย) การเตือนตรงนั้นด้วยจะกลายเป็นเสียงรบกวนที่คนกดผ่านโดยไม่อ่าน
+   * แล้วพอถึง `hide` จริง ๆ ก็จะกดผ่านเหมือนกัน
+   *
+   * ไม่มีใครถือคีย์นี้ (`affected_bu_count` เป็น 0 หรือ gateway เก่าไม่ส่งมา) → บันทึกเลย
+   * ไม่มีอะไรให้เตือน
+   */
+  const handleChange = useCallback(
+    (row: LicenseFeatureAdminRow, next: FeatureState) => {
+      if (next === row.state) return;
+      if (next === 'hide' && (row.affected_bu_count ?? 0) > 0) {
+        setPendingHide(row);
+        return;
+      }
+      void applyChange(row, next);
+    },
+    [applyChange],
   );
 
   const columns = useMemo<ColumnDef<LicenseFeatureAdminRow, unknown>[]>(() => [
@@ -256,6 +284,26 @@ const LicenseFeatureManagement: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* คำอธิบายต้องบอกด้วยว่า "กู้คืนได้" — นี่ไม่ใช่การลบข้อมูล ตั้งกลับเป็น active แล้วเมนู
+          กลับมาเองภายใน 1 นาที (อายุ cache ของ gateway) การเตือนแรงเกินความจริงจะทำให้คน
+          เลิกอ่านกล่องเตือน ซึ่งอันตรายกว่าไม่มีกล่องเลย */}
+      <ConfirmDialog
+        open={pendingHide !== null}
+        onOpenChange={(open) => !open && setPendingHide(null)}
+        title={t('pages.licenseFeatures.hideConfirmTitle')}
+        description={t('pages.licenseFeatures.hideConfirmDescription', {
+          label: pendingHide?.label ?? '',
+          count: pendingHide?.affected_bu_count ?? 0,
+        })}
+        confirmText={t('pages.licenseFeatures.hideConfirmAction')}
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          const row = pendingHide;
+          setPendingHide(null);
+          if (row) await applyChange(row, 'hide');
+        }}
+      />
 
       {process.env.NODE_ENV === 'development' && (
         <DevDebugSheet
