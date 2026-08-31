@@ -123,6 +123,78 @@
   }
 }
 
+/* ── Native date & time inputs ────────────────────────────────────────────────
+ * Every date field in this app is a native `<input type="date">` /
+ * `type="datetime-local"` (18 of them, no date library — see CLAUDE.md). `color-scheme`
+ * up in `:root`/`.dark` already makes Chrome draw the *popup* calendar in the right theme;
+ * what it does not touch is the control itself, which kept the browser's own black
+ * calendar glyph and the OS blue selection — the two loudest things in a quiet form, and
+ * on the dark theme the glyph sat at roughly 1.5:1 against the field.
+ *
+ * These live in `@layer base` with the other resets: they only style shadow-DOM
+ * pseudo-elements, which no Tailwind utility can reach, so nothing here can swallow a
+ * utility the way an unlayered `*` selector once did.
+ *
+ * `::-webkit-*` is Chromium and Safari only. Firefox draws no picker indicator at all, so
+ * there is nothing to restyle there and nothing here breaks it. */
+@layer base {
+  /* The glyph is replaced rather than recoloured: `filter: invert()` on the browser's own
+   * icon lands on whatever grey the invert happens to produce, and flips again per theme.
+   * A mask paints it in a real token instead, so it tracks the theme like any other icon.
+   * The shape is lucide's `calendar`, the same set every icon in the app comes from. */
+  /* `date` and `datetime-local` only — the two types this app actually uses. A `time` input
+   * shares the same pseudo-element, so adding it here would stamp a calendar on a field that
+   * asks for a clock. */
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    background-color: hsl(var(--muted-foreground));
+    background-image: none;
+    -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M8 2v4'/><path d='M16 2v4'/><rect width='18' height='18' x='3' y='4' rx='2'/><path d='M3 10h18'/></svg>");
+    mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M8 2v4'/><path d='M16 2v4'/><rect width='18' height='18' x='3' y='4' rx='2'/><path d='M3 10h18'/></svg>");
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+    margin-left: 0.25rem;
+    opacity: 1;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+
+  /* The whole field is the hover target, not the 16px glyph: the pointer is on its way to
+   * the icon long before it arrives, and lighting up on approach is what says it is a
+   * button at all. */
+  input[type='date']:hover::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']:hover::-webkit-calendar-picker-indicator {
+    background-color: hsl(var(--foreground));
+  }
+
+  input[type='date']:disabled::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']:disabled::-webkit-calendar-picker-indicator {
+    cursor: not-allowed;
+  }
+
+  /* The highlight on the segment being typed into stays the browser's own. Chrome does not
+   * honour `:focus` on `::-webkit-datetime-edit-*-field` (measured in-page 2026-08-31: the
+   * identical rule without `:focus` paints, with it nothing happens), and the selector that
+   * does reach those fields — `input:focus::-webkit-datetime-edit-day-field` — paints every
+   * segment at once, which says "all of this is selected" when one part is. A wrong
+   * highlight is worse than the OS one, so there is no rule here. */
+
+  /* An empty date field prints `dd/mm/yyyy` in full text colour, so a field waiting to be
+   * filled reads exactly like one already answered. Muting it makes it a placeholder, which
+   * is what it is. Reachable only through `:invalid` — CSS has no "this input is empty"
+   * selector for a date — so it covers the required fields, which are the ones whose
+   * emptiness matters. Never while focused: the segment you are typing into must not fade. */
+  input[type='date']:required:invalid:not(:focus)::-webkit-datetime-edit,
+  input[type='datetime-local']:required:invalid:not(:focus)::-webkit-datetime-edit {
+    color: hsl(var(--muted-foreground));
+  }
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
