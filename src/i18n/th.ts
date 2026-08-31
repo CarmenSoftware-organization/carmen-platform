@@ -414,6 +414,8 @@ export const th: Translations = {
       saveBusinessUnitFirst: 'กรุณาบันทึกหน่วยธุรกิจก่อน',
       // ข้อความ "ตรวจสอบล่าสุดเมื่อ HH:MM:SS" ร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx
       lastChecked: 'ตรวจสอบล่าสุดเมื่อ {{time}}',
+      // สถานะก่อนกดตรวจของ TenantSeedCard.tsx / TenantMigrationCard.tsx — ดูเหตุผลที่ en.ts
+      notCheckedYet: 'ยังไม่ได้ตรวจ',
     },
     validation: {
       requiredMessage: 'กรุณากรอก {{label}}',
@@ -1668,6 +1670,12 @@ export const th: Translations = {
       // Copied verbatim from pages.users.buColumn ('BU' is an abbreviation, not translated).
       logoFallback: 'BU',
       detailsGroup: 'รายละเอียด',
+      // คำบรรยายของกลุ่ม (2026-08-31) — ดูเหตุผลที่ en.ts
+      detailsGroupDescription: 'ข้อมูลระบุตัวตนและคลัสเตอร์ที่สังกัด',
+      hotelGroupDescription: 'ที่ตั้งของโรงแรมที่หน่วยธุรกิจนี้ดำเนินงาน',
+      companyGroupDescription: 'นิติบุคคลที่ออกใบแจ้งหนี้ให้หน่วยธุรกิจนี้',
+      taxGroupDescription: 'เลขทะเบียนที่ใช้บนเอกสาร',
+      dateAndTimeGroupDescription: 'รูปแบบการแสดงวันและเวลา',
       maxUsersLabel: 'จำนวนผู้ใช้สูงสุด',
       maxUsersFromLicenseOne: 'จาก {{count}} ไลเซนส์ที่ใช้งานอยู่ · แก้ไขได้ที่แท็บผู้ใช้งาน',
       maxUsersFromLicenseMany: 'จาก {{count}} ไลเซนส์ที่ใช้งานอยู่ · แก้ไขได้ที่แท็บผู้ใช้งาน',
@@ -1832,6 +1840,12 @@ export const th: Translations = {
       amountFormatLabel: 'รูปแบบจำนวนเงิน',
       quantityFormatLabel: 'รูปแบบจำนวน',
       recipeFormatLabel: 'รูปแบบสูตร',
+      // ตัวอย่างผลลัพธ์สดข้าง JSON แต่ละช่อง (2026-08-31) — ดูเหตุผลที่ en.ts
+      formatPreviewSample: '{{sample}} จะแสดงเป็น',
+      formatPreviewPerPage: 'จำนวนแถวต่อหน้า:',
+      formatPreviewEmpty: 'ยังไม่ตั้งค่า — ระบบจะใช้ค่าเริ่มต้นของ tenant',
+      formatPreviewInvalidJson: 'ไม่ใช่ JSON ที่ถูกต้อง — ค่านี้จะไม่ถูกนำไปใช้',
+      formatPreviewInvalidOptions: 'เป็น JSON ที่ถูกต้อง แต่ไม่ใช่รูปแบบที่ใช้ได้ — ค่านี้จะไม่ถูกนำไปใช้',
     },
     // ดูเหตุผลของทุกคีย์ในบล็อกนี้ที่ en.ts — ค่าไทยคือถ้อยคำเดิมของหน้าที่ย้ายมาทั้งดุ้น
     // ไม่ได้เรียบเรียงใหม่ ส่วนคีย์ที่ค่าไทยเท่ากับอังกฤษเป็นความตั้งใจ (หน้าเดิมแสดงคำเหล่านั้น

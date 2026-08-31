@@ -37,6 +37,12 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
   const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
   // ผู้ใช้ที่ปิดแล้วไม่คืนที่นั่ง — นับไว้เพื่อตัดสินว่าต้องอธิบายป้าย Shared หรือไม่
   const sharedCount = users.buUsers.filter((u) => u.is_active && u.frees_seat === false).length;
+  // ระบบนี้ตั้ง username เป็นอีเมลเป็นค่าเริ่มต้น ตารางจริงจึงมีสองคอลัมน์ที่ค่าเท่ากันทุกแถว
+  // กินความกว้าง ~30% โดยไม่ให้ข้อมูลเพิ่ม — ซ่อนคอลัมน์ username เมื่อ "ทุกแถว" ซ้ำ
+  // (แถวเดียวที่ต่างก็พอให้คอลัมน์นี้มีความหมาย จึงยังแสดง)
+  const showUsernameColumn = users.buUsers.some(
+    (u) => (u.username || '').trim().toLowerCase() !== (u.email || '').trim().toLowerCase(),
+  );
 
   return (
   <Card>
@@ -84,7 +90,7 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                 <TableHead className="w-10 text-center">#</TableHead>
                 <TableHead>{t('common.field.name')}</TableHead>
                 <TableHead>{t('common.field.email')}</TableHead>
-                <TableHead>{t('common.field.username')}</TableHead>
+                {showUsernameColumn && <TableHead>{t('common.field.username')}</TableHead>}
                 <TableHead>{t('common.label.buRole')}</TableHead>
                 <TableHead className="text-center">{t('pages.businessUnits.buStatusLabel')}</TableHead>
                 {canEdit && <TableHead className="w-10" />}
@@ -111,7 +117,7 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                     </Link>
                   </TableCell>
                   <TableCell>{u.email || '-'}</TableCell>
-                  <TableCell>{u.username || '-'}</TableCell>
+                  {showUsernameColumn && <TableCell>{u.username || '-'}</TableCell>}
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
                       {u.role ? roleLabel(t, u.role) : '-'}
@@ -119,9 +125,16 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-center gap-1.5">
-                      <Badge variant={u.is_active ? 'success' : 'secondary'} className="text-xs">
-                        {u.is_active ? t('common.status.active') : t('common.status.inactive')}
-                      </Badge>
+                      {/* สีสงวนไว้ให้แถวที่ผิดปกติ: ป้ายเขียวเรียงกันทุกแถวคือเสียงรบกวน
+                          ไม่ใช่ข้อมูล — ปกติ (Active) จึงเป็นตัวหนังสือจาง ส่วน Inactive
+                          ยังเป็นป้ายเพื่อให้สะดุดตาเวลากวาดสายตา */}
+                      {u.is_active ? (
+                        <span className="text-muted-foreground text-xs">{t('common.status.active')}</span>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">
+                          {t('common.status.inactive')}
+                        </Badge>
+                      )}
                       {/* frees_seat มาจาก backend เท่านั้น (optional — Task 4b.1) — undefined ต้องไม่ขึ้น
                           ป้ายนี้ เพราะยังตัดสินไม่ได้ว่าปิดแล้วคืนที่นั่งหรือเปล่า
                           ป้ายสั้นแทนประโยคเต็ม: ความหมายเหมือนกันทุกแถว การพิมพ์ซ้ำ 10 รอบจึงเป็น

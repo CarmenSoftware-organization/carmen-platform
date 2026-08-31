@@ -9,6 +9,21 @@ export interface InlineOption {
   label: string;
 }
 
+/**
+ * How wide the control gets. The width is part of the reading: a two-digit ceiling in a
+ * 1000px box tells the eye nothing, and a pencil parked at the far right of that box sits
+ * ~900px from the value it edits. Read and edit modes share the class so the row does not
+ * jump when it opens.
+ */
+export type InlineWidth = 'xs' | 'sm' | 'md' | 'full';
+
+const WIDTH_CLASS: Record<InlineWidth, string> = {
+  xs: 'max-w-[14rem]',
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  full: 'max-w-full',
+};
+
 interface InlineFieldProps {
   name: string;
   label: string;
@@ -16,6 +31,8 @@ interface InlineFieldProps {
   type?: 'text' | 'number' | 'email' | 'textarea' | 'select';
   options?: InlineOption[];
   mono?: boolean;
+  /** Control width, sized to the data it holds. Defaults to 'sm'. */
+  width?: InlineWidth;
   placeholder?: string;
   error?: string;
   disabled?: boolean;
@@ -30,11 +47,12 @@ interface InlineFieldProps {
 }
 
 const inputBase =
-  'w-full max-w-sm rounded-md border bg-background px-2.5 py-1.5 text-sm text-foreground outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
+  'w-full rounded-md border bg-background px-2.5 py-1.5 text-sm text-foreground outline-hidden focus-visible:ring-1 focus-visible:ring-ring';
 
 // The contract pairs the message with a destructive border; the border must track
 // the error, not stay primary while the message shouts.
-const inputClassFor = (error?: string) => cn(inputBase, error ? 'border-destructive' : 'border-primary');
+const inputClassFor = (error: string | undefined, width: InlineWidth) =>
+  cn(inputBase, WIDTH_CLASS[width], error ? 'border-destructive' : 'border-primary');
 
 /**
  * Read-mode control. The visual box stays compact (~32px) — a ~50-row form would
@@ -44,7 +62,7 @@ const inputClassFor = (error?: string) => cn(inputBase, error ? 'border-destruct
  * Per the A4 contract: "the tappable area governs, not the visual control".
  */
 const readButtonClass =
-  'group hover:bg-primary/5 relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:cursor-default disabled:hover:bg-transparent ' +
+  'group hover:bg-primary/5 focus-visible:ring-ring relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-hidden focus-visible:ring-1 disabled:cursor-default disabled:hover:bg-transparent ' +
   "before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']";
 
 /**
@@ -58,6 +76,7 @@ export function InlineField({
   type = 'text',
   options,
   mono,
+  width = 'sm',
   placeholder,
   error,
   disabled,
@@ -141,7 +160,7 @@ export function InlineField({
                 if (e.target.value !== value) onCommit(name, e.target.value);
               }}
               onBlur={cancel}
-              className={inputClassFor(error)}
+              className={inputClassFor(error, width)}
             >
               {/* Empty prompt so an unset select shows the placeholder (not the
                   first option as pre-selected) — otherwise picking that first
@@ -157,7 +176,7 @@ export function InlineField({
             </select>
           ) : maxLength != null ? (
             // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- wrapper only forwards blur/keydown from the focused field inside; not itself interactive
-            <div className="max-w-sm" onBlur={commit} onKeyDown={ccKeyDown}>
+            <div className={WIDTH_CLASS[width]} onBlur={commit} onKeyDown={ccKeyDown}>
               <CharacterCountInput
                 ariaLabel={label}
                 ariaRequired={required}
@@ -183,7 +202,7 @@ export function InlineField({
               onBlur={commit}
               onKeyDown={onKeyDown}
               rows={3}
-              className={cn(inputClassFor(error), 'resize-y', mono && 'font-mono')}
+              className={cn(inputClassFor(error, width), 'resize-y', mono && 'font-mono')}
             />
           ) : (
             <input
@@ -197,7 +216,7 @@ export function InlineField({
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commit}
               onKeyDown={onKeyDown}
-              className={cn(inputClassFor(error), mono && 'font-mono')}
+              className={cn(inputClassFor(error, width), mono && 'font-mono')}
             />
           )
         ) : (
@@ -207,13 +226,17 @@ export function InlineField({
             disabled={disabled}
             className={cn(
               readButtonClass,
+              WIDTH_CLASS[width],
               !displayValue && 'text-muted-foreground italic',
               mono && displayValue && 'font-mono tabular-nums',
             )}
           >
             <span className="whitespace-pre-line">{displayValue ?? promptText}</span>
             {!disabled && (
-              <Pencil className="text-muted-foreground/60 ml-auto size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" />
+              /* Hover reveals it on a mouse; a touch device has no hover, so there the
+                 pencil stays faintly visible — otherwise nothing on the row says it is
+                 editable at all. */
+              <Pencil className="text-muted-foreground/60 ml-auto size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 [@media(hover:none)]:opacity-70" />
             )}
           </button>
         )}
