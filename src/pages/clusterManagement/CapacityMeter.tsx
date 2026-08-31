@@ -3,8 +3,13 @@ import { useI18n } from '../../hooks/useI18n';
 import type { TKey } from '../../i18n/types';
 import { utilization, seatUtilization, type CapLevel } from '../../utils/capacity';
 
+// หมึกแปรผันตามความผิดปกติ: แถวที่ยังมีที่ว่าง (`ok`) คือ "ไม่มีอะไรต้องดู" จึงเป็นเส้นเทา
+// กลาง ๆ ไม่ใช่เขียว — เขียวเข้ม 7 ใน 8 แถวทำให้แถวที่ชนเพดานจริงหายไปในกอง สีจึงถูกสงวนไว้
+// ให้ `warn`/`over` เท่านั้น เพื่อให้จุดสีในตารางแปลว่า "ตรงนี้" ได้จริง
+// Ink in proportion to exception: a row with headroom is a neutral grey rule, not a green one —
+// colour is reserved for `warn`/`over` so a coloured mark in the table actually means "look here".
 const FILL: Record<CapLevel, string> = {
-  ok: 'bg-success',
+  ok: 'bg-foreground/25',
   warn: 'bg-warning',
   over: 'bg-destructive',
   none: 'bg-transparent',
@@ -36,7 +41,7 @@ export function CapacityMeter({ used, cap, finite = false }: CapacityMeterProps)
 
   return (
     <div className="flex items-center gap-2">
-      <div className="bg-muted h-1.5 w-16 shrink-0 overflow-hidden rounded-full">
+      <div className="bg-muted h-1 w-10 shrink-0 overflow-hidden rounded-full">
         <div
           className={cn('h-full rounded-full transition-[width] duration-500', FILL[u.level])}
           style={{ width: `${Math.min(100, u.ratio * 100)}%` }}
