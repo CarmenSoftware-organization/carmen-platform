@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
 import { I18nProvider } from "./hooks/useI18n";
 import PrivateRoute from "./components/PrivateRoute";
+import { FeatureFlagProvider } from "./context/FeatureFlagContext";
 import AuthedRoute from "./components/AuthedRoute";
 import ClusterAdminRoute from "./components/ClusterAdminRoute";
 import { Toaster } from "sonner";
@@ -56,6 +57,7 @@ const EmailSettingManagement = lazy(() => import("./pages/EmailSettingManagement
 const PlatformConfigManagement = lazy(() => import("./pages/PlatformConfigManagement"));
 const DatabasePoolManagement = lazy(() => import("./pages/DatabasePoolManagement"));
 const DatabasePoolEdit = lazy(() => import("./pages/DatabasePoolEdit"));
+const FeatureFlagManagement = lazy(() => import("./pages/FeatureFlagManagement"));
 const ClusterAdminEntry = lazy(() => import("./pages/clusterAdmin/ClusterAdminEntry"));
 const ClusterProfile = lazy(() => import("./pages/clusterAdmin/ClusterProfile"));
 const ClusterAdminBusinessUnitList = lazy(() => import("./pages/clusterAdmin/BusinessUnitList"));
@@ -81,7 +83,8 @@ function App() {
 function AppContent() {
   return (
     <AuthProvider>
-      <Router>
+      <FeatureFlagProvider>
+        <Router>
         <div className="App">
           <Suspense fallback={<RouteLoader />}>
             <Routes>
@@ -99,7 +102,7 @@ function AppContent() {
             <Route
               path="/clusters"
               element={
-                <PrivateRoute requiredPermission="cluster.read">
+                <PrivateRoute requiredPermission="cluster.read" feature="clusters">
                   <ClusterManagement />
                 </PrivateRoute>
               }
@@ -107,7 +110,7 @@ function AppContent() {
             <Route
               path="/clusters/new"
               element={
-                <PrivateRoute requiredPermission="cluster.create">
+                <PrivateRoute requiredPermission="cluster.create" feature="clusters">
                   <ClusterEdit />
                 </PrivateRoute>
               }
@@ -115,7 +118,7 @@ function AppContent() {
             <Route
               path="/clusters/:id/edit"
               element={
-                <PrivateRoute requiredPermission="cluster.update">
+                <PrivateRoute requiredPermission="cluster.update" feature="clusters">
                   <ClusterEdit />
                 </PrivateRoute>
               }
@@ -123,7 +126,7 @@ function AppContent() {
             <Route
               path="/applications"
               element={
-                <PrivateRoute requiredPermission="application.read">
+                <PrivateRoute requiredPermission="application.read" feature="applications">
                   <ApplicationManagement />
                 </PrivateRoute>
               }
@@ -131,7 +134,7 @@ function AppContent() {
             <Route
               path="/applications/new"
               element={
-                <PrivateRoute requiredPermission="application.create">
+                <PrivateRoute requiredPermission="application.create" feature="applications">
                   <ApplicationEdit />
                 </PrivateRoute>
               }
@@ -139,7 +142,7 @@ function AppContent() {
             <Route
               path="/applications/:id/edit"
               element={
-                <PrivateRoute requiredPermission="application.update">
+                <PrivateRoute requiredPermission="application.update" feature="applications">
                   <ApplicationEdit />
                 </PrivateRoute>
               }
@@ -147,7 +150,7 @@ function AppContent() {
             <Route
               path="/business-units"
               element={
-                <PrivateRoute requiredPermission="cluster.read">
+                <PrivateRoute requiredPermission="cluster.read" feature="business_units">
                   <BusinessUnitManagement />
                 </PrivateRoute>
               }
@@ -155,7 +158,7 @@ function AppContent() {
             <Route
               path="/business-units/new"
               element={
-                <PrivateRoute requiredPermission="cluster.create">
+                <PrivateRoute requiredPermission="cluster.create" feature="business_units">
                   <BusinessUnitEdit />
                 </PrivateRoute>
               }
@@ -163,7 +166,7 @@ function AppContent() {
             <Route
               path="/business-units/:id/edit"
               element={
-                <PrivateRoute requiredPermission="cluster.update">
+                <PrivateRoute requiredPermission="cluster.update" feature="business_units">
                   <BusinessUnitEdit />
                 </PrivateRoute>
               }
@@ -171,7 +174,7 @@ function AppContent() {
             <Route
               path="/licenses"
               element={
-                <PrivateRoute requiredPermission="subscription.read">
+                <PrivateRoute requiredPermission="subscription.read" feature="licenses">
                   <LicenseCenter />
                 </PrivateRoute>
               }
@@ -179,7 +182,7 @@ function AppContent() {
             <Route
               path="/licenses/:clusterId"
               element={
-                <PrivateRoute requiredPermission="subscription.read">
+                <PrivateRoute requiredPermission="subscription.read" feature="licenses">
                   <ClusterLicenseDetail />
                 </PrivateRoute>
               }
@@ -187,7 +190,7 @@ function AppContent() {
             <Route
               path="/licenses/subscriptions/new"
               element={
-                <PrivateRoute requiredPermission="subscription.manage">
+                <PrivateRoute requiredPermission="subscription.manage" feature="licenses">
                   <SubscriptionForm />
                 </PrivateRoute>
               }
@@ -195,7 +198,7 @@ function AppContent() {
             <Route
               path="/licenses/subscriptions/:id/edit"
               element={
-                <PrivateRoute requiredPermission="subscription.read">
+                <PrivateRoute requiredPermission="subscription.read" feature="licenses">
                   <SubscriptionForm />
                 </PrivateRoute>
               }
@@ -203,7 +206,7 @@ function AppContent() {
             <Route
               path="/licenses/seats/new"
               element={
-                <PrivateRoute requiredPermission="subscription.manage">
+                <PrivateRoute requiredPermission="subscription.manage" feature="licenses">
                   <LicensePurchaseForm config={SEAT_CONFIG} mode="create" />
                 </PrivateRoute>
               }
@@ -211,7 +214,7 @@ function AppContent() {
             <Route
               path="/licenses/seats/:id/edit"
               element={
-                <PrivateRoute requiredPermission="subscription.read">
+                <PrivateRoute requiredPermission="subscription.read" feature="licenses">
                   <LicensePurchaseForm config={SEAT_CONFIG} mode="edit" />
                 </PrivateRoute>
               }
@@ -219,7 +222,7 @@ function AppContent() {
             <Route
               path="/licenses/bu-quota/new"
               element={
-                <PrivateRoute requiredPermission="subscription.manage">
+                <PrivateRoute requiredPermission="subscription.manage" feature="licenses">
                   <LicensePurchaseForm config={BU_QUOTA_CONFIG} mode="create" />
                 </PrivateRoute>
               }
@@ -227,7 +230,7 @@ function AppContent() {
             <Route
               path="/licenses/bu-quota/:id/edit"
               element={
-                <PrivateRoute requiredPermission="subscription.read">
+                <PrivateRoute requiredPermission="subscription.read" feature="licenses">
                   <LicensePurchaseForm config={BU_QUOTA_CONFIG} mode="edit" />
                 </PrivateRoute>
               }
@@ -239,7 +242,7 @@ function AppContent() {
             <Route
               path="/tenant-migrations"
               element={
-                <PrivateRoute requiredPermission="cluster.read">
+                <PrivateRoute requiredPermission="cluster.read" feature="tenant_migrations">
                   <TenantMigrationManagement />
                 </PrivateRoute>
               }
@@ -247,7 +250,7 @@ function AppContent() {
             <Route
               path="/tenant-imports"
               element={
-                <PrivateRoute requiredPermission="data_import.manage">
+                <PrivateRoute requiredPermission="data_import.manage" feature="tenant_imports">
                   <TenantImportWizard />
                 </PrivateRoute>
               }
@@ -255,7 +258,7 @@ function AppContent() {
             <Route
               path="/users"
               element={
-                <PrivateRoute requiredPermission="user.read">
+                <PrivateRoute requiredPermission="user.read" feature="users">
                   <UserManagement />
                 </PrivateRoute>
               }
@@ -263,7 +266,7 @@ function AppContent() {
             <Route
               path="/users/new"
               element={
-                <PrivateRoute requiredPermission="user.create">
+                <PrivateRoute requiredPermission="user.create" feature="users">
                   <UserEdit />
                 </PrivateRoute>
               }
@@ -271,7 +274,7 @@ function AppContent() {
             <Route
               path="/users/:id/edit"
               element={
-                <PrivateRoute requiredPermission="user.update">
+                <PrivateRoute requiredPermission="user.update" feature="users">
                   <UserEdit />
                 </PrivateRoute>
               }
@@ -279,7 +282,7 @@ function AppContent() {
             <Route
               path="/license-feature-groups"
               element={
-                <PrivateRoute requiredPermission="license_feature_group.read">
+                <PrivateRoute requiredPermission="license_feature_group.read" feature="license_feature_groups">
                   <LicenseFeatureGroupManagement />
                 </PrivateRoute>
               }
@@ -287,7 +290,7 @@ function AppContent() {
             <Route
               path="/license-feature-groups/new"
               element={
-                <PrivateRoute requiredPermission="license_feature_group.manage">
+                <PrivateRoute requiredPermission="license_feature_group.manage" feature="license_feature_groups">
                   <LicenseFeatureGroupEdit />
                 </PrivateRoute>
               }
@@ -295,7 +298,7 @@ function AppContent() {
             <Route
               path="/license-feature-groups/:id/edit"
               element={
-                <PrivateRoute requiredPermission="license_feature_group.read">
+                <PrivateRoute requiredPermission="license_feature_group.read" feature="license_feature_groups">
                   <LicenseFeatureGroupEdit />
                 </PrivateRoute>
               }
@@ -303,7 +306,7 @@ function AppContent() {
             <Route
               path="/report-form-groups"
               element={
-                <PrivateRoute requiredPermission="report_template.read">
+                <PrivateRoute requiredPermission="report_template.read" feature="report_form_groups">
                   <ReportFormGroupManagement />
                 </PrivateRoute>
               }
@@ -311,7 +314,7 @@ function AppContent() {
             <Route
               path="/report-templates"
               element={
-                <PrivateRoute requiredPermission="report_template.read">
+                <PrivateRoute requiredPermission="report_template.read" feature="report_templates">
                   <ReportTemplateManagement />
                 </PrivateRoute>
               }
@@ -319,7 +322,7 @@ function AppContent() {
             <Route
               path="/report-templates/new"
               element={
-                <PrivateRoute requiredPermission="report_template.create">
+                <PrivateRoute requiredPermission="report_template.create" feature="report_templates">
                   <ReportTemplateEdit />
                 </PrivateRoute>
               }
@@ -327,7 +330,7 @@ function AppContent() {
             <Route
               path="/report-templates/:id/edit"
               element={
-                <PrivateRoute requiredPermission="report_template.update">
+                <PrivateRoute requiredPermission="report_template.update" feature="report_templates">
                   <ReportTemplateEdit />
                 </PrivateRoute>
               }
@@ -335,7 +338,7 @@ function AppContent() {
             <Route
               path="/news"
               element={
-                <PrivateRoute requiredPermission="news.read">
+                <PrivateRoute requiredPermission="news.read" feature="news">
                   <NewsManagement />
                 </PrivateRoute>
               }
@@ -343,7 +346,7 @@ function AppContent() {
             <Route
               path="/news/new"
               element={
-                <PrivateRoute requiredPermission="news.create">
+                <PrivateRoute requiredPermission="news.create" feature="news">
                   <NewsEdit />
                 </PrivateRoute>
               }
@@ -351,7 +354,7 @@ function AppContent() {
             <Route
               path="/news/:id/edit"
               element={
-                <PrivateRoute requiredPermission="news.update">
+                <PrivateRoute requiredPermission="news.update" feature="news">
                   <NewsEdit />
                 </PrivateRoute>
               }
@@ -359,7 +362,7 @@ function AppContent() {
             <Route
               path="/broadcasts"
               element={
-                <PrivateRoute requiredPermission="broadcast.read">
+                <PrivateRoute requiredPermission="broadcast.read" feature="broadcasts">
                   <BroadcastManagement />
                 </PrivateRoute>
               }
@@ -367,7 +370,7 @@ function AppContent() {
             <Route
               path="/broadcasts/new"
               element={
-                <PrivateRoute requiredPermission="broadcast.send">
+                <PrivateRoute requiredPermission="broadcast.send" feature="broadcasts">
                   <BroadcastCompose />
                 </PrivateRoute>
               }
@@ -375,7 +378,7 @@ function AppContent() {
             <Route
               path="/broadcasts/:id/edit"
               element={
-                <PrivateRoute requiredPermission="broadcast.read">
+                <PrivateRoute requiredPermission="broadcast.read" feature="broadcasts">
                   <BroadcastEdit />
                 </PrivateRoute>
               }
@@ -383,7 +386,7 @@ function AppContent() {
             <Route
               path="/platform/roles"
               element={
-                <PrivateRoute requiredPermission="platform_role.read">
+                <PrivateRoute requiredPermission="platform_role.read" feature="platform_roles">
                   <RoleManagement />
                 </PrivateRoute>
               }
@@ -391,7 +394,7 @@ function AppContent() {
             <Route
               path="/platform/roles/new"
               element={
-                <PrivateRoute requiredPermission="platform_role.create">
+                <PrivateRoute requiredPermission="platform_role.create" feature="platform_roles">
                   <RoleEdit />
                 </PrivateRoute>
               }
@@ -399,7 +402,7 @@ function AppContent() {
             <Route
               path="/platform/roles/:id/edit"
               element={
-                <PrivateRoute requiredPermission="platform_role.update">
+                <PrivateRoute requiredPermission="platform_role.update" feature="platform_roles">
                   <RoleEdit />
                 </PrivateRoute>
               }
@@ -415,7 +418,7 @@ function AppContent() {
             <Route
               path="/platform/super-admins"
               element={
-                <PrivateRoute requireSuperAdmin>
+                <PrivateRoute requireSuperAdmin feature="super_admins">
                   <SuperAdminManagement />
                 </PrivateRoute>
               }
@@ -423,7 +426,7 @@ function AppContent() {
             <Route
               path="/platform/user-platform"
               element={
-                <PrivateRoute requiredPermission="user_platform.read">
+                <PrivateRoute requiredPermission="user_platform.read" feature="user_platform">
                   <UserPlatformManagement />
                 </PrivateRoute>
               }
@@ -431,7 +434,7 @@ function AppContent() {
             <Route
               path="/platform/user-platform/:userId"
               element={
-                <PrivateRoute requiredPermission="user_platform.read">
+                <PrivateRoute requiredPermission="user_platform.read" feature="user_platform">
                   <UserPlatformEdit />
                 </PrivateRoute>
               }
@@ -439,7 +442,7 @@ function AppContent() {
             <Route
               path="/sql-workbench"
               element={
-                <PrivateRoute requiredPermission="sql_workbench.read">
+                <PrivateRoute requiredPermission="sql_workbench.read" feature="sql_workbench">
                   <SqlWorkbench />
                 </PrivateRoute>
               }
@@ -447,7 +450,7 @@ function AppContent() {
             <Route
               path="/analytics"
               element={
-                <PrivateRoute requiredPermission="activity_event.read">
+                <PrivateRoute requiredPermission="activity_event.read" feature="usage_analytics">
                   <UsageAnalytics />
                 </PrivateRoute>
               }
@@ -455,7 +458,7 @@ function AppContent() {
             <Route
               path="/activity-events"
               element={
-                <PrivateRoute requiredPermission="activity_event.detail">
+                <PrivateRoute requiredPermission="activity_event.detail" feature="activity_events">
                   <ActivityEventManagement />
                 </PrivateRoute>
               }
@@ -463,7 +466,7 @@ function AppContent() {
             <Route
               path="/platform/email-settings"
               element={
-                <PrivateRoute requiredPermission="email_setting.read">
+                <PrivateRoute requiredPermission="email_setting.read" feature="email_settings">
                   <EmailSettingManagement />
                 </PrivateRoute>
               }
@@ -471,7 +474,7 @@ function AppContent() {
             <Route
               path="/platform/configs"
               element={
-                <PrivateRoute requiredPermission="platform_config.read">
+                <PrivateRoute requiredPermission="platform_config.read" feature="platform_config">
                   <PlatformConfigManagement />
                 </PrivateRoute>
               }
@@ -479,7 +482,7 @@ function AppContent() {
             <Route
               path="/platform/database-pools"
               element={
-                <PrivateRoute requiredPermission="database_pool.read">
+                <PrivateRoute requiredPermission="database_pool.read" feature="database_pools">
                   <DatabasePoolManagement />
                 </PrivateRoute>
               }
@@ -487,7 +490,7 @@ function AppContent() {
             <Route
               path="/platform/database-pools/new"
               element={
-                <PrivateRoute requiredPermission="database_pool.read">
+                <PrivateRoute requiredPermission="database_pool.read" feature="database_pools">
                   <DatabasePoolEdit />
                 </PrivateRoute>
               }
@@ -495,8 +498,16 @@ function AppContent() {
             <Route
               path="/platform/database-pools/:id/edit"
               element={
-                <PrivateRoute requiredPermission="database_pool.read">
+                <PrivateRoute requiredPermission="database_pool.read" feature="database_pools">
                   <DatabasePoolEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/features"
+              element={
+                <PrivateRoute requiredPermission="feature_flag.manage">
+                  <FeatureFlagManagement />
                 </PrivateRoute>
               }
             />
@@ -522,23 +533,23 @@ function AppContent() {
             />
             <Route
               path="/cluster-admin/:clusterId/cluster"
-              element={<ClusterAdminRoute><ClusterProfile /></ClusterAdminRoute>}
+              element={<ClusterAdminRoute feature="cluster_admin_cluster"><ClusterProfile /></ClusterAdminRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/business-units"
-              element={<ClusterAdminRoute><ClusterAdminBusinessUnitList /></ClusterAdminRoute>}
+              element={<ClusterAdminRoute feature="cluster_admin_business_units"><ClusterAdminBusinessUnitList /></ClusterAdminRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/business-units/:buId/edit"
-              element={<ClusterAdminRoute><ClusterAdminBusinessUnitForm /></ClusterAdminRoute>}
+              element={<ClusterAdminRoute feature="cluster_admin_business_units"><ClusterAdminBusinessUnitForm /></ClusterAdminRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/users"
-              element={<ClusterAdminRoute><ClusterAdminUsers /></ClusterAdminRoute>}
+              element={<ClusterAdminRoute feature="cluster_admin_users"><ClusterAdminUsers /></ClusterAdminRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/licenses"
-              element={<ClusterAdminRoute><ClusterAdminLicenses /></ClusterAdminRoute>}
+              element={<ClusterAdminRoute feature="cluster_admin_licenses"><ClusterAdminLicenses /></ClusterAdminRoute>}
             />
             <Route
               path="/cluster-admin/:clusterId/profile"
@@ -550,7 +561,8 @@ function AppContent() {
           <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
           <KeyboardShortcutsHelp />
         </div>
-      </Router>
+        </Router>
+      </FeatureFlagProvider>
     </AuthProvider>
   );
 }

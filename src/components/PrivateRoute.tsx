@@ -2,12 +2,21 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Forbidden from '../pages/Forbidden';
+import NotFound from '../pages/NotFound';
+import ComingSoon from '../pages/ComingSoon';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { useI18n } from '../hooks/useI18n';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
   requiredPermission?: string;
   requireSuperAdmin?: boolean;
+  /**
+   * ฟีเจอร์ที่เส้นทางนี้สังกัด — คีย์ในแค็ตตาล็อก `src/constants/featureFlags.ts`
+   * หน้ารายการกับหน้าแก้ไขของเรื่องเดียวกันใช้คีย์เดียวกัน
+   * The catalog key this route belongs to; list and edit pages of one feature share a key.
+   */
+  feature?: string;
 }
 
 /**
@@ -26,7 +35,7 @@ interface PrivateRouteProps {
  * pre-login snapshot of the context — so they keep sending everyone to /dashboard and let this
  * guard route the ones who do not belong there.
  */
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermission, requireSuperAdmin }) => {
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermission, requireSuperAdmin, feature }) => {
   const {
     isAuthenticated,
     loading,
@@ -37,6 +46,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
     adminScope,
     effectivePermissions,
   } = useAuth();
+  const { flagOf, isReady: flagsReady } = useFeatureFlags();
   const { t } = useI18n();
 
   if (loading) {
@@ -76,6 +86,20 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredPermissio
 
   if (requireSuperAdmin && !isSuperAdmin) {
     return <Forbidden />;
+  }
+
+  // ด่านฟีเจอร์อยู่ท้ายสุดโดยเจตนา: สิทธิ์ตอบว่า "คุณเข้าถึงได้ไหม" ส่วน flag ตอบว่า "ของนี้พร้อม
+  // หรือยัง" — ผู้ที่ไม่มีสิทธิ์ต้องเห็น 403 เหมือนเดิม ไม่ใช่ 404 ที่ปิดบังว่าหน้านี้มีอยู่
+  // Permission first: someone without access should still see 403, not a flag-driven 404.
+  if (feature) {
+    // ห้ามวาดหน้าไปก่อน — การ mount หน้ารายการเพียงเฟรมเดียวยิงคำขอทั้งชุดออกไปแล้ว
+    // Never render first: mounting a list page for one frame already fires its whole request set.
+    if (!flagsReady) {
+      return <div className="loading">{t('common.busy.loading')}</div>;
+    }
+    const state = flagOf(feature);
+    if (state === 'hide') return <NotFound />;
+    if (state === 'inactive') return <ComingSoon />;
   }
 
   return <>{children}</>;

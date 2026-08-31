@@ -21,7 +21,15 @@ vi.mock('./Layout', () => ({
   ),
 }));
 
+// ตัด mock ที่ชั้น service ตามมาตรฐานของรีโป แล้วใช้ FeatureFlagProvider ตัวจริงห่อไว้ ด่านฟีเจอร์
+// จึงถูกทดสอบด้วยตรรกะจริง ไม่ใช่ตัวปลอม — คีย์ที่ backend ไม่ส่งมาจะได้ค่าตั้งต้น `active`
+// Mocked at the service boundary so the real provider logic runs.
+vi.mock('../services/featureFlagService', () => ({
+  default: { getAll: vi.fn(async () => ({})), update: vi.fn(async () => ({})) },
+}));
+
 import PrivateRoute from './PrivateRoute';
+import { FeatureFlagProvider } from '../context/FeatureFlagContext';
 
 // Renders the current pathname so a test can prove the guard did NOT navigate.
 const PathProbe: React.FC = () => {
@@ -31,13 +39,15 @@ const PathProbe: React.FC = () => {
 
 const renderGuard = (guarded: React.ReactNode) =>
   render(
-    <MemoryRouter initialEntries={['/clusters']}>
-      <PathProbe />
-      <Routes>
-        <Route path="/login" element={<div>Login screen</div>} />
-        <Route path="/clusters" element={guarded} />
-      </Routes>
-    </MemoryRouter>,
+    <FeatureFlagProvider>
+      <MemoryRouter initialEntries={['/clusters']}>
+        <PathProbe />
+        <Routes>
+          <Route path="/login" element={<div>Login screen</div>} />
+          <Route path="/clusters" element={guarded} />
+        </Routes>
+      </MemoryRouter>
+    </FeatureFlagProvider>,
   );
 
 beforeEach(() => {

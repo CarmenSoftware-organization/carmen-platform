@@ -37,12 +37,16 @@ export const en = {
     sqlWorkbench: 'SQL Workbench',
     databasePools: 'Database Pools',
     cluster: 'Cluster',
+    featureFlags: 'Feature Flags',
   },
   navGroup: {
     organization: 'Organization',
     content: 'Content',
     analytics: 'Analytics',
     platform: 'Platform',
+    // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*
+    // ตัว Sidebar ของ ClusterAdminLayout เองไม่ได้ตั้ง groupKey จึงไม่แสดงหัวข้อนี้
+    clusterAdmin: 'Cluster administration',
   },
   sidebar: {
     collapse: 'Collapse',
@@ -153,6 +157,7 @@ export const en = {
     searchPlaceholder: 'Search…',
     clearSearch: 'Clear search',
     tryAgain: 'Try again',
+    comingSoon: 'Coming soon',
     couldNotLoad: "Couldn't load this.",
     noMatchesFound: 'No matches found',
     noMatchesDescription: 'No results match your search or filters. Try adjusting or clearing them.',
@@ -908,6 +913,33 @@ export const en = {
       untitled: '(untitled)',
       unknownUser: '(unknown user)',
       debugTitle: 'Dashboard Data',
+    },
+    comingSoon: {
+      title: 'Coming soon',
+      description: 'This feature is still being built. It will appear here once it is ready.',
+    },
+    featureFlags: {
+      title: 'Feature Flags',
+      subtitle:
+        'Choose what each feature shows on screen. Frontend visibility only — it does not close the matching API.',
+      state: {
+        active: 'Active',
+        activeHint: 'Works as usual',
+        inactive: 'Coming soon',
+        inactiveHint: 'Menu visible but not clickable',
+        hide: 'Hidden',
+        hideHint: 'Menu and page both gone',
+      },
+      orphans: {
+        title: 'Unknown keys',
+        description: 'Saved on the server but missing from this app version. Safe to remove.',
+        remove: 'Remove',
+        confirmTitle: 'Remove unknown key?',
+        confirmBody:
+          'This deletes the saved state for a feature this app version does not know about.',
+      },
+      saved: 'Feature states saved',
+      saveFailed: 'Could not save feature states',
     },
     statusPage: {
       notFoundTitle: 'Page Not Found',

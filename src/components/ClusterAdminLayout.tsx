@@ -5,6 +5,7 @@ import ClusterSwitcher from './ClusterSwitcher';
 import { PRODUCT_BRAND } from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { buildClusterAdminNav } from './nav/clusterAdminNav';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
 
 /**
  * The cluster-administration shell. Reuses Layout for every piece of chrome and supplies only
@@ -13,9 +14,10 @@ import { buildClusterAdminNav } from './nav/clusterAdminNav';
 const ClusterAdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { clusterId } = useParams<{ clusterId: string }>();
   const { adminScope } = useAuth();
+  const { flagOf } = useFeatureFlags();
   const navItems = React.useMemo(
-    () => buildClusterAdminNav(clusterId ?? ''),
-    [clusterId],
+    () => buildClusterAdminNav(clusterId ?? '', flagOf),
+    [clusterId, flagOf],
   );
 
   // Inside a cluster the chrome wears that cluster, not the product: the brand link already
