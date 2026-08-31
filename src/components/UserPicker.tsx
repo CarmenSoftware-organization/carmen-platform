@@ -216,5 +216,3 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     </div>
   );
 };
-
-export default UserPicker;

@@ -322,5 +322,3 @@ export const XmlEditor: React.FC<XmlEditorProps> = ({
     </div>
   );
 };
-
-export default XmlEditor;

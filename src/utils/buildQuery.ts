@@ -31,5 +31,3 @@ export function buildQuery(
     paginate.advance,
   ).toQueryString();
 }
-
-export default buildQuery;
