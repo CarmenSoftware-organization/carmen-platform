@@ -86,9 +86,18 @@ jobs:
             mv "$ROOT.new" "$ROOT"
 
             # ไม่ต้อง reload nginx — เสิร์ฟไฟล์ static ตรง ๆ ไม่ได้ cache path ไว้
-            code=$(wget -qS -O /dev/null http://localhost:9902/ 2>&1 | grep -m1 HTTP | awk '{print $2}')
-            spa=$(wget -qS -O /dev/null http://localhost:9902/cluster/list 2>&1 | grep -m1 HTTP | awk '{print $2}')
-            echo "health: / -> $code | /cluster/list -> $spa"
+            #
+            # ยิง https ไม่ใช่ http: เครื่องนี้ถูกตั้งให้ redirect http -> https (301) ตั้งแต่
+            # 2026-08-31 ด่านนี้จึงล้มทุกครั้งและ rollback ของใหม่ทิ้งทั้งที่ deploy สำเร็จ
+            # (run 33355399383) ยิงตามชื่อโฮสต์จริงไม่ใช่ localhost เพราะใบรับรองออกให้ชื่อนั้น
+            # และเป็นเส้นทางเดียวกับที่ผู้ใช้เข้าจริง ส่วน --no-check-certificate กันกรณีใบรับรอง
+            # เป็น self-signed ซึ่งไม่ใช่สิ่งที่ด่านนี้มีไว้ตรวจ
+            # HTTPS, not HTTP: the host now 301-redirects http, which failed this gate on every
+            # deploy and rolled back a perfectly good build.
+            HEALTH_BASE="https://dev.blueledgers.com:9902"
+            code=$(wget -qS --no-check-certificate -O /dev/null "$HEALTH_BASE/" 2>&1 | grep -m1 HTTP | awk '{print $2}')
+            spa=$(wget -qS --no-check-certificate -O /dev/null "$HEALTH_BASE/cluster/list" 2>&1 | grep -m1 HTTP | awk '{print $2}')
+            echo "health: $HEALTH_BASE/ -> $code | /cluster/list -> $spa"
             if [ "$code" != "200" ] || [ "$spa" != "200" ]; then
               echo "::error::เสิร์ฟไม่ผ่าน — ย้อนกลับของเดิม"
               rm -rf "$ROOT"
