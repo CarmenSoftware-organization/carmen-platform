@@ -5,7 +5,13 @@ export interface PlateFieldProps {
   name: string;
   label: string;
   value: string;
-  /** Renders a required marker and sets aria-required on the control. */
+  /**
+   * Sets `aria-required` on the editor. Deliberately draws no `*`: an asterisk marks a field
+   * you must fill before a submit, and this plate has no submit — every field commits on blur.
+   * On a record that is already saved and already showing its value, the mark could only ever
+   * decorate. The moment it would have something to say is the moment someone blanks the
+   * field, and `validateField` already says it there, in words, through `error`.
+   */
   required?: boolean;
   /** Shown in place of the value when it is blank. */
   placeholder?: string;
@@ -108,11 +114,6 @@ export function PlateField({
           )}
         >
           {display ?? prompt}
-          {required && !disabled && (
-            <span className="text-destructive ml-0.5" aria-hidden="true">
-              *
-            </span>
-          )}
         </button>
       )}
       {error && <span className="text-destructive text-xs">{error}</span>}
