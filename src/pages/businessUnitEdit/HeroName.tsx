@@ -8,6 +8,17 @@ interface HeroNameProps {
   label?: string;
   /** Shown when the name is blank. Defaults to the business unit wording. */
   emptyText?: string;
+  /**
+   * Draw the red required marker beside the name. Defaults to `true` so the two business-unit
+   * call sites keep the mark they were built with.
+   *
+   * The cluster plate opts out. An asterisk marks a field you must fill before a submit; that
+   * plate has no submit — the name commits on blur — so beside an already-saved name the mark
+   * has nothing left to warn about, and it was landing in the loudest colour on the page right
+   * next to the <h1>. `aria-required` on the editor is untouched either way: that is the part
+   * of the contract that was never decoration.
+   */
+  showRequiredMarker?: boolean;
   onCommit: (v: string) => void;
 }
 
@@ -29,6 +40,7 @@ export function HeroName({
   disabled,
   label,
   emptyText,
+  showRequiredMarker = true,
   onCommit,
 }: HeroNameProps) {
   const { t } = useI18n();
@@ -82,7 +94,7 @@ export function HeroName({
       >
         {value.trim() || resolvedEmptyText}
       </button>
-      {!disabled && (
+      {showRequiredMarker && !disabled && (
         <span className="text-destructive text-base font-normal" aria-hidden="true">
           *
         </span>

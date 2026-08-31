@@ -134,10 +134,21 @@ export function UsersSection({
                     <input type="checkbox" aria-label={t('pages.clusters.selectAllUsers')} checked={allSelected} onChange={toggleAll} className="h-4 w-4 rounded border-input" />
                   </TableHead>
                 )}
-                <TableHead>{t('common.field.name')}</TableHead>
-                <TableHead>{t('common.field.email')}</TableHead>
-                <TableHead>{t('pages.clusters.columnRole')}</TableHead>
-                <TableHead className="text-center">{t('common.status.label')}</TableHead>
+                {/* Email folded into the name cell rather than given its own column. Four
+                    stretchable columns for content this short spread one person across the
+                    full card width — name at the far left, address a hand away, role and
+                    status two more gaps out — so a row read as four separate readings instead
+                    of one. Identity is one fact on two lines now (the shape the business-unit
+                    table beside it already uses), and only that column stretches. */}
+                <TableHead className="w-96">{t('common.field.name')}</TableHead>
+                <TableHead className="w-40">{t('pages.clusters.columnRole')}</TableHead>
+                <TableHead className="w-28 text-center">{t('common.status.label')}</TableHead>
+                {/* Slack absorber. Every real column is now sized to its content, so without
+                    somewhere to put the leftover width the name column swallowed it and left
+                    ~650px between a person and their role. Parking it here packs the three
+                    facts about a user against each other and leaves the gap in front of the
+                    action, which is anchored right by `table-sticky-right` regardless. */}
+                <TableHead aria-hidden="true" />
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -150,8 +161,12 @@ export function UsersSection({
                         <input type="checkbox" aria-label={t('pages.clusters.selectUserAria', { name: displayName(u) })} checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} className="h-4 w-4 rounded border-input" />
                       </TableCell>
                     )}
-                    <TableCell>{displayName(u)}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell>
+                      <div>{displayName(u)}</div>
+                      {u.email && (
+                        <div className="text-muted-foreground text-xs">{u.email}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {/* รอบแยกที่คอมเมนต์เดิมเรียกร้องไว้ (2026-08-31): ช่องอ่านอย่างเดียว
                           เคยแสดงค่าดิบ 'admin' ขณะที่ dropdown ของ field เดียวกันแสดงคำแปล
@@ -176,9 +191,17 @@ export function UsersSection({
                         <Badge variant="secondary" className="text-xs">{t('common.status.inactive')}</Badge>
                       )}
                     </TableCell>
+                    <TableCell aria-hidden="true" />
                     <TableCell className="text-center">
                       {canEdit && (
-                        <Button variant="ghost" size="icon" className={`text-destructive hover:text-destructive h-7 w-7 ${HIT_SLOP_44}`}
+                        /* Muted until reached for. This column repeats once per row, so drawn
+                           in the destructive colour it made a stack of eight red marks the
+                           loudest thing on a screen whose subject is licence headroom — and
+                           the same rule the status cell above already follows (colour is for
+                           the abnormal) has to hold for actions too. The red arrives on hover
+                           and focus, right before the click that needs the warning, and the
+                           confirm dialog is still the thing that actually guards it. */
+                        <Button variant="ghost" size="icon" className={`text-muted-foreground hover:text-destructive focus-visible:text-destructive h-7 w-7 ${HIT_SLOP_44}`}
                           aria-label={t('pages.clusters.removeUserAria', { name: displayName(u) })} onClick={() => setConfirmRemoveOne(u)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>

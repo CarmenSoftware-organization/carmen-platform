@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Building2, Users, type LucideIcon } from 'lucide-react';
 import { Card } from '../../components/ui/card';
@@ -13,6 +14,7 @@ import type { ClusterTab, ClusterTabId } from './clusterTabs';
 import type { ClusterFormData } from '../clusterManagement/ClusterIdentityFields';
 import type { NormalizedAudit } from '../../utils/audit';
 import { useI18n } from '../../hooks/useI18n';
+import { cn } from '../../lib/utils';
 
 interface LicenceRailProps {
   icon: LucideIcon;
@@ -123,6 +125,27 @@ export function ClusterPlate({
   headerAction,
 }: ClusterPlateProps) {
   const { t } = useI18n();
+  /**
+   * The strip's fallback counts are only a fallback. Drawn unconditionally they were the third
+   * printing of `1/3` and `8/15` on one screen — the rails print them 60px above, the tab
+   * badges print the used half again — and this page's whole contract is that a fact is drawn
+   * once. They earn their place the moment the plate leaves the viewport and stop earning it
+   * the moment it comes back, so that is exactly when they are shown.
+   */
+  const plateRef = useRef<HTMLDivElement>(null);
+  const [plateOffscreen, setPlateOffscreen] = useState(false);
+  useEffect(() => {
+    const el = plateRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    // Same two header heights the strip pins to below — the plate counts as gone once it is
+    // behind the header, not once it clears the top of the document.
+    const io = new IntersectionObserver(([entry]) => setPlateOffscreen(!entry.isIntersecting), {
+      rootMargin: '-64px 0px 0px 0px',
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const buFree = Math.max(0, bu.cap - bu.used);
   const buInactive = bu.used - bu.active;
   const usersFree = users.cap != null ? Math.max(0, users.cap - users.used) : null;
@@ -142,10 +165,16 @@ export function ClusterPlate({
         {headerAction}
       </div>
 
-      <Card className="overflow-hidden p-0">
-        <div className="flex gap-4 p-4 sm:p-5">
-          <div className="flex min-w-0 gap-4">
-            <div className="flex shrink-0 items-center gap-2.5">
+      {/* Identity and licence headroom are one band, not two stacked ones. Split, each half
+       *  reserved a full width it could not fill: the name block left ~650px of the row empty
+       *  and the business-unit rail drew 120px of the 639px column the grid handed it, so the
+       *  plate was two holes on top of each other. Side by side the holes cancel, and the
+       *  ~90px of height that buys is table on every tab. Below `lg` they stack back, and the
+       *  muted band returns to say the rails are a different kind of fact from the name. */}
+      <Card ref={plateRef} className="overflow-hidden p-0">
+        <div className="lg:flex lg:items-stretch">
+          <div className="flex min-w-0 gap-4 p-4 sm:p-5 lg:flex-1">
+            <div className="flex shrink-0 items-start gap-2.5">
               <BrandingImageUpload
                 compact
                 label={t('pages.clusters.logo')}
@@ -177,6 +206,7 @@ export function ClusterPlate({
                     value={formData.name}
                     label={t('pages.clusters.namePlaceholder')}
                     emptyText={t('pages.clusters.unnamedCluster')}
+                    showRequiredMarker={false}
                     disabled={!canEdit}
                     onCommit={(v) => onCommit('name', v)}
                   />
@@ -222,66 +252,76 @@ export function ClusterPlate({
               />
             </div>
           </div>
-        </div>
 
-        <div className="bg-muted/30 grid gap-x-8 gap-y-4 border-t p-4 sm:grid-cols-2 sm:p-5">
-          <LicenceRail
-            icon={Building2}
-            label={t('pages.clusters.businessUnitsLower')}
-            used={bu.used}
-            cap={bu.cap}
-            // BU quota comes from the cluster's licence view — 0 is a real zero, never
-            // "unlimited", unlike the seat pool below.
-            finite
-            /* "N active" is only worth printing when it differs from the used count already
-               shown above the rail — with every unit active the old note reprinted the same
-               number and the free count was the only new fact in it. */
-            note={
-              <>
-                {buInactive > 0
-                  ? `${t('pages.clusters.activeCount', { count: bu.active })} · ${t('pages.clusters.inactiveCount', { count: buInactive })} · `
-                  : ''}
-                {buFree === 1
-                  ? t('pages.clusters.licenceFree', { count: buFree })
-                  : t('pages.clusters.licencesFree', { count: buFree })}
-              </>
-            }
-          />
-          <LicenceRail
-            icon={Users}
-            label={t('pages.clusters.seats')}
-            used={users.used}
-            cap={users.cap}
-            /* Same rule as the BU rail above: the active count earns its place only when
-               some seats are held by inactive users. */
-            note={
-              [
-                users.active !== users.used ? t('pages.clusters.activeCount', { count: users.active }) : '',
-                usersFree != null
-                  ? usersFree === 1
-                    ? t('pages.clusters.seatFree', { count: usersFree })
-                    : t('pages.clusters.seatsFree', { count: usersFree })
-                  : t('pages.clusters.noSeatCap'),
-              ]
-                .filter(Boolean)
-                .join(' · ')
-            }
-          />
+          <div className="bg-muted/30 grid gap-x-8 gap-y-4 border-t p-4 sm:grid-cols-2 sm:p-5 lg:w-[46%] lg:shrink-0 lg:grid-cols-1 lg:gap-y-5 lg:border-t-0 lg:border-l">
+            <LicenceRail
+              icon={Building2}
+              label={t('pages.clusters.businessUnitsLower')}
+              used={bu.used}
+              cap={bu.cap}
+              // BU quota comes from the cluster's licence view — 0 is a real zero, never
+              // "unlimited", unlike the seat pool below.
+              finite
+              /* "N active" is only worth printing when it differs from the used count already
+                 shown above the rail — with every unit active the old note reprinted the same
+                 number and the free count was the only new fact in it. */
+              note={
+                <>
+                  {buInactive > 0
+                    ? `${t('pages.clusters.activeCount', { count: bu.active })} · ${t('pages.clusters.inactiveCount', { count: buInactive })} · `
+                    : ''}
+                  {buFree === 1
+                    ? t('pages.clusters.licenceFree', { count: buFree })
+                    : t('pages.clusters.licencesFree', { count: buFree })}
+                </>
+              }
+            />
+            <LicenceRail
+              icon={Users}
+              label={t('pages.clusters.seats')}
+              used={users.used}
+              cap={users.cap}
+              /* Same rule as the BU rail above: the active count earns its place only when
+                 some seats are held by inactive users. */
+              note={
+                [
+                  users.active !== users.used ? t('pages.clusters.activeCount', { count: users.active }) : '',
+                  usersFree != null
+                    ? usersFree === 1
+                      ? t('pages.clusters.seatFree', { count: usersFree })
+                      : t('pages.clusters.seatsFree', { count: usersFree })
+                    : t('pages.clusters.noSeatCap'),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              }
+            />
+          </div>
         </div>
-
       </Card>
 
       {/* The strip is pinned below the app header — which is what the plate above always
        *  claimed ("the licence headroom stays on screen while you add the business unit or
        *  the user that consumes it") but never did: the plate scrolled away with everything
        *  else. Pinning the whole plate would eat a third of the viewport, so the bar carries
-       *  the two counts instead, and those are the headroom.
+       *  the two counts instead — but only once the plate is actually gone (see
+       *  `plateOffscreen` above); while the rails are on screen this bar would just be
+       *  reprinting them.
        *  `top-14` / `md:top-16` are the two Layout header heights — keep them in step. */}
       <div className="bg-background/95 sticky top-14 z-20 flex items-center gap-4 border-b px-2 backdrop-blur sm:px-4 md:top-16">
         <div className="min-w-0 flex-1">
           <TabStrip tabs={tabs} value={activeTab} onChange={onTabChange} />
         </div>
-        <div className="text-muted-foreground hidden shrink-0 items-center gap-3 font-mono text-[11px] tabular-nums sm:flex">
+        {/* Kept in the layout rather than unmounted so the strip never reflows under the
+         *  reader's eye as the plate crosses the header; `aria-hidden` while faded keeps a
+         *  screen reader from hearing the counts a third time. */}
+        <div
+          aria-hidden={!plateOffscreen}
+          className={cn(
+            'text-muted-foreground hidden shrink-0 items-center gap-3 font-mono text-[11px] tabular-nums transition-opacity duration-200 sm:flex',
+            plateOffscreen ? 'opacity-100' : 'pointer-events-none opacity-0',
+          )}
+        >
           <span
             className="flex items-center gap-1"
             title={`${t('pages.clusters.businessUnitsLower')}: ${bu.used} / ${bu.cap}`}
