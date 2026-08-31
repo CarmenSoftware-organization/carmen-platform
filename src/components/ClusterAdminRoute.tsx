@@ -2,6 +2,9 @@ import React from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Forbidden from '../pages/Forbidden';
+import NotFound from '../pages/NotFound';
+import ComingSoon from '../pages/ComingSoon';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { useI18n } from '../hooks/useI18n';
 
 /**
@@ -14,8 +17,9 @@ import { useI18n } from '../hooks/useI18n';
  * A failed check renders <Forbidden /> in place rather than redirecting, matching PrivateRoute —
  * redirecting to /403 would trap the user, since Back returns to the blocked route.
  */
-const ClusterAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ClusterAdminRoute: React.FC<{ children: React.ReactNode; feature?: string }> = ({ children, feature }) => {
   const { isAuthenticated, loading, adminScope, isClusterAdminOf } = useAuth();
+  const { flagOf, isReady: flagsReady } = useFeatureFlags();
   const { clusterId } = useParams<{ clusterId: string }>();
   const { t } = useI18n();
 
@@ -33,6 +37,17 @@ const ClusterAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }
 
   if (!clusterId || !isClusterAdminOf(clusterId)) {
     return <Forbidden />;
+  }
+
+  // ด่านฟีเจอร์ท้ายสุด ด้วยเหตุผลเดียวกับใน PrivateRoute: ขอบเขตต้องตอบก่อน flag
+  // The feature gate comes last, same reasoning as PrivateRoute: scope answers before the flag.
+  if (feature) {
+    if (!flagsReady) {
+      return <div className="loading">{t('common.busy.loading')}</div>;
+    }
+    const state = flagOf(feature);
+    if (state === 'hide') return <NotFound />;
+    if (state === 'inactive') return <ComingSoon />;
   }
 
   // Remount the whole subtree when the cluster changes. React Router reuses a component

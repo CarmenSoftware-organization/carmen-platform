@@ -49,6 +49,13 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
+// ตัดที่ชั้น service เพื่อให้ FeatureFlagProvider ตัวจริงทำงาน — คีย์ที่ไม่ได้ส่งมาได้ค่าตั้งต้น
+// `active` ด่านฟีเจอร์จึงปล่อยผ่าน และเทสต์นี้ยังวัดเรื่อง requireSuperAdmin ตามเดิม
+// Mocked at the service boundary so the real provider runs and the feature gate passes.
+vi.mock('../services/featureFlagService', () => ({
+  default: { getAll: vi.fn(async () => ({})), update: vi.fn(async () => ({})) },
+}));
+
 vi.mock('../services/superAdminService', () => ({
   default: {
     list: vi.fn(),
@@ -64,6 +71,7 @@ vi.mock('../services/userService', () => ({
 
 import SuperAdminManagement from './SuperAdminManagement';
 import PrivateRoute from '../components/PrivateRoute';
+import { FeatureFlagProvider } from '../context/FeatureFlagContext';
 import superAdminService from '../services/superAdminService';
 import userService from '../services/userService';
 
@@ -80,18 +88,20 @@ const usersListResponse = { data: [sampleUser] };
 // to prove the actual route configuration blocks/admits correctly.
 const renderRoute = () =>
   render(
-    <MemoryRouter initialEntries={['/platform/super-admins']}>
-      <Routes>
-        <Route
-          path="/platform/super-admins"
-          element={
-            <PrivateRoute requireSuperAdmin>
-              <SuperAdminManagement />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </MemoryRouter>,
+    <FeatureFlagProvider>
+      <MemoryRouter initialEntries={['/platform/super-admins']}>
+        <Routes>
+          <Route
+            path="/platform/super-admins"
+            element={
+              <PrivateRoute requireSuperAdmin feature="super_admins">
+                <SuperAdminManagement />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </FeatureFlagProvider>,
   );
 
 beforeEach(() => {
