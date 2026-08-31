@@ -43,9 +43,18 @@ interface LayoutProps {
    * administered cluster, so the chrome reads as that tenant's console while you are inside it.
    */
   brand?: BrandIdentity;
+  /**
+   * ซ่อนแถบ breadcrumb — สำหรับหน้าที่บอกว่า "ไม่มีหน้านี้" หรือ "ยังไม่พร้อม" (NotFound,
+   * ComingSoon) breadcrumb สร้างชื่อจาก URL ล้วน จึงตั้งชื่อหน้าที่ผู้ใช้เข้าไม่ถึงให้อ่านออกได้
+   * ซึ่งขัดกันเองบนหน้า 404 และยังเปิดเผยฟีเจอร์ที่ผู้ดูแลสั่ง `hide` ไว้ด้วย — เหตุผลเดียวกับที่
+   * เลือกตอบ 404 แทน 403 ตั้งแต่แรก
+   * Hides the breadcrumb bar. It names segments from the URL alone, so on a "page not found"
+   * it both contradicts itself and reveals a feature an administrator chose to hide.
+   */
+  hideBreadcrumbs?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo, brand = PRODUCT_BRAND }) => {
+const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo, brand = PRODUCT_BRAND, hideBreadcrumbs = false }) => {
   const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
   const { flagOf, isReady: flagsReady } = useFeatureFlags();
   const navigate = useNavigate();
@@ -215,7 +224,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
 
         {/* Desktop breadcrumb bar + account controls */}
         <div className="sticky top-0 z-30 hidden h-12 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
-          <Breadcrumbs />
+          {!hideBreadcrumbs && <Breadcrumbs />}
           {headerSlot}
           {isDesktop && (
             <div className="ml-auto flex items-center gap-2">
