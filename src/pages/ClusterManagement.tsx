@@ -30,6 +30,7 @@ import { CapacityMeter } from './clusterManagement/CapacityMeter';
 import { isPerpetual } from '../utils/clusterLicense';
 import { auditColumns } from '../components/auditColumns';
 import { useI18n } from '../hooks/useI18n';
+import { cn } from '../lib/utils';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
 import type { FleetSummary } from '../types';
@@ -348,8 +349,14 @@ const ClusterManagement: React.FC = () => {
       // Fixed width so the sticky offset of the 3rd frozen column (Name) is
       // deterministic — see `stickyLeftColumns={3}` and `.table-sticky-left-3`.
       meta: { headerClassName: 'w-24', cellClassName: 'w-24', card: 'title' },
+      // Code กับ Name ชี้ปลายทางเดียวกันและซ้ำข้อความกันบ่อย (PPP/PPP, ZEBRA/ZEBRA) — เดิม
+      // ทั้งคู่เป็นลิงก์สีน้ำเงิน ทำให้ทุกแถวมีจุดสีสองจุดที่ไม่ได้แปลว่าอะไรต่างกัน ตอนนี้ Name
+      // ถือสีลิงก์ไว้คนเดียว ส่วน Code เป็นรหัสแบบ mono ที่ยังคลิกได้ (สีมาเมื่อ hover)
       cell: ({ row }) => (
-        <Link to={`/clusters/${row.original.id}/edit`} className="text-primary hover:underline whitespace-nowrap">
+        <Link
+          to={`/clusters/${row.original.id}/edit`}
+          className="text-muted-foreground hover:text-primary font-mono text-xs whitespace-nowrap"
+        >
           {row.original.code}
         </Link>
       ),
@@ -380,11 +387,29 @@ const ClusterManagement: React.FC = () => {
       accessorKey: 'is_active',
       header: t('common.status.label'),
       meta: { headerClassName: 'w-32', cellClassName: 'w-32', card: 'badge' },
-      cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
-        </Badge>
-      ),
+      // `Active` คือค่าปกติของเกือบทุกแถว — badge ทึบทำให้หมึกที่หนักที่สุดในหน้าไปกองอยู่กับ
+      // ข้อมูลที่แทบไม่แปรผัน แล้วกลบแถวที่ชนเพดานจริง จุดเล็ก + คำที่จางพอสำหรับ active,
+      // ตัวอักษรเข้มสำหรับ inactive ซึ่งเป็นตัวที่ผู้ใช้ต้องสังเกต (สีไม่ใช่สัญญาณเดียว: มีคำกำกับเสมอ)
+      cell: ({ row }) => {
+        const active = row.original.is_active;
+        return (
+          <span
+            className={cn(
+              'inline-flex items-center gap-2 whitespace-nowrap text-xs',
+              active ? 'text-muted-foreground' : 'text-foreground font-medium',
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-1.5 shrink-0 rounded-full',
+                active ? 'bg-success' : 'border border-muted-foreground/70',
+              )}
+            />
+            {active ? t('common.status.active') : t('common.status.inactive')}
+          </span>
+        );
+      },
     },
     {
       id: 'bu_count',
@@ -408,13 +433,16 @@ const ClusterManagement: React.FC = () => {
       accessorFn: (row) => row.bu_cap_end_date,
       header: t('common.state.quotaExpires'),
       // ใบตลอดชีพ (sentinel ปี 2099) ต้องไม่โชว์ปี 2099 ให้ผู้ใช้เห็น
+      // สาม state ที่ต้องแยกจากกันได้เสมอ (ห้ามยุบ "ไม่มีใบ" กับ "ไม่มีวันหมดอายุ" เข้าด้วยกัน
+      // — คนละเรื่อง) แต่ไม่ต้องดังเท่ากัน: "No expiry" คือค่าที่แทบทุกแถวเป็น จึงจางที่สุด
+      // ส่วนวันที่จริงคือแถวที่มีนาฬิกาเดินอยู่ — ตัวเดียวที่ควรสะดุดตาในคอลัมน์นี้
       cell: ({ row }) => {
         const d = row.original.bu_cap_end_date;
-        if (!d) return <span className="text-muted-foreground">—</span>;
+        if (!d) return <span className="text-muted-foreground/60">—</span>;
         return isPerpetual(d) ? (
-          <span className="text-muted-foreground">{t('common.state.noExpiry')}</span>
+          <span className="text-muted-foreground/70 text-[11px]">{t('common.state.noExpiry')}</span>
         ) : (
-          <span className="text-xs">{fmtDate(d)}</span>
+          <span className="text-foreground font-mono text-xs font-medium tabular-nums">{fmtDate(d)}</span>
         );
       },
       // cluster ที่ไม่มีใบโควตาจะอยู่ท้ายเสมอทั้งสองทิศ (NULLS LAST ฝั่ง SQL) — "ไม่มีใบ"
@@ -434,7 +462,13 @@ const ClusterManagement: React.FC = () => {
       // backend อ่านจาก `clusterHeadsSubquery()` ตัวเดียวกับ `countClusterHeads`
       enableSorting: true,
     },
-    ...auditColumns<Cluster>({ hideUpdatedOnCard: true, t }),
+    // สองคอลัมน์นี้เป็นเมตาดาต้า ไม่ใช่คำตอบของคำถามที่คนเปิดหน้านี้มาถาม — คงคอลัมน์ไว้ครบ
+    // (ทั้งคู่ยังเรียงได้ และ created_at ยังเป็น default sort) แต่ลดน้ำหนักหัวคอลัมน์ลงจาก
+    // ระดับเดียวกับ Name/Users และตรึงความกว้างไม่ให้ชื่อคนยาว ๆ ดันคอลัมน์ข้อมูลจริงให้แคบลง
+    ...auditColumns<Cluster>({ hideUpdatedOnCard: true, t }).map((c) => ({
+      ...c,
+      meta: { ...(c.meta ?? {}), headerClassName: 'w-28 font-normal text-muted-foreground/70', cellClassName: 'w-28' },
+    })),
     ...(showDeleted ? [{
       id: 'deleted_at',
       header: t('common.audit.deletedDate'),

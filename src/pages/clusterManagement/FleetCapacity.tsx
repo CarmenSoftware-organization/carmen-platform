@@ -101,18 +101,18 @@ export function FleetCapacity({
   const { t } = useI18n();
   const expiring = expiringLabel ?? t('components.fleetCapacity.quotaExpiring');
   return (
-    <Card className="p-4 sm:p-5">
-      <div className="text-muted-foreground mb-3 text-[11px] font-bold uppercase tracking-[0.14em]">
+    <Card className="p-4">
+      <div className="text-muted-foreground mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em]">
         {t('components.fleetCapacity.heading')}
       </div>
 
       {error && !summary ? (
         <p className="text-muted-foreground text-xs" role="alert">{t('components.fleetCapacity.unavailable')}</p>
       ) : loading || !summary ? (
-        <div className="grid gap-6 sm:grid-cols-[1fr_1fr_auto]">
-          <Skeleton className="h-12" />
-          <Skeleton className="h-12" />
-          <Skeleton className="h-12 w-28" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-10">
+          <Skeleton className="h-9 w-full sm:w-[300px]" />
+          <Skeleton className="h-9 w-full sm:w-[300px]" />
+          <Skeleton className="h-9 w-44" />
         </div>
       ) : !summary.bu || !summary.users ? (
         // Malformed-payload guard: a 200 whose body didn't unwrap into a real FleetSummary (see
@@ -131,12 +131,15 @@ export function FleetCapacity({
               {t('common.state.summaryStale')}
             </p>
           )}
-          <div className={cn('grid gap-6 sm:grid-cols-[1fr_1fr_auto] sm:items-center', error && 'opacity-70')}>
+          {/* ทุกอย่างเรียงชิดซ้ายต่อกัน ไม่ใช่ยืดเต็มความกว้าง — เดิมแต่ละ gauge กิน 1fr จนแถบยาว
+              เกือบครึ่งจอโดยไม่มีใครอ่านสัดส่วนจากมันได้ละเอียดกว่าตัวเลขที่พิมพ์ไว้ข้าง ๆ อยู่แล้ว
+              ปล่อยพื้นที่ขวาให้ว่างดีกว่าดันสถิติไปติดขอบแล้วเปิดช่องโหว่กลางแถบ */}
+          <div className={cn('flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:gap-x-10', error && 'opacity-70')}>
             {/* BU quota is seat-ruled now (fleet total of `bu_cap`) — 0 is a real zero, not
                 "unlimited"; `uncappedNote` is a no-op here since `uncapped_count` stays 0 for bu. */}
             <CapacityGauge icon={Building2} label={t('components.fleetCapacity.businessUnits')} used={summary.bu.used ?? 0} cap={summary.bu.cap ?? 0} finite note={uncappedNote(t, summary.bu)} />
             <CapacityGauge icon={Users} label={t('nav.users')} used={summary.users.used ?? 0} cap={summary.users.cap ?? null} note={uncappedNote(t, summary.users)} />
-            <div className="flex gap-6 border-border sm:flex-col sm:gap-1.5 sm:border-l sm:pl-6">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 border-border sm:grid sm:grid-cols-2 sm:gap-x-5 sm:gap-y-1 sm:border-l sm:pl-8">
               <Stat value={summary.total} label={t('components.fleetCapacity.clusters')} />
               <Stat value={summary.active} label={t('components.fleetCapacity.active')} />
               <Stat value={summary.near_limit} label={t('components.fleetCapacity.nearLimit')} alert />
