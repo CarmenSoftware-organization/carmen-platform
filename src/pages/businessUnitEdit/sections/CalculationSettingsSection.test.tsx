@@ -32,7 +32,7 @@ describe('CalculationSettingsSection currency field', () => {
         currencies={currencies}
       />,
     );
-    const select = screen.getByLabelText('Default Currency ID') as HTMLSelectElement;
+    const select = screen.getByLabelText('Default currency') as HTMLSelectElement;
     expect(select.tagName).toBe('SELECT');
     expect(screen.getByRole('option', { name: 'USD - US Dollar' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'THB - Thai Baht (inactive)' })).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('CalculationSettingsSection currency field', () => {
         currenciesFailed
       />,
     );
-    const field = screen.getByLabelText('Default Currency ID');
+    const field = screen.getByLabelText('Default currency');
     expect(field.tagName).toBe('INPUT');
   });
 
@@ -60,7 +60,7 @@ describe('CalculationSettingsSection currency field', () => {
         currencies={currencies}
       />,
     );
-    const select = screen.getByLabelText('Default Currency ID') as HTMLSelectElement;
+    const select = screen.getByLabelText('Default currency') as HTMLSelectElement;
     expect(select.value).toBe('legacy-id');
     expect(screen.getByRole('option', { name: 'JPY - Yen' })).toBeInTheDocument();
   });
@@ -74,7 +74,8 @@ describe('CalculationSettingsSection currency field', () => {
         currencies={currencies}
       />,
     );
-    expect(screen.getByText('Default Currency')).toBeInTheDocument();
+    // กลุ่มนี้ไม่ประกาศหัวข้อซ้ำกับป้าย field ที่อยู่เหนือมันแล้ว ป้ายสถานะคือแถวที่ระบุตัวมัน
+    expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('USD')).toBeInTheDocument();
   });
 
@@ -87,7 +88,7 @@ describe('CalculationSettingsSection currency field', () => {
         currenciesLoading
       />,
     );
-    const select = screen.getByLabelText('Default Currency ID') as HTMLSelectElement;
+    const select = screen.getByLabelText('Default currency') as HTMLSelectElement;
     expect(select.tagName).toBe('SELECT');
     expect(select).toBeDisabled();
     expect(screen.getByText('Loading currencies…')).toBeInTheDocument();

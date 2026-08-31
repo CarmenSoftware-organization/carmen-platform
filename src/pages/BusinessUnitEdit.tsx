@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -454,6 +454,22 @@ const BusinessUnitEdit: React.FC = () => {
     return true;
   };
 
+  /**
+   * ช่องบังคับที่ยังว่างอยู่ ใช้เฉพาะตอนสร้างใหม่
+   *
+   * แถบล่างเคยขึ้นคำว่า "No changes" บนหน้าสร้างใหม่ ซึ่งเป็นสถานะของระเบียนที่ยังไม่มีตัวตน
+   * — ไม่ได้บอกอะไรและไม่ตรงกับสิ่งที่ผู้ใช้กำลังทำ ช่องบังคับสามช่องยังกระจายอยู่คนละที่ด้วย
+   * (ชื่อคือ <h1>, code กับ cluster อยู่ในกลุ่ม Details) ที่ว่างตรงนั้นจึงเอามาบอกว่าเหลืออะไร
+   * พอครบแล้วไม่ต้องขึ้นอะไรเลย ปุ่ม Create ที่กดได้พูดแทนตัวเองได้อยู่แล้ว
+   */
+  const missingRequired = useMemo(() => {
+    const missing: string[] = [];
+    if (!formData.name.trim()) missing.push(t('common.field.name'));
+    if (!formData.code.trim()) missing.push(t('common.field.code'));
+    if (!formData.cluster_id) missing.push(t('common.label.cluster'));
+    return missing;
+  }, [formData.name, formData.code, formData.cluster_id, t]);
+
   // Actual save request — split out of handleSave so the pool-repoint confirm dialog
   // can invoke it directly on confirm without re-running the gate that opened it.
   const doSave = async () => {
@@ -606,6 +622,9 @@ const BusinessUnitEdit: React.FC = () => {
         {/* Shared A4 header: gives the page a real <h1>. The title stays editable
             in place because this page has no read/edit toggle by design — it is one
             always-editable document gated on `canEdit`. */}
+        {/* ไม่มี subtitle ตอนแก้ไข: 'Business unit details' วางอยู่ใต้ชื่อ BU เองแล้วบอกซ้ำสิ่งที่
+            breadcrumb ชื่อเรื่อง และแถบ tab ข้างล่างบอกไปหมดแล้ว — เป็นการบรรยายหน้าจอให้ตัวเองฟัง
+            ตอนสร้างใหม่ยังเก็บไว้ เพราะชื่อยังว่างจึงไม่มีอย่างอื่นบอกว่ากำลังทำอะไรอยู่ */}
         <PageHeader
           backTo="/business-units"
           title={
@@ -615,7 +634,7 @@ const BusinessUnitEdit: React.FC = () => {
               onCommit={(v) => handleInlineCommit('name', v)}
             />
           }
-          subtitle={isNew ? t('pages.businessUnits.createSubtitle') : t('pages.businessUnits.editSubtitle')}
+          subtitle={isNew ? t('pages.businessUnits.createSubtitle') : undefined}
           audit={normalizeAudit(buRecord)}
           actions={
             !isNew && (
@@ -652,6 +671,7 @@ const BusinessUnitEdit: React.FC = () => {
           currenciesFailed={currenciesFailed}
           getCalculationMethodLabel={getCalculationMethodLabel}
           canEdit={canEdit}
+          isNew={isNew}
           activeSeats={activeSeats}
           activeLicenseCount={activeLicenseCount}
           onCommit={handleInlineCommit}
@@ -726,7 +746,13 @@ const BusinessUnitEdit: React.FC = () => {
         <div className="unsaved-bar fixed bottom-0 left-0 right-0 z-40 md:left-16 lg:left-60">
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
-              {hasChanges ? (
+              {isNew ? (
+                missingRequired.length > 0 && (
+                  <span className="text-muted-foreground">
+                    {t('pages.businessUnits.stillNeeded', { fields: missingRequired.join(', ') })}
+                  </span>
+                )
+              ) : hasChanges ? (
                 <>
                   <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
                   <span>{t('common.state.unsavedChanges')}</span>

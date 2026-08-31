@@ -339,7 +339,9 @@ export const en = {
       scope: 'Scope',
       reference: 'Reference',
       content: 'Content',
-      defaultCurrency: 'Default Currency',
+      // ไม่มีผู้ใช้แล้ว: เดิมเป็นหัวข้อของกล่องรายละเอียดสกุลเงินใน CalculationSettingsSection
+      // ซึ่งซ้ำคำต่อคำกับป้ายของ field เหนือมัน จึงถูกถอดออก คงคีย์ไว้ให้ th.ts ตรงกัน
+      defaultCurrency: 'Default currency',
       type: 'Type',
       title: 'Title',
       severity: 'Severity',
@@ -2458,6 +2460,11 @@ export const en = {
       formatsTab: 'Formats',
       technicalTab: 'Technical',
       createSubtitle: 'Create a new business unit',
+      // Shown in the sticky action bar on the create route in place of 'No changes', which
+      // described a record that does not exist yet. The three required fields sit in two
+      // different places (name is the <h1>, code and cluster are in the Details group), so
+      // the bar is the one spot that can name all of them at once.
+      stillNeeded: 'Still needed: {{fields}}',
       editSubtitle: 'Business unit details',
       // Prefix-concatenation, matching this object's own loadFailedPrefix (Task 2) — the
       // validateRequired() error banner appends Object.values(active).join(', ') after this.
@@ -2605,12 +2612,16 @@ export const en = {
       noConfigEntries: 'No configuration entries.',
 
       // --- Task 4: CalculationSettingsSection.tsx ---
-      calculationSettingsTitle: 'Calculation Settings',
+      // Sentence case, and the field label drops the internal column name ("… ID"): the
+      // control shows "THB - Thai baht", not an id. Every label in this page's document
+      // grammar (Code, Alias, Max users, Long time format) is sentence case — the Title Case
+      // here was the visible seam between that grammar and the older card sections.
+      calculationSettingsTitle: 'Calculation settings',
       calculationSettingsDescription: 'Calculation method and currency configuration',
       loadingCurrencies: 'Loading currencies…',
-      calculationMethodLabel: 'Calculation Method',
+      calculationMethodLabel: 'Calculation method',
       selectMethodOption: 'Select method',
-      defaultCurrencyIdLabel: 'Default Currency ID',
+      defaultCurrencyIdLabel: 'Default currency',
       selectCurrencyOption: 'Select currency',
       // The fallback text-input's placeholder (shown only when the currency catalog fetch
       // failed) — a lowercase "currency" in the source, NOT byte-identical to
@@ -2618,7 +2629,7 @@ export const en = {
       // than reusing that one.
       defaultCurrencyIdPlaceholder: 'Default currency ID',
       symbolLabel: 'Symbol',
-      decimalPlacesLabel: 'Decimal Places',
+      decimalPlacesLabel: 'Decimal places',
       // Shared with DatabaseConnectionSection.tsx's own pool-name " (inactive)" suffix —
       // byte-identical leading-space suffix, same file group (this task), same meaning; one
       // key for both call sites rather than two copies.
@@ -2644,12 +2655,12 @@ export const en = {
       databasePoolPermissionRequired: 'Changing the database pool requires a platform-level permission.',
 
       // --- Task 4: NumberFormatsSection.tsx ---
-      numberFormatsTitle: 'Number Formats',
+      numberFormatsTitle: 'Number formats',
       numberFormatsDescription: 'Numeric display format configuration',
-      perPageFormatLabel: 'Per Page Format',
-      amountFormatLabel: 'Amount Format',
-      quantityFormatLabel: 'Quantity Format',
-      recipeFormatLabel: 'Recipe Format',
+      perPageFormatLabel: 'Per page format',
+      amountFormatLabel: 'Amount format',
+      quantityFormatLabel: 'Quantity format',
+      recipeFormatLabel: 'Recipe format',
       // Live preview beside each JSON blob (2026-08-31). `sample` is the number the format
       // is applied to, so the caption and the rendered value always agree.
       formatPreviewSample: '{{sample}} shows as',
