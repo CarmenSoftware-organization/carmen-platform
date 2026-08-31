@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./hooks/useDarkMode";
 import { I18nProvider } from "./hooks/useI18n";
 import PrivateRoute from "./components/PrivateRoute";
+import { FeatureFlagProvider } from "./context/FeatureFlagContext";
 import AuthedRoute from "./components/AuthedRoute";
 import ClusterAdminRoute from "./components/ClusterAdminRoute";
 import { Toaster } from "sonner";
@@ -81,7 +82,8 @@ function App() {
 function AppContent() {
   return (
     <AuthProvider>
-      <Router>
+      <FeatureFlagProvider>
+        <Router>
         <div className="App">
           <Suspense fallback={<RouteLoader />}>
             <Routes>
@@ -550,7 +552,8 @@ function AppContent() {
           <Toaster position="top-center" richColors toastOptions={{ className: 'text-sm', duration: 4000 }} />
           <KeyboardShortcutsHelp />
         </div>
-      </Router>
+        </Router>
+      </FeatureFlagProvider>
     </AuthProvider>
   );
 }
