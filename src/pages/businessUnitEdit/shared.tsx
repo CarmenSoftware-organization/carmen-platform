@@ -71,8 +71,8 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, d
   );
 };
 
-export const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <ReadOnlyField value={value} />
+export const ReadOnlyText: React.FC<{ value: string; className?: string }> = ({ value, className }) => (
+  <ReadOnlyField value={value} className={className} />
 );
 
 export const ReadOnlyTextarea: React.FC<{ value: string }> = ({ value }) => (
@@ -99,28 +99,42 @@ export const AddrField: React.FC<{
 );
 
 /**
- * หนึ่งกลุ่มของ document: หัวข้อ uppercase ตัวเล็ก + เส้นคั่นด้านบน
+ * หนึ่งกลุ่มของ document: หัวข้อ + คำบรรยาย + เส้นคั่นด้านบน
  * ย้ายมาจาก BusinessUnitDocument.tsx (2026-08-19) เพราะหน้า cluster-admin
  * ใช้กลุ่มหน้าตาเดียวกันแต่เรียงคนละลำดับ — แก้หน้าตาของกลุ่มต้องแก้ที่นี่ที่เดียว
+ *
+ * หัวข้อใช้ทรงเดียวกับ CardTitle/CardDescription ของ CollapsibleSection (2026-08-31):
+ * หน้า BU เรนเดอร์ทั้งสองแบบสลับกันในจอเดียว การมีหัวข้อสองทรงในระดับชั้นเดียวกัน
+ * ทำให้สายตาอ่านลำดับชั้นผิด
+ *
+ * `cols={2}` แบ่งลูกเป็นสองคอลัมน์ตั้งแต่ lg ขึ้นไป — สำหรับกลุ่มที่มีหลาย field สั้น
+ * (ที่อยู่ 13 ช่อง) ซึ่งเรียงคอลัมน์เดียวแล้วยาวเกินหนึ่งจอโดยที่ครึ่งขวาของหน้าว่างเปล่า
  */
 export function Group({
   label,
+  description,
   action,
+  cols = 1,
   children,
 }: {
   label: string;
+  description?: string;
   action?: React.ReactNode;
+  cols?: 1 | 2;
   children: React.ReactNode;
 }) {
   return (
     <div className="border-t p-4 sm:px-6 sm:py-5">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <div className="text-muted-foreground text-[11px] font-bold uppercase tracking-[0.13em]">{label}</div>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold leading-none tracking-tight">{label}</h3>
+          {description && <p className="text-muted-foreground mt-1.5 text-sm">{description}</p>}
+        </div>
         {action}
       </div>
-      <div>{children}</div>
+      <div className={cols === 2 ? 'lg:grid lg:grid-cols-2 lg:gap-x-10' : undefined}>{children}</div>
     </div>
   );
 }
 
-export { InlineField, type InlineOption } from './InlineField';
+export { InlineField, type InlineOption, type InlineWidth } from './InlineField';

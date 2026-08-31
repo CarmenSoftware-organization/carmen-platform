@@ -135,6 +135,13 @@ export const TenantMigrationCard = ({
             </Button>,
           )}
 
+          {/* Before the first check the card said nothing about state, which reads as
+              "nothing wrong". An explicit "not checked" badge distinguishes unknown from ok. */}
+          {!status && !loadingStatus && (
+            <Badge variant="outline" className="text-muted-foreground">
+              {t('common.state.notCheckedYet')}
+            </Badge>
+          )}
           {status?.up_to_date && <Badge variant="success">{t('components.tenantMigrationCard.upToDate')}</Badge>}
           {status?.has_pending && (
             <Badge variant="secondary">

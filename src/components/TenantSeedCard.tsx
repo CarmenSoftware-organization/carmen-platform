@@ -162,6 +162,12 @@ export const TenantSeedCard = ({
             </Button>,
           )}
 
+          {/* Same "unknown ≠ ok" distinction the migration card makes above. */}
+          {!status && !loadingStatus && (
+            <Badge variant="outline" className="text-muted-foreground">
+              {t('common.state.notCheckedYet')}
+            </Badge>
+          )}
           {status?.all_seeded && <Badge variant="success">{t('components.tenantSeedCard.seeded')}</Badge>}
           {status && !status.all_seeded && (
             <Badge variant="secondary">{t('components.tenantSeedCard.missingCount', { count: totalMissing })}</Badge>

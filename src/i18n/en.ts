@@ -550,6 +550,9 @@ export const en = {
       saveBusinessUnitFirst: 'Save the business unit first.',
       // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared "last checked HH:MM:SS" caption.
       lastChecked: 'Last checked {{time}}',
+      // TenantSeedCard.tsx / TenantMigrationCard.tsx: the state before anyone presses
+      // Check — the card used to render no status at all, which reads as "fine".
+      notCheckedYet: 'Not checked',
     },
     validation: {
       // `requiredMessage` replaces the former nameRequired/clusterRequired pair. Neither had
@@ -2365,6 +2368,13 @@ export const en = {
       // '?' is a universal placeholder glyph. Left untranslated, no key added — a Record here
       // would be fiction.
       detailsGroup: 'Details',
+      // Group descriptions (2026-08-31): `Group` now renders a title + description in the
+      // same shape as CollapsibleSection, so every section on the page reads at one level.
+      detailsGroupDescription: 'Identity and cluster membership',
+      hotelGroupDescription: 'The property this business unit operates',
+      companyGroupDescription: 'The legal entity that invoices for it',
+      taxGroupDescription: 'Registration numbers used on documents',
+      dateAndTimeGroupDescription: 'How dates and times are displayed',
       maxUsersLabel: 'Max users',
       // One/Many pair for the "From N active license(s) · change these in the Users tab" hint
       // under the read-only Max users value — an English-only plural the source built with a
@@ -2640,6 +2650,13 @@ export const en = {
       amountFormatLabel: 'Amount Format',
       quantityFormatLabel: 'Quantity Format',
       recipeFormatLabel: 'Recipe Format',
+      // Live preview beside each JSON blob (2026-08-31). `sample` is the number the format
+      // is applied to, so the caption and the rendered value always agree.
+      formatPreviewSample: '{{sample}} shows as',
+      formatPreviewPerPage: 'Rows per page:',
+      formatPreviewEmpty: 'Not set — the tenant default applies.',
+      formatPreviewInvalidJson: "Not valid JSON — this won't apply.",
+      formatPreviewInvalidOptions: "Valid JSON, but not a usable format — this won't apply.",
     },
     // ── Analytics (i18n phase-2 slice-5.5 fix wave 2) ──
     // The two pages that render <DateRangeFilter>. Neither had ANY English before this
