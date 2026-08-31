@@ -42,6 +42,7 @@ export const en = {
   },
   navGroup: {
     organization: 'Organization',
+    licenseManagement: 'License Management',
     content: 'Content',
     analytics: 'Analytics',
     platform: 'Platform',
