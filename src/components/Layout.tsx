@@ -3,16 +3,19 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { BrandMark } from './BrandMark';
+import { ProductLogo } from './ProductLogo';
 import { Button } from './ui/button';
 import { Menu } from 'lucide-react';
-import Sidebar, { PRODUCT_BRAND, type BrandIdentity, type NavItem } from './Sidebar';
+import Sidebar, { PRODUCT_BRAND, isProductBrand, type BrandIdentity, type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useI18n } from '../hooks/useI18n';
+import { useBackendVersion } from '../hooks/useBackendVersion';
+import FooterClock from './FooterClock';
 import HeaderUserMenu from './HeaderUserMenu';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
-import VersionBadge from './VersionBadge';
+import VersionBadge, { CURRENT_VERSION } from './VersionBadge';
 import { buildPlatformNav } from './nav/platformNav';
 import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { Skeleton } from './ui/skeleton';
@@ -60,6 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
+  const backendVersion = useBackendVersion();
 
   // Must match the `md:` breakpoint on the two header elements below — only one
   // HeaderUserMenu may be mounted, or the accessible name is duplicated.
@@ -200,18 +204,33 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to={brandDestination} className="flex min-w-0 items-center gap-3 group">
-                <BrandMark
-                  name={brand.name}
-                  code={brand.code}
-                  src={brand.logoUrl}
-                  tone="primary"
-                  size="sm"
-                  className="shadow-xs"
-                />
-                <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
-                  {brand.name}
-                </h1>
+              <Link
+                to={brandDestination}
+                className={cn(
+                  'flex min-w-0 items-center gap-3 group',
+                  /* The product lockup centres between the menu button and the account menu;
+                     a cluster keeps its mark beside the button, next to the name it labels. */
+                  isProductBrand(brand) && 'mx-auto',
+                )}
+                aria-label={brand.name}
+              >
+                {isProductBrand(brand) ? (
+                  <ProductLogo className="h-9" />
+                ) : (
+                  <>
+                    <BrandMark
+                      name={brand.name}
+                      code={brand.code}
+                      src={brand.logoUrl}
+                      tone="primary"
+                      size="sm"
+                      className="shadow-xs"
+                    />
+                    <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
+                      {brand.name}
+                    </h1>
+                  </>
+                )}
               </Link>
               {!isDesktop && (
                 <div className="ml-auto">
@@ -223,7 +242,8 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
         </header>
 
         {/* Desktop breadcrumb bar + account controls */}
-        <div className="sticky top-0 z-30 hidden h-12 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
+        {/* h-16 ตรงกับช่องโลโก้ในแถบข้าง เส้นใต้ของทั้งสองจึงเป็นเส้นเดียวกันเมื่อมองข้ามคอลัมน์ */}
+        <div className="sticky top-0 z-30 hidden h-16 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
           {!hideBreadcrumbs && <Breadcrumbs />}
           {headerSlot}
           {isDesktop && (
@@ -240,6 +260,35 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
         <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {children}
         </main>
+
+        {/* เวอร์ชันของสองฝั่งอยู่คู่กัน เพราะคำถามที่คนมองหาจริงคือหน้าเว็บกับหลังบ้าน
+            ตรงรุ่นกันไหม ไม่ใช่รุ่นของฝั่งใดฝั่งหนึ่งลอย ๆ แถวแอปลิงก์ไป changelog
+            ส่วนรุ่นหลังบ้านไม่มีปลายทางให้กด และหายไปเงียบ ๆ เมื่อดึงไม่สำเร็จ —
+            เป็นข้อมูลประกอบ ไม่ใช่ความล้มเหลวที่ผู้ใช้ต้องรับรู้ */}
+        {/* ติดขอบล่างของจอ ไม่ใช่ท้ายเอกสาร — พื้นหลังต้องทึบ ไม่งั้นเนื้อหาที่เลื่อนผ่าน
+            ใต้แถบจะอ่านทะลุขึ้นมา ส่วน py แคบกว่าที่อื่นเพราะแถบนี้กินพื้นที่หน้าจอตลอดเวลา */}
+        <footer className="sticky bottom-0 z-20 border-t border-border bg-background">
+          <div className="container mx-auto flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 font-mono text-[11px] text-muted-foreground sm:px-6">
+            <Link
+              to="/changelog"
+              className="hover:text-foreground"
+              title={t('header.viewChangelog')}
+            >
+              {t('header.appVersion')} v{CURRENT_VERSION}
+            </Link>
+            {backendVersion && (
+              <>
+                <span aria-hidden>·</span>
+                <span title={backendVersion.build}>
+                  {t('header.apiVersion')} v{backendVersion.version}
+                </span>
+              </>
+            )}
+            <span className="ml-auto">
+              <FooterClock />
+            </span>
+          </div>
+        </footer>
       </div>
     </div>
   );

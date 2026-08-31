@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChevronDown, LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
@@ -16,7 +16,6 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { THEME_OPTIONS } from './ThemeToggle';
 import { LANGUAGE_OPTIONS } from './LanguageToggle';
-import { CURRENT_VERSION } from './VersionBadge';
 
 interface HeaderUserInfo {
   initials: string;
@@ -138,12 +137,6 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
                 )}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/changelog" className="font-mono text-[11px]">
-                v{CURRENT_VERSION}
-              </Link>
-            </DropdownMenuItem>
           </>
         )}
 

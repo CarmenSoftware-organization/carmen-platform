@@ -31,10 +31,10 @@ export const en = {
     activityEvents: 'Activity Events',
     applications: 'Applications',
     emailSettings: 'Email Settings',
-    platformConfig: 'Platform Config',
-    platformRoles: 'Platform Roles',
+    platformConfig: 'Config',
+    platformRoles: 'Roles',
     superAdmins: 'Super Admins',
-    userPlatform: 'User Platform',
+    userPlatform: 'Users',
     sqlWorkbench: 'SQL Workbench',
     databasePools: 'Database Pools',
     cluster: 'Cluster',
@@ -46,6 +46,7 @@ export const en = {
     content: 'Content',
     analytics: 'Analytics',
     platform: 'Platform',
+    database: 'Database',
     // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*
     // ตัว Sidebar ของ ClusterAdminLayout เองไม่ได้ตั้ง groupKey จึงไม่แสดงหัวข้อนี้
     clusterAdmin: 'Cluster administration',
@@ -66,6 +67,8 @@ export const en = {
     theme: 'Theme',
     viewChangelog: 'view changelog',
     version: 'Version',
+    appVersion: 'App',
+    apiVersion: 'API',
     userFallback: 'User',
   },
   theme: {

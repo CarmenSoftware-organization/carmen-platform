@@ -762,7 +762,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       </div>
 
       {!isNew && hasChanges && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background md:left-16 lg:left-60">
+        <div className="unsaved-bar fixed bottom-0 left-0 right-0 z-40 md:left-16 lg:left-60">
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs sm:text-sm">
               <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />

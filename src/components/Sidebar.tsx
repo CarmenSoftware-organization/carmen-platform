@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { PanelLeft, PanelLeftClose, type LucideIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { BrandMark } from './BrandMark';
+import { ProductLogo } from './ProductLogo';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
@@ -34,6 +35,13 @@ export interface NavItem {
    * Set by the nav builders, not by callers.
    */
   comingSoon?: boolean;
+  /**
+   * วาดเส้นคั่นเหนือรายการนี้ — แบ่งกลุ่มย่อยภายในกลุ่มเดียวกันโดยไม่ต้องตั้งหัวข้อใหม่
+   * เส้นเป็นของรายการนี้เอง ไม่ใช่ของรายการก่อนหน้า ถ้าแถวนี้ถูกกรองทิ้ง (สิทธิ์ไม่ถึง
+   * หรือฟีเจอร์ถูกซ่อน) เส้นจึงหายไปด้วย แทนที่จะค้างลอยอยู่เหนือรายการถัดไป
+   * The rule belongs to this row, so it disappears with it when the row is filtered out.
+   */
+  dividerBefore?: boolean;
 }
 
 /** Who the application shell is currently representing — the product, or one administered cluster. */
@@ -46,6 +54,13 @@ export interface BrandIdentity {
 }
 
 export const PRODUCT_BRAND: BrandIdentity = { name: 'Carmen Platform', code: 'C' };
+
+/**
+ * The product wears its own logo file; every other identity wears `BrandMark`. Compared by value
+ * rather than by reference so a caller that rebuilds the object still gets the product treatment.
+ */
+export const isProductBrand = (brand: BrandIdentity): boolean =>
+  brand.name === PRODUCT_BRAND.name && brand.code === PRODUCT_BRAND.code;
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -81,6 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const { t } = useI18n();
+  const isProduct = isProductBrand(brand);
 
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -157,23 +173,37 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       >
         {/* Logo */}
+        {/* The product logo is a centred lockup; a cluster keeps the left-aligned mark + name,
+            which reads as a list row rather than a masthead. */}
         <div className={cn(
           'flex h-16 items-center border-b border-border shrink-0',
-          isCollapsed ? 'justify-center px-2' : 'px-4'
+          isCollapsed || isProduct ? 'justify-center px-2' : 'px-4'
         )}>
           <Link to={brandTo} className="flex items-center gap-3 group min-w-0" aria-label={brand.name}>
-            <BrandMark
-              name={brand.name}
-              code={brand.code}
-              src={brand.logoUrl}
-              tone="primary"
-              size="md"
-              className="shadow-xs transition-transform duration-300 group-hover:scale-105"
-            />
-            {!isCollapsed && (
-              <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
-                {brand.name}
-              </h1>
+            {isProduct ? (
+              <ProductLogo
+                variant={isCollapsed ? 'mark' : 'lockup'}
+                className={cn(
+                  'transition-transform duration-300 group-hover:scale-105',
+                  isCollapsed ? 'h-11 w-11 shadow-xs' : 'h-11',
+                )}
+              />
+            ) : (
+              <>
+                <BrandMark
+                  name={brand.name}
+                  code={brand.code}
+                  src={brand.logoUrl}
+                  tone="primary"
+                  size="md"
+                  className="shadow-xs transition-transform duration-300 group-hover:scale-105"
+                />
+                {!isCollapsed && (
+                  <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
+                    {brand.name}
+                  </h1>
+                )}
+              </>
             )}
           </Link>
         </div>
@@ -189,17 +219,21 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
               {isCollapsed && gi > 0 && <Separator className="!my-2" />}
               <div className="space-y-1">
-                {g.items.map((item) =>
-                  isCollapsed ? (
-                    <Tooltip key={item.path} content={t(item.labelKey)} side="right">
-                      <div>
-                        <NavLink item={item} showLabel={false} />
-                      </div>
-                    </Tooltip>
-                  ) : (
-                    <NavLink key={item.path} item={item} showLabel={true} />
-                  )
-                )}
+                {g.items.map((item, ii) => (
+                  <React.Fragment key={item.path}>
+                    {/* ii > 0: เส้นบนรายการแรกจะซ้อนกับหัวข้อกลุ่มที่มีเส้นใต้อยู่แล้ว */}
+                    {item.dividerBefore && ii > 0 && <Separator className="!my-2" />}
+                    {isCollapsed ? (
+                      <Tooltip content={t(item.labelKey)} side="right">
+                        <div>
+                          <NavLink item={item} showLabel={false} />
+                        </div>
+                      </Tooltip>
+                    ) : (
+                      <NavLink item={item} showLabel={true} />
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           ))}
@@ -234,18 +268,29 @@ const Sidebar: React.FC<SidebarProps> = ({
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="h-16 flex-row items-center border-b border-border px-4 space-y-0">
             <SheetTitle asChild>
-              <div className="flex min-w-0 items-center gap-3 group">
-                <BrandMark
-                  name={brand.name}
-                  code={brand.code}
-                  src={brand.logoUrl}
-                  tone="primary"
-                  size="md"
-                  className="shadow-xs transition-transform duration-300 group-hover:scale-105"
-                />
-                <span className="truncate text-xl font-bold text-foreground">
-                  {brand.name}
-                </span>
+              <div className={cn('flex min-w-0 items-center gap-3 group', isProduct && 'mx-auto')}>
+                {isProduct ? (
+                  /* The lockup spells the product name, so the accessible name moves off-screen
+                     rather than being printed twice. */
+                  <>
+                    <ProductLogo className="h-11 transition-transform duration-300 group-hover:scale-105" />
+                    <span className="sr-only">{brand.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <BrandMark
+                      name={brand.name}
+                      code={brand.code}
+                      src={brand.logoUrl}
+                      tone="primary"
+                      size="md"
+                      className="shadow-xs transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <span className="truncate text-xl font-bold text-foreground">
+                      {brand.name}
+                    </span>
+                  </>
+                )}
               </div>
             </SheetTitle>
             <SheetDescription className="sr-only">{t('sidebar.mainNavigation')}</SheetDescription>
@@ -264,27 +309,29 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </p>
                 )}
                 <div className="space-y-1">
-                  {g.items.map((item) => {
+                  {g.items.map((item, ii) => {
                     const Icon = item.icon;
                     const active = isActive(item.path);
                     return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => onMobileOpenChange(false)}
-                        className={cn(
-                          'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
-                          active
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                      >
-                        {active && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
-                        )}
-                        <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
-                        <span>{t(item.labelKey)}</span>
-                      </Link>
+                      <React.Fragment key={item.path}>
+                        {item.dividerBefore && ii > 0 && <Separator className="!my-2" />}
+                        <Link
+                          to={item.path}
+                          onClick={() => onMobileOpenChange(false)}
+                          className={cn(
+                            'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
+                            active
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                          )}
+                        >
+                          {active && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
+                          )}
+                          <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
+                          <span>{t(item.labelKey)}</span>
+                        </Link>
+                      </React.Fragment>
                     );
                   })}
                 </div>

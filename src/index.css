@@ -381,3 +381,65 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
+
+/* แถบ "มีการแก้ไขที่ยังไม่บันทึก" — ผิวแบบ iOS: พื้นโปร่งบางส่วนบน blur ที่เร่งความอิ่มสี
+   ทำให้สิ่งที่เลื่อนผ่านใต้แถบยังเห็นเป็นเงา ๆ แทนที่จะถูกตัดหายด้วยแผ่นทึบ
+   เป็นข้อยกเว้นที่ตั้งใจของการถอด glassmorphism ออกในการรื้อดีไซน์ — จำกัดที่แถบนี้แถบเดียว
+   ซึ่งลอยทับเนื้อหาจริง ต่างจากพื้นผิวอื่นในแอปที่เป็นชั้นล่างสุดของหน้า
+   A deliberate exception to the flat-surface rule, scoped to the one bar that floats. */
+.unsaved-bar {
+  background-color: hsl(var(--background) / 0.45);
+  -webkit-backdrop-filter: blur(30px) saturate(200%) brightness(1.08);
+  backdrop-filter: blur(30px) saturate(200%) brightness(1.08);
+  border-top: 1px solid hsl(0 0% 100% / 0.5);
+  /* เส้นสว่างบางด้านในของขอบบน — เอกลักษณ์ของผิวกระจก iOS ที่ทำให้แผ่นดูมีความหนา
+     ไม่ใช่แค่พื้นโปร่ง ต้องมาก่อนเงาด้านนอกในลิสต์เดียวกัน */
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.55),
+    0 -8px 28px -12px hsl(var(--foreground) / 0.2);
+}
+
+/* บนพื้นมืดต้องโปร่งกว่าและขอบชัดกว่า ไม่งั้นแถบจะกลืนไปกับพื้นหลังจนไม่เห็นว่าเป็นชั้นลอย */
+.dark .unsaved-bar {
+  background-color: hsl(var(--background) / 0.4);
+  /* บนพื้นมืดเส้นสว่างต้องจางลงมาก ไม่งั้นอ่านเป็นขอบเรืองแสงแทนที่จะเป็นความหนาของแผ่น */
+  border-top-color: hsl(0 0% 100% / 0.14);
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100% / 0.12),
+    0 -8px 28px -12px rgb(0 0 0 / 0.7);
+}
+
+/* ไม่มี backdrop-filter = พื้นโปร่งเปล่า ๆ ที่ตัวหนังสือทับข้อความข้างล่าง ต้องกลับไปทึบ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .unsaved-bar,
+  .dark .unsaved-bar {
+    background-color: hsl(var(--background));
+  }
+}
+
+/* เดสก์ท็อป: แถบลอยเป็นแผ่นกลางจอ ไม่ใช่คานเต็มความกว้าง — กึ่งกลางของ viewport ไม่ใช่ของ
+   พื้นที่เนื้อหา จึงไม่ต้องรู้ว่าแถบข้างกางหรือหุบอยู่ (คลาส md:left-16 lg:left-60 ในหน้า
+   ต่าง ๆ เดาจาก breakpoint ไม่ใช่สถานะจริงของแถบข้าง กฎนี้จึงเขียนทับมันทั้งหมด)
+   ชนะยูทิลิตี้ของ Tailwind ได้เพราะเป็น CSS นอก @layer ตามที่อธิบายไว้ด้านบนของไฟล์นี้ */
+@media (min-width: 768px) {
+  .unsaved-bar {
+    left: 50%;
+    right: auto;
+    bottom: 1.25rem;
+    width: max-content;
+    max-width: calc(100vw - 6rem);
+    transform: translateX(-50%);
+    border: 1px solid hsl(0 0% 100% / 0.5);
+    border-radius: 1rem;
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.55),
+      0 10px 34px -12px hsl(var(--foreground) / 0.28);
+  }
+
+  .dark .unsaved-bar {
+    border-color: hsl(0 0% 100% / 0.14);
+    box-shadow:
+      inset 0 1px 0 hsl(0 0% 100% / 0.12),
+      0 10px 34px -12px rgb(0 0 0 / 0.75);
+  }
+}
