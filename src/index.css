@@ -381,3 +381,31 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
+
+/* แถบ "มีการแก้ไขที่ยังไม่บันทึก" — ผิวแบบ iOS: พื้นโปร่งบางส่วนบน blur ที่เร่งความอิ่มสี
+   ทำให้สิ่งที่เลื่อนผ่านใต้แถบยังเห็นเป็นเงา ๆ แทนที่จะถูกตัดหายด้วยแผ่นทึบ
+   เป็นข้อยกเว้นที่ตั้งใจของการถอด glassmorphism ออกในการรื้อดีไซน์ — จำกัดที่แถบนี้แถบเดียว
+   ซึ่งลอยทับเนื้อหาจริง ต่างจากพื้นผิวอื่นในแอปที่เป็นชั้นล่างสุดของหน้า
+   A deliberate exception to the flat-surface rule, scoped to the one bar that floats. */
+.unsaved-bar {
+  background-color: hsl(var(--background) / 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid hsl(var(--border) / 0.6);
+  box-shadow: 0 -8px 24px -12px hsl(var(--foreground) / 0.18);
+}
+
+/* บนพื้นมืดต้องโปร่งกว่าและขอบชัดกว่า ไม่งั้นแถบจะกลืนไปกับพื้นหลังจนไม่เห็นว่าเป็นชั้นลอย */
+.dark .unsaved-bar {
+  background-color: hsl(var(--background) / 0.6);
+  border-top-color: hsl(var(--border) / 0.85);
+  box-shadow: 0 -8px 24px -12px rgb(0 0 0 / 0.6);
+}
+
+/* ไม่มี backdrop-filter = พื้นโปร่งเปล่า ๆ ที่ตัวหนังสือทับข้อความข้างล่าง ต้องกลับไปทึบ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .unsaved-bar,
+  .dark .unsaved-bar {
+    background-color: hsl(var(--background));
+  }
+}
