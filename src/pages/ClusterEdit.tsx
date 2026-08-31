@@ -565,9 +565,13 @@ const ClusterEdit: React.FC = () => {
             {activeTab === 'licensing' && (
               <Card className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+                  {/* ทรงหัวข้อเดียวกับ CardTitle/CardDescription ที่การ์ดอื่นในแอปใช้ —
+                      หัวการ์ดนี้เคยเล็กกว่าหัวการ์ดข้างเคียงหนึ่งขั้น ทั้งที่อยู่ระดับเดียวกัน */}
                   <div>
-                    <h2 className="text-sm font-medium">{t('pages.clusters.subscriptionsHeading')}</h2>
-                    <p className="text-muted-foreground text-xs">
+                    <h2 className="text-base font-semibold leading-none tracking-tight">
+                      {t('pages.clusters.subscriptionsHeading')}
+                    </h2>
+                    <p className="text-muted-foreground mt-1.5 text-sm">
                       {t('pages.clusters.licencesNote')}
                     </p>
                   </div>

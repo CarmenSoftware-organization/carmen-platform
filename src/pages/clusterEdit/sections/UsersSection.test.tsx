@@ -46,7 +46,9 @@ describe('UsersSection', () => {
   it('hides checkboxes and inline editors when canEdit is false', () => {
     renderSection({ canEdit: false });
     expect(screen.queryByRole('checkbox')).toBeNull();
-    // role shows as plain badge text, not an editable trigger
-    expect(screen.getByText('admin')).toBeInTheDocument();
+    // role shows as plain text, not an editable trigger — and as the same translated label
+    // the edit dropdown offers, never the raw enum value it used to print here
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.queryByText('admin')).toBeNull();
   });
 });

@@ -233,11 +233,17 @@ export function ClusterPlate({
             // BU quota comes from the cluster's licence view — 0 is a real zero, never
             // "unlimited", unlike the seat pool below.
             finite
+            /* "N active" is only worth printing when it differs from the used count already
+               shown above the rail — with every unit active the old note reprinted the same
+               number and the free count was the only new fact in it. */
             note={
               <>
-                {t('pages.clusters.activeCount', { count: bu.active })}
-                {buInactive > 0 ? ` · ${t('pages.clusters.inactiveCount', { count: buInactive })}` : ''}
-                {` · ${buFree === 1 ? t('pages.clusters.licenceFree', { count: buFree }) : t('pages.clusters.licencesFree', { count: buFree })}`}
+                {buInactive > 0
+                  ? `${t('pages.clusters.activeCount', { count: bu.active })} · ${t('pages.clusters.inactiveCount', { count: buInactive })} · `
+                  : ''}
+                {buFree === 1
+                  ? t('pages.clusters.licenceFree', { count: buFree })
+                  : t('pages.clusters.licencesFree', { count: buFree })}
               </>
             }
           />
@@ -246,20 +252,52 @@ export function ClusterPlate({
             label={t('pages.clusters.seats')}
             used={users.used}
             cap={users.cap}
+            /* Same rule as the BU rail above: the active count earns its place only when
+               some seats are held by inactive users. */
             note={
-              usersFree != null
-                ? `${t('pages.clusters.activeCount', { count: users.active })} · ${usersFree === 1 ? t('pages.clusters.seatFree', { count: usersFree }) : t('pages.clusters.seatsFree', { count: usersFree })}`
-                : `${t('pages.clusters.activeCount', { count: users.active })} · ${t('pages.clusters.noSeatCap')}`
+              [
+                users.active !== users.used ? t('pages.clusters.activeCount', { count: users.active }) : '',
+                usersFree != null
+                  ? usersFree === 1
+                    ? t('pages.clusters.seatFree', { count: usersFree })
+                    : t('pages.clusters.seatsFree', { count: usersFree })
+                  : t('pages.clusters.noSeatCap'),
+              ]
+                .filter(Boolean)
+                .join(' · ')
             }
           />
         </div>
 
-        {/* The strip lives inside the plate: it switches the body below, and reading it as
-         *  part of the plate is what says the plate stays put while the body changes. */}
-        <div className="border-t px-2 sm:px-4">
+      </Card>
+
+      {/* The strip is pinned below the app header — which is what the plate above always
+       *  claimed ("the licence headroom stays on screen while you add the business unit or
+       *  the user that consumes it") but never did: the plate scrolled away with everything
+       *  else. Pinning the whole plate would eat a third of the viewport, so the bar carries
+       *  the two counts instead, and those are the headroom.
+       *  `top-14` / `md:top-16` are the two Layout header heights — keep them in step. */}
+      <div className="bg-background/95 sticky top-14 z-20 flex items-center gap-4 border-b px-2 backdrop-blur sm:px-4 md:top-16">
+        <div className="min-w-0 flex-1">
           <TabStrip tabs={tabs} value={activeTab} onChange={onTabChange} />
         </div>
-      </Card>
+        <div className="text-muted-foreground hidden shrink-0 items-center gap-3 font-mono text-[11px] tabular-nums sm:flex">
+          <span
+            className="flex items-center gap-1"
+            title={`${t('pages.clusters.businessUnitsLower')}: ${bu.used} / ${bu.cap}`}
+          >
+            <Building2 className="size-3.5" aria-hidden />
+            {bu.used}/{bu.cap}
+          </span>
+          <span
+            className="flex items-center gap-1"
+            title={`${t('pages.clusters.seats')}: ${users.used} / ${users.cap ?? '∞'}`}
+          >
+            <Users className="size-3.5" aria-hidden />
+            {users.used}/{users.cap ?? '∞'}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

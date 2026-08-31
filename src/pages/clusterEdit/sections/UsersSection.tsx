@@ -81,6 +81,7 @@ export function UsersSection({
     { value: 'admin', label: t('common.role.admin') },
     { value: 'user', label: t('common.role.user') },
   ];
+  const roleLabelFor = (role: string) => roleOptions.find((o) => o.value === role)?.label ?? role;
 
   const bulkActions: BulkAction[] = [
     { key: 'remove', label: t('common.action.remove'), icon: Trash2, variant: 'destructive', onClick: () => setConfirmBulkRemove(true) },
@@ -152,25 +153,28 @@ export function UsersSection({
                     <TableCell>{displayName(u)}</TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
                     <TableCell>
-                      {/* `display` แสดง "ค่าดิบ" ของ role ไม่ใช่ป้ายที่แปลแล้ว — คงพฤติกรรมเดิม
-                          ทุกตัวอักษร (UsersSection.test.tsx ตรึง 'admin' ตัวเล็กไว้) และตรงกับกฎ
-                          "ห้ามแปลค่า enum ของ API"
-                          หมายเหตุถึงผู้ดูแล: ตัวเลือกใน dropdown แสดง 'Admin'/'User' แต่ช่องอ่าน
-                          อย่างเดียวแสดง 'admin' — ความไม่สม่ำเสมอนี้มีมาก่อนงานแปล ถ้าจะแก้ให้ตรงกัน
-                          ควรเป็นการเปลี่ยน copy รอบแยก ไม่ใช่แอบเปลี่ยนใน slice แปล */}
+                      {/* รอบแยกที่คอมเมนต์เดิมเรียกร้องไว้ (2026-08-31): ช่องอ่านอย่างเดียว
+                          เคยแสดงค่าดิบ 'admin' ขณะที่ dropdown ของ field เดียวกันแสดงคำแปล
+                          ผู้อ่านจึงเห็นสองภาษาในคอลัมน์เดียว ตอนนี้ทั้งสองใช้ป้ายเดียวกัน
+                          และตกกลับไปเป็นค่าดิบเมื่อ backend ส่ง role ที่ไม่รู้จัก — ค่าที่ไม่มี
+                          คำแปลต้องไม่หายไปจากหน้าจอ */}
                       <InlineCell
                         ariaLabel={t('pages.clusters.roleForAria', { name: displayName(u) })}
                         value={u.role ?? 'user'}
                         disabled={!canEdit}
                         options={roleOptions}
-                        display={<span>{u.role ?? 'user'}</span>}
+                        display={<span>{roleLabelFor(u.role ?? 'user')}</span>}
                         onCommit={(v) => { void onUpdateUser(u.id, { role: v }); }}
                       />
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={u.is_active !== false ? 'success' : 'secondary'} className="text-xs">
-                        {u.is_active !== false ? t('common.status.active') : t('common.status.inactive')}
-                      </Badge>
+                      {/* สีสงวนไว้ให้แถวที่ผิดปกติ — ป้ายเขียวทุกแถวคือเสียงรบกวน ไม่ใช่ข้อมูล
+                          (กติกาเดียวกับตารางผู้ใช้ในหน้า Business Unit) */}
+                      {u.is_active !== false ? (
+                        <span className="text-muted-foreground text-xs">{t('common.status.active')}</span>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">{t('common.status.inactive')}</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {canEdit && (
