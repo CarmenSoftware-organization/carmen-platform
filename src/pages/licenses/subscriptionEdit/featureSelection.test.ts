@@ -17,6 +17,7 @@ const feature = (over: Partial<LicenseFeature> = {}): LicenseFeature => ({
   label: 'Procurement',
   description: null,
   sort_order: 0,
+  state: 'active',
   ...over,
 });
 
