@@ -1,3 +1,5 @@
+import type { FeatureState } from '../constants/featureFlags';
+
 export interface PaginateParams {
   page?: number;
   perpage?: number;
@@ -1376,6 +1378,20 @@ export interface LicenseFeature {
   label: string;
   description: string | null;
   sort_order: number;
+  /**
+   * สถานะในแค็ตตาล็อก — `hide` ไม่ถูกส่งมาจาก endpoint นี้ ค่าที่เห็นจริงมีแค่ active / inactive
+   * `inactive` แปลว่ากลุ่มที่ผูกคีย์นี้ไว้แล้วเก็บไว้ได้ แต่เพิ่มเข้ากลุ่มใหม่ไม่ได้
+   */
+  state: FeatureState;
+}
+
+/**
+ * แถวแค็ตตาล็อกสำหรับหน้าจัดการ `/license-features` — ต่างจาก `LicenseFeature` ตรงที่มี `id`
+ * กับ `doc_version` และ **รวมแถวที่ `hide` ด้วย** เพราะหน้าที่ซ่อน feature ได้ต้องหามันเจอเพื่อเอากลับ
+ */
+export interface LicenseFeatureAdminRow extends LicenseFeature {
+  id: string;
+  doc_version: number;
 }
 
 export interface SubscriptionSummary {

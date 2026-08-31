@@ -248,8 +248,22 @@ export function FeatureSelectionCard({
             {visibleGroups.map((g) => {
               const expanded = isExpanded(g.module.key);
               const count = g.children.filter((c) => selected.has(c.key)).length;
-              const allSelected = g.children.length > 0 && count === g.children.length;
               const childKeys = g.children.map((c) => c.key);
+              /**
+               * module ที่ `inactive` และยังไม่ถูกเลือก จะบล็อกลูกทุกตัวของมัน — เพราะกฎ
+               * "ลูกลากพ่อ" ฝั่ง backend เติม module แม่ให้อัตโนมัติ การติ๊กลูกจึงเท่ากับ
+               * พยายามเพิ่ม module ที่เลิกขายแล้วเข้ากลุ่ม ซึ่ง backend ตอบ 422
+               */
+              const moduleBlocked = g.module.state === 'inactive' && !selected.has(g.module.key);
+              /**
+               * ติ๊กเพิ่มได้เฉพาะตัวที่ `active` (และ module แม่ไม่ถูกบล็อก) ส่วนตัวที่เลือกไว้แล้ว
+               * นับรวมเสมอ เพื่อให้ปุ่ม All/None ยังกดเคลียร์ของเดิมออกได้
+               */
+              const selectableChildKeys = g.children
+                .filter((c) => selected.has(c.key) || (c.state === 'active' && !moduleBlocked))
+                .map((c) => c.key);
+              const allSelected =
+                selectableChildKeys.length > 0 && count === selectableChildKeys.length;
               return (
                 <div key={g.module.key}>
                   <div className="flex items-center gap-2 px-2">
@@ -276,7 +290,14 @@ export function FeatureSelectionCard({
                           : t('pages.subscriptions.selectAllIn', { module: g.module.label })
                       }
                       onClick={() =>
-                        onChange(setModuleSelection(featureKeys, g.module.key, childKeys, !allSelected))
+                        onChange(
+                          setModuleSelection(
+                            featureKeys,
+                            g.module.key,
+                            allSelected ? childKeys : selectableChildKeys,
+                            !allSelected,
+                          ),
+                        )
                       }
                     >
                       {allSelected ? t('pages.subscriptions.none') : t('common.option.all')}
@@ -286,6 +307,10 @@ export function FeatureSelectionCard({
                     <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
                       {g.children.map((c) => {
                         const isSelected = selected.has(c.key);
+                        // เลิกขายของใหม่: ถอดของเดิมออกได้ แต่ติ๊กเพิ่มไม่ได้ — ตรงกับกติกาฝั่ง
+                        // backend เป๊ะ ถ้าปิดทั้งสองทาง ผู้ใช้จะถอดของที่เลิกขายแล้วออกไม่ได้เลย
+                        const cannotAdd =
+                          !isSelected && (c.state === 'inactive' || moduleBlocked);
                         return (
                           <Button
                             key={c.key}
@@ -293,11 +318,21 @@ export function FeatureSelectionCard({
                             variant={isSelected ? 'default' : 'outline'}
                             size="sm"
                             className="h-7 text-xs gap-1"
-                            title={c.key}
+                            title={
+                              cannotAdd
+                                ? `${c.key} — ${t('pages.licenseFeatures.state.inactiveHint')}`
+                                : c.key
+                            }
                             aria-pressed={isSelected}
+                            disabled={cannotAdd}
                             onClick={() => onChange(toggleFeature(featureKeys, c.key, !isSelected))}
                           >
                             {c.label}
+                            {c.state === 'inactive' && (
+                              <span className="text-[10px] opacity-70">
+                                ({t('pages.licenseFeatures.state.inactive')})
+                              </span>
+                            )}
                             {isSelected && <X className="h-3 w-3" />}
                           </Button>
                         );
