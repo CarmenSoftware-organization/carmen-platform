@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, LayoutGrid, Mail, FileSpreadsheet,
-  BarChart3, MousePointerClick, Settings, Server, KeyRound,
+  BarChart3, MousePointerClick, Settings, Server, KeyRound, ToggleLeft,
 } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 import type { FeatureState } from '../../constants/featureFlags';
@@ -35,6 +35,9 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/platform/user-platform', labelKey: 'nav.userPlatform', icon: UserCog, permission: 'user_platform.read', groupKey: 'navGroup.platform', feature: 'user_platform' },
   { path: '/sql-workbench', labelKey: 'nav.sqlWorkbench', icon: Database, permission: 'sql_workbench.read', groupKey: 'navGroup.platform', feature: 'sql_workbench' },
   { path: '/platform/database-pools', labelKey: 'nav.databasePools', icon: Server, permission: 'database_pool.read', groupKey: 'navGroup.platform', feature: 'database_pools' },
+  // ไม่มี feature โดยเจตนา — สวิตช์ที่ปิดตัวเองได้จะเปิดกลับไม่ได้อีกจากหน้าจอ
+  // Deliberately ungated: a switch that could hide itself could never be restored from the UI.
+  { path: '/platform/features', labelKey: 'nav.featureFlags', icon: ToggleLeft, permission: 'feature_flag.manage', groupKey: 'navGroup.platform' },
 ];
 
 /**
