@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { PanelLeft, PanelLeftClose, type LucideIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { BrandMark } from './BrandMark';
+import { ProductLogo } from './ProductLogo';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
 import { Badge } from './ui/badge';
@@ -47,6 +48,13 @@ export interface BrandIdentity {
 
 export const PRODUCT_BRAND: BrandIdentity = { name: 'Carmen Platform', code: 'C' };
 
+/**
+ * The product wears its own logo file; every other identity wears `BrandMark`. Compared by value
+ * rather than by reference so a caller that rebuilds the object still gets the product treatment.
+ */
+export const isProductBrand = (brand: BrandIdentity): boolean =>
+  brand.name === PRODUCT_BRAND.name && brand.code === PRODUCT_BRAND.code;
+
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
@@ -81,6 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const { t } = useI18n();
+  const isProduct = isProductBrand(brand);
 
   const isActive = (path: string): boolean => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -162,18 +171,30 @@ const Sidebar: React.FC<SidebarProps> = ({
           isCollapsed ? 'justify-center px-2' : 'px-4'
         )}>
           <Link to={brandTo} className="flex items-center gap-3 group min-w-0" aria-label={brand.name}>
-            <BrandMark
-              name={brand.name}
-              code={brand.code}
-              src={brand.logoUrl}
-              tone="primary"
-              size="md"
-              className="shadow-xs transition-transform duration-300 group-hover:scale-105"
-            />
-            {!isCollapsed && (
-              <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
-                {brand.name}
-              </h1>
+            {isProduct ? (
+              <ProductLogo
+                variant={isCollapsed ? 'mark' : 'lockup'}
+                className={cn(
+                  'transition-transform duration-300 group-hover:scale-105',
+                  isCollapsed ? 'h-9 w-9 shadow-xs' : 'h-8',
+                )}
+              />
+            ) : (
+              <>
+                <BrandMark
+                  name={brand.name}
+                  code={brand.code}
+                  src={brand.logoUrl}
+                  tone="primary"
+                  size="md"
+                  className="shadow-xs transition-transform duration-300 group-hover:scale-105"
+                />
+                {!isCollapsed && (
+                  <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
+                    {brand.name}
+                  </h1>
+                )}
+              </>
             )}
           </Link>
         </div>
@@ -235,17 +256,28 @@ const Sidebar: React.FC<SidebarProps> = ({
           <SheetHeader className="h-16 flex-row items-center border-b border-border px-4 space-y-0">
             <SheetTitle asChild>
               <div className="flex min-w-0 items-center gap-3 group">
-                <BrandMark
-                  name={brand.name}
-                  code={brand.code}
-                  src={brand.logoUrl}
-                  tone="primary"
-                  size="md"
-                  className="shadow-xs transition-transform duration-300 group-hover:scale-105"
-                />
-                <span className="truncate text-xl font-bold text-foreground">
-                  {brand.name}
-                </span>
+                {isProduct ? (
+                  /* The lockup spells the product name, so the accessible name moves off-screen
+                     rather than being printed twice. */
+                  <>
+                    <ProductLogo className="h-8 transition-transform duration-300 group-hover:scale-105" />
+                    <span className="sr-only">{brand.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <BrandMark
+                      name={brand.name}
+                      code={brand.code}
+                      src={brand.logoUrl}
+                      tone="primary"
+                      size="md"
+                      className="shadow-xs transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <span className="truncate text-xl font-bold text-foreground">
+                      {brand.name}
+                    </span>
+                  </>
+                )}
               </div>
             </SheetTitle>
             <SheetDescription className="sr-only">{t('sidebar.mainNavigation')}</SheetDescription>

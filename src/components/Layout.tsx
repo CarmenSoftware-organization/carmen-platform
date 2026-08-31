@@ -3,9 +3,10 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 import { BrandMark } from './BrandMark';
+import { ProductLogo } from './ProductLogo';
 import { Button } from './ui/button';
 import { Menu } from 'lucide-react';
-import Sidebar, { PRODUCT_BRAND, type BrandIdentity, type NavItem } from './Sidebar';
+import Sidebar, { PRODUCT_BRAND, isProductBrand, type BrandIdentity, type NavItem } from './Sidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useI18n } from '../hooks/useI18n';
@@ -200,18 +201,28 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               >
                 <Menu className="h-5 w-5" />
               </Button>
-              <Link to={brandDestination} className="flex min-w-0 items-center gap-3 group">
-                <BrandMark
-                  name={brand.name}
-                  code={brand.code}
-                  src={brand.logoUrl}
-                  tone="primary"
-                  size="sm"
-                  className="shadow-xs"
-                />
-                <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
-                  {brand.name}
-                </h1>
+              <Link
+                to={brandDestination}
+                className="flex min-w-0 items-center gap-3 group"
+                aria-label={brand.name}
+              >
+                {isProductBrand(brand) ? (
+                  <ProductLogo className="h-7" />
+                ) : (
+                  <>
+                    <BrandMark
+                      name={brand.name}
+                      code={brand.code}
+                      src={brand.logoUrl}
+                      tone="primary"
+                      size="sm"
+                      className="shadow-xs"
+                    />
+                    <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
+                      {brand.name}
+                    </h1>
+                  </>
+                )}
               </Link>
               {!isDesktop && (
                 <div className="ml-auto">
