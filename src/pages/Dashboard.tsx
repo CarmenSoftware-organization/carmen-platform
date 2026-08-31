@@ -104,7 +104,11 @@ const Dashboard: React.FC = () => {
       <div className="space-y-6">
         <PageHeader title={t('pages.dashboard.title')} subtitle={t('pages.dashboard.subtitle')} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_236px]">
+        {/* The stream is capped rather than fluid: a log line stretched across a 27" display
+            opens a dead gulf between the entity name and its right-margin meta. */}
+        {/* grid-cols-1 is load-bearing below lg: without it the single implicit column is an
+            auto track that sizes to max-content, and a long activity line scrolls the page. */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,46rem)_236px]">
           <ActivityStream
             items={activity}
             loading={activityLoading}
