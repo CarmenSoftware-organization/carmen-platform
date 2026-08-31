@@ -36,12 +36,14 @@ export const th: Translations = {
     sqlWorkbench: 'SQL Workbench',
     databasePools: 'Database Pools',
     cluster: 'Cluster',
+    featureFlags: 'สวิตช์ฟีเจอร์',
   },
   navGroup: {
     organization: 'องค์กร',
     content: 'เนื้อหา',
     analytics: 'การวิเคราะห์',
     platform: 'Platform',
+    clusterAdmin: 'การดูแลคลัสเตอร์',
   },
   sidebar: {
     collapse: 'ย่อเมนู',
@@ -149,6 +151,7 @@ export const th: Translations = {
     searchPlaceholder: 'ค้นหา…',
     clearSearch: 'ล้างคำค้นหา',
     tryAgain: 'ลองอีกครั้ง',
+    comingSoon: 'เร็ว ๆ นี้',
     couldNotLoad: 'โหลดข้อมูลนี้ไม่สำเร็จ',
     noMatchesFound: 'ไม่พบรายการที่ตรงกัน',
     noMatchesDescription: 'ไม่มีรายการที่ตรงกับคำค้นหาหรือตัวกรอง ลองปรับหรือล้างเงื่อนไข',
@@ -692,6 +695,32 @@ export const th: Translations = {
       untitled: '(ไม่มีหัวข้อ)',
       unknownUser: '(ไม่ทราบผู้ใช้)',
       debugTitle: 'Dashboard Data',
+    },
+    comingSoon: {
+      title: 'กำลังพัฒนา',
+      description: 'ฟีเจอร์นี้ยังพัฒนาไม่เสร็จ เมื่อพร้อมแล้วจะปรากฏที่นี่',
+    },
+    featureFlags: {
+      title: 'สวิตช์ฟีเจอร์',
+      subtitle:
+        'เลือกว่าแต่ละฟีเจอร์จะแสดงอย่างไรบนหน้าจอ มีผลกับหน้าจอเท่านั้น ไม่ได้ปิด API ที่เกี่ยวข้อง',
+      state: {
+        active: 'ใช้งาน',
+        activeHint: 'ทำงานตามปกติ',
+        inactive: 'เร็ว ๆ นี้',
+        inactiveHint: 'เห็นเมนูแต่กดไม่ได้',
+        hide: 'ซ่อน',
+        hideHint: 'ไม่เห็นทั้งเมนูและหน้า',
+      },
+      orphans: {
+        title: 'คีย์ที่ไม่รู้จัก',
+        description: 'มีค่าบันทึกไว้บนเซิร์ฟเวอร์แต่แอปรุ่นนี้ไม่รู้จัก ลบทิ้งได้',
+        remove: 'ลบ',
+        confirmTitle: 'ลบคีย์ที่ไม่รู้จัก?',
+        confirmBody: 'จะลบสถานะที่บันทึกไว้ของฟีเจอร์ที่แอปรุ่นนี้ไม่รู้จัก',
+      },
+      saved: 'บันทึกสถานะฟีเจอร์แล้ว',
+      saveFailed: 'บันทึกสถานะฟีเจอร์ไม่สำเร็จ',
     },
     statusPage: {
       notFoundTitle: 'ไม่พบหน้านี้',
