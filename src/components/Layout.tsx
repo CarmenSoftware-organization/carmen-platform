@@ -243,7 +243,11 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
 
         {/* Desktop breadcrumb bar + account controls */}
         {/* h-16 ตรงกับช่องโลโก้ในแถบข้าง เส้นใต้ของทั้งสองจึงเป็นเส้นเดียวกันเมื่อมองข้ามคอลัมน์ */}
-        <div className="sticky top-0 z-30 hidden h-16 items-center gap-3 border-b border-border bg-background/80 px-6 backdrop-blur md:flex">
+        {/* ทึบ ไม่ใช่ `bg-background/80 backdrop-blur` — เบลอไม่ได้ทำให้อ่านไม่ออก มันแค่ทำให้
+         *  สิ่งที่เลื่อนผ่านใต้แถบกลายเป็นเงาจาง ๆ ทับ breadcrumb (badge สีวิ่งผ่านเห็นชัดสุด)
+         *  แถบ header ของมือถือด้านบนก็ทึบอยู่แล้ว และ glassmorphism ถูกถอดออกไปตั้งแต่
+         *  enterprise redesign — พื้นผิวในแอปนี้เป็น flat + เส้น 1px แถบนี้เป็นของตกค้าง */}
+        <div className="bg-background sticky top-0 z-30 hidden h-16 items-center gap-3 border-b border-border px-6 md:flex">
           {!hideBreadcrumbs && <Breadcrumbs />}
           {headerSlot}
           {isDesktop && (

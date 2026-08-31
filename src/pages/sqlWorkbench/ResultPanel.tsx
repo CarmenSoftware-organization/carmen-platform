@@ -166,7 +166,11 @@ export function ResultPanel({
         <>
           <div className="max-h-[420px] overflow-auto">
             <table className="w-full border-collapse text-xs [&_th]:whitespace-nowrap">
-              <thead className="bg-muted/60 sticky top-0 backdrop-blur">
+              {/* ทึบ ไม่ใช่ `bg-muted/60 backdrop-blur` — หัวตารางนี้ปักอยู่กับที่ในกรอบเลื่อน
+                  สูง 420px แถวผลลัพธ์จึงวิ่งผ่านใต้มันตลอด และที่ 60% แถวที่เลื่อนผ่านกลาย
+                  เป็นเงาทับชื่อคอลัมน์ที่กำลังใช้อ่านผลอยู่ เหตุผลเดียวกับแถบ header ใน
+                  `Layout` และแถบ tab ของหน้า Edit */}
+              <thead className="bg-muted sticky top-0">
                 <tr>
                   <th className="text-muted-foreground w-12 border-r border-b px-2 py-1.5 text-right font-semibold">
                     #
