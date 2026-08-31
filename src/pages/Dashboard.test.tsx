@@ -124,12 +124,14 @@ describe('Dashboard', () => {
     await waitFor(() => expect(screen.getByText('18')).toBeInTheDocument());
   });
 
-  it('renders activity verbs as a Badge, not a raw hand-rolled span', async () => {
+  it('renders the activity verb as quiet meta text, not a Badge that out-shouts the name', async () => {
     renderPage();
     const verbEl = (await screen.findAllByText('created'))[0];
-    // Badge renders as a styled <div>, not the old <span className={cn(...verb.text)}>.
-    expect(verbEl.tagName).toBe('DIV');
-    expect(verbEl.className).toMatch(/rounded-md/);
+    // The verb used to be a solid Badge — the loudest thing in every row, even though the
+    // entity name is what people actually scan for. It is now plain right-margin meta
+    // text, and the colour cue for the verb lives on the timeline dot instead.
+    expect(verbEl.tagName).toBe('SPAN');
+    expect(verbEl.className).not.toMatch(/rounded-md/);
   });
 
   it('shows a status region while activity is loading', () => {
