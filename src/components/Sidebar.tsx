@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { BrandMark } from './BrandMark';
 import { Tooltip } from './ui/tooltip';
 import { Separator } from './ui/separator';
+import { Badge } from './ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 import { useI18n } from '../hooks/useI18n';
 import type { TKey } from '../i18n/types';
@@ -21,6 +22,18 @@ export interface NavItem {
   /** Catalog key for the group heading. Grouping compares this key, never the
    *  translated text, so a language change cannot re-partition the menu. */
   groupKey?: TKey;
+  /**
+   * ฟีเจอร์ที่รายการนี้สังกัด — คีย์ในแค็ตตาล็อก `src/constants/featureFlags.ts`
+   * รายการที่ไม่ระบุจะแสดงเสมอ (ปิดไม่ได้) เช่น Dashboard และหน้าสวิตช์ฟีเจอร์เอง
+   * The catalog key this item belongs to; an item without one can never be gated.
+   */
+  feature?: string;
+  /**
+   * true เมื่อฟีเจอร์อยู่ในสถานะ `inactive` — วาดเป็นข้อความจางกดไม่ได้พร้อมป้าย "เร็ว ๆ นี้"
+   * แทนลิงก์ ตัวสร้าง nav เป็นผู้เติมค่านี้ ไม่ใช่ผู้เรียก
+   * Set by the nav builders, not by callers.
+   */
+  comingSoon?: boolean;
 }
 
 /** Who the application shell is currently representing — the product, or one administered cluster. */
@@ -87,6 +100,32 @@ const Sidebar: React.FC<SidebarProps> = ({
   const NavLink: React.FC<{ item: NavItem; showLabel: boolean }> = ({ item, showLabel }) => {
     const Icon = item.icon;
     const active = isActive(item.path);
+
+    // ฟีเจอร์ที่ยังไม่พร้อม: คงรายการไว้ให้เห็นว่ามีอะไรกำลังมา แต่ไม่ใช่ลิงก์ — ไม่ใช่แค่ปิด
+    // ด้วย CSS เพราะ `<Link>` ที่ pointer-events ถูกปิดยังโฟกัสด้วยแป้นพิมพ์และกด Enter ได้อยู่
+    // Not a disabled link: a <Link> with pointer-events off is still keyboard-reachable.
+    if (item.comingSoon) {
+      return (
+        <div
+          aria-disabled="true"
+          title={t('common.comingSoon')}
+          className={cn(
+            'flex items-center gap-3 rounded-lg text-sm font-medium relative overflow-hidden cursor-not-allowed text-muted-foreground/60',
+            showLabel ? 'px-3 py-2.5' : 'justify-center px-2 py-2.5',
+          )}
+        >
+          <Icon className="h-4 w-4 shrink-0" />
+          {showLabel && (
+            <>
+              <span className="truncate">{t(item.labelKey)}</span>
+              <Badge variant="secondary" className="ml-auto shrink-0 text-[10px] font-normal">
+                {t('common.comingSoon')}
+              </Badge>
+            </>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link

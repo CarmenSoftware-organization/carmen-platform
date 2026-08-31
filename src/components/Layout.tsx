@@ -14,6 +14,8 @@ import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
 import VersionBadge from './VersionBadge';
 import { buildPlatformNav } from './nav/platformNav';
+import { useFeatureFlags } from '../context/FeatureFlagContext';
+import { Skeleton } from './ui/skeleton';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -45,6 +47,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, headerSlot, brandTo, brand = PRODUCT_BRAND }) => {
   const { user, logout, hasPermission, isSuperAdmin, hasPlatformAuthority } = useAuth();
+  const { flagOf, isReady: flagsReady } = useFeatureFlags();
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useI18n();
@@ -88,7 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
   // including a membership-only cluster admin, whose sidebar would be a single link to a page
   // PrivateRoute bounces them out of. Deciding here rather than in each page means no future
   // page can forget. An explicit navItems prop still wins, so ClusterAdminLayout is unaffected.
-  const navItems = navItemsProp ?? (hasPlatformAuthority ? buildPlatformNav({ hasPermission, isSuperAdmin }) : []);
+  const navItems = navItemsProp ?? (hasPlatformAuthority ? buildPlatformNav({ hasPermission, isSuperAdmin, flagOf }) : []);
 
   // Same reasoning as the nav fallback: the brand mark is the most prominent element in the
   // chrome, and /dashboard is a page PrivateRoute bounces a membership-only cluster admin out of.
@@ -138,17 +141,38 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
 
   return (
     <div className="min-h-dvh bg-background">
-      {/* Sidebar */}
-      <Sidebar
-        isCollapsed={isCollapsed}
-        onToggle={toggleSidebar}
-        navItems={navItems}
-        isMobileOpen={isMobileOpen}
-        onMobileOpenChange={setIsMobileOpen}
-        brandTo={brandDestination}
-        brand={brand}
-        headerSlot={headerSlot}
-      />
+      {/* Sidebar
+        * รอสถานะฟีเจอร์ก่อนวาดเมนู: ถ้าวาดไปก่อน ผู้ใช้จะเห็นรายการที่ผู้ดูแลสั่งซ่อนแวบหนึ่ง
+        * ทุกครั้งที่โหลดหน้า ซึ่งเป็นสิ่งเดียวที่สวิตช์นี้มีไว้ป้องกัน
+        * Waiting avoids flashing a hidden menu row on every page load — the one thing the
+        * switch exists to prevent. */}
+      {flagsReady ? (
+        <Sidebar
+          isCollapsed={isCollapsed}
+          onToggle={toggleSidebar}
+          navItems={navItems}
+          isMobileOpen={isMobileOpen}
+          onMobileOpenChange={setIsMobileOpen}
+          brandTo={brandDestination}
+          brand={brand}
+          headerSlot={headerSlot}
+        />
+      ) : (
+        <aside
+          aria-hidden="true"
+          className={cn(
+            'sidebar-transition fixed inset-y-0 left-0 z-30 hidden md:flex flex-col bg-background border-r border-border',
+            isCollapsed ? 'w-16' : 'w-60',
+          )}
+        >
+          <div className="h-16 border-b border-border shrink-0" />
+          <div className="flex-1 space-y-1 px-2 py-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </aside>
+      )}
 
       {/* Main Content Area */}
       <div className={cn(
