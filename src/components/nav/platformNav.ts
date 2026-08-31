@@ -23,7 +23,8 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Content
   { path: '/report-templates', labelKey: 'nav.reportTemplates', icon: FileText, permission: 'report_template.read', groupKey: 'navGroup.content', feature: 'report_templates' },
   { path: '/report-form-groups', labelKey: 'nav.formGroups', icon: LayoutGrid, permission: 'report_template.read', groupKey: 'navGroup.content', feature: 'report_form_groups' },
-  { path: '/news', labelKey: 'nav.news', icon: Newspaper, permission: 'news.read', groupKey: 'navGroup.content', feature: 'news' },
+  // เส้นคั่น: เหนือเส้นคือแม่แบบรายงาน ใต้เส้นคือเนื้อหาที่ส่งถึงผู้ใช้
+  { path: '/news', labelKey: 'nav.news', icon: Newspaper, permission: 'news.read', groupKey: 'navGroup.content', feature: 'news', dividerBefore: true },
   { path: '/broadcasts', labelKey: 'nav.broadcasts', icon: Megaphone, permission: 'broadcast.read', groupKey: 'navGroup.content', feature: 'broadcasts' },
 
   // Analytics — must stay contiguous: Sidebar groups by consecutive runs of the same
@@ -31,12 +32,15 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/analytics', labelKey: 'nav.usageAnalytics', icon: BarChart3, permission: 'activity_event.read', groupKey: 'navGroup.analytics', feature: 'usage_analytics' },
   { path: '/activity-events', labelKey: 'nav.activityEvents', icon: MousePointerClick, permission: 'activity_event.detail', groupKey: 'navGroup.analytics', feature: 'activity_events' },
   // Platform
-  { path: '/applications', labelKey: 'nav.applications', icon: AppWindow, permission: 'application.read', groupKey: 'navGroup.platform', feature: 'applications' },
-  { path: '/platform/email-settings', labelKey: 'nav.emailSettings', icon: Mail, permission: 'email_setting.read', groupKey: 'navGroup.platform', feature: 'email_settings' },
   { path: '/platform/configs', labelKey: 'nav.platformConfig', icon: Settings, permission: 'platform_config.read', groupKey: 'navGroup.platform', feature: 'platform_config' },
-  { path: '/platform/roles', labelKey: 'nav.platformRoles', icon: ShieldCheck, permission: 'platform_role.read', groupKey: 'navGroup.platform', feature: 'platform_roles' },
-  { path: '/platform/super-admins', labelKey: 'nav.superAdmins', icon: ShieldAlert, superAdminOnly: true, groupKey: 'navGroup.platform', feature: 'super_admins' },
+  { path: '/platform/email-settings', labelKey: 'nav.emailSettings', icon: Mail, permission: 'email_setting.read', groupKey: 'navGroup.platform', feature: 'email_settings' },
+  { path: '/applications', labelKey: 'nav.applications', icon: AppWindow, permission: 'application.read', groupKey: 'navGroup.platform', feature: 'applications' },
+  // เส้นคั่น: เหนือเส้นคือการตั้งค่าตัวระบบ ใต้เส้นคือการกำหนดว่าใครทำอะไรได้
+  { path: '/platform/roles', labelKey: 'nav.platformRoles', icon: ShieldCheck, permission: 'platform_role.read', groupKey: 'navGroup.platform', feature: 'platform_roles', dividerBefore: true },
   { path: '/platform/user-platform', labelKey: 'nav.userPlatform', icon: UserCog, permission: 'user_platform.read', groupKey: 'navGroup.platform', feature: 'user_platform' },
+  // เส้นคั่นแบ่งสองแถวล่างออกจากงานตั้งค่าประจำวัน — ทั้งคู่เปลี่ยนสิ่งที่คนอื่นเข้าถึงได้
+  // ไม่ตั้งเป็นกลุ่มใหม่เพราะยังเป็นเรื่อง Platform เหมือนกัน ต่างแค่ระดับความเสี่ยง
+  { path: '/platform/super-admins', labelKey: 'nav.superAdmins', icon: ShieldAlert, superAdminOnly: true, groupKey: 'navGroup.platform', feature: 'super_admins', dividerBefore: true },
   // ไม่มี feature โดยเจตนา — สวิตช์ที่ปิดตัวเองได้จะเปิดกลับไม่ได้อีกจากหน้าจอ
   // Deliberately ungated: a switch that could hide itself could never be restored from the UI.
   { path: '/platform/features', labelKey: 'nav.featureFlags', icon: ToggleLeft, permission: 'feature_flag.manage', groupKey: 'navGroup.platform' },

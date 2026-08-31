@@ -35,6 +35,13 @@ export interface NavItem {
    * Set by the nav builders, not by callers.
    */
   comingSoon?: boolean;
+  /**
+   * วาดเส้นคั่นเหนือรายการนี้ — แบ่งกลุ่มย่อยภายในกลุ่มเดียวกันโดยไม่ต้องตั้งหัวข้อใหม่
+   * เส้นเป็นของรายการนี้เอง ไม่ใช่ของรายการก่อนหน้า ถ้าแถวนี้ถูกกรองทิ้ง (สิทธิ์ไม่ถึง
+   * หรือฟีเจอร์ถูกซ่อน) เส้นจึงหายไปด้วย แทนที่จะค้างลอยอยู่เหนือรายการถัดไป
+   * The rule belongs to this row, so it disappears with it when the row is filtered out.
+   */
+  dividerBefore?: boolean;
 }
 
 /** Who the application shell is currently representing — the product, or one administered cluster. */
@@ -212,17 +219,21 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
               {isCollapsed && gi > 0 && <Separator className="!my-2" />}
               <div className="space-y-1">
-                {g.items.map((item) =>
-                  isCollapsed ? (
-                    <Tooltip key={item.path} content={t(item.labelKey)} side="right">
-                      <div>
-                        <NavLink item={item} showLabel={false} />
-                      </div>
-                    </Tooltip>
-                  ) : (
-                    <NavLink key={item.path} item={item} showLabel={true} />
-                  )
-                )}
+                {g.items.map((item, ii) => (
+                  <React.Fragment key={item.path}>
+                    {/* ii > 0: เส้นบนรายการแรกจะซ้อนกับหัวข้อกลุ่มที่มีเส้นใต้อยู่แล้ว */}
+                    {item.dividerBefore && ii > 0 && <Separator className="!my-2" />}
+                    {isCollapsed ? (
+                      <Tooltip content={t(item.labelKey)} side="right">
+                        <div>
+                          <NavLink item={item} showLabel={false} />
+                        </div>
+                      </Tooltip>
+                    ) : (
+                      <NavLink item={item} showLabel={true} />
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           ))}
@@ -298,27 +309,29 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </p>
                 )}
                 <div className="space-y-1">
-                  {g.items.map((item) => {
+                  {g.items.map((item, ii) => {
                     const Icon = item.icon;
                     const active = isActive(item.path);
                     return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => onMobileOpenChange(false)}
-                        className={cn(
-                          'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
-                          active
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                      >
-                        {active && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
-                        )}
-                        <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
-                        <span>{t(item.labelKey)}</span>
-                      </Link>
+                      <React.Fragment key={item.path}>
+                        {item.dividerBefore && ii > 0 && <Separator className="!my-2" />}
+                        <Link
+                          to={item.path}
+                          onClick={() => onMobileOpenChange(false)}
+                          className={cn(
+                            'sidebar-item-transition flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium relative overflow-hidden group',
+                            active
+                              ? 'bg-primary/10 text-primary'
+                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                          )}
+                        >
+                          {active && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-2/3 bg-primary rounded-r-full" />
+                          )}
+                          <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200', !active && 'group-hover:scale-110')} />
+                          <span>{t(item.labelKey)}</span>
+                        </Link>
+                      </React.Fragment>
                     );
                   })}
                 </div>
