@@ -9,7 +9,3 @@
  */
 export const HIT_SLOP_44 =
   "relative before:absolute before:left-1/2 before:top-1/2 before:size-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
-
-/** Same idea for a full-width text trigger: stretch the tappable band to 44px tall. */
-export const HIT_SLOP_44_ROW =
-  "relative before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']";

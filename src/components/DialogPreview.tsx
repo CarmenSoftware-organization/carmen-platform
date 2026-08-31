@@ -192,5 +192,3 @@ export const DialogPreview: React.FC<DialogPreviewProps> = ({ xml }) => {
     </div>
   );
 };
-
-export default DialogPreview;

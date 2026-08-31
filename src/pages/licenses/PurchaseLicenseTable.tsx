@@ -585,5 +585,3 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     </div>
   );
 }
-
-export default PurchaseLicenseTable;

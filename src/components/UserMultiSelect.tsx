@@ -168,5 +168,3 @@ export const UserMultiSelect: React.FC<UserMultiSelectProps> = ({
     </div>
   );
 };
-
-export default UserMultiSelect;

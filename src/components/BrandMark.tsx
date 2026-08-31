@@ -78,5 +78,3 @@ export const BrandMark = ({
     </Avatar>
   );
 };
-
-export default BrandMark;
