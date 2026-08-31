@@ -41,6 +41,7 @@ export const th: Translations = {
   },
   navGroup: {
     organization: 'องค์กร',
+    licenseManagement: 'จัดการใบอนุญาต',
     content: 'เนื้อหา',
     analytics: 'การวิเคราะห์',
     platform: 'Platform',

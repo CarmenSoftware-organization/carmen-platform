@@ -11,12 +11,15 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // Organization
   { path: '/clusters', labelKey: 'nav.clusters', icon: Network, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'clusters' },
   { path: '/business-units', labelKey: 'nav.businessUnits', icon: Building2, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'business_units' },
-  { path: '/licenses', labelKey: 'nav.licenses', icon: KeyRound, permission: 'subscription.read', groupKey: 'navGroup.organization', feature: 'licenses' },
-  { path: '/license-feature-groups', labelKey: 'nav.licenseFeatureGroups', icon: LayoutGrid, permission: 'license_feature_group.read', groupKey: 'navGroup.organization', feature: 'license_feature_groups' },
-  { path: '/license-features', labelKey: 'nav.licenseFeatures', icon: Tags, permission: 'license_feature.read', groupKey: 'navGroup.organization', feature: 'license_features' },
   { path: '/tenant-migrations', labelKey: 'nav.tenantMigrations', icon: DatabaseZap, permission: 'cluster.read', groupKey: 'navGroup.organization', feature: 'tenant_migrations' },
   { path: '/tenant-imports', labelKey: 'nav.dataImport', icon: FileSpreadsheet, permission: 'data_import.manage', groupKey: 'navGroup.organization', feature: 'tenant_imports' },
   { path: '/users', labelKey: 'nav.users', icon: Users, permission: 'user.read', groupKey: 'navGroup.organization', feature: 'users' },
+  // License management — ต้องอยู่ติดกัน: Sidebar จัดกลุ่มจากแถวที่ groupKey ซ้ำกันติด ๆ
+  // การแทรกรายการกลุ่มอื่นคั่นจะทำให้หัวข้อนี้แตกเป็นสองหัวข้อ
+  // Must stay contiguous: Sidebar groups by consecutive runs of the same `groupKey`.
+  { path: '/licenses', labelKey: 'nav.licenses', icon: KeyRound, permission: 'subscription.read', groupKey: 'navGroup.licenseManagement', feature: 'licenses' },
+  { path: '/license-feature-groups', labelKey: 'nav.licenseFeatureGroups', icon: LayoutGrid, permission: 'license_feature_group.read', groupKey: 'navGroup.licenseManagement', feature: 'license_feature_groups' },
+  { path: '/license-features', labelKey: 'nav.licenseFeatures', icon: Tags, permission: 'license_feature.read', groupKey: 'navGroup.licenseManagement', feature: 'license_features' },
   // Content
   { path: '/report-templates', labelKey: 'nav.reportTemplates', icon: FileText, permission: 'report_template.read', groupKey: 'navGroup.content', feature: 'report_templates' },
   { path: '/report-form-groups', labelKey: 'nav.formGroups', icon: LayoutGrid, permission: 'report_template.read', groupKey: 'navGroup.content', feature: 'report_form_groups' },
