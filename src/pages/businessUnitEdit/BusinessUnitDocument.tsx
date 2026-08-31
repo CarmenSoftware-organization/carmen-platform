@@ -183,8 +183,10 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
           times a day and its tabs run several screens deep; unpinned, every tab switch cost
           a scroll back to the top. It carries the BU code so the pinned bar still says which
           record you are in once the header above has scrolled away.
-          `top-14` / `md:top-16` are the two Layout header heights — keep them in step. */}
-      <div className="bg-background/95 sticky top-14 z-20 -mt-2 flex items-center gap-3 border-b px-2 backdrop-blur sm:px-4 md:top-16">
+          `top-14` / `md:top-16` are the two Layout header heights — keep them in step.
+          ทึบ ไม่ใช่ `bg-background/95 backdrop-blur` — ด้วยเหตุผลเดียวกับแถบ header ใน Layout:
+          แถวที่เลื่อนผ่านใต้แถบกลายเป็นเงาจาง ๆ ทับ tab ที่กำลังอ่านอยู่ */}
+      <div className="bg-background sticky top-14 z-20 -mt-2 flex items-center gap-3 border-b px-2 sm:px-4 md:top-16">
         {f.code && (
           <span className="text-primary bg-primary/10 shrink-0 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
             {f.code}
