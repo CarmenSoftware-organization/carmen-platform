@@ -83,6 +83,16 @@ export function GroupSelectionCard({
     return map;
   }, [catalog]);
 
+  /**
+   * สถานะราย feature — ใช้ติดป้าย "เลิกขายของใหม่" ให้คนขายเห็นว่ากลุ่มนี้มีของที่ปิดการขายอยู่
+   * แค็ตตาล็อกที่โหลดมาไม่มีตัวที่ `hide` อยู่แล้ว คีย์ที่หาไม่เจอจึงเป็นคีย์กำพร้าไม่ใช่ inactive
+   */
+  const stateByKey = useMemo(() => {
+    const map = new Map<string, LicenseFeature['state']>();
+    for (const f of catalog) map.set(f.key, f.state);
+    return map;
+  }, [catalog]);
+
   const selected = useMemo(() => new Set(groupIds), [groupIds]);
 
   const toggleGroup = (id: string) => {
@@ -215,6 +225,11 @@ export function GroupSelectionCard({
                             className="rounded bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground"
                           >
                             {labelByKey.get(k) ?? k}
+                            {stateByKey.get(k) === 'inactive' && (
+                              <span className="ml-1 opacity-70">
+                                ({t('pages.licenseFeatures.state.inactive')})
+                              </span>
+                            )}
                           </span>
                         ))}
                       </div>
