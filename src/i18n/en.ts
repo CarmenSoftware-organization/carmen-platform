@@ -67,6 +67,8 @@ export const en = {
     theme: 'Theme',
     viewChangelog: 'view changelog',
     version: 'Version',
+    appVersion: 'App',
+    apiVersion: 'API',
     userFallback: 'User',
   },
   theme: {

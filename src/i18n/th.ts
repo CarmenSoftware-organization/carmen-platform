@@ -64,6 +64,8 @@ export const th: Translations = {
     theme: 'ธีม',
     viewChangelog: 'ดูบันทึกการเปลี่ยนแปลง',
     version: 'เวอร์ชัน',
+    appVersion: 'แอป',
+    apiVersion: 'API',
     userFallback: 'ผู้ใช้งาน',
   },
   theme: {
