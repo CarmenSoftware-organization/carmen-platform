@@ -46,6 +46,7 @@ export const en = {
     content: 'Content',
     analytics: 'Analytics',
     platform: 'Platform',
+    database: 'Database',
     // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*
     // ตัว Sidebar ของ ClusterAdminLayout เองไม่ได้ตั้ง groupKey จึงไม่แสดงหัวข้อนี้
     clusterAdmin: 'Cluster administration',

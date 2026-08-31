@@ -37,11 +37,14 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   { path: '/platform/roles', labelKey: 'nav.platformRoles', icon: ShieldCheck, permission: 'platform_role.read', groupKey: 'navGroup.platform', feature: 'platform_roles' },
   { path: '/platform/super-admins', labelKey: 'nav.superAdmins', icon: ShieldAlert, superAdminOnly: true, groupKey: 'navGroup.platform', feature: 'super_admins' },
   { path: '/platform/user-platform', labelKey: 'nav.userPlatform', icon: UserCog, permission: 'user_platform.read', groupKey: 'navGroup.platform', feature: 'user_platform' },
-  { path: '/sql-workbench', labelKey: 'nav.sqlWorkbench', icon: Database, permission: 'sql_workbench.read', groupKey: 'navGroup.platform', feature: 'sql_workbench' },
-  { path: '/platform/database-pools', labelKey: 'nav.databasePools', icon: Server, permission: 'database_pool.read', groupKey: 'navGroup.platform', feature: 'database_pools' },
   // ไม่มี feature โดยเจตนา — สวิตช์ที่ปิดตัวเองได้จะเปิดกลับไม่ได้อีกจากหน้าจอ
   // Deliberately ungated: a switch that could hide itself could never be restored from the UI.
   { path: '/platform/features', labelKey: 'nav.featureFlags', icon: ToggleLeft, permission: 'feature_flag.manage', groupKey: 'navGroup.platform' },
+  // Database — ต้องอยู่ท้ายสุด: ทั้งสองแถวเคยอยู่กลางกลุ่ม Platform การแยกออกเป็นกลุ่มของตัวเอง
+  // โดยทิ้งไว้ตำแหน่งเดิมจะทำให้กลุ่ม Platform ขาดเป็นสองท่อนและวาดหัวข้อซ้ำสองครั้ง
+  // Must stay last: pulling these out mid-group would split Platform's heading in two.
+  { path: '/sql-workbench', labelKey: 'nav.sqlWorkbench', icon: Database, permission: 'sql_workbench.read', groupKey: 'navGroup.database', feature: 'sql_workbench' },
+  { path: '/platform/database-pools', labelKey: 'nav.databasePools', icon: Server, permission: 'database_pool.read', groupKey: 'navGroup.database', feature: 'database_pools' },
 ];
 
 /**

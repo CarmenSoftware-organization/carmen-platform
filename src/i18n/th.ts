@@ -45,6 +45,7 @@ export const th: Translations = {
     content: 'เนื้อหา',
     analytics: 'การวิเคราะห์',
     platform: 'Platform',
+    database: 'ฐานข้อมูล',
     clusterAdmin: 'การดูแลคลัสเตอร์',
   },
   sidebar: {

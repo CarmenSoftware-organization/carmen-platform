@@ -70,8 +70,9 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   { key: 'platform_roles', labelKey: 'nav.platformRoles', groupKey: 'navGroup.platform', defaultState: 'active' },
   { key: 'super_admins', labelKey: 'nav.superAdmins', groupKey: 'navGroup.platform', defaultState: 'active' },
   { key: 'user_platform', labelKey: 'nav.userPlatform', groupKey: 'navGroup.platform', defaultState: 'active' },
-  { key: 'sql_workbench', labelKey: 'nav.sqlWorkbench', groupKey: 'navGroup.platform', defaultState: 'active' },
-  { key: 'database_pools', labelKey: 'nav.databasePools', groupKey: 'navGroup.platform', defaultState: 'active' },
+  // Database — กลุ่มเดียวกับที่ sidebar ใช้ ทั้งสองหน้าต้องจัดกลุ่มตรงกัน
+  { key: 'sql_workbench', labelKey: 'nav.sqlWorkbench', groupKey: 'navGroup.database', defaultState: 'active' },
+  { key: 'database_pools', labelKey: 'nav.databasePools', groupKey: 'navGroup.database', defaultState: 'active' },
   // Cluster admin — คีย์แยกจากของ platform เพราะเป็นคนละหน้าคนละสิทธิ์ ต่อให้ชื่อเมนูซ้ำกัน
   { key: 'cluster_admin_cluster', labelKey: 'nav.cluster', groupKey: 'navGroup.clusterAdmin', defaultState: 'active' },
   { key: 'cluster_admin_business_units', labelKey: 'nav.businessUnits', groupKey: 'navGroup.clusterAdmin', defaultState: 'active' },
