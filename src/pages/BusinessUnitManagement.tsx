@@ -293,22 +293,40 @@ const BusinessUnitManagement: React.FC = () => {
         </div>
       ),
     },
-    {
-      accessorKey: 'alias_name',
-      header: t('common.field.alias'),
-      cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.original.alias_name || '-'}</span>
-      ),
-    },
-    { accessorKey: 'cluster_name', id: 'tb_cluster.name', header: t('common.label.cluster') },
+    // Status อยู่ติดกับ Name โดยตั้งใจ: ตารางถูก `w-full` ยืดเต็มการ์ดเสมอ พื้นที่ส่วนเกินจึงต้อง
+    // ตกกับคอลัมน์ใดคอลัมน์หนึ่งอย่างเลี่ยงไม่ได้ ระยะกวาดสายตาจึงแก้ที่ "ลำดับ" ไม่ใช่ "ความกว้าง"
+    // — คู่ที่คนอ่านหน้านี้จับคู่กันจริง ๆ คือชื่อ BU กับสถานะของมัน ส่วน Alias/Cluster เป็นบริบท
     {
       accessorKey: 'is_active',
       header: t('common.status.label'),
-      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
+      meta: { headerClassName: 'w-24', cellClassName: 'w-24' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
           {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
         </Badge>
+      ),
+    },
+    {
+      accessorKey: 'cluster_name',
+      id: 'tb_cluster.name',
+      header: t('common.label.cluster'),
+      // เพดานความกว้าง: ชื่อ cluster ที่ยาวที่สุดเพียงชื่อเดียวเคยยืดคอลัมน์นี้ไป 304px ทั้งตาราง
+      // ตัดด้วย truncate + title แทนการปล่อยให้แถวเดียวกำหนดจังหวะการกวาดสายตาของทุกแถว
+      meta: { headerClassName: 'w-44', cellClassName: 'max-w-44' },
+      cell: ({ row }) => (
+        <span className="block truncate" title={row.original.cluster_name || undefined}>
+          {row.original.cluster_name || '-'}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'alias_name',
+      header: t('common.field.alias'),
+      meta: { headerClassName: 'w-28', cellClassName: 'max-w-28' },
+      cell: ({ row }) => (
+        <span className="block truncate text-sm text-muted-foreground" title={row.original.alias_name || undefined}>
+          {row.original.alias_name || '-'}
+        </span>
       ),
     },
     createdColumn,
@@ -328,6 +346,8 @@ const BusinessUnitManagement: React.FC = () => {
     {
       id: 'actions',
       header: '',
+      // แคบไว้เสมอ: `freezeRightColumn` ของ DataTable ปักคอลัมน์สุดท้ายไว้ขวาพร้อมพื้นทึบ
+      // และเงา 12px — พอกว้างขึ้นมันจะกลายเป็นแผ่นทึบกลางพื้นที่ว่างพร้อมรอยต่อที่มองเห็นได้
       meta: { headerClassName: 'w-10', cellClassName: 'text-center p-0' },
       enableSorting: false,
       cell: ({ row }) => (

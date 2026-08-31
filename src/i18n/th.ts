@@ -1736,6 +1736,7 @@ export const th: Translations = {
       technicalTab: 'เทคนิค',
       createSubtitle: 'สร้างหน่วยธุรกิจใหม่',
       editSubtitle: 'รายละเอียดหน่วยธุรกิจ',
+      stillNeeded: 'ยังต้องกรอก: {{fields}}',
       fixHighlightedFieldsPrefix: 'กรุณาแก้ไขช่องที่มีข้อผิดพลาด: ',
       clusterLicenseLimitReached: 'ไม่สามารถสร้างหน่วยธุรกิจได้: cluster มีไลเซนส์ครบโควตาแล้ว ({{used}}/{{cap}})',
       createButton: 'สร้างหน่วยธุรกิจ',

@@ -27,6 +27,16 @@ interface BusinessUnitDocumentProps {
   currenciesFailed?: boolean;
   getCalculationMethodLabel: (method: string) => string;
   canEdit: boolean;
+  /**
+   * ระเบียนยังไม่ถูกสร้าง — ตัวควบคุมที่ต้องมี BU อยู่จริงก่อนถึงจะทำงานได้ต้องไม่โผล่มา
+   *
+   * หน้านี้ซ่อน branding / users / licenses ตอน `isNew` อยู่แล้ว แต่มีอีกสองอย่างที่ตกสำรวจไป:
+   * Max users (เป็นผลรวมของใบไลเซนส์ จึงเป็น 0 เสมอ และคำอธิบายใต้ช่องชี้ไปยังแท็บ Users ที่ยัง
+   * ไม่มีในหน้าสร้างใหม่) กับ Default currency (catalog ดึงด้วย `currencyService.getForBu(code)`
+   * ซึ่งต้องมี BU อยู่บนเซิร์ฟเวอร์ก่อน หน้าสร้างใหม่จึงไม่เคยดึง แล้วตกไปเป็นช่องพิมพ์ที่ขอ UUID
+   * ของสกุลเงิน — ช่องที่ไม่มีใครกรอกได้)
+   */
+  isNew?: boolean;
   // Read-only "Max users" display — computed from the User Licenses card's own license
   // rows (sumActiveLicenses / active count), not form state. There is no editable control
   // for this number any more; it is edited only via the licenses card below.
@@ -71,6 +81,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     currenciesFailed,
     getCalculationMethodLabel,
     canEdit,
+    isNew = false,
     activeSeats,
     activeLicenseCount,
     onCommit,
@@ -215,17 +226,19 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
               {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of
                   this BU's dated license rows, edited only in the User Licenses card. Not an
                   InlineField: there is nothing here to click into edit mode. */}
-              <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
-                <span className="text-muted-foreground pt-2 text-xs">{t('pages.businessUnits.maxUsersLabel')}</span>
-                <div className="min-w-0">
-                  <ReadOnlyText value={`${activeSeats}`} className="max-w-[14rem]" />
-                  <p className="text-muted-foreground mt-1 text-[11px]">
-                    {activeLicenseCount === 1
-                      ? t('pages.businessUnits.maxUsersFromLicenseOne', { count: activeLicenseCount })
-                      : t('pages.businessUnits.maxUsersFromLicenseMany', { count: activeLicenseCount })}
-                  </p>
+              {!isNew && (
+                <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
+                  <span className="text-muted-foreground pt-2 text-xs">{t('pages.businessUnits.maxUsersLabel')}</span>
+                  <div className="min-w-0">
+                    <ReadOnlyText value={`${activeSeats}`} className="max-w-[14rem]" />
+                    <p className="text-muted-foreground mt-1 text-[11px]">
+                      {activeLicenseCount === 1
+                        ? t('pages.businessUnits.maxUsersFromLicenseOne', { count: activeLicenseCount })
+                        : t('pages.businessUnits.maxUsersFromLicenseMany', { count: activeLicenseCount })}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               {inline('description', t('common.field.description'), { type: 'textarea', width: 'md', maxLength: 500 })}
             </Group>
           </Card>
@@ -237,6 +250,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
             currencies={currencies}
             currenciesLoading={currenciesLoading}
             currenciesFailed={currenciesFailed}
+            showCurrencyField={!isNew}
           />
           {brandingSlot}
         </>

@@ -101,7 +101,10 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
         />
       );
     }
-    return <ReadOnlyText value={currentId} />;
+    // อ่านอย่างเดียวต้องแสดงชื่อที่คนอ่านรู้เรื่อง ('THB - Thai baht') ไม่ใช่ UUID ดิบ — เดิมช่องนี้
+    // โชว์ `currentId` ซึ่งเป็น UUID ทั้งที่ค่าที่อ่านออกอยู่ในกล่องรายละเอียดถัดลงไปแค่ไม่กี่สิบพิกเซล
+    // `currentLabel` ตกกลับเป็น id เองอยู่แล้วเมื่อ catalog ยังไม่มา จึงไม่มีทางว่างกว่าเดิม
+    return <ReadOnlyText value={currentLabel} />;
   };
 
   return (
@@ -133,14 +136,17 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
             </div>
           )}
         </div>
+        {/* แผ่นรายละเอียดสกุลเงินเดิมเป็น `rounded-md border` ซ้อนอยู่ในการ์ดอีกที — กรอบซ้อน
+            กรอบทำให้สายตาอ่านว่ามันเป็นวัตถุคนละชั้นกับ field ข้างบน ทั้งที่มันคือส่วนขยาย
+            ของ field เดียวกัน เหลือเส้นคั่นบนเส้นเดียว เท่าที่จำเป็นต่อการแยกกลุ่ม */}
         {!editing && defaultCurrency && (
-          <div className="rounded-md border p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">{t('common.field.defaultCurrency')}</span>
-              <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-xs">
-                {defaultCurrency.is_active ? t('common.status.active') : t('common.status.inactive')}
-              </Badge>
-            </div>
+          <div className="space-y-3 border-t pt-4">
+            {/* หัวข้อ 'Default currency' ถูกถอด: มันซ้ำคำต่อคำกับป้ายของ field ที่อยู่เหนือมัน
+                ไม่ถึงห้าสิบพิกเซล กลุ่มนี้ขยายความ field นั้นอยู่แล้ว ไม่ต้องประกาศตัวซ้ำ
+                เหลือแค่ป้ายสถานะ ซึ่งเป็นสิ่งเดียวในแถวนั้นที่บอกอะไรใหม่ */}
+            <Badge variant={defaultCurrency.is_active ? 'success' : 'secondary'} className="text-xs">
+              {defaultCurrency.is_active ? t('common.status.active') : t('common.status.inactive')}
+            </Badge>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground">{t('common.field.code')}</span>
