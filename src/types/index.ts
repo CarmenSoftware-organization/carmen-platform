@@ -1392,6 +1392,16 @@ export interface LicenseFeature {
 export interface LicenseFeatureAdminRow extends LicenseFeature {
   id: string;
   doc_version: number;
+  /**
+   * BU ที่จะเสียเมนูนี้ไปถ้าตั้งเป็น `hide` — นับหัวไม่ซ้ำ รวมสัญญาที่หมดอายุด้วย
+   *
+   * `state` เป็นค่า global ไม่แยกตาม BU การซ่อนจึงกระทบทุกคนที่ถือคีย์นี้พร้อมกัน
+   * รวมลูกค้าที่จ่ายเงินไปแล้ว ตัวเลขนี้มีไว้เตือนก่อนกดบันทึกเท่านั้น
+   *
+   * **optional** — gateway รุ่นเก่ายังไม่ส่ง ค่า `undefined` ถือเป็น 0 (ไม่เตือน)
+   * ซึ่งเป็นพฤติกรรมเดิมทุกประการ
+   */
+  affected_bu_count?: number;
 }
 
 export interface SubscriptionSummary {

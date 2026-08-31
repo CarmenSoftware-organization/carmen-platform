@@ -1556,6 +1556,10 @@ export const en = {
         hideHint: 'Gone from the catalog entirely; keys already sold become orphans',
       },
       stateSaved: 'State updated',
+      hideConfirmTitle: 'Hide this feature?',
+      hideConfirmDescription:
+        '“{{label}}” will disappear from the menu for {{count}} business units that hold it today, including ones that already paid, and their users will no longer be able to open that page. This deletes nothing — set it back to Active and the menu returns within a minute.',
+      hideConfirmAction: 'Hide it',
       filterAll: 'All states',
       searchPlaceholder: 'Search by key or name',
       emptyTitle: 'No features match',
