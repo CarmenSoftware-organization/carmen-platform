@@ -58,7 +58,8 @@ export function ClusterCreateForm({
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
       <Card>
-        <h2 className="text-sm font-medium">{t('pages.clusters.identity')}</h2>
+        {/* ทรงหัวข้อเดียวกับ CardTitle ของการ์ดอื่นทั้งแอป — เดิมเล็กกว่าหนึ่งขั้น */}
+        <h2 className="text-base font-semibold leading-none tracking-tight">{t('pages.clusters.identity')}</h2>
 
         {/* All three on one row, in the order the plate above reads them. Stacked, the code
          *  and the alias each claimed a line of their own and left two thirds of the card
@@ -113,24 +114,31 @@ export function ClusterCreateForm({
               name="name"
               value={formData.name}
               onChange={onChange}
+              onBlur={onBlur}
+              onFocus={onFocus}
               placeholder={t('pages.clusters.namePlaceholder')}
+              aria-invalid={!!fieldErrors.name}
+              className={fieldErrors.name ? 'border-destructive' : ''}
               required
             />
+            {fieldErrors.name && <p className="text-destructive text-xs">{fieldErrors.name}</p>}
           </div>
         </div>
       </Card>
 
       <Card>
         <div>
-          <h2 className="text-sm font-medium">{t('pages.clusters.firstQuotaLicence')}</h2>
-          <p className="text-muted-foreground text-xs">
+          <h2 className="text-base font-semibold leading-none tracking-tight">
+            {t('pages.clusters.firstQuotaLicence')}
+          </h2>
+          <p className="text-muted-foreground mt-1.5 text-sm">
             {t('pages.clusters.firstQuotaLicenceNote')}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <div className="w-28 space-y-2">
-            <Label htmlFor="licensed_bus">{t('pages.clusters.licensedBus')}</Label>
+          <div className="w-40 space-y-2">
+            <Label htmlFor="licensed_bus">{t('pages.clusters.licensedBus')} *</Label>
             <Input
               id="licensed_bus"
               name="licensed_bus"
@@ -138,10 +146,16 @@ export function ClusterCreateForm({
               min={1}
               value={formData.licensed_bus}
               onChange={onChange}
+              onBlur={onBlur}
+              onFocus={onFocus}
               placeholder={t('pages.clusters.licensedBusPlaceholder')}
-              className="tabular-nums"
+              aria-invalid={!!fieldErrors.licensed_bus}
+              className={`tabular-nums ${fieldErrors.licensed_bus ? 'border-destructive' : ''}`}
               required
             />
+            {fieldErrors.licensed_bus && (
+              <p className="text-destructive text-xs">{fieldErrors.licensed_bus}</p>
+            )}
           </div>
 
           <div className="space-y-2">
