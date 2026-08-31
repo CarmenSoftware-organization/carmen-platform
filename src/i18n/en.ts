@@ -24,6 +24,7 @@ export const en = {
     reportTemplates: 'Report Templates',
     formGroups: 'Form Groups',
     licenseFeatureGroups: 'License Feature Groups',
+    licenseFeatures: 'License Features',
     news: 'News',
     broadcasts: 'Broadcasts',
     usageAnalytics: 'Usage Analytics',
@@ -85,6 +86,7 @@ export const en = {
     // 'Report Form Groups' ทุกภาษา ค่าใหม่ตรงกับ nav.formGroups และหัวเรื่องของหน้า
     formGroups: 'Form Groups',
     licenseFeatureGroups: 'License Feature Groups',
+    licenseFeatures: 'License Features',
     news: 'News',
     broadcasts: 'Broadcasts',
     // เติมตอน browser pass ของ fix wave 2: /analytics กับ /activity-events ไม่เคยอยู่ใน
@@ -1537,6 +1539,27 @@ export const en = {
     // (e.g. 'No expiry' -> common.state.noExpiry, 'Status' -> common.status.label,
     // 'Active'/'Scheduled'/'Expired' -> common.status.*, 'Reference' -> common.field.reference,
     // 'Filters' -> common.label.filters, 'Cluster' -> common.label.cluster).
+    licenseFeatures: {
+      title: 'License Features',
+      subtitle:
+        'Choose which features can still be sold. The catalog itself is generated — only the state is yours to set.',
+      key: 'Key',
+      label: 'Name',
+      module: 'Module',
+      state: {
+        active: 'Sellable',
+        activeHint: 'Can be ticked into any feature group',
+        inactive: 'Closed to new sales',
+        inactiveHint: 'Groups that already hold it keep it; it cannot be added anywhere new',
+        hide: 'Hidden',
+        hideHint: 'Gone from the catalog entirely; keys already sold become orphans',
+      },
+      stateSaved: 'State updated',
+      filterAll: 'All states',
+      searchPlaceholder: 'Search by key or name',
+      emptyTitle: 'No features match',
+      emptyDescription: 'Try a different search term or state filter.',
+    },
     licenseFeatureGroups: {
       title: 'License Feature Groups',
       subtitle: 'Curated bundles of licence features, used when selling a subscription',

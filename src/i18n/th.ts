@@ -23,6 +23,7 @@ export const th: Translations = {
     reportTemplates: 'เทมเพลตรายงาน',
     formGroups: 'กลุ่มฟอร์ม',
     licenseFeatureGroups: 'กลุ่มสิทธิ์ license',
+    licenseFeatures: 'ฟีเจอร์ที่ขายได้',
     news: 'ข่าวสาร',
     broadcasts: 'ประกาศ',
     usageAnalytics: 'สถิติการใช้งาน',
@@ -79,6 +80,7 @@ export const th: Translations = {
     reportTemplates: 'เทมเพลตรายงาน',
     formGroups: 'กลุ่มฟอร์ม',
     licenseFeatureGroups: 'กลุ่มสิทธิ์ license',
+    licenseFeatures: 'ฟีเจอร์ที่ขายได้',
     news: 'ข่าวสาร',
     broadcasts: 'ประกาศ',
     usageAnalytics: 'สถิติการใช้งาน',
@@ -1201,6 +1203,26 @@ export const th: Translations = {
 
     // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —
     // no call site is bound yet).
+    licenseFeatures: {
+      title: 'ฟีเจอร์ที่ขายได้',
+      subtitle: 'เลือกว่าฟีเจอร์ไหนยังขายได้บ้าง — ตัวแค็ตตาล็อกสร้างอัตโนมัติ มีแค่สถานะที่คุณเคาะเอง',
+      key: 'คีย์',
+      label: 'ชื่อ',
+      module: 'โมดูล',
+      state: {
+        active: 'ขายได้',
+        activeHint: 'ติ๊กเข้ากลุ่มไหนก็ได้ตามปกติ',
+        inactive: 'เลิกขายของใหม่',
+        inactiveHint: 'กลุ่มที่ผูกไว้แล้วยังเก็บไว้ได้ แต่เพิ่มเข้ากลุ่มใหม่ไม่ได้',
+        hide: 'ซ่อน',
+        hideHint: 'หายจากแค็ตตาล็อกสนิท คีย์ที่ขายไปแล้วกลายเป็นคีย์กำพร้า',
+      },
+      stateSaved: 'บันทึกสถานะแล้ว',
+      filterAll: 'ทุกสถานะ',
+      searchPlaceholder: 'ค้นหาจากคีย์หรือชื่อ',
+      emptyTitle: 'ไม่พบฟีเจอร์ที่ตรงกับเงื่อนไข',
+      emptyDescription: 'ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ',
+    },
     licenseFeatureGroups: {
       title: 'กลุ่มสิทธิ์ license',
       subtitle: 'ชุด feature ที่จัดไว้ล่วงหน้า ใช้ตอนขายสัญญา',

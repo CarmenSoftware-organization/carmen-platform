@@ -29,6 +29,7 @@ const ClusterAdminLicenses = lazy(() => import("./pages/clusterAdmin/ClusterAdmi
 const SubscriptionForm = lazy(() => import("./pages/licenses/SubscriptionForm"));
 const LicensePurchaseForm = lazy(() => import("./pages/licenses/LicensePurchaseForm"));
 const LicenseFeatureGroupManagement = lazy(() => import("./pages/LicenseFeatureGroupManagement"));
+const LicenseFeatureManagement = lazy(() => import("./pages/LicenseFeatureManagement"));
 const LicenseFeatureGroupEdit = lazy(() => import("./pages/LicenseFeatureGroupEdit"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
@@ -276,6 +277,14 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="user.update" feature="users">
                   <UserEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/license-features"
+              element={
+                <PrivateRoute requiredPermission="license_feature.read" feature="license_features">
+                  <LicenseFeatureManagement />
                 </PrivateRoute>
               }
             />
