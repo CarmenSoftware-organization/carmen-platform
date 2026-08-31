@@ -166,9 +166,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
       >
         {/* Logo */}
+        {/* The product logo is a centred lockup; a cluster keeps the left-aligned mark + name,
+            which reads as a list row rather than a masthead. */}
         <div className={cn(
           'flex h-16 items-center border-b border-border shrink-0',
-          isCollapsed ? 'justify-center px-2' : 'px-4'
+          isCollapsed || isProduct ? 'justify-center px-2' : 'px-4'
         )}>
           <Link to={brandTo} className="flex items-center gap-3 group min-w-0" aria-label={brand.name}>
             {isProduct ? (
@@ -176,7 +178,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 variant={isCollapsed ? 'mark' : 'lockup'}
                 className={cn(
                   'transition-transform duration-300 group-hover:scale-105',
-                  isCollapsed ? 'h-9 w-9 shadow-xs' : 'h-8',
+                  isCollapsed ? 'h-11 w-11 shadow-xs' : 'h-11',
                 )}
               />
             ) : (
@@ -255,12 +257,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         <SheetContent side="left" className="w-72 p-0">
           <SheetHeader className="h-16 flex-row items-center border-b border-border px-4 space-y-0">
             <SheetTitle asChild>
-              <div className="flex min-w-0 items-center gap-3 group">
+              <div className={cn('flex min-w-0 items-center gap-3 group', isProduct && 'mx-auto')}>
                 {isProduct ? (
                   /* The lockup spells the product name, so the accessible name moves off-screen
                      rather than being printed twice. */
                   <>
-                    <ProductLogo className="h-8 transition-transform duration-300 group-hover:scale-105" />
+                    <ProductLogo className="h-11 transition-transform duration-300 group-hover:scale-105" />
                     <span className="sr-only">{brand.name}</span>
                   </>
                 ) : (

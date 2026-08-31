@@ -203,11 +203,16 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
               </Button>
               <Link
                 to={brandDestination}
-                className="flex min-w-0 items-center gap-3 group"
+                className={cn(
+                  'flex min-w-0 items-center gap-3 group',
+                  /* The product lockup centres between the menu button and the account menu;
+                     a cluster keeps its mark beside the button, next to the name it labels. */
+                  isProductBrand(brand) && 'mx-auto',
+                )}
                 aria-label={brand.name}
               >
                 {isProductBrand(brand) ? (
-                  <ProductLogo className="h-7" />
+                  <ProductLogo className="h-9" />
                 ) : (
                   <>
                     <BrandMark
