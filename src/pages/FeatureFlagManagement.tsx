@@ -19,7 +19,7 @@ import {
   type FeatureDefinition,
   type FeatureState,
 } from '../constants/featureFlags';
-import { FeatureStateToggle } from './featureFlags/FeatureStateToggle';
+import { FeatureStateToggle } from '../components/FeatureStateToggle';
 import type { TKey } from '../i18n/types';
 
 /**
