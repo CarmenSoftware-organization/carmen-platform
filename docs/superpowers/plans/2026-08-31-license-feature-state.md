@@ -769,7 +769,16 @@ export class PlatformLicenseFeaturesService {
   @ApiStdResponse(LicenseFeatureAdminDto, { isArray: true, description: 'Catalog retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Missing or invalid Bearer token' })
   @ApiResponse({ status: 403, description: 'Missing license_feature.read permission' })
-  async listAll(@Res() res: Response): Promise<void> { /* ล้อ listFeatures ของ platform_subscriptions.controller.ts:164 */ }
+  async listAll(@Res() res: Response): Promise<void> {
+    this.logger.debug({ function: 'listAll' }, PlatformLicenseFeaturesController.name);
+
+    const result = await this.platformLicenseFeaturesService.listAll();
+    if (!result.success) {
+      res.status(result.statusCode).json(result);
+      return;
+    }
+    res.status(HttpStatus.OK).json(result);
+  }
 
   @Patch('license-features/:id')
   @UseGuards(new AppIdGuard('license-feature.set-state'), PlatformPermissionGuard)
@@ -787,10 +796,21 @@ export class PlatformLicenseFeaturesService {
     @Param('id') id: string,
     @Body() body: SetLicenseFeatureStateRequestDto,
     @Res() res: Response,
-  ): Promise<void> { /* ล้อ update ของ platform_license_feature_groups.controller.ts:186 */ }
+  ): Promise<void> {
+    this.logger.debug({ function: 'setState', id, body }, PlatformLicenseFeaturesController.name);
+
+    const result = await this.platformLicenseFeaturesService.setState(id, body);
+    if (!result.success) {
+      res.status(result.statusCode).json(result);
+      return;
+    }
+    res.status(HttpStatus.OK).json(result);
+  }
 ```
 
 ใช้ `:id` (uuid) **ไม่ใช่ `:key`** — feature key มีจุดคั่น (`inventory.count`) การวางใน path param เปิดเรื่อง encode ที่รีโปนี้เคยโดนมาแล้ว
+
+รูปการตอบกลับ (`result.success` / `result.statusCode` / `res.status(...).json(result)`) ต้องตรงกับ `platform_license_feature_groups.controller.ts` เป๊ะ — **เปิดไฟล์นั้นเทียบก่อน** ถ้าโครง `Result` ที่นั่นต่างจากตัวอย่างข้างบน ให้ยึดไฟล์จริงเป็นหลัก
 
 - [ ] **Step 6: module + ลงทะเบียนใน app.module**
 
@@ -1117,6 +1137,8 @@ sed -n '1,60p' src/pages/FeatureFlagManagement.tsx
 หน้าใหม่ยืมโครงหัวเรื่อง/ค้นหา/CSV จากตัวแรก และยืมการวางแถว + toggle จากตัวที่สอง
 
 - [ ] **Step 2: เขียนหน้า**
+
+import ที่ต้องมี (นอกจาก React/ui): `licenseFeatureService` · `moduleOf` จาก `../pages/licenses/subscriptionEdit/featureSelection` (ปรับ path ตามที่ตั้งไฟล์จริง) · `FeatureStateToggle` จาก `../components/FeatureStateToggle` · `useI18n` · `useAuth` · `useGlobalShortcuts` · `toast` จาก `sonner` · `generateCSV`/`downloadCSV` จาก `../utils/csvExport` · `getErrorDetail`/`devLog` จาก `../utils/errorParser` · `isVersionConflict`/`notifyVersionConflict` จาก `../utils/docVersion` — **เปิด `src/utils/docVersion.ts` เช็คชื่อ export จริงก่อนใช้** และเทียบกับ `ClusterEdit.tsx` ซึ่งเป็นหน้าอ้างอิงของ doc_version
 
 โครงที่ต้องมีครบ:
 
