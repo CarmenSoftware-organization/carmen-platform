@@ -37,7 +37,7 @@ const NotFound: React.FC = () => {
   }
 
   return (
-    <Layout>
+    <Layout hideBreadcrumbs>
       <StatusPage
         icon={FileQuestion}
         tone="neutral"

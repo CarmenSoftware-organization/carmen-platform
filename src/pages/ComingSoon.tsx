@@ -22,7 +22,7 @@ const ComingSoon: React.FC = () => {
   const goBack = useBackOrFallback('/dashboard');
 
   return (
-    <Layout>
+    <Layout hideBreadcrumbs>
       <StatusPage
         icon={Hammer}
         tone="neutral"
