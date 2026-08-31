@@ -56,7 +56,13 @@ export const FeatureStateToggle: React.FC<FeatureStateToggleProps> = ({
     <div
       role="radiogroup"
       aria-label={featureLabel}
-      className="inline-flex shrink-0 gap-0.5 rounded-md border border-border p-0.5"
+      /*
+       * `flex-wrap` + `max-w-full` แทน `shrink-0` เดิม — ในการ์ดของ DataTable ที่จอ 390px
+       * ป้ายชุดยาวอย่างของหน้า /license-features ("Closed to new sales") ทำให้กลุ่มปุ่มกว้าง
+       * เกินการ์ดจนปุ่มขวาสุดถูกตัดและกดไม่ได้ · `shrink-0` เป็นตัวห้ามไม่ให้ยุบ จึงไม่มีทางขึ้น
+       * บรรทัดใหม่ได้เลย · ตัวเลขจากการวัดจริง: กลุ่มปุ่มจบที่ 391px ขณะที่การ์ดจบที่ 330px
+       */
+      className="inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-border p-0.5"
     >
       {FEATURE_STATES.map((state) => (
         <Button
@@ -67,7 +73,7 @@ export const FeatureStateToggle: React.FC<FeatureStateToggleProps> = ({
           size="sm"
           disabled={disabled}
           variant={value === state ? 'default' : 'ghost'}
-          className={cn('h-7 px-3 text-xs', value !== state && 'text-muted-foreground')}
+          className={cn('h-7 px-2 text-xs sm:px-3', value !== state && 'text-muted-foreground')}
           title={t(STATE_HINT[state])}
           onClick={() => onChange(state)}
         >
