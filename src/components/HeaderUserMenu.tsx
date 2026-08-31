@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChevronDown, LayoutDashboard, LogOut, Network, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDarkMode } from '../hooks/useDarkMode';
@@ -16,8 +16,6 @@ import {
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { THEME_OPTIONS } from './ThemeToggle';
 import { LANGUAGE_OPTIONS } from './LanguageToggle';
-import { CURRENT_VERSION } from './VersionBadge';
-import { useBackendVersion } from '../hooks/useBackendVersion';
 
 interface HeaderUserInfo {
   initials: string;
@@ -40,7 +38,6 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
   const { lang, setLang, t } = useI18n();
   const { hasPlatformAuthority, hasClusterAdminScope, adminScope } = useAuth();
   const { clusterId } = useParams<{ clusterId: string }>();
-  const backendVersion = useBackendVersion();
 
   const inClusterAdmin = location.pathname.startsWith('/cluster-admin');
 
@@ -141,28 +138,6 @@ const HeaderUserMenu = ({ userInfo, onLogout, compact = false }: HeaderUserMenuP
               </DropdownMenuItem>
             ))}
           </>
-        )}
-
-        <DropdownMenuSeparator />
-
-        {/* เวอร์ชันของสองฝั่งอยู่คู่กัน เพราะคำถามที่คนเปิดดูจริงคือ "หน้าเว็บกับหลังบ้าน
-            ตรงรุ่นกันไหม" ไม่ใช่รุ่นของฝั่งใดฝั่งหนึ่งลอย ๆ แถวแอปเป็นลิงก์ไป changelog
-            ส่วนแถว API ไม่มีปลายทางให้ไป จึงไม่ใช่ DropdownMenuItem (ที่กดได้และรับโฟกัส)
-            และหายไปทั้งแถวเมื่อดึงเวอร์ชันไม่สำเร็จ */}
-        <DropdownMenuItem asChild>
-          <Link to="/changelog" className="gap-2 font-mono text-[11px]">
-            <span className="text-muted-foreground">{t('header.appVersion')}</span>
-            <span className="ml-auto">v{CURRENT_VERSION}</span>
-          </Link>
-        </DropdownMenuItem>
-        {backendVersion && (
-          <div
-            className="flex cursor-default select-none items-center gap-2 px-2 py-1.5 font-mono text-[11px]"
-            title={backendVersion.build}
-          >
-            <span className="text-muted-foreground">{t('header.apiVersion')}</span>
-            <span className="ml-auto">v{backendVersion.version}</span>
-          </div>
         )}
 
         <DropdownMenuSeparator />
