@@ -2539,7 +2539,8 @@ export const th: Translations = {
       namePlaceholder: 'ชื่อ Cluster',
       firstQuotaLicence: 'ใบโควตาใบแรก',
       firstQuotaLicenceNote: 'กำหนดว่า Cluster นี้สร้างหน่วยธุรกิจได้กี่หน่วย ถ้าไม่มีใบเลยจะสร้างไม่ได้สักหน่วย',
-      licensedBus: 'หน่วยธุรกิจ *',
+      // ดูเหตุผลที่ en.ts — ดาวย้ายไปอยู่ใน JSX
+      licensedBus: 'หน่วยธุรกิจ',
       licensedBusPlaceholder: 'เช่น 5',
       expires: 'วันหมดอายุ',
       neverExpires: 'ไม่มีวันหมดอายุ',

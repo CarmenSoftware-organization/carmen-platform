@@ -3529,7 +3529,9 @@ export const en = {
       namePlaceholder: 'Cluster name',
       firstQuotaLicence: 'First quota licence',
       firstQuotaLicenceNote: 'Sets how many business units this cluster may create. Without one it can create none.',
-      licensedBus: 'Business units *',
+      // ดาวบอกว่าจำเป็น อยู่ใน JSX เหมือนทุก label ในฟอร์มนี้ ไม่ใช่ในค่าคำแปล — ค่านี้ถูกใช้
+      // เป็น label ของข้อความ "is required" ด้วย และ "Business units * is required" อ่านไม่ได้
+      licensedBus: 'Business units',
       licensedBusPlaceholder: 'e.g. 5',
       expires: 'Expires',
       neverExpires: 'Never expires',

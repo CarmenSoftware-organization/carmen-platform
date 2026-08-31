@@ -10,6 +10,12 @@ import { useI18n } from '../../hooks/useI18n';
 
 export interface ClusterDraftPlateProps {
   formData: ClusterFormData;
+  /**
+   * The form's live validation state. The plate is a picture of the cluster Create will make,
+   * so a value Create will refuse must not be drawn as though it were settled — an invalid
+   * code used to appear up here in the same type as a good one, initials and all.
+   */
+  fieldErrors?: Record<string, string>;
   backTo: string;
   /** Status is set from the plate here, the same place it is set once the cluster exists. */
   onToggleActive: () => void;
@@ -21,12 +27,31 @@ export interface ClusterDraftPlateProps {
  * No edit-in-place on purpose: the form below already owns every one of these values, and two
  * controls writing one field is exactly the duplication `ClusterPlate` was built to remove.
  */
-function DraftIdentifier({ label, value }: { label: string; value: string }) {
+function DraftIdentifier({
+  label,
+  value,
+  error,
+}: {
+  label: string;
+  value: string;
+  /** The form's message for this field, when it currently has one. */
+  error?: string;
+}) {
   const set = value.trim().length > 0;
+  const invalid = !!error && set;
   return (
     <span className="inline-flex min-w-0 items-baseline gap-1.5">
       <span className="text-muted-foreground shrink-0 text-[11px] tracking-wide uppercase">{label}</span>
-      <span className={cn('truncate font-mono text-sm tracking-wide', !set && 'text-muted-foreground/60')}>
+      {/* The message itself stays under the field that produced it — repeating it here would
+       *  make one mistake shout twice. The plate only says "not this one yet". */}
+      <span
+        title={error}
+        className={cn(
+          'truncate font-mono text-sm tracking-wide',
+          !set && 'text-muted-foreground/60',
+          invalid && 'text-destructive decoration-destructive/50 underline decoration-wavy underline-offset-4',
+        )}
+      >
         {set ? value : '—'}
       </span>
     </span>
@@ -46,7 +71,12 @@ function DraftIdentifier({ label, value }: { label: string; value: string }) {
  * real identity that needs no upload, whereas a logo cannot be attached to a cluster that does
  * not exist yet — an upload slot here would be a control that cannot work.
  */
-export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterDraftPlateProps) {
+export function ClusterDraftPlate({
+  formData,
+  fieldErrors,
+  backTo,
+  onToggleActive,
+}: ClusterDraftPlateProps) {
   const { t } = useI18n();
   const name = formData.name.trim();
   // Blank, `0` and a non-numeric draft all mean the same thing here: no quota asked for yet.
@@ -78,11 +108,14 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
 
       <Card className="overflow-hidden p-0">
         <div className="flex min-w-0 gap-4 p-4 sm:p-5">
+          {/* Initials come from the code first (BrandMark's rule), so a rejected code would
+           *  otherwise mint an identity out of a value that cannot be saved. Fall back to the
+           *  name until the code is one the form accepts. */}
           <BrandMark
             size="lg"
             shape="circle"
             name={formData.name}
-            code={formData.code}
+            code={fieldErrors?.code ? undefined : formData.code}
             className="h-12 w-12 text-base"
           />
 
@@ -109,8 +142,16 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
             </div>
 
             <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <DraftIdentifier label={t('common.field.code')} value={formData.code} />
-              <DraftIdentifier label={t('common.field.alias')} value={formData.alias_name} />
+              <DraftIdentifier
+                label={t('common.field.code')}
+                value={formData.code}
+                error={fieldErrors?.code}
+              />
+              <DraftIdentifier
+                label={t('common.field.alias')}
+                value={formData.alias_name}
+                error={fieldErrors?.alias_name}
+              />
             </div>
 
             {/* Where the audit line sits on a saved cluster. Saying so keeps the plate from
@@ -146,16 +187,29 @@ export function ClusterDraftPlate({ formData, backTo, onToggleActive }: ClusterD
               </span>
             </div>
             <div className="mt-1.5 h-2.5">
-              <AllocationTicks
-                used={cap}
-                cap={cap}
-                level="none"
-                label={
-                  cap === 1
-                    ? t('pages.clusters.buLicenceCount', { count: cap })
-                    : t('pages.clusters.buLicenceCountPlural', { count: cap })
-                }
-              />
+              {cap ? (
+                <AllocationTicks
+                  used={cap}
+                  cap={cap}
+                  level="none"
+                  label={
+                    cap === 1
+                      ? t('pages.clusters.buLicenceCount', { count: cap })
+                      : t('pages.clusters.buLicenceCountPlural', { count: cap })
+                  }
+                />
+              ) : (
+                /* `AllocationTicks` draws cap 0 as a solid muted track, which on this page
+                 *  reads as a bar that failed to fill rather than as a quota nobody has asked
+                 *  for yet. A dashed outline is the same "nothing here yet" the logo slot uses
+                 *  one card up, and it is the shape the ticks will fill the moment a number is
+                 *  typed. */
+                <div
+                  role="img"
+                  aria-label={t('pages.clusters.noQuotaYet')}
+                  className="border-muted-foreground/30 h-2.5 rounded-full border border-dashed"
+                />
+              )}
             </div>
             <p className="text-muted-foreground mt-1.5 text-[11px]">{note}</p>
           </div>

@@ -271,14 +271,32 @@ const ClusterEdit: React.FC = () => {
     setError('');
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const error = validateField(name, value);
-    setFieldErrors(prev => ({ ...prev, [name]: error }));
-  };
-
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     setFieldErrors(prev => ({ ...prev, [e.target.name]: '' }));
+  };
+
+  /**
+   * Blur validation for the create form. `validateField` is opt-in about requiredness and has
+   * no case for `name` or `licensed_bus`, so plain `handleBlur` returned '' for both and the
+   * two mandatory fields fell through to the browser's native `required` bubble — which speaks
+   * the browser's language, not the one the user picked in this app.
+   *
+   * `licensed_bus` borrows the `amount` case on purpose: that case exists for exactly this
+   * licence quantity (see its comment in utils/validation.ts), only under the form-field name
+   * the licence purchase form uses. The message is stored under the real field name so the
+   * input that produced it is the input that shows it.
+   */
+  const handleCreateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const error =
+      name === 'licensed_bus'
+        ? validateField('amount', value, { required: true, label: t('pages.clusters.licensedBus') })
+        : name === 'name'
+          ? validateField('name', value, { required: true, label: t('common.field.name') })
+          : name === 'code'
+            ? validateField('code', value, { required: true, label: t('common.field.code') })
+            : validateField(name, value);
+    setFieldErrors((prev) => ({ ...prev, [name]: error }));
   };
 
   // Create branch (isNew): single-form submit, unchanged from before.
@@ -497,13 +515,14 @@ const ClusterEdit: React.FC = () => {
        *  surface takes a measure instead: six fields stretched across a 1360px content area
        *  is a form you have to hunt across, and the plate above it has nothing to fill the
        *  width with either. */}
-      <div className={`space-y-4 sm:space-y-6 ${isNew ? 'max-w-3xl' : 'pb-24'}`}>
+      <div className={`space-y-4 sm:space-y-6 ${isNew ? 'mx-auto max-w-3xl' : 'pb-24'}`}>
         {isNew ? (
           <>
             {/* No PageHeader: the draft plate carries the <h1>, and what it carries is the
              *  cluster's own name as you type it rather than the name of the operation. */}
             <ClusterDraftPlate
               formData={formData}
+              fieldErrors={fieldErrors}
               backTo="/clusters"
               onToggleActive={() =>
                 setFormData((prev) => ({ ...prev, is_active: !prev.is_active }))
@@ -518,7 +537,7 @@ const ClusterEdit: React.FC = () => {
               saving={saving}
               formRef={formRef}
               onChange={handleChange}
-              onBlur={handleBlur}
+              onBlur={handleCreateBlur}
               onFocus={handleFocus}
               onNoExpiryChange={(v) => setFormData((prev) => ({ ...prev, license_no_expiry: v }))}
               onSubmit={handleCreateSubmit}
@@ -565,9 +584,13 @@ const ClusterEdit: React.FC = () => {
             {activeTab === 'licensing' && (
               <Card className="p-0">
                 <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+                  {/* ทรงหัวข้อเดียวกับ CardTitle/CardDescription ที่การ์ดอื่นในแอปใช้ —
+                      หัวการ์ดนี้เคยเล็กกว่าหัวการ์ดข้างเคียงหนึ่งขั้น ทั้งที่อยู่ระดับเดียวกัน */}
                   <div>
-                    <h2 className="text-sm font-medium">{t('pages.clusters.subscriptionsHeading')}</h2>
-                    <p className="text-muted-foreground text-xs">
+                    <h2 className="text-base font-semibold leading-none tracking-tight">
+                      {t('pages.clusters.subscriptionsHeading')}
+                    </h2>
+                    <p className="text-muted-foreground mt-1.5 text-sm">
                       {t('pages.clusters.licencesNote')}
                     </p>
                   </div>

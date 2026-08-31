@@ -120,7 +120,9 @@ export function BusinessUnitsSection({
                     </button>
                   </TableHead>
                 ))}
-                <TableHead>{t('common.status.label')}</TableHead>
+                {/* กว้างคงที่: ปล่อยให้ยืด แล้วคอลัมน์ชื่อจะถูกบีบขณะที่ช่องว่างไปกองอยู่
+                    ระหว่างสถานะกับปุ่มแก้ไข */}
+                <TableHead className="w-32">{t('common.status.label')}</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -150,9 +152,12 @@ export function BusinessUnitsSection({
                     />
                   </TableCell>
                   <TableCell>
-                    <Badge variant={bu.is_active ? 'success' : 'secondary'} className="text-xs">
-                      {bu.is_active ? t('common.status.active') : t('common.status.inactive')}
-                    </Badge>
+                    {/* กติกาเดียวกับตารางผู้ใช้: ป้ายสีไว้ให้สถานะที่ผิดปกติเท่านั้น */}
+                    {bu.is_active ? (
+                      <span className="text-muted-foreground text-xs">{t('common.status.active')}</span>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{t('common.status.inactive')}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" className={`h-7 w-7 ${HIT_SLOP_44}`}

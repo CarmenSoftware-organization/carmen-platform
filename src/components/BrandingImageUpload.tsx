@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Upload, Loader2, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -46,6 +46,17 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * Branding URLs are presigned and expire; a cluster whose links have aged out used to
+   * render two empty frames — the <img> hid itself on error and left its border behind, so
+   * a page that should have said "CL" said "the image is broken". Tracking the failure
+   * lets the slot fall back to the same empty state it shows when nothing was uploaded,
+   * which is what `BrandMark`'s contract already promised ("a missing, expired, or broken
+   * URL falls back to the initials").
+   */
+  const [broken, setBroken] = useState(false);
+  // A fresh upload (or a re-presigned URL for the same image) deserves a fresh attempt.
+  useEffect(() => setBroken(false), [value]);
 
   const validate = (file: File): string => {
     if (!accept.includes(file.type)) {
@@ -89,14 +100,14 @@ export const BrandingImageUpload: React.FC<BrandingImageUploadProps> = ({
    * no substitute, so its empty state is a dashed frame at the footprint the image will occupy:
    * it reads as "nothing here yet" instead of "this is the branding". */
   const renderPreview = () => {
-    if (value) {
+    if (value && !broken) {
       return (
         <div className={cn('flex shrink-0 items-center justify-center overflow-hidden border bg-muted/30', frameClass)}>
           <img
             src={value}
             alt={label}
             className={cn('h-full w-full', fitClass)}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            onError={() => setBroken(true)}
           />
         </div>
       );
