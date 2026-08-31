@@ -4,7 +4,12 @@ export interface StatusToggleProps {
   on: boolean;
   onLabel: string;
   offLabel: string;
-  variant: 'success' | 'default';
+  /**
+   * ป้ายของสถานะ "เปิด" — `outline` มีไว้ให้แผ่นป้ายที่สถานะยังไม่ใช่ข้อเท็จจริงของระบบ
+   * (ร่างที่ยังไม่ถูกสร้าง) ซึ่งการทาสีเต็มใบจะดังกว่าการกระทำจริงของหน้านั้น
+   * สถานะ "ปิด" ยังเป็น `secondary` เสมอ ทั้งสองค่าจึงยังต่างกันด้วยตาเปล่า
+   */
+  variant: 'success' | 'default' | 'outline';
   disabled: boolean;
   onClick: () => void;
 }

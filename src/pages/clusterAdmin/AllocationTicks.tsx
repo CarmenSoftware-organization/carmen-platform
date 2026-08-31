@@ -24,6 +24,16 @@ export interface AllocationTicksProps {
   /** Describes the whole strip. Individual ticks carry no meaning on their own. */
   label: string;
   className?: string;
+  /**
+   * Overrides the fill of the *allocated* ticks, replacing `GAUGE_FILL[level]`. Only the draft
+   * plate passes it, and only because its strip answers a different question: those ticks are
+   * licences about to be issued, not licences in use, so they are the strip's subject rather
+   * than its background. At `level="none"` the stock fill is `bg-muted-foreground/40`, which
+   * on a `bg-muted/30` ground gives a dozen pale identical bars — the shape of a loading
+   * skeleton, not of a count. Over-cap ticks ignore this: the destructive tint is a warning,
+   * and no caller gets to mute a warning.
+   */
+  fillClassName?: string;
 }
 
 /**
@@ -36,7 +46,14 @@ export interface AllocationTicksProps {
  * Over-cap is the one case the picture must not flatten: the excess ticks render at a lighter
  * destructive tint so the licensed boundary stays visible behind the overflow.
  */
-export function AllocationTicks({ used, cap, level, label, className }: AllocationTicksProps) {
+export function AllocationTicks({
+  used,
+  cap,
+  level,
+  label,
+  className,
+  fillClassName,
+}: AllocationTicksProps) {
   // An uncapped pool has no boundary, so there is no allocation to draw. An empty track here
   // would be a picture of nothing that reads exactly like a capped pool sitting at 0%.
   if (cap == null) return null;
@@ -53,7 +70,10 @@ export function AllocationTicks({ used, cap, level, label, className }: Allocati
         aria-label={label}
         className={cn('bg-muted h-2.5 overflow-hidden rounded-full', className)}
       >
-        <div className={cn('h-full rounded-full', GAUGE_FILL[level])} style={{ width: `${ratio * 100}%` }} />
+        <div
+          className={cn('h-full rounded-full', fillClassName ?? GAUGE_FILL[level])}
+          style={{ width: `${ratio * 100}%` }}
+        />
       </div>
     );
   }
@@ -73,7 +93,11 @@ export function AllocationTicks({ used, cap, level, label, className }: Allocati
           key={i}
           className={cn(
             'h-2.5 max-w-10 flex-1 rounded-[2px]',
-            i >= used ? 'bg-muted' : i < cap ? GAUGE_FILL[level] : 'bg-destructive/40',
+            i >= used
+              ? 'bg-muted'
+              : i < cap
+                ? (fillClassName ?? GAUGE_FILL[level])
+                : 'bg-destructive/40',
           )}
         />
       ))}
