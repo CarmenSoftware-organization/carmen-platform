@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { BrandMark } from '../../components/BrandMark';
 import { StatusToggle } from '../../components/StatusToggle';
@@ -16,7 +15,6 @@ export interface ClusterDraftPlateProps {
    * code used to appear up here in the same type as a good one, initials and all.
    */
   fieldErrors?: Record<string, string>;
-  backTo: string;
   /** Status is set from the plate here, the same place it is set once the cluster exists. */
   onToggleActive: () => void;
 }
@@ -74,7 +72,6 @@ function DraftIdentifier({
 export function ClusterDraftPlate({
   formData,
   fieldErrors,
-  backTo,
   onToggleActive,
 }: ClusterDraftPlateProps) {
   const { t } = useI18n();
@@ -95,18 +92,7 @@ export function ClusterDraftPlate({
         : t('pages.clusters.setExpiryBelow');
 
   return (
-    <div className="space-y-3">
-      {/* Same back link as the edit plate, down to the 44px ::before tap target — landing on
-       *  the created cluster should not move the way out from under the pointer. */}
-      <Link
-        to={backTo}
-        className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
-      >
-        <ArrowLeft className="size-4" />
-        {t('breadcrumb.clusters')}
-      </Link>
-
-      <Card className="overflow-hidden p-0">
+    <Card className="overflow-hidden p-0">
         <div className="flex min-w-0 gap-4 p-4 sm:p-5">
           {/* Initials come from the code first (BrandMark's rule), so a rejected code would
            *  otherwise mint an identity out of a value that cannot be saved. Fall back to the
@@ -123,19 +109,29 @@ export function ClusterDraftPlate({
             {/* Status beside the name, outside the <h1> — nesting it would fold "Active" into
              *  the heading's accessible name, the same trap the edit plate documents. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {/* Wraps to two lines rather than truncating. In a 320px column the name is the
+               *  one value on this plate a reader cannot reconstruct from the fields below —
+               *  "Grand Hotel Group A…" is the preview failing at the only job it has. Two
+               *  lines is the ceiling: past that the plate starts pushing the quota band down
+               *  the column on every keystroke. */}
               <h1
                 className={cn(
-                  'truncate text-xl font-semibold tracking-tight',
+                  'line-clamp-2 text-xl font-semibold tracking-tight',
                   !name && 'text-muted-foreground',
                 )}
               >
                 {name || t('pages.clusters.newCluster')}
               </h1>
+              {/* `outline`, not the edit plate's `success`. A filled green badge was the
+               *  loudest thing on a page whose only real action is the Create button, and it
+               *  was shouting a default nobody has to think about. Outline still reads as a
+               *  switch you can press — and the off state stays `secondary`, so Active and
+               *  Inactive remain two visibly different things. */}
               <StatusToggle
                 on={formData.is_active}
                 onLabel={t('common.status.active')}
                 offLabel={t('common.status.inactive')}
-                variant="success"
+                variant="outline"
                 disabled={false}
                 onClick={onToggleActive}
               />
@@ -192,6 +188,17 @@ export function ClusterDraftPlate({
                   used={cap}
                   cap={cap}
                   level="none"
+                  /* `bg-foreground/45`, not the level's own `bg-muted-foreground/40`. These
+                   *  ticks are what the page is about — twelve of them at 1.5:1 against the
+                   *  band behind them read as a skeleton still loading rather than as twelve
+                   *  licences. Neutral on purpose: the Create button keeps the page's one
+                   *  accent, and `bg-foreground/25` is already the established way to draw a
+                   *  quantity without a hue (`BAND_FILL.ok` in CapacityGauge).
+                   *
+                   *  /55 is the measured floor, not a guess: against the band's #fcfcfc,
+                   *  /45 renders #999897 for 2.81:1 — under the 3:1 WCAG 1.4.11 asks of a
+                   *  graphical object. /55 measures 3.69:1. */
+                  fillClassName="bg-foreground/55"
                   label={
                     cap === 1
                       ? t('pages.clusters.buLicenceCount', { count: cap })
@@ -214,7 +221,6 @@ export function ClusterDraftPlate({
             <p className="text-muted-foreground mt-1.5 text-[11px]">{note}</p>
           </div>
         </div>
-      </Card>
-    </div>
+    </Card>
   );
 }

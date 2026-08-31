@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, X, UserPlus, Search, Loader2, SearchX } from 'lucide-react';
+import { Save, X, UserPlus, Search, Loader2, SearchX, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { validateField } from '../utils/validation';
@@ -513,36 +513,67 @@ const ClusterEdit: React.FC = () => {
     <Layout>
       {/* pb-24 clears the sticky save bar, which only exists on the edit surface. The create
        *  surface takes a measure instead: six fields stretched across a 1360px content area
-       *  is a form you have to hunt across, and the plate above it has nothing to fill the
-       *  width with either. */}
-      <div className={`space-y-4 sm:space-y-6 ${isNew ? 'mx-auto max-w-3xl' : 'pb-24'}`}>
+       *  is a form you have to hunt across. It is wider than the old 3xl because the plate
+       *  now sits beside the form rather than on top of it — see the grid below. */}
+      <div className={`space-y-4 sm:space-y-6 ${isNew ? 'mx-auto max-w-5xl' : 'pb-24'}`}>
         {isNew ? (
           <>
-            {/* No PageHeader: the draft plate carries the <h1>, and what it carries is the
-             *  cluster's own name as you type it rather than the name of the operation. */}
-            <ClusterDraftPlate
-              formData={formData}
-              fieldErrors={fieldErrors}
-              backTo="/clusters"
-              onToggleActive={() =>
-                setFormData((prev) => ({ ...prev, is_active: !prev.is_active }))
-              }
-            />
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
-            )}
-            <ClusterCreateForm
-              formData={formData}
-              fieldErrors={fieldErrors}
-              saving={saving}
-              formRef={formRef}
-              onChange={handleChange}
-              onBlur={handleCreateBlur}
-              onFocus={handleFocus}
-              onNoExpiryChange={(v) => setFormData((prev) => ({ ...prev, license_no_expiry: v }))}
-              onSubmit={handleCreateSubmit}
-              onCancel={() => navigate('/clusters')}
-            />
+            {/* The back link is the page's, not the plate's, now that the plate has moved out
+             *  of the first column — a way out anchored to the top of a preview off to the
+             *  right is not a way out anyone finds. Same 44px ::before tap target it carried
+             *  inside the plate. */}
+            <Link
+              to="/clusters"
+              className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
+            >
+              <ArrowLeft className="size-4" />
+              {t('breadcrumb.clusters')}
+            </Link>
+
+            {/* Two columns from `lg` up, form first. The plate is a picture of what you are
+             *  typing, so it has to be visible *while* you type: stacked above the form it
+             *  spent the first 228px of the viewport drawing five empty values and pushed the
+             *  first input down past y=386. Beside the form it stays in view for every field,
+             *  and it fills the 630px this page was leaving blank at 1400px.
+             *
+             *  Below `lg` it stacks back the way it was — plate first, which is DOM order;
+             *  the order only swaps at the breakpoint where the columns exist. */}
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              {/* A sticky element needs a parent taller than itself or it never moves. The
+               *  grid item stretches to the row height, so the sticky wrapper goes *inside*
+               *  it, not on it. top-20 = the 64px desktop header plus a 16px gap. */}
+              <div className="lg:order-2">
+                <div className="lg:sticky lg:top-20">
+                  {/* No PageHeader: the draft plate carries the <h1>, and what it carries is
+                   *  the cluster's own name as you type it, not the name of the operation. */}
+                  <ClusterDraftPlate
+                    formData={formData}
+                    fieldErrors={fieldErrors}
+                    onToggleActive={() =>
+                      setFormData((prev) => ({ ...prev, is_active: !prev.is_active }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="min-w-0 space-y-4 sm:space-y-6 lg:order-1">
+                {error && (
+                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+                )}
+                <ClusterCreateForm
+                  formData={formData}
+                  fieldErrors={fieldErrors}
+                  saving={saving}
+                  formRef={formRef}
+                  onChange={handleChange}
+                  onBlur={handleCreateBlur}
+                  onFocus={handleFocus}
+                  onNoExpiryChange={(v) => setFormData((prev) => ({ ...prev, license_no_expiry: v }))}
+                  onSubmit={handleCreateSubmit}
+                  onCancel={() => navigate('/clusters')}
+                />
+              </div>
+            </div>
           </>
         ) : (
           <>
