@@ -1844,6 +1844,27 @@ export const en = {
       // threshold, so it stays split rather than promoted to common.*. Thai copied verbatim
       // from pages.subscriptions.endDateAfterStart — confirmed identical, not retranslated.
       endDateAfterStart: 'End date must be after start date',
+      // Heading of the full-width coverage block that owns start date, end date, and the
+      // perpetual switch. Deliberately NOT reusing common.field.startDate/endDate: this
+      // names the pair as one value, which is the whole reason the block exists.
+      coveragePeriod: 'Coverage period',
+      // The "off" side of the perpetual segmented control, opposite common.state.noExpiry.
+      // A statement about the licence, not an imperative — the control reports which shape
+      // the licence has, it does not order the user to do something.
+      termHasEndDate: 'Has an end date',
+      // The denominator under the licence's amount. Two bare numbers in one frame, no nested
+      // translated fragment — the unit is already named by the line directly above it
+      // (AMOUNT_LABEL_KEYS), so repeating it here would say "BU quota" twice in two lines.
+      usageLine: '{{used}} of {{cap}} in use',
+      // Cancellation facts on the plate. Two keys rather than one with an optional actor:
+      // `cancelled_by_id` is a raw uuid and the display name is only trustworthy when the
+      // audit trail's own timestamp matches the cancellation's — see IssuedLicensePlate's
+      // caller. A frame with an empty "by" reads as a missing value, not an unknown actor.
+      cancelledAt: 'Cancelled {{at}}',
+      cancelledAtBy: 'Cancelled {{at}} by {{by}}',
+      // Why the fields below are frozen. There is no uncancel endpoint — this is terminal,
+      // and the page must say so rather than letting the user type into a dead record.
+      cancelledReadOnly: 'This licence was cancelled and can no longer be changed. Issue a new licence instead.',
 
       // PurchaseLicenseTable.tsx
       filterByStatusDescription: 'Filter by license status',

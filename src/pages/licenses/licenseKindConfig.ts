@@ -1,5 +1,6 @@
 import businessUnitLicenseService from '../../services/businessUnitLicenseService';
 import clusterLicenseService from '../../services/clusterLicenseService';
+import clusterService from '../../services/clusterService';
 import type { ExpiryThresholdsConfig } from '../../types';
 
 export type LicenseKind = 'seat' | 'bu-quota';
@@ -38,6 +39,26 @@ export interface LicenseKindConfig {
    *  หน้าที่ hardcode 30 จะขัดกับป้ายในตารางที่มาจากใบเดียวกัน */
   expiryThresholdField: keyof ExpiryThresholdsConfig;
   service: typeof businessUnitLicenseService | typeof clusterLicenseService;
+
+  /**
+   * อ่าน "เจ้าของใบใช้ไปแล้วเท่าไร" — ตัวหารที่ทำให้จำนวนบนใบมีความหมาย · `null` = ชนิดนี้ไม่มี
+   *
+   * `undefined` ที่ resolve กลับมาแปลว่า **ไม่รู้** ไม่ใช่ศูนย์ ผู้เรียกต้องไม่แสดงอะไรเลยในกรณีนั้น
+   * (`bu_used` เป็น optional ฝั่ง type — การอ่าน absent เป็น 0 คือกับดักที่รีโปนี้เคยเจอมาแล้ว)
+   *
+   * ใบที่นั่งเป็น `null` เพราะตัวหารของมันคือจำนวนผู้ใช้ของ BU ซึ่งมาจากคนละสูตร (ที่นั่งรวมทุกใบ
+   * ส่วนโควตาชนะใบเดียว) การหยิบเลขมาโชว์คู่กันโดยไม่ตรวจสูตรก่อนคือทางที่จะได้เลขผิดแบบเงียบ ๆ
+   */
+  readUsage: ((ownerId: string) => Promise<number | undefined>) | null;
+
+  /**
+   * ยกเลิกใบ — `null` = ชนิดนี้ยกเลิกไม่ได้ (ใบที่นั่งไม่มี endpoint นี้ ไม่ใช่แค่ยังไม่ได้ต่อ)
+   *
+   * แยกจาก `service` เพราะ `cancel` มีอยู่บน `clusterLicenseService` ตัวเดียว การอ่านมันผ่าน
+   * union ของ `service` จึงไม่ผ่าน type check และการ cast ทิ้งเพื่อให้ผ่านคือการซ่อนว่ามีชนิดหนึ่ง
+   * ที่เรียกแล้วพังตอน runtime
+   */
+  cancel: ((ownerId: string, id: string, docVersion: number) => Promise<unknown>) | null;
 }
 
 export const SEAT_CONFIG: LicenseKindConfig = {
@@ -51,6 +72,8 @@ export const SEAT_CONFIG: LicenseKindConfig = {
   editPathSegment: 'seats',
   expiryThresholdField: 'seat_days',
   service: businessUnitLicenseService,
+  readUsage: null,
+  cancel: null,
 };
 
 export const BU_QUOTA_CONFIG: LicenseKindConfig = {
@@ -64,4 +87,13 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   editPathSegment: 'bu-quota',
   expiryThresholdField: 'bu_quota_days',
   service: clusterLicenseService,
+  // เจ้าของใบโควตา **คือ** คลัสเตอร์ (`ownerParam: 'cluster'`) `ownerId` ที่ส่งเข้ามาจึงเป็น
+  // cluster id ตรง ๆ · อ่าน `bu_used` จาก backend view ที่เดียวกับ ClusterEdit/ClusterLicenseTable
+  // ห้ามนับ `businessUnits.length` เองฝั่ง client ไม่งั้นสามหน้าจะได้เลขไม่ตรงกันเงียบ ๆ
+  readUsage: async (clusterId: string) => {
+    const res = await clusterService.getById(clusterId);
+    return ((res?.data ?? res) as { bu_used?: number } | null)?.bu_used;
+  },
+  cancel: (clusterId: string, id: string, docVersion: number) =>
+    clusterLicenseService.cancel(clusterId, id, { doc_version: docVersion }),
 };
