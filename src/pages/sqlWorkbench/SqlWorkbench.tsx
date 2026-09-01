@@ -387,7 +387,12 @@ export default function SqlWorkbench() {
                 />
               </aside>
 
-              <div className="flex min-h-0 flex-1 flex-col">
+              {/* `min-w-0` is load-bearing, not tidiness: a flex item defaults to
+                  `min-width: auto`, so a result grid 3500px wide stretches this column to match
+                  and the frame's `overflow-hidden` simply cuts the far columns off — no
+                  scrollbar, no way to reach them. The chain has to hold all the way down to the
+                  grid's own scroller. */}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                 {/* The object strip: name, type and the two buttons that write them to the
                     database, on one line. These are save-time concerns, not query-time ones — as a
                     three-column card at the top of the pane they were the first thing the eye hit
@@ -467,7 +472,7 @@ export default function SqlWorkbench() {
                   </div>
                 </div>
 
-                <div ref={splitRef} className="flex min-h-0 flex-1 flex-col">
+                <div ref={splitRef} className="flex min-h-0 min-w-0 flex-1 flex-col">
                   <SqlEditor
                     value={formSqlText}
                     onChange={setFormSqlText}

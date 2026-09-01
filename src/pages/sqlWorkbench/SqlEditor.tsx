@@ -215,7 +215,7 @@ export function SqlEditor({
       // `min-h-0` is what lets the divider shrink this pane past its content — desktop only.
       // On mobile there is no divider and the column is content-height, so removing the
       // min-content floor just collapses the pane to zero and spills the editor out of it.
-      className="flex flex-col lg:min-h-0"
+      className="flex min-w-0 flex-col lg:min-h-0"
       style={{ flexGrow: grow, flexShrink: 1, flexBasis: 0 }}
     >
       {/* One row, one job: everything here acts on the text in the editor. Persisting the text as
