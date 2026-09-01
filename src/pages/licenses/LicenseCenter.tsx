@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -15,16 +16,20 @@ import type { FleetSummary } from '../../types';
 
 type LicenseView = 'cluster' | 'subscription' | 'seat' | 'bu-quota';
 const VIEW_KEY = 'license_center_view';
+const VIEW_PARAM = 'tab';
 const VIEWS: LicenseView[] = ['cluster', 'subscription', 'seat', 'bu-quota'];
 
 /**
- * ค่าจาก localStorage ต้องตรวจสมาชิกภาพก่อนใช้ — `as LicenseView` ดิบ ๆ แล้ว `|| 'cluster'`
- * จับได้แค่ null ไม่ใช่ค่าขยะ ตอนมีสองค่าไม่มีใครเจอ แต่พอเพิ่มเป็นสี่แล้วเปลี่ยนชื่อค่าเมื่อไร
- * ผู้ใช้เก่าจะได้มุมมองว่าง
+ * ค่าที่มาจากภายนอก (localStorage และ `?tab=`) ต้องตรวจสมาชิกภาพก่อนใช้ — `as LicenseView`
+ * ดิบ ๆ แล้ว `|| 'cluster'` จับได้แค่ null ไม่ใช่ค่าขยะ ตอนมีสองค่าไม่มีใครเจอ แต่พอเพิ่มเป็นสี่
+ * แล้วเปลี่ยนชื่อค่าเมื่อไร ผู้ใช้เก่า (หรือลิงก์เก่า) จะได้มุมมองว่าง
  */
+const isLicenseView = (v: string | null): v is LicenseView =>
+  !!v && (VIEWS as string[]).includes(v);
+
 const readStoredView = (): LicenseView => {
   const raw = localStorage.getItem(VIEW_KEY);
-  return VIEWS.includes(raw as LicenseView) ? (raw as LicenseView) : 'cluster';
+  return isLicenseView(raw) ? raw : 'cluster';
 };
 
 /**
@@ -34,7 +39,13 @@ const readStoredView = (): LicenseView => {
  */
 const LicenseCenter: React.FC = () => {
   const { t } = useI18n();
-  const [view, setView] = useState<LicenseView>(readStoredView);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // ลำดับความสำคัญ: `?tab=` > localStorage > 'cluster' — ลิงก์ที่ระบุมุมมองมาต้องชนะเสมอ
+  // ไม่งั้นการส่งลิงก์ให้เพื่อนจะเปิดไม่ตรงกับที่เห็น เพราะปลายทางมี localStorage ของตัวเอง
+  const [view, setView] = useState<LicenseView>(() => {
+    const fromUrl = searchParams.get(VIEW_PARAM);
+    return isLicenseView(fromUrl) ? fromUrl : readStoredView();
+  });
   const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [fleetLoading, setFleetLoading] = useState(true);
   const [fleetError, setFleetError] = useState(false);
@@ -42,10 +53,40 @@ const LicenseCenter: React.FC = () => {
   // "By cluster" ด้านล่าง (แถบสรุปเองยังนับทั้ง fleet เสมอ ไม่ถูกกรองตามนี้)
   const [expiringSoonFilter, setExpiringSoonFilter] = useState(false);
 
-  const changeView = (v: LicenseView) => {
+  const changeView = useCallback((v: LicenseView) => {
     setView(v);
     localStorage.setItem(VIEW_KEY, v);
-  };
+    const next = new URLSearchParams(searchParams);
+    next.set(VIEW_PARAM, v);
+    // เขียนพารามิเตอร์เสมอ ไม่ลบทิ้งตอนเป็นค่าเริ่มต้นแบบที่ BusinessUnitEdit ทำ — หน้านั้นไม่มี
+    // localStorage มาแข่ง แต่หน้านี้มี ถ้าลบ `?tab=cluster` ทิ้งแล้วโหลดใหม่ ค่าเก่าใน storage
+    // จะชนะและพาผู้ใช้ไปคนละมุมมองกับที่เพิ่งเลือก
+    // replace: true — สลับแท็บไม่ใช่การเดินทาง ปุ่ม Back ควรพากลับหน้าก่อนหน้า ไม่ใช่ไล่แท็บถอยหลัง
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // ซิงก์เมื่อ URL ถูกเปลี่ยนจากข้างนอก (วางลิงก์ใหม่ทั้งที่อยู่หน้านี้อยู่แล้ว หรือกดลิงก์ที่ชี้มา
+  // ที่ route เดิม ซึ่ง React Router จะไม่ remount ให้) — ตอน changeView เขียนเอง fromUrl จะเท่ากับ
+  // view อยู่แล้ว เงื่อนไขนี้จึงไม่ทำงานซ้ำและไม่เกิดลูป
+  //
+  // ไม่เขียน localStorage ตรงนี้โดยตั้งใจ: storage จำ "แท็บที่ผู้ใช้คนนี้กดเอง" ส่วน `?tab=` คือ
+  // การสั่งเฉพาะการเข้าครั้งนั้น ลิงก์ที่คนอื่นส่งมาจึงไม่ควรไปทับความจำของเจ้าของเครื่อง
+  // (กฎเดียวกับตอน init ด้านบนที่อ่านจาก URL แล้วก็ไม่เขียน storage เหมือนกัน)
+  useEffect(() => {
+    const fromUrl = searchParams.get(VIEW_PARAM);
+    if (isLicenseView(fromUrl)) {
+      if (fromUrl !== view) setView(fromUrl);
+      return;
+    }
+    // มีพารามิเตอร์แต่อ่านไม่ออก (พิมพ์ผิด/ลิงก์เก่าที่ชื่อค่าถูกเปลี่ยน) — จอแสดงมุมมองสำรอง
+    // อยู่แล้ว แต่ถ้าปล่อย `?tab=bogus` ค้างไว้ URL จะพูดคนละอย่างกับที่เห็น และถูกส่งต่อไป
+    // หลอกคนถัดไปได้ เขียนทับด้วยมุมมองที่แสดงจริง (รอบถัดไป fromUrl จะถูกต้องแล้วจึง return)
+    if (fromUrl !== null) {
+      const next = new URLSearchParams(searchParams);
+      next.set(VIEW_PARAM, view);
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, view]);
 
   const toggleExpiringSoonFilter = () => setExpiringSoonFilter((v) => !v);
 
