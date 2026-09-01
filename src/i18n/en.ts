@@ -2985,8 +2985,6 @@ export const en = {
       runningQuery: 'Running query…',
       noRowsReturned: 'Query executed successfully. No rows returned.',
       rangeOfTotal: '{{from}}-{{to}} of {{total}}',
-      prev: 'Prev',
-      next: 'Next',
       // SqlEditor
       formatFailed: 'Failed to format SQL. Check for syntax errors.',
       run: 'Run',
@@ -3035,6 +3033,8 @@ export const en = {
       metaStatements: '{{count}} statements',
       nothingToRun: 'Nothing to run — the editor is empty',
       resultsIdle: 'Run a query to see results here',
+      resizeResults: 'Resize the result pane',
+      resizeResultsHint: 'Drag to resize · double-click to reset · ↑/↓ to nudge',
     },
     // ── slice 9c: Email Settings ──
     // เช่นเดียวกับ platformConfig — หน้านี้เป็นไทยล้วนมาก่อน อังกฤษเป็นคำใหม่ทั้งหมด

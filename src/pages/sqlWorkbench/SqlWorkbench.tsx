@@ -23,6 +23,7 @@ import { SqlEditor } from './SqlEditor';
 import { ResultPanel } from './ResultPanel';
 import { DbObjectTree } from './DbObjectTree';
 import { ConnectionBar } from './ConnectionBar';
+import { PaneDivider } from './PaneDivider';
 import { BuSwitcher } from '../../components/BuSwitcher';
 import { useI18n } from '../../hooks/useI18n';
 import type { TKey } from '../../i18n/types';
@@ -35,6 +36,25 @@ const QUERY_TYPES = [
 ] as const satisfies readonly { value: string; labelKey: TKey }[];
 
 type QueryType = 'view' | 'stored_procedure' | 'function';
+
+/**
+ * Share of the work column the result grid takes when nothing has been dragged. Even, not tilted
+ * toward the rows: the frame is only ~440px on a laptop, and a grid that gives back two rows buys
+ * an editor four lines. Uniform rows survive a short window far better than code does — and
+ * whoever cares can drag once and have it remembered.
+ */
+const DEFAULT_RESULT_SHARE = 0.5;
+const RESULT_SHARE_KEY = 'sqlWorkbench_resultShare';
+
+function readStoredShare(): number {
+  try {
+    const raw = Number(localStorage.getItem(RESULT_SHARE_KEY));
+    // A stored value outside the divider's own bounds is not a preference, it is corruption.
+    return Number.isFinite(raw) && raw >= 0.15 && raw <= 0.85 ? raw : DEFAULT_RESULT_SHARE;
+  } catch {
+    return DEFAULT_RESULT_SHARE;
+  }
+}
 
 type LoadedObject = {
   type: 'view' | 'procedure' | 'function';
@@ -68,6 +88,19 @@ export default function SqlWorkbench() {
   const [isDropping, setIsDropping] = useState(false);
   const [confirmSql, setConfirmSql] = useState<string | null>(null);
   const [dropConfirm, setDropConfirm] = useState(false);
+
+  // Editor/result split, remembered per browser — the ratio someone settles on is about how they
+  // work, not about the query they happen to be running.
+  const splitRef = useRef<HTMLDivElement>(null);
+  const [resultShare, setResultShare] = useState(readStoredShare);
+  const handleShareChange = (next: number) => {
+    setResultShare(next);
+    try {
+      localStorage.setItem(RESULT_SHARE_KEY, String(next));
+    } catch {
+      // Private mode or a full quota — the split still works for this session.
+    }
+  };
 
   // Load the BU list once.
   useEffect(() => {
@@ -434,32 +467,43 @@ export default function SqlWorkbench() {
                   </div>
                 </div>
 
-                <SqlEditor
-                  value={formSqlText}
-                  onChange={setFormSqlText}
-                  // Run executes arbitrary SQL (incl. DDL/DML) against the tenant DB, same as
-                  // Save/Drop above — gate it on the same sql_workbench.manage permission rather
-                  // than relying on the backend to reject it. The client cannot reliably tell
-                  // SELECT apart from DML/DDL (sqlValidator.ts is explicitly UI-feedback-only,
-                  // not a security boundary), so this gates the whole executor rather than
-                  // pretending to allow read-only SELECT through a client-side parser. Omitting
-                  // onRun makes SqlEditor hide the Run button entirely (mirrors Save/Drop above)
-                  // and also disables the Ctrl/⌘+Enter shortcut, since runFromEditor no-ops when
-                  // the callback ref is undefined.
-                  onRun={canManage ? handleRun : undefined}
-                  isRunning={isRunning}
-                  schema={dbObjects ?? undefined}
-                />
+                <div ref={splitRef} className="flex min-h-0 flex-1 flex-col">
+                  <SqlEditor
+                    value={formSqlText}
+                    onChange={setFormSqlText}
+                    // Run executes arbitrary SQL (incl. DDL/DML) against the tenant DB, same as
+                    // Save/Drop above — gate it on the same sql_workbench.manage permission
+                    // rather than relying on the backend to reject it. The client cannot reliably
+                    // tell SELECT apart from DML/DDL (sqlValidator.ts is explicitly
+                    // UI-feedback-only, not a security boundary), so this gates the whole
+                    // executor rather than pretending to allow read-only SELECT through a
+                    // client-side parser. Omitting onRun makes SqlEditor hide the Run button
+                    // entirely (mirrors Save/Drop above) and also disables the Ctrl/⌘+Enter
+                    // shortcut, since runFromEditor no-ops when the callback ref is undefined.
+                    onRun={canManage ? handleRun : undefined}
+                    isRunning={isRunning}
+                    schema={dbObjects ?? undefined}
+                    grow={1 - resultShare}
+                  />
 
-                {/* Always mounted, never conditional: the result pane holds its half of the pane
-                    whether or not a query has run, so pressing Run resizes nothing and the rows
-                    land where the eye is already looking. */}
-                <ResultPanel
-                  result={executeResult}
-                  error={executeError}
-                  isRunning={isRunning}
-                  onClose={resetResult}
-                />
+                  <PaneDivider
+                    value={resultShare}
+                    onChange={handleShareChange}
+                    regionRef={splitRef}
+                    defaultValue={DEFAULT_RESULT_SHARE}
+                  />
+
+                  {/* Always mounted, never conditional: the result pane holds its share of the
+                      column whether or not a query has run, so pressing Run resizes nothing and
+                      the rows land where the eye is already looking. */}
+                  <ResultPanel
+                    result={executeResult}
+                    error={executeError}
+                    isRunning={isRunning}
+                    onClose={resetResult}
+                    grow={resultShare}
+                  />
+                </div>
               </div>
             </div>
           )}

@@ -2004,8 +2004,6 @@ export const th: Translations = {
       runningQuery: 'กำลังรันคิวรี…',
       noRowsReturned: 'รันสำเร็จ ไม่มีแถวข้อมูลที่คืนกลับมา',
       rangeOfTotal: '{{from}}-{{to}} จาก {{total}}',
-      prev: 'ก่อนหน้า',
-      next: 'ถัดไป',
       formatFailed: 'จัดรูปแบบ SQL ไม่สำเร็จ ตรวจสอบไวยากรณ์อีกครั้ง',
       run: 'รัน',
       formatSqlTitle: 'จัดรูปแบบ SQL',
@@ -2052,6 +2050,8 @@ export const th: Translations = {
       metaStatements: '{{count}} คำสั่ง',
       nothingToRun: 'ไม่มีอะไรให้รัน — ตัวแก้ไขว่างเปล่า',
       resultsIdle: 'รันคำสั่งเพื่อดูผลลัพธ์ตรงนี้',
+      resizeResults: 'ปรับขนาดแผงผลลัพธ์',
+      resizeResultsHint: 'ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อคืนค่า · ↑/↓ เพื่อขยับทีละน้อย',
     },
     emailSettings: {
       senderProfiles: 'โปรไฟล์ผู้ส่ง',
