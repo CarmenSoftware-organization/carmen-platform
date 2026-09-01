@@ -3461,6 +3461,13 @@ export const en = {
       pickerAria: 'Select user to add as super admin',
       removeTitle: 'Remove Super Admin',
       removeDescription: "Are you sure you want to remove this user's super-admin privileges? They will no longer bypass permission checks.",
+      grantedVerb: 'Granted',
+      standingCountOne: 'One person on this platform bypasses every permission check',
+      standingCountOther: '{{count}} people on this platform bypass every permission check',
+      selfBadge: 'You',
+      cannotRemoveSelf: 'You cannot revoke your own privileges',
+      removeAria: 'Remove super admin {{name}}',
+      rosterAria: 'Super admin roster',
     },
     // ── slice 9a: User Platform ──
     userPlatform: {

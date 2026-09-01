@@ -1,7 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 // Radix dropdown/dialog/select rely on pointer-capture / scroll APIs jsdom lacks.
@@ -169,12 +168,13 @@ describe('SuperAdminManagement — route-level requireSuperAdmin gate (no per-co
 
   it('admits a super-admin to the row Remove action too (discriminating control, second mutating control)', async () => {
     auth.isSuperAdmin = true;
-    const user = userEvent.setup();
     renderRoute();
 
     await screen.findByRole('heading', { name: /super admins/i });
-    await user.click(await screen.findByRole('button', { name: /actions for jane doe/i }));
 
-    expect(await screen.findByRole('menuitem', { name: /remove/i })).toBeInTheDocument();
+    // The roster puts Remove directly on the row (no dropdown) — one action, one click.
+    expect(
+      await screen.findByRole('button', { name: /remove super admin jane doe/i }),
+    ).toBeInTheDocument();
   });
 });
