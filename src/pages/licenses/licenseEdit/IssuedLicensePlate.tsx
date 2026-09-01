@@ -1,4 +1,4 @@
-import { FileText } from 'lucide-react';
+import { Ban, FileText } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Card } from '../../../components/ui/card';
 import { cn } from '../../../lib/utils';
@@ -80,6 +80,13 @@ export interface IssuedLicensePlateProps {
   ownerTypeLabel: string;
   owner: { id: string; label: string };
   cluster: { id: string; label: string } | null;
+  /**
+   * เจ้าของใบใช้ไปแล้วเท่าไร — `undefined` = **ไม่รู้** (ชนิดนี้ไม่มีตัวหาร หรืออ่านไม่สำเร็จ)
+   * ไม่ใช่ศูนย์ · แผ่นจะไม่พูดถึงมันเลยในกรณีนั้น แทนที่จะขึ้น "0 จาก 2" ซึ่งเป็นคำโกหก
+   */
+  used?: number;
+  /** ใบถูกยกเลิกเมื่อไร/โดยใคร/เพราะอะไร — `null` = ยังไม่ถูกยกเลิก */
+  cancellation: { at: string; by: string | null; reason: string | null } | null;
 }
 
 /**
@@ -99,10 +106,19 @@ export interface IssuedLicensePlateProps {
  */
 export function IssuedLicensePlate({
   amountLabel, amount, startDate, endDate, noExpiry, status, statusBadge, thresholdDays,
-  ownerTypeLabel, owner, cluster,
+  ownerTypeLabel, owner, cluster, used, cancellation,
 }: IssuedLicensePlateProps) {
   const { t } = useI18n();
   const now = Date.now();
+  // ตัวหารพูดได้เฉพาะบนใบที่ให้สิทธิ์อยู่จริง — เหตุผลเดียวกับที่ `remainingOf` ปิดปากตัวเอง
+  // บนใบที่ถูกแทนที่/ยกเลิก: "ใช้ไป 2 จาก 3" บนใบที่ไม่ได้ให้โควตาแล้วอ่านเหมือนความจริง
+  // ทั้งที่ 3 ของใบนี้ไม่ได้เป็นเพดานของใคร ใบที่ชนะอยู่ต่างหากที่เป็น
+  //
+  // `amount` ต้องไม่ว่างด้วย ไม่ใช่แค่ผ่าน `Number.isFinite` — `Number('')` คือ 0 ไม่ใช่ NaN
+  // การล้างช่องเพื่อพิมพ์ใหม่จึงเคยทำให้ขึ้น "ใช้ไป 1 จาก 0" สีแดงทั้งที่จำนวนด้านบนแสดงเป็น "—"
+  // คือขู่ผู้ใช้ด้วยตัวเลขที่ตัวเองก็บอกว่ายังไม่มี
+  const cap = Number(amount);
+  const showUsed = status === 'active' && used !== undefined && amount.trim() !== '' && Number.isFinite(cap);
   const term = noExpiry ? null : contractTerm(startDate, endDate);
   // Date.parse ของ 'YYYY-MM-DD' คือเที่ยงคืน UTC — วันสิ้นสุดคุ้มครองทั้งวัน จึงบวกอีกหนึ่งวัน
   // ให้ตรงกับ `toIsoEndOfDay` ที่ payload ใช้จริง ไม่งั้นใบที่หมดวันนี้จะถูกนับว่าหมดไปแล้ว
@@ -119,6 +135,19 @@ export function IssuedLicensePlate({
           <div className="min-w-0">
             <p className="text-2xl leading-tight font-semibold tabular-nums tracking-tight">{amount || '—'}</p>
             <p className="text-muted-foreground truncate text-xs">{amountLabel}</p>
+            {/* ตัวหาร — บรรทัดใหญ่สุดของแผ่นเคยเป็นเลขลอย ๆ ที่ตอบไม่ได้ว่าเหลือที่ว่างไหม
+             *  ซึ่งเป็นคำถามแรกของคนที่เปิดหน้าโควตา · เต็มหรือเกินย้อมสีตามระดับ ไม่ใช่คำเตือน
+             *  แยกอีกป้าย เพราะมันเป็นสมบัติของเลขตัวเดียวกันนี้ */}
+            {showUsed && (
+              <p
+                className={cn(
+                  'text-xs tabular-nums',
+                  used > cap ? 'text-destructive' : used === cap ? 'text-warning' : 'text-muted-foreground',
+                )}
+              >
+                {t('pages.licenses.usageLine', { used, cap })}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -145,10 +174,30 @@ export function IssuedLicensePlate({
         labelMuted={!noExpiry && !term}
       />
 
-      <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
+      {/* สองคอลัมน์เฉพาะตอนมีของสองชิ้นจริง ๆ — ใบโควตา BU มีเจ้าของเป็นคลัสเตอร์อยู่แล้ว
+       *  จึงไม่มี `cluster` แยกเลย (`showCluster: false` ใน config) กริดตายตัวจึงเว้นคอลัมน์ขวา
+       *  ว่างถาวรทุกใบโควตา ซึ่งอ่านเหมือนของหาย ไม่ใช่ของที่ไม่มี */}
+      <div className={cn('grid gap-3 border-t pt-4', cluster && 'sm:grid-cols-2')}>
         <IdentityRow label={ownerTypeLabel} value={owner.label} id={owner.id} />
         {cluster && <IdentityRow label={t('common.label.cluster')} value={cluster.label} id={cluster.id} />}
       </div>
+
+      {/* ทำไมใบนี้ถึงไม่ให้อะไรแล้ว — เดิมป้าย "ยกเลิก" ยืนอยู่ลำพัง ไม่มีที่ไหนบอกว่าเมื่อไร
+       *  ใครทำ หรือเพราะอะไร ทั้งที่แถวข้อมูลส่งมาครบตั้งแต่แรก และการยกเลิกไม่มีทางกลับ
+       *
+       *  เทา ไม่ใช่แดง — ใบที่ถูกยกเลิกคือสภาพปกติของใบที่หมดหน้าที่ ไม่ใช่ความผิดพลาด
+       *  (ท่าเดียวกับ `STATUS_VARIANT` ที่ให้ cancelled เป็น secondary ไม่ใช่ destructive) */}
+      {cancellation && (
+        <div className="bg-muted/50 text-muted-foreground space-y-1 rounded-md px-3 py-2 text-xs">
+          <p className="flex items-center gap-1.5">
+            <Ban className="size-3.5 shrink-0" />
+            {cancellation.by
+              ? t('pages.licenses.cancelledAtBy', { at: cancellation.at, by: cancellation.by })
+              : t('pages.licenses.cancelledAt', { at: cancellation.at })}
+          </p>
+          {cancellation.reason && <p className="pl-5 whitespace-pre-wrap">{cancellation.reason}</p>}
+        </div>
+      )}
     </Card>
   );
 }

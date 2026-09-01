@@ -1393,6 +1393,12 @@ export const th: Translations = {
       // character for character, not retranslated. See en.ts for why this stays a separate
       // key instead of reusing that one directly.
       endDateAfterStart: 'วันที่สิ้นสุดต้องอยู่หลังวันที่เริ่ม',
+      coveragePeriod: 'ช่วงคุ้มครอง',
+      termHasEndDate: 'มีวันหมดอายุ',
+      usageLine: 'ใช้ไปแล้ว {{used}} จาก {{cap}}',
+      cancelledAt: 'ยกเลิกเมื่อ {{at}}',
+      cancelledAtBy: 'ยกเลิกเมื่อ {{at}} โดย {{by}}',
+      cancelledReadOnly: 'ใบนี้ถูกยกเลิกแล้ว แก้ไขไม่ได้อีก หากต้องการเปลี่ยนแปลงให้ออกใบใหม่',
 
       filterByStatusDescription: 'กรองตามสถานะไลเซนส์',
       removeStatusFilterAria: 'นำตัวกรองสถานะออก',

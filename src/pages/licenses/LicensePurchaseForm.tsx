@@ -2,20 +2,23 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
-import { normalizeAudit } from '../../utils/audit';
+import { normalizeAudit, isUnknownActor } from '../../utils/audit';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
+import { cn } from '../../lib/utils';
 import { ReadOnlyField } from '../../components/ReadOnlyField';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
-import { Save, X, Loader2, SearchX, AlertTriangle } from 'lucide-react';
+import { Save, X, Loader2, SearchX, AlertTriangle, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../../components/EmptyState';
 import { Skeleton } from '../../components/ui/skeleton';
 import Can from '../../components/Can';
 import { validateField } from '../../utils/validation';
-import { getErrorDetail, isNotFoundError, parseApiError } from '../../utils/errorParser';
+import { devLog, getErrorDetail, isNotFoundError, parseApiError } from '../../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
@@ -137,6 +140,22 @@ function ownerFromRow(kind: LicenseKind, row: LicenseRow): { id: string; label: 
  * `cluster_id`/`cluster_code`/`cluster_name` มาพร้อมแถวอยู่แล้ว จึงไม่ต้องยิง API เพิ่ม
  * และไม่ต้องพึ่ง query param แบบ `?ownerLabel=` (ที่หายไปเมื่อเปิด URL ตรง ๆ)
  */
+/**
+ * ข้อเท็จจริงการยกเลิกของแถว — `null` เมื่อใบยังไม่ถูกยกเลิก
+ *
+ * ชื่อคนยกเลิกเป็นเรื่องที่ต้องระวัง: แถวส่ง `cancelled_by_id` มาเป็น uuid ดิบเท่านั้น ไม่มีชื่อ
+ * ส่วน `audit.updated` มีชื่อแต่เป็นชื่อของ **การแก้ครั้งล่าสุด** ซึ่งบังเอิญเป็นการยกเลิกก็ต่อเมื่อ
+ * ไม่มีใครแก้ใบต่อหลังจากนั้น จึงหยิบชื่อมาใช้เฉพาะตอน `audit.updated.at` ตรงกับ `cancelled_at`
+ * เป๊ะ — ไม่งั้นจะกลายเป็นการป้ายความผิดให้คนที่แค่มาแก้ทีหลัง ซึ่งแย่กว่าไม่บอกชื่อเลย
+ */
+function cancellationOf(row: LicenseRow | null): { at: string; by: string | null; reason: string | null } | null {
+  const r = row as BuQuotaLicenseRow | null;
+  if (!r?.cancelled_at) return null;
+  const updated = normalizeAudit(r).updated;
+  const by = updated?.at === r.cancelled_at && updated.name && !isUnknownActor(updated.name) ? updated.name : null;
+  return { at: fmtDate(r.cancelled_at), by, reason: r.cancel_reason ?? null };
+}
+
 function clusterFromRow(
   config: LicenseKindConfig,
   row: LicenseRow | null,
@@ -176,10 +195,37 @@ interface LicenseFieldsCardProps {
   /** โหมดสร้าง — ตัวตนของใบ (เจ้าของ/คลัสเตอร์/เลขที่ใบ) แสดงในการ์ดนี้เฉพาะตอนสร้าง
    *  โหมดแก้ไขย้ายไปอยู่บน `IssuedLicensePlate` ทั้งชุด เหลือการ์ดนี้ไว้เฉพาะช่องที่พิมพ์ได้ */
   isNew: boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  /** รับ textarea ด้วย — ช่องหมายเหตุเป็น `Textarea` แล้ว ตัว handler อ่านแค่ `name`/`value`
+   *  ซึ่งมีเหมือนกันทั้งสอง element จึงไม่ต้องแยกทาง */
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
   onNoExpiryChange: (checked: boolean) => void;
+}
+
+/**
+ * ปุ่มหนึ่งข้างของ segmented "มีวันหมดอายุ / ไม่มีวันหมดอายุ"
+ *
+ * ราง `bg-muted` กับหัวที่ยกขึ้นเป็น `bg-background` คือท่ามาตรฐานของ segmented — คอนทราสต์
+ * 1.07:1 ที่ `plateParts.tsx` เตือนไว้เป็นปัญหาตอนใช้ `bg-muted` เป็น *เนื้อหา* บนการ์ด
+ * ที่นี่มันเป็นรางที่มีหัวทึบวางทับ ตัวอักษรจึงอ่านบน `bg-background` หรือ `bg-muted` เต็ม ๆ
+ */
+function TermModeButton({
+  active, onClick, children,
+}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'rounded-sm px-3 py-1 text-xs whitespace-nowrap transition-colors',
+        active ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 /**
@@ -197,15 +243,21 @@ function LicenseFieldsCard({
   const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
   return (
     <Card>
+      {/* หัวการ์ดต้องพูดตรงกับสิ่งที่การ์ดยอมให้ทำจริง — "แก้ไขใบนี้ · แก้ได้เฉพาะจำนวน ช่วงเวลา
+       *  คุ้มครอง และเลขอ้างอิง" บนการ์ดที่ทุกช่องอ่านอย่างเดียวคือคำโกหก และมันโกหกอยู่แล้ว
+       *  ตั้งแต่ก่อนใบยกเลิกจะมีอยู่: ผู้ใช้ที่ไม่มี `subscription.manage` ก็เห็นประโยคนี้เหมือนกัน
+       *  โหมดอ่านจึงใช้ชื่อกลาง ๆ และไม่มีคำบรรยาย — เหตุผลที่แก้ไม่ได้อยู่บนแบนเนอร์เหนือการ์ดแล้ว */}
       <CardHeader>
         <CardTitle>
-          {isNew ? t('pages.licenses.licenseDetailsTitle') : t('pages.licenses.amendTitle')}
+          {editing && !isNew ? t('pages.licenses.amendTitle') : t('pages.licenses.licenseDetailsTitle')}
         </CardTitle>
-        <CardDescription>
-          {isNew
-            ? t('pages.licenses.licenseDetailsDescription', { owner: ownerLabel })
-            : t('pages.licenses.amendDescription')}
-        </CardDescription>
+        {isNew ? (
+          <CardDescription>
+            {t('pages.licenses.licenseDetailsDescription', { owner: ownerLabel })}
+          </CardDescription>
+        ) : (
+          editing && <CardDescription>{t('pages.licenses.amendDescription')}</CardDescription>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* ลำดับของช่องคือสิ่งที่จัดแถวในกริดสองคอลัมน์ — เลขอ้างอิงถูกวางไว้ก่อนวันเริ่ม
@@ -275,81 +327,112 @@ function LicenseFieldsCard({
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="start_date">
-              {editing ? t('common.field.required', { label: t('common.field.startDate') }) : t('common.field.startDate')}
-            </Label>
-            {editing ? (
-              <>
-                <Input
-                  type="date"
-                  id="start_date"
-                  name="start_date"
-                  value={draft.start_date}
-                  onChange={onChange}
-                  onBlur={onBlur}
-                  onFocus={onFocus}
-                  className={fieldErrors.start_date ? 'border-destructive' : ''}
-                />
-                {fieldErrors.start_date && <p className="text-destructive text-xs">{fieldErrors.start_date}</p>}
-              </>
-            ) : (
-              <ReadOnlyField value={draft.start_date} />
+        </div>
+
+        {/* ช่วงคุ้มครองออกจากกริดสองคอลัมน์มาเป็นบล็อกเต็มความกว้างของตัวเอง
+         *
+         *  เดิมสวิตช์ "ไม่มีวันหมดอายุ" เป็น `<input type="checkbox">` ดิบขนาด text-xs สี
+         *  muted ที่ห้อยอยู่ใต้ป้าย "End Date" — ของที่ตัดสินอายุทั้งใบกลายเป็นของที่เล็กและ
+         *  จางที่สุดในหน้า น้ำหนักกลับหัวกับความสำคัญ และเมื่อติ๊กแล้วช่องวันที่ **หายทั้งช่อง**
+         *  ทำให้คอลัมน์ขวาแหว่งและกริดกระตุกทุกครั้งที่สลับโหมด
+         *
+         *  สองโหมดจึง *สลับที่กัน* ไม่ใช่ *หายไป*: segmented บอกว่าใบนี้เป็นทรงไหน แล้วช่อง
+         *  วันหมดอายุคงพื้นที่เดิมไว้เสมอ — เป็นช่องกรอก หรือเป็นแผ่น ∞ ที่ความสูงเท่ากัน
+         *
+         *  ใช้ปุ่มธรรมดาสองปุ่ม ไม่ใช่ primitive ใหม่ — รีโปนี้ไม่มี ToggleGroup/Checkbox ใน
+         *  `components/ui/` และกฎข้อ 6 ห้ามเพิ่มของนอกเข้ามาเองโดยไม่ถาม */}
+        <div className="space-y-3 border-t pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <Label className="font-medium">{t('pages.licenses.coveragePeriod')}</Label>
+            {editing && config.showNoExpiry && (
+              <div
+                role="group"
+                aria-label={t('pages.licenses.coveragePeriod')}
+                className="bg-muted inline-flex shrink-0 rounded-md p-0.5"
+              >
+                <TermModeButton active={!noExpiry} onClick={() => onNoExpiryChange(false)}>
+                  {t('pages.licenses.termHasEndDate')}
+                </TermModeButton>
+                <TermModeButton active={noExpiry} onClick={() => onNoExpiryChange(true)}>
+                  {t('common.state.noExpiry')}
+                </TermModeButton>
+              </div>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="end_date">
-              {editing && !noExpiry
-                ? t('common.field.required', { label: t('common.field.endDate') })
-                : t('common.field.endDate')}
-            </Label>
-            {editing ? (
-              <>
-                {config.showNoExpiry && (
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={noExpiry}
-                      onChange={(e) => onNoExpiryChange(e.target.checked)}
-                      aria-label={t('common.state.noExpiry')}
-                      className="h-4 w-4 rounded border-input"
-                    />
-                    {t('common.state.noExpiry')}
-                  </label>
-                )}
-                {!noExpiry && (
-                  <>
-                    <Input
-                      type="date"
-                      id="end_date"
-                      name="end_date"
-                      value={draft.end_date}
-                      onChange={onChange}
-                      onBlur={onBlur}
-                      onFocus={onFocus}
-                      className={fieldErrors.end_date ? 'border-destructive' : ''}
-                    />
-                    {fieldErrors.end_date && <p className="text-destructive text-xs">{fieldErrors.end_date}</p>}
-                  </>
-                )}
-              </>
-            ) : (
-              <ReadOnlyField value={noExpiry ? t('common.state.noExpiry') : draft.end_date} />
-            )}
-          </div>
-
-          {config.showNote && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="note">{t('common.field.note')}</Label>
+              <Label htmlFor="start_date">
+                {editing
+                  ? t('common.field.required', { label: t('common.field.startDate') })
+                  : t('common.field.startDate')}
+              </Label>
               {editing ? (
-                <Input id="note" name="note" value={draft.note} onChange={onChange} />
+                <>
+                  <Input
+                    type="date"
+                    id="start_date"
+                    name="start_date"
+                    value={draft.start_date}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    onFocus={onFocus}
+                    className={fieldErrors.start_date ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.start_date && <p className="text-destructive text-xs">{fieldErrors.start_date}</p>}
+                </>
               ) : (
-                <ReadOnlyField value={draft.note} />
+                <ReadOnlyField value={draft.start_date} />
               )}
             </div>
-          )}
+
+            <div className="space-y-2">
+              <Label htmlFor="end_date">
+                {editing && !noExpiry
+                  ? t('common.field.required', { label: t('common.field.endDate') })
+                  : t('common.field.endDate')}
+              </Label>
+              {!editing ? (
+                <ReadOnlyField value={noExpiry ? t('common.state.noExpiry') : draft.end_date} />
+              ) : noExpiry ? (
+                /* ขอบประคือ "ช่องนี้มีอยู่ แต่ไม่มีค่าให้พิมพ์" — ความสูง h-9 เท่า `Input`
+                 *  ทำให้แถวไม่ขยับตอนสลับโหมด ซึ่งเป็นทั้งหมดที่การซ่อนช่องเดิมทำพัง */
+                <div className="border-input text-muted-foreground flex h-9 w-full items-center gap-2 rounded-md border border-dashed px-3 text-sm">
+                  <span className="text-foreground text-base leading-none">∞</span>
+                  {t('common.state.noExpiry')}
+                </div>
+              ) : (
+                <>
+                  <Input
+                    type="date"
+                    id="end_date"
+                    name="end_date"
+                    value={draft.end_date}
+                    onChange={onChange}
+                    onBlur={onBlur}
+                    onFocus={onFocus}
+                    className={fieldErrors.end_date ? 'border-destructive' : ''}
+                  />
+                  {fieldErrors.end_date && <p className="text-destructive text-xs">{fieldErrors.end_date}</p>}
+                </>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* หมายเหตุเป็นประโยค ไม่ใช่ค่าเดี่ยว — ค่าจริงบนใบที่ backfill มา ("ย้ายจาก
+         *  tb_cluster.max_license_bu (ค่าเดิม: 2)") ยาวเกินช่องบรรทัดเดียวกว้างครึ่งแถวที่มัน
+         *  เคยได้ และมันคือช่องเดียวในหน้าที่เล่าที่มาของใบ จึงได้เต็มความกว้างกับหลายบรรทัด */}
+        {config.showNote && (
+          <div className="space-y-2 border-t pt-4">
+            <Label htmlFor="note">{t('common.field.note')}</Label>
+            {editing ? (
+              <Textarea id="note" name="note" rows={3} value={draft.note} onChange={onChange} />
+            ) : (
+              <ReadOnlyField className="h-auto min-h-9 py-2 whitespace-pre-wrap" value={draft.note} />
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -401,6 +484,11 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
   const [detail, setDetail] = useState<LicenseRow | null>(null);
 
+  // เจ้าของใช้ไปแล้วเท่าไร — `undefined` = ไม่รู้ (ชนิดนี้ไม่มีตัวหาร หรืออ่านไม่สำเร็จ) ห้ามอ่านเป็น 0
+  const [ownerUsage, setOwnerUsage] = useState<number | undefined>(undefined);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
   const [draft, setDraft] = useState<LicenseDraft>(() => emptyDraft(new Date()));
   const [savedDraft, setSavedDraft] = useState<LicenseDraft>(draft);
   const [noExpiry, setNoExpiry] = useState(false);
@@ -413,7 +501,20 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rawResponse, setRawResponse] = useState<unknown>(null);
 
-  const hasChanges = !isNew && (
+  /**
+   * ใบที่ถูกยกเลิกแล้วแก้ไม่ได้อีก — และไม่มี endpoint uncancel ให้ถอยกลับ
+   *
+   * เดิมหน้านี้ขึ้นป้าย "ยกเลิก" แล้วเสิร์ฟช่องกรอกครบทุกช่องพร้อมปุ่มบันทึกไว้ข้างล่าง คือเชิญให้
+   * แก้ record ที่ตายแล้ว · จงใจ **ไม่** รวม `superseded` เข้ามาด้วย: ใบที่ถูกแทนที่ยังไม่ตาย
+   * มันแค่แพ้ใบอื่นอยู่ตอนนี้ และการเลื่อนวันของมันคือวิธีที่ถูกต้องที่จะให้มันกลับมาชนะ
+   *
+   * อ่านจาก `detail` (แถวที่โหลดมา) ไม่ใช่จาก `status` ที่คำนวณตอน render — hook ข้างล่าง
+   * ต้องเรียกได้ก่อน early return ทุกตัว และ `cancelled_at` เป็นข้อเท็จจริงจาก backend อยู่แล้ว
+   */
+  const isCancelled = !!(detail as BuQuotaLicenseRow | null)?.cancelled_at;
+  const canEditFields = canEdit && !isCancelled;
+
+  const hasChanges = !isNew && canEditFields && (
     JSON.stringify(draft) !== JSON.stringify(savedDraft) || noExpiry !== savedNoExpiry
   );
   useUnsavedChanges(hasChanges);
@@ -468,7 +569,19 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
 
   useEffect(() => { void load(); }, [load]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ตัวหารมาแยกคำขอ ไม่รวมใน `load` — มันเป็นของ **เจ้าของ** ไม่ใช่ของใบ และไม่ควรทำให้หน้า
+  // ล้มทั้งหน้าเมื่ออ่านไม่ได้ ล้มเหลว = ไม่รู้ = ไม่พูดถึง (ไม่ใช่ 0 ดูคอมเมนต์ที่ `readUsage`)
+  useEffect(() => {
+    const read = config.readUsage;
+    if (!read || !ownerId) { setOwnerUsage(undefined); return; }
+    let stale = false;
+    read(ownerId)
+      .then((n) => { if (!stale) setOwnerUsage(n); })
+      .catch((err: unknown) => { if (!stale) { devLog('Failed to read owner usage:', err); setOwnerUsage(undefined); } });
+    return () => { stale = true; };
+  }, [config, ownerId]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDraft((prev) => ({ ...prev, [name]: value }));
     setError('');
@@ -572,8 +685,41 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     }
   };
 
+  /**
+   * ยกเลิกใบ — ใบยังอยู่ในบัญชีแต่หยุดให้โควตาทันที ไม่มีทางกลับ
+   *
+   * `ConfirmDialog` เป็นด่านเดียวที่กั้นอยู่ (กฎข้อ 3 ห้าม `window.confirm`) และ 409 คือกรณี
+   * ที่คนอื่นยกเลิก/แก้ใบเดียวกันไปแล้ว ซึ่งต้องโหลดใหม่ให้เห็นสภาพจริง ไม่ใช่ขึ้น error ลอย ๆ
+   */
+  const handleCancelLicense = async () => {
+    const cancel = config.cancel;
+    if (!cancel || !canEdit || isNew || !id) return;
+    if (docVersion == null || !ownerId) {
+      setError(t('pages.licenses.missingDocVersionOrOwner'));
+      return;
+    }
+    setCancelling(true);
+    setError('');
+    try {
+      await cancel(ownerId, id, docVersion);
+      toast.success(t('toast.saved'));
+      await load();
+    } catch (err: unknown) {
+      if (isVersionConflict(err)) {
+        notifyVersionConflict(t);
+        await load();
+      } else if (isNotFoundError(err)) {
+        setNotFound(true);
+      } else {
+        setError(t('pages.licenses.saveFailedPrefix') + getErrorDetail(err, t));
+      }
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (!canEdit || isNew) return;
+    if (!canEditFields || isNew) return;
     if (!validateBeforeSubmit()) return;
     // ownerId ว่างไม่ควรเกิดได้ (load() เซ็ตจาก getByIdPlatform เสมอ) แต่ถ้าเกิดขึ้นจริงต้อง fail
     // ให้เห็นชัดตรงนี้ ไม่ใช่ปล่อยให้ PATCH ไปที่ .../undefined/licenses/:id แล้วได้ 404 งง ๆ กลับมา
@@ -609,7 +755,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   };
 
   useGlobalShortcuts({
-    onSave: () => { if (!isNew && canEdit && hasChanges && !saving) void handleSave(); },
+    onSave: () => { if (!isNew && canEditFields && hasChanges && !saving) void handleSave(); },
     onCancel: () => { if (!isNew && hasChanges) handleCancelEdit(); },
   });
 
@@ -788,7 +934,19 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 ownerTypeLabel={ownerTypeLabel}
                 owner={{ id: ownerId, label: ownerText }}
                 cluster={cluster}
+                used={ownerUsage}
+                cancellation={cancellationOf(detail)}
               />
+            )}
+
+            {/* ทำไมช่องข้างล่างถึงแข็งหมด — บอกที่นี่ ไม่ใช่ปล่อยให้ผู้ใช้ค้นพบเองตอนคลิกแล้วพิมพ์
+             *  ไม่ได้ · ไม่ใช่ `role="alert"` เหมือนแบนเนอร์ error: นี่เป็นสภาพของใบ ไม่ใช่สิ่งที่
+             *  เพิ่งผิดพลาดขึ้นตอนนี้ */}
+            {isCancelled && canEdit && (
+              <div className="border-warning/40 bg-warning/10 text-foreground flex items-start gap-2 rounded-md border p-3 text-sm">
+                <AlertTriangle className="text-warning mt-0.5 size-4 shrink-0" />
+                {t('pages.licenses.cancelledReadOnly')}
+              </div>
             )}
 
             <LicenseFieldsCard
@@ -796,7 +954,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               draft={draft}
               noExpiry={noExpiry}
               fieldErrors={fieldErrors}
-              editing={canEdit}
+              editing={canEditFields}
               ownerText={ownerText}
               ownerId={ownerId}
               cluster={cluster}
@@ -807,9 +965,45 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               onFocus={handleFocus}
               onNoExpiryChange={handleNoExpiryChange}
             />
+
+            {/* ยกเลิกใบทำได้จากหน้านี้ ไม่ใช่จากตารางที่เดียว — นี่คือหน้าที่คนเปิดมาดูใบทีละใบ
+             *  จนพอจะตัดสินใจได้ว่าควรยกเลิกไหม การบังคับให้เดินกลับไปหาแถวในตารางเพื่อกดปุ่ม
+             *  คือการวางปุ่มไว้ไกลจากข้อมูลที่ใช้ตัดสินใจที่สุด
+             *
+             *  อยู่ท้ายหน้าและเป็น outline ไม่ใช่ปุ่มเด่น — ทำลายของถาวร ไม่ใช่งานประจำวัน */}
+            {config.cancel && canEditFields && (
+              <Can permission="subscription.manage">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    disabled={cancelling || saving}
+                    onClick={() => setConfirmCancel(true)}
+                  >
+                    {cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}
+                    {t('common.action.cancelLicense')}
+                  </Button>
+                </div>
+              </Can>
+            )}
           </>
         )}
       </div>
+
+      {config.cancel && (
+        <ConfirmDialog
+          open={confirmCancel}
+          onOpenChange={setConfirmCancel}
+          title={t('pages.licenses.cancelLicenseTitle')}
+          // ใช้คำบรรยายแบบไม่มีตัวเลข "จาก X เหลือ Y" ที่ตารางใช้ — สูตรนั้นต้องเห็นใบทั้งคลัสเตอร์
+          // เพื่อรู้ว่าใบไหนจะขึ้นมาแทน หน้านี้โหลดใบเดียว การเดาตัวเลขที่สองคือการเดาผิดได้
+          description={t('pages.licenses.cancelBuQuotaDescription', { count: Number(draft.amount) || 0 })}
+          confirmVariant="destructive"
+          onConfirm={handleCancelLicense}
+        />
+      )}
 
       {!isNew && hasChanges && (
         <div className="unsaved-bar fixed bottom-0 left-0 right-0 z-40 md:left-16 lg:left-60">
