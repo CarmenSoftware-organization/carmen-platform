@@ -9,7 +9,6 @@ import {
   bracketMatching,
   indentOnInput,
   syntaxHighlighting,
-  defaultHighlightStyle,
 } from '@codemirror/language';
 import { search, searchKeymap } from '@codemirror/search';
 import {
@@ -32,6 +31,7 @@ import {
   downloadText,
   type XmlValidation,
 } from '../utils/xml';
+import { carmenEditorTheme, carmenHighlightStyle } from '../lib/codemirrorTheme';
 import { useI18n } from '../hooks/useI18n';
 
 export interface XmlEditorProps {
@@ -56,7 +56,7 @@ const baseExtensions = () => [
   indentOnInput(),
   closeBrackets(),
   autocompletion(),
-  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  syntaxHighlighting(carmenHighlightStyle, { fallback: true }),
   search({ top: true }),
   xml(),
   EditorView.lineWrapping,
@@ -69,17 +69,7 @@ const baseExtensions = () => [
     ...closeBracketsKeymap,
     indentWithTab,
   ]),
-  EditorView.theme({
-    '&': { fontSize: '12px' },
-    '.cm-scroller': {
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-    },
-    '.cm-gutters': {
-      backgroundColor: 'transparent',
-      borderRight: '1px solid hsl(var(--border))',
-    },
-    '.cm-focused': { outline: 'none' },
-  }),
+  carmenEditorTheme('12px'),
 ];
 
 export const XmlEditor: React.FC<XmlEditorProps> = ({
