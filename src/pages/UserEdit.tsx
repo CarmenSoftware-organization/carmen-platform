@@ -336,10 +336,29 @@ const UserEdit: React.FC = () => {
     setError("");
   };
 
+  /**
+   * ฟิลด์ที่ฟอร์มบังคับกรอก คืนค่า label ไว้ประกอบข้อความ "X is required"
+   * และคืน null เมื่อไม่บังคับ — ใช้ร่วมกันทั้ง onBlur และการตรวจก่อน submit
+   * เพื่อไม่ให้สองทางตรวจแยกกันแล้วเพี้ยนคนละแบบ
+   */
+  const requiredFieldLabel = (name: string): string | null => {
+    switch (name) {
+      case 'username': return t('common.field.username');
+      case 'email': return t('common.field.email');
+      case 'firstname': return t('pages.users.firstNameLabel');
+      case 'lastname': return t('pages.users.lastNameLabel');
+      default: return null;
+    }
+  };
+
+  const validateOne = (name: string, value: string) => {
+    const label = requiredFieldLabel(name);
+    return validateField(name, value, label ? { required: true, label } : undefined, t);
+  };
+
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const error = validateField(name, value, undefined, t);
-    setFieldErrors(prev => ({ ...prev, [name]: error }));
+    setFieldErrors(prev => ({ ...prev, [name]: validateOne(name, value) }));
   };
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -348,6 +367,19 @@ const UserEdit: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // ตรวจฟิลด์บังคับทั้งชุดก่อนยิง API — `required` ของ HTML ครอบไม่ถึงกรณีช่องว่างล้วน
+    // และ username ถูก disable ในโหมดแก้ไข ซึ่งทำให้เบราว์เซอร์ข้ามการตรวจไปเลย
+    const preflight: Record<string, string> = {};
+    (['username', 'email', 'firstname', 'lastname'] as const).forEach((name) => {
+      const message = validateOne(name, String(formData[name] ?? ''));
+      if (message) preflight[name] = message;
+    });
+    if (Object.keys(preflight).length > 0) {
+      setFieldErrors(prev => ({ ...prev, ...preflight }));
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -510,7 +542,9 @@ const UserEdit: React.FC = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
+      {/* หน้าสร้างจำกัดความกว้างไว้ให้ฟอร์มอ่านง่าย ตามแบบเดียวกับ ClusterEdit;
+          โหมดแก้ไขปล่อยเต็มความกว้างเพราะมี hero กับตารางสิทธิ์อยู่ด้วย */}
+      <div className={`space-y-4 sm:space-y-6 ${isNew ? 'mx-auto max-w-5xl' : ''}`}>
         {isNew ? (
           <PageHeader backTo="/users" title={t('common.action.addUser')} subtitle={t('pages.users.createSubtitle')} />
         ) : (
@@ -579,60 +613,147 @@ const UserEdit: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="username">{editing ? t('common.field.required', { label: t('common.field.username') }) : t('common.field.username')}</Label>
-                  {editing ? (
-                    <>
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
+              {/* กลุ่มที่ 1 — ตัวระบุตัวตน: สองช่องที่จำเป็นและเปลี่ยนยาก แยกจากชื่อที่แสดงซึ่งแก้ได้ตลอด */}
+              <section className="space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">{t('pages.users.sectionSignIn')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('pages.users.sectionSignInHint')}</p>
+                </div>
+
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="username">{editing ? t('common.field.required', { label: t('common.field.username') }) : t('common.field.username')}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="username"
+                          name="username"
+                          value={formData.username}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder={t('pages.users.usernamePlaceholder')}
+                          className={fieldErrors.username ? 'border-destructive' : ''}
+                          disabled={!isNew}
+                          required
+                        />
+                        {fieldErrors.username ? (
+                          <p className="text-xs text-destructive">{fieldErrors.username}</p>
+                        ) : (
+                          /* username ถูก disable ทันทีที่บัญชีมีอยู่จริง — บอกล่วงหน้าตอนที่ยังแก้ได้ */
+                          <p className="text-xs text-muted-foreground">{t('pages.users.usernameLocked')}</p>
+                        )}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.username} />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{editing ? t('common.field.required', { label: t('common.field.email') }) : t('common.field.email')}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder={t('pages.users.emailAddress')}
+                          className={fieldErrors.email ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.email && (
+                          <p className="text-xs text-destructive">{fieldErrors.email}</p>
+                        )}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.email} />
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* กลุ่มที่ 2 — ชื่อที่แสดง: First/Middle/Last อยู่แถวเดียวกันตามลำดับที่คนอ่านชื่อจริง */}
+              <section className="space-y-4 border-t pt-6">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold">{t('pages.users.sectionName')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('pages.users.sectionNameHint')}</p>
+                </div>
+
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstname">{editing ? t('common.field.required', { label: t('pages.users.firstNameLabel') }) : t('pages.users.firstNameLabel')}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="firstname"
+                          name="firstname"
+                          value={formData.firstname}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder={t('pages.users.firstNamePlaceholder')}
+                          className={fieldErrors.firstname ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.firstname && (
+                          <p className="text-xs text-destructive">{fieldErrors.firstname}</p>
+                        )}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.firstname} />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="middlename">{t('pages.users.middleNameLabel')}</Label>
+                    {editing ? (
                       <Input
                         type="text"
-                        id="username"
-                        name="username"
-                        value={formData.username}
+                        id="middlename"
+                        name="middlename"
+                        value={formData.middlename}
                         onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder={t('pages.users.usernamePlaceholder')}
-                        className={fieldErrors.username ? 'border-destructive' : ''}
-                        disabled={!isNew}
-                        required
+                        placeholder={t('pages.users.middleNamePlaceholder')}
                       />
-                      {fieldErrors.username && (
-                        <p className="text-xs text-destructive">{fieldErrors.username}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.username} />
-                  )}
+                    ) : (
+                      <ReadOnlyField value={formData.middlename} />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lastname">{editing ? t('common.field.required', { label: t('pages.users.lastNameLabel') }) : t('pages.users.lastNameLabel')}</Label>
+                    {editing ? (
+                      <>
+                        <Input
+                          type="text"
+                          id="lastname"
+                          name="lastname"
+                          value={formData.lastname}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          onFocus={handleFocus}
+                          placeholder={t('pages.users.lastNamePlaceholder')}
+                          className={fieldErrors.lastname ? 'border-destructive' : ''}
+                          required
+                        />
+                        {fieldErrors.lastname && (
+                          <p className="text-xs text-destructive">{fieldErrors.lastname}</p>
+                        )}
+                      </>
+                    ) : (
+                      <ReadOnlyField value={formData.lastname} />
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">{editing ? t('common.field.required', { label: t('common.field.email') }) : t('common.field.email')}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        onFocus={handleFocus}
-                        placeholder={t('pages.users.emailAddress')}
-                        className={fieldErrors.email ? 'border-destructive' : ''}
-                        required
-                      />
-                      {fieldErrors.email && (
-                        <p className="text-xs text-destructive">{fieldErrors.email}</p>
-                      )}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.email} />
-                  )}
-                </div>
-
-                <div className="space-y-2">
+                <div className="space-y-2 lg:max-w-sm">
                   <Label htmlFor="alias_name">{t('common.field.aliasName')}</Label>
                   {editing ? (
                     <>
@@ -647,66 +768,23 @@ const UserEdit: React.FC = () => {
                         placeholder={t('pages.users.aliasNamePlaceholder')}
                         className={fieldErrors.alias_name ? 'border-destructive' : ''}
                       />
-                      {fieldErrors.alias_name && (
+                      {fieldErrors.alias_name ? (
                         <p className="text-xs text-destructive">{fieldErrors.alias_name}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">{t('pages.users.aliasHint')}</p>
                       )}
                     </>
                   ) : (
                     <ReadOnlyField value={formData.alias_name} />
                   )}
                 </div>
+              </section>
 
-                <div className="space-y-2">
-                  <Label htmlFor="firstname">{t('pages.users.firstNameLabel')}</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="firstname"
-                      name="firstname"
-                      value={formData.firstname}
-                      onChange={handleChange}
-                      placeholder={t('pages.users.firstNamePlaceholder')}
-                    />
-                  ) : (
-                    <ReadOnlyField value={formData.firstname} />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastname">{t('pages.users.lastNameLabel')}</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="lastname"
-                      name="lastname"
-                      value={formData.lastname}
-                      onChange={handleChange}
-                      placeholder={t('pages.users.lastNamePlaceholder')}
-                    />
-                  ) : (
-                    <ReadOnlyField value={formData.lastname} />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="middlename">{t('pages.users.middleNameLabel')}</Label>
-                  {editing ? (
-                    <Input
-                      type="text"
-                      id="middlename"
-                      name="middlename"
-                      value={formData.middlename}
-                      onChange={handleChange}
-                      placeholder={t('pages.users.middleNamePlaceholder')}
-                    />
-                  ) : (
-                    <ReadOnlyField value={formData.middlename} />
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 sm:pt-6">
-                  {editing ? (
-                    <>
+              {/* กลุ่มที่ 3 — สถานะ: ผลของสวิตช์นี้ไม่ชัดในตัวเอง จึงต้องมีบรรทัดอธิบาย */}
+              <section className="space-y-2 border-t pt-6">
+                {editing ? (
+                  <>
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         id="is_active"
@@ -716,33 +794,40 @@ const UserEdit: React.FC = () => {
                         className="h-4 w-4 rounded border-input"
                       />
                       <Label htmlFor="is_active">{t('common.status.active')}</Label>
-                    </>
-                  ) : (
-                    <>
-                      <Label>{t('common.status.label')}</Label>
-                      <Badge variant={formData.is_active ? "success" : "secondary"} className="ml-2">
-                        {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
-                      </Badge>
-                    </>
-                  )}
-                </div>
-              </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t('pages.users.activeHint')}</p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Label>{t('common.status.label')}</Label>
+                    <Badge variant={formData.is_active ? "success" : "secondary"} className="ml-2">
+                      {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
+                    </Badge>
+                  </div>
+                )}
+              </section>
 
               {editing && (
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit" size="sm" disabled={saving}>
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? t('common.busy.saving') : isNew ? t('pages.users.createTitle') : t('common.action.saveChanges')}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={isNew ? () => navigate("/users") : handleCancelEdit}
-                  >
-                    <X className="mr-2 h-4 w-4" />
-                    {t('common.cancel')}
-                  </Button>
+                <div className="space-y-3 border-t pt-6">
+                  <div className="flex gap-3">
+                    <Button type="submit" size="sm" disabled={saving}>
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      {saving ? t('common.busy.saving') : isNew ? t('pages.users.createTitle') : t('common.action.saveChanges')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={isNew ? () => navigate("/users") : handleCancelEdit}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      {t('common.cancel')}
+                    </Button>
+                  </div>
+                  {/* หน้านี้สร้างบัญชีที่ยังใช้งานไม่ได้ — รหัสผ่านและการผูก BU อยู่ที่หน้า edit ปลายทาง */}
+                  {isNew && (
+                    <p className="text-xs text-muted-foreground">{t('pages.users.nextStepHint')}</p>
+                  )}
                 </div>
               )}
             </form>

@@ -1064,7 +1064,19 @@ export const en = {
       editSubtitle: 'Modify the account details below',
       accountDetails: 'Account details',
       emailAddress: 'Email address',
+      // Format-example placeholder, not prose — identical value in both languages.
+      // Stays an email shape on purpose: validateField's `case 'username'` runs
+      // isValidEmail, so a non-email hint would advertise a value the form rejects.
       usernamePlaceholder: 'user@example.com',
+      // Section headings inside the single account card — subheadings, not nested cards.
+      sectionSignIn: 'Sign-in details',
+      sectionSignInHint: 'How this person is identified and reached.',
+      sectionName: 'Display name',
+      sectionNameHint: 'Shown across the platform. First and last name are required.',
+      usernameLocked: "An email address. Can't be changed once the account exists.",
+      aliasHint: 'Used in place of the full name where space is tight.',
+      activeHint: 'An inactive user keeps every assignment but cannot sign in.',
+      nextStepHint: 'Next you will set a password and assign business units.',
       firstNameLabel: 'First Name',
       firstNamePlaceholder: 'First name',
       middleNameLabel: 'Middle Name',
