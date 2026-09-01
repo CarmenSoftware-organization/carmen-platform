@@ -1607,14 +1607,25 @@ export const en = {
       key: 'Key',
       label: 'Name',
       module: 'Module',
+      // ป้ายสั้นพอที่จะจบในบรรทัดเดียวของกลุ่มปุ่ม — คำอธิบายเต็มอยู่ใน *Hint ซึ่งเป็น title
+      // ของแต่ละปุ่มอยู่แล้ว ป้ายยาว ("Closed to new sales") เคยทำให้กลุ่มปุ่มตัดสองบรรทัด
+      // ในทุกแถวของ 76 แถว
       state: {
         active: 'Sellable',
         activeHint: 'Can be ticked into any feature group',
-        inactive: 'Closed to new sales',
-        inactiveHint: 'Groups that already hold it keep it; it cannot be added anywhere new',
+        inactive: 'Closed',
+        inactiveHint:
+          'Closed to new sales: groups that already hold it keep it; it cannot be added anywhere new',
         hide: 'Hidden',
         hideHint: 'Gone from the catalog entirely; keys already sold become orphans',
       },
+      moduleFeatureCount: 'Features: {{count}}',
+      moduleShowing: 'Showing {{shown}} of {{total}}',
+      moduleClosedCount: 'closed {{count}}',
+      moduleHiddenCount: 'hidden {{count}}',
+      affectedBu: '{{count}} BU',
+      affectedBuTooltip: 'In use by {{count}} business units — they lose this menu if it is hidden',
+      affectedBuHeader: 'Business units',
       stateSaved: 'State updated',
       hideConfirmTitle: 'Hide this feature?',
       hideConfirmDescription:
