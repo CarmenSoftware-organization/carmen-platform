@@ -2,13 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import type { BatchProgress } from '../TenantMigrationManagement';
 import { useI18n } from '../../hooks/useI18n';
-
-/** Colour a streamed log line by what it reports. */
-function lineTone(line: string): string {
-  if (/fail|error|✕/i.test(line)) return 'text-[hsl(0_78%_66%)]';
-  if (/up to date|applied|done|✓|ok\b/i.test(line)) return 'text-[hsl(142_60%_60%)]';
-  return 'text-slate-400';
-}
+import { lineTone } from '../../utils/logLineTone';
 
 /** Live terminal for deploy-all: progress + a streaming log of each tenant's migrations. */
 export function DeployConsole({ batch }: { batch: BatchProgress | null }) {

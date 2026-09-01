@@ -2222,6 +2222,8 @@ export const th: Translations = {
       title: 'Migration ฐานข้อมูลแพลตฟอร์ม',
       subtitle: 'Prisma migration ของฐานข้อมูลกลางที่ทุก cluster ใช้ร่วมกัน',
       refresh: 'ตรวจสถานะใหม่',
+      consoleAria: 'ผลลัพธ์ที่กำลังไหลจากงานที่รันอยู่',
+      consoleWaiting: 'กำลังรอผลลัพธ์...',
       statusTitle: 'สถานะ',
       upToDate: 'เป็นรุ่นล่าสุดแล้ว',
       pendingCount: 'ค้างอยู่ {{count}} รายการ',

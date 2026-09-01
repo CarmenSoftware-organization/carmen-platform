@@ -3221,6 +3221,8 @@ export const en = {
       title: 'Platform Database Migrations',
       subtitle: 'Prisma migrations for the shared platform database every cluster reads',
       refresh: 'Check status',
+      consoleAria: 'Live output from the running operation',
+      consoleWaiting: 'Waiting for output...',
       statusTitle: 'Status',
       upToDate: 'Up to date',
       pendingCount: '{{count}} pending',
