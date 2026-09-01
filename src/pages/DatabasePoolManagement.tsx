@@ -23,6 +23,7 @@ import Can from '../components/Can';
 import { auditColumns } from '../components/auditColumns';
 import { useI18n } from '../hooks/useI18n';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
+import { poolDsn, isDerivedName } from '../utils/databasePool';
 import type { DatabasePool, PaginateParams } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -33,38 +34,6 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
-};
-
-/**
- * ที่อยู่ของ pool ประกอบกลับเป็นบรรทัดเดียวแบบที่พิมพ์ลง psql ได้
- *
- * `username` / `host` / `port` / `database` ไม่ใช่สี่ข้อเท็จจริง มันคือที่อยู่เดียวที่ถูกผ่าเก็บ
- * เป็นสี่ช่องเพราะฟอร์มต้องกรอกทีละช่อง ตารางเดิมกางมันกลับออกมาเป็นสี่คอลัมน์ ซึ่งบังคับให้
- * คนอ่านประกอบสตริงเองในหัวทุกครั้งที่อยากรู้ว่า "นี่คือเครื่องไหน"
- *
- * ไม่ใส่ scheme (`postgresql://`) เพราะแถวนี้ยังไม่รู้ว่าใครต่อด้วยไดรเวอร์อะไร — สิ่งที่ระบุตัว
- * เครื่องได้จริงคือส่วนหลัง scheme และมันสั้นพอจะอยู่ในคอลัมน์เดียวโดยไม่ต้องตัดกลางค่า
- */
-const poolDsn = (pool: DatabasePool) =>
-  `${pool.username}@${pool.host}:${pool.port}/${pool.database}`;
-
-/**
- * ชื่อของ pool ที่ไม่ได้บอกอะไรเกินกว่าที่ที่อยู่บอกไปแล้ว
- *
- * pool ที่ถูกสร้างอัตโนมัติจาก `tb_business_unit.db_connection` ได้ชื่อเป็น DSN ของตัวเอง
- * (`dev.blueledgers.com:6432/postgres`) ตารางเดิมจึงพิมพ์สตริงเดียวกันสามครั้งในสามคอลัมน์
- * ติดกัน แถวที่ถูกตั้งชื่อโดยคน ("tenant-db-sg-01") คือแถวเดียวที่ชื่อมีอะไรจะพูดเพิ่ม
- *
- * เทียบแบบไม่สนตัวพิมพ์และตัดช่องว่างหัวท้าย — ไม่ normalize มากกว่านั้น เพราะชื่อที่ต่างกัน
- * แค่เครื่องหมายวรรคตอนคือชื่อที่คนตั้งเอง และควรได้แสดง
- */
-const isDerivedName = (pool: DatabasePool) => {
-  const name = pool.name.trim().toLowerCase();
-  return (
-    name === `${pool.host}:${pool.port}/${pool.database}`.toLowerCase() ||
-    name === poolDsn(pool).toLowerCase() ||
-    name === `${pool.host}:${pool.port}`.toLowerCase()
-  );
 };
 
 const DatabasePoolManagement: React.FC = () => {

@@ -9,19 +9,19 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmptyState } from '../components/EmptyState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, ArrowLeft, SearchX, Eye, EyeOff } from 'lucide-react';
+import { Save, Pencil, X, Loader2, ArrowLeft, SearchX, Eye, EyeOff, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { parseApiError, isNotFoundError } from '../utils/errorParser';
+import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { normalizeAudit } from '../utils/audit';
+import { poolDsn, isDerivedName } from '../utils/databasePool';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import { ReadOnlyField } from '../components/ReadOnlyField';
 import { useAuth } from '../context/AuthContext';
 import type { DatabasePoolWriteInput } from '../types';
 import { useI18n } from '../hooks/useI18n';
@@ -77,6 +77,20 @@ const buildPayload = (data: DatabasePoolFormData): DatabasePoolWriteInput => {
   return payload;
 };
 
+/**
+ * แถวหนึ่งของโหมดอ่าน — ป้ายกับค่า ไม่มีกรอบ
+ *
+ * โหมดอ่านเดิมใช้ `ReadOnlyField` ซึ่งวาดกล่องขอบเทาสูงเท่า `<Input>` เป๊ะ ทั้งหน้าจึงอ่านเป็น
+ * "ฟอร์มที่พิมพ์ไม่ได้ด้วยเหตุผลลึกลับ" แทนที่จะอ่านเป็นบันทึกหนึ่งรายการ กล่องที่ไม่รับการพิมพ์
+ * คือคำสัญญาที่ผิด — เมื่อสองโหมดแยกกันจริงแล้ว โหมดอ่านไม่ต้องยืมรูปของฟอร์มอีก
+ */
+const RecordRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="grid gap-0.5 sm:grid-cols-[9rem_1fr] sm:gap-4">
+    <dt className="text-sm text-muted-foreground">{label}</dt>
+    <dd className="break-words text-sm">{children}</dd>
+  </div>
+);
+
 const DatabasePoolEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -116,6 +130,24 @@ const DatabasePoolEdit: React.FC = () => {
     setError('');
     setFieldErrors({});
     setShowPassword(false);
+  };
+
+  /**
+   * คัดลอกที่อยู่ — การกระทำถัดไปจริงของหน้านี้ ไม่ใช่ของประดับ
+   *
+   * คนที่เปิดหน้านี้ในโหมดอ่านส่วนใหญ่มาหาคำตอบว่า "เครื่องนี้คือเครื่องไหน" แล้วเอาที่อยู่ไปยิง psql
+   * ต่อ ปุ่มจึงอยู่ติดกับที่อยู่แบบเดียวกับในตาราง (ดู DatabasePoolManagement)
+   */
+  const handleCopyDsn = async (dsn: string) => {
+    try {
+      await navigator.clipboard.writeText(dsn);
+      toast.success(t('pages.databasePools.dsnCopied'));
+    } catch (err) {
+      // คลิปบอร์ดถูกปฏิเสธได้ทั้งจากสิทธิ์และจากบริบทที่ไม่ใช่ secure context — บอกให้ผู้ใช้
+      // คัดลอกเอง ดีกว่าเงียบแล้วปล่อยให้เขาเชื่อว่าคัดลอกสำเร็จ
+      toast.error(t('pages.databasePools.dsnCopyFailed'));
+      devLog('copyDsn', err);
+    }
   };
 
   useGlobalShortcuts({
@@ -281,6 +313,24 @@ const DatabasePoolEdit: React.FC = () => {
     }
   };
 
+  const dsn = poolDsn(formData);
+
+  /**
+   * ชื่อขึ้นเป็นหัวเรื่องเฉพาะตอนที่มันไม่ได้พูดซ้ำที่อยู่ที่อยู่ใต้มัน
+   *
+   * pool ที่ระบบสร้างจาก `tb_business_unit.db_connection` ถูกตั้งชื่อเป็น DSN ของตัวเอง หัวเรื่อง
+   * เดิมจึงพิมพ์สตริงเดียวกับที่ช่อง Name, Host, Port และ Database พิมพ์ — ที่อยู่เดียวปรากฏห้าครั้ง
+   * บนหน้าเดียว เมื่อชื่อไม่มีอะไรจะพูดเพิ่ม หัวเรื่องบอกชนิดของเรคคอร์ดแล้วปล่อยให้บรรทัดที่อยู่
+   * ทำหน้าที่ระบุตัวแทน (ซึ่งมันทำได้ดีกว่า เพราะมันตัดคำได้และคัดลอกได้)
+   *
+   * โหมดแก้ไขยังโชว์ชื่อเสมอ เพราะที่นั่นชื่อคือค่าที่กำลังถูกพิมพ์อยู่
+   */
+  const headerTitle = isNew
+    ? t('pages.databasePools.newTitle')
+    : !editing && isDerivedName(formData)
+      ? t('pages.databasePools.singularTitle')
+      : formData.name || t('pages.databasePools.singularTitle');
+
   if (loading) {
     return (
       <Layout>
@@ -348,8 +398,8 @@ const DatabasePoolEdit: React.FC = () => {
         </Link>
 
         <PageHeader
-          title={isNew ? t('pages.databasePools.newTitle') : formData.name || t('pages.databasePools.singularTitle')}
-          subtitle={isNew ? t('pages.databasePools.newSubtitle') : formData.host}
+          title={headerTitle}
+          subtitle={isNew ? t('pages.databasePools.newSubtitle') : undefined}
           audit={normalizeAudit(poolRecord)}
           actions={
             !isNew && !editing && (
@@ -367,37 +417,30 @@ const DatabasePoolEdit: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        <form ref={formRef} onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('pages.databasePools.connectionDetails')}</CardTitle>
-              <CardDescription>{t('pages.databasePools.connectionDetailsDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{t('common.field.name')} {editing && <span className="text-destructive">*</span>}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder={t('pages.databasePools.namePlaceholder')}
-                        className={fieldErrors.name ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.name} />
-                  )}
-                </div>
+        {editing ? (
+          <form ref={formRef} onSubmit={handleSubmit}>
+            <Card>
+              {/* ไม่มีหัวการ์ด: การ์ดใบเดียวบนหน้าที่หัวเรื่องบอกไปแล้วว่ากำลังแก้อะไร ไม่มีอะไร
+                  ให้แยกแยะ ป้าย "Connection Details" กับประโยคอธิบายใต้มันจึงเป็นการอธิบาย
+                  หน้าจอให้หน้าจอฟัง — ช่องกรอกพูดแทนตัวเองได้อยู่แล้ว */}
+              <CardContent className="space-y-4 pt-6">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{t('common.field.name')} <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder={t('pages.databasePools.namePlaceholder')}
+                      className={fieldErrors.name ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="is_active">{t('common.status.label')}</Label>
-                  {editing ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="is_active">{t('common.status.label')}</Label>
                     <label className="flex min-h-11 items-center gap-2">
                       <input
                         type="checkbox"
@@ -409,18 +452,10 @@ const DatabasePoolEdit: React.FC = () => {
                       />
                       <span className="text-sm">{t('common.status.active')}</span>
                     </label>
-                  ) : (
-                    <div>
-                      <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                        {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
+                  </div>
 
-                <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="description">{t('common.field.description')}</Label>
-                  {editing ? (
+                  <div className="space-y-2 lg:col-span-2">
+                    <Label htmlFor="description">{t('common.field.description')}</Label>
                     <Textarea
                       id="description"
                       name="description"
@@ -431,134 +466,98 @@ const DatabasePoolEdit: React.FC = () => {
                       rows={2}
                       className={fieldErrors.description ? 'border-destructive' : ''}
                     />
-                  ) : (
-                    <ReadOnlyField value={formData.description} />
-                  )}
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="host">{t('pages.databasePools.columnHost')} {editing && <span className="text-destructive">*</span>}</Label>
-                  {editing ? (
-                    <>
+                  <div className="space-y-2">
+                    <Label htmlFor="host">{t('pages.databasePools.columnHost')} <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="host"
+                      name="host"
+                      value={formData.host}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder={t('pages.databasePools.hostPlaceholder')}
+                      className={fieldErrors.host ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.host && <p className="text-xs text-destructive">{fieldErrors.host}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="port">{t('pages.databasePools.columnPort')} <span className="text-destructive">*</span></Label>
+                    <Input
+                      type="number"
+                      id="port"
+                      name="port"
+                      value={formData.port}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder={t('pages.databasePools.portPlaceholder')}
+                      min={1}
+                      max={65535}
+                      className={fieldErrors.port ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.port && <p className="text-xs text-destructive">{fieldErrors.port}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="database">{t('pages.databasePools.columnDatabase')} <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="database"
+                      name="database"
+                      value={formData.database}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder={t('pages.databasePools.databasePlaceholder')}
+                      className={fieldErrors.database ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.database && <p className="text-xs text-destructive">{fieldErrors.database}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="username">{t('common.field.username')} <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="username"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder={t('pages.databasePools.usernamePlaceholder')}
+                      className={fieldErrors.username ? 'border-destructive' : ''}
+                    />
+                    {fieldErrors.username && <p className="text-xs text-destructive">{fieldErrors.username}</p>}
+                  </div>
+
+                  <div className="space-y-2 lg:col-span-2">
+                    <Label htmlFor="password">{t('pages.databasePools.passwordLabel')} {isNew && <span className="text-destructive">*</span>}</Label>
+                    <div className="relative">
                       <Input
-                        id="host"
-                        name="host"
-                        value={formData.host}
+                        type={showPassword ? 'text' : 'password'}
+                        id="password"
+                        name="password"
+                        value={formData.password}
                         onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder={t('pages.databasePools.hostPlaceholder')}
-                        className={fieldErrors.host ? 'border-destructive' : ''}
+                        placeholder={isNew ? t('pages.databasePools.passwordPlaceholder') : ''}
+                        className={`pr-9 ${fieldErrors.password ? 'border-destructive' : ''}`}
                       />
-                      {fieldErrors.host && <p className="text-xs text-destructive">{fieldErrors.host}</p>}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.host} />
-                  )}
-                </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-9 w-9"
+                        onClick={() => setShowPassword((s) => !s)}
+                        aria-label={showPassword ? t('pages.databasePools.hidePassword') : t('pages.databasePools.revealPassword')}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
+                    {!isNew && (
+                      <p className="text-xs text-muted-foreground">{t('pages.databasePools.passwordKeepHint')}</p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="port">{t('pages.databasePools.columnPort')} {editing && <span className="text-destructive">*</span>}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        type="number"
-                        id="port"
-                        name="port"
-                        value={formData.port}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder={t('pages.databasePools.portPlaceholder')}
-                        min={1}
-                        max={65535}
-                        className={fieldErrors.port ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.port && <p className="text-xs text-destructive">{fieldErrors.port}</p>}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.port} />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="database">{t('pages.databasePools.columnDatabase')} {editing && <span className="text-destructive">*</span>}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        id="database"
-                        name="database"
-                        value={formData.database}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder={t('pages.databasePools.databasePlaceholder')}
-                        className={fieldErrors.database ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.database && <p className="text-xs text-destructive">{fieldErrors.database}</p>}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.database} />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="username">{t('common.field.username')} {editing && <span className="text-destructive">*</span>}</Label>
-                  {editing ? (
-                    <>
-                      <Input
-                        id="username"
-                        name="username"
-                        value={formData.username}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder={t('pages.databasePools.usernamePlaceholder')}
-                        className={fieldErrors.username ? 'border-destructive' : ''}
-                      />
-                      {fieldErrors.username && <p className="text-xs text-destructive">{fieldErrors.username}</p>}
-                    </>
-                  ) : (
-                    <ReadOnlyField value={formData.username} />
-                  )}
-                </div>
-
-                <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="password">{t('pages.databasePools.passwordLabel')} {editing && isNew && <span className="text-destructive">*</span>}</Label>
-                  {editing ? (
-                    <>
-                      <div className="relative">
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
-                          id="password"
-                          name="password"
-                          value={formData.password}
-                          onChange={handleChange}
-                          placeholder={isNew ? t('pages.databasePools.passwordPlaceholder') : ''}
-                          className={`pr-9 ${fieldErrors.password ? 'border-destructive' : ''}`}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-0 top-0 h-9 w-9"
-                          onClick={() => setShowPassword((s) => !s)}
-                          aria-label={showPassword ? t('pages.databasePools.hidePassword') : t('pages.databasePools.revealPassword')}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
-                      {!isNew && (
-                        <p className="text-xs text-muted-foreground">{t('pages.databasePools.passwordKeepHint')}</p>
-                      )}
-                    </>
-                  ) : (
-                    // The API masks password in every response and offers no reveal endpoint —
-                    // there is nothing to show, so no field renders here at all.
-                    <p className="text-sm text-muted-foreground">{t('pages.databasePools.passwordStoredHidden')}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="note">{t('pages.databasePools.columnNote')}</Label>
-                  {editing ? (
+                  <div className="space-y-2 lg:col-span-2">
+                    <Label htmlFor="note">{t('pages.databasePools.columnNote')}</Label>
                     <Textarea
                       id="note"
                       name="note"
@@ -569,14 +568,61 @@ const DatabasePoolEdit: React.FC = () => {
                       rows={2}
                       className={fieldErrors.note ? 'border-destructive' : ''}
                     />
-                  ) : (
-                    <ReadOnlyField value={formData.note} />
-                  )}
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+          </form>
+        ) : (
+          <Card>
+            <CardContent className="space-y-5 p-4 sm:p-6">
+              {/* ที่อยู่ปรากฏครั้งเดียวบนหน้า และเป็นสตริงเดียวกับที่แถวในตารางแสดง (poolDsn)
+                  เพื่อให้การเดินจากรายการมาหน้านี้ต่อเนื่อง ไม่ใช่การเห็นของเดิมในรูปใหม่
+
+                  `break-all` ไม่ใช่ `truncate` เพราะที่อยู่ที่ถูกตัดกลางคือที่อยู่ที่ใช้ไม่ได้ —
+                  บรรทัดนี้มีไว้ให้อ่านและกวาดเลือกด้วยตา ไม่ใช่ให้พอดีช่อง */}
+              <div className="flex items-start gap-1.5">
+                <p className="min-w-0 break-all font-mono text-base font-medium sm:text-lg">{dsn}</p>
+                {/* เป้ากด 44px ตามเกณฑ์เป้าสัมผัส negative margin กันไม่ให้มันดันบรรทัดที่อยู่ลง */}
+                <button
+                  type="button"
+                  onClick={() => handleCopyDsn(dsn)}
+                  aria-label={t('pages.databasePools.copyDsn')}
+                  title={t('pages.databasePools.copyDsn')}
+                  className="-my-2.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
               </div>
+
+              {/* pool ที่ปิดอยู่คือคำอธิบายว่าทำไมของที่ควรต่อติดถึงต่อไม่ติด — อยู่ติดที่อยู่ ไม่ใช่
+                  ในแถวป้าย/ค่าท้ายการ์ด */}
+              <div>
+                <Badge variant={formData.is_active ? 'success' : 'secondary'}>
+                  {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
+                </Badge>
+              </div>
+
+              <dl className="space-y-3 border-t pt-4">
+                {/* ชื่อไม่มีแถวของตัวเอง: ถ้ามันเป็นชื่อที่คนตั้ง มันขึ้นเป็นหัวเรื่องไปแล้ว ถ้ามันเป็น
+                    ชื่อที่ระบบสร้าง มันคือที่อยู่ด้านบนคำต่อคำ */}
+                {formData.description && (
+                  <RecordRow label={t('common.field.description')}>{formData.description}</RecordRow>
+                )}
+                {/* หมายเหตุคือที่ที่ประโยค "สร้างอัตโนมัติจาก tb_business_unit.db_connection" อยู่ —
+                    เป็นคำเตือนว่าเรคคอร์ดนี้ไม่ได้ถูกตั้งขึ้นด้วยมือ จึงไม่ถูกซ่อนท้ายสุด */}
+                {formData.note && (
+                  <RecordRow label={t('pages.databasePools.columnNote')}>{formData.note}</RecordRow>
+                )}
+                {/* API มาสก์รหัสผ่านในทุก response และไม่มี endpoint ให้เปิดดู — ไม่มีอะไรให้แสดง
+                    แถวนี้จึงบอกสถานะของมัน ไม่ใช่ค่าของมัน */}
+                <RecordRow label={t('pages.databasePools.passwordLabel')}>
+                  <span className="text-muted-foreground">{t('pages.databasePools.passwordStoredHidden')}</span>
+                </RecordRow>
+              </dl>
             </CardContent>
           </Card>
-        </form>
+        )}
       </div>
 
       {editing && (

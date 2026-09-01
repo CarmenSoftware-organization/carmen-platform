@@ -3409,8 +3409,6 @@ export const en = {
       backToList: 'Back to database pools',
       newTitle: 'New Database Pool',
       newSubtitle: 'Create a shared database connection profile',
-      connectionDetails: 'Connection Details',
-      connectionDetailsDescription: 'Name, credentials, and endpoint for this shared connection profile.',
       namePlaceholder: 'tenant-primary',
       descriptionPlaceholder: 'Optional description',
       hostPlaceholder: 'tenant-db.internal',
