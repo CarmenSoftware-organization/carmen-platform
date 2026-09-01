@@ -1317,8 +1317,26 @@ export const th: Translations = {
       inUseWarningBody: 'สัญญาเหล่านั้นอ้างกลุ่มนี้ การเพิ่มหรือถอด feature จึงกระทบทุกฉบับพร้อมกัน ไม่ใช่แค่กลุ่ม',
       deactivateWarning: 'ปิดแล้วชุดนี้จะหายไปจากฟอร์มขาย ตรวจ {{count}} สัญญาที่ผูกไว้แล้วก่อน',
       sortOrderHint: 'ตำแหน่งของชุดนี้บนฟอร์มขาย เลขน้อยขึ้นก่อน',
+      orderOnSalesForm: 'บนฟอร์มขาย',
+      orderDuplicate: 'ลำดับนี้มีกลุ่มอื่นถืออยู่แล้ว — ลำดับบนฟอร์มขายจะไม่ถูกกำหนด',
       activeHint: 'ยังหยิบไปใส่สัญญาใหม่ได้',
-      withModulesTotal: 'บันทึกจริง {{total}} รายการ รวม module แม่ {{modules}} ตัว',
+      inactiveHint: 'ไม่โผล่บนฟอร์มขาย สัญญาที่ผูกไว้แล้วไม่ถูกแตะ',
+      sellingOn: 'ขายอยู่',
+      sellingOff: 'หยุดขาย',
+      // ── แผงสัดส่วน (GroupCompositionPanel) ──
+      // ตัวเลขใหญ่คือยอดที่ **บันทึกจริง** (ลูก + module แม่ที่ถูกเติม) ตัวเดียวกับที่หน้ารายการโชว์
+      // ไม่ใช่ยอดที่ติ๊ก — สองยอดนั้นต่างกัน และบรรทัดกระทบยอดข้างล่างคือที่ที่มันเจอกัน
+      compositionTitle: 'สิทธิ์ในชุดนี้',
+      compositionOfCatalog: 'จาก {{total}} สิทธิ์ทั้งแค็ตตาล็อก',
+      compositionNoDenominator: 'สิทธิ์ที่บันทึกจริง',
+      compositionBreakdown: 'ติ๊กเอง {{children}} · module แม่ที่ติดมา {{modules}}',
+      compositionEmpty: 'ยังไม่ได้เลือกสิทธิ์ใดเลย',
+      // ── ตัวเลือกสิทธิ์ (FeatureSelectionCard) ──
+      // ห้ามใช้คำว่า "ทั้งหมด" กับสองปุ่มนี้: ปุ่ม All/None ต่อโมดูลใช้คำนั้นอยู่แล้ว และเคยอยู่
+      // คอลัมน์เดียวกันจนกดผิดกันได้ — กดผิดคือติ๊กสิทธิ์เพิ่มให้ทุกสัญญาที่ผูกชุดนี้
+      expandShort: 'กาง',
+      collapseShort: 'พับ',
+      moduleFill: '{{module}} — เลือกไว้ {{count}} จาก {{total}}',
     },
     licenses: {
       buQuota: 'โควตา BU',
