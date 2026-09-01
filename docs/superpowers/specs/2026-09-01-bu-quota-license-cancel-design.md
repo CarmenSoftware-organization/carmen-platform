@@ -180,6 +180,27 @@ merge ไม่ได้
 **ลำดับพารามิเตอร์สลับกันสองชั้น:** gateway service คือ `(clusterId, id, dto, userId)` ส่วน micro
 service คือ `(id, clusterId, data, userId)` — การสลับเกิดที่ micro controller
 
+### ฟิลด์ `is_in_force` — view เป็นคนตัดสิน ไม่ใช่ FE
+
+`listPlatform` และ `findOnePlatform` ต้องคืนฟิลด์เพิ่ม:
+
+```ts
+is_in_force: boolean   // ใบนี้คือใบที่ v_cluster_bu_cap เลือกให้คลัสเตอร์นี้หรือไม่
+```
+
+**เหตุผลที่ต้องมี:** `PurchaseLicenseTable` (ตาราง fleet ที่ `/licenses`) เป็น server-side
+paginated — แต่ละแถวมาจากคนละคลัสเตอร์และแบ่งหน้า **ไม่มีลิสต์ใบทั้งหมดของคลัสเตอร์ใดเลย** จึง
+คำนวณ `superseded` เองไม่ได้ตามนิยาม (ต้องรู้ว่ามีใบอื่นที่ใหม่กว่าไหม)
+
+ผลพลอยได้ที่สำคัญกว่า: เมื่อ view เป็นคนบอกว่าใบไหน in force ความเสี่ยง "FE กับ view ตัดสิน cap
+ไม่ตรงกัน" หายไปที่ต้นเหตุ — FE เลิกตัดสินเอง
+
+คำนวณด้วยการ join `v_cluster_bu_cap` กลับมาเทียบว่า `licensed_bus`/ช่วงวันของแถวนี้ตรงกับใบที่ view
+เลือกไหม — ทางที่ตรงกว่าคือให้ view คืน `winning_license_id` เพิ่ม แล้วเทียบ id ตรงๆ
+**ตัดสินตอนลงมือหลังอ่านโครง `packages/prisma-shared-schema-platform/src/bu-quota.ts`**
+(`BU_CAP_VIEW`, `clusterBuQuotas()`) — ถ้าเพิ่มคอลัมน์ `winning_license_id` ใน view ได้ ให้ทำแบบนั้น
+เพราะเทียบ id แม่นกว่าเทียบค่าประกอบ
+
 ### ข้อที่ยังไม่รู้ ต้องตรวจตอนลงมือ
 
 `@EnrichAuditUsers()` แปลง `created_by_id`/`updated_by_id`/`deleted_by_id` เป็น object ผู้ใช้ แต่
