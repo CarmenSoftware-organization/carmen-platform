@@ -2239,6 +2239,15 @@ export const th: Translations = {
       subjectPrefixHint: 'ข้อความที่เติมหน้าหัวเรื่องอีเมล เว้นว่างไว้ = ไม่เติมอะไร · ค่า SMTP (host / ผู้ใช้ / รหัสผ่าน) ไม่ได้อยู่ที่นี่ — ตั้งที่หน้า Email Setting',
       enforcementEnabledToast: 'เปิดการบังคับใช้ license แล้ว — มีผลภายใน 60 วินาที',
       enforcementDisabledToast: 'ปิดการบังคับใช้ license แล้ว (shadow mode) — มีผลภายใน 60 วินาที',
+      expiryThresholdsTitle: 'เกณฑ์ใกล้หมดอายุ',
+      expiryThresholdsDescription:
+        'กี่วันก่อนใบหมดอายุจึงเริ่มขึ้นป้าย "ใกล้หมดอายุ" และเริ่มนับในแถบสรุป',
+      subscriptionDays: 'ใบสัญญา',
+      buQuotaDays: 'ใบโควตา BU',
+      seatDays: 'ใบที่นั่ง BU',
+      savedThresholdsToast: 'บันทึกเกณฑ์ใกล้หมดอายุแล้ว',
+      thresholdsNote1:
+        'เป็นเกณฑ์แสดงผล ไม่ใช่เกณฑ์บังคับใช้ เพิ่มค่าแล้วคำเตือนขึ้นเร็วขึ้นเท่านั้น ไม่ได้ให้หรือถอนสิทธิ์ใคร',
       licenseTitle: 'การบังคับใช้ License',
       licenseDesc1: 'สวิตช์เดียวที่ตัดสินว่า licensing บังคับใช้จริงหรือแค่บันทึกไว้เฉย ๆ (shadow mode) · ต้องมีสิทธิ์',
       licenseDesc2: 'เพิ่มจาก',

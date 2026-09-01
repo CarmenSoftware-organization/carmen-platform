@@ -3223,6 +3223,15 @@ export const en = {
       // License Enforcement card — ทุกย่อหน้ามี <code>/<strong> คั่น จึงแยกเป็นท่อน ๆ
       enforcementEnabledToast: 'License enforcement is on — effective within 60 seconds',
       enforcementDisabledToast: 'License enforcement is off (shadow mode) — effective within 60 seconds',
+      expiryThresholdsTitle: 'Expiring-soon thresholds',
+      expiryThresholdsDescription:
+        'How many days before a licence expires the "expiring soon" badge and the summary counter start.',
+      subscriptionDays: 'Subscription licences',
+      buQuotaDays: 'BU-quota licences',
+      seatDays: 'BU seat licences',
+      savedThresholdsToast: 'Expiring-soon thresholds saved',
+      thresholdsNote1:
+        'These are display thresholds, not enforcement ones. Raising them makes warnings appear earlier; it never grants or revokes access.',
       licenseTitle: 'License Enforcement',
       licenseDesc1: 'The single switch deciding whether licensing is actually enforced or merely logged (shadow mode) · Editing needs',
       licenseDesc2: 'on top of',

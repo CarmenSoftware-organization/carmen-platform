@@ -13,6 +13,7 @@ import { SignupConfigCard } from './platformConfig/SignupConfigCard';
 import { LinkConfigCard } from './platformConfig/LinkConfigCard';
 import { NotificationEmailConfigCard } from './platformConfig/NotificationEmailConfigCard';
 import { LicenseEnforcementCard } from './platformConfig/LicenseEnforcementCard';
+import { ExpiryThresholdsCard } from './platformConfig/ExpiryThresholdsCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -29,7 +30,8 @@ type CardId =
   | 'email_verification'
   | 'password_reset'
   | 'notification_email'
-  | 'license';
+  | 'license'
+  | 'expiry_thresholds';
 
 /**
  * หัวข้อกลุ่ม — ป้ายตัวพิมพ์ใหญ่เล็ก ๆ พร้อมเส้นลากยาว ชุดเดียวกับหัวกลุ่มใน sidebar
@@ -104,6 +106,7 @@ const PlatformConfigManagement: React.FC = () => {
   const passwordReset = configs.find((c) => c.key === 'password_reset') ?? null;
   const notificationEmail = configs.find((c) => c.key === 'notification_email') ?? null;
   const license = configs.find((c) => c.key === 'license') ?? null;
+  const expiryThresholds = configs.find((c) => c.key === 'expiry_thresholds') ?? null;
 
   // ที่มาเดียวของ audit ต่อ config — การ์ดแต่ละใบไม่รู้จัก normalizeAudit เอง (อยู่นอกขอบเขต
   // ของ task นี้) ตัว key เดิมของแต่ละการ์ดก็อ่านผ่านค่าเหล่านี้ด้วย แทนฟิลด์แบนตรง ๆ
@@ -113,6 +116,7 @@ const PlatformConfigManagement: React.FC = () => {
   const passwordResetAudit = normalizeAudit(passwordReset);
   const notificationEmailAudit = normalizeAudit(notificationEmail);
   const licenseAudit = normalizeAudit(license);
+  const expiryThresholdsAudit = normalizeAudit(expiryThresholds);
   // ค่ากริยา+actor ล่าสุดต่อการ์ด สำหรับแถบท้ายการ์ด — คำนวณแยกจาก *Audit ด้านบน
   // ที่ยังต้องใช้เดิมสำหรับ remount key
   const invitationLatest = latestActor(invitation);
@@ -121,6 +125,7 @@ const PlatformConfigManagement: React.FC = () => {
   const passwordResetLatest = latestActor(passwordReset);
   const notificationEmailLatest = latestActor(notificationEmail);
   const licenseLatest = latestActor(license);
+  const expiryThresholdsLatest = latestActor(expiryThresholds);
 
   /** แถบ audit ท้ายการ์ด — รูปแบบเดียวกันทั้ง 6 ใบ และอยู่ *ใน* การ์ดที่มันอธิบาย */
   const auditFooter = (latest: ReturnType<typeof latestActor>) => (
@@ -156,7 +161,7 @@ const PlatformConfigManagement: React.FC = () => {
         ) : loading ? (
           <div className="space-y-6">
             <Skeleton className="h-12 w-full" />
-            {[4, 3].map((cards, section) => (
+            {[4, 4].map((cards, section) => (
               <div key={section} className="space-y-3">
                 <Skeleton className="h-4 w-48" />
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -291,6 +296,19 @@ const PlatformConfigManagement: React.FC = () => {
                   onCancelEdit={() => setEditingCard(null)}
                   onSaved={handleSaved}
                   footer={auditFooter(licenseLatest)}
+                />
+                {/* gate ด้วย canManage เฉย ๆ ไม่ใช่ canManageLicense เหมือนการ์ดข้างบน — คีย์
+                    expiry_thresholds ไม่มีด่าน mayWriteKey ฝั่ง backend การลอกมาจะซ่อนปุ่ม Edit
+                    จากผู้ที่มีสิทธิ์เขียนจริง */}
+                <ExpiryThresholdsCard
+                  key={`expiry_thresholds-${expiryThresholdsAudit.updated?.at ?? expiryThresholdsAudit.created?.at ?? 'default'}`}
+                  config={expiryThresholds}
+                  canManage={canManage}
+                  isEditing={editingCard === 'expiry_thresholds'}
+                  onRequestEdit={() => setEditingCard('expiry_thresholds')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(expiryThresholdsLatest)}
                 />
               </div>
             </div>
