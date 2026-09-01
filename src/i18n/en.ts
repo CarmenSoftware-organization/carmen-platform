@@ -1650,6 +1650,25 @@ export const en = {
       deleteTitle: 'Delete this group?',
       deleteBody: 'The group and its feature list will be removed. This cannot be undone.',
       parentAutoAdded: 'Selecting a feature also grants its module, so the saved list can be longer than what you ticked.',
+      // ── ชั้นวางชุดสิทธิ์ (FeatureGroupCard) ──
+      // `featuresOfTotal` ใช้เมื่อโหลดขนาดแค็ตตาล็อกได้ · `featuresOnly` คือขากลับตอนโหลดไม่ได้
+      // ซึ่งเป็นตอนเดียวกับที่แถบสัดส่วนหายไป — ตัวเลขที่ไม่มีตัวหารต้องไม่มีแถบด้วย
+      featuresOfTotal: '{{count}} of {{total}} features',
+      featuresOnly: '{{count}} features',
+      ordinalHint: 'Sort order {{n}} — where this bundle sits on the sales form',
+      ordinalDuplicateHint: 'Sort order {{n}} is shared with another group — the order on the sales form is not decided',
+      inUseCount: 'Used by {{count}} contracts',
+      inUseCountOne: 'Used by 1 contract',
+      inUseNone: 'Not used by any contract',
+      showingCount: '{{shown}} of {{total}} groups',
+      deleteBodyInUse: '{{count}} live contracts are on this bundle. Check them before deleting — the group and its feature list will be removed. This cannot be undone.',
+      // ── หน้าแก้ไข ──
+      inUseWarningTitle: '{{count}} contracts are on this bundle',
+      inUseWarningTitleOne: '1 contract is on this bundle',
+      inUseWarningBody: 'Those contracts reference this group, so adding or removing a feature affects all of them at once — not just the group.',
+      deactivateWarning: 'Turning this off takes the bundle off the sales form. Check the {{count}} contracts already on it first.',
+      sortOrderHint: 'Where this bundle sits on the sales form — lower comes first',
+      activeHint: 'Can still be picked when selling a subscription',
     },
     licenses: {
       // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts

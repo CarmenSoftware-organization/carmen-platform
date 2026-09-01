@@ -17,10 +17,11 @@ import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../hooks/useI18n';
+import { cn } from '../lib/utils';
 import { validateField } from '../utils/validation';
 import { parseApiError, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
-import { Save, Loader2, ArrowLeft, SearchX, Info } from 'lucide-react';
+import { Save, Loader2, ArrowLeft, SearchX, Info, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LicenseFeatureGroupFormData {
@@ -68,6 +69,8 @@ const LicenseFeatureGroupEdit: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [rawResponse, setRawResponse] = useState<unknown>(null);
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
+  /** จำนวนสัญญาที่ผูกกลุ่มนี้อยู่ — อ่านอย่างเดียว มาจาก GET ไม่เคยถูกส่งกลับตอนบันทึก */
+  const [subscriptionCount, setSubscriptionCount] = useState(0);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -94,6 +97,7 @@ const LicenseFeatureGroupEdit: React.FC = () => {
     sort_order: number;
     is_active: boolean;
     feature_keys?: string[];
+    subscription_count?: number;
   }) => {
     const next: LicenseFeatureGroupFormData = {
       code: detail.code ?? '',
@@ -107,6 +111,7 @@ const LicenseFeatureGroupEdit: React.FC = () => {
     const keys = Array.isArray(detail.feature_keys) ? detail.feature_keys : [];
     setFeatureKeys(keys);
     setSavedFeatureKeys(keys);
+    setSubscriptionCount(detail.subscription_count ?? 0);
   }, []);
 
   const fetchGroup = useCallback(async () => {
@@ -305,6 +310,42 @@ const LicenseFeatureGroupEdit: React.FC = () => {
           </Card>
         )}
 
+        {/* รัศมีความเสียหายของหน้านี้ — บนหน้ารายการเลขนี้เป็นแค่ "รู้ไว้" แต่ที่นี่คือจุดที่การกระทำ
+            เกิดจริง: ทุกสัญญาที่ผูกกลุ่มนี้ได้สิทธิ์ตามชุดที่บันทึกไว้ ณ เวลาที่อ่าน ไม่ใช่ตามชุด
+            ที่มันซื้อไป การถอด feature ออกหนึ่งตัวจึงถอดออกจากทุกสัญญาพร้อมกัน ไม่มีขั้นยืนยันอื่น */}
+        {!isNew && subscriptionCount > 0 && (
+          <Card className="border-warning bg-warning/5">
+            <CardContent className="flex items-start gap-2.5 py-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {subscriptionCount === 1
+                    ? t('pages.licenseFeatureGroups.inUseWarningTitleOne')
+                    : t('pages.licenseFeatureGroups.inUseWarningTitle', { count: subscriptionCount })}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('pages.licenseFeatureGroups.inUseWarningBody')}
+                </p>
+                {/* เทียบกับ savedFormData ไม่ใช่ค่าคงที่ — ประโยคนี้ต้องโผล่เฉพาะตอนที่ผู้ใช้
+                    กำลังจะ "ปิด" กลุ่มที่เปิดอยู่ ไม่ใช่ทุกครั้งที่เปิดหน้ากลุ่มที่ปิดไว้แล้ว
+
+                    `invisible` ไม่ใช่การถอดออกจาก DOM: ถ้าบรรทัดนี้งอกออกมาตอนติ๊ก กล่องเตือน
+                    จะสูงขึ้นแล้วดันฟอร์มลงทั้งแผง ช่องติ๊กเลื่อนหนีนิ้วในจังหวะที่เพิ่งกดพอดี
+                    (ยืนยันในเบราว์เซอร์แล้ว — คลิกครั้งที่สองที่พิกัดเดิมพลาดเป้า) */}
+                <p
+                  aria-hidden={!(savedFormData.is_active && !formData.is_active)}
+                  className={cn(
+                    'text-xs font-medium text-warning',
+                    savedFormData.is_active && !formData.is_active ? 'visible' : 'invisible',
+                  )}
+                >
+                  {t('pages.licenseFeatureGroups.deactivateWarning', { count: subscriptionCount })}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="space-y-4 py-4">
             {loading ? (
@@ -384,11 +425,16 @@ const LicenseFeatureGroupEdit: React.FC = () => {
                   ) : (
                     <ReadOnlyField value={formData.sort_order} />
                   )}
+                  <p className="text-xs text-muted-foreground">
+                    {t('pages.licenseFeatureGroups.sortOrderHint')}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="is_active">{t('pages.licenseFeatureGroups.active')}</Label>
-                  <div className="flex h-9 items-center">
+                  {/* ช่องติ๊กเปล่า ๆ ไม่บอกว่าติ๊กแล้วเกิดอะไร — ข้อความข้างช่องคือสิ่งที่ทำให้
+                      "ใช้งาน" หมายถึง "ยังหยิบไปขายได้" แทนที่จะเป็นสวิตช์ที่ต้องเดา */}
+                  <label className="flex h-9 items-center gap-2 text-sm">
                     <input
                       id="is_active"
                       type="checkbox"
@@ -397,7 +443,10 @@ const LicenseFeatureGroupEdit: React.FC = () => {
                       disabled={!canManage}
                       onChange={(e) => handleFieldChange('is_active', e.target.checked)}
                     />
-                  </div>
+                    <span className="text-muted-foreground">
+                      {t('pages.licenseFeatureGroups.activeHint')}
+                    </span>
+                  </label>
                 </div>
               </div>
             )}
