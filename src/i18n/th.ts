@@ -1361,6 +1361,10 @@ export const th: Translations = {
 
       // Task 3 — see en.ts for the cross-file rationale behind each key here.
       license: 'ไลเซนส์',
+      issuedPlateAria: 'ใบที่ออกแล้ว',
+      startsInDays: 'เริ่มในอีก {{count}} วัน',
+      amendTitle: 'แก้ไขใบนี้',
+      amendDescription: 'แก้ได้เฉพาะจำนวน ช่วงเวลาคุ้มครอง และเลขอ้างอิง — เจ้าของและเลขที่ใบแก้ไม่ได้',
       licenseDetailsTitle: 'รายละเอียดไลเซนส์',
       licenseDetailsDescription: '{{owner}} จำนวน และช่วงเวลาคุ้มครอง',
       referenceNoLabel: 'เลขที่อ้างอิง',
