@@ -3381,16 +3381,24 @@ export const en = {
       addPool: 'Add Pool',
       searchPlaceholder: 'Search database pools...',
       loadFailed: 'Failed to load database pools: {{detail}}',
+      // The list collapses host/port/database/username into one address; these four stay
+      // because the CSV still exports them as separate columns.
       columnHost: 'Host',
       columnPort: 'Port',
       columnDatabase: 'Database',
       columnNote: 'Note',
+      columnConnection: 'Connection',
+      copyDsn: 'Copy connection string',
+      dsnCopied: 'Connection string copied',
+      dsnCopyFailed: 'Could not copy. Select the address and copy it manually.',
       actionsAria: 'Actions',
       emptyTitle: 'No database pools yet',
       emptyDescription: 'Get started by creating your first shared database connection profile.',
       loadingAria: 'Loading database pools',
       deleteTitle: 'Delete Database Pool',
-      deleteDescription: 'Are you sure you want to delete this database pool? This action cannot be undone.',
+      // Names the 409 DATABASE_POOL_IN_USE rule up front. It used to surface only after the
+      // user pressed Delete, which reads as a failure rather than as the rule it is.
+      deleteDescription: 'Delete this database pool? This cannot be undone. A pool that any business unit still points at cannot be deleted — the attempt will name them.',
       // ── DatabasePoolEdit ──
       loadFailedOne: 'Failed to load database pool: {{detail}}',
       loadingOneAria: 'Loading database pool',

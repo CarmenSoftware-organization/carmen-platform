@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '../components/ui/sheet';
-import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Server, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Filter, X, Server, Download, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
@@ -33,6 +33,38 @@ const getStoredJSON = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
+};
+
+/**
+ * ที่อยู่ของ pool ประกอบกลับเป็นบรรทัดเดียวแบบที่พิมพ์ลง psql ได้
+ *
+ * `username` / `host` / `port` / `database` ไม่ใช่สี่ข้อเท็จจริง มันคือที่อยู่เดียวที่ถูกผ่าเก็บ
+ * เป็นสี่ช่องเพราะฟอร์มต้องกรอกทีละช่อง ตารางเดิมกางมันกลับออกมาเป็นสี่คอลัมน์ ซึ่งบังคับให้
+ * คนอ่านประกอบสตริงเองในหัวทุกครั้งที่อยากรู้ว่า "นี่คือเครื่องไหน"
+ *
+ * ไม่ใส่ scheme (`postgresql://`) เพราะแถวนี้ยังไม่รู้ว่าใครต่อด้วยไดรเวอร์อะไร — สิ่งที่ระบุตัว
+ * เครื่องได้จริงคือส่วนหลัง scheme และมันสั้นพอจะอยู่ในคอลัมน์เดียวโดยไม่ต้องตัดกลางค่า
+ */
+const poolDsn = (pool: DatabasePool) =>
+  `${pool.username}@${pool.host}:${pool.port}/${pool.database}`;
+
+/**
+ * ชื่อของ pool ที่ไม่ได้บอกอะไรเกินกว่าที่ที่อยู่บอกไปแล้ว
+ *
+ * pool ที่ถูกสร้างอัตโนมัติจาก `tb_business_unit.db_connection` ได้ชื่อเป็น DSN ของตัวเอง
+ * (`dev.blueledgers.com:6432/postgres`) ตารางเดิมจึงพิมพ์สตริงเดียวกันสามครั้งในสามคอลัมน์
+ * ติดกัน แถวที่ถูกตั้งชื่อโดยคน ("tenant-db-sg-01") คือแถวเดียวที่ชื่อมีอะไรจะพูดเพิ่ม
+ *
+ * เทียบแบบไม่สนตัวพิมพ์และตัดช่องว่างหัวท้าย — ไม่ normalize มากกว่านั้น เพราะชื่อที่ต่างกัน
+ * แค่เครื่องหมายวรรคตอนคือชื่อที่คนตั้งเอง และควรได้แสดง
+ */
+const isDerivedName = (pool: DatabasePool) => {
+  const name = pool.name.trim().toLowerCase();
+  return (
+    name === `${pool.host}:${pool.port}/${pool.database}`.toLowerCase() ||
+    name === poolDsn(pool).toLowerCase() ||
+    name === `${pool.host}:${pool.port}`.toLowerCase()
+  );
 };
 
 const DatabasePoolManagement: React.FC = () => {
@@ -153,9 +185,33 @@ const DatabasePoolManagement: React.FC = () => {
     }
   };
 
+  /**
+   * คัดลอกที่อยู่ของ pool ไปวางต่อได้ทันที
+   *
+   * เดิมคนดูแลที่อยากยิง psql ใส่เครื่องนี้ต้องกวาดตาสี่คอลัมน์แล้วพิมพ์ประกอบเอง ปุ่มนี้คือ
+   * การกระทำถัดไปจริง ๆ ของแถว ไม่ใช่ของประดับ — จึงอยู่ติดกับที่อยู่ ไม่ใช่ในเมนู `...`
+   *
+   * useCallback เพราะมันอยู่ใน deps ของ `columns` — ฟังก์ชันที่สร้างใหม่ทุก render จะทำให้
+   * useMemo ของคอลัมน์คำนวณใหม่ทุกครั้งจนไม่เหลือประโยชน์
+   */
+  const handleCopyDsn = useCallback(async (dsn: string) => {
+    try {
+      await navigator.clipboard.writeText(dsn);
+      toast.success(t('pages.databasePools.dsnCopied'));
+    } catch (err) {
+      // คลิปบอร์ดถูกปฏิเสธได้ทั้งจากสิทธิ์และจากบริบทที่ไม่ใช่ secure context — บอกให้ผู้ใช้
+      // คัดลอกเอง ดีกว่าเงียบแล้วปล่อยให้เขาเชื่อว่าคัดลอกสำเร็จ
+      toast.error(t('pages.databasePools.dsnCopyFailed'));
+      devLog('copyDsn', err);
+    }
+  }, [t]);
+
   const handleExport = () => {
-    const rows = items.map((item) => ({ ...item, ...auditCsvFields(normalizeAudit(item)) }));
+    const rows = items.map((item) => ({ ...item, dsn: poolDsn(item), ...auditCsvFields(normalizeAudit(item)) }));
     const csv = generateCSV(rows, [
+      // ที่อยู่ประกอบแล้วมาก่อน แล้วค่อยตามด้วยส่วนประกอบรายช่อง — ไฟล์ที่เปิดใน spreadsheet
+      // ยังต้องกรอง/เรียงตาม host หรือ database รายช่องได้ จึงไม่ยุบสี่คอลัมน์นั้นทิ้งเหมือนบนหน้าจอ
+      { key: 'dsn', label: t('pages.databasePools.columnConnection') },
       { key: 'name', label: t('common.field.name') },
       { key: 'host', label: t('pages.databasePools.columnHost') },
       { key: 'port', label: t('pages.databasePools.columnPort') },
@@ -174,26 +230,63 @@ const DatabasePoolManagement: React.FC = () => {
 
   const columns = useMemo<ColumnDef<DatabasePool, unknown>[]>(() => [
     {
-      accessorKey: 'name',
-      header: t('common.field.name'),
-      cell: ({ row }) => (
-        <Link to={`/platform/database-pools/${row.original.id}/edit`} className="font-medium hover:underline">
-          {row.original.name}
-        </Link>
-      ),
+      // id คือ 'host' ไม่ใช่ 'connection' เพราะ `handleSortChange` ส่ง id ตรงไปเป็นชื่อฟิลด์ให้
+      // backend เรียง — 'connection' ไม่มีอยู่จริงในตาราง ส่วนการเรียงตาม host คือการจัดกลุ่ม
+      // ตามเครื่อง ซึ่งเป็นสิ่งที่คนดูแลอยากได้จากคอลัมน์นี้อยู่แล้ว
+      id: 'host',
+      accessorFn: (row: DatabasePool) => row.host,
+      header: t('pages.databasePools.columnConnection'),
+      meta: { card: 'title' },
+      cell: ({ row }) => {
+        const pool = row.original;
+        const dsn = poolDsn(pool);
+        return (
+          <div className="min-w-0 space-y-0.5 py-0.5">
+            {/* ต่ำกว่า lg คือโหมดการ์ดของ DataTable ซึ่งห่อเซลล์ title ไว้ใน div เปล่าที่ไม่มี
+                `min-w-0` — flex item จึงยุบไม่ได้ และ `truncate` เอาไม่อยู่: ที่อยู่ทะลุขอบการ์ด
+                ออกไปพร้อมดันปุ่มคัดลอกหลุดจอ แก้จากฝั่งเซลล์ด้วยการยอมให้ตัดคำ (ซึ่งทำให้
+                min-content ของมันเหลือหนึ่งตัวอักษร) แล้วค่อยกลับไป truncate บรรทัดเดียวบนตาราง */}
+            <div className="flex min-w-0 items-start gap-1.5 lg:items-center">
+              <Link
+                to={`/platform/database-pools/${pool.id}/edit`}
+                className="break-all font-mono text-[13px] font-medium hover:underline lg:truncate"
+                title={dsn}
+              >
+                {dsn}
+              </Link>
+              {/* มองเห็นตลอด ไม่ใช่โผล่ตอน hover — จอสัมผัสไม่มี hover ให้โผล่ และปุ่มที่ปรากฏ
+                  ตอนชี้ทำให้ความกว้างของเซลล์ขยับตอนกวาดสายตาไล่ลงมาทีละแถว
+
+                  ไอคอน 14px แต่พื้นที่กดไม่ใช่ 14px — บนการ์ด (ต่ำกว่า lg) เป็น 44px ตามเกณฑ์เป้าสัมผัส
+                  ส่วนบนตารางเป็น 24px ซึ่งกดด้วยเมาส์ได้จริง (ของเดิม ~18px กดพลาดสองครั้งติดกัน
+                  ตอนทดสอบในเบราว์เซอร์) negative margin กันไม่ให้เป้าที่โตขึ้นดันความสูงแถว */}
+              <button
+                type="button"
+                onClick={() => handleCopyDsn(dsn)}
+                aria-label={t('pages.databasePools.copyDsn')}
+                title={t('pages.databasePools.copyDsn')}
+                className="-my-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded text-muted-foreground/60 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring lg:my-0 lg:h-6 lg:w-6"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {/* ชื่อพูดเฉพาะตอนที่มันไม่ได้พูดซ้ำที่อยู่ — ดู isDerivedName */}
+            {!isDerivedName(pool) && (
+              <div className="break-words text-xs text-muted-foreground lg:truncate" title={pool.name}>{pool.name}</div>
+            )}
+            {/* หมายเหตุเคยอยู่แค่ใน CSV ทั้งที่ประโยค "สร้างอัตโนมัติจาก tb_business_unit.db_connection"
+                คือสิ่งที่อธิบายแถวนั้นได้ดีที่สุด และเป็นคำเตือนว่ามันไม่ได้ถูกตั้งขึ้นด้วยมือ */}
+            {pool.note && (
+              <div className="break-words text-[11px] text-muted-foreground/80 lg:truncate" title={pool.note}>{pool.note}</div>
+            )}
+          </div>
+        );
+      },
     },
-    {
-      id: 'endpoint',
-      header: t('pages.databasePools.columnHost'),
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.original.host}:{row.original.port}</span>
-      ),
-    },
-    { accessorKey: 'database', header: t('pages.databasePools.columnDatabase') },
-    { accessorKey: 'username', header: t('common.field.username') },
     {
       accessorKey: 'is_active',
       header: t('common.status.label'),
+      meta: { card: 'badge' },
       cell: ({ row }) => (
         <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
           {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
@@ -230,7 +323,7 @@ const DatabasePoolManagement: React.FC = () => {
         </Can>
       ),
     },
-  ], [navigate, t]);
+  ], [navigate, t, handleCopyDsn]);
 
   return (
     <Layout>

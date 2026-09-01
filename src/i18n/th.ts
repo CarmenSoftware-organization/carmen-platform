@@ -2366,16 +2366,24 @@ export const th: Translations = {
       addPool: 'เพิ่ม Pool',
       searchPlaceholder: 'ค้นหา database pool...',
       loadFailed: 'โหลด database pool ไม่สำเร็จ: {{detail}}',
+      // หน้ารายการยุบ host/port/database/username เป็นที่อยู่เดียวแล้ว สี่คีย์นี้ยังอยู่เพราะ
+      // CSV ยังส่งออกเป็นคอลัมน์แยกรายช่องอยู่
       columnHost: 'โฮสต์',
       columnPort: 'พอร์ต',
       columnDatabase: 'ฐานข้อมูล',
       columnNote: 'หมายเหตุ',
+      columnConnection: 'การเชื่อมต่อ',
+      copyDsn: 'คัดลอกที่อยู่การเชื่อมต่อ',
+      dsnCopied: 'คัดลอกที่อยู่การเชื่อมต่อแล้ว',
+      dsnCopyFailed: 'คัดลอกไม่สำเร็จ เลือกข้อความที่อยู่แล้วคัดลอกเอง',
       actionsAria: 'การกระทำ',
       emptyTitle: 'ยังไม่มี database pool',
       emptyDescription: 'เริ่มต้นด้วยการสร้างโปรไฟล์การเชื่อมต่อฐานข้อมูลที่ใช้ร่วมกันอันแรก',
       loadingAria: 'กำลังโหลด database pool',
       deleteTitle: 'ลบ Database Pool',
-      deleteDescription: 'ต้องการลบ database pool นี้หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',
+      // บอกกฎ 409 DATABASE_POOL_IN_USE ตั้งแต่ตอนถาม เดิมกฎนี้โผล่หลังกดลบไปแล้ว ซึ่งอ่านเป็น
+      // "ระบบพัง" มากกว่าอ่านเป็นกฎ
+      deleteDescription: 'ต้องการลบ database pool นี้หรือไม่ การกระทำนี้ย้อนกลับไม่ได้ และ pool ที่ยังมี business unit ชี้อยู่จะลบไม่ได้ — ระบบจะบอกชื่อ BU เหล่านั้นให้',
       loadFailedOne: 'โหลด database pool ไม่สำเร็จ: {{detail}}',
       loadingOneAria: 'กำลังโหลด database pool',
       singularTitle: 'Database Pool',
