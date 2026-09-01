@@ -1619,6 +1619,34 @@ export const en = {
       // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts
       // (BU_QUOTA_CONFIG.amountLabel) — both literally 'BU quota'.
       buQuota: 'BU quota',
+      // ── ClusterLicenseDetail.tsx — LicenseHealthStrip (แถบสรุปบรรทัดเดียวใต้หัวหน้า) ──
+      // Numbers are pre-computed by the page; these keys only render them. Each layer can be
+      // "unavailable" independently, which is NOT the same as zero — see the strip's docblock.
+      healthBuUsage: '{{used}} / {{cap}} BU',
+      healthBuNoQuota: 'No BU quota',
+      healthSeatsCount: '{{count}} seats',
+      healthContractsCount: '{{count}} contracts',
+      healthOverQuota: '{{count}} BU over quota',
+      healthBuWithoutSeats: '{{count}} BU without seats',
+      healthExpiredContracts: '{{count}} expired',
+      healthExpiringContracts: '{{count}} expiring soon',
+      healthQuotaEndsIn: 'BU quota ends in {{count}} days',
+      healthAllClear: 'Nothing needs attention',
+      healthSomeUnavailable: 'Some figures could not be loaded',
+      healthUnavailableShort: 'unavailable',
+      hideExpired: 'Hide expired',
+      // BuQuotaSection.tsx — the Business units table's subscription timeline cells.
+      noActiveSubscription: 'No active contract',
+      // Tab strip that replaced the 200px scrollspy sidenav.
+      licenseLayersNav: 'License layers',
+      // LicenseCoverageBar — the timeline axis in the seats + subscriptions tables. `text` is
+      // an already-formatted date range assembled by the caller, not a raw date.
+      coverageBarLabel: 'Coverage: {{text}}',
+      coverageNone: 'No coverage',
+      // Inline replacements for the hero-sized EmptyState the per-BU cards used to render.
+      seatsNoLicenseInline: 'No seat license',
+      activeLicensesCount: '{{count}} active',
+      expiredDaysAgo: 'expired {{count}} days ago',
       // licenseKindConfig.ts (BU_QUOTA_CONFIG.newPageTitle) + BuQuotaSection.tsx (the
       // "Add BU quota license" button — hardcoded there, not read from config).
       addBuQuotaLicense: 'Add BU quota license',
