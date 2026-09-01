@@ -1301,6 +1301,23 @@ export const th: Translations = {
       deleteTitle: 'ลบกลุ่มนี้?',
       deleteBody: 'กลุ่มและรายการ feature ข้างในจะถูกลบ ย้อนกลับไม่ได้',
       parentAutoAdded: 'การเลือก feature จะได้สิทธิ์ระดับ module ติดมาด้วย รายการที่บันทึกจึงยาวกว่าที่ติ๊กไว้ได้',
+      // ── ชั้นวางชุดสิทธิ์ (FeatureGroupCard) ──
+      featuresOfTotal: '{{count}} จาก {{total}} สิทธิ์',
+      featuresOnly: '{{count}} สิทธิ์',
+      ordinalHint: 'ลำดับ {{n}} — ตำแหน่งของชุดนี้บนฟอร์มขาย',
+      ordinalDuplicateHint: 'ลำดับ {{n}} ซ้ำกับกลุ่มอื่น — ลำดับบนฟอร์มขายยังไม่ถูกกำหนด',
+      inUseCount: '{{count}} สัญญาใช้ชุดนี้อยู่',
+      inUseCountOne: '1 สัญญาใช้ชุดนี้อยู่',
+      inUseNone: 'ยังไม่มีสัญญาใช้ชุดนี้',
+      showingCount: '{{shown}} จาก {{total}} กลุ่ม',
+      deleteBodyInUse: 'มี {{count}} สัญญาที่ยังใช้งานผูกชุดนี้อยู่ ตรวจสัญญาเหล่านั้นก่อนลบ — กลุ่มและรายการ feature ข้างในจะถูกลบ ย้อนกลับไม่ได้',
+      // ── หน้าแก้ไข ──
+      inUseWarningTitle: 'มี {{count}} สัญญาใช้ชุดนี้อยู่',
+      inUseWarningTitleOne: 'มี 1 สัญญาใช้ชุดนี้อยู่',
+      inUseWarningBody: 'สัญญาเหล่านั้นอ้างกลุ่มนี้ การเพิ่มหรือถอด feature จึงกระทบทุกฉบับพร้อมกัน ไม่ใช่แค่กลุ่ม',
+      deactivateWarning: 'ปิดแล้วชุดนี้จะหายไปจากฟอร์มขาย ตรวจ {{count}} สัญญาที่ผูกไว้แล้วก่อน',
+      sortOrderHint: 'ตำแหน่งของชุดนี้บนฟอร์มขาย เลขน้อยขึ้นก่อน',
+      activeHint: 'ยังหยิบไปใส่สัญญาใหม่ได้',
     },
     licenses: {
       buQuota: 'โควตา BU',
