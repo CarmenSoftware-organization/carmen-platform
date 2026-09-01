@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { ConfigCardShell, ConfigField } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { LinkConfig, PlatformConfig } from '../../types';
@@ -23,6 +22,8 @@ interface LinkConfigCardProps {
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: () => void | Promise<void>;
+  /** แถบ audit ท้ายการ์ด — หน้าเพจเป็นเจ้าของข้อมูล */
+  footer?: React.ReactNode;
 }
 
 interface LinkFormData {
@@ -48,6 +49,7 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
   onRequestEdit,
   onCancelEdit,
   onSaved,
+  footer,
 }) => {
   const { t } = useI18n();
   /**
@@ -145,55 +147,50 @@ export const LinkConfigCard: React.FC<LinkConfigCardProps> = ({
       onRequestEdit={onRequestEdit}
       onSave={handleSave}
       onCancel={handleCancel}
+      footer={footer}
     >
-        <div className="space-y-2">
-          <Label htmlFor={`${configKey}-base-url`}>{t('pages.platformConfig.baseUrl')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id={`${configKey}-base-url`}
-                value={formData.base_url}
-                onChange={(e) => handleChange('base_url', e.target.value)}
-                onBlur={() => handleBlur('base_url')}
-                className={fieldErrors.base_url ? 'border-destructive' : ''}
-                placeholder={urlExample}
-              />
-              {fieldErrors.base_url && (
-                <p className="text-xs text-destructive">{fieldErrors.base_url}</p>
-              )}
-            </>
-          ) : (
-            <ReadOnlyText value={form.base_url} />
-          )}
-          <p className="text-xs text-muted-foreground">
-            {t('pages.platformConfig.baseUrlHint1')}{' '}
-            <code className="font-mono">?token=…</code> {t('pages.platformConfig.baseUrlHint2')}{' '}
-            <code className="font-mono">{urlExample}</code>
-          </p>
-        </div>
+      <ConfigField
+        label={t('pages.platformConfig.baseUrl')}
+        htmlFor={`${configKey}-base-url`}
+        isEditing={isEditing}
+        value={form.base_url}
+        mono
+        error={fieldErrors.base_url}
+        hint={
+          <>
+            {t('pages.platformConfig.baseUrlHint1')} <code className="font-mono">?token=…</code>{' '}
+            {t('pages.platformConfig.baseUrlHint2')} <code className="font-mono">{urlExample}</code>
+          </>
+        }
+      >
+        <Input
+          id={`${configKey}-base-url`}
+          value={formData.base_url}
+          onChange={(e) => handleChange('base_url', e.target.value)}
+          onBlur={() => handleBlur('base_url')}
+          className={fieldErrors.base_url ? 'border-destructive' : ''}
+          placeholder={urlExample}
+        />
+      </ConfigField>
 
-        <div className="space-y-2">
-          <Label htmlFor={`${configKey}-expiry-hours`}>{t('pages.platformConfig.expiryHours')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id={`${configKey}-expiry-hours`}
-                type="number"
-                min={1}
-                max={720}
-                value={formData.expiry_hours}
-                onChange={(e) => handleChange('expiry_hours', e.target.value)}
-                onBlur={() => handleBlur('expiry_hours')}
-                className={fieldErrors.expiry_hours ? 'border-destructive' : ''}
-              />
-              {fieldErrors.expiry_hours && (
-                <p className="text-xs text-destructive">{fieldErrors.expiry_hours}</p>
-              )}
-            </>
-          ) : (
-            <ReadOnlyText value={t('pages.platformConfig.hoursValue', { count: form.expiry_hours })} />
-          )}
-        </div>
+      <ConfigField
+        label={t('pages.platformConfig.expiryHours')}
+        htmlFor={`${configKey}-expiry-hours`}
+        isEditing={isEditing}
+        value={t('pages.platformConfig.hoursValue', { count: form.expiry_hours })}
+        error={fieldErrors.expiry_hours}
+      >
+        <Input
+          id={`${configKey}-expiry-hours`}
+          type="number"
+          min={1}
+          max={720}
+          value={formData.expiry_hours}
+          onChange={(e) => handleChange('expiry_hours', e.target.value)}
+          onBlur={() => handleBlur('expiry_hours')}
+          className={fieldErrors.expiry_hours ? 'border-destructive' : ''}
+        />
+      </ConfigField>
     </ConfigCardShell>
   );
 };

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { ConfigCardShell, ConfigField } from './ConfigCardShell';
 import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
@@ -16,6 +15,8 @@ interface InvitationLimitsCardProps {
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: () => void | Promise<void>;
+  /** แถบ audit ท้ายการ์ด — หน้าเพจเป็นเจ้าของข้อมูล */
+  footer?: React.ReactNode;
 }
 
 interface LimitsFormData {
@@ -48,6 +49,7 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
   onRequestEdit,
   onCancelEdit,
   onSaved,
+  footer,
 }) => {
   const { t } = useI18n();
   const [formData, setFormData] = useState<LimitsFormData>(() => toForm(config));
@@ -120,63 +122,59 @@ export const InvitationLimitsCard: React.FC<InvitationLimitsCardProps> = ({
       onRequestEdit={onRequestEdit}
       onSave={handleSave}
       onCancel={handleCancel}
+      footer={footer}
+      note={
+        // กล่องเตือนอยู่นอกรายการฟิลด์ — มันอธิบายทั้งการ์ด ไม่ใช่ค่าใดค่าหนึ่ง และเป็น
+        // ข้อเดียวในหน้านี้ที่ต้องอ่านก่อน "ลด" ค่าลง จึงต้องเห็นทั้งตอนอ่านและตอนแก้
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-muted-foreground">
+          <p>
+            {t('pages.platformConfig.limitsNote1')}{' '}
+            <strong>{t('pages.platformConfig.limitsNoteStrong1')}</strong>
+            {t('pages.platformConfig.limitsNote2')}
+          </p>
+          <p className="mt-2">
+            {t('pages.platformConfig.limitsNote3')}{' '}
+            <strong>{t('pages.platformConfig.limitsNoteStrong2')}</strong>{' '}
+            {t('pages.platformConfig.limitsNote4')}
+          </p>
+        </div>
+      }
     >
-      <div className="space-y-2">
-        <Label htmlFor="invitation-max-per-admin-per-hour">{t('pages.platformConfig.perAdminPerHour')}</Label>
-        {isEditing ? (
-          <>
-            <Input
-              id="invitation-max-per-admin-per-hour"
-              type="number"
-              min={1}
-              value={formData.max_per_admin_per_hour}
-              onChange={(e) => handleChange('max_per_admin_per_hour', e.target.value)}
-              onBlur={() => handleBlur('max_per_admin_per_hour')}
-              className={fieldErrors.max_per_admin_per_hour ? 'border-destructive' : ''}
-            />
-            {fieldErrors.max_per_admin_per_hour && (
-              <p className="text-xs text-destructive">{fieldErrors.max_per_admin_per_hour}</p>
-            )}
-          </>
-        ) : (
-          <ReadOnlyText value={t('pages.platformConfig.invitationsValue', { count: form.max_per_admin_per_hour })} />
-        )}
-      </div>
+      <ConfigField
+        label={t('pages.platformConfig.perAdminPerHour')}
+        htmlFor="invitation-max-per-admin-per-hour"
+        isEditing={isEditing}
+        value={t('pages.platformConfig.invitationsValue', { count: form.max_per_admin_per_hour })}
+        error={fieldErrors.max_per_admin_per_hour}
+      >
+        <Input
+          id="invitation-max-per-admin-per-hour"
+          type="number"
+          min={1}
+          value={formData.max_per_admin_per_hour}
+          onChange={(e) => handleChange('max_per_admin_per_hour', e.target.value)}
+          onBlur={() => handleBlur('max_per_admin_per_hour')}
+          className={fieldErrors.max_per_admin_per_hour ? 'border-destructive' : ''}
+        />
+      </ConfigField>
 
-      <div className="space-y-2">
-        <Label htmlFor="invitation-max-per-cluster-per-day">{t('pages.platformConfig.perClusterPerDay')}</Label>
-        {isEditing ? (
-          <>
-            <Input
-              id="invitation-max-per-cluster-per-day"
-              type="number"
-              min={1}
-              value={formData.max_per_cluster_per_day}
-              onChange={(e) => handleChange('max_per_cluster_per_day', e.target.value)}
-              onBlur={() => handleBlur('max_per_cluster_per_day')}
-              className={fieldErrors.max_per_cluster_per_day ? 'border-destructive' : ''}
-            />
-            {fieldErrors.max_per_cluster_per_day && (
-              <p className="text-xs text-destructive">{fieldErrors.max_per_cluster_per_day}</p>
-            )}
-          </>
-        ) : (
-          <ReadOnlyText value={t('pages.platformConfig.invitationsValue', { count: form.max_per_cluster_per_day })} />
-        )}
-      </div>
-
-      <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-muted-foreground">
-        <p>
-          {t('pages.platformConfig.limitsNote1')}{' '}
-          <strong>{t('pages.platformConfig.limitsNoteStrong1')}</strong>
-          {t('pages.platformConfig.limitsNote2')}
-        </p>
-        <p className="mt-2">
-          {t('pages.platformConfig.limitsNote3')}{' '}
-          <strong>{t('pages.platformConfig.limitsNoteStrong2')}</strong>{' '}
-          {t('pages.platformConfig.limitsNote4')}
-        </p>
-      </div>
+      <ConfigField
+        label={t('pages.platformConfig.perClusterPerDay')}
+        htmlFor="invitation-max-per-cluster-per-day"
+        isEditing={isEditing}
+        value={t('pages.platformConfig.invitationsValue', { count: form.max_per_cluster_per_day })}
+        error={fieldErrors.max_per_cluster_per_day}
+      >
+        <Input
+          id="invitation-max-per-cluster-per-day"
+          type="number"
+          min={1}
+          value={formData.max_per_cluster_per_day}
+          onChange={(e) => handleChange('max_per_cluster_per_day', e.target.value)}
+          onBlur={() => handleBlur('max_per_cluster_per_day')}
+          className={fieldErrors.max_per_cluster_per_day ? 'border-destructive' : ''}
+        />
+      </ConfigField>
     </ConfigCardShell>
   );
 };

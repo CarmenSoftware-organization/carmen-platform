@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
-import { AuditMeta } from '../../components/AuditMeta';
+import { Badge } from '../../components/ui/badge';
+import { ConfigCardShell, ConfigField } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
-import { latestActor } from '../../utils/audit';
 import type { NotificationEmailConfig, PlatformConfig } from '../../types';
 import { useI18n } from '../../hooks/useI18n';
 
@@ -17,6 +15,8 @@ interface NotificationEmailConfigCardProps {
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: () => void | Promise<void>;
+  /** แถบ audit ท้ายการ์ด — หน้าเพจเป็นเจ้าของข้อมูล เหมือนการ์ดอื่นทุกใบ */
+  footer?: React.ReactNode;
 }
 
 interface NotificationEmailFormData {
@@ -71,12 +71,12 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
   onRequestEdit,
   onCancelEdit,
   onSaved,
+  footer,
 }) => {
   const { t } = useI18n();
   const [formData, setFormData] = useState<NotificationEmailFormData>(() => toForm(config));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const latest = latestActor(config);
 
   /**
    * ตรวจฝั่ง FE เพื่อ UX เท่านั้น — backend ตัดสินสุดท้ายด้วย z.string().email() เสมอ
@@ -155,105 +155,92 @@ export const NotificationEmailConfigCard: React.FC<NotificationEmailConfigCardPr
       onRequestEdit={onRequestEdit}
       onSave={handleSave}
       onCancel={handleCancel}
+      footer={footer}
     >
-        <div className="space-y-2">
-          <Label htmlFor="notification-email-enabled">{t('pages.platformConfig.sending')}</Label>
-          {isEditing ? (
-            <label className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
-              <input
-                id="notification-email-enabled"
-                type="checkbox"
-                className="h-4 w-4"
-                checked={formData.enabled}
-                disabled={saving}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, enabled: e.target.checked }))
-                }
-              />
-              {t('pages.platformConfig.sendInternalEmail')}
-            </label>
-          ) : (
-            <ReadOnlyText value={form.enabled ? t('pages.platformConfig.on') : t('pages.platformConfig.off')} />
-          )}
-          <p className="text-xs text-muted-foreground">
-            {t('pages.platformConfig.sendingHint1')}{' '}
-            <code className="font-mono">SMTP_ENABLED</code>
+      <ConfigField
+        label={t('pages.platformConfig.sending')}
+        htmlFor="notification-email-enabled"
+        isEditing={isEditing}
+        value={
+          <Badge variant={form.enabled ? 'success' : 'secondary'}>
+            {form.enabled ? t('pages.platformConfig.on') : t('pages.platformConfig.off')}
+          </Badge>
+        }
+        hint={
+          <>
+            {t('pages.platformConfig.sendingHint1')} <code className="font-mono">SMTP_ENABLED</code>
             {t('pages.platformConfig.sendingHint2')}
-          </p>
-        </div>
+          </>
+        }
+      >
+        <label className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
+          <input
+            id="notification-email-enabled"
+            type="checkbox"
+            className="h-4 w-4"
+            checked={formData.enabled}
+            disabled={saving}
+            onChange={(e) => setFormData((prev) => ({ ...prev, enabled: e.target.checked }))}
+          />
+          {t('pages.platformConfig.sendInternalEmail')}
+        </label>
+      </ConfigField>
 
-        <div className="space-y-2">
-          <Label htmlFor="notification-email-recipients">{t('pages.platformConfig.recipients')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id="notification-email-recipients"
-                value={formData.recipients}
-                onChange={(e) => handleChange('recipients', e.target.value)}
-                onBlur={() => handleBlur('recipients')}
-                className={fieldErrors.recipients ? 'border-destructive' : ''}
-                placeholder={t('pages.platformConfig.recipientsPlaceholder')}
-              />
-              {fieldErrors.recipients && (
-                <p className="text-xs text-destructive">{fieldErrors.recipients}</p>
-              )}
-            </>
-          ) : (
-            <ReadOnlyText value={form.recipients} />
-          )}
-          <p className="text-xs text-muted-foreground">
-            {t('pages.platformConfig.recipientsHint')}
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="notification-email-cc">{t('pages.platformConfig.cc')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id="notification-email-cc"
-                value={formData.cc}
-                onChange={(e) => handleChange('cc', e.target.value)}
-                onBlur={() => handleBlur('cc')}
-                className={fieldErrors.cc ? 'border-destructive' : ''}
-                placeholder={t('pages.platformConfig.ccPlaceholder')}
-              />
-              {fieldErrors.cc && <p className="text-xs text-destructive">{fieldErrors.cc}</p>}
-            </>
-          ) : (
-            <ReadOnlyText value={form.cc} />
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="notification-email-subject-prefix">{t('pages.platformConfig.subjectPrefix')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id="notification-email-subject-prefix"
-                value={formData.subject_prefix}
-                onChange={(e) => handleChange('subject_prefix', e.target.value)}
-                onBlur={() => handleBlur('subject_prefix')}
-                className={fieldErrors.subject_prefix ? 'border-destructive' : ''}
-                placeholder="[Carmen]"
-              />
-              {fieldErrors.subject_prefix && (
-                <p className="text-xs text-destructive">{fieldErrors.subject_prefix}</p>
-              )}
-            </>
-          ) : (
-            <ReadOnlyText value={form.subject_prefix} />
-          )}
-          <p className="text-xs text-muted-foreground">
-            {t('pages.platformConfig.subjectPrefixHint')}
-          </p>
-        </div>
-
-        <AuditMeta
-          variant="compact"
-          verbKey={latest?.verbKey}
-          actor={latest?.actor}
+      <ConfigField
+        label={t('pages.platformConfig.recipients')}
+        htmlFor="notification-email-recipients"
+        isEditing={isEditing}
+        value={form.recipients}
+        mono
+        error={fieldErrors.recipients}
+        hint={t('pages.platformConfig.recipientsHint')}
+      >
+        <Input
+          id="notification-email-recipients"
+          value={formData.recipients}
+          onChange={(e) => handleChange('recipients', e.target.value)}
+          onBlur={() => handleBlur('recipients')}
+          className={fieldErrors.recipients ? 'border-destructive' : ''}
+          placeholder={t('pages.platformConfig.recipientsPlaceholder')}
         />
+      </ConfigField>
+
+      <ConfigField
+        label={t('pages.platformConfig.cc')}
+        htmlFor="notification-email-cc"
+        isEditing={isEditing}
+        value={form.cc}
+        mono
+        error={fieldErrors.cc}
+      >
+        <Input
+          id="notification-email-cc"
+          value={formData.cc}
+          onChange={(e) => handleChange('cc', e.target.value)}
+          onBlur={() => handleBlur('cc')}
+          className={fieldErrors.cc ? 'border-destructive' : ''}
+          placeholder={t('pages.platformConfig.ccPlaceholder')}
+        />
+      </ConfigField>
+
+      <ConfigField
+        label={t('pages.platformConfig.subjectPrefix')}
+        htmlFor="notification-email-subject-prefix"
+        isEditing={isEditing}
+        value={form.subject_prefix}
+        mono
+        error={fieldErrors.subject_prefix}
+        hint={t('pages.platformConfig.subjectPrefixHint')}
+      >
+        <Input
+          id="notification-email-subject-prefix"
+          value={formData.subject_prefix}
+          onChange={(e) => handleChange('subject_prefix', e.target.value)}
+          onBlur={() => handleBlur('subject_prefix')}
+          className={fieldErrors.subject_prefix ? 'border-destructive' : ''}
+          placeholder="[Carmen]"
+        />
+      </ConfigField>
     </ConfigCardShell>
   );
 };
