@@ -65,12 +65,12 @@ export function DbObjectTree({
   const keyOf = (type: string, o: DbObject) => `${type}:${o.schema}.${o.name}`;
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2">
         <Database className="text-muted-foreground size-4" />
         <span className="text-sm font-semibold">{t('pages.sqlWorkbench.databaseObjects')}</span>
       </div>
-      <div className="border-b p-2">
+      <div className="shrink-0 border-b p-2">
         <div className="relative">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
           <input
@@ -83,7 +83,7 @@ export function DbObjectTree({
           />
         </div>
       </div>
-      <div className="flex-1 overflow-auto py-1 text-sm">
+      <div className="min-h-0 flex-1 overflow-auto py-1 text-sm">
         {isLoading ? (
           <div
             role="status"

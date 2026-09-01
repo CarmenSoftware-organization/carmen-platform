@@ -3028,6 +3028,13 @@ export const en = {
       typeLabel: 'Type',
       editingPrefix: 'Editing:',
       sqlEditor: 'SQL Editor',
+      // แถบเครื่องมือของตัวแก้ไข — เดิมเป็นแถบสถานะแถวล่างที่ไม่ได้แปล
+      metaLine: '{{count}} line',
+      metaLines: '{{count}} lines',
+      metaStatement: '{{count}} statement',
+      metaStatements: '{{count}} statements',
+      nothingToRun: 'Nothing to run — the editor is empty',
+      resultsIdle: 'Run a query to see results here',
     },
     // ── slice 9c: Email Settings ──
     // เช่นเดียวกับ platformConfig — หน้านี้เป็นไทยล้วนมาก่อน อังกฤษเป็นคำใหม่ทั้งหมด
