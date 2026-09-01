@@ -57,8 +57,10 @@ function Legend({ color, label, value }: { color: string; label: string; value: 
 function Faces({ faces, total }: { faces: FaceItem[]; total: number }) {
   const { t } = useI18n();
   const extra = Math.max(0, total - faces.length);
+  // ml-auto: เดิมบาร์ที่ยืด flex-1 เป็นตัวดันกลุ่มใบหน้าไปชิดขวาโดยบังเอิญ พอคุมความกว้างบาร์
+  // แล้วต้องดันตรง ๆ ไม่งั้นทั้งแถบกองอยู่ครึ่งซ้ายและเหลือที่ว่างครึ่งขวาทั้งแผง
   return (
-    <div className="shrink-0">
+    <div className="shrink-0 sm:ml-auto">
       <div className="text-muted-foreground mb-2 text-[11px] font-bold uppercase tracking-[0.14em]">
         {t('pages.users.recentlyAdded')}
       </div>
@@ -80,8 +82,11 @@ function Faces({ faces, total }: { faces: FaceItem[]; total: number }) {
             )}
           </Avatar>
         ))}
+        {/* ชิปนี้เคยอยู่ในกองที่ซ้อนกันด้วย -space-x-2 ทำให้ avatar ตัวก่อนหน้าทับเครื่องหมาย
+            "+" จนอ่านเป็น "·38" และ bg-muted ก็จางเกินกว่าจะแยกออกจากพื้นการ์ด — ดึงออกจาก
+            กอง (ml-3) และให้เส้นขอบของตัวเอง มันเป็นตัวนับ ไม่ใช่ใบหน้าอีกใบ */}
         {extra > 0 && (
-          <span className="ring-card bg-muted text-muted-foreground grid h-8 w-8 place-items-center rounded-full text-[11px] font-semibold tabular-nums ring-2">
+          <span className="border-border bg-muted text-muted-foreground ml-3 grid h-8 min-w-8 place-items-center rounded-full border px-1.5 text-[11px] font-semibold tabular-nums">
             +{extra}
           </span>
         )}
@@ -132,7 +137,10 @@ export function UserDirectorySummary({ summary, loading, error = false, onRetry 
               <div className="text-muted-foreground mt-1 text-[11px] font-medium uppercase tracking-[0.1em]">{t('pages.users.usersCountLabel')}</div>
             </div>
 
-            <div className="min-w-[12rem] flex-1">
+            {/* flex-1 เปล่า ๆ ยืดบาร์ออกไปเท่าที่การ์ดมีที่ว่าง (~620px บนจอกว้าง) ทั้งที่
+                สัดส่วน active/inactive อ่านจบตั้งแต่ 300px แรก — max-w คุมไว้ แล้วปล่อยที่
+                เหลือให้กลุ่มใบหน้าเข้ามาใกล้ขึ้น */}
+            <div className="min-w-[12rem] max-w-sm flex-1">
               <div
                 className="bg-muted flex h-3 overflow-hidden rounded-full"
                 role="img"
