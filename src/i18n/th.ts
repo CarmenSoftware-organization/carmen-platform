@@ -2393,8 +2393,6 @@ export const th: Translations = {
       backToList: 'กลับไปหน้า database pool',
       newTitle: 'Database Pool ใหม่',
       newSubtitle: 'สร้างโปรไฟล์การเชื่อมต่อฐานข้อมูลที่ใช้ร่วมกัน',
-      connectionDetails: 'รายละเอียดการเชื่อมต่อ',
-      connectionDetailsDescription: 'ชื่อ ข้อมูลรับรอง และปลายทางของโปรไฟล์การเชื่อมต่อนี้',
       namePlaceholder: 'tenant-primary',
       descriptionPlaceholder: 'คำอธิบาย (ไม่บังคับ)',
       hostPlaceholder: 'tenant-db.internal',
