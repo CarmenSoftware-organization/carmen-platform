@@ -5,6 +5,7 @@ import { cn } from '../../../lib/utils';
 import { useI18n } from '../../../hooks/useI18n';
 import type { TFunction } from '../../../i18n/types';
 import type { BuLicenseStatus, ClusterLicenseStatus } from '../../../types';
+import { IdentityRow, TermRail } from '../plate/plateParts';
 import { termLabel } from '../subscriptionCreate/SubscriptionDraftPlate';
 import { contractTerm } from '../subscriptionCreate/subscriptionTerm';
 
@@ -19,11 +20,6 @@ export type LicenseStatus = BuLicenseStatus | ClusterLicenseStatus;
 export interface StatusBadgeInfo {
   variant: 'success' | 'secondary' | 'destructive';
   label: string;
-}
-
-/** ปลายรางด้านหนึ่ง — ท่าเดียวกับ `SubscriptionDraftPlate.TermEnd` (bg-muted บนการ์ดคือ 1.07:1 มองไม่เห็น) */
-function TermEnd({ set }: { set: boolean }) {
-  return <span className={cn('size-2 shrink-0 rounded-full', set ? 'bg-primary' : 'bg-muted-foreground/40')} />;
 }
 
 interface Remaining {
@@ -67,17 +63,6 @@ const TONE_CLASS: Record<Remaining['tone'], string> = {
   warning: 'text-warning',
   destructive: 'text-destructive',
 };
-
-/** หนึ่งบรรทัดของบล็อกตัวตน — ชื่ออ่านง่ายเป็นตัวหลัก id ดิบเป็นบรรทัดรองที่จางลงหนึ่งขั้น */
-function IdentityRow({ label, value, id }: { label: string; value: string; id?: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="truncate text-sm">{value}</p>
-      {id && id !== value && <p className="text-muted-foreground/70 truncate font-mono text-[11px]">{id}</p>}
-    </div>
-  );
-}
 
 export interface IssuedLicensePlateProps {
   /** 'Seats' / 'BU quota' — แปลแล้วจาก `AMOUNT_LABEL_KEYS` ของหน้า */
@@ -144,36 +129,21 @@ export function IssuedLicensePlate({
         </div>
       </div>
 
-      {/* รางกับวันที่แยกเป็นสองแถว ไม่ใช่แถวเดียว — ที่ 20rem วันที่สิบตัวอักษรสองตัวกับความยาว
-       *  ตรงกลางจะเบียดกันจนวันที่ตัดกลางค่า ("2026-09-" ขึ้นบรรทัดใหม่เป็น "01") */}
       {/* รางถูกจำกัดความกว้าง — บนจอกว้างการยืดเต็มการ์ด (~800px) ทำให้มันอ่านเป็นเส้นคั่น
        *  ไม่ใช่ช่วงเวลา และดันความยาวตรงกลางออกห่างจากปลายทั้งสองจนไม่เห็นว่าเกี่ยวกัน */}
-      <div className="max-w-xl space-y-1.5">
-        <div className="flex items-center gap-2">
-          <TermEnd set={!!startDate} />
-          <span className="bg-border h-px flex-1" />
-          <span
-            className={cn(
-              'shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap',
-              term || noExpiry ? 'text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {noExpiry
-              ? t('common.state.noExpiry')
-              : term
-                ? termLabel(term, t)
-                : t('pages.subscriptions.noPeriodYet')}
-          </span>
-          <span className="bg-border h-px flex-1" />
-          <TermEnd set={!noExpiry && !!endDate} />
-        </div>
-        <div className="flex items-baseline justify-between gap-2 font-mono text-xs whitespace-nowrap tabular-nums">
-          <span className={cn(!startDate && 'text-muted-foreground/60')}>{startDate || '—'}</span>
-          <span className={cn((noExpiry || !endDate) && 'text-muted-foreground/60')}>
-            {noExpiry ? '∞' : endDate || '—'}
-          </span>
-        </div>
-      </div>
+      <TermRail
+        className="max-w-xl"
+        startDate={startDate}
+        endDate={noExpiry ? null : endDate}
+        label={
+          noExpiry
+            ? t('common.state.noExpiry')
+            : term
+              ? termLabel(term, t)
+              : t('pages.subscriptions.noPeriodYet')
+        }
+        labelMuted={!noExpiry && !term}
+      />
 
       <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
         <IdentityRow label={ownerTypeLabel} value={owner.label} id={owner.id} />

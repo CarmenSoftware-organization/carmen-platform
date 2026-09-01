@@ -5,6 +5,7 @@ import { cn } from '../../../lib/utils';
 import { useI18n } from '../../../hooks/useI18n';
 import type { TFunction } from '../../../i18n/types';
 import type { BusinessUnit, Cluster } from '../../../types';
+import { TermRail } from '../plate/plateParts';
 import { contractTerm, type Term } from './subscriptionTerm';
 
 /**
@@ -24,7 +25,20 @@ export function termLabel(term: Term, t: TFunction): string {
   if (months === 0) {
     return days === 1 ? t('pages.subscriptions.coversOneDay') : t('pages.subscriptions.coversDays', { count: days });
   }
-  return t('pages.subscriptions.coversMonthsAndDays', { months, days });
+  // เศษวันไม่ควรทำให้ส่วนที่เป็นปีกลายเป็นเดือน: สัญญา 2026-08-18 → 2036-08-18 เคยอ่านว่า
+  // "ครอบคลุม 120 เดือน 1 วัน" ซึ่งเป็นเลขที่ถูกต้องแต่ไม่มีใครอ่านออกว่าคือสิบปี
+  //
+  // เกณฑ์เป็น >= 24 ไม่ใช่ >= 12 เพื่อเลี่ยง "1 ปี N วัน" ที่ในภาษาอังกฤษต้องเขียนว่า "1 year"
+  // ไม่ใช่ "1 years" — หนึ่งปีกับเศษจึงยังอ่านเป็น "12 เดือน N วัน" ซึ่งเป็นประโยคที่สมบูรณ์อยู่แล้ว
+  if (months >= 24 && months % 12 === 0) {
+    const years = months / 12;
+    return days === 1
+      ? t('pages.subscriptions.coversYearsAndOneDay', { years })
+      : t('pages.subscriptions.coversYearsAndDays', { years, days });
+  }
+  return days === 1
+    ? t('pages.subscriptions.coversMonthsAndOneDay', { months })
+    : t('pages.subscriptions.coversMonthsAndDays', { months, days });
 }
 
 export interface SubscriptionDraftPlateProps {
@@ -35,16 +49,6 @@ export interface SubscriptionDraftPlateProps {
   /** `'YYYY-MM-DD'`, straight off the form. */
   startDate: string;
   endDate: string;
-}
-
-/**
- * One end of the term rail.
- *
- * `bg-muted` on a card is a 1.07:1 non-colour — the empty-tick trap this repo has already paid
- * for once. An endpoint that is not set yet uses the foreground at 40%, which is visibly a dot.
- */
-function TermEnd({ set }: { set: boolean }) {
-  return <span className={cn('size-2 shrink-0 rounded-full', set ? 'bg-primary' : 'bg-muted-foreground/40')} />;
 }
 
 /**
@@ -84,32 +88,13 @@ export function SubscriptionDraftPlate({ cluster, bu, startDate, endDate }: Subs
         </div>
       </div>
 
-      {/* The rail and the dates are two rows, not one. Side by side they fit at 20rem only until
-       *  the term is filled in, at which point two ten-character dates and the length between
-       *  them stop fitting and both dates wrap mid-value — "2026-09-" over "01". Stacked, each
-       *  row has the whole column, and neither can break the other. */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <TermEnd set={!!startDate} />
-          <span className="bg-border h-px flex-1" />
-          <span
-            className={cn(
-              'shrink-0 rounded-full border px-2 py-0.5 text-xs whitespace-nowrap',
-              term ? 'text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {/* The reason a range is invalid stays under the field that produced it — repeating
-             *  it up here would make one mistake shout twice. The plate only declines to draw it. */}
-            {term ? termLabel(term, t) : t('pages.subscriptions.noPeriodYet')}
-          </span>
-          <span className="bg-border h-px flex-1" />
-          <TermEnd set={!!endDate} />
-        </div>
-        <div className="flex items-baseline justify-between gap-2 font-mono text-xs tabular-nums whitespace-nowrap">
-          <span className={cn(!startDate && 'text-muted-foreground/60')}>{startDate || '—'}</span>
-          <span className={cn(!endDate && 'text-muted-foreground/60')}>{endDate || '—'}</span>
-        </div>
-      </div>
+      {/* ความยาวของสัญญาที่กำลังจะออก — เหตุผลว่าทำไมรางกับวันที่ต้องเป็นสองแถว อยู่ใน `TermRail` */}
+      <TermRail
+        startDate={startDate}
+        endDate={endDate}
+        label={term ? termLabel(term, t) : t('pages.subscriptions.noPeriodYet')}
+        labelMuted={!term}
+      />
 
       <div className="space-y-1.5 border-t pt-4">
         <div className="flex items-center gap-2 text-xs">

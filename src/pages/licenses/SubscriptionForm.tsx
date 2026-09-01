@@ -21,7 +21,8 @@ import { fetchAllPages } from '../../utils/fetchAllPages';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../hooks/useI18n';
-import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
+import { IssuedSubscriptionPlate } from './subscriptionEdit/IssuedSubscriptionPlate';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { GroupSelectionCard } from './subscriptionEdit/GroupSelectionCard';
 import { SubscriptionCreateForm } from './subscriptionCreate/SubscriptionCreateForm';
@@ -94,6 +95,9 @@ const SubscriptionForm: React.FC = () => {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('subscription.manage');
   const { t } = useI18n();
+  // เกณฑ์ "ใกล้หมดอายุ" มาจากหน้าตั้งค่า (#227) ไม่ใช่ค่าคงที่ 30 ในโค้ด — แผ่นที่ระบายสีด้วยเลข
+  // ของตัวเองจะขัดกับป้ายในตารางที่มาจากสัญญาใบเดียวกัน
+  const { thresholds } = useExpiryThresholds();
 
   const [formData, setFormData] = useState<SubscriptionFormData>(() => ({
     ...emptyFormData,
@@ -193,12 +197,12 @@ const SubscriptionForm: React.FC = () => {
 
   useEffect(() => { void load(); }, [load]);
 
-  // BU roster for the subscription's cluster — feeds Task B4's picker in both modes (a
-  // cluster picked while creating, or the cluster an existing subscription already belongs
-  // to). Refetches whenever the selected cluster changes.
+  // BU roster ของคลัสเตอร์ที่เลือก — ป้อน picker ของ **หน้าสร้าง** เท่านั้น สัญญาที่มีอยู่แล้ว
+  // ย้าย BU ไม่ได้ และตั้งแต่ตัวตนย้ายขึ้น `IssuedSubscriptionPlate` ก็ไม่มีอะไรบนหน้าแก้ไขที่ใช้
+  // รายชื่อนี้อีก — ไล่ยิงได้ถึง 10 หน้าเพื่อไม่ให้ใครอ่านคือค่าเปล่า ๆ ทุกครั้งที่เปิดหน้า
   useEffect(() => {
     const clusterId = formData.cluster_id;
-    if (!clusterId) { setClusterBus([]); return; }
+    if (!isNew || !clusterId) { setClusterBus([]); return; }
     let cancelled = false;
     setClusterBusLoading(true);
     fetchAllClusterBus(clusterId)
@@ -206,7 +210,7 @@ const SubscriptionForm: React.FC = () => {
       .catch((err) => { if (!cancelled) devLog('Failed to load cluster business units:', err); })
       .finally(() => { if (!cancelled) setClusterBusLoading(false); });
     return () => { cancelled = true; };
-  }, [formData.cluster_id]);
+  }, [formData.cluster_id, isNew]);
 
   // The end-must-follow-start rule, checked while the dates are being picked rather than only
   // once Create is pressed. It writes into the same `fieldErrors.end_date` slot the submit gate
@@ -441,11 +445,6 @@ const SubscriptionForm: React.FC = () => {
     );
   }
 
-  const navItems: NavItem[] = [
-    { id: 'info', label: t('pages.subscriptions.detailsTitle') },
-    { id: 'features', label: t('pages.subscriptions.purchasedGroups'), count: groupIds.length },
-  ];
-
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -519,50 +518,54 @@ const SubscriptionForm: React.FC = () => {
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
 
-            <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-6 pb-24">
-              <ClusterEditNav items={navItems} />
-              <div className="space-y-6">
-                <section id="info" className="scroll-mt-20">
-                  <SubscriptionInfoCard
-                    formData={formData}
-                    fieldErrors={fieldErrors}
-                    editing={canEdit}
-                    isNew={false}
-                    clusterLabel={detail ? `${detail.cluster_name} (${detail.cluster_code})` : ''}
-                    buLabel={detail?.bu ? `${detail.bu.bu_code} - ${detail.bu.bu_name}` : ''}
-                    state={detail?.state}
-                    clusters={clusters}
-                    clustersLoading={clustersLoading}
-                    clusterBus={clusterBus}
-                    clusterBusLoading={clusterBusLoading}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    onFocus={handleFocus}
+            {/* ตัวตนของสัญญาทั้งชุด (คลัสเตอร์ · หน่วยธุรกิจ) กับช่วงเวลา ย้ายมาอยู่บนแผ่นเดียว
+             *  ที่วาดสิ่งเหล่านั้นเป็นสิ่งที่มันเป็น แทนที่จะเป็นกล่องมีขอบซึ่งอ่านว่าแก้ได้ทั้งที่แก้ไม่ได้ */}
+            {detail && (
+              <IssuedSubscriptionPlate
+                startDate={formData.start_date}
+                endDate={formData.end_date}
+                status={formData.status}
+                state={detail.state}
+                thresholdDays={thresholds.subscription_days}
+                bu={
+                  detail.bu
+                    ? { id: detail.bu.business_unit_id, code: detail.bu.bu_code, name: detail.bu.bu_name }
+                    : null
+                }
+                cluster={{ id: detail.cluster_id, code: detail.cluster_code, name: detail.cluster_name }}
+              />
+            )}
+
+            {/* แถบนำทางซ้ายถูกถอดออก: สองรายการบนหน้าที่จบในจอเดียวคือ 200px ที่ไม่ได้ซื้ออะไรเลย
+             *  และมันบีบเนื้อหาให้แคบกว่าที่หน้ามีจริง — หน้าแก้ไขใบอนุญาต (#230) ก็ไม่มีเช่นกัน */}
+            <div className="space-y-4 pb-24 sm:space-y-6">
+              <SubscriptionInfoCard
+                formData={formData}
+                fieldErrors={fieldErrors}
+                editing={canEdit}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+              />
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('pages.subscriptions.purchasedGroups')}</CardTitle>
+                  <CardDescription>
+                    {detail?.bu
+                      ? t('pages.subscriptions.groupEntitlementsForBu', { code: detail.bu.bu_code })
+                      : t('pages.subscriptions.featureEntitlementsGeneric')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GroupSelectionCard
+                    groupIds={groupIds}
+                    onChange={setGroupIds}
+                    readOnly={!canEdit}
+                    currentFeatureKeys={featureKeys}
                   />
-                </section>
-
-                <section id="features" className="scroll-mt-20">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{t('pages.subscriptions.purchasedGroups')}</CardTitle>
-                      <CardDescription>
-                        {detail?.bu
-                          ? t('pages.subscriptions.groupEntitlementsForBu', { code: detail.bu.bu_code })
-                          : t('pages.subscriptions.featureEntitlementsGeneric')}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <GroupSelectionCard
-                        groupIds={groupIds}
-                        onChange={setGroupIds}
-                        readOnly={!canEdit}
-                        currentFeatureKeys={featureKeys}
-                      />
-                    </CardContent>
-                  </Card>
-                </section>
-
-              </div>
+                </CardContent>
+              </Card>
             </div>
           </>
         )}
@@ -597,7 +600,6 @@ const SubscriptionForm: React.FC = () => {
           fabClassName={hasChanges ? 'bottom-20' : undefined}
           tabs={[
             { key: 'subscription', label: 'Subscription', data: rawResponse, endpoint: `GET /api-system/platform/subscriptions/${id}` },
-            { key: 'clusterBus', label: 'Cluster BUs', data: clusterBus, endpoint: '/api-system/business-units' },
           ]}
         />
       )}

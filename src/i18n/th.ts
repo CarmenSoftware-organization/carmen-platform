@@ -1220,6 +1220,9 @@ export const th: Translations = {
       coversOneDay: 'ครอบคลุม 1 วัน',
       coversDays: 'ครอบคลุม {{count}} วัน',
       coversMonthsAndDays: 'ครอบคลุม {{months}} เดือน {{days}} วัน',
+      coversMonthsAndOneDay: 'ครอบคลุม {{months}} เดือน 1 วัน',
+      coversYearsAndDays: 'ครอบคลุม {{years}} ปี {{days}} วัน',
+      coversYearsAndOneDay: 'ครอบคลุม {{years}} ปี 1 วัน',
       draftPlateAria: 'สัญญาที่กำลังจะถูกสร้าง',
       noBusinessUnitYet: 'ยังไม่ได้เลือกหน่วยธุรกิจ',
       noClusterYet: 'ยังไม่ได้เลือกคลัสเตอร์',
@@ -1241,6 +1244,10 @@ export const th: Translations = {
       featureEntitlementsGeneric: 'สิทธิ์ของฟีเจอร์สำหรับสัญญานี้',
       detailsDescription: 'ข้อมูลระบุตัวตนของสัญญา ช่วงเวลา และสถานะ',
       effectiveState: 'สถานะที่มีผล:',
+      issuedPlateAria: 'สัญญาที่ออกแล้ว',
+      noBusinessUnitOnRecord: 'ไม่มีหน่วยธุรกิจในระเบียน',
+      amendTitle: 'แก้ไขสัญญา',
+      amendDescription: 'สัญญาที่ออกไปแล้วแก้ได้เฉพาะช่วงเวลาและสถานะเท่านั้น',
     },
 
     // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —

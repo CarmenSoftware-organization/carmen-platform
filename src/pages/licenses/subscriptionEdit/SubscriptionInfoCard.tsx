@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { ReadOnlyField } from '../../../components/ReadOnlyField';
 import { useI18n } from '../../../hooks/useI18n';
 import type { TKey } from '../../../i18n/types';
-import type { BusinessUnit, Cluster, SubscriptionState, SubscriptionStatus } from '../../../types';
+import type { SubscriptionStatus } from '../../../types';
 
 export interface SubscriptionFormData {
   cluster_id: string;
@@ -30,170 +30,46 @@ export interface SubscriptionInfoCardProps {
   fieldErrors: Record<string, string>;
   /** false ⇒ every field renders its read-only mode (no separate Edit toggle on this page). */
   editing: boolean;
-  isNew: boolean;
-  /** Read-only display for the cluster field on an existing subscription (`"name (code)"`). */
-  clusterLabel?: string;
-  /** Backend-computed display state (list/detail `state`) — undefined until an existing
-   * subscription has loaded. Never recompute this from status/end_date on the frontend. */
-  state?: SubscriptionState;
-  /** Candidate clusters for the picker — only rendered when `isNew`. */
-  clusters: Cluster[];
-  clustersLoading?: boolean;
-  /** BU ของ cluster ที่เลือก — ตัวเลือกของ picker ตอนสร้าง */
-  clusterBus: BusinessUnit[];
-  clusterBusLoading?: boolean;
-  /** Read-only display for the BU field on an existing subscription (`"CODE - name"`). */
-  buLabel?: string;
-  /** Why the cluster list is empty, when it failed to load — shown under the picker so the
-   * user isn't left staring at a dropdown with nothing in it and no explanation (M7). */
-  clustersError?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
 /**
- * Contract details — subscription number, period, status. Every field renders two modes
- * (edit control + `ReadOnlyField`) per CLAUDE.md's Form Field Pattern, gated on `editing`
- * (== `subscription.manage`), not a page-level Edit toggle.
+ * เฉพาะสิ่งที่แก้ได้บนสัญญาที่ออกไปแล้ว — ช่วงเวลากับสถานะ ไม่มีอะไรอื่น
  *
- * Cluster and business unit are the exceptions: both are only ever editable when `isNew` — an
- * existing contract's cluster and BU are fixed, regardless of permission. Reissuing to another
- * BU means deleting the contract and creating a new one, which keeps the paper trail honest.
+ * การ์ดนี้เคยมีหกช่อง โดยสามช่อง (คลัสเตอร์ · หน่วยธุรกิจ · เลขที่สัญญา) แก้ไม่ได้เลยแต่ถูกวาด
+ * เป็นกล่องมีขอบเหมือนช่องกรอก ทั้งสามย้ายขึ้นไปอยู่บน `IssuedSubscriptionPlate` แล้ว — ของที่มี
+ * ขอบคือของที่แก้ได้ ซึ่งเป็นข้อตกลงเดียวกับที่หน้าแก้ไขใบอนุญาตใช้ (#230)
  *
- * Subscription number is never editable at all: the server issues it (`SUB-YYMM-####`).
+ * ป้าย "สถานะที่มีผลจริง" ก็ย้ายขึ้นแผ่นเช่นกัน และไปโผล่เฉพาะตอนที่มันไม่ตรงกับ `status` — เดิม
+ * มันวางป้าย Active ซ้อนป้าย Active ในช่องเดียวกัน ทำให้ช่องนั้นสูงกว่าเพื่อนและ grid เสียจังหวะ
+ * โดยไม่ได้เตือนอะไรเลย
+ *
+ * โหมดสร้างไม่ผ่านการ์ดนี้ — `SubscriptionCreateForm` เป็นคนละฟอร์ม มี picker คลัสเตอร์/BU
+ * ของตัวเอง (`isNew` จึงไม่เป็น prop ที่นี่อีกต่อไป)
  */
 export function SubscriptionInfoCard({
   formData,
   fieldErrors,
   editing,
-  isNew,
-  clusterLabel,
-  state,
-  clusters,
-  clustersLoading,
-  clustersError,
-  clusterBus,
-  clusterBusLoading,
-  buLabel,
   onChange,
   onBlur,
   onFocus,
 }: SubscriptionInfoCardProps) {
   const { t } = useI18n();
-  // Single lookup for both `status` (the raw, editable field) and `state` (the backend-
-  // computed "Effective state" badge below) — both are the same closed 3-member union
-  // (src/types/index.ts), so one helper covers the <select>'s options, the read-only
-  // status Badge, and the effective-state Badge. `|| s` only fires for a value outside
-  // that union; translate() returns '' on a miss (same shape as SubscriptionTable's
-  // stateLabel).
+  // `|| s` only fires for a value outside the union; translate() returns '' on a miss (same
+  // shape as SubscriptionTable's stateLabel).
   const statusLabel = useCallback((s: string) => t(`common.status.${s}` as TKey) || s, [t]);
-  const clusterEditable = editing && isNew;
-  const buEditable = editing && isNew;
-  const selectedCluster = clusters.find((c) => c.id === formData.cluster_id);
-  // A cluster the caller pre-selected (e.g. ?cluster_id=… from Cluster Edit) may not be in
-  // `clusters` yet while the picker list is still loading — synthesize a placeholder option
-  // so <select value=…> doesn't silently fall back to the first real option instead.
-  const missingCurrentClusterId =
-    !selectedCluster && formData.cluster_id ? formData.cluster_id : null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('pages.subscriptions.detailsTitle')}</CardTitle>
-        <CardDescription>{t('pages.subscriptions.detailsDescription')}</CardDescription>
+        <CardTitle>{t('pages.subscriptions.amendTitle')}</CardTitle>
+        <CardDescription>{t('pages.subscriptions.amendDescription')}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="cluster_id">{t('common.label.cluster')}{clusterEditable && ' *'}</Label>
-            {clusterEditable ? (
-              <>
-                <select
-                  id="cluster_id"
-                  name="cluster_id"
-                  value={formData.cluster_id}
-                  onChange={onChange}
-                  className={selectClassName}
-                >
-                  <option value="">{t('common.state.selectACluster')}</option>
-                  {missingCurrentClusterId && (
-                    <option value={missingCurrentClusterId}>
-                      {clustersLoading ? t('common.busy.loadingEllipsis') : missingCurrentClusterId}
-                    </option>
-                  )}
-                  {clusters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} - {c.name}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.cluster_id && (
-                  <p className="text-destructive text-xs">{fieldErrors.cluster_id}</p>
-                )}
-                {clustersError && (
-                  <p className="text-destructive text-xs" role="alert">{clustersError}</p>
-                )}
-              </>
-            ) : (
-              <ReadOnlyField value={clusterLabel} />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="business_unit_id">{t('entity.businessUnit.title')}{buEditable && ' *'}</Label>
-            {buEditable ? (
-              <>
-                <select
-                  id="business_unit_id"
-                  name="business_unit_id"
-                  value={formData.business_unit_id}
-                  onChange={onChange}
-                  disabled={!formData.cluster_id || clusterBusLoading}
-                  className={selectClassName}
-                >
-                  <option value="">
-                    {!formData.cluster_id
-                      ? t('pages.subscriptions.selectClusterFirst')
-                      : clusterBusLoading
-                        ? t('common.busy.loadingEllipsis')
-                        : t('common.state.selectABusinessUnit')}
-                  </option>
-                  {clusterBus.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.code} - {b.name}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.business_unit_id && (
-                  <p className="text-destructive text-xs">{fieldErrors.business_unit_id}</p>
-                )}
-                {/* คลัสเตอร์ที่ไม่มี BU เลยสร้างสัญญาไม่ได้ — บอกตรงนี้ ดีกว่าปล่อยให้กด Create
-                    แล้วเจอ 400 จาก backend โดยไม่รู้ว่าติดอะไร */}
-                {formData.cluster_id && !clusterBusLoading && clusterBus.length === 0 && (
-                  <p className="text-destructive text-xs" role="alert">
-                    {t('pages.subscriptions.clusterHasNoBu')}
-                  </p>
-                )}
-              </>
-            ) : (
-              <ReadOnlyField value={buLabel} />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="subscription_number">{t('pages.subscriptions.subscriptionNumber')}</Label>
-            {/* ไม่มีโหมดแก้ — ระบบออกเลขให้ตอนสร้าง (`SUB-YYMM-####` เลขวิ่งทั่วระบบต่อเดือน)
-                และเลขนั้นอาจถูกอ้างในเอกสารที่ส่งออกไปแล้ว */}
-            <ReadOnlyField
-              value={isNew ? undefined : formData.subscription_number}
-              className="font-mono"
-            />
-            {isNew && (
-              <p className="text-muted-foreground text-xs">{t('pages.subscriptions.numberAutoAssigned')}</p>
-            )}
-          </div>
-
+      <CardContent>
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="start_date">{t('common.field.startDate')}{editing && ' *'}</Label>
             {editing ? (
@@ -258,19 +134,6 @@ export function SubscriptionInfoCard({
               <div>
                 <Badge variant={formData.status === 'active' ? 'success' : 'secondary'}>
                   {statusLabel(formData.status)}
-                </Badge>
-              </div>
-            )}
-            {/* `status` (raw DB value) and `state` (backend-computed from status + end_date) are
-                two different fields shown together on purpose — "status=active but already
-                expired" must be visible at a glance, never recomputed on the frontend (swagger:
-                use the field as-is). Both go through the same `statusLabel` lookup above so they
-                can never name the same state two different ways in Thai. */}
-            {!isNew && state && (
-              <div className="text-xs text-muted-foreground">
-                {t('pages.subscriptions.effectiveState')}{' '}
-                <Badge variant={state === 'active' ? 'success' : 'secondary'} className="ml-1">
-                  {statusLabel(state)}
                 </Badge>
               </div>
             )}
