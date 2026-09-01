@@ -5,6 +5,7 @@ import type {
   Subscription,
   SubscriptionDetail,
   SubscriptionsResponse,
+  SubscriptionSummary,
   LicenseFeature,
 } from '../types';
 
@@ -20,6 +21,21 @@ const subscriptionService = {
   getAll: async (paginate: PaginateParams = {}): Promise<SubscriptionsResponse> => {
     const response = await api.get(`${BASE}?${buildQuery(paginate, defaultSearchFields)}`);
     return response.data;
+  },
+
+  /**
+   * ค่าสรุป 5 ตัวเลขของสัญญา **ทั้งหมด** ไม่ผ่านตัวกรองใด ๆ
+   *
+   * ต่างจาก `summary` ที่ติดมากับ `getAll` ซึ่งถูกจำกัดด้วยตัวกรองของคำขอนั้น — ตัวนั้นตอบคำถาม
+   * "สิ่งที่กำลังดูอยู่มีเท่าไร" ส่วนตัวนี้ตอบ "ทั้งหมดมีเท่าไร" แถบสรุปที่กดเพื่อกรองได้ต้องอ่านตัวนี้
+   * เท่านั้น ถ้าอ่านตัวที่ถูกกรอง คลิกแรกจะทำให้ตัวนับอื่นเป็น 0 หมดจนกดกลับไม่ได้
+   *
+   * `response.data.data || response.data` — unwrap เผื่อไว้แบบเดียวกับ
+   * `clusterService.getFleetSummary` ซึ่งเป็น endpoint คู่ขนานของหน้า /clusters
+   */
+  getSummary: async (): Promise<SubscriptionSummary> => {
+    const response = await api.get(`${BASE}/summary`);
+    return response.data.data || response.data;
   },
 
   getById: async (id: string) => {

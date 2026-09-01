@@ -1416,6 +1416,9 @@ export const en = {
       reachMany: '{{count}} business units',
     },
     subscriptions: {
+      // ทูลทิปของการ์ดสรุปที่กดไม่ได้ชั่วคราว — buildAdvance เมิน `states` ทั้งหมดเมื่อ
+      // expiringSoon เปิดอยู่ ตัวกรองสถานะจึงต้องบอกว่าทำไมกดไม่ได้ ไม่ใช่กดแล้วเงียบ
+      clearExpiringSoonFirst: 'Turn off "Expiring soon" to filter by state',
       notMigratedToGroups: 'This contract still holds {{count}} features directly and no group yet. Picking a group replaces them.',
       noGroupsAvailable: 'No licence feature groups exist yet. Create one in',
       groupsSelectedSummary: '{{groups}} groups selected · {{features}} features in total',

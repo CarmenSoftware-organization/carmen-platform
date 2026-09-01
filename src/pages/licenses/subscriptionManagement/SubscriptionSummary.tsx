@@ -6,11 +6,20 @@ import { FetchErrorState } from '../../../components/FetchErrorState';
 import { useI18n } from '../../../hooks/useI18n';
 import type { SubscriptionSummary as SummaryType } from '../../../types';
 
+/** คีย์ของการ์ดที่กดแล้วกรองได้ — `deleted` ไม่อยู่ในนี้โดยตั้งใจ (ดู doc ของคอมโพเนนต์) */
+export type SummaryFilterKey = 'total' | 'active' | 'expired' | 'expiring_soon';
+
 interface SubscriptionSummaryProps {
   summary: SummaryType | null;
   loading: boolean;
   error: string;
   onRetry: () => void;
+  /** ไม่ส่ง = การ์ดเป็นตัวเลขอ่านอย่างเดียวเหมือนเดิมทั้งแถบ */
+  onFilter?: (key: SummaryFilterKey) => void;
+  /** การ์ดที่ตรงกับตัวกรองที่เปิดอยู่ตอนนี้ */
+  activeKeys?: SummaryFilterKey[];
+  /** การ์ดที่กดไม่ได้ชั่วคราวเพราะตัวกรองอื่นบังอยู่ (ดู `handleStateFilter` ใน SubscriptionTable) */
+  disabledKeys?: SummaryFilterKey[];
 }
 
 /**
@@ -19,11 +28,19 @@ interface SubscriptionSummaryProps {
  * divider อยู่แล้วตรงกับที่ต้องการเป๊ะ (ไม่ใช้ `ApplicationRegistrySummary`/`UserDirectorySummary`
  * ซึ่งเป็นการ์ดเดี่ยวผสม bar chart/avatar faces ที่ไม่ตรงรูปที่บรีฟต้องการ)
  *
- * ต่างจาก `BroadcastSummary` ตรงที่การ์ดที่นี่ไม่คลิกเพื่อกรองได้ — การกรองทั้งหมดของหน้านี้ทำผ่าน
- * filter Sheet เพียงทางเดียว (ดู `buildAdvance.ts`) ทำให้ไม่มีสอง code path ที่แก้ state
- * ตัวกรองเดียวกัน และ "ลบแล้ว" ก็ไม่มีทางคลิกดูรายการได้อยู่แล้ว (§8.2 ของสัญญา backend)
+ * การ์ดสี่ใบแรกกดเพื่อกรองได้เมื่อผู้เรียกส่ง `onFilter` มา — **ได้ก็ต่อเมื่อ `summary` ที่ส่งเข้ามา
+ * เป็นตัวเลขที่ไม่ผ่านตัวกรองเท่านั้น** (`subscriptionService.getSummary`) ห้ามป้อนด้วย `summary`
+ * ที่ติดมากับ `getAll` เด็ดขาด เพราะตัวนั้นถูกจำกัดด้วยตัวกรองของคำขอ วัดจริงบน DEV: กรอง
+ * expiring_soon แล้ว All 14→1 · Active 11→1 · Expired 3→0 · Deleted 5→0 คลิกแรกจะทำให้ทุกการ์ด
+ * ที่เหลือเป็น 0 แล้วกดกลับไม่ได้เพราะกลายเป็นทางตัน (เดิมทั้งแถบจึงกดไม่ได้เลยด้วยเหตุผลนี้ ก่อนมี
+ * endpoint แยก)
+ *
+ * "ลบแล้ว" ไม่มีวันกดได้ ไม่ว่าตัวเลขจะมาจากไหน — backend ไม่มีทางให้ list ระเบียนที่ลบแล้ว
+ * (§8.2 ของสัญญา) การ์ดที่กดแล้วได้ 0 แถวคือทางตัน จึงคงเป็นตัวเลขอ่านอย่างเดียวตลอดไป
  */
-export const SubscriptionSummary: React.FC<SubscriptionSummaryProps> = ({ summary, loading, error, onRetry }) => {
+export const SubscriptionSummary: React.FC<SubscriptionSummaryProps> = ({
+  summary, loading, error, onRetry, onFilter, activeKeys = [], disabledKeys = [],
+}) => {
   const { t } = useI18n();
 
   if (error) {
@@ -48,20 +65,57 @@ export const SubscriptionSummary: React.FC<SubscriptionSummaryProps> = ({ summar
     <Card>
       <CardContent className="p-0">
         <div className="flex flex-wrap divide-x divide-border">
-          {items.map(({ key, label, value, color }) => (
-            <div key={key} className="flex-1 basis-1/2 p-4 text-left sm:basis-1/3 sm:p-6 lg:basis-1/5">
-              <div className="text-sm font-medium text-muted-foreground">{label}</div>
-              <div className="mt-1 flex items-baseline gap-2">
-                {loading && value === undefined ? (
-                  <Skeleton className="h-8 w-16" />
-                ) : (
-                  <span className={cn('text-2xl sm:text-3xl font-bold tracking-tight', color)}>
-                    {value ?? 0}
-                  </span>
+          {items.map(({ key, label, value, color }) => {
+            // `deleted` ไม่เคยกดได้ · การ์ดอื่นกดได้เมื่อผู้เรียกส่ง onFilter มาและไม่ได้ถูกบังอยู่
+            const filterKey = key === 'deleted' ? null : (key as SummaryFilterKey);
+            const disabled = !!filterKey && disabledKeys.includes(filterKey);
+            const active = !!filterKey && activeKeys.includes(filterKey);
+            const clickable = !!onFilter && !!filterKey && !disabled;
+
+            const body = (
+              <>
+                <div className="text-sm font-medium text-muted-foreground">{label}</div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  {loading && value === undefined ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <span className={cn('text-2xl sm:text-3xl font-bold tracking-tight', color)}>
+                      {value ?? 0}
+                    </span>
+                  )}
+                </div>
+              </>
+            );
+            const box = 'flex-1 basis-1/2 p-4 text-left sm:basis-1/3 sm:p-6 lg:basis-1/5';
+
+            if (!clickable) {
+              return (
+                <div
+                  key={key}
+                  className={cn(box, active && 'bg-muted', disabled && 'opacity-50')}
+                  // การ์ดที่ถูกบังยังอ่านค่าได้ แต่ต้องบอกว่าทำไมกดไม่ได้ ไม่ใช่กดแล้วเงียบ
+                  title={disabled ? t('pages.subscriptions.clearExpiringSoonFirst') : undefined}
+                >
+                  {body}
+                </div>
+              );
+            }
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onFilter(filterKey)}
+                aria-pressed={active}
+                className={cn(
+                  box,
+                  'transition-colors hover:bg-muted focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset',
+                  active && 'bg-muted',
                 )}
-              </div>
-            </div>
-          ))}
+              >
+                {body}
+              </button>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

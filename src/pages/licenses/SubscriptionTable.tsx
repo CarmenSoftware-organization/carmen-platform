@@ -19,7 +19,7 @@ import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { TableSkeleton } from '../../components/TableSkeleton';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import Can from '../../components/Can';
-import { SubscriptionSummary } from './subscriptionManagement/SubscriptionSummary';
+import { SubscriptionSummary, type SummaryFilterKey } from './subscriptionManagement/SubscriptionSummary';
 import { buildAdvance, type SubscriptionFilters } from './subscriptionManagement/buildAdvance';
 import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../../utils/subscriptionState';
 import { useAuth } from '../../context/AuthContext';
@@ -156,15 +156,36 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       const rows = data.data ?? [];
       setItems(rows);
       setTotalRows(data.paginate?.total ?? rows.length);
-      setSummary(data.summary ?? null);
       setError('');
-      setSummaryError('');
     } catch (err: unknown) {
       setError(t('pages.subscriptions.loadFailedPrefix') + getErrorDetail(err, t));
-      setSummaryError(t('pages.subscriptions.summaryLoadFailed'));
       devLog('Error fetching subscriptions:', err);
     } finally {
       setLoading(false);
+    }
+  }, [t]);
+
+  /**
+   * แถบสรุปอ่านจาก endpoint เฉพาะที่ไม่รับตัวกรองเลย ไม่ใช่ `summary` ที่แนบมากับ list
+   *
+   * `data.summary` ของ list ถูกจำกัดด้วยตัวกรองของคำขอนั้น ซึ่งเป็นคำตอบที่ถูกสำหรับคำถาม "สิ่งที่
+   * กำลังดูอยู่มีเท่าไร" แต่ผิดสำหรับแถบที่กดเพื่อกรองได้ — วัดจริง: กรอง expiring_soon แล้ว
+   * All 14→1 · Active 11→1 · Expired 3→0 · Deleted 5→0 คลิกแรกจะทำให้การ์ดที่เหลือเป็น 0 หมด
+   * แล้วกดกลับไม่ได้ ตัวเลขในแถบจึงต้องนิ่งกับตัวกรองเสมอ (ท่าเดียวกับ FleetCapacity บน /clusters)
+   *
+   * โหลดครั้งเดียวตอน mount ไม่ผูกกับ `paginate` — ตัวเลขไม่ขึ้นกับตัวกรองอยู่แล้ว การยิงซ้ำทุกครั้ง
+   * ที่กรองจึงเป็นคำขอที่ได้คำตอบเดิมเป๊ะ ๆ ส่วนการสร้าง/แก้/ลบสัญญาเกิดที่หน้าอื่นทั้งหมด กลับมา
+   * หน้านี้เมื่อไรคอมโพเนนต์ก็ mount ใหม่และได้ตัวเลขสด
+   */
+  const fetchSummary = useCallback(async () => {
+    setSummaryLoading(true);
+    try {
+      setSummary(await subscriptionService.getSummary());
+      setSummaryError('');
+    } catch (err: unknown) {
+      setSummaryError(t('pages.subscriptions.summaryLoadFailed'));
+      devLog('Error fetching subscription summary:', err);
+    } finally {
       setSummaryLoading(false);
     }
   }, [t]);
@@ -172,6 +193,10 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   useEffect(() => {
     fetchSubscriptions(paginate);
   }, [fetchSubscriptions, paginate]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
 
   // ตัวกรองปัจจุบันทั้งชุด — ทุก handler ส่งเฉพาะสิ่งที่ตัวเองเปลี่ยนผ่าน `over` ที่เหลือมาจาก
   // state ของ render ปัจจุบัน (ค่าถูกเสมอเพราะ handler ถูกสร้างใหม่ทุก render)
@@ -257,6 +282,28 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
 
   const activeFilterCount =
     (stateFilter.length > 0 ? 1 : 0) + (expiringSoonFilter ? 1 : 0) + (clusterFilter ? 1 : 0);
+
+  /**
+   * การ์ดในแถบสรุปกดเพื่อกรอง — ทุกใบเรียก handler ตัวเดียวกับที่ filter Sheet ใช้ ไม่มีเส้นทาง
+   * ที่สองที่แก้ state ตัวกรอง ทั้งสองที่จึงเห็นค่าเดียวกันเสมอและป้ายตัวกรองที่ขึ้นก็ตรงกัน
+   */
+  const handleSummaryFilter = (key: SummaryFilterKey) => {
+    if (key === 'total') return handleClearAllFilters();
+    if (key === 'expiring_soon') return handleExpiringSoonToggle();
+    handleStateFilter(key); // 'active' | 'expired' — ตรงกับค่าใน SubscriptionState
+  };
+
+  // 'total' ติดไฟเมื่อไม่มีตัวกรองไหนเปิดอยู่ = "กำลังดูทั้งหมด" ตรงกับตัวเลขบนการ์ดพอดี
+  const summaryActiveKeys: SummaryFilterKey[] = [
+    ...(activeFilterCount === 0 ? (['total'] as const) : []),
+    ...(expiringSoonFilter ? (['expiring_soon'] as const) : []),
+    ...stateFilter.filter((s): s is 'active' | 'expired' => s === 'active' || s === 'expired'),
+  ];
+
+  // buildAdvance เมิน `states` ทั้งหมดเมื่อ expiringSoon เปิดอยู่ (บังคับเป็น active แทน) และ
+  // handleStateFilter ก็ return ทิ้งตั้งแต่บรรทัดแรก — การ์ดสองใบนี้จึงต้อง**ดู**ว่ากดไม่ได้
+  // ไม่ใช่กดแล้วเงียบ เหมือนที่ปุ่มใน Sheet ถูก disabled ไว้ด้วยเหตุผลเดียวกัน
+  const summaryDisabledKeys: SummaryFilterKey[] = expiringSoonFilter ? ['active', 'expired'] : [];
 
   const handleSortChange = (sort: string) => {
     // DataTable's 3-state header toggle can cycle back to "" (unsorted) — never let that
@@ -435,7 +482,10 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
           summary={summary}
           loading={summaryLoading}
           error={summaryError}
-          onRetry={() => fetchSubscriptions(paginate)}
+          onRetry={fetchSummary}
+          onFilter={handleSummaryFilter}
+          activeKeys={summaryActiveKeys}
+          disabledKeys={summaryDisabledKeys}
         />
 
         <Card>

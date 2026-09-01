@@ -1109,6 +1109,7 @@ export const th: Translations = {
       reachMany: '{{count}} หน่วยธุรกิจ',
     },
     subscriptions: {
+      clearExpiringSoonFirst: 'ปิด "ใกล้หมดอายุ" ก่อนจึงจะกรองตามสถานะได้',
       notMigratedToGroups: 'สัญญานี้ยังถือ {{count}} feature ไว้ตรง ๆ และยังไม่มีกลุ่ม การเลือกกลุ่มจะแทนที่ของเดิม',
       noGroupsAvailable: 'ยังไม่มีกลุ่มสิทธิ์ในระบบ สร้างได้ที่',
       groupsSelectedSummary: 'เลือกไว้ {{groups}} กลุ่ม · รวม {{features}} feature',

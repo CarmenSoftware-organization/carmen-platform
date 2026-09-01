@@ -53,6 +53,7 @@ vi.mock('../../services/clusterService', () => ({
 vi.mock('../../services/subscriptionService', () => ({
   default: {
     getAll: vi.fn(),
+    getSummary: vi.fn(),
     getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -91,6 +92,9 @@ const sampleSub = {
 
 const summary = { total: 1, active: 0, expired: 0, expiring_soon: 0, deleted: 0 };
 
+// ตัวเลขทั้งชุด (ไม่โดนตัวกรอง) ที่แถบสรุปอ่าน — จงใจไม่เท่ากับ `summary` ด้านบน
+const fleetSummary = { total: 91, active: 44, expired: 33, expiring_soon: 22, deleted: 55 };
+
 const listResponse = {
   data: [sampleSub],
   paginate: { total: 1, page: 1, perpage: 10, pages: 1 },
@@ -108,6 +112,9 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   asMock(subscriptionService.getAll).mockResolvedValue(listResponse);
+  // แถบสรุปอ่านจาก endpoint แยกที่ไม่โดนตัวกรอง ไม่ใช่ `summary` ที่ติดมากับ list อีกแล้ว —
+  // ตัวเลขจึงต่างจาก `listResponse.summary` โดยตั้งใจ เพื่อให้เทสต์ที่อ่านผิดแหล่งแดงทันที
+  asMock(subscriptionService.getSummary).mockResolvedValue(fleetSummary);
   asMock(clusterService.getAll).mockResolvedValue({
     data: [
       { id: 'c1', code: 'ACME', name: 'Acme Cluster', is_active: true },
@@ -153,6 +160,80 @@ describe('SubscriptionTable — summary band', () => {
     expect(screen.getByText('Expired')).toBeInTheDocument();
     expect(screen.getByText('Expiring soon')).toBeInTheDocument();
     expect(screen.getByText('Deleted')).toBeInTheDocument();
+  });
+
+  // แถบต้องอ่านจาก endpoint ที่ไม่โดนตัวกรอง ไม่ใช่ `summary` ที่ติดมากับ list — ถ้าอ่านผิดแหล่ง
+  // ตัวเลขจะเป็นของ listResponse.summary (total 1) แทน และคลิกกรองหนึ่งครั้งจะทำให้ทุกการ์ดเป็น 0
+  it('reads its numbers from getSummary, not from the summary riding on the list response', async () => {
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(subscriptionService.getSummary).toHaveBeenCalled();
+    // ผูกกับการ์ดตรง ๆ ไม่ใช่ getByText('1') ซึ่งชนกับเลขหน้าและเลขลำดับแถว
+    const allCard = screen.getByRole('button', { name: /^All/ });
+    // 91 คือ fleetSummary.total ส่วน listResponse.summary.total เป็น 1 — ค่าที่ต่างกันคนละหลัก
+    // ทำให้เทสต์นี้แดงทันทีถ้ามีใครเปลี่ยนกลับไปอ่าน summary ที่ติดมากับ list
+    expect(allCard).toHaveTextContent('91');
+  });
+
+  it('does not refetch the summary when a filter changes — the numbers do not depend on it', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+    asMock(subscriptionService.getSummary).mockClear();
+
+    await user.click(screen.getByRole('button', { name: /expiring soon/i }));
+    await waitFor(() => expect(asMock(subscriptionService.getAll).mock.calls.length).toBeGreaterThan(1));
+
+    expect(subscriptionService.getSummary).not.toHaveBeenCalled();
+  });
+
+  it('clicking "Expiring soon" applies the expiring-soon filter', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await user.click(screen.getByRole('button', { name: /expiring soon/i }));
+
+    await waitFor(() => {
+      const advance = JSON.parse((lastCall()?.advance as string) || '{}');
+      expect(JSON.stringify(advance)).toContain('"status":"active"');
+    });
+  });
+
+  it('clicking "Active" filters by that state, and "All" clears it again', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await user.click(screen.getByRole('button', { name: /^Active/ }));
+    await waitFor(() => expect(lastCall()?.advance).toBeTruthy());
+
+    await user.click(screen.getByRole('button', { name: /^All/ }));
+    await waitFor(() => expect(lastCall()?.advance).toBe(''));
+  });
+
+  // "ลบแล้ว" ไม่มีทาง list ได้ (สัญญา backend §8.2) การ์ดจึงต้องไม่เป็นปุ่มไม่ว่ากรณีใด
+  it('never makes the Deleted card clickable', async () => {
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    expect(screen.queryByRole('button', { name: /^Deleted/ })).toBeNull();
+  });
+
+  // buildAdvance เมิน `states` เมื่อ expiringSoon เปิดอยู่ — การ์ดต้องดูว่ากดไม่ได้ ไม่ใช่กดแล้วเงียบ
+  it('stops rendering Active/Expired as buttons while Expiring soon is on', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('SUB-0001');
+
+    await user.click(screen.getByRole('button', { name: /expiring soon/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /^Active/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Expired/ })).toBeNull();
+    });
+    expect(screen.getByText('44')).toBeInTheDocument(); // ยังอ่านตัวเลขได้อยู่
   });
 });
 
