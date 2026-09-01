@@ -14,6 +14,11 @@ import { useI18n } from '../../hooks/useI18n';
 export interface LicenseLedgerService {
   getAll(ownerId: string): Promise<unknown>;
   delete(ownerId: string, id: string): Promise<unknown>;
+  /**
+   * ยกเลิกใบ — มีเฉพาะใบโควตา BU (`clusterLicenseService`) ใบที่นั่งไม่มีแนวคิดนี้เพราะเป็น
+   * ผลรวมทุกใบ ไม่ใช่ใบเดียวชนะ จึงเป็น optional ที่นี่ ไม่ใช่ฟิลด์บังคับของสัญญาร่วม
+   */
+  cancel?(ownerId: string, id: string, data: { doc_version: number }): Promise<unknown>;
 }
 
 export interface UseLicenseLedgerOptions<TLicense> {
@@ -107,5 +112,24 @@ export function useLicenseLedger<TLicense extends { id: string }>(
     }
   }, [ownerId, reload, service, t]);
 
-  return { licenses, loading, saving, loadFailed, reload, remove };
+  /**
+   * ยกเลิกใบ — ต่างจาก `remove` ตรงที่ใบยังอยู่ในรายการหลังทำเสร็จ (จึง `reload` เหมือนกัน
+   * แต่ผู้ใช้จะยังเห็นใบนั้นพร้อมป้าย "ยกเลิกแล้ว") · service ที่ไม่มี `cancel` (ใบที่นั่ง)
+   * จะไม่ทำอะไรเลย ผู้เรียกฝั่งนั้นไม่มีปุ่มให้กดอยู่แล้ว
+   */
+  const cancel = useCallback(async (id: string, docVersion: number) => {
+    if (!ownerId || !service.cancel) return;
+    setSaving(true);
+    try {
+      await service.cancel(ownerId, id, { doc_version: docVersion });
+      toast.success(t('pages.licenses.licenseCancelled'));
+      await reload();
+    } catch (err) {
+      toast.error(t('pages.licenses.cancelLicenseFailedTitle'), { description: getErrorDetail(err, t) });
+    } finally {
+      setSaving(false);
+    }
+  }, [ownerId, reload, service, t]);
+
+  return { licenses, loading, saving, loadFailed, reload, remove, cancel };
 }

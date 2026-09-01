@@ -58,6 +58,20 @@ const clusterLicenseService = {
     const response = await api.delete(`${BASE(clusterId)}/${id}`);
     return response.data;
   },
+
+  /**
+   * ยกเลิกใบ — ใบยังอยู่ในบัญชีแต่หยุดให้โควตาทันที ต่างจาก `delete` ที่เอาใบออกจากสายตา
+   * ไม่มีทางกลับ: ไม่มี endpoint uncancel ยกเลิกผิดใบต้องออกใบใหม่
+   * doc_version บังคับ — 409 เมื่อชนกับคนที่แก้ใบเดียวกันอยู่ หรือเมื่อใบถูกยกเลิกไปแล้ว
+   */
+  cancel: async (
+    clusterId: string,
+    id: string,
+    data: { doc_version: number; cancel_reason?: string },
+  ) => {
+    const response = await api.post(`${BASE(clusterId)}/${id}/cancel`, data);
+    return response.data;
+  },
 };
 
 export default clusterLicenseService;

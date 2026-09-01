@@ -26,15 +26,19 @@ import type { SeatLicenseRow, BuQuotaLicenseRow, PaginateParams } from '../../ty
 import type { TKey } from '../../i18n/types';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 
-type StatusFilterValue = 'active' | 'scheduled' | 'expired';
+type StatusFilterValue = 'active' | 'superseded' | 'scheduled' | 'expired' | 'cancelled';
 
 // The complete enumeration of `StatusFilterValue` — used both for the Sheet's filter
 // buttons and to type-check STATUS_VARIANT/STATUS_LABEL_KEYS below. Pure data, module scope
 // is fine; the label lookup itself happens inside the component (see `statusLabel`).
+// ตัวกรองใน Sheet ยังคง 3 ค่าเดิมโดยตั้งใจ: `superseded`/`cancelled` มีเฉพาะใบโควตา การใส่
+// ปุ่มกรองที่ไม่มีวันคืนผลเมื่อผู้ใช้ดูแท็บที่นั่งอยู่ คือปุ่มที่หลอกคน
 const STATUS_VALUES: StatusFilterValue[] = ['active', 'scheduled', 'expired'];
 
 const STATUS_VARIANT: Record<StatusFilterValue, 'success' | 'secondary' | 'destructive'> = {
   active: 'success',
+  superseded: 'secondary',
+  cancelled: 'secondary',
   scheduled: 'secondary',
   expired: 'destructive',
 };
@@ -44,6 +48,8 @@ const STATUS_VARIANT: Record<StatusFilterValue, 'success' | 'secondary' | 'destr
 // status badges (and this filter list) can render already has one.
 const STATUS_LABEL_KEYS: Record<StatusFilterValue, TKey> = {
   active: 'common.status.active',
+  superseded: 'common.status.superseded',
+  cancelled: 'common.status.cancelled',
   scheduled: 'common.status.scheduled',
   expired: 'common.status.expired',
 };
@@ -132,7 +138,15 @@ function toFleetRow(
   const quota = row as BuQuotaLicenseRow;
   // สูตรสถานะสองชนิดไม่เท่ากัน (ดูคอมเมนต์ใน utils/buLicense.ts กับ utils/clusterLicense.ts) —
   // ห้ามคิดสูตรใหม่ที่นี่ เรียกของเดิมเท่านั้น เหมือนที่ LicensePurchaseForm.tsx ทำ
-  const status = isSeat ? buLicenseStatus(seat, now) : clusterLicenseStatus(quota, now);
+  // ตารางนี้แบ่งหน้าและรวมหลายคลัสเตอร์ จึงไม่มีลิสต์ใบครบของคลัสเตอร์ใดเลย — คำนวณ `superseded`
+  // เองไม่ได้ตามนิยาม ต้องอ่าน `is_in_force` ที่ backend คำนวณจาก v_cluster_bu_cap มาให้
+  // `undefined` (backend รุ่นเก่า) = ไม่รู้ ให้คงสถานะเดิมไว้ ห้ามอ่านเป็น false ไม่งั้นทุกใบ
+  // จะขึ้น "ถูกแทนที่" พร้อมกันทั้งตาราง
+  const quotaStatus = (): StatusFilterValue => {
+    const base = clusterLicenseStatus(quota, now);
+    return base === 'active' && quota.is_in_force === false ? 'superseded' : base;
+  };
+  const status: StatusFilterValue = isSeat ? buLicenseStatus(seat, now) : quotaStatus();
   // ใบที่นั่ง (BusinessUnitLicense) ไม่มี audit ในฝั่ง backend เลย — ใบโควตา BU มีจริงเพราะ
   // cluster-license.service.ts select มาให้แล้ว อ่านผ่าน normalizeAudit ไม่ใช่ quota.created_at
   // ตรง ๆ (เดิมทำแบบนั้นและไม่ได้ชื่อคนสร้างมาด้วย) เพื่อรองรับทั้งรูปแบนและรูป nested เหมือนทุกจุดอื่น

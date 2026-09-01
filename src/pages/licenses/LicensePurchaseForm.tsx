@@ -37,6 +37,9 @@ type StatusBadgeInfo = { variant: 'success' | 'secondary' | 'destructive'; label
 // Pure data (variant), no translation involved — stays a module constant.
 const STATUS_VARIANT: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo['variant']> = {
   active: 'success',
+  // ถูกแทนที่/ยกเลิก = สภาพปกติของใบที่หมดหน้าที่ ไม่ใช่ความผิดพลาด จึงเป็นเทา ไม่ใช่แดง
+  superseded: 'secondary',
+  cancelled: 'secondary',
   scheduled: 'secondary',
   expired: 'destructive',
 };
@@ -45,6 +48,8 @@ const STATUS_VARIANT: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadge
 // calls `t`. Each component below resolves these with its own `useI18n()` call.
 const STATUS_LABEL_KEYS: Record<BuLicenseStatus | ClusterLicenseStatus, TKey> = {
   active: 'common.status.active',
+  superseded: 'common.status.superseded',
+  cancelled: 'common.status.cancelled',
   scheduled: 'common.status.scheduled',
   expired: 'common.status.expired',
 };
@@ -143,9 +148,12 @@ function clusterFromRow(
 
 /** สถานะของแถวที่โหลดมา — เรียกฟังก์ชันคนละตัวกันตามชนิด ห้ามคิดสูตรใหม่ที่นี่ (ดูคอมเมนต์ config) */
 function statusOfRow(kind: LicenseKind, row: LicenseRow, now: Date): BuLicenseStatus | ClusterLicenseStatus {
-  return kind === 'seat'
-    ? buLicenseStatus(row as unknown as BusinessUnitLicense, now)
-    : clusterLicenseStatus(row as unknown as ClusterLicense, now);
+  if (kind === 'seat') return buLicenseStatus(row as unknown as BusinessUnitLicense, now);
+  // ฟอร์มโหลดใบเดียวผ่าน getByIdPlatform จึงไม่มีเพื่อนให้เทียบว่าใบไหนชนะ — `is_in_force`
+  // ที่ backend คำนวณจาก v_cluster_bu_cap คือคำตอบเดียว · `undefined` = ไม่รู้ ให้คงสถานะเดิม
+  const quota = row as unknown as ClusterLicense;
+  const base = clusterLicenseStatus(quota, now);
+  return base === 'active' && quota.is_in_force === false ? 'superseded' : base;
 }
 
 interface LicenseFieldsCardProps {
