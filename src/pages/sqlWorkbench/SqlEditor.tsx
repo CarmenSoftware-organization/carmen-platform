@@ -30,6 +30,8 @@ interface SqlEditorProps {
   onRun?: (sqlToRun: string) => void;
   isRunning?: boolean;
   schema?: DbObjectsResponse;
+  /** Share of the work column this pane takes, driven by the divider below it. */
+  grow?: number;
 }
 
 // Build the { table: [columns] } map lang-sql uses for schema-aware autocomplete.
@@ -48,6 +50,7 @@ export function SqlEditor({
   onRun,
   isRunning = false,
   schema,
+  grow = 1,
 }: SqlEditorProps) {
   const { t } = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -219,13 +222,17 @@ export function SqlEditor({
   const totalLines = value.split('\n').length;
   const stmtCount = countStatements(value);
 
-  // 2:3 against the result pane below: the rows are what the query was run for, and a query long
-  // enough to need more room scrolls inside its own pane rather than stealing height from them.
   return (
-    <div className="flex min-h-0 flex-[2] flex-col">
+    <div
+      // `min-h-0` is what lets the divider shrink this pane past its content — desktop only.
+      // On mobile there is no divider and the column is content-height, so removing the
+      // min-content floor just collapses the pane to zero and spills the editor out of it.
+      className="flex flex-col lg:min-h-0"
+      style={{ flexGrow: grow, flexShrink: 1, flexBasis: 0 }}
+    >
       {/* One row, one job: everything here acts on the text in the editor. Persisting the text as
           a database object lives on its own strip above, next to the name it saves under. */}
-      <div className="flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
+      <div className="flex shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1.5">
         {onRun && (
           <Button
             size="sm"
@@ -276,9 +283,12 @@ export function SqlEditor({
         </div>
       </div>
 
-      {/* The min-heights are the mobile floor: below `lg` the frame is content-height, so the
-          flex weights have nothing to divide and each pane must claim a usable size of its own. */}
-      <div ref={hostRef} className="flex min-h-[12rem] flex-1 flex-col overflow-hidden" />
+      {/* The min-height is the MOBILE floor only: below `lg` the frame is content-height, so the
+          flex shares have nothing to divide and each pane must claim a usable size of its own.
+          On desktop it has to give way — leave it in place and the divider cannot shrink the
+          editor past it, so dragging up overflows the frame and clips the editor instead of
+          handing the height to the rows. */}
+      <div ref={hostRef} className="flex min-h-[12rem] flex-1 flex-col overflow-hidden lg:min-h-0" />
     </div>
   );
 }

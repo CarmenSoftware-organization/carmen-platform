@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Download, AlertTriangle, Table as TableIcon, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import type { SqlExecuteResult } from '../../types';
@@ -11,9 +11,21 @@ interface ResultPanelProps {
   error: string | null;
   isRunning: boolean;
   onClose?: () => void;
+  /** Share of the work column this pane takes, driven by the divider above it. */
+  grow?: number;
 }
 
-const PAGE_SIZES = [50, 100, 200, 500];
+/**
+ * Row height in px, and it has to be exact — the virtual window maps scroll offset to a row
+ * index by dividing by it, so a row that renders taller than this makes the spacers lie and the
+ * rows drift out from under the header. Every cell is one truncated line, so the height is
+ * `py-1` (8) + a 16px line + the 1px bottom border. `ROW_H` is asserted against a real measured
+ * row in development rather than trusted.
+ */
+const ROW_H = 25;
+
+/** Rows rendered beyond each edge of the viewport so a fast scroll doesn't show blank bands. */
+const OVERSCAN = 8;
 
 function csvEscape(v: unknown): string {
   if (v === null || v === undefined) return "";
@@ -58,26 +70,68 @@ export function ResultPanel({
   error,
   isRunning,
   onClose,
+  grow = 1,
 }: ResultPanelProps) {
   const { t } = useI18n();
-  const [pageSize, setPageSize] = useState(100);
-  const [page, setPage] = useState(0);
 
-  const totalRows = result?.rowCount ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
+  // Virtual window over the rows. A result set is delivered whole (sqlQueryService.executeSql
+  // returns every row), and the old client-side pager existed only so the DOM would not have to
+  // hold thousands of <tr>s. Rendering just the visible slice removes that reason, so the grid
+  // is now one continuous scroll — which is what the header's row count already promised.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportH, setViewportH] = useState(0);
 
-  const pagedRows = (() => {
-    if (!result) return [];
-    const start = safePage * pageSize;
-    return result.rows.slice(start, start + pageSize);
-  })();
+  const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+
+  // The pane is resizable, so its height is not a constant — observe it rather than measure once.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setViewportH(el.clientHeight);
+    const ro = new ResizeObserver(() => setViewportH(el.clientHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [result, error, isRunning]);
+
+  // A new result starts at the top; leaving the old offset would scroll the new rows to an
+  // arbitrary place, or past their end.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+    setScrollTop(0);
+  }, [result]);
+
+  const rows = result?.rows ?? [];
+  const first = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const last = Math.min(rows.length, Math.ceil((scrollTop + viewportH) / ROW_H) + OVERSCAN);
+  const windowRows = rows.slice(first, last);
+  const padTop = first * ROW_H;
+  const padBottom = Math.max(0, (rows.length - last) * ROW_H);
+
+  // ROW_H is a layout contract, not an observation: if a cell ever grows a second line or the
+  // padding changes, the virtual window silently misaligns instead of failing. Say so loudly in
+  // development rather than shipping rows that drift.
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    const tr = bodyRef.current?.querySelector<HTMLTableRowElement>('tr[data-result-row]');
+    if (tr && Math.abs(tr.offsetHeight - ROW_H) > 0.5) {
+      console.warn(
+        `[ResultPanel] ROW_H is ${ROW_H}px but a row measured ${tr.offsetHeight}px — the virtual window will drift.`,
+      );
+    }
+  }, [result]);
 
   const idle = !result && !error && !isRunning;
   const errorLine = error ? parseErrorLine(error) : null;
 
   return (
-    <div className="flex min-h-[16rem] flex-[3] flex-col border-t lg:min-h-0">
+    <div
+      className="flex min-h-[16rem] flex-col border-t lg:min-h-0 lg:border-t-0"
+      style={{ flexGrow: grow, flexShrink: 1, flexBasis: 0 }}
+    >
       {/* Header */}
       <div className="bg-muted/30 flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2">
         {error ? (
@@ -167,7 +221,7 @@ export function ResultPanel({
         </div>
       ) : result ? (
         <>
-          <div className="min-h-0 flex-1 overflow-auto">
+          <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse text-xs [&_th]:whitespace-nowrap">
               {/* ทึบ ไม่ใช่ `bg-muted/60 backdrop-blur` — หัวตารางนี้ปักอยู่กับที่ในกรอบเลื่อน
                   สูง 420px แถวผลลัพธ์จึงวิ่งผ่านใต้มันตลอด และที่ 60% แถวที่เลื่อนผ่านกลาย
@@ -188,11 +242,23 @@ export function ResultPanel({
                   ))}
                 </tr>
               </thead>
-              <tbody>
-                {pagedRows.map((row, idx) => {
-                  const rowIdx = safePage * pageSize + idx + 1;
+              <tbody ref={bodyRef}>
+                {/* Spacer rows stand in for everything scrolled past, so the scrollbar reflects
+                    the whole result set and the sticky header keeps its column widths. */}
+                {padTop > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={result.columns.length + 1} style={{ height: padTop, padding: 0, border: 0 }} />
+                  </tr>
+                )}
+                {windowRows.map((row, idx) => {
+                  const rowIdx = first + idx + 1;
                   return (
-                    <tr key={rowIdx} className="hover:bg-muted/40">
+                    <tr
+                      key={rowIdx}
+                      data-result-row=""
+                      style={{ height: ROW_H }}
+                      className="hover:bg-muted/40"
+                    >
                       <td className="text-muted-foreground border-r border-b px-2 py-1 text-right">
                         {rowIdx}
                       </td>
@@ -217,53 +283,24 @@ export function ResultPanel({
                     </tr>
                   );
                 })}
+                {padBottom > 0 && (
+                  <tr aria-hidden="true">
+                    <td colSpan={result.columns.length + 1} style={{ height: padBottom, padding: 0, border: 0 }} />
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination */}
-          {totalRows > pageSize && (
-            <div className="bg-muted/30 flex shrink-0 items-center gap-2 border-t px-3 py-1.5 text-xs">
-              <span className="text-muted-foreground">{t('table.rowsPerPage')}:</span>
-              <select
-                className="bg-background rounded border px-1 py-0.5 text-xs"
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(0);
-                }}
-              >
-                {PAGE_SIZES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <span className="text-muted-foreground ml-auto">
-                {t('pages.sqlWorkbench.rangeOfTotal', {
-                  from: safePage * pageSize + 1,
-                  to: Math.min((safePage + 1) * pageSize, totalRows),
-                  total: totalRows,
-                })}
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={safePage === 0}
-              >
-                {t('pages.sqlWorkbench.prev')}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2"
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={safePage >= totalPages - 1}
-              >
-                {t('pages.sqlWorkbench.next')}
-              </Button>
+          {/* What the pager used to answer — "where am I in 5000 rows" — a bare scrollbar does
+              not. One quiet line keeps that, without putting the rows behind a page control. */}
+          {rows.length * ROW_H > viewportH && viewportH > 0 && (
+            <div className="bg-muted/30 text-muted-foreground flex shrink-0 items-center justify-end border-t px-3 py-1 font-mono text-[11px]">
+              {t('pages.sqlWorkbench.rangeOfTotal', {
+                from: Math.floor(scrollTop / ROW_H) + 1,
+                to: Math.min(rows.length, Math.ceil((scrollTop + viewportH) / ROW_H)),
+                total: rows.length,
+              })}
             </div>
           )}
         </>
