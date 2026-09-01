@@ -1669,6 +1669,8 @@ export const en = {
       deactivateWarning: 'Turning this off takes the bundle off the sales form. Check the {{count}} contracts already on it first.',
       sortOrderHint: 'Where this bundle sits on the sales form — lower comes first',
       activeHint: 'Can still be picked when selling a subscription',
+      // กระทบยอด 66 (เฉพาะลูก) กับ 76 (ที่ backend เก็บจริง) ให้เจอกันบนจอเดียว
+      withModulesTotal: '{{total}} saved, including {{modules}} parent modules',
     },
     licenses: {
       // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts

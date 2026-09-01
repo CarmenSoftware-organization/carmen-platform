@@ -1318,6 +1318,7 @@ export const th: Translations = {
       deactivateWarning: 'ปิดแล้วชุดนี้จะหายไปจากฟอร์มขาย ตรวจ {{count}} สัญญาที่ผูกไว้แล้วก่อน',
       sortOrderHint: 'ตำแหน่งของชุดนี้บนฟอร์มขาย เลขน้อยขึ้นก่อน',
       activeHint: 'ยังหยิบไปใส่สัญญาใหม่ได้',
+      withModulesTotal: 'บันทึกจริง {{total}} รายการ รวม module แม่ {{modules}} ตัว',
     },
     licenses: {
       buQuota: 'โควตา BU',

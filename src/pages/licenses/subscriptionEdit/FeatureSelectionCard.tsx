@@ -15,6 +15,7 @@ import {
   groupCatalog,
   removeFeatureKey,
   selectedChildCount,
+  selectedModuleCount,
   setModuleSelection,
   toggleFeature,
   unknownFeatureKeys,
@@ -63,6 +64,10 @@ export function FeatureSelectionCard({
   const [catalogFailed, setCatalogFailed] = useState(false);
   const [query, setQuery] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+
+  // สองยอดที่ footer ใช้กระทบกัน — คิดตรงนี้ครั้งเดียวแทนที่จะเรียกซ้ำใน JSX
+  const selectedChildren = selectedChildCount(featureKeys, catalog);
+  const selectedModules = selectedModuleCount(featureKeys, catalog);
 
   const loadCatalog = useCallback(() => {
     setCatalogLoading(true);
@@ -348,9 +353,22 @@ export function FeatureSelectionCard({
       {unknownBlock}
       {/* นับเฉพาะ "ลูก" ให้ตรงกับผลรวมของ badge count/total ต่อโมดูลข้างบน — key ของ
           module ถูกติ๊กอัตโนมัติตามลูก ถ้านับด้วยจะกลายเป็น "2 รายการ" ทั้งที่เลือกลูกเดียว
-          (review M5) */}
+          (review M5)
+
+          แต่ตัวเลขนั้นไม่ตรงกับ `feature_count` ที่หน้ารายการกลุ่มสิทธิ์แสดง (66 กับ 76) เพราะ
+          ฝั่งโน้นนับพ่อที่ถูกเติมให้ด้วย — ประโยคหลังจึงกระทบยอดให้ตรงนี้ ไม่ปล่อยให้ผู้ใช้เจอ
+          เลขต่างกันสองหน้าโดยไม่มีอะไรอธิบาย · ซ่อนเมื่อไม่มี module ถูกเลือก เพราะยอดเท่ากันอยู่แล้ว */}
       <p className="text-xs text-muted-foreground">
-        {t('common.state.nSelected', { count: selectedChildCount(featureKeys, catalog) })}
+        {t('common.state.nSelected', { count: selectedChildren })}
+        {selectedModules > 0 && (
+          <>
+            {' · '}
+            {t('pages.licenseFeatureGroups.withModulesTotal', {
+              modules: selectedModules,
+              total: selectedChildren + selectedModules,
+            })}
+          </>
+        )}
       </p>
     </div>
   );

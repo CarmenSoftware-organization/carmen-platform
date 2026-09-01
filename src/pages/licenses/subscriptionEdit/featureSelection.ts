@@ -96,6 +96,22 @@ export function selectedChildCount(featureKeys: string[], catalog: LicenseFeatur
 }
 
 /**
+ * จำนวน **module แม่** ที่ถูกเลือกไว้ (`parent_key === null`)
+ *
+ * มีไว้กระทบยอดกับ `feature_count` ที่ backend คืนมา ไม่ใช่ตัวเลขที่ผู้ใช้ต้องนับเอง:
+ * หน้ารายการกลุ่มสิทธิ์แสดง 76 (ทุกคีย์ที่เก็บไว้ รวมพ่อที่ถูกเติมให้ตามกฎ "ลูกลากพ่อ") แต่
+ * `selectedChildCount` แสดง 66 โดยตั้งใจ (เฉพาะลูก ให้ตรงกับผลรวม badge ต่อโมดูล) — ตัวเลข
+ * สองตัวต่างกัน 10 อยู่คนละหน้าโดยไม่มีอะไรอธิบาย ตัวนี้คือ 10 นั้น
+ *
+ * คีย์ที่ไม่อยู่ใน catalog ไม่ถูกนับ (บล็อก "ไม่รู้จัก" นับให้ต่างหาก) ผลรวมจึงเท่ากับ
+ * `feature_count` ก็ต่อเมื่อกลุ่มไม่ได้ถือคีย์ที่หลุดจากแค็ตตาล็อกไปแล้ว
+ */
+export function selectedModuleCount(featureKeys: string[], catalog: LicenseFeature[]): number {
+  const modules = new Set(catalog.filter((f) => f.parent_key === null).map((f) => f.key));
+  return featureKeys.filter((k) => modules.has(k)).length;
+}
+
+/**
  * Search filter: a group matches if its module label/key matches, or any child does. When only
  * children match, the group is kept with just the matching children (not the whole set) — a
  * group whose module label matches keeps every child, mirroring ApplicationEdit's catalog filter.
