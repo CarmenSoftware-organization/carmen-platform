@@ -16,12 +16,22 @@ interface FleetSyncProps {
   actions: React.ReactNode;
 }
 
-function Legend({ color, label, value }: { color: string; label: string; value: number }) {
+/** `emphasis` ยกตัวเลขข้อยกเว้นให้เด่นกว่าตัวเลขปกติ: แถวคำอธิบายนี้มีสามตัวเลขที่หน้าตา
+ *  เหมือนกันเป๊ะ คนที่เปิดหน้านี้มาถามคำถามเดียวคือ "มีตัวไหนตามหลังไหม" — ถ้าคำตอบนั้น
+ *  ถูกพิมพ์ด้วยน้ำหนักเดียวกับอีกสองตัวที่เขาไม่ได้ถาม ก็ต้องอ่านทั้งแถวก่อนถึงจะเจอ */
+function Legend({ color, label, value, emphasis = false }: { color: string; label: string; value: number; emphasis?: boolean }) {
   return (
     <span className="text-muted-foreground flex items-center gap-2 text-xs">
       <span className="size-2 rounded-full" style={{ background: color }} />
       {label}
-      <span className="text-foreground font-mono text-[13px] font-semibold tabular-nums">{value}</span>
+      <span
+        className={cn(
+          'font-mono font-semibold tabular-nums',
+          emphasis ? 'text-warning text-[15px]' : 'text-foreground text-[13px]',
+        )}
+      >
+        {value}
+      </span>
     </span>
   );
 }
@@ -67,17 +77,26 @@ export function FleetSync({ total, summary, actions }: FleetSyncProps) {
             {checked ? (
               <>
                 <Legend color="hsl(var(--success))" label={t('pages.tenantMigration.inSync')} value={summary.up_to_date} />
-                <Legend color="hsl(var(--warning))" label={t('pages.tenantMigration.behind')} value={summary.pending} />
+                <Legend
+                  color="hsl(var(--warning))"
+                  label={t('pages.tenantMigration.behind')}
+                  value={summary.pending}
+                  emphasis={summary.pending > 0}
+                />
                 {summary.error > 0 && <Legend color="hsl(var(--destructive))" label={t('pages.tenantMigration.errored')} value={summary.error} />}
-                <span className="text-muted-foreground flex items-baseline gap-1.5 text-xs">
-                  ·
-                  <span className={cn('font-mono text-[13px] font-semibold tabular-nums', summary.pendingMigrations > 0 ? 'text-warning' : 'text-foreground')}>
-                    {summary.pendingMigrations}
+                {/* ยอดรวม migration ที่ค้างจะโผล่ก็ต่อเมื่อมีของค้างจริง — "· 0 pending migrations"
+                    ต่อท้ายแถวที่เพิ่งบอกว่า Behind 0 คือประโยคที่ไม่มีใครต้องอ่าน */}
+                {summary.pendingMigrations > 0 && (
+                  <span className="text-muted-foreground flex items-baseline gap-1.5 text-xs">
+                    ·
+                    <span className="text-warning font-mono text-[13px] font-semibold tabular-nums">
+                      {summary.pendingMigrations}
+                    </span>
+                    {summary.pendingMigrations === 1
+                      ? t('pages.tenantMigration.pendingMigration')
+                      : t('pages.tenantMigration.pendingMigrations')}
                   </span>
-                  {summary.pendingMigrations === 1
-                    ? t('pages.tenantMigration.pendingMigration')
-                    : t('pages.tenantMigration.pendingMigrations')}
-                </span>
+                )}
               </>
             ) : (
               <span className="text-muted-foreground text-xs">
