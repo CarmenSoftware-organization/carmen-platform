@@ -1,5 +1,6 @@
 import businessUnitLicenseService from '../../services/businessUnitLicenseService';
 import clusterLicenseService from '../../services/clusterLicenseService';
+import type { ExpiryThresholdsConfig } from '../../types';
 
 export type LicenseKind = 'seat' | 'bu-quota';
 
@@ -32,6 +33,10 @@ export interface LicenseKindConfig {
    *  (`/licenses/${editPathSegment}/${id}/edit`) — เดิมเคยเป็น lookup table แยกอยู่ใน
    *  LicensePurchaseForm.tsx ซึ่งเป็นความต่างตาม kind ที่ควรอยู่ในไฟล์นี้ตั้งแต่แรก */
   editPathSegment: string;
+  /** ฟิลด์ของเกณฑ์ "ใกล้หมดอายุ" ใน `useExpiryThresholds().thresholds` ที่ใบชนิดนี้ใช้ —
+   *  ชื่อฟิลด์เท่านั้น ไม่ใช่ตัวเลข ค่าจริงมาจาก backend และตั้งค่าได้จากหน้าจอ (#227)
+   *  หน้าที่ hardcode 30 จะขัดกับป้ายในตารางที่มาจากใบเดียวกัน */
+  expiryThresholdField: keyof ExpiryThresholdsConfig;
   service: typeof businessUnitLicenseService | typeof clusterLicenseService;
 }
 
@@ -44,6 +49,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
   showCluster: true,
   listPath: '/licenses',
   editPathSegment: 'seats',
+  expiryThresholdField: 'seat_days',
   service: businessUnitLicenseService,
 };
 
@@ -56,5 +62,6 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   showCluster: false,
   listPath: '/licenses',
   editPathSegment: 'bu-quota',
+  expiryThresholdField: 'bu_quota_days',
   service: clusterLicenseService,
 };

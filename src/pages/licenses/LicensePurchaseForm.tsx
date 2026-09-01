@@ -7,7 +7,6 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Badge } from '../../components/ui/badge';
 import { ReadOnlyField } from '../../components/ReadOnlyField';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import { Save, X, Loader2, SearchX, AlertTriangle } from 'lucide-react';
@@ -22,6 +21,9 @@ import { useUnsavedChanges } from '../../hooks/useUnsavedChanges';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../hooks/useI18n';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
+import { IssuedLicensePlate } from './licenseEdit/IssuedLicensePlate';
+import type { StatusBadgeInfo } from './licenseEdit/IssuedLicensePlate';
 import { toIsoStartOfDay, toIsoEndOfDay, isPerpetual, fmtDate, PERPETUAL_END_DATE } from './licenseDates';
 import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
@@ -32,7 +34,6 @@ import type {
 import type { TKey } from '../../i18n/types';
 
 type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow;
-type StatusBadgeInfo = { variant: 'success' | 'secondary' | 'destructive'; label: string };
 
 // Pure data (variant), no translation involved — stays a module constant.
 const STATUS_VARIANT: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo['variant']> = {
@@ -172,8 +173,9 @@ interface LicenseFieldsCardProps {
   cluster: { id: string; label: string } | null;
   /** undefined ตอนสร้าง — ระบบยังไม่ออกเลขให้ */
   licenseNumber?: string;
+  /** โหมดสร้าง — ตัวตนของใบ (เจ้าของ/คลัสเตอร์/เลขที่ใบ) แสดงในการ์ดนี้เฉพาะตอนสร้าง
+   *  โหมดแก้ไขย้ายไปอยู่บน `IssuedLicensePlate` ทั้งชุด เหลือการ์ดนี้ไว้เฉพาะช่องที่พิมพ์ได้ */
   isNew: boolean;
-  statusBadge: StatusBadgeInfo | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
@@ -187,24 +189,33 @@ interface LicenseFieldsCardProps {
  * ในไฟล์เดียวกันเพราะ Task 6 สร้างแค่สองไฟล์ตามบรีฟ ไม่แยกไดเรกทอรีย่อยเพิ่ม)
  */
 function LicenseFieldsCard({
-  config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, cluster, licenseNumber, isNew, statusBadge,
+  config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, cluster, licenseNumber, isNew,
   onChange, onBlur, onFocus, onNoExpiryChange,
 }: LicenseFieldsCardProps) {
   const { t } = useI18n();
   const ownerLabel = t(OWNER_LABEL_KEYS[config.kind]);
   const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
   return (
-    <Card className={isNew ? undefined : 'pb-24'}>
+    <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <CardTitle>{t('pages.licenses.licenseDetailsTitle')}</CardTitle>
-          {statusBadge && <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>}
-        </div>
-        <CardDescription>{t('pages.licenses.licenseDetailsDescription', { owner: ownerLabel })}</CardDescription>
+        <CardTitle>
+          {isNew ? t('pages.licenses.licenseDetailsTitle') : t('pages.licenses.amendTitle')}
+        </CardTitle>
+        <CardDescription>
+          {isNew
+            ? t('pages.licenses.licenseDetailsDescription', { owner: ownerLabel })
+            : t('pages.licenses.amendDescription')}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* ลำดับของช่องคือสิ่งที่จัดแถวในกริดสองคอลัมน์ — เลขอ้างอิงถูกวางไว้ก่อนวันเริ่ม
+         *  เพื่อให้ "วันเริ่ม/วันหมดอายุ" ตกลงแถวเดียวกันเสมอ ทั้งโหมดสร้าง (ที่มีช่องตัวตน
+         *  สองช่องนำหน้า) และโหมดแก้ไข · ช่วงคุ้มครองคือค่าคู่ ไม่ใช่ค่าเดี่ยวสองค่าที่บังเอิญ
+         *  อยู่ติดกัน การให้มันขึ้นบรรทัดแยกคือการซ่อนความสัมพันธ์นั้น */}
         <div className="grid gap-4 sm:grid-cols-2">
-          {cluster && (
+          {/* ตัวตนของใบอยู่ในการ์ดนี้เฉพาะโหมดสร้าง — โหมดแก้ไขมี `IssuedLicensePlate` อยู่เหนือขึ้นไป
+           *  แล้ว การวาดซ้ำเป็นกล่องมีขอบทั้งที่แก้ไม่ได้คือสิ่งที่การออกแบบรอบนี้ตั้งใจกำจัด */}
+          {isNew && cluster && (
             <div className="space-y-2">
               <Label>{t('common.label.cluster')}</Label>
               {/* อ่านอย่างเดียวเหมือนเจ้าของ — คลัสเตอร์ถูกกำหนดโดย BU ที่ถือใบนี้ ย้ายจากหน้านี้ไม่ได้ */}
@@ -213,23 +224,25 @@ function LicenseFieldsCard({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>{ownerLabel}</Label>
-            {/* เจ้าของแก้ไม่ได้ทั้งสองโหมด — ข้อความอ่านอย่างเดียวเสมอ ไม่ใช่ input disabled */}
-            <ReadOnlyField value={ownerText} />
-            {ownerText !== ownerId && (
-              <p className="text-muted-foreground text-xs font-mono">{ownerId}</p>
-            )}
-          </div>
+          {isNew && (
+            <>
+              <div className="space-y-2">
+                <Label>{ownerLabel}</Label>
+                {/* เจ้าของแก้ไม่ได้ทั้งสองโหมด — ข้อความอ่านอย่างเดียวเสมอ ไม่ใช่ input disabled */}
+                <ReadOnlyField value={ownerText} />
+                {ownerText !== ownerId && (
+                  <p className="text-muted-foreground text-xs font-mono">{ownerId}</p>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <Label>{t('pages.licenses.licenseNumber')}</Label>
-            {/* ระบบออกให้เอง (เหมือน subscription_number) — ไม่มีโหมดแก้ */}
-            <ReadOnlyField value={licenseNumber} className="font-mono" />
-            {isNew && (
-              <p className="text-muted-foreground text-xs">{t('pages.subscriptions.numberAutoAssigned')}</p>
-            )}
-          </div>
+              <div className="space-y-2">
+                <Label>{t('pages.licenses.licenseNumber')}</Label>
+                {/* ระบบออกให้เอง (เหมือน subscription_number) — ไม่มีโหมดแก้ */}
+                <ReadOnlyField value={licenseNumber} className="font-mono" />
+                <p className="text-muted-foreground text-xs">{t('pages.subscriptions.numberAutoAssigned')}</p>
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="amount">{editing ? t('common.field.required', { label: amountLabel }) : amountLabel}</Label>
@@ -250,6 +263,15 @@ function LicenseFieldsCard({
               </>
             ) : (
               <ReadOnlyField value={draft.amount} />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="reference_no">{t('pages.licenses.referenceNoLabel')}</Label>
+            {editing ? (
+              <Input id="reference_no" name="reference_no" value={draft.reference_no} onChange={onChange} />
+            ) : (
+              <ReadOnlyField value={draft.reference_no} />
             )}
           </div>
 
@@ -317,15 +339,6 @@ function LicenseFieldsCard({
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reference_no">{t('pages.licenses.referenceNoLabel')}</Label>
-            {editing ? (
-              <Input id="reference_no" name="reference_no" value={draft.reference_no} onChange={onChange} />
-            ) : (
-              <ReadOnlyField value={draft.reference_no} />
-            )}
-          </div>
-
           {config.showNote && (
             <div className="space-y-2">
               <Label htmlFor="note">{t('common.field.note')}</Label>
@@ -364,6 +377,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('subscription.manage');
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   // Title-Case owner-type label ('Business Unit' / 'Cluster') — NOT the same thing as the
   // `ownerLabel` state below (the owner ENTITY's own display name, e.g. 'T02 - Some BU').
   // `.toLowerCase()` reproduces `config.ownerLabel.toLowerCase()`'s old output exactly: it's
@@ -678,7 +692,19 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   }
 
   const now = new Date();
-  const status = !isNew && detail ? statusOfRow(config.kind, detail, now) : null;
+  // สถานะคิดจาก **ค่าที่กำลังจะบันทึก** ไม่ใช่แถวที่โหลดมา — แผ่นใบด้านบนสะท้อนการแก้ทันที
+  // (เลื่อนวันหมดอายุแล้วเห็นความยาวกับวันคงเหลือขยับตาม) ป้ายสถานะกับวันคงเหลือจึงต้องมาจาก
+  // ชุดวันเดียวกัน ไม่งั้นจะได้ "Active" คู่กับ "หมดอายุมาแล้ว 3 วัน" ในแถวเดียวกัน
+  //
+  // ตกกลับไปใช้แถวเดิมเมื่อวันในฟอร์มยังกรอกไม่ครบ — ช่วงว่างไม่ใช่สถานะ มันคือ error ที่ช่อง
+  // ข้างล่างรายงานอยู่แล้ว · ธง `cancelled_at`/`is_in_force` มาจากแถวเสมอ ไม่ใช่จากฟอร์ม
+  const previewRow: LicenseRow | null = (() => {
+    if (!detail) return null;
+    const end = noExpiry ? PERPETUAL_END_DATE : draft.end_date && toIsoEndOfDay(draft.end_date);
+    if (!draft.start_date || !end) return detail;
+    return { ...detail, start_date: toIsoStartOfDay(draft.start_date), end_date: end };
+  })();
+  const status = !isNew && previewRow ? statusOfRow(config.kind, previewRow, now) : null;
   const statusBadge: StatusBadgeInfo | null = status
     ? { variant: STATUS_VARIANT[status], label: t(STATUS_LABEL_KEYS[status]) }
     : null;
@@ -690,7 +716,9 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
+      {/* ที่ว่างท้ายหน้าเผื่อแถบ "ยังไม่บันทึก" ที่ปักอยู่ก้นจอ — อยู่บนตัวห่อ ไม่ใช่ในการ์ด
+       *  การ์ดที่จบลงหลังช่องสุดท้ายพอดีคือการ์ดที่ไม่มีช่องว่าง 96px ค้างอยู่ข้างในตลอดเวลา */}
+      <div className={`space-y-4 sm:space-y-6${isNew ? '' : ' pb-24'}`}>
         {isNew ? (
           <>
             <PageHeader
@@ -712,7 +740,6 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 ownerId={ownerId}
                 cluster={null}
                 isNew
-                statusBadge={null}
                 onChange={handleChange}
                 onBlur={handleBlur}
                 onFocus={handleFocus}
@@ -748,6 +775,22 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
             )}
 
+            {status && statusBadge && (
+              <IssuedLicensePlate
+                amountLabel={t(AMOUNT_LABEL_KEYS[config.kind])}
+                amount={draft.amount}
+                startDate={draft.start_date}
+                endDate={draft.end_date}
+                noExpiry={noExpiry}
+                status={status}
+                statusBadge={statusBadge}
+                thresholdDays={thresholds[config.expiryThresholdField]}
+                ownerTypeLabel={ownerTypeLabel}
+                owner={{ id: ownerId, label: ownerText }}
+                cluster={cluster}
+              />
+            )}
+
             <LicenseFieldsCard
               config={config}
               draft={draft}
@@ -759,7 +802,6 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               cluster={cluster}
               licenseNumber={licenseNumber}
               isNew={false}
-              statusBadge={statusBadge}
               onChange={handleChange}
               onBlur={handleBlur}
               onFocus={handleFocus}

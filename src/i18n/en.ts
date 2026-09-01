@@ -1781,6 +1781,14 @@ export const en = {
       // to entity.subscription, it now uses that object's two grammatical forms instead
       // (.sentence for the toast, .title for the PageHeader) rather than one shared key.
       license: 'License',
+      // ── LicensePurchaseForm.tsx (โหมด edit) — IssuedLicensePlate + การ์ดช่องที่แก้ได้ ──
+      // The edit page stopped being a 7-box grid in which 4 boxes were read-only: identity and
+      // term moved onto a plate, and the card below it now holds only what can be typed.
+      issuedPlateAria: 'Issued license',
+      // Counterpart to expiredDaysAgo above, for a licence whose coverage has not started yet.
+      startsInDays: 'Starts in {{count}} days',
+      amendTitle: 'Amend this license',
+      amendDescription: 'The amount, coverage period, and reference can be changed. The owner and license number cannot.',
       licenseDetailsTitle: 'License details',
       // CardDescription — `{{owner}}` is the kind's Title-Case owner label ('Business Unit'
       // or 'Cluster', from OWNER_LABEL_KEYS above), so this renders exactly what
