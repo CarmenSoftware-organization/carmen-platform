@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './SubscriptionInfoCard';
-import type { Cluster } from '../../../types';
 
 const formData: SubscriptionFormData = {
   cluster_id: 'c1',
@@ -14,18 +13,10 @@ const formData: SubscriptionFormData = {
   status: 'active',
 };
 
-const clusters: Cluster[] = [
-  { id: 'c1', code: 'CLS1', name: 'Acme Cluster', is_active: true },
-  { id: 'c2', code: 'CLS2', name: 'Beta Cluster', is_active: true },
-];
-
 const base = (over: Record<string, unknown> = {}) => ({
   formData,
   fieldErrors: {},
   editing: false,
-  isNew: false,
-  clusters: [],
-  clusterBus: [],
   onChange: vi.fn(),
   onBlur: vi.fn(),
   onFocus: vi.fn(),
@@ -33,31 +24,12 @@ const base = (over: Record<string, unknown> = {}) => ({
 });
 
 describe('SubscriptionInfoCard — read-only mode', () => {
-  it('renders every field as read-only text, not inputs', () => {
-    render(<SubscriptionInfoCard {...base({ clusterLabel: 'Acme Cluster (CLS1)' })} />);
-    expect(screen.getByText('Acme Cluster (CLS1)')).toBeInTheDocument();
-    expect(screen.getByText('SUB-2608-0001')).toBeInTheDocument();
+  it('renders the period as read-only text, not inputs', () => {
+    render(<SubscriptionInfoCard {...base()} />);
     expect(screen.getByText('2026-01-01')).toBeInTheDocument();
     expect(screen.getByText('2026-12-31')).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
-  });
-
-  it('shows the backend-computed state next to status, without recomputing it', () => {
-    render(
-      <SubscriptionInfoCard
-        {...base({ clusterLabel: 'Acme Cluster (CLS1)', state: 'expired' })}
-      />,
-    );
-    // status itself (raw DB value) still reads 'active' — the badge...
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    // ...while the effective/computed state is shown alongside as 'expired'.
-    expect(screen.getByText('Expired')).toBeInTheDocument();
-  });
-
-  it('never shows the state helper for a brand-new (not yet created) subscription', () => {
-    render(<SubscriptionInfoCard {...base({ isNew: true, state: undefined })} />);
-    expect(screen.queryByText(/effective state/i)).toBeNull();
   });
 });
 
@@ -78,13 +50,6 @@ describe('SubscriptionInfoCard — editing mode', () => {
     expect(onChange).toHaveBeenCalled();
   });
 
-  // เลขสัญญาไม่มีโหมดแก้ในทุกกรณี — ระบบออกให้ตอนสร้าง ผู้ใช้กรอกเองหรือแก้ทีหลังไม่ได้
-  it('never renders an editable subscription number, even with edit permission', () => {
-    render(<SubscriptionInfoCard {...base({ editing: true })} />);
-    expect(screen.queryByDisplayValue('SUB-2608-0001')).toBeNull();
-    expect(screen.getByText('SUB-2608-0001')).toBeInTheDocument();
-  });
-
   it('shows a field error message under the offending field', () => {
     render(
       <SubscriptionInfoCard
@@ -95,30 +60,20 @@ describe('SubscriptionInfoCard — editing mode', () => {
   });
 });
 
-describe('SubscriptionInfoCard — cluster field is create-only', () => {
-  it('renders a cluster picker only when editing AND isNew', () => {
-    render(<SubscriptionInfoCard {...base({ editing: true, isNew: true, clusters })} />);
-    const select = screen.getByLabelText(/cluster/i) as HTMLSelectElement;
-    expect(select.tagName).toBe('SELECT');
-    expect(screen.getByRole('option', { name: 'CLS1 - Acme Cluster' })).toBeInTheDocument();
-  });
-
-  it('keeps cluster read-only on an existing subscription even with edit permission', () => {
-    render(
-      <SubscriptionInfoCard
-        {...base({ editing: true, isNew: false, clusters, clusterLabel: 'Acme Cluster (CLS1)' })}
-      />,
-    );
-    expect(screen.getByText('Acme Cluster (CLS1)')).toBeInTheDocument();
+/**
+ * ตัวตนของสัญญาย้ายขึ้น `IssuedSubscriptionPlate` แล้ว การ์ดนี้จึงต้อง **ไม่** วาดมันซ้ำเป็นกล่อง
+ * มีขอบ — นั่นคือทั้งหมดที่การออกแบบรอบนี้แก้ ถ้าช่องเหล่านี้กลับมาแปลว่าหน้าถอยกลับไปที่เดิม
+ */
+describe('SubscriptionInfoCard — identity belongs to the plate, not this card', () => {
+  it('never renders cluster, business unit, or subscription number', () => {
+    render(<SubscriptionInfoCard {...base({ editing: true })} />);
+    expect(screen.queryByText('SUB-2608-0001')).toBeNull();
     expect(screen.queryByLabelText(/cluster/i)).toBeNull();
+    expect(screen.queryByLabelText(/business unit/i)).toBeNull();
   });
 
-  it('surfaces a cluster_id field error', () => {
-    render(
-      <SubscriptionInfoCard
-        {...base({ editing: true, isNew: true, clusters, fieldErrors: { cluster_id: 'Cluster is required' } })}
-      />,
-    );
-    expect(screen.getByText('Cluster is required')).toBeInTheDocument();
+  it('does not repeat the effective state beside status', () => {
+    render(<SubscriptionInfoCard {...base()} />);
+    expect(screen.queryByText(/effective state/i)).toBeNull();
   });
 });

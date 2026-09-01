@@ -45,6 +45,7 @@ vi.mock('../../services/clusterService', () => ({
 }));
 
 import SubscriptionForm from './SubscriptionForm';
+import { ExpiryThresholdProvider } from '../../context/ExpiryThresholdContext';
 import subscriptionService from '../../services/subscriptionService';
 import licenseFeatureGroupService from '../../services/licenseFeatureGroupService';
 import businessUnitService from '../../services/businessUnitService';
@@ -101,13 +102,18 @@ const catalog = [
 const emptyClusterList = { data: [], paginate: { total: 0, page: 1, perpage: 200 } };
 
 function renderAt(path: string) {
+  // แผ่นสัญญาอ่านเกณฑ์ "ใกล้หมดอายุ" จาก context นี้ — provider ตัวจริง ไม่ใช่ mock เพราะ
+  // `useAuth` ที่ถูก mock ไว้ด้านบนคืน isAuthenticated undefined ทำให้มันตกไปใช้ค่าเริ่มต้น
+  // ในโค้ดโดยไม่ยิง network เลย
   return render(
+    <ExpiryThresholdProvider>
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/licenses/subscriptions/new" element={<SubscriptionForm />} />
         <Route path="/licenses/subscriptions/:id/edit" element={<SubscriptionForm />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </ExpiryThresholdProvider>,
   );
 }
 
@@ -350,10 +356,10 @@ describe('SubscriptionForm — cluster BU roster pagination (bounded, never perp
     const page1 = { data: Array.from({ length: 100 }, (_, i) => ({ id: `bu${i}`, code: `B${i}`, name: `BU ${i}`, is_active: true })), paginate: { total: 150, page: 1, perpage: 100 } };
     const page2 = { data: Array.from({ length: 50 }, (_, i) => ({ id: `bu${100 + i}`, code: `B${100 + i}`, name: `BU ${100 + i}`, is_active: true })), paginate: { total: 150, page: 2, perpage: 100 } };
     asMock(businessUnitService.getAll).mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
-    asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
 
-    renderAt('/licenses/subscriptions/sub1/edit');
-    await screen.findByRole('heading', { name: 'SUB-0001' });
+    // หน้าสร้าง ไม่ใช่หน้าแก้ไข — รายชื่อนี้ป้อน picker ของหน้าสร้างเท่านั้น (ดูเทสต์ถัดไป)
+    renderAt('/licenses/subscriptions/new?cluster_id=c1');
+    await screen.findByRole('heading', { name: 'Add Subscription' });
 
     await waitFor(() => expect(businessUnitService.getAll).toHaveBeenCalledTimes(2));
     expect(businessUnitService.getAll).toHaveBeenNthCalledWith(1, {
@@ -366,6 +372,17 @@ describe('SubscriptionForm — cluster BU roster pagination (bounded, never perp
       perpage: 100,
       advance: JSON.stringify({ where: { cluster_id: 'c1' } }),
     });
+  });
+
+  // ตัวตนของสัญญาที่ออกแล้วย้ายขึ้น `IssuedSubscriptionPlate` และอ่านจาก `detail` ทั้งหมด —
+  // หน้าแก้ไขจึงไม่มีอะไรใช้รายชื่อ BU อีก การไล่ยิงได้ถึง 10 หน้าเพื่อไม่ให้ใครอ่านคือค่าเปล่า ๆ
+  it('never fetches the roster on an existing subscription — nothing there reads it', async () => {
+    asMock(subscriptionService.getById).mockResolvedValue({ data: sampleDetail });
+
+    renderAt('/licenses/subscriptions/sub1/edit');
+    await screen.findByRole('heading', { name: 'SUB-0001' });
+
+    expect(businessUnitService.getAll).not.toHaveBeenCalled();
   });
 });
 

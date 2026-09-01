@@ -1462,6 +1462,10 @@ export const en = {
       coversOneDay: 'Covers 1 day',
       coversDays: 'Covers {{count}} days',
       coversMonthsAndDays: 'Covers {{months}} months and {{days}} days',
+      // เศษ 1 วันเคยอ่านว่า "and 1 days" — คำเดียวที่ต้องแยกกิ่ง ไม่ใช่ระบบ plural ทั้งชุด
+      coversMonthsAndOneDay: 'Covers {{months}} months and 1 day',
+      coversYearsAndDays: 'Covers {{years}} years and {{days}} days',
+      coversYearsAndOneDay: 'Covers {{years}} years and 1 day',
       draftPlateAria: 'The subscription about to be created',
       noBusinessUnitYet: 'No business unit picked yet',
       noClusterYet: 'No cluster picked yet',
@@ -1576,6 +1580,11 @@ export const en = {
       featureEntitlementsGeneric: 'Feature entitlements for this contract',
       detailsDescription: 'Contract identity, period, and status',
       effectiveState: 'Effective state:',
+      // แผ่นสัญญาที่ออกแล้ว (#231) — คู่กับ draftPlateAria ของใบร่าง
+      issuedPlateAria: 'Issued subscription',
+      noBusinessUnitOnRecord: 'No business unit on record',
+      amendTitle: 'Amend contract',
+      amendDescription: 'The period and status are the only fields an issued contract can change.',
     },
 
     // Slice 3b (License Center, cluster license tables, the purchase form, and three
