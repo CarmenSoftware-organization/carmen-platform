@@ -73,10 +73,23 @@ export function FeatureGroupCard({
   const editPath = `/license-feature-groups/${group.id}/edit`;
   const inUse = group.subscription_count > 0;
 
-  const countLabel = catalogTotal !== null
+  /**
+   * ตัวหารที่ใช้ได้จริง — `null` เมื่อโหลดแค็ตตาล็อกไม่ได้ **หรือเมื่อ count เกิน total**
+   *
+   * เกินได้จริง ไม่ใช่กรณีสมมติ: `getFeatureCatalog()` ยิง `/license-features` ซึ่ง**ตัดแถวที่
+   * `hide` ทิ้ง** (หน้าจัดการยิง `/license-features/all` ที่รวมไว้ — ดู licenseFeatureService)
+   * ส่วน `feature_count` นับทุกคีย์ที่กลุ่มถืออยู่ รวมคีย์ที่หลุดจากแค็ตตาล็อกไปแล้ว ซึ่งเป็น
+   * สถานการณ์เดียวกับที่ `unknownFeatureKeys` มีไว้รับมือ · วันนี้ยังไม่มีใครถูกซ่อน (ทั้งสอง
+   * endpoint คืน 76 เท่ากัน) แต่พอมีเมื่อไหร่ ป้ายจะอ่านว่า "76 จาก 75 สิทธิ์" และแถบจะ
+   * clamp ที่ 100% เงียบ ๆ — ตกไปใช้ตัวเลขเปล่าดีกว่าแสดงเศษส่วนที่เป็นไปไม่ได้
+   */
+  const usableTotal =
+    catalogTotal !== null && group.feature_count <= catalogTotal ? catalogTotal : null;
+
+  const countLabel = usableTotal !== null
     ? t('pages.licenseFeatureGroups.featuresOfTotal', {
         count: group.feature_count,
-        total: catalogTotal,
+        total: usableTotal,
       })
     : t('pages.licenseFeatureGroups.featuresOnly', { count: group.feature_count });
 
@@ -156,10 +169,10 @@ export function FeatureGroupCard({
         </div>
 
         <div className="flex items-center gap-3 pl-9">
-          {catalogTotal !== null && (
+          {usableTotal !== null && (
             <FeatureCompositionBar
               count={group.feature_count}
-              total={catalogTotal}
+              total={usableTotal}
               label={countLabel}
             />
           )}
