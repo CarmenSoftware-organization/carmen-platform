@@ -351,6 +351,19 @@ const TenantMigrationManagement: React.FC = () => {
     return acc;
   }, [bus, rowState]);
 
+  // "ตรวจแล้ว" = มี tenant อย่างน้อยหนึ่งตัวที่ให้คำตอบมาแล้ว ตรงกับเงื่อนไข `checked`
+  // ใน FleetSync — ทั้งสองที่ต้องอ่านสถานะเดียวกัน ไม่งั้นแถบสรุปกับปุ่มจะเถียงกันเอง
+  const fleetChecked = summary.up_to_date + summary.pending + summary.error > 0;
+  const behindCount = summary.pending;
+  const nothingToDeploy = fleetChecked && behindCount === 0;
+  const deployAllReason =
+    disabledReason ??
+    (nothingToDeploy
+      ? t('pages.tenantMigration.nothingToDeploy')
+      : !fleetChecked
+        ? t('pages.tenantMigration.deployUncheckedHint')
+        : null);
+
   const handleExport = () => {
     const rows = bus.map((bu) => {
       const rs = rowState[bu.id];
@@ -428,20 +441,16 @@ const TenantMigrationManagement: React.FC = () => {
         );
       },
     },
-    {
-      id: 'pending',
-      header: t('pages.tenantMigration.columnPending'),
-      enableSorting: false,
-      meta: { cellClassName: 'text-center' },
-      cell: ({ row }) => {
-        const rs = rowState[row.original.id];
-        return <span className="text-muted-foreground">{rs?.status ? rs.status.pending.length : '-'}</span>;
-      },
-    },
+    // ไม่มีคอลัมน์ Pending บนหน้าจอ — ป้าย Status พูดจำนวนอยู่แล้ว ("3 behind" / "In sync")
+    // คอลัมน์ตัวเลขข้าง ๆ จึงเป็นข้อเท็จจริงเดียวกันเขียนสองที่ กินความกว้าง 121px
+    // และหัวคอลัมน์ชิดซ้ายแต่ค่าอยู่กึ่งกลาง ไฟล์ CSV ยังมีคอลัมน์นี้ (ดู handleExport) —
+    // ที่นั่นแยกเป็นตัวเลขมีประโยชน์จริงเพราะเอาไปคำนวณต่อได้
     {
       id: 'last_checked',
       header: t('pages.tenantMigration.columnLastChecked'),
       enableSorting: false,
+      // เวลา 8 ตัวอักษรไม่ต้องการ 175px — ตรึงความกว้างไว้ ไม่ให้ auto layout แจกที่ว่างให้
+      meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
         return <span className="whitespace-nowrap text-xs text-muted-foreground">{rs?.lastChecked ?? '-'}</span>;
@@ -509,15 +518,23 @@ const TenantMigrationManagement: React.FC = () => {
               )}
               {withTooltip(
                 <Button
-                  variant="destructive"
+                  /* แดงเต็มเสียงเฉพาะตอนที่มีของให้ deploy จริง — ก่อนกด Check all
+                     หน้ายังไม่รู้ว่าจะไปแตะอะไรบ้าง และเมื่อทุก tenant in sync แล้ว
+                     ปุ่มนี้ไม่มีงานทำ การให้มันเป็นสิ่งที่แดงที่สุดบนจอตลอดเวลาคือการ
+                     ชวนให้กดสิ่งที่ย้อนกลับไม่ได้ (ไม่มี endpoint cancel/rollback —
+                     ดูคอมเมนต์ยาวใน tenantMigrationService._streamDeploy) */
+                  variant={behindCount > 0 ? 'destructive' : 'outline'}
                   size="sm"
                   onClick={() => setConfirmAll(true)}
-                  disabled={!!disabledReason || anyBusy || bus.length === 0}
+                  disabled={!!disabledReason || anyBusy || bus.length === 0 || nothingToDeploy}
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  {t('pages.tenantMigration.deployAll')}
+                  {/* ปุ่มบอกรัศมีของตัวเองเมื่อรู้แล้วว่าจะแตะกี่ tenant */}
+                  {behindCount > 0
+                    ? t('pages.tenantMigration.deployBehind', { count: behindCount })
+                    : t('pages.tenantMigration.deployAll')}
                 </Button>,
-                disabledReason,
+                deployAllReason,
               )}
               <Button variant="outline" size="sm" onClick={handleExport} disabled={loading || bus.length === 0 || anyBusy}>
                 <Download className="mr-2 h-4 w-4" />
