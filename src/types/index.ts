@@ -1172,6 +1172,20 @@ export interface LicenseConfig {
 }
 
 /**
+ * สวิตช์เปิด/ปิด API migration ของฐานข้อมูลแพลตฟอร์ม — คีย์ `platform_migration` ใน Platform Config
+ * The on/off switch for the platform-database migration API.
+ *
+ * เคยเป็น env `PLATFORM_MIGRATION_API_ENABLED` ของ backend-gateway ย้ายมาเป็น config เพราะเป็นค่าที่
+ * ผู้ดูแลระบบเปิด/ปิดเอง แต่ **เขียนได้เฉพาะ super-admin** ไม่ใช่ผู้ถือ `platform_config.manage`
+ * ต่างจากคีย์อื่นทุกตัวในหน้านี้ — สิ่งที่มันเปิดคือ endpoint ที่บังคับ super-admin อยู่แล้ว
+ *
+ * guard ฝั่ง backend cache ไว้ 60 วินาที การสลับค่าจึงมีผลภายในหนึ่งนาที ไม่ใช่ทันที
+ */
+export interface PlatformMigrationConfig {
+  api_enabled: boolean;
+}
+
+/**
  * เกณฑ์ "ใกล้หมดอายุ" ของใบแต่ละชนิด หน่วยเป็นวัน — คีย์ `expiry_thresholds` ใน Platform Config
  * The per-kind "expiring soon" windows, in days.
  *

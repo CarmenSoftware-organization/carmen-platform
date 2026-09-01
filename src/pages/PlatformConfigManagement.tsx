@@ -14,12 +14,18 @@ import { LinkConfigCard } from './platformConfig/LinkConfigCard';
 import { NotificationEmailConfigCard } from './platformConfig/NotificationEmailConfigCard';
 import { LicenseEnforcementCard } from './platformConfig/LicenseEnforcementCard';
 import { ExpiryThresholdsCard } from './platformConfig/ExpiryThresholdsCard';
+import { PlatformMigrationConfigCard } from './platformConfig/PlatformMigrationConfigCard';
 import platformConfigService from '../services/platformConfigService';
 import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
 import { normalizeAudit, latestActor } from '../utils/audit';
-import type { LicenseConfig, NotificationEmailConfig, PlatformConfig } from '../types';
+import type {
+  LicenseConfig,
+  NotificationEmailConfig,
+  PlatformConfig,
+  PlatformMigrationConfig,
+} from '../types';
 import { useI18n } from '../hooks/useI18n';
 
 /** การ์ดหนึ่งใบในหน้านี้ — ไม่ใช่คีย์ของ config เพราะคีย์ `invitation` มีสองการ์ด */
@@ -31,7 +37,8 @@ type CardId =
   | 'password_reset'
   | 'notification_email'
   | 'license'
-  | 'expiry_thresholds';
+  | 'expiry_thresholds'
+  | 'platform_migration';
 
 /**
  * หัวข้อกลุ่ม — ป้ายตัวพิมพ์ใหญ่เล็ก ๆ พร้อมเส้นลากยาว ชุดเดียวกับหัวกลุ่มใน sidebar
@@ -60,12 +67,16 @@ const StatusItem: React.FC<{ label: string; children: React.ReactNode }> = ({
 );
 
 const PlatformConfigManagement: React.FC = () => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isSuperAdmin } = useAuth();
   const { t } = useI18n();
   const canManage = hasPermission('platform_config.manage');
   // คีย์ `license` มีด่านที่สองฝั่ง backend (`platform_configs.controller.ts` → `mayWriteKey`)
   // ต้องมี `license.manage` เพิ่มจึงจะเขียนได้ ไม่ gate ตรงนี้ = ปุ่ม Edit ที่ Save แล้ว 403 เสมอ
   const canManageLicense = canManage && hasPermission('license.manage');
+  // คีย์ `platform_migration` มีด่านที่สองเหมือนกัน แต่ไม่รับสิทธิ์ใด ๆ แทน — ต้องเป็น super-admin
+  // (`platform_configs.controller.ts` → `writeKeyDenial`) เพราะสิ่งที่สวิตช์นี้เปิดคือ endpoint
+  // ที่บังคับ super-admin อยู่แล้ว ผู้ถือ platform_config.manage เปิดประตูที่ตัวเองเดินผ่านไม่ได้
+  const canManagePlatformMigration = canManage && isSuperAdmin;
 
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,6 +118,7 @@ const PlatformConfigManagement: React.FC = () => {
   const notificationEmail = configs.find((c) => c.key === 'notification_email') ?? null;
   const license = configs.find((c) => c.key === 'license') ?? null;
   const expiryThresholds = configs.find((c) => c.key === 'expiry_thresholds') ?? null;
+  const platformMigration = configs.find((c) => c.key === 'platform_migration') ?? null;
 
   // ที่มาเดียวของ audit ต่อ config — การ์ดแต่ละใบไม่รู้จัก normalizeAudit เอง (อยู่นอกขอบเขต
   // ของ task นี้) ตัว key เดิมของแต่ละการ์ดก็อ่านผ่านค่าเหล่านี้ด้วย แทนฟิลด์แบนตรง ๆ
@@ -117,6 +129,7 @@ const PlatformConfigManagement: React.FC = () => {
   const notificationEmailAudit = normalizeAudit(notificationEmail);
   const licenseAudit = normalizeAudit(license);
   const expiryThresholdsAudit = normalizeAudit(expiryThresholds);
+  const platformMigrationAudit = normalizeAudit(platformMigration);
   // ค่ากริยา+actor ล่าสุดต่อการ์ด สำหรับแถบท้ายการ์ด — คำนวณแยกจาก *Audit ด้านบน
   // ที่ยังต้องใช้เดิมสำหรับ remount key
   const invitationLatest = latestActor(invitation);
@@ -126,8 +139,9 @@ const PlatformConfigManagement: React.FC = () => {
   const notificationEmailLatest = latestActor(notificationEmail);
   const licenseLatest = latestActor(license);
   const expiryThresholdsLatest = latestActor(expiryThresholds);
+  const platformMigrationLatest = latestActor(platformMigration);
 
-  /** แถบ audit ท้ายการ์ด — รูปแบบเดียวกันทั้ง 6 ใบ และอยู่ *ใน* การ์ดที่มันอธิบาย */
+  /** แถบ audit ท้ายการ์ด — รูปแบบเดียวกันทุกใบ และอยู่ *ใน* การ์ดที่มันอธิบาย */
   const auditFooter = (latest: ReturnType<typeof latestActor>) => (
     <AuditMeta
       variant="compact"
@@ -137,12 +151,14 @@ const PlatformConfigManagement: React.FC = () => {
     />
   );
 
-  // สถานะเปิด/ปิดสองตัวที่ "ปิดอยู่เงียบ ๆ" ได้ — อ่านด้วยกฎเดียวกับการ์ดของมันเอง
-  // (`=== true` ไม่ใช่ truthy สำหรับ license เพื่อให้ตรงกับผู้อ่านฝั่ง backend ทั้งสองตัว)
+  // สถานะเปิด/ปิดสามตัวที่ "ปิดอยู่เงียบ ๆ" ได้ — อ่านด้วยกฎเดียวกับการ์ดของมันเอง
+  // (`=== true` ไม่ใช่ truthy ทั้งสามตัว เพื่อให้ตรงกับผู้อ่านฝั่ง backend ของแต่ละตัว)
   const enforcementOn =
     ((license?.value ?? {}) as Partial<LicenseConfig>).enforcement_enabled === true;
   const notificationOn =
     ((notificationEmail?.value ?? {}) as Partial<NotificationEmailConfig>).enabled === true;
+  const migrationApiOn =
+    ((platformMigration?.value ?? {}) as Partial<PlatformMigrationConfig>).api_enabled === true;
 
   return (
     <Layout>
@@ -175,9 +191,9 @@ const PlatformConfigManagement: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {/*
-              สองสวิตช์ที่ปิดอยู่แล้วไม่มีอะไรเตือน — ของเดิมต้องเลื่อนลงสามจอถึงจะรู้ว่า
-              enforcement เปิดอยู่ไหม และอีเมลแจ้งเตือนส่งอยู่ไหม ตัวเลขอายุลิงก์ไม่อยู่ในแถบนี้
-              เพราะมันไม่ใช่สถานะ อ่านจากการ์ดตรง ๆ ได้อยู่แล้ว
+              สวิตช์ที่ปิดอยู่แล้วไม่มีอะไรเตือน — ของเดิมต้องเลื่อนลงสามจอถึงจะรู้ว่า
+              enforcement เปิดอยู่ไหม อีเมลแจ้งเตือนส่งอยู่ไหม และ API migration เปิดค้างไว้ไหม
+              ตัวเลขอายุลิงก์ไม่อยู่ในแถบนี้ เพราะมันไม่ใช่สถานะ อ่านจากการ์ดตรง ๆ ได้อยู่แล้ว
             */}
             <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border bg-card px-4 py-3">
               <StatusItem label={t('pages.platformConfig.licenseTitle')}>
@@ -190,6 +206,13 @@ const PlatformConfigManagement: React.FC = () => {
               <StatusItem label={t('pages.platformConfig.notificationTitle')}>
                 <Badge variant={notificationOn ? 'success' : 'secondary'}>
                   {notificationOn ? t('pages.platformConfig.on') : t('pages.platformConfig.off')}
+                </Badge>
+              </StatusItem>
+              <StatusItem label={t('pages.platformConfig.migrationTitle')}>
+                <Badge variant={migrationApiOn ? 'success' : 'secondary'}>
+                  {migrationApiOn
+                    ? t('pages.platformConfig.migrationApiOn')
+                    : t('pages.platformConfig.migrationApiOff')}
                 </Badge>
               </StatusItem>
             </div>
@@ -309,6 +332,20 @@ const PlatformConfigManagement: React.FC = () => {
                   onCancelEdit={() => setEditingCard(null)}
                   onSaved={handleSaved}
                   footer={auditFooter(expiryThresholdsLatest)}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <SectionHeading>{t('pages.platformConfig.sectionPlatformMigration')}</SectionHeading>
+                <PlatformMigrationConfigCard
+                  key={`platform_migration-${platformMigrationAudit.updated?.at ?? platformMigrationAudit.created?.at ?? 'default'}`}
+                  config={platformMigration}
+                  canManage={canManagePlatformMigration}
+                  isEditing={editingCard === 'platform_migration'}
+                  onRequestEdit={() => setEditingCard('platform_migration')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(platformMigrationLatest)}
                 />
               </div>
             </div>
