@@ -1668,9 +1668,26 @@ export const en = {
       inUseWarningBody: 'Those contracts reference this group, so adding or removing a feature affects all of them at once — not just the group.',
       deactivateWarning: 'Turning this off takes the bundle off the sales form. Check the {{count}} contracts already on it first.',
       sortOrderHint: 'Where this bundle sits on the sales form — lower comes first',
+      orderOnSalesForm: 'on the sales form',
+      orderDuplicate: 'Another group already holds this order — the order on the sales form is not decided',
       activeHint: 'Can still be picked when selling a subscription',
-      // กระทบยอด 66 (เฉพาะลูก) กับ 76 (ที่ backend เก็บจริง) ให้เจอกันบนจอเดียว
-      withModulesTotal: '{{total}} saved, including {{modules}} parent modules',
+      inactiveHint: 'Hidden from the sales form. Contracts already on it are untouched.',
+      sellingOn: 'On sale',
+      sellingOff: 'Withdrawn',
+      // ── แผงสัดส่วน (GroupCompositionPanel) ──
+      // ตัวเลขใหญ่คือยอดที่ **บันทึกจริง** (ลูก + module แม่ที่ถูกเติม) ตัวเดียวกับที่หน้ารายการโชว์
+      // ไม่ใช่ยอดที่ติ๊ก — สองยอดนั้นต่างกัน และบรรทัดกระทบยอดข้างล่างคือที่ที่มันเจอกัน (66 กับ 76)
+      compositionTitle: 'Features in this bundle',
+      compositionOfCatalog: 'of {{total}} in the catalogue',
+      compositionNoDenominator: 'features saved',
+      compositionBreakdown: '{{children}} ticked · {{modules}} parent modules added',
+      compositionEmpty: 'Nothing selected yet',
+      // ── ตัวเลือกสิทธิ์ (FeatureSelectionCard) ──
+      // ห้ามใช้คำเดียวกับปุ่ม All/None ต่อโมดูล: สองปุ่มนี้เคยอยู่คอลัมน์เดียวกันจนกดผิดกันได้
+      // และการกดผิดคือติ๊กสิทธิ์เพิ่มให้ทุกสัญญาที่ผูกชุดนี้
+      expandShort: 'Expand',
+      collapseShort: 'Collapse',
+      moduleFill: '{{module}} — {{count}} of {{total}} selected',
     },
     licenses: {
       // ClusterLicenseDetail.tsx (nav section label, ALL_SECTIONS) + licenseKindConfig.ts

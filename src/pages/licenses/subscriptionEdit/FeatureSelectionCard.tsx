@@ -1,88 +1,81 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Search, X } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Badge } from '../../../components/ui/badge';
 import { EmptyState } from '../../../components/EmptyState';
+import { AllocationTicks } from '../../clusterAdmin/AllocationTicks';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { cn } from '../../../lib/utils';
-import subscriptionService from '../../../services/subscriptionService';
-import { devLog } from '../../../utils/errorParser';
 import { useI18n } from '../../../hooks/useI18n';
 import type { LicenseFeature } from '../../../types';
 import {
   filterGroups,
   groupCatalog,
   removeFeatureKey,
-  selectedChildCount,
-  selectedModuleCount,
   setModuleSelection,
   toggleFeature,
   unknownFeatureKeys,
 } from './featureSelection';
 
 export interface FeatureSelectionCardProps {
-  /** สิทธิ์ทั้งชุดของสัญญา — สัญญาหนึ่งใบผูก BU เดียว จึงเป็น array ของ key ตรง ๆ ไม่ใช่ราย BU */
+  /** สิทธิ์ทั้งชุดของกลุ่ม — array ของ key ตรง ๆ */
   featureKeys: string[];
-  /** ชื่อ BU ของสัญญา — ใช้ในข้อความเท่านั้น `null` = ข้อมูลผิดรูปจากยุคก่อน migration */
-  buName: string | null;
-  onChange: (featureKeys: string[]) => void;
-  /** No `subscription.manage` — read-only grouped display, no checkboxes / All-None. */
-  readOnly: boolean;
   /**
-   * ข้อความตอนยังไม่มี feature ถูกเลือก — ถ้าให้มาจะชนะข้อความที่ประกอบจาก `buName`
-   * มีไว้ให้หน้าที่ไม่มี BU (เช่นหน้าแก้กลุ่มสิทธิ์ license) ใช้ component นี้ซ้ำได้
-   * โดยไม่ต้องแตะ prop เดิมที่หน้าขายสัญญายังใช้อยู่
+   * แค็ตตาล็อกที่ **ผู้เรียกโหลดมา** ไม่ใช่ที่การ์ดยิงเอง — หน้าแก้ไขกลุ่มสิทธิ์ต้องใช้ชุดเดียวกันนี้
+   * วาดแถบสัดส่วนบนหัวหน้าด้วย ถ้าต่างคนต่างยิงจะมีจังหวะที่สองที่บนจอเดียวกันพูดคนละยอด
    */
-  emptyMessage?: string;
+  catalog: LicenseFeature[];
+  catalogLoading: boolean;
+  catalogFailed: boolean;
+  onReloadCatalog: () => void;
+  onChange: (featureKeys: string[]) => void;
+  /** ไม่มีสิทธิ์แก้ — แสดงเป็นรายการที่เลือกไว้เฉย ๆ ไม่มีช่องติ๊ก ไม่มีปุ่ม All/None */
+  readOnly: boolean;
+  /** ข้อความตอนยังไม่มี feature ถูกเลือก */
+  emptyMessage: string;
 }
 
 /**
- * Feature entitlement editor for one contract — an accordion grouped by module (pattern copied
- * from ApplicationEdit.tsx's API-catalog accordion).
+ * ตัวเลือกสิทธิ์ของ **หนึ่งชุดสิทธิ์** — หีบเพลงแยกตาม module
  *
- * เดิมชื่อ `FeatureMatrixCard` และมีแกน BU: เลือก BU ก่อนแล้วค่อยติ๊กสิทธิ์ พร้อมปุ่มเพิ่ม/ถอด BU
- * และคัดลอกสิทธิ์ข้าม BU · ตอนนี้หนึ่งสัญญาผูก BU เดียวที่กำหนดตอนสร้างและเปลี่ยนไม่ได้ แกนนั้นจึง
- * หายไปทั้งแกน — การ "เปลี่ยนคู่สัญญา" ไม่ใช่การกระทำที่ทำผ่านหน้าแก้สิทธิ์ได้อีกต่อไป
+ * เดิมชื่อ `FeatureMatrixCard` และมีแกน BU · หน้าขายสัญญาไม่ใช้การ์ดนี้แล้ว (เฟส 4 ถอดสิทธิ์
+ * ราย feature ออกจากสัญญาทั้งหมด) เหลือผู้เรียกเดียวคือ `LicenseFeatureGroupEdit` ซึ่งบันทึกผ่าน
+ * `licenseFeatureGroupService.setFeatures` (`PUT /license-feature-groups/:id/features`,
+ * replace semantics) — การ์ดนี้ไม่มี Save ของตัวเอง ทุกอย่างดันขึ้นไปที่ `onChange`
  *
- * Everything here mutates the parent's `featureKeys` via `onChange` — there is no per-card Save.
+ * ## สามอย่างที่รอบรื้อนี้แก้
  *
- * หน้าขายสัญญาไม่ใช้การ์ดนี้แล้ว — เฟส 4 ถอดสิทธิ์ราย feature ออกจากสัญญาทั้งหมด การ์ดนี้เหลือ
- * ผู้เรียกเดียวคือ `LicenseFeatureGroupEdit` ซึ่งบันทึกผ่าน `licenseFeatureGroupService.setFeatures`
- * (`PUT /license-feature-groups/:id/features`, replace semantics)
+ * **1. คำว่า "ทั้งหมด" เคยมีสองความหมายในคอลัมน์เดียวกัน** ปุ่ม `กางทั้งหมด` (พับ/กางหีบเพลง)
+ * ลอยชิดขวาอยู่เหนือแถวของปุ่ม `ทั้งหมด`/`ไม่เอา` (ติ๊กสิทธิ์ทั้งโมดูล) — ขนาดเท่ากัน ghost
+ * เหมือนกัน ขอบขวาตรงกัน · นี่ไม่ใช่เรื่องความสวย: กดผิดปุ่มคือติ๊กสิทธิ์เพิ่มให้ทุกสัญญาที่ผูก
+ * ชุดนี้ ตอนนี้ตัวพับ/กางย้ายไปอยู่ซ้ายคู่กับช่องค้นหา มีไอคอนของตัวเอง และใช้คำว่า `กาง`/`พับ`
+ * ที่ไม่ใช่คำเดียวกับปุ่มติ๊กอีกต่อไป
+ *
+ * **2. `2/2` กับ `0/9` เคยหนักตาเท่ากันเป๊ะ** ป้ายเลขเล็ก ๆ เป็นสัญญาณเดียว ต้องอ่านทีละหลักถึงจะ
+ * รู้ว่าโมดูลไหนคือแก่นของชุดนี้ ตอนนี้ทุกแถวมีแถบขีดหนึ่งขีดต่อหนึ่งสิทธิ์ (`AllocationTicks`
+ * ตัวเดียวกับที่โควตาที่นั่งใช้) — โมดูลที่ครบเป็นกำแพงทึบ โมดูลที่ว่างเป็นรางเปล่า อ่านออกโดย
+ * ไม่ต้องอ่านเลข · ขีดนับได้จึงไม่โกหกเรื่องแกนแบบที่แถบสัดส่วนต่อแถวจะโกหก (ดู
+ * `FeatureCompositionBar`) และโมดูลที่ยังไม่ถูกเลือกเลยจางลงหนึ่งขั้น แทนที่จะแย่งสายตาเท่าตัวที่มี
+ *
+ * **3. กล่องเลื่อนซ้อนกล่องเลื่อน** หีบเพลงเคยถูกขังใน `max-h-96 overflow-y-auto` กลางการ์ด
+ * กลางหน้าที่เลื่อนได้อยู่แล้ว — บนหน้าที่ทั้งหน้ามีไว้ทำสิ่งนี้อย่างเดียว การขังของหลักไว้ใน 384px
+ * แล้วปล่อยที่ว่างรอบ ๆ คือการสลับที่กันระหว่างของหลักกับกรอบ ตอนนี้รายการยาวเท่าที่มันยาว
+ * แล้วให้หน้าเลื่อน
  */
 export function FeatureSelectionCard({
   featureKeys,
-  buName,
+  catalog,
+  catalogLoading,
+  catalogFailed,
+  onReloadCatalog,
   onChange,
   readOnly,
   emptyMessage,
 }: FeatureSelectionCardProps) {
   const { t } = useI18n();
-  const [catalog, setCatalog] = useState<LicenseFeature[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogFailed, setCatalogFailed] = useState(false);
   const [query, setQuery] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-
-  // สองยอดที่ footer ใช้กระทบกัน — คิดตรงนี้ครั้งเดียวแทนที่จะเรียกซ้ำใน JSX
-  const selectedChildren = selectedChildCount(featureKeys, catalog);
-  const selectedModules = selectedModuleCount(featureKeys, catalog);
-
-  const loadCatalog = useCallback(() => {
-    setCatalogLoading(true);
-    setCatalogFailed(false);
-    subscriptionService
-      .getFeatureCatalog()
-      .then((res) => setCatalog(res?.data ?? []))
-      .catch((err) => {
-        setCatalogFailed(true);
-        devLog('Failed to load license feature catalog:', err);
-      })
-      .finally(() => setCatalogLoading(false));
-  }, []);
-
-  useEffect(() => { loadCatalog(); }, [loadCatalog]);
 
   const toggleModule = (moduleKey: string) => {
     setExpandedModules((prev) => {
@@ -99,32 +92,32 @@ export function FeatureSelectionCard({
         icon={AlertTriangle}
         title={t('pages.subscriptions.featuresLoadFailed')}
         description={t('pages.subscriptions.featuresLoadFailedHint')}
-        action={<Button size="sm" onClick={loadCatalog}>{t('common.action.retry')}</Button>}
+        action={<Button size="sm" onClick={onReloadCatalog}>{t('common.action.retry')}</Button>}
       />
     );
   }
 
   if (catalogLoading) {
     return (
-      <p className="py-6 text-center text-sm text-muted-foreground" role="status">
+      <p className="text-muted-foreground py-6 text-center text-sm" role="status">
         {t('pages.subscriptions.featuresLoading')}
       </p>
     );
   }
 
   const selected = new Set(featureKeys);
-  // คีย์ที่สัญญาผูกไว้แต่ไม่มีใน catalog ที่ active แล้ว — ต้องมองเห็นและถอดออกได้ ไม่ใช่ถูกกรอง
+  // คีย์ที่กลุ่มผูกไว้แต่ไม่มีใน catalog ที่ active แล้ว — ต้องมองเห็นและถอดออกได้ ไม่ใช่ถูกกรอง
   // ทิ้งเงียบ ๆ แล้วยังถูกส่งกลับไปทุกครั้งจนบันทึกไม่ได้ตลอดกาล (review I3)
   const unknownKeys = unknownFeatureKeys(featureKeys, catalog);
   const groups = groupCatalog(catalog);
   const visibleGroups = filterGroups(groups, query);
 
   // กลุ่มเล็ก ๆ ท้ายรายการสำหรับคีย์ที่ไม่รู้จัก — โหมดอ่านอย่างเดียวแสดงเฉย ๆ (ไม่มีปุ่ม) โหมดแก้
-  // มีปุ่มถอดทีละคีย์ · **ไม่ถอดให้อัตโนมัติ** การแก้ payload ให้เงียบ ๆ คือการเปลี่ยนสัญญาของลูกค้า
-  // โดยที่ไม่มีใครเห็นว่าเปลี่ยนอะไรไป
+  // มีปุ่มถอดทีละคีย์ · **ไม่ถอดให้อัตโนมัติ** การแก้ payload ให้เงียบ ๆ คือการเปลี่ยนสิ่งที่ลูกค้า
+  // ได้รับโดยที่ไม่มีใครเห็นว่าเปลี่ยนอะไรไป
   const unknownBlock = unknownKeys.length > 0 && (
-    <div className="space-y-1.5 rounded-md border border-dashed border-warning/50 bg-warning/5 p-2">
-      <p className="text-xs font-medium text-muted-foreground">
+    <div className="border-warning/50 bg-warning/5 space-y-1.5 rounded-md border border-dashed p-2">
+      <p className="text-muted-foreground text-xs font-medium">
         {t('pages.subscriptions.unrecognisedDisabled', { count: unknownKeys.length })}
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -177,13 +170,7 @@ export function FeatureSelectionCard({
     return (
       <div className="space-y-4">
         {selected.size === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {emptyMessage
-              ? emptyMessage
-              : buName
-                ? t('pages.subscriptions.noFeaturesAssignedToBu', { bu: buName })
-                : t('pages.subscriptions.noFeaturesAssignedToThis')}
-          </p>
+          <p className="text-muted-foreground text-sm">{emptyMessage}</p>
         ) : (
           <div className="space-y-3">
             {groups
@@ -191,7 +178,7 @@ export function FeatureSelectionCard({
               .filter((g) => g.children.length > 0)
               .map((g) => (
                 <div key={g.module.key} className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">
+                  <p className="text-muted-foreground text-xs font-medium">
                     {g.module.label} <span className="text-muted-foreground">({g.children.length})</span>
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -209,167 +196,194 @@ export function FeatureSelectionCard({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('pages.subscriptions.searchFeaturesPlaceholder')}
-          className="pl-9 pr-9"
-          aria-label={t('pages.subscriptions.searchFeatures')}
-        />
-        {query && (
-          <button
+    <div className="space-y-3">
+      {/* ค้นหากับพับ/กางอยู่แถวเดียวกัน — ทั้งคู่คือ "จะมองรายการนี้ยังไง" คนละเรื่องกับ
+          "จะเอาสิทธิ์ตัวไหน" ที่อยู่ชิดขวาในแต่ละแถวข้างล่าง การแยกฝั่งคือสิ่งที่ทำให้สองคำสั่ง
+          ไม่ถูกอ่านเป็นคำสั่งเดียวกันอีก */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t('pages.subscriptions.searchFeaturesPlaceholder')}
+            className="pr-9 pl-9"
+            aria-label={t('pages.subscriptions.searchFeatures')}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
+              aria-label={t('common.clearSearch')}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        {/* ระหว่างค้นหา ทุกโมดูลถูกกางบังคับอยู่แล้ว ปุ่มนี้จึงไม่มีอะไรให้ทำ — ซ่อนดีกว่าเสิร์ฟ
+            ปุ่มที่กดแล้วไม่เกิดอะไร */}
+        {!query && visibleGroups.length > 0 && (
+          <Button
             type="button"
-            onClick={() => setQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={t('common.clearSearch')}
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={toggleExpandAllVisible}
           >
-            <X className="h-4 w-4" />
-          </button>
+            {allVisibleExpanded ? (
+              <ChevronsDownUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronsUpDown className="h-3.5 w-3.5" />
+            )}
+            {allVisibleExpanded
+              ? t('pages.licenseFeatureGroups.collapseShort')
+              : t('pages.licenseFeatureGroups.expandShort')}
+          </Button>
         )}
       </div>
 
       {groups.length === 0 ? (
-        <div className="rounded-md border border-input p-2">
-          <p className="text-sm text-muted-foreground text-center py-4">{t('pages.subscriptions.noFeaturesDefined')}</p>
+        <div className="border-input rounded-md border p-2">
+          <p className="text-muted-foreground py-4 text-center text-sm">{t('pages.subscriptions.noFeaturesDefined')}</p>
         </div>
       ) : visibleGroups.length === 0 ? (
-        <div className="rounded-md border border-input p-2">
-          <p className="text-sm text-muted-foreground text-center py-4">
+        <div className="border-input rounded-md border p-2">
+          <p className="text-muted-foreground py-4 text-center text-sm">
             {t('pages.subscriptions.noFeaturesMatch', { query })}
           </p>
         </div>
       ) : (
-        <>
-          <div className="flex items-center justify-end">
-            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={toggleExpandAllVisible}>
-              {allVisibleExpanded ? t('pages.subscriptions.collapseAll') : t('pages.subscriptions.expandAll')}
-            </Button>
-          </div>
-          <div className="rounded-md border border-input max-h-96 overflow-y-auto divide-y">
-            {visibleGroups.map((g) => {
-              const expanded = isExpanded(g.module.key);
-              const count = g.children.filter((c) => selected.has(c.key)).length;
-              const childKeys = g.children.map((c) => c.key);
-              /**
-               * module ที่ `inactive` และยังไม่ถูกเลือก จะบล็อกลูกทุกตัวของมัน — เพราะกฎ
-               * "ลูกลากพ่อ" ฝั่ง backend เติม module แม่ให้อัตโนมัติ การติ๊กลูกจึงเท่ากับ
-               * พยายามเพิ่ม module ที่เลิกขายแล้วเข้ากลุ่ม ซึ่ง backend ตอบ 422
-               */
-              const moduleBlocked = g.module.state === 'inactive' && !selected.has(g.module.key);
-              /**
-               * ติ๊กเพิ่มได้เฉพาะตัวที่ `active` (และ module แม่ไม่ถูกบล็อก) ส่วนตัวที่เลือกไว้แล้ว
-               * นับรวมเสมอ เพื่อให้ปุ่ม All/None ยังกดเคลียร์ของเดิมออกได้
-               */
-              const selectableChildKeys = g.children
-                .filter((c) => selected.has(c.key) || (c.state === 'active' && !moduleBlocked))
-                .map((c) => c.key);
-              const allSelected =
-                selectableChildKeys.length > 0 && count === selectableChildKeys.length;
-              return (
-                <div key={g.module.key}>
-                  <div className="flex items-center gap-2 px-2">
-                    <button
-                      type="button"
-                      onClick={() => { if (!query) toggleModule(g.module.key); }}
-                      className="flex min-h-11 flex-1 items-center gap-1.5 text-left text-sm font-medium"
-                      aria-expanded={expanded}
-                    >
-                      {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
-                      <span className="truncate">{g.module.label}</span>
-                      <Badge variant={count > 0 ? 'default' : 'secondary'} className="text-xs">
-                        {count}/{g.children.length}
-                      </Badge>
-                    </button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn('h-6 text-xs', HIT_SLOP_44)}
-                      aria-label={
-                        allSelected
-                          ? t('pages.subscriptions.clearAllIn', { module: g.module.label })
-                          : t('pages.subscriptions.selectAllIn', { module: g.module.label })
-                      }
-                      onClick={() =>
-                        onChange(
-                          setModuleSelection(
-                            featureKeys,
-                            g.module.key,
-                            allSelected ? childKeys : selectableChildKeys,
-                            !allSelected,
-                          ),
-                        )
-                      }
-                    >
-                      {allSelected ? t('pages.subscriptions.none') : t('common.option.all')}
-                    </Button>
-                  </div>
-                  {expanded && (
-                    <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
-                      {g.children.map((c) => {
-                        const isSelected = selected.has(c.key);
-                        // เลิกขายของใหม่: ถอดของเดิมออกได้ แต่ติ๊กเพิ่มไม่ได้ — ตรงกับกติกาฝั่ง
-                        // backend เป๊ะ ถ้าปิดทั้งสองทาง ผู้ใช้จะถอดของที่เลิกขายแล้วออกไม่ได้เลย
-                        const cannotAdd =
-                          !isSelected && (c.state === 'inactive' || moduleBlocked);
-                        return (
-                          <Button
-                            key={c.key}
-                            type="button"
-                            variant={isSelected ? 'default' : 'outline'}
-                            size="sm"
-                            className="h-7 text-xs gap-1"
-                            title={
-                              cannotAdd
-                                ? `${c.key} — ${t('pages.licenseFeatures.state.inactiveHint')}`
-                                : c.key
-                            }
-                            aria-pressed={isSelected}
-                            disabled={cannotAdd}
-                            onClick={() => onChange(toggleFeature(featureKeys, c.key, !isSelected))}
-                          >
-                            {c.label}
-                            {c.state === 'inactive' && (
-                              <span className="text-[10px] opacity-70">
-                                ({t('pages.licenseFeatures.state.inactive')})
-                              </span>
-                            )}
-                            {isSelected && <X className="h-3 w-3" />}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
+        <div className="border-input divide-y rounded-md border">
+          {visibleGroups.map((g) => {
+            const expanded = isExpanded(g.module.key);
+            const count = g.children.filter((c) => selected.has(c.key)).length;
+            const childKeys = g.children.map((c) => c.key);
+            /**
+             * module ที่ `inactive` และยังไม่ถูกเลือก จะบล็อกลูกทุกตัวของมัน — เพราะกฎ
+             * "ลูกลากพ่อ" ฝั่ง backend เติม module แม่ให้อัตโนมัติ การติ๊กลูกจึงเท่ากับ
+             * พยายามเพิ่ม module ที่เลิกขายแล้วเข้ากลุ่ม ซึ่ง backend ตอบ 422
+             */
+            const moduleBlocked = g.module.state === 'inactive' && !selected.has(g.module.key);
+            /**
+             * ติ๊กเพิ่มได้เฉพาะตัวที่ `active` (และ module แม่ไม่ถูกบล็อก) ส่วนตัวที่เลือกไว้แล้ว
+             * นับรวมเสมอ เพื่อให้ปุ่ม All/None ยังกดเคลียร์ของเดิมออกได้
+             */
+            const selectableChildKeys = g.children
+              .filter((c) => selected.has(c.key) || (c.state === 'active' && !moduleBlocked))
+              .map((c) => c.key);
+            const allSelected =
+              selectableChildKeys.length > 0 && count === selectableChildKeys.length;
+            const fillLabel = t('pages.licenseFeatureGroups.moduleFill', {
+              module: g.module.label,
+              count,
+              total: g.children.length,
+            });
+            return (
+              <div key={g.module.key}>
+                <div className="flex items-center gap-3 px-2">
+                  <button
+                    type="button"
+                    onClick={() => { if (!query) toggleModule(g.module.key); }}
+                    className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left text-sm"
+                    aria-expanded={expanded}
+                  >
+                    {expanded ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />}
+                    {/* โมดูลที่ยังไม่มีอะไรถูกเลือกจางลงหนึ่งขั้นและไม่หนา — มันยังอยู่ในที่เดิม
+                        (รายการที่สลับลำดับเองตอนคลิกคือรายการที่ติ๊กไม่ได้) แต่เลิกแย่งสายตา
+                        กับโมดูลที่เป็นแก่นของชุดนี้จริง ๆ */}
+                    <span className={cn('truncate', count > 0 ? 'font-medium' : 'text-muted-foreground')}>
+                      {g.module.label}
+                    </span>
+                  </button>
+                  <span
+                    className={cn(
+                      'w-12 shrink-0 text-right text-xs tabular-nums',
+                      count > 0 ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {count}/{g.children.length}
+                  </span>
+                  {/* หนึ่งขีดต่อหนึ่งสิทธิ์ ไม่ใช่แถบสัดส่วน — ขีดนับได้ ความยาวแถบเทียบข้ามแถว
+                      ไม่ได้ (ตัวหารต่างกันทุกแถว) · ต่ำกว่า sm ซ่อนไป เพราะที่ 390px ชื่อโมดูล
+                      ต้องได้ความกว้างก่อน */}
+                  <AllocationTicks
+                    className="hidden w-28 shrink-0 sm:flex"
+                    used={count}
+                    cap={g.children.length}
+                    level="none"
+                    fillClassName="bg-primary"
+                    label={fillLabel}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn('h-6 shrink-0 text-xs', HIT_SLOP_44)}
+                    aria-label={
+                      allSelected
+                        ? t('pages.subscriptions.clearAllIn', { module: g.module.label })
+                        : t('pages.subscriptions.selectAllIn', { module: g.module.label })
+                    }
+                    onClick={() =>
+                      onChange(
+                        setModuleSelection(
+                          featureKeys,
+                          g.module.key,
+                          allSelected ? childKeys : selectableChildKeys,
+                          !allSelected,
+                        ),
+                      )
+                    }
+                  >
+                    {allSelected ? t('pages.subscriptions.none') : t('common.option.all')}
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
-        </>
+                {expanded && (
+                  <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
+                    {g.children.map((c) => {
+                      const isSelected = selected.has(c.key);
+                      // เลิกขายของใหม่: ถอดของเดิมออกได้ แต่ติ๊กเพิ่มไม่ได้ — ตรงกับกติกาฝั่ง
+                      // backend เป๊ะ ถ้าปิดทั้งสองทาง ผู้ใช้จะถอดของที่เลิกขายแล้วออกไม่ได้เลย
+                      const cannotAdd =
+                        !isSelected && (c.state === 'inactive' || moduleBlocked);
+                      return (
+                        <Button
+                          key={c.key}
+                          type="button"
+                          variant={isSelected ? 'default' : 'outline'}
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
+                          title={
+                            cannotAdd
+                              ? `${c.key} — ${t('pages.licenseFeatures.state.inactiveHint')}`
+                              : c.key
+                          }
+                          aria-pressed={isSelected}
+                          disabled={cannotAdd}
+                          onClick={() => onChange(toggleFeature(featureKeys, c.key, !isSelected))}
+                        >
+                          {c.label}
+                          {c.state === 'inactive' && (
+                            <span className="text-[10px] opacity-70">
+                              ({t('pages.licenseFeatures.state.inactive')})
+                            </span>
+                          )}
+                          {isSelected && <X className="h-3 w-3" />}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
       {unknownBlock}
-      {/* นับเฉพาะ "ลูก" ให้ตรงกับผลรวมของ badge count/total ต่อโมดูลข้างบน — key ของ
-          module ถูกติ๊กอัตโนมัติตามลูก ถ้านับด้วยจะกลายเป็น "2 รายการ" ทั้งที่เลือกลูกเดียว
-          (review M5)
-
-          แต่ตัวเลขนั้นไม่ตรงกับ `feature_count` ที่หน้ารายการกลุ่มสิทธิ์แสดง (66 กับ 76) เพราะ
-          ฝั่งโน้นนับพ่อที่ถูกเติมให้ด้วย — ประโยคหลังจึงกระทบยอดให้ตรงนี้ ไม่ปล่อยให้ผู้ใช้เจอ
-          เลขต่างกันสองหน้าโดยไม่มีอะไรอธิบาย · ซ่อนเมื่อไม่มี module ถูกเลือก เพราะยอดเท่ากันอยู่แล้ว */}
-      <p className="text-xs text-muted-foreground">
-        {t('common.state.nSelected', { count: selectedChildren })}
-        {selectedModules > 0 && (
-          <>
-            {' · '}
-            {t('pages.licenseFeatureGroups.withModulesTotal', {
-              modules: selectedModules,
-              total: selectedChildren + selectedModules,
-            })}
-          </>
-        )}
-      </p>
+      {/* ยอดรวมกับการกระทบยอด 27/33 ย้ายขึ้นไปอยู่ที่ `GroupCompositionPanel` บนหัวหน้าแล้ว —
+          ตัวเลขที่นิยามว่าชุดนี้คือชุดอะไรไม่ควรเป็นบรรทัดสุดท้ายใต้ของทุกอย่าง */}
     </div>
   );
 }
