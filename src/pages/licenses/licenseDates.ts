@@ -58,3 +58,16 @@ const localIso = (dateStr: string, h: number, m: number, s: number, ms: number):
 
 export const toIsoStartOfDay = (dateStr: string): string => localIso(dateStr, 0, 0, 0, 0);
 export const toIsoEndOfDay = (dateStr: string): string => localIso(dateStr, 23, 59, 59, 999);
+
+/** เดือนที่แกนเวลา (`LicenseCoverageBar`) มองย้อนหลัง/มองไปข้างหน้าจากวันนี้ */
+export const COVERAGE_WINDOW_BACK_MONTHS = 3;
+export const COVERAGE_WINDOW_FORWARD_MONTHS = 12;
+
+/**
+ * ขอบของแกนเวลาที่ใช้ร่วมกันทุกแถวในหน้าเดียว — ปัดเป็นต้นเดือนเพื่อให้ขอบไม่ขยับทุกวินาที
+ * ที่ re-render (ถ้าขอบขยับ ตำแหน่งของทุก segment ก็ขยับตาม แถบจะสั่นโดยไม่มีเหตุผล)
+ */
+export const coverageWindow = (now: Date): { start: number; end: number } => ({
+  start: new Date(now.getFullYear(), now.getMonth() - COVERAGE_WINDOW_BACK_MONTHS, 1).getTime(),
+  end: new Date(now.getFullYear(), now.getMonth() + COVERAGE_WINDOW_FORWARD_MONTHS + 1, 1).getTime(),
+});
