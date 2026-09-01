@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
-import { Button } from '../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { TabStrip, type TabStripItem } from '../../components/TabStrip';
 import clusterService from '../../services/clusterService';
 import { devLog } from '../../utils/errorParser';
 import { useI18n } from '../../hooks/useI18n';
@@ -49,11 +49,11 @@ const LicenseCenter: React.FC = () => {
 
   const toggleExpiringSoonFilter = () => setExpiringSoonFilter((v) => !v);
 
-  const VIEW_OPTIONS = useMemo<{ value: LicenseView; label: string }[]>(() => [
-    { value: 'cluster', label: t('pages.licenses.viewByCluster') },
-    { value: 'subscription', label: t('pages.licenses.viewBySubscription') },
-    { value: 'seat', label: t('pages.licenses.viewBySeat') },
-    { value: 'bu-quota', label: t('pages.licenses.viewByBuQuota') },
+  const VIEW_TABS = useMemo<TabStripItem<LicenseView>[]>(() => [
+    { id: 'cluster', label: t('pages.licenses.viewByCluster') },
+    { id: 'subscription', label: t('pages.licenses.viewBySubscription') },
+    { id: 'seat', label: t('pages.licenses.viewBySeat') },
+    { id: 'bu-quota', label: t('pages.licenses.viewByBuQuota') },
   ], [t]);
 
   // แถบสรุปอ่านจาก endpoint เฉพาะทางที่ไม่รับตัวกรองเลย จึงเป็นตัวเลขทั้ง fleet เสมอ
@@ -100,18 +100,15 @@ const LicenseCenter: React.FC = () => {
           expiringSoonActive={expiringSoonFilter}
         />
 
-        {/* สี่ปุ่มเรียงแถวเดียวล้นจอ 390px — sm: ขึ้นไปเป็นปุ่ม ต่ำกว่านั้นยุบเป็น <Select> */}
-        <div className="hidden sm:flex gap-2">
-          {VIEW_OPTIONS.map(({ value, label }) => (
-            <Button
-              key={value}
-              size="sm"
-              variant={view === value ? 'default' : 'outline'}
-              onClick={() => changeView(value)}
-            >
-              {label}
-            </Button>
-          ))}
+        {/* สี่มุมมองนี้คือ "แง่มุมของข้อมูลชุดเดียวกัน" ไม่ใช่คำสั่งสี่อย่าง — เดิมวาดเป็นปุ่มสี่ตัว
+            ลอย ๆ ที่ไม่มีอะไรมัดว่าเป็นชุดเดียวที่เลือกได้ทีละอัน ใช้ TabStrip ซึ่งเป็นภาษาที่รีโป
+            ใช้อยู่แล้วสำหรับ "สลับส่วนของสิ่งเดียวกัน" (หน้าแก้ไข BU และ Cluster) แทน
+
+            การแยกสองตัวควบคุมที่ sm ยังอยู่เหมือนเดิมโดยตั้งใจ: TabStrip เลื่อนแนวนอนได้ก็จริง
+            แต่วัดที่ 386px แล้วแถบกว้าง 348 ส่วนเนื้อในกว้าง 450 — "By BU quota" เหลือโผล่ 4px
+            ซึ่งอ่านไม่ออกว่ามีแท็บที่สี่อยู่ <Select> โชว์ครบสี่ตัวเสมอ จอแคบจึงยังเป็นของมัน */}
+        <div className="hidden sm:block">
+          <TabStrip tabs={VIEW_TABS} value={view} onChange={changeView} />
         </div>
         <div className="sm:hidden">
           <Select value={view} onValueChange={(v) => changeView(v as LicenseView)}>
@@ -119,8 +116,8 @@ const LicenseCenter: React.FC = () => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {VIEW_OPTIONS.map(({ value, label }) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
+              {VIEW_TABS.map(({ id, label }) => (
+                <SelectItem key={id} value={id}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>

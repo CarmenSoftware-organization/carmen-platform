@@ -242,7 +242,12 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
     statusFilter.length + licenseFilter.length + (expiringSoonFilter ? 1 : 0);
 
   const columns = useMemo<ColumnDef<Cluster, unknown>[]>(() => {
-    const [createdColumn, updatedColumn] = auditColumns<Cluster>({ hideUpdatedOnCard: true, t });
+    // เอาเฉพาะ Updated ไม่เอา Created — สองคอลัมน์นี้เป็นข้อความสองบรรทัดที่กินความกว้าง
+    // พอ ๆ กับข้อมูลความจุทั้งสองคอลัมน์รวมกัน ทั้งที่หน้านี้ถามว่า "คลัสเตอร์ไหนใกล้ชนเพดาน"
+    // ไม่ใช่ "ใครสร้างระเบียนนี้" — วันสร้างยังอ่านได้จากตาราง /clusters ที่ยังมีครบทั้งคู่
+    // ไม่ส่ง hideUpdatedOnCard แล้ว เพราะตอนนี้ Updated เป็นคอลัมน์ audit เดียวที่เหลือ
+    // ถ้ายังซ่อนอยู่ การ์ดบนมือถือจะไม่เหลือร่องรอยเวลาเลยสักอัน
+    const [, updatedColumn] = auditColumns<Cluster>({ t });
     return [
       {
         accessorKey: 'code',
@@ -321,7 +326,6 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
           )
         ),
       },
-      createdColumn,
       updatedColumn,
     ];
   }, [t]);
