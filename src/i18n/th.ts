@@ -837,7 +837,17 @@ export const th: Translations = {
       editSubtitle: 'แก้ไขรายละเอียดบัญชีด้านล่าง',
       accountDetails: 'รายละเอียดบัญชี',
       emailAddress: 'ที่อยู่อีเมล',
+      // ตัวอย่างรูปแบบ ไม่ใช่ข้อความแปล — ค่าเดียวกันทั้งสองภาษา
+      // ต้องเป็นรูปอีเมล เพราะ validateField case 'username' เรียก isValidEmail
       usernamePlaceholder: 'user@example.com',
+      sectionSignIn: 'ข้อมูลเข้าสู่ระบบ',
+      sectionSignInHint: 'ตัวระบุตัวตนและช่องทางติดต่อของบัญชีนี้',
+      sectionName: 'ชื่อที่แสดง',
+      sectionNameHint: 'ชื่อที่ระบบใช้แสดง ต้องกรอกชื่อจริงและนามสกุล',
+      usernameLocked: 'ต้องเป็นที่อยู่อีเมล และเปลี่ยนไม่ได้หลังบัญชีถูกสร้าง',
+      aliasHint: 'ใช้แทนชื่อเต็มในที่ที่พื้นที่จำกัด',
+      activeHint: 'ผู้ใช้ที่ปิดอยู่ยังคงสิทธิ์เดิมทุกอย่าง แต่เข้าสู่ระบบไม่ได้',
+      nextStepHint: 'ขั้นถัดไปคือตั้งรหัสผ่านและกำหนดหน่วยธุรกิจ',
       firstNameLabel: 'ชื่อจริง',
       firstNamePlaceholder: 'ชื่อจริง',
       middleNameLabel: 'ชื่อกลาง',
