@@ -15,7 +15,7 @@ import FooterClock from './FooterClock';
 import HeaderUserMenu from './HeaderUserMenu';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
-import VersionBadge, { CURRENT_VERSION } from './VersionBadge';
+import { CURRENT_VERSION } from './VersionBadge';
 import { buildPlatformNav } from './nav/platformNav';
 import { useFeatureFlags } from '../context/FeatureFlagContext';
 import { Skeleton } from './ui/skeleton';
@@ -188,8 +188,11 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
       )}
 
       {/* Main Content Area */}
+      {/* flex column + `flex-1` บน <main> คือสิ่งที่ทำให้ footer sticky ด้านล่างเห็นผลจริง:
+          ลำพัง min-h-dvh กล่องสูงเต็มจอก็จริง แต่ main หดตามเนื้อหา footer จึงไปจอด
+          ท้ายเนื้อหาแล้วเหลือช่องว่างใต้มันเมื่อหน้าสั้น — ต้องให้ main ยืดกินที่ว่างนั้นแทน */}
       <div className={cn(
-        'min-h-dvh sidebar-transition',
+        'flex min-h-dvh flex-col sidebar-transition',
         isCollapsed ? 'md:ml-16' : 'md:ml-60'
       )}>
         {/* Mobile Header */}
@@ -252,7 +255,8 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
           {headerSlot}
           {isDesktop && (
             <div className="ml-auto flex items-center gap-2">
-              <VersionBadge />
+              {/* ไม่มีป้ายเวอร์ชันตรงนี้ — footer บอก App v… · API v… อยู่แล้วและบอกได้ครบกว่า
+                  (มีรุ่นหลังบ้านคู่กัน) ป้ายบน header เป็นการพูดซ้ำในที่ที่แพงที่สุดของจอ */}
               <LanguageToggle />
               <ThemeToggle />
               <HeaderUserMenu userInfo={userInfo} onLogout={handleLogout} />
@@ -261,7 +265,7 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
         </div>
 
         {/* Main Content */}
-        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <main className="container mx-auto flex-1 px-4 sm:px-6 py-6 sm:py-8">
           {children}
         </main>
 
