@@ -1122,6 +1122,7 @@ export const en = {
       bulkPermanentlyDeleteUsers: 'Permanently Delete {{count}} User(s)',
       removeStatusFilter: 'Remove {{status}} filter',
       buColumn: 'BU',
+      identityColumn: 'User',
       // The standalone label under the directory-summary total count. Deliberately a
       // separate key from `usersLower` above despite the identical English value — one is
       // a standalone label, the other sits inside a sentence, and Thai may want them apart.

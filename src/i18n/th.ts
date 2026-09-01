@@ -894,6 +894,7 @@ export const th: Translations = {
       bulkPermanentlyDeleteUsers: 'ลบผู้ใช้ {{count}} รายการถาวร',
       removeStatusFilter: 'นำตัวกรอง {{status}} ออก',
       buColumn: 'BU',
+      identityColumn: 'ผู้ใช้',
       usersCountLabel: 'ผู้ใช้',
       summaryLoadFailed: 'โหลดสรุปข้อมูลผู้ใช้ไม่สำเร็จ',
       softDeleteConfirm: 'ต้องการลบผู้ใช้รายนี้ใช่หรือไม่ การกระทำนี้ย้อนกลับไม่ได้',

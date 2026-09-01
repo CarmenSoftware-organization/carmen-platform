@@ -107,7 +107,7 @@ describe('UserManagement — Add User gates (user.create)', () => {
   it('hides the header Add User button without user.create', async () => {
     auth.hasPermission = () => false;
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     expect(screen.queryByRole('button', { name: /add user/i })).toBeNull();
     // Directory band reads the dedicated summary endpoint, not a two-request perpage:-1 +
@@ -119,7 +119,7 @@ describe('UserManagement — Add User gates (user.create)', () => {
   it('shows the header Add User button with user.create (discriminating control)', async () => {
     auth.hasPermission = (perm) => perm === 'user.create';
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     expect(screen.getByRole('button', { name: /add user/i })).toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe('UserManagement — row action gates (user.update / user.delete)', () =
     auth.hasPermission = () => false;
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     await openRowMenu(user);
 
@@ -165,7 +165,7 @@ describe('UserManagement — row action gates (user.update / user.delete)', () =
     auth.hasPermission = (perm) => perm === 'user.update' || perm === 'user.delete';
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     await openRowMenu(user);
 
@@ -178,7 +178,7 @@ describe('UserManagement — row action gates (user.update / user.delete)', () =
     auth.hasPermission = (perm) => perm === 'user.update';
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     await openRowMenu(user);
 
@@ -191,7 +191,7 @@ describe('UserManagement — row action gates (user.update / user.delete)', () =
     auth.hasPermission = (perm) => perm === 'user.delete';
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     await openRowMenu(user);
 
@@ -215,7 +215,7 @@ describe('UserManagement — Fetch Keycloak sync is gated on user.create (SECURI
   it('hides Fetch Keycloak without user.create', async () => {
     auth.hasPermission = () => false;
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     expect(screen.queryByRole('button', { name: /fetch keycloak/i })).toBeNull();
   });
@@ -223,7 +223,7 @@ describe('UserManagement — Fetch Keycloak sync is gated on user.create (SECURI
   it('shows Fetch Keycloak with user.create (discriminating control)', async () => {
     auth.hasPermission = (perm) => perm === 'user.create';
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     expect(screen.getByRole('button', { name: /fetch keycloak/i })).toBeInTheDocument();
   });
@@ -243,7 +243,7 @@ describe('UserManagement — bulk row-selection actions are gated on isSuperAdmi
   it('renders no selection checkboxes for a non-super-admin (no path to bulk delete)', async () => {
     auth.isSuperAdmin = false;
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     expect(screen.queryByRole('checkbox', { name: /select jane/i })).toBeNull();
     expect(screen.queryByRole('checkbox', { name: /select all/i })).toBeNull();
@@ -253,7 +253,7 @@ describe('UserManagement — bulk row-selection actions are gated on isSuperAdmi
     auth.isSuperAdmin = true;
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     await user.click(screen.getByRole('checkbox', { name: /select jane/i }));
 
@@ -281,45 +281,50 @@ describe('UserManagement — row selection resets when the result set changes (d
   it('clears row selection (bar + checkbox) when a sort change bumps selectionResetKey', async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByText('jane@example.com');
+    await screen.findByText('Jane Doe');
 
     const checkbox = screen.getByRole('checkbox', { name: /select jane/i });
     await user.click(checkbox);
     expect(checkbox).toBeChecked();
     expect(await screen.findByText('1 selected')).toBeInTheDocument();
 
-    // Sort by Username -> handleSortChange -> setPaginate({ ...prev, sort, page: 1 }) ->
+    // Sort by User (accessorKey ยังเป็น username) -> handleSortChange -> setPaginate({ ...prev, sort, page: 1 }) ->
     // the paginate-watching effect (deps include paginate.sort) calls clearSelection().
-    await user.click(screen.getByRole('button', { name: /^username$/i }));
+    await user.click(screen.getByRole('button', { name: /^user$/i }));
 
     await waitFor(() => expect(screen.queryByText('1 selected')).toBeNull());
     expect(screen.getByRole('checkbox', { name: /select jane/i })).not.toBeChecked();
   });
 });
 
-// Content-based layout with the identity frozen: Username single-line, and the
-// leading columns pinned. Without row-selection that's # + avatar + username (3);
-// super admins add the select column, so it's select + # + avatar + username (4).
+// Content-based layout with the identity frozen. avatar/username/name/email ถูกยุบเป็น
+// เซลล์เดียว คอลัมน์นำหน้าจึงเหลือ # + identity (2); super admin ได้คอลัมน์ select เพิ่มเป็น 3.
 describe('UserManagement — table fit-content & sticky', () => {
-  it('uses table-auto, freezes three columns and a single-line Username (no selection)', async () => {
+  it('renders one identity cell (name over handle) and freezes two columns (no selection)', async () => {
     const { container } = renderPage();
-    await screen.findByText('jane');
+    await screen.findByText('Jane Doe');
 
     const table = container.querySelector('table');
     expect(table?.className).toContain('table-auto');
-    expect(table?.className).toContain('table-sticky-left-3');
+    // `.table-sticky-left` ตรึงคอลัมน์ 1-2 อยู่แล้ว ตัวเลขต่อท้ายมีไว้เพิ่มคอลัมน์ที่ 3/4
+    // เท่านั้น — สองคอลัมน์จึงต้องไม่มี modifier ตัวเลขเลย
+    expect(table?.className).toContain('table-sticky-left');
+    expect(table?.className).not.toContain('table-sticky-left-3');
     expect(table?.className).not.toContain('table-sticky-left-4');
 
-    const link = screen.getByRole('link', { name: 'jane' });
-    expect(link.className).toContain('whitespace-nowrap');
-    expect(link.className).not.toContain('truncate');
+    // บรรทัดบนคือชื่อและเป็นลิงก์ไปหน้าแก้ไข บรรทัดล่างรวม username กับ email ที่ไม่ซ้ำกัน
+    const link = screen.getByRole('link', { name: 'Jane Doe' });
+    expect(link).toHaveAttribute('href', '/users/u1/edit');
+    expect(screen.getByText('jane · jane@example.com')).toBeInTheDocument();
+    // ไม่มีคอลัมน์ username/email แยกอีกแล้ว — สตริงเดิมต้องไม่ปรากฏเป็นเซลล์ของตัวเอง
+    expect(screen.queryByRole('columnheader', { name: /^email$/i })).toBeNull();
   });
 
-  it('freezes a 4th column when super admins get the select column', async () => {
+  it('freezes a 3rd column when super admins get the select column', async () => {
     auth.isSuperAdmin = true;
     const { container } = renderPage();
-    await screen.findByText('jane');
+    await screen.findByText('Jane Doe');
 
-    expect(container.querySelector('table')?.className).toContain('table-sticky-left-4');
+    expect(container.querySelector('table')?.className).toContain('table-sticky-left-3');
   });
 });

@@ -419,68 +419,64 @@ const UserManagement: React.FC = () => {
 
   const columns = useMemo<ColumnDef<UserRecord, unknown>[]>(
     () => [
-      {
-        id: "avatar",
-        header: "",
-        enableSorting: false,
-        meta: { headerClassName: "w-12", cellClassName: "" },
-        cell: ({ row }) => (
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-              {getInitials(row.original)}
-            </AvatarFallback>
-            {row.original.avatar_url && (
-              <AvatarImage
-                src={row.original.avatar_url}
-                alt=""
-                className="absolute inset-0 object-cover"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            )}
-          </Avatar>
-        ),
-      },
+      // เดิมเป็น 4 คอลัมน์ (avatar / username / name / email) แต่ 9 ใน 10 แถวมี username
+      // เท่ากับ email เป๊ะ ๆ — สองคอลัมน์แสดงสตริงเดียวกัน รวมเป็นเซลล์ระบุตัวตนเดียว:
+      // บรรทัดบนคือชื่อที่มนุษย์อ่าน บรรทัดล่างคือ handle ที่ใช้ล็อกอิน (username/email)
+      // โดยตัดค่าที่ซ้ำกันออก จึงไม่มีข้อมูลหายแม้ทั้งสามค่าจะต่างกัน
       {
         accessorKey: "username",
-        header: t('common.field.username'),
+        header: t('pages.users.identityColumn'),
+        // card: 'title' — หน้านี้ไม่เคยประกาศ meta.card เลย การ์ดบนมือถือจึงเป็นแถว
+        // label/value ล้วนโดยไม่มีหัว พอมีเซลล์ระบุตัวตนเดียวแล้วมันคือหัวการ์ดที่ชัดที่สุด
+        meta: { headerClassName: "min-w-[16rem]", card: 'title' as const },
         cell: ({ row }) => {
-          const label = row.original.username || row.original.user_id || "-";
+          const u = row.original;
+          const name = getNameDisplay(u);
+          const handle = u.username || u.user_id || "";
+          const primary = name !== "-" ? name : (handle || u.email || "-");
+          const secondary = [handle, u.email]
+            .filter((v): v is string => Boolean(v))
+            .filter((v, i, arr) => arr.indexOf(v) === i && v !== primary)
+            .join(" · ");
           return (
-            <Link
-              to={`/users/${row.original.id}/edit`}
-              className="text-primary hover:underline whitespace-nowrap"
-              title={label}
-            >
-              {label}
-            </Link>
-          );
-        },
-      },
-      {
-        accessorKey: "name",
-        header: t('common.field.name'),
-        cell: ({ row }) => {
-          const name = getNameDisplay(row.original);
-          return (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="truncate" title={name}>{name}</span>
-              {row.original.deleted_at && (
-                <Badge variant="destructive" className="shrink-0 text-xs px-1.5 py-0" title={row.original.deleted_by_name ? t('pages.users.deletedByName', { name: row.original.deleted_by_name }) : undefined}>
-                  {t('common.status.deleted')}
-                </Badge>
-              )}
+            <div className="flex items-center gap-3 min-w-0">
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                  {getInitials(u)}
+                </AvatarFallback>
+                {u.avatar_url && (
+                  <AvatarImage
+                    src={u.avatar_url}
+                    alt=""
+                    className="absolute inset-0 object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                )}
+              </Avatar>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Link
+                    to={`/users/${u.id}/edit`}
+                    className="text-primary hover:underline truncate"
+                    title={primary}
+                  >
+                    {primary}
+                  </Link>
+                  {u.deleted_at && (
+                    <Badge variant="destructive" className="shrink-0 text-xs px-1.5 py-0" title={u.deleted_by_name ? t('pages.users.deletedByName', { name: u.deleted_by_name }) : undefined}>
+                      {t('common.status.deleted')}
+                    </Badge>
+                  )}
+                </div>
+                {secondary && (
+                  <div className="text-muted-foreground truncate text-xs" title={secondary}>
+                    {secondary}
+                  </div>
+                )}
+              </div>
             </div>
           );
         },
-      },
-      {
-        accessorKey: "email",
-        header: t('common.field.email'),
-        cell: ({ row }) => (
-          <div className="truncate" title={row.original.email || undefined}>
-            {row.original.email || "-"}
-          </div>
-        ),
       },
 
       {
@@ -506,12 +502,15 @@ const UserManagement: React.FC = () => {
       {
         accessorKey: "is_active",
         header: t('common.status.label'),
-        meta: { headerClassName: "w-24" },
-        cell: ({ row }) => (
-          <Badge variant={row.original.is_active ? "success" : "secondary"}>
-            {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
-          </Badge>
-        ),
+        meta: { headerClassName: "w-24", card: 'badge' as const },
+        // ผู้ใช้ 44/44 คน active — ป้ายเขียวทุกแถวคือหมึกเต็มคอลัมน์ที่ไม่บอกอะไรเลย
+        // เน้นเฉพาะสิ่งที่ผิดปกติ: active เป็นข้อความจาง ๆ, inactive เท่านั้นที่ได้ป้าย
+        cell: ({ row }) =>
+          row.original.is_active ? (
+            <span className="text-muted-foreground text-xs">{t('common.status.active')}</span>
+          ) : (
+            <Badge variant="secondary">{t('common.status.inactive')}</Badge>
+          ),
       },
       // auditColumns() ไม่ส่ง meta.headerClassName มา — คอลัมน์ Created/Updated เดิมของหน้านี้มี
       // w-40 (ดู git show 8efd263) การ spread ตรง ๆ เลยทำความกว้างเปลี่ยน map ทับ meta แต่คง
@@ -778,7 +777,7 @@ const UserManagement: React.FC = () => {
                 )}
                 <div className="relative">
                   {loading && users.length === 0 ? (
-                    <TableSkeleton columns={isSuperAdmin ? 10 : 9} rows={paginate.perpage || 5} />
+                    <TableSkeleton columns={isSuperAdmin ? 7 : 6} rows={paginate.perpage || 5} />
                   ) : (
                   <>
                   {loading && (
@@ -791,7 +790,7 @@ const UserManagement: React.FC = () => {
                     data={users}
                     serverSide
                     tableLayout="auto"
-                    stickyLeftColumns={isSuperAdmin ? 4 : 3}
+                    stickyLeftColumns={isSuperAdmin ? 3 : 2}
                     totalRows={totalRows}
                     page={paginate.page}
                     perpage={paginate.perpage}
