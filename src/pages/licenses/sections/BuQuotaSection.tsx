@@ -14,6 +14,7 @@ import { latestActor } from '../../../utils/audit';
 import { fmtDate, daysLeft, coverageWindow } from '../licenseDates';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import { useI18n } from '../../../hooks/useI18n';
+import { useExpiryThresholds } from '../../../context/ExpiryThresholdContext';
 import type { TKey } from '../../../i18n/types';
 import { isExpiringSoon as subExpiringSoon } from '../../../utils/subscriptionState';
 import type { BusinessUnit, ClusterLicense, ClusterLicenseStatus, Subscription } from '../../../types';
@@ -92,6 +93,7 @@ export function BuQuotaSection({
   subscriptions, subscriptionsLoading, subscriptionsFailed,
 }: BuQuotaSectionProps) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const { licenses, loading, saving, loadFailed, reload, remove } = ledger;
   const now = new Date();
   const nowMs = now.getTime();
@@ -295,7 +297,7 @@ export function BuQuotaSection({
                         </td>
                         <td className="px-2 py-1 space-x-1 whitespace-nowrap">
                           <Badge variant={STATUS_VARIANT[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
-                          {isExpiringSoon(l, now) && (
+                          {isExpiringSoon(l, thresholds.bu_quota_days, now) && (
                             <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
                           )}
                         </td>
@@ -462,6 +464,7 @@ function BuSubscriptionCells({ subs, now, nowMs, window, loading, failed }: {
   failed: boolean;
 }) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
 
   if (failed || loading) {
     const text = failed ? t('pages.licenses.healthUnavailableShort') : t('common.busy.loadingEllipsis');
@@ -477,7 +480,7 @@ function BuSubscriptionCells({ subs, now, nowMs, window, loading, failed }: {
   const endsOn = active.length === 0
     ? null
     : active.reduce((a, b) => (Date.parse(a.end_date) >= Date.parse(b.end_date) ? a : b)).end_date;
-  const soon = endsOn !== null && active.some((s) => subExpiringSoon(s.state, s.end_date) && s.end_date === endsOn);
+  const soon = endsOn !== null && active.some((s) => subExpiringSoon(s.state, s.end_date, thresholds.subscription_days) && s.end_date === endsOn);
 
   if (subs.length === 0) {
     return (

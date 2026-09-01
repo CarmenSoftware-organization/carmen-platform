@@ -5,6 +5,7 @@ import { ThemeProvider } from "./hooks/useDarkMode";
 import { I18nProvider } from "./hooks/useI18n";
 import PrivateRoute from "./components/PrivateRoute";
 import { FeatureFlagProvider } from "./context/FeatureFlagContext";
+import { ExpiryThresholdProvider } from "./context/ExpiryThresholdContext";
 import AuthedRoute from "./components/AuthedRoute";
 import ClusterAdminRoute from "./components/ClusterAdminRoute";
 import { Toaster } from "sonner";
@@ -85,6 +86,9 @@ function AppContent() {
   return (
     <AuthProvider>
       <FeatureFlagProvider>
+        {/* ต้องอยู่ข้างใน AuthProvider — context อ่าน useAuth() และ endpoint ต้องมี token
+            Must sit inside AuthProvider: the context reads useAuth() and the endpoint needs a token */}
+        <ExpiryThresholdProvider>
         <Router>
         <div className="App">
           <Suspense fallback={<RouteLoader />}>
@@ -571,6 +575,7 @@ function AppContent() {
           <KeyboardShortcutsHelp />
         </div>
         </Router>
+        </ExpiryThresholdProvider>
       </FeatureFlagProvider>
     </AuthProvider>
   );

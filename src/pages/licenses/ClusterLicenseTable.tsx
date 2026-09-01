@@ -15,8 +15,9 @@ import {
 import { Filter, KeyRound, X } from 'lucide-react';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useI18n } from '../../hooks/useI18n';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import { CapacityMeter } from '../clusterManagement/CapacityMeter';
-import { isPerpetual, daysLeft, fmtDate, EXPIRING_SOON_DAYS } from './licenseDates';
+import { isPerpetual, daysLeft, fmtDate } from './licenseDates';
 import { auditColumns } from '../../components/auditColumns';
 import type { Cluster, PaginateParams } from '../../types';
 import type { TKey } from '../../i18n/types';
@@ -94,6 +95,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
   onExpiringSoonChange,
 }) => {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -302,7 +304,7 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
           return (
             <span className="text-xs whitespace-nowrap">
               {fmtDate(end)}
-              {left <= EXPIRING_SOON_DAYS && left >= 0 && (
+              {left <= thresholds.bu_quota_days && left >= 0 && (
                 <Badge variant="warning" className="ml-2">{t('common.state.daysLeft', { count: left })}</Badge>
               )}
             </span>
@@ -328,7 +330,10 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
       },
       updatedColumn,
     ];
-  }, [t]);
+    // thresholds.bu_quota_days อยู่ใน deps เพราะ cell ของคอลัมน์วันหมดอายุอ่านค่านี้ — ถ้าไม่ใส่
+    // ป้าย "เหลืออีก N วัน" จะค้างที่เกณฑ์ตอน mount แล้วไม่อัปเดตตอน context โหลดค่าจริงเสร็จ
+    // Required: the end-date cell reads it, and without it the badge freezes at the boot value.
+  }, [t, thresholds.bu_quota_days]);
 
   return (
     <Card>

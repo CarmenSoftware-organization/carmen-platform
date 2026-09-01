@@ -1,5 +1,5 @@
 import type { ClusterLicense, ClusterLicenseStatus } from '../types';
-import { isPerpetual, PERPETUAL_END_DATE, EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
+import { isPerpetual, PERPETUAL_END_DATE } from '../pages/licenses/licenseDates';
 import { normalizeAudit } from './audit';
 
 // re-export เพื่อไม่ให้ผู้เรียกเดิม (BuQuotaSection, ClusterEdit) และเทสต์เดิมพัง
@@ -49,10 +49,20 @@ export function activeLicense(list: ClusterLicense[], now: Date = new Date()): C
   });
 }
 
-/** ใกล้หมดอายุใน 30 วันไหม — ใบ perpetual คืน false เสมอ */
-export function isExpiringSoon(lic: ClusterLicense, now: Date = new Date()): boolean {
+/**
+ * ใกล้หมดอายุภายใน `days` วันไหม — ใบ perpetual คืน false เสมอ
+ *
+ * `days` บังคับด้วยเหตุผลเดียวกับใน `utils/subscriptionState.ts`: จุดเรียกที่ลืมส่งจะค้างที่ 30
+ * เงียบ ๆ ตลอดไป · ค่าที่ถูกต้องมาจาก `useExpiryThresholds().thresholds.bu_quota_days`
+ * Required for the same reason as in subscriptionState.ts.
+ * @param lic - ใบที่ตรวจ / The licence
+ * @param days - เกณฑ์เป็นวัน จาก `thresholds.bu_quota_days` / The window, in days
+ * @param now - เวลาอ้างอิง / Reference time
+ * @returns true เมื่อใกล้หมดอายุ / True when expiring soon
+ */
+export function isExpiringSoon(lic: ClusterLicense, days: number, now: Date = new Date()): boolean {
   if (isPerpetual(lic.end_date)) return false;
   if (licenseStatus(lic, now) !== 'active') return false;
-  const days = (Date.parse(lic.end_date) - now.getTime()) / 86_400_000;
-  return days <= EXPIRING_SOON_DAYS;
+  const daysLeft = (Date.parse(lic.end_date) - now.getTime()) / 86_400_000;
+  return daysLeft <= days;
 }

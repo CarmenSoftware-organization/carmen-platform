@@ -1,9 +1,25 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ComponentProps } from 'react';
 import BusinessUnitLicensesCard from './BusinessUnitLicensesCard';
 import type { BusinessUnitLicense } from '../../types';
+
+/**
+ * เกณฑ์ "ใกล้หมดอายุ" ย้ายจาก constant ไปเป็นค่าตั้งใน Platform Config คอมโพเนนต์จึงอ่านผ่าน
+ * context ที่ต้องมี provider ครอบ · mock ด้วย 30 ซึ่งเป็นค่าเดิมก่อนย้าย assertion ทุกข้อในไฟล์นี้
+ * จึงยังยืนยันพฤติกรรมเดียวกับก่อนเปลี่ยน
+ * Mocked with 30, the former constant, so every assertion here still tests the same behaviour.
+ */
+vi.mock('../../context/ExpiryThresholdContext', () => ({
+  DEFAULT_EXPIRY_THRESHOLDS: { subscription_days: 30, bu_quota_days: 30, seat_days: 30 },
+  useExpiryThresholds: () => ({
+    thresholds: { subscription_days: 30, bu_quota_days: 30, seat_days: 30 },
+    isReady: true,
+    refresh: async () => {},
+  }),
+}));
+
 
 // Task 8: การ์ดนี้กลายเป็นสรุปอ่านอย่างเดียวถาวรแล้ว — การออก/แก้/ลบใบย้ายไปที่ License Center
 // ทั้งหมด จึงไม่มี `<Can>` และไม่มี AuthContext ให้ mock อีกต่อไป (ต่างจากไฟล์เทสต์เดิมที่ยัง

@@ -8,8 +8,19 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** เกณฑ์ "ใกล้หมดอายุ" — ต้องตรงกับฝั่ง backend และ inventory FE */
-export const EXPIRING_SOON_DAYS = 30;
+/**
+ * ค่าตั้งต้นของเกณฑ์ "ใกล้หมดอายุ" — ใช้เมื่ออ่านค่าจริงจาก backend ไม่ได้
+ *
+ * เดิมชื่อ `EXPIRING_SOON_DAYS` และเป็นค่าที่ทุกคนคำนวณจากมันตรง ๆ ตอนนี้ค่าจริงมาจาก
+ * `useExpiryThresholds()` (`src/context/ExpiryThresholdContext.tsx`) ซึ่งอ่านคีย์
+ * `expiry_thresholds` ที่ผู้ดูแลแก้ได้จากหน้า Platform Config
+ * ตัวนี้เหลือบทบาทเดียวคือค่าตั้งต้นของ context — **ห้าม import ไปคำนวณป้ายเตือนโดยตรง**
+ * Formerly the single constant everyone computed from; now only the context's fallback.
+ *
+ * ต้องเท่ากับ default ของ registry ฝั่ง backend (`expiry_thresholds` ใน micro-cluster) เสมอ
+ * Must always equal the backend registry defaults.
+ */
+export const DEFAULT_EXPIRING_SOON_DAYS = 30;
 
 /** ค่า end_date ที่แปลว่า "ไม่มีวันหมดอายุ" — ค่าที่ส่งไปเขียนลง DB */
 export const PERPETUAL_END_DATE = '2099-12-31T23:59:59.999Z';

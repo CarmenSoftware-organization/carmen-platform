@@ -9,6 +9,7 @@ import clusterLicenseService from '../../services/clusterLicenseService';
 import { useAuth } from '../../context/AuthContext';
 import { devLog, isNotFoundError } from '../../utils/errorParser';
 import { useI18n } from '../../hooks/useI18n';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import { LicenseHealthStrip, type LicenseHealthFacts, type LicenseTabId } from './LicenseHealthStrip';
 import { useLicenseLedger } from './useLicenseLedger';
 import { useClusterSeatLicenses } from './useClusterSeatLicenses';
@@ -57,6 +58,7 @@ const ClusterLicenseDetail: React.FC = () => {
   const { hasPermission } = useAuth();
   const canManage = hasPermission('subscription.manage');
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
 
   const [cluster, setCluster] = useState<Cluster | null>(null);
   const [clusterLoading, setClusterLoading] = useState(true);
@@ -143,7 +145,7 @@ const ClusterLicenseDetail: React.FC = () => {
         cap: winning?.licensed_bus ?? null,
         used: cluster?.bu_used ?? 0,
         // เตือนเฉพาะตอนใกล้หมดจริง — ใบ perpetual และใบที่ยังอีกนานไม่ควรกินที่บนแถบเตือน
-        endsInDays: winning && !isPerpetual(winning.end_date) && quotaExpiringSoon(winning, now)
+        endsInDays: winning && !isPerpetual(winning.end_date) && quotaExpiringSoon(winning, thresholds.bu_quota_days, now)
           ? daysLeft(winning.end_date, now)
           : null,
         unavailable: quotaLedger.loadFailed,
@@ -158,11 +160,11 @@ const ClusterLicenseDetail: React.FC = () => {
       subscriptions: {
         total: subs.items.length,
         expired: subs.items.filter((s) => s.state === 'expired').length,
-        expiringSoon: subs.items.filter((s) => subExpiringSoon(s.state, s.end_date)).length,
+        expiringSoon: subs.items.filter((s) => subExpiringSoon(s.state, s.end_date, thresholds.subscription_days)).length,
         unavailable: subs.failed,
       },
     };
-  }, [quotaLedger.licenses, quotaLedger.loadFailed, seats.rows, subs.items, subs.failed, cluster?.bu_used]);
+  }, [quotaLedger.licenses, quotaLedger.loadFailed, seats.rows, subs.items, subs.failed, cluster?.bu_used, thresholds.bu_quota_days, thresholds.subscription_days]);
 
   const stripLoading = clusterLoading || quotaLedger.loading || seats.loading || subs.loading;
 

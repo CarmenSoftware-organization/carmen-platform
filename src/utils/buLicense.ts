@@ -1,5 +1,4 @@
 import type { BusinessUnitLicense, BuLicenseStatus } from '../types';
-import { EXPIRING_SOON_DAYS } from '../pages/licenses/licenseDates';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -21,15 +20,24 @@ export function licenseStatus(lic: BusinessUnitLicense, now: Date = new Date()):
 }
 
 /**
- * ใบที่คุ้มครองอยู่และจะหมดภายใน 30 วัน
+ * ใบที่คุ้มครองอยู่และจะหมดภายใน `days` วัน
  * ใบที่หมดแล้วหรือยังไม่เริ่มไม่นับ — มันไม่ใช่ "กำลังจะหมด"
+ *
+ * `days` บังคับด้วยเหตุผลเดียวกับใน `utils/subscriptionState.ts`: จุดเรียกที่ลืมส่งจะค้างที่ 30
+ * เงียบ ๆ ตลอดไป · ค่าที่ถูกต้องมาจาก `useExpiryThresholds().thresholds.seat_days`
+ * Required for the same reason as in subscriptionState.ts.
  * @param lic - ใบที่ตรวจ / The licence
+ * @param days - เกณฑ์เป็นวัน จาก `thresholds.seat_days` / The window, in days
  * @param now - เวลาอ้างอิง / Reference time
  * @returns true เมื่อใกล้หมด / True when expiring soon
  */
-export function isExpiringSoon(lic: BusinessUnitLicense, now: Date = new Date()): boolean {
+export function isExpiringSoon(
+  lic: BusinessUnitLicense,
+  days: number,
+  now: Date = new Date(),
+): boolean {
   if (licenseStatus(lic, now) !== 'active') return false;
-  return new Date(lic.end_date).getTime() - now.getTime() <= EXPIRING_SOON_DAYS * DAY_MS;
+  return new Date(lic.end_date).getTime() - now.getTime() <= days * DAY_MS;
 }
 
 /**

@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon } from '../../utils/buLicense';
 import { daysLeft } from '../licenses/licenseDates';
 import { useI18n } from '../../hooks/useI18n';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { BusinessUnitLicense } from '../../types';
 
 interface BusinessUnitLicensesCardProps {
@@ -28,9 +29,10 @@ export default function BusinessUnitLicensesCard({
   licenses, loading, clusterSeat, manageHref, now = new Date(),
 }: BusinessUnitLicensesCardProps) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const activeSeats = sumActiveLicenses(licenses, now);
   const activeCount = licenses.filter((l) => licenseStatus(l, now) === 'active').length;
-  const soon = licenses.filter((l) => isExpiringSoon(l, now));
+  const soon = licenses.filter((l) => isExpiringSoon(l, thresholds.seat_days, now));
   const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
 
   return (
