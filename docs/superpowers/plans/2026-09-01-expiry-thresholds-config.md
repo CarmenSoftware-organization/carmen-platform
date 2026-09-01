@@ -22,7 +22,7 @@
 - **ขอบเขตค่า:** `z.number().int().positive().max(365)` ทุกฟิลด์ พร้อม `.default(30)` ฝั่งอ่าน
 - **cache TTL:** `60_000` ms ทุก process (ตรงกับ `SeatEnforcementFlagService` และ `LicenseService`)
 - **fail-safe:** อ่านไม่ได้/parse ไม่ผ่าน → คืน `30` ห้าม throw ห้ามคืน `0`
-- **lint ฝั่ง backend ต้องใช้ `bunx eslint <path>`** ไม่ใช่ `bun run lint` (script นั้นมี `--fix` และเขียนทับทั้ง repo)
+- **lint ฝั่ง backend:** `eslint.config.mjs` อยู่ในระดับ **app** ไม่ใช่ root — ต้อง `cd apps/<app> && bunx eslint <path ที่สัมพันธ์กับ app>` รันจาก root จะได้ `ESLint couldn't find an eslint.config.*` และ **ห้ามใช้ `bun run lint`** เพราะ script นั้นมี `--fix` เขียนทับทั้ง repo
 - **`micro-business` เป็น jest ที่ค้างได้** — ถ้าต้องรัน ใช้ `--runInBand --forceExit`
 
 ---
@@ -1678,3 +1678,39 @@ gh pr merge --auto --squash
 
 - [ ] **7. viewport 390px** ของหน้า `/platform/configs` — การ์ด 3 ช่องตัวเลขต้องไม่ล้น
   ใช้ท่า iframe probe ไม่ใช่ `resize_window` (ตัวหลังใช้ไม่ได้ในสภาพแวดล้อมนี้)
+
+---
+
+## ผลการรันจริง (2026-09-01) — จุดที่แผนพลาด
+
+บันทึกไว้เพื่อให้แผนรอบหน้าไม่พลาดซ้ำ
+
+1. **คำสั่ง lint ฝั่ง backend ผิด** — `eslint.config.mjs` อยู่ระดับ **app** ไม่ใช่ root
+   `bunx eslint <path>` จาก root ได้ `ESLint couldn't find an eslint.config.*`
+   ที่ถูกคือ `cd apps/<app> && bunx eslint <path ที่สัมพันธ์กับ app>` (แก้ใน Global Constraints แล้ว)
+
+2. **Task 0 จับ baseline แค่ typecheck ไม่ได้จับเทสต์** — `micro-cluster` บน `main` **มีเทสต์แดง
+   อยู่แล้ว 41 ตัว (5 suites)** พอรันหลังแก้แล้วเห็น 89 แดงเลยดูเหมือนเป็นความผิดของงานนี้
+   ต้องวัด baseline ของเทสต์ด้วยเสมอ และ **ต้อง `bun run build` ของ shared package หลัง
+   `git stash` ทุกครั้ง** ไม่งั้น `dist/` (gitignore) ค้างเป็นเวอร์ชันใหม่แล้ว baseline หลอก
+   (รอบแรกวัดได้ 28/340 ซึ่งผิด รอบที่ rebuild แล้วได้ 41/413 ซึ่งถูก)
+   วิธีพิสูจน์ที่ใช้จริง: dump รายชื่อเทสต์ที่แดงทั้งสองฝั่งแล้ว `diff` — ต้องเหมือนกันเป๊ะ
+
+3. **`tsc` ชี้ 11 ไฟล์ ไม่ใช่ 4 ตามที่แผนคาด** — แผนไล่จากผู้ import constant ตรง ๆ แต่ลืมนับ
+   จุดที่เรียก `isExpiringSoon` ผ่าน alias (`subExpiringSoon`, `quotaExpiringSoon`)
+   ไฟล์ที่แผนไม่ได้ระบุ: `BusinessUnitLicensesCard`, `SeatsByBuTable`, `ClusterLicenseDetail`,
+   `BuQuotaSection`, `SeatSection`, `SubscriptionSection`, `useClusterSubscriptions`,
+   `buLicense.test.ts`, `buildAdvance.test.ts` — **การทำ `days` เป็นพารามิเตอร์บังคับคือสิ่งที่
+   ทำให้เจอครบ** ถ้าทำเป็น optional จะเหลือ 7 ไฟล์ที่ค้างอยู่ที่ 30 เงียบ ๆ
+
+4. **แผนสั่งเพิ่มคีย์ i18n ที่มีอยู่แล้ว** — `daysRequired`, `daysValue` และ
+   `daysRange` ("จำนวนเต็ม 1–365" ซึ่งตรงกับเกณฑ์พอดี) อยู่ในบล็อก `pages.platformConfig` แล้ว
+   ทำให้ `tsc` ฟ้อง `TS1117 duplicate property` · ใช้ของเดิม ตัด `daysMin1`/`daysMax365` ทิ้ง
+
+5. **เทสต์คอมโพเนนต์ 3 ไฟล์พังเพราะไม่มี provider** — แผนเตือนไว้ลอย ๆ แต่ไม่ได้ระบุไฟล์
+   ที่ต้องแก้จริง: `BusinessUnitEdit.test.tsx`, `businessUnitEdit/BusinessUnitLicensesCard.test.tsx`,
+   `licenses/SubscriptionTable.test.tsx` — แก้ด้วย `vi.mock` ของ context คืน 30 ทุกค่า
+
+6. **spec ของ `bu-quota.ts` เกือบผิด** — ฉบับแรกเขียนว่าเพิ่ม `days` "ท้ายสุด" ซึ่งจะได้
+   `(q, now?, days)` ที่ TypeScript ไม่ยอม (พารามิเตอร์บังคับต่อท้ายตัวที่มีค่าตั้งต้นไม่ได้)
+   จับได้ตอน self-review ของ spec ไม่ใช่ตอนรัน
