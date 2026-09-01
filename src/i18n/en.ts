@@ -1445,6 +1445,29 @@ export const en = {
       // common.field.seats verbatim (same English, same Thai). Call sites here now bind
       // common.field.seats.
       detailsTitle: 'Subscription details',
+      // --- create branch (`/licenses/subscriptions/new`) ---
+      issuedTo: 'Issued to',
+      issuedToNote: 'A subscription belongs to one business unit, and cannot be moved to another later.',
+      contractPeriod: 'Contract period',
+      contractPeriodNote: 'Both dates are covered days — a term that starts on 1 Jan and runs a year ends on 31 Dec.',
+      commonTerms: 'Common terms',
+      // The month-end calendar replaced the old 1/2/3-year presets: these contracts end on a
+      // month boundary, so the end date is picked, not computed from a length.
+      pickStartDateFirst: 'Pick a start date to choose an end of month',
+      // One number per sentence, never a translated fragment dropped into a translated frame.
+      coversOneYear: 'Covers 1 year',
+      coversYears: 'Covers {{count}} years',
+      coversOneMonth: 'Covers 1 month',
+      coversMonths: 'Covers {{count}} months',
+      coversOneDay: 'Covers 1 day',
+      coversDays: 'Covers {{count}} days',
+      coversMonthsAndDays: 'Covers {{months}} months and {{days}} days',
+      draftPlateAria: 'The subscription about to be created',
+      noBusinessUnitYet: 'No business unit picked yet',
+      noClusterYet: 'No cluster picked yet',
+      noPeriodYet: 'No period yet',
+      willBeCreatedAs: 'Will be created as',
+      groupsNextStep: 'Entitlement groups are picked once the contract exists.',
       purchasedModules: 'Purchased modules',
       searchNumber: 'Search subscription numbers...',
       clearClusterFilter: 'Clear cluster filter',

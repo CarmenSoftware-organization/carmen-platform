@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
@@ -24,6 +24,9 @@ import { useI18n } from '../../hooks/useI18n';
 import { ClusterEditNav, type NavItem } from '../clusterEdit/ClusterEditNav';
 import { SubscriptionInfoCard, type SubscriptionFormData } from './subscriptionEdit/SubscriptionInfoCard';
 import { GroupSelectionCard } from './subscriptionEdit/GroupSelectionCard';
+import { SubscriptionCreateForm } from './subscriptionCreate/SubscriptionCreateForm';
+import { SubscriptionDraftPlate } from './subscriptionCreate/SubscriptionDraftPlate';
+import { todayYmd } from './subscriptionCreate/subscriptionTerm';
 import type { BusinessUnit, SubscriptionDetail } from '../../types';
 
 // ISO 8601 Z <-> the plain 'YYYY-MM-DD' an <input type="date"> wants.
@@ -38,6 +41,19 @@ import type { BusinessUnit, SubscriptionDetail } from '../../types';
 // exactly reversible.
 const toYmd = (v?: string): string => (v ? (/^(\d{4}-\d{2}-\d{2})/.exec(v)?.[1] ?? '') : '');
 const fromYmd = (ymd: string): string => (ymd ? `${ymd}T00:00:00.000Z` : '');
+
+// The one rule on this form that no single field can check: it needs both dates at once, so it
+// can live neither in `validateField` (which only ever sees one) nor on a blur handler. Kept as a
+// module-level function so the live check and the submit gate produce the *same* string — two
+// wordings of one mistake would render as two messages under one field.
+const endDateOrderError = (
+  start: string,
+  end: string,
+  t: ReturnType<typeof useI18n>['t'],
+): string =>
+  start && end && new Date(end).getTime() <= new Date(start).getTime()
+    ? t('pages.subscriptions.endDateAfterStart')
+    : '';
 
 // Every BU of the subscription's cluster, for Task B4's feature picker — bounded pagination,
 // never `perpage: -1` (BusinessUnitEdit.tsx:168 / ClusterEdit.tsx:178 are the trap this repo
@@ -82,6 +98,12 @@ const SubscriptionForm: React.FC = () => {
   const [formData, setFormData] = useState<SubscriptionFormData>(() => ({
     ...emptyFormData,
     cluster_id: searchParams.get('cluster_id') || '',
+    // A new contract starts today unless it is told otherwise — that is what nearly every one of
+    // them does, and it is also what unlocks the month-end row, which has nothing to measure from
+    // until a start exists. On an existing subscription this is overwritten by `load()` before
+    // anything renders it, but it is still gated: seeding a date into a record that has its own
+    // would be a value the page invented.
+    start_date: id ? '' : todayYmd(),
   }));
   const [savedFormData, setSavedFormData] = useState<SubscriptionFormData>(formData);
   const [detail, setDetail] = useState<SubscriptionDetail | null>(null);
@@ -109,6 +131,19 @@ const SubscriptionForm: React.FC = () => {
 
   const [clusterBus, setClusterBus] = useState<BusinessUnit[]>([]);
   const [clusterBusLoading, setClusterBusLoading] = useState(false);
+
+  // Ctrl/⌘+S on the create branch submits the form itself rather than calling a save path — the
+  // shortcut used to check `hasChanges`, which is `!isNew && …` and therefore never true while
+  // creating, so the page silently had no save shortcut at all (rule 14).
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const { start_date: startDate, end_date: endDate } = formData;
+
+  // What the draft plate draws. Both resolve out of lists that are still loading on first paint,
+  // so both are legitimately `undefined` for a moment — the plate renders that as "not picked yet",
+  // which is also the truthful answer before anything is picked.
+  const draftCluster = clusters.find((c) => c.id === formData.cluster_id);
+  const draftBu = clusterBus.find((b) => b.id === formData.business_unit_id);
 
   const hasChanges = !isNew && (
     JSON.stringify(formData) !== JSON.stringify(savedFormData) ||
@@ -173,6 +208,20 @@ const SubscriptionForm: React.FC = () => {
     return () => { cancelled = true; };
   }, [formData.cluster_id]);
 
+  // The end-must-follow-start rule, checked while the dates are being picked rather than only
+  // once Create is pressed. It writes into the same `fieldErrors.end_date` slot the submit gate
+  // uses, so the message can never appear twice; and it only ever clears *its own* message, so a
+  // "required" error or a per-field message from the backend is not wiped by a keystroke.
+  useEffect(() => {
+    const msg = endDateOrderError(startDate, endDate, t);
+    setFieldErrors((prev) => {
+      if (msg) return prev.end_date === msg ? prev : { ...prev, end_date: msg };
+      return prev.end_date && prev.end_date === t('pages.subscriptions.endDateAfterStart')
+        ? { ...prev, end_date: '' }
+        : prev;
+    });
+  }, [startDate, endDate, t]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -186,6 +235,15 @@ const SubscriptionForm: React.FC = () => {
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     setFieldErrors((prev) => ({ ...prev, [e.target.name]: '' }));
+  };
+
+  // The month-end row writes only the end date. It is gated on a start date already being set —
+  // "the end of October" is not a term until there is a beginning to measure it from — so unlike a
+  // "1 year" button there is nothing sensible for it to infer about where the contract starts.
+  const handleTermEnd = (nextEndDate: string) => {
+    setFormData((prev) => ({ ...prev, end_date: nextEndDate }));
+    setFieldErrors((prev) => ({ ...prev, end_date: '' }));
+    setError('');
   };
 
   const handleCancelEdit = () => {
@@ -215,10 +273,9 @@ const SubscriptionForm: React.FC = () => {
       required: true, label: t('common.validation.endDate'),
     }, t);
     if (endErr) next.end_date = endErr;
-    if (!next.start_date && !next.end_date && formData.start_date && formData.end_date) {
-      if (new Date(formData.end_date).getTime() <= new Date(formData.start_date).getTime()) {
-        next.end_date = t('pages.subscriptions.endDateAfterStart');
-      }
+    if (!next.start_date && !next.end_date) {
+      const orderErr = endDateOrderError(formData.start_date, formData.end_date, t);
+      if (orderErr) next.end_date = orderErr;
     }
     setFieldErrors((prev) => ({ ...prev, ...next }));
     return Object.keys(next).length === 0;
@@ -317,7 +374,16 @@ const SubscriptionForm: React.FC = () => {
   };
 
   useGlobalShortcuts({
-    onSave: () => { if (!isNew && canEdit && hasChanges && !saving) void handleSave(); },
+    onSave: () => {
+      // Create has no `hasChanges` to gate on — `hasChanges` is `!isNew && …`, so the old
+      // condition made Ctrl/⌘+S a no-op on this branch. Submitting the form itself (rather than
+      // calling a handler directly) keeps every path through the same validation.
+      if (isNew) {
+        if (canEdit && !saving) formRef.current?.requestSubmit();
+        return;
+      }
+      if (canEdit && hasChanges && !saving) void handleSave();
+    },
     onCancel: () => { if (!isNew && hasChanges) handleCancelEdit(); },
   });
 
@@ -385,42 +451,57 @@ const SubscriptionForm: React.FC = () => {
       <div className="space-y-4 sm:space-y-6">
         {isNew ? (
           <>
+            {/* The heading stays here, unlike `/clusters/new` where the draft plate carries it:
+             *  a draft cluster owns its name as you type it, but a subscription is identified by
+             *  a number only the server can issue, so there is no name for a plate to hold. */}
             <PageHeader
               backTo="/licenses"
               title={t('pages.subscriptions.addSubscription')}
               subtitle={t('pages.subscriptions.createSubtitle')}
             />
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
-            )}
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <SubscriptionInfoCard
-                formData={formData}
-                fieldErrors={fieldErrors}
-                editing={canEdit}
-                isNew
-                clusters={clusters}
-                clustersLoading={clustersLoading}
-                clustersError={clustersError}
-                clusterBus={clusterBus}
-                clusterBusLoading={clusterBusLoading}
-                onChange={handleChange}
-                onBlur={handleBlur}
-                onFocus={handleFocus}
-              />
-              <div className="flex gap-3">
-                <Can permission="subscription.manage">
-                  <Button type="submit" size="sm" disabled={saving}>
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? t('common.busy.creating') : t('pages.subscriptions.createSubscription')}
-                  </Button>
-                </Can>
-                <Button type="button" size="sm" variant="outline" onClick={() => navigate('/licenses')}>
-                  <X className="mr-2 h-4 w-4" />
-                  {t('common.cancel')}
-                </Button>
+
+            {/* Two columns from `lg` up, form first. The plate is a picture of the contract being
+             *  typed, so it has to stay visible *while* it is typed — beside the form it is in
+             *  view for every field, and it fills the width this page was leaving blank. Below
+             *  `lg` it stacks in DOM order, plate first. */}
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+              {/* A sticky element needs a parent taller than itself or it never moves, and the
+               *  grid item stretches to the row height — so the sticky wrapper goes inside it,
+               *  not on it. top-20 = the 64px desktop header plus a 16px gap. */}
+              <div className="lg:order-2">
+                <div className="lg:sticky lg:top-20">
+                  <SubscriptionDraftPlate
+                    cluster={draftCluster}
+                    bu={draftBu}
+                    startDate={startDate}
+                    endDate={endDate}
+                  />
+                </div>
               </div>
-            </form>
+
+              <div className="min-w-0 space-y-4 sm:space-y-6 lg:order-1">
+                {error && (
+                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
+                )}
+                <SubscriptionCreateForm
+                  formData={formData}
+                  fieldErrors={fieldErrors}
+                  saving={saving}
+                  clusters={clusters}
+                  clustersLoading={clustersLoading}
+                  clustersError={clustersError}
+                  clusterBus={clusterBus}
+                  clusterBusLoading={clusterBusLoading}
+                  formRef={formRef}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  onFocus={handleFocus}
+                  onTermEnd={handleTermEnd}
+                  onSubmit={handleCreateSubmit}
+                  onCancel={() => navigate('/licenses')}
+                />
+              </div>
+            </div>
           </>
         ) : (
           <>
