@@ -52,19 +52,19 @@ describe('sumActiveLicenses', () => {
 
 describe('isExpiringSoon', () => {
   it('true เมื่อเหลือไม่เกิน 30 วัน', () => {
-    expect(isExpiringSoon(lic({ end_date: '2026-09-01T00:00:00.000Z' }), NOW)).toBe(true);
+    expect(isExpiringSoon(lic({ end_date: '2026-09-01T00:00:00.000Z' }), 30, NOW)).toBe(true);
   });
 
   it('false เมื่อเหลือเกิน 30 วัน', () => {
-    expect(isExpiringSoon(lic({ end_date: '2026-12-31T00:00:00.000Z' }), NOW)).toBe(false);
+    expect(isExpiringSoon(lic({ end_date: '2026-12-31T00:00:00.000Z' }), 30, NOW)).toBe(false);
   });
 
   it('false สำหรับใบที่หมดอายุไปแล้ว — มันหมดแล้ว ไม่ใช่กำลังจะหมด', () => {
-    expect(isExpiringSoon(lic({ end_date: '2025-12-31T00:00:00.000Z' }), NOW)).toBe(false);
+    expect(isExpiringSoon(lic({ end_date: '2025-12-31T00:00:00.000Z' }), 30, NOW)).toBe(false);
   });
 
   it('false สำหรับใบที่ยังไม่เริ่ม แม้ end_date จะอยู่ในหน้าต่าง 30 วัน', () => {
-    expect(isExpiringSoon(lic({ start_date: '2026-09-01T00:00:00.000Z', end_date: '2026-09-10T00:00:00.000Z' }), NOW)).toBe(false);
+    expect(isExpiringSoon(lic({ start_date: '2026-09-01T00:00:00.000Z', end_date: '2026-09-10T00:00:00.000Z' }), 30, NOW)).toBe(false);
   });
 });
 

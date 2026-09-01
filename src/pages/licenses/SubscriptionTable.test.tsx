@@ -66,6 +66,22 @@ import SubscriptionTable from './SubscriptionTable';
 import subscriptionService from '../../services/subscriptionService';
 import clusterService from '../../services/clusterService';
 
+/**
+ * เกณฑ์ "ใกล้หมดอายุ" ย้ายจาก constant ไปเป็นค่าตั้งใน Platform Config คอมโพเนนต์จึงอ่านผ่าน
+ * context ที่ต้องมี provider ครอบ · mock ด้วย 30 ซึ่งเป็นค่าเดิมก่อนย้าย assertion ทุกข้อในไฟล์นี้
+ * จึงยังยืนยันพฤติกรรมเดียวกับก่อนเปลี่ยน
+ * Mocked with 30, the former constant, so every assertion here still tests the same behaviour.
+ */
+vi.mock('../../context/ExpiryThresholdContext', () => ({
+  DEFAULT_EXPIRY_THRESHOLDS: { subscription_days: 30, bu_quota_days: 30, seat_days: 30 },
+  useExpiryThresholds: () => ({
+    thresholds: { subscription_days: 30, bu_quota_days: 30, seat_days: 30 },
+    isReady: true,
+    refresh: async () => {},
+  }),
+}));
+
+
 const asMock = (fn: unknown) => fn as ReturnType<typeof vi.fn>;
 
 // `state` is deliberately inconsistent with what a naive client-side derivation from

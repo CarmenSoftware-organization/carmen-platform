@@ -12,6 +12,7 @@ import { isExpiringSoon } from '../../../utils/subscriptionState';
 import { latestActor } from '../../../utils/audit';
 import { fmtDate, daysLeft, coverageWindow } from '../licenseDates';
 import { useI18n } from '../../../hooks/useI18n';
+import { useExpiryThresholds } from '../../../context/ExpiryThresholdContext';
 import type { TKey } from '../../../i18n/types';
 import type { Subscription, SubscriptionState } from '../../../types';
 
@@ -49,9 +50,9 @@ const STATE_LABEL_KEYS: Record<SubscriptionState, TKey> = {
  * เรียงใหม่ฝั่ง client เพราะเกณฑ์นี้คำนวณจาก `state` + วันที่ ซึ่งไม่มีคอลัมน์ให้ backend เรียง
  * (ยังคงขอ `sort: 'end_date:desc'` ไว้เหมือนเดิมเพื่อให้ลำดับตั้งต้นคงที่ก่อนเรียงซ้ำ)
  */
-function severityOf(sub: Subscription): number {
+function severityOf(sub: Subscription, subscriptionDays: number): number {
   if (sub.state === 'expired') return 0;
-  if (isExpiringSoon(sub.state, sub.end_date)) return 1;
+  if (isExpiringSoon(sub.state, sub.end_date, subscriptionDays)) return 1;
   if (sub.state === 'inactive') return 2;
   return 3;
 }
@@ -68,6 +69,7 @@ export function SubscriptionSection({
   clusterId, canManage, items, loading, failed, errorMsg, reload,
 }: SubscriptionSectionProps) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const now = new Date();
   const nowMs = now.getTime();
   // แกนขยับได้แค่เมื่อข้ามเดือน — ผูก memo กับเดือนปัจจุบันแทนตัว `now` สดที่เปลี่ยนทุก render
@@ -76,11 +78,11 @@ export function SubscriptionSection({
   const window = useMemo(() => coverageWindow(now), [monthKey]);
 
   const ordered = useMemo(() => [...items].sort((a, b) => {
-    const d = severityOf(a) - severityOf(b);
+    const d = severityOf(a, thresholds.subscription_days) - severityOf(b, thresholds.subscription_days);
     if (d !== 0) return d;
     // ภายในระดับเดียวกัน ตัวที่จบก่อนมาก่อน — มันคือตัวที่ต้องต่อสัญญาก่อน
     return Date.parse(a.end_date) - Date.parse(b.end_date);
-  }), [items]);
+  }), [items, thresholds.subscription_days]);
 
   const addHref = `/licenses/subscriptions/new?cluster_id=${clusterId}`;
 
@@ -149,7 +151,7 @@ export function SubscriptionSection({
               </thead>
               <tbody>
                 {ordered.map((sub) => {
-                  const soon = isExpiringSoon(sub.state, sub.end_date);
+                  const soon = isExpiringSoon(sub.state, sub.end_date, thresholds.subscription_days);
                   const latest = latestActor(sub);
                   const left = daysLeft(sub.end_date, now);
                   return (

@@ -17,6 +17,7 @@ import { latestActor } from '../../../utils/audit';
 import { getErrorDetail } from '../../../utils/errorParser';
 import { isPerpetual, fmtDate, daysLeft, coverageWindow } from '../licenseDates';
 import { useI18n } from '../../../hooks/useI18n';
+import { useExpiryThresholds } from '../../../context/ExpiryThresholdContext';
 import type { TKey } from '../../../i18n/types';
 import type { BusinessUnitLicense, BuLicenseStatus } from '../../../types';
 
@@ -50,10 +51,10 @@ const STATUS_LABEL_KEYS: Record<BuLicenseStatus, TKey> = {
  */
 const SEVERITY = { failed: 0, noSeats: 1, expiringSoon: 2, healthy: 3 } as const;
 
-function severityOf(row: SeatRow, now: Date): number {
+function severityOf(row: SeatRow, now: Date, seatDays: number): number {
   if (row.failed) return SEVERITY.failed;
   if (sumActiveLicenses(row.licenses, now) === 0) return SEVERITY.noSeats;
-  if (row.licenses.some((l) => isExpiringSoon(l, now))) return SEVERITY.expiringSoon;
+  if (row.licenses.some((l) => isExpiringSoon(l, seatDays, now))) return SEVERITY.expiringSoon;
   return SEVERITY.healthy;
 }
 
@@ -62,11 +63,11 @@ function severityOf(row: SeatRow, now: Date): number {
  * ผลรวมที่นั่งจะลดลงในวันนั้น การแสดงใบที่ยาวที่สุดจะทำให้คนวางแผนช้าไปทั้งช่วง
  * (กติกาเดียวกับ `clusterAdmin/licenses/SeatsByBuTable.tsx` — ห้ามให้สองหน้าตอบคนละวัน)
  */
-function earliestExpiry(row: SeatRow, now: Date): { date: string | null; soon: boolean } {
+function earliestExpiry(row: SeatRow, now: Date, seatDays: number): { date: string | null; soon: boolean } {
   const active = row.licenses.filter((l) => licenseStatus(l, now) === 'active' && !isPerpetual(l.end_date));
   if (active.length === 0) return { date: null, soon: false };
   const first = active.reduce((a, b) => (Date.parse(a.end_date) <= Date.parse(b.end_date) ? a : b));
-  return { date: first.end_date, soon: isExpiringSoon(first, now) };
+  return { date: first.end_date, soon: isExpiringSoon(first, seatDays, now) };
 }
 
 /**
@@ -89,6 +90,7 @@ function earliestExpiry(row: SeatRow, now: Date): { date: string | null; soon: b
  */
 export function SeatSection({ rows, loading, reload, canManage }: SeatSectionProps) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const now = new Date();
   const nowMs = now.getTime();
   // แกนขยับได้แค่เมื่อข้ามเดือน — ผูก memo กับเดือนปัจจุบันแทนตัว `now` สดที่เปลี่ยนทุก render
@@ -109,7 +111,7 @@ export function SeatSection({ rows, loading, reload, canManage }: SeatSectionPro
   // `now` สร้างใหม่ทุก render จึงไม่อยู่ใน deps โดยตั้งใจ — ลำดับแถวไม่ควรสลับเองระหว่างที่ผู้ใช้
   // กำลังอ่านอยู่ มันคำนวณใหม่เมื่อ `rows` เปลี่ยน (โหลดเสร็จ/ลบใบ) ซึ่งเป็นจังหวะที่ถูกต้อง
   const ordered = useMemo(() => [...rows].sort((a, b) => {
-    const d = severityOf(a, now) - severityOf(b, now);
+    const d = severityOf(a, now, thresholds.seat_days) - severityOf(b, now, thresholds.seat_days);
     if (d !== 0) return d;
     return (a.bu.name || '').toLowerCase().localeCompare((b.bu.name || '').toLowerCase());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,6 +251,7 @@ function BuGroup({ row, now, nowMs, window, canManage, showExpired, saving, onRe
   onRemove: (lic: BusinessUnitLicense) => void;
 }) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
 
   // ป้ายเจ้าของที่ผู้ใช้อ่านออก — ต้องตรงกับ `ownerFromRow` ใน LicensePurchaseForm.tsx เป๊ะ
   // (`${code} - ${name}`) ไม่งั้นโหมดสร้างกับโหมดแก้จะโชว์ป้ายคนละแบบสำหรับใบเดียวกัน
@@ -268,7 +271,7 @@ function BuGroup({ row, now, nowMs, window, canManage, showExpired, saving, onRe
     dim: licenseStatus(l, now) === 'expired',
   }));
 
-  const { date: endsOn, soon } = earliestExpiry(row, now);
+  const { date: endsOn, soon } = earliestExpiry(row, now, thresholds.seat_days);
   const endsText = activeCount === 0
     ? t('pages.licenses.coverageNone')
     : endsOn === null

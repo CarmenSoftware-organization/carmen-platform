@@ -21,12 +21,13 @@ import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import Can from '../../components/Can';
 import { SubscriptionSummary, type SummaryFilterKey } from './subscriptionManagement/SubscriptionSummary';
 import { buildAdvance, type SubscriptionFilters } from './subscriptionManagement/buildAdvance';
-import { isExpiringSoon, EXPIRING_SOON_DAYS } from '../../utils/subscriptionState';
+import { isExpiringSoon } from '../../utils/subscriptionState';
 import { useAuth } from '../../context/AuthContext';
 import { useAllClusters } from '../../hooks/useAllClusters';
 import { auditColumns } from '../../components/auditColumns';
 import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import { useI18n } from '../../hooks/useI18n';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { Subscription, SubscriptionState, SubscriptionSummary as SummaryType, PaginateParams } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../../i18n/types';
@@ -88,6 +89,7 @@ interface SubscriptionTableProps {
 
 const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false }) => {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   // Single lookup for every place `state`/`s` (a raw SubscriptionState value) is rendered —
   // the row badge, the filter buttons, the active-filter chips, and the CSV export — so a
   // state can never be named two different ways on the same screen (review I1). `|| s`
@@ -129,12 +131,15 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
     page: storedPage,
     perpage: Number(localStorage.getItem('perpage_subscription')) || 10,
     sort: storedSort,
-    advance: buildAdvance({
-      search: storedSearch,
-      states: storedStates,
-      expiringSoon: storedExpiringSoon,
-      clusterId: storedCluster,
-    }),
+    advance: buildAdvance(
+      {
+        search: storedSearch,
+        states: storedStates,
+        expiringSoon: storedExpiringSoon,
+        clusterId: storedCluster,
+      },
+      thresholds.subscription_days,
+    ),
   });
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,13 +206,16 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
   // ตัวกรองปัจจุบันทั้งชุด — ทุก handler ส่งเฉพาะสิ่งที่ตัวเองเปลี่ยนผ่าน `over` ที่เหลือมาจาก
   // state ของ render ปัจจุบัน (ค่าถูกเสมอเพราะ handler ถูกสร้างใหม่ทุก render)
   const advanceFor = (over: Partial<SubscriptionFilters> = {}) =>
-    buildAdvance({
-      search: searchTerm,
-      states: stateFilter,
-      expiringSoon: expiringSoonFilter,
-      clusterId: clusterFilter,
-      ...over,
-    });
+    buildAdvance(
+      {
+        search: searchTerm,
+        states: stateFilter,
+        expiringSoon: expiringSoonFilter,
+        clusterId: clusterFilter,
+        ...over,
+      },
+      thresholds.subscription_days,
+    );
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -402,7 +410,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         enableSorting: false,
         cell: ({ row }) => {
           const { state, end_date } = row.original;
-          const soon = isExpiringSoon(state, end_date);
+          const soon = isExpiringSoon(state, end_date, thresholds.subscription_days);
           return (
             <div className="flex flex-wrap items-center gap-1.5">
               {/* No `capitalize` class: the catalog values are already Title Case
@@ -437,7 +445,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
       createdColumn,
       updatedColumn,
     ];
-  }, [t, stateLabel]);
+  }, [t, stateLabel, thresholds.subscription_days]);
   // No actions column: with Delete removed (review B2#1 — the backend can never surface a
   // soft-deleted subscription, so a delete button nobody can verify or undo was worse than no
   // button), the only remaining row action was "Edit", which just duplicated the already-
@@ -577,7 +585,7 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
                           className="h-4 w-4 rounded border-input"
                         />
                         <Label htmlFor="expiringSoon" className="text-sm text-muted-foreground cursor-pointer">
-                          {t('pages.subscriptions.expiringWithinDays', { days: EXPIRING_SOON_DAYS })}
+                          {t('pages.subscriptions.expiringWithinDays', { days: thresholds.subscription_days })}
                         </Label>
                       </div>
                     </div>

@@ -1,5 +1,4 @@
 import type { SubscriptionState } from '../../../types';
-import { EXPIRING_SOON_DAYS } from '../../../utils/subscriptionState';
 
 /**
  * เงื่อนไข Prisma ที่เทียบเท่ากับ `state` หนึ่งค่า
@@ -44,15 +43,26 @@ export interface SubscriptionFilters {
  *
  * เมื่อ `expiringSoon` เป็น true ตัวกรองสถานะถูกละเว้นเสมอและถูกบังคับเป็น `active` แทน —
  * ตรงกับนิยาม "ใกล้หมดอายุ" ที่ backend ใช้คำนวณ `summary.expiring_soon` (สถานะที่แสดงผลต้องเป็น
- * active และเหลือไม่เกิน `EXPIRING_SOON_DAYS` วัน)
+ * active และเหลือไม่เกิน `expiringSoonDays` วัน)
  *
  * รับเป็น object ก้อนเดียวเพราะพารามิเตอร์เป็นสตริงสองตัว (`search`/`clusterId`) — เรียงสลับกัน
  * ตอนเรียกใช้แล้ว TypeScript จับไม่ได้เลยถ้าเป็น positional
  *
  * `now` รับเป็นพารามิเตอร์เพื่อให้เทสต์กำหนดเวลาที่แน่นอนได้ (เหมือน `isExpiringSoon`)
+ *
+ * `expiringSoonDays` ก็รับเข้ามาเช่นกัน ไม่ใช่ import constant มาใช้เอง เพราะไฟล์นี้เป็นฟังก์ชัน
+ * บริสุทธิ์ เรียก hook ไม่ได้ และค่าจริงมาจาก `useExpiryThresholds().thresholds.subscription_days`
+ * ซึ่งผู้ดูแลแก้ได้จากหน้า Platform Config — ถ้าที่นี่ใช้ค่าตายตัว ตัวกรอง "ใกล้หมดอายุ" จะไม่ตรงกับ
+ * ป้ายในตารางทันทีที่ผู้ดูแลเปลี่ยนเกณฑ์
+ * Passed in, not imported: this is a pure function and the real value is operator-configurable.
+ * @param filters - ตัวกรองที่ผู้ใช้เลือก / The user's filter selection
+ * @param expiringSoonDays - เกณฑ์ "ใกล้หมดอายุ" เป็นวัน / The expiring-soon window, in days
+ * @param now - เวลาอ้างอิง / Reference time
+ * @returns สตริง JSON ของ `advance` / The advance clause as a JSON string
  */
 export function buildAdvance(
   { search, states, expiringSoon, clusterId }: SubscriptionFilters,
+  expiringSoonDays: number,
   now: Date = new Date(),
 ): string {
   const and: Record<string, unknown>[] = [];
@@ -69,7 +79,7 @@ export function buildAdvance(
   const iso = now.toISOString();
 
   if (expiringSoon) {
-    const until = new Date(now.getTime() + EXPIRING_SOON_DAYS * 86_400_000);
+    const until = new Date(now.getTime() + expiringSoonDays * 86_400_000);
     // เท่ากับ stateClause('active') + กรอบเวลาปลายทาง — เขียนแยกเพราะ `gte` ตัวเดียวกันถูกใช้ทั้ง
     // เป็นเส้นแบ่ง active/expired และเป็นขอบล่างของช่วง "ใกล้หมดอายุ"
     and.push({ status: 'active' });

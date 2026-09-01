@@ -3,6 +3,7 @@ import subscriptionService from '../../services/subscriptionService';
 import { buildAdvance } from './subscriptionManagement/buildAdvance';
 import { getErrorDetail, devLog } from '../../utils/errorParser';
 import { useI18n } from '../../hooks/useI18n';
+import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { Subscription } from '../../types';
 
 /**
@@ -18,6 +19,7 @@ import type { Subscription } from '../../types';
  */
 export function useClusterSubscriptions(clusterId: string | undefined) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const [items, setItems] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -34,7 +36,10 @@ export function useClusterSubscriptions(clusterId: string | undefined) {
       const res = await subscriptionService.getAll({
         perpage: -1,
         sort: 'end_date:desc',
-        advance: buildAdvance({ search: '', states: [], expiringSoon: false, clusterId }),
+        advance: buildAdvance(
+          { search: '', states: [], expiringSoon: false, clusterId },
+          thresholds.subscription_days,
+        ),
       });
       if (mine !== reqId.current) return;
       setItems(res?.data ?? []);
@@ -46,7 +51,7 @@ export function useClusterSubscriptions(clusterId: string | undefined) {
     } finally {
       if (mine === reqId.current) setLoading(false);
     }
-  }, [clusterId, t]);
+  }, [clusterId, t, thresholds.subscription_days]);
 
   useEffect(() => { void reload(); }, [reload]);
 

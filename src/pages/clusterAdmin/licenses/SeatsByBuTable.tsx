@@ -8,6 +8,7 @@ import { Group } from '../../businessUnitEdit/shared';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon } from '../../../utils/buLicense';
 import { isPerpetual, fmtDate, daysLeft } from '../../licenses/licenseDates';
 import { useI18n } from '../../../hooks/useI18n';
+import { useExpiryThresholds } from '../../../context/ExpiryThresholdContext';
 import type { SeatRow } from '../../licenses/useClusterSeatLicenses';
 
 export interface SeatsByBuTableProps {
@@ -21,11 +22,11 @@ export interface SeatsByBuTableProps {
  * วันที่ที่นั่งของ BU นี้จะเริ่มหาย = ใบ active ที่หมดอายุก่อนใคร ไม่ใช่ใบที่หมดทีหลังสุด
  * ผลรวมที่นั่งจะลดลงในวันนั้น การแสดงใบที่ยาวที่สุดจะทำให้คนวางแผนช้าไปทั้งช่วง
  */
-function earliestExpiry(row: SeatRow, now: Date): { date: string | null; soon: boolean } {
+function earliestExpiry(row: SeatRow, now: Date, seatDays: number): { date: string | null; soon: boolean } {
   const active = row.licenses.filter((l) => licenseStatus(l, now) === 'active' && !isPerpetual(l.end_date));
   if (active.length === 0) return { date: null, soon: false };
   const first = active.reduce((a, b) => (Date.parse(a.end_date) <= Date.parse(b.end_date) ? a : b));
-  return { date: first.end_date, soon: isExpiringSoon(first, now) };
+  return { date: first.end_date, soon: isExpiringSoon(first, seatDays, now) };
 }
 
 /**
@@ -44,6 +45,7 @@ function earliestExpiry(row: SeatRow, now: Date): { date: string | null; soon: b
  */
 export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuTableProps) {
   const { t } = useI18n();
+  const { thresholds } = useExpiryThresholds();
   const now = new Date();
   const failedCount = rows.filter((r) => r.failed).length;
 
@@ -85,7 +87,7 @@ export function SeatsByBuTable({ rows, loading, clusterId, onRetry }: SeatsByBuT
                 {rows.map((row) => {
                   const seats = sumActiveLicenses(row.licenses, now);
                   const activeCount = row.licenses.filter((l) => licenseStatus(l, now) === 'active').length;
-                  const { date, soon } = earliestExpiry(row, now);
+                  const { date, soon } = earliestExpiry(row, now, thresholds.seat_days);
                   return (
                     <tr key={row.bu.id} className="border-b last:border-0">
                       {/* ลิงก์กินพื้นที่แตะของทั้งแถว (`-my-3 py-3`) — วัดที่ 390px แล้วตัวอักษร

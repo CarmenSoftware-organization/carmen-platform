@@ -19,7 +19,9 @@ const filters = (over: Partial<SubscriptionFilters> = {}): SubscriptionFilters =
   ...over,
 });
 
-const advance = (over: Partial<SubscriptionFilters> = {}) => buildAdvance(filters(over), NOW);
+// 30 = ค่าตั้งต้นเดิมของเกณฑ์ "ใกล้หมดอายุ" — assertion ทุกข้อในไฟล์นี้จึงยังยืนยันพฤติกรรมเดิม
+// 30 is the former default, so every assertion below still tests the same behaviour.
+const advance = (over: Partial<SubscriptionFilters> = {}) => buildAdvance(filters(over), 30, NOW);
 const parse = (raw: string) => JSON.parse(raw);
 
 describe('buildAdvance', () => {
