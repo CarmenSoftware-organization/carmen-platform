@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import licenseFeatureService from '../services/licenseFeatureService';
 import type { LicenseFeatureAdminRow } from '../types';
-import { FEATURE_STATES, type FeatureState } from '../constants/featureFlags';
+import { type FeatureState } from '../constants/featureFlags';
 import { moduleOf } from './licenses/subscriptionEdit/featureSelection';
 import { getErrorDetail, devLog } from '../utils/errorParser';
 import { isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
@@ -14,20 +13,13 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
-import { DataTable } from '../components/ui/data-table';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { FeatureStateToggle } from '../components/FeatureStateToggle';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+import { CatalogStateBar, type CatalogFilter } from './licenseFeatures/CatalogStateBar';
+import { ModuleShelf, type ModuleGroup } from './licenseFeatures/ModuleShelf';
 import { generateCSV, downloadCSV } from '../utils/csvExport';
 import { Tags, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -50,12 +42,24 @@ const LICENSE_STATE_HINT: Record<FeatureState, TKey> = {
   hide: 'pages.licenseFeatures.state.hideHint',
 };
 
+const EMPTY_STATE_COUNTS: Record<FeatureState, number> = { active: 0, inactive: 0, hide: 0 };
+
+/**
+ * ลำดับเดียวกับ backend: `sort_order asc` แล้วต่อด้วย `key asc` · เทียบ `key` ด้วย `<`/`>`
+ * ไม่ใช่ `localeCompare` เพื่อให้เป็นลำดับ byte เดียวกับ Postgres ไม่ใช่ลำดับตาม locale ของเบราว์เซอร์
+ */
+function byOrderThenKey(a: LicenseFeatureAdminRow, b: LicenseFeatureAdminRow): number {
+  if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+  return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+}
+
 /**
  * แค็ตตาล็อก license feature — client-filtered ไม่ใช่ server-side
  *
  * แถวทั้งหมดมาจาก `scripts/generate-license-catalog` ฝั่ง backend จำนวนจึงมีเพดานเชิงโครงสร้าง
  * ไม่ได้งอกตามการใช้งาน ดึงครั้งเดียวแล้วกรองในหน่วยความจำ **ไม่มี debounce** เพราะการพิมพ์
- * ไม่ทำให้เกิด fetch
+ * ไม่ทำให้เกิด fetch — และด้วยเหตุผลเดียวกัน **ไม่มีการแบ่งหน้า** ทั้ง 76 แถวอยู่ในมือแล้ว
+ * การหั่นเป็น 8 หน้าเคยบังคับให้ผู้ดูแลเปิดทีละหน้าเพื่อตอบคำถามที่แถบสรุปตอบได้ในวินาทีเดียว
  *
  * หน้านี้แก้ได้แค่ `state` ไม่มีปุ่มเพิ่ม/ลบแถว — key/label/sort_order เป็นของ generator
  *
@@ -74,7 +78,7 @@ const LicenseFeatureManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [stateFilter, setStateFilter] = useState<FeatureState | 'all'>('all');
+  const [stateFilter, setStateFilter] = useState<CatalogFilter>('all');
   const [savingId, setSavingId] = useState<string | null>(null);
   /**
    * แถวที่รอคำยืนยันก่อนซ่อน — `null` = ไม่มีกล่องเปิดอยู่
@@ -105,24 +109,95 @@ const LicenseFeatureManagement: React.FC = () => {
     void fetchAll();
   }, [fetchAll]);
 
-  const filtered = useMemo(() => {
+  /**
+   * คำค้นเท่านั้น ยังไม่ใช้ตัวกรองสถานะ — นี่คือชุดที่แถบสรุปนับ
+   *
+   * คีย์ของลูกขึ้นต้นด้วยชื่อโมดูลเสมอ (`configuration.currency`) การพิมพ์ชื่อโมดูลจึงกวาด
+   * ลูกทั้งโมดูลมาให้เองโดยไม่ต้องมีกฎพิเศษสำหรับการค้นแบบต้นไม้
+   */
+  const searched = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (stateFilter !== 'all' && r.state !== stateFilter) return false;
-      if (!q) return true;
-      return r.key.toLowerCase().includes(q) || r.label.toLowerCase().includes(q);
+    if (!q) return rows;
+    return rows.filter(
+      (r) => r.key.toLowerCase().includes(q) || r.label.toLowerCase().includes(q),
+    );
+  }, [rows, search]);
+
+  const counts = useMemo(() => {
+    const c = { all: searched.length, active: 0, inactive: 0, hide: 0 };
+    searched.forEach((r) => {
+      c[r.state] += 1;
     });
-  }, [rows, search, stateFilter]);
+    return c;
+  }, [searched]);
+
+  const visible = useMemo(
+    () => (stateFilter === 'all' ? searched : searched.filter((r) => r.state === stateFilter)),
+    [searched, stateFilter],
+  );
+
+  const filtering = search.trim() !== '' || stateFilter !== 'all';
+
+  /**
+   * ชั้นวางต่อโมดูล — ตัวเลขสรุปของหัวชั้นมาจาก `rows` (ทั้งโมดูล) ส่วนรายการลูกมาจาก `visible`
+   * (หลังกรอง) สองแหล่งนี้ต่างกันโดยเจตนา ดูเหตุผลใน `ModuleShelf`
+   */
+  const groups = useMemo<ModuleGroup[]>(() => {
+    const totals = new Map<string, { total: number; states: Record<FeatureState, number> }>();
+    const moduleRows = new Map<string, LicenseFeatureAdminRow>();
+    rows.forEach((r) => {
+      if (r.parent_key === null) {
+        moduleRows.set(r.key, r);
+        return;
+      }
+      const m = moduleOf(r.key);
+      const entry = totals.get(m) ?? { total: 0, states: { ...EMPTY_STATE_COUNTS } };
+      entry.total += 1;
+      entry.states[r.state] += 1;
+      totals.set(m, entry);
+    });
+
+    const shownChildren = new Map<string, LicenseFeatureAdminRow[]>();
+    const shownModules = new Set<string>();
+    visible.forEach((r) => {
+      const m = moduleOf(r.key);
+      shownModules.add(m);
+      if (r.parent_key === null) return;
+      const arr = shownChildren.get(m) ?? [];
+      arr.push(r);
+      shownChildren.set(m, arr);
+    });
+
+    return Array.from(shownModules)
+      .map((moduleKey) => {
+        const stat = totals.get(moduleKey);
+        return {
+          moduleKey,
+          moduleRow: moduleRows.get(moduleKey),
+          children: (shownChildren.get(moduleKey) ?? []).slice().sort(byOrderThenKey),
+          totalChildren: stat?.total ?? 0,
+          childStates: stat?.states ?? { ...EMPTY_STATE_COUNTS },
+        };
+      })
+      .sort((a, b) => {
+        const ao = a.moduleRow?.sort_order ?? Number.MAX_SAFE_INTEGER;
+        const bo = b.moduleRow?.sort_order ?? Number.MAX_SAFE_INTEGER;
+        if (ao !== bo) return ao - bo;
+        return a.moduleKey < b.moduleKey ? -1 : a.moduleKey > b.moduleKey ? 1 : 0;
+      });
+  }, [rows, visible]);
 
   const handleExport = () => {
     const csv = generateCSV(
-      filtered,
+      visible,
       [
         { key: 'key', label: t('pages.licenseFeatures.key') },
         { key: 'label', label: t('pages.licenseFeatures.label') },
         { key: 'parent_key', label: t('pages.licenseFeatures.module') },
         { key: 'sort_order', label: t('pages.licenseFeatureGroups.sortOrder') },
         { key: 'state', label: t('common.status.label') },
+        // ตัวเลขที่ใช้ตัดสินใจบนหน้าจอต้องติดไปกับไฟล์ที่เอาไปคุยกันต่อนอกหน้าจอด้วย
+        { key: 'affected_bu_count', label: t('pages.licenseFeatures.affectedBuHeader') },
       ],
     );
     downloadCSV(csv, `license-features-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -138,7 +213,24 @@ const LicenseFeatureManagement: React.FC = () => {
       setSavingId(row.id);
       try {
         const response = await licenseFeatureService.setState(row.id, next, row.doc_version);
-        setRows((prev) => prev.map((r) => (r.id === row.id ? response.data : r)));
+        /*
+         * ผสานลงบนแถวเดิม ไม่ทับทั้งก้อน — endpoint `setState` ตอบกลับมาโดย **ไม่มี**
+         * `affected_bu_count` (มีเฉพาะใน /all) การเอา response ไปวางแทนที่ตรง ๆ จึงลบตัวเลข
+         * นั้นทิ้งหลังบันทึกครั้งแรก และเพราะ `handleChange` ใช้ `?? 0` แถวนั้นก็จะเงียบสนิท
+         * ตอนกด `hide` ครั้งถัดไป — ข้ามกล่องยืนยันที่มีไว้กันการปิดเมนูของ BU ที่จ่ายเงินแล้ว
+         */
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === row.id
+              ? {
+                  ...r,
+                  ...response.data,
+                  // เขียนชัด ไม่พึ่ง spread เพราะ key ที่มีอยู่จริงแต่เป็น undefined ก็ทับได้
+                  affected_bu_count: response.data.affected_bu_count ?? r.affected_bu_count,
+                }
+              : r,
+          ),
+        );
         toast.success(t('pages.licenseFeatures.stateSaved'));
       } catch (err: unknown) {
         if (isVersionConflict(err)) {
@@ -178,45 +270,6 @@ const LicenseFeatureManagement: React.FC = () => {
     [applyChange],
   );
 
-  const columns = useMemo<ColumnDef<LicenseFeatureAdminRow, unknown>[]>(() => [
-    {
-      accessorKey: 'key',
-      header: t('pages.licenseFeatures.key'),
-      meta: { cellClassName: 'font-mono text-[10px] sm:text-xs', card: { primary: true } },
-      cell: ({ row }) => <span className="font-mono">{row.original.key}</span>,
-    },
-    {
-      accessorKey: 'label',
-      header: t('pages.licenseFeatures.label'),
-      cell: ({ row }) => <span className="text-sm">{row.original.label}</span>,
-    },
-    {
-      id: 'module',
-      accessorFn: (r) => moduleOf(r.key),
-      header: t('pages.licenseFeatures.module'),
-      meta: { headerClassName: 'w-40', cellClassName: 'w-40' },
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">{moduleOf(row.original.key)}</span>
-      ),
-    },
-    {
-      accessorKey: 'state',
-      header: t('common.status.label'),
-      enableSorting: false,
-      meta: { headerClassName: 'w-72', cellClassName: 'w-72' },
-      cell: ({ row }) => (
-        <FeatureStateToggle
-          value={row.original.state}
-          onChange={(next) => void handleChange(row.original, next)}
-          featureLabel={row.original.label}
-          labelKeys={LICENSE_STATE_LABEL}
-          hintKeys={LICENSE_STATE_HINT}
-          disabled={!canManage || savingId === row.original.id}
-        />
-      ),
-    },
-  ], [t, handleChange, canManage, savingId]);
-
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -224,7 +277,12 @@ const LicenseFeatureManagement: React.FC = () => {
           title={t('pages.licenseFeatures.title')}
           subtitle={t('pages.licenseFeatures.subtitle')}
           actions={
-            <Button size="sm" variant="outline" onClick={handleExport} disabled={filtered.length === 0}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExport}
+              disabled={visible.length === 0}
+            >
               <Download className="mr-2 h-4 w-4" />
               {t('common.action.export')}
             </Button>
@@ -232,8 +290,8 @@ const LicenseFeatureManagement: React.FC = () => {
         />
 
         <Card>
-          <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
+          <CardContent className="space-y-3 py-4">
+            <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 ref={searchInputRef}
@@ -244,45 +302,54 @@ const LicenseFeatureManagement: React.FC = () => {
                 aria-label={t('pages.licenseFeatures.searchPlaceholder')}
               />
             </div>
-            <Select
+            <CatalogStateBar
+              counts={counts}
               value={stateFilter}
-              onValueChange={(v) => setStateFilter(v as FeatureState | 'all')}
-            >
-              <SelectTrigger className="sm:w-56" aria-label={t('pages.licenseFeatures.filterAll')}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('pages.licenseFeatures.filterAll')}</SelectItem>
-                {FEATURE_STATES.map((s) => (
-                  <SelectItem key={s} value={s}>{t(LICENSE_STATE_LABEL[s])}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={setStateFilter}
+              labelKeys={LICENSE_STATE_LABEL}
+              hintKeys={LICENSE_STATE_HINT}
+            />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="py-4">
-            {error ? (
+        {error ? (
+          <Card>
+            <CardContent className="py-4">
               <FetchErrorState message={error} onRetry={() => void fetchAll()} />
-            ) : loading && rows.length === 0 ? (
-              <TableSkeleton columns={4} rows={8} />
-            ) : filtered.length === 0 ? (
+            </CardContent>
+          </Card>
+        ) : loading && rows.length === 0 ? (
+          <Card>
+            <CardContent className="py-4">
+              <TableSkeleton columns={3} rows={8} />
+            </CardContent>
+          </Card>
+        ) : groups.length === 0 ? (
+          <Card>
+            <CardContent className="py-4">
               <EmptyState
                 icon={Tags}
                 title={t('pages.licenseFeatures.emptyTitle')}
                 description={t('pages.licenseFeatures.emptyDescription')}
               />
-            ) : (
-              <DataTable
-                columns={columns}
-                data={filtered}
-                tableLayout="auto"
-                defaultSort={{ id: 'key', desc: false }}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {groups.map((g) => (
+              <ModuleShelf
+                key={g.moduleKey}
+                group={g}
+                onChange={handleChange}
+                canManage={canManage}
+                savingId={savingId}
+                filtering={filtering}
+                labelKeys={LICENSE_STATE_LABEL}
+                hintKeys={LICENSE_STATE_HINT}
               />
-            )}
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* คำอธิบายต้องบอกด้วยว่า "กู้คืนได้" — นี่ไม่ใช่การลบข้อมูล ตั้งกลับเป็น active แล้วเมนู
@@ -311,7 +378,8 @@ const LicenseFeatureManagement: React.FC = () => {
           endpoint="/api-system/platform/license-features/all"
           tabs={[
             { key: 'response', label: 'response', data: rawResponse },
-            { key: 'filtered', label: 'filtered', data: filtered },
+            { key: 'visible', label: 'visible', data: visible },
+            { key: 'groups', label: 'groups', data: groups },
           ]}
         />
       )}
