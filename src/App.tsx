@@ -33,6 +33,7 @@ const LicenseFeatureGroupManagement = lazy(() => import("./pages/LicenseFeatureG
 const LicenseFeatureManagement = lazy(() => import("./pages/LicenseFeatureManagement"));
 const LicenseFeatureGroupEdit = lazy(() => import("./pages/LicenseFeatureGroupEdit"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
+const PlatformMigrationManagement = lazy(() => import("./pages/PlatformMigrationManagement"));
 const TenantImportWizard = lazy(() => import("./pages/TenantImportWizard"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const UserEdit = lazy(() => import("./pages/UserEdit"));
@@ -425,6 +426,14 @@ function AppContent() {
               element={
                 <PrivateRoute>
                   <PermissionCatalog />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/platform/migrations"
+              element={
+                <PrivateRoute requireSuperAdmin feature="platform_migrations">
+                  <PlatformMigrationManagement />
                 </PrivateRoute>
               }
             />

@@ -180,6 +180,33 @@ export interface BusinessUnit {
   doc_version?: number; // optimistic-lock token (read model)
 }
 
+// Platform database migration (super-admin หรือ deploy token) — /api-system/platform/migrations/*
+// ฝั่ง backend คืน stdout ดิบของ prisma มาใน `raw` หลัง sanitize แล้ว ฟิลด์ทั้งหมดเป็น optional
+// เพราะ controller ห่อด้วย Result<unknown> — สัญญาไม่ได้การันตีว่าจะมีครบทุกครั้ง
+export interface PlatformMigrationStatus {
+  has_pending?: boolean;
+  pending?: string[];
+  up_to_date?: boolean;
+  raw?: string;
+}
+
+export interface PlatformMigrationDeployResult {
+  success?: boolean;
+  already_up_to_date?: boolean;
+  applied_migrations?: string[];
+  raw?: string;
+}
+
+/** 'applied' = ทำเครื่องหมายว่ารันสำเร็จแล้ว · 'rolled-back' = ทำเครื่องหมายว่าย้อนกลับแล้ว */
+export type PlatformMigrationResolveAction = 'applied' | 'rolled-back';
+
+export interface PlatformMigrationResolveResult {
+  success?: boolean;
+  migration_name?: string;
+  action?: string;
+  raw?: string;
+}
+
 // Tenant database migration (super-admin) — /api-system/tenant/migrations/:bu_id/*
 export interface TenantMigrationStatus {
   bu_id: string;
