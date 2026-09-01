@@ -266,12 +266,12 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
           const cap = row.original.bu_cap ?? 0;
           const used = row.original.bu_used ?? 0;
           // cap 0 = ไม่มีใบคุ้มครอง ไม่ใช่ "ไม่จำกัด" — ห้ามแสดง ∞ ที่นี่เด็ดขาด
+          // ต้องดักก่อนถึง CapacityMeter เสมอ เพราะ `finite` แปล cap 0 ว่า "เต็ม" ไม่ใช่ "ไม่มีใบ"
           if (cap === 0) return <span className="text-xs text-destructive">{t('pages.licenses.noLicence')}</span>;
-          return (
-            <span className={`font-mono text-xs${used > cap ? ' text-destructive' : ''}`}>
-              {used} / {cap}
-            </span>
-          );
+          // ใช้มิเตอร์ตัวเดียวกับคอลัมน์ Seats: เดิมคอลัมน์นี้เขียนมิเตอร์เอง จึงไม่มีระดับ warn เลย
+          // และระบายสีเฉพาะตอน used > cap — คลัสเตอร์ที่ใช้เต็มพอดี (2/2) หน้าตาเหมือน 2/10 ทุก
+          // ประการ ทั้งที่แถบสรุปด้านบนนับมันเป็น "near limit" เลขสีส้มในแถบจึงหาไม่เจอในตาราง
+          return <CapacityMeter used={used} cap={cap} finite />;
         },
       },
       {
@@ -288,8 +288,11 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
         enableSorting: false,
         cell: ({ row }) => {
           const end = row.original.bu_cap_end_date;
-          if (!end) return <span className="text-xs text-muted-foreground">-</span>;
-          if (isPerpetual(end)) return <span className="text-xs text-muted-foreground">{t('common.state.noExpiry')}</span>;
+          // ไม่มีวันหมดอายุ = ไม่มีอะไรต้องดู — เดิมพิมพ์ "No expiry" ซ้ำทุกแถวจนกลายเป็นคอลัมน์
+          // ข้อความล้วนที่กว้างเท่าหัวคอลัมน์ทั้งที่ไม่เคยชี้ไปที่แถวไหนเลย ขีดจาง ๆ พูดเท่ากันแต่
+          // ไม่แย่งพื้นที่จากวันที่จริงที่ต้องอ่าน (ทั้งสองกรณีจบเหมือนกันคือ "โควตาไม่หมดอายุ" —
+          // ความต่างระหว่าง "ไม่มีใบ" กับ "ใบถาวร" อ่านได้จากคอลัมน์ BU Quota ซ้ายมืออยู่แล้ว)
+          if (!end || isPerpetual(end)) return <span className="text-xs text-muted-foreground">&mdash;</span>;
           const left = daysLeft(end, new Date());
           return (
             <span className="text-xs whitespace-nowrap">
@@ -304,10 +307,18 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
       {
         accessorKey: 'is_active',
         header: t('common.status.label'),
+        // ป้ายเขียว 7 ใน 8 แถวคือหมึกที่ดังที่สุดในตารางแต่บอกน้อยที่สุด และขัดหลักการที่
+        // CapacityMeter ประกาศไว้เองห่างไปสามคอลัมน์ว่าสงวนสีให้ความผิดปกติเท่านั้น — active
+        // เป็นข้อความจาง inactive เท่านั้นที่ได้ป้าย (ท่าเดียวกับหน้า /users)
+        // card: 'badge' — บนการ์ดมือถือสถานะไปอยู่แถวป้ายใต้ชื่อ ไม่ใช่คู่ label/value ที่มีหัวว่า
+        // "Status" กำกับข้อความว่า "Active" ซึ่งอ่านซ้ำตัวเอง
+        meta: { headerClassName: 'w-24', card: 'badge' as const },
         cell: ({ row }) => (
-          <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-            {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
-          </Badge>
+          row.original.is_active ? (
+            <span className="text-muted-foreground text-xs">{t('common.status.active')}</span>
+          ) : (
+            <Badge variant="secondary">{t('common.status.inactive')}</Badge>
+          )
         ),
       },
       createdColumn,
