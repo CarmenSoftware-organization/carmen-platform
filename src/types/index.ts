@@ -1145,6 +1145,24 @@ export interface LicenseConfig {
 }
 
 /**
+ * เกณฑ์ "ใกล้หมดอายุ" ของใบแต่ละชนิด หน่วยเป็นวัน — คีย์ `expiry_thresholds` ใน Platform Config
+ * The per-kind "expiring soon" windows, in days.
+ *
+ * เป็นเกณฑ์ **แสดงผล** ไม่ใช่เกณฑ์บังคับใช้ — เปลี่ยนแล้วไม่มีใครถูกบล็อกเพิ่มหรือลด
+ * อ่านผ่าน `useExpiryThresholds()` ไม่ใช่ผ่าน `platformConfigService` เพราะ GET ของเส้นทางนั้น
+ * บังคับ `platform_config.read` ซึ่งผู้ใช้ที่เปิดหน้ารายการใบทั่วไปไม่มี
+ * A display threshold, read through the dedicated open endpoint, not /platform/configs.
+ */
+export interface ExpiryThresholdsConfig {
+  /** ใบสัญญา (subscription) */
+  subscription_days: number;
+  /** ใบโควตา BU ระดับ cluster */
+  bu_quota_days: number;
+  /** ใบที่นั่งของ BU */
+  seat_days: number;
+}
+
+/**
  * หนึ่งรายการจาก /api-system/platform/configs
  * `id` เป็น null เมื่อยังไม่เคยบันทึกคีย์นี้ และ backend กำลังคืนค่าเริ่มต้นในตัวมาแทน
  */
