@@ -183,6 +183,32 @@ export interface BusinessUnit {
 // Platform database migration (super-admin หรือ deploy token) — /api-system/platform/migrations/*
 // ฝั่ง backend คืน stdout ดิบของ prisma มาใน `raw` หลัง sanitize แล้ว ฟิลด์ทั้งหมดเป็น optional
 // เพราะ controller ห่อด้วย Result<unknown> — สัญญาไม่ได้การันตีว่าจะมีครบทุกครั้ง
+/**
+ * หนึ่งรายการในทะเบียนของคอนโซล seed — `/api-system/platform/seeds/catalog`
+ * One entry in the platform seed console catalog.
+ *
+ * ไม่มี label เพราะ backend ส่งแค่ id ชื่อและคำอธิบายอยู่ใน i18n ของหน้าเว็บ เนื่องจากต้องแปลสองภาษา
+ * No label: the backend sends ids only; user-facing copy lives in i18n.
+ *
+ * `missing` เป็นจริงเมื่อไฟล์สคริปต์ไม่มีใน image ที่ deploy อยู่ — ปุ่มต้องถูกปิดตั้งแต่แรก
+ * ไม่ใช่ปล่อยให้กดแล้วค่อยพัง
+ */
+export interface PlatformSeedOp {
+  id: string;
+  group: 'seed' | 'check';
+  script: string;
+  writes: boolean;
+  readonly: boolean;
+  missing: boolean;
+}
+
+/** เหตุการณ์ที่สตรีมกลับระหว่างรัน op หนึ่งตัว — รูปเดียวกับ SeedRunEvent ฝั่ง micro-business */
+export type SeedRunEvent =
+  | { type: 'start'; op_id: string; command: string }
+  | { type: 'log'; line: string; stream: 'out' | 'err' }
+  | { type: 'done'; success: boolean; exit_code: number }
+  | { type: 'error'; message: string };
+
 export interface PlatformMigrationStatus {
   has_pending?: boolean;
   pending?: string[];
