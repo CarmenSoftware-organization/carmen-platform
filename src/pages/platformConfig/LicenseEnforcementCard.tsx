@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
-import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { ConfigCardShell, ConfigField } from './ConfigCardShell';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
 import type { LicenseConfig, PlatformConfig } from '../../types';
@@ -21,6 +20,8 @@ interface LicenseEnforcementCardProps {
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: () => void | Promise<void>;
+  /** แถบ audit ท้ายการ์ด — หน้าเพจเป็นเจ้าของข้อมูล */
+  footer?: React.ReactNode;
 }
 
 /**
@@ -52,6 +53,7 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
   onRequestEdit,
   onCancelEdit,
   onSaved,
+  footer,
 }) => {
   const { t } = useI18n();
   const [formData, setFormData] = useState<LicenseConfig>(() => toForm(config));
@@ -116,50 +118,65 @@ export const LicenseEnforcementCard: React.FC<LicenseEnforcementCardProps> = ({
         onRequestEdit={onRequestEdit}
         onSave={handleSave}
         onCancel={handleCancel}
-      >
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="license-enforcement-enabled">{t('pages.platformConfig.enforcement')}</Label>
-            <Badge variant={saved.enforcement_enabled ? 'success' : 'secondary'}>
-              {saved.enforcement_enabled ? t('pages.platformConfig.enforced') : t('pages.platformConfig.shadowMode')}
-            </Badge>
-          </div>
-          {isEditing ? (
-            <label className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
-              <input
-                id="license-enforcement-enabled"
-                type="checkbox"
-                className="h-4 w-4"
-                checked={formData.enforcement_enabled}
-                disabled={saving}
-                onChange={(e) =>
-                  setFormData({ enforcement_enabled: e.target.checked })
-                }
-              />
-              {t('pages.platformConfig.enforceCheckbox')}
-            </label>
-          ) : (
-            <ReadOnlyText value={saved.enforcement_enabled ? t('pages.platformConfig.on') : t('pages.platformConfig.off')} />
-          )}
-          <p className="text-xs text-muted-foreground">
-            <strong>{t('pages.platformConfig.licenseNote1Strong')}</strong>{' '}
-            {t('pages.platformConfig.licenseNote1')}{' '}
-            <code className="font-mono">LICENSE shadow-mode</code>{' '}
-            {t('pages.platformConfig.licenseNote2')}{' '}
-            <strong>{t('pages.platformConfig.licenseNote2Strong')}</strong>{' '}
-            {t('pages.platformConfig.licenseNote3')}{' '}
-            <code className="font-mono">403 LICENSE_REQUIRED</code>{' '}
-            {t('pages.platformConfig.licenseNote4')}{' '}
-            (<code className="font-mono">LICENSE_EXPIRED</code>){' '}
-            {t('pages.platformConfig.licenseNote5')}{' '}
-            <code className="font-mono">403 SEAT_LIMIT_REACHED</code>
-          </p>
+        footer={footer}
+        note={
+          // ขอบเขตของสวิตช์ต้องอ่านได้ตลอด ไม่ใช่แค่ตอนแก้ — มันคือคำตอบของ
+          // "เปิดแล้วหน้าจอ admin จะล็อกตัวเองไหม" ซึ่งเป็นคำถามแรกที่ทุกคนถาม
           <p className="text-xs text-muted-foreground">
             {t('pages.platformConfig.licenseNote6')}
             <code className="font-mono">/api/:bu_code/…</code>
             {t('pages.platformConfig.licenseNote7')}
           </p>
-        </div>
+        }
+      >
+        <ConfigField
+          label={t('pages.platformConfig.enforcement')}
+          htmlFor="license-enforcement-enabled"
+          isEditing={isEditing}
+          value={
+            <Badge variant={saved.enforcement_enabled ? 'success' : 'secondary'}>
+              {saved.enforcement_enabled
+                ? t('pages.platformConfig.enforced')
+                : t('pages.platformConfig.shadowMode')}
+            </Badge>
+          }
+          badge={
+            isEditing ? (
+              <Badge variant={saved.enforcement_enabled ? 'success' : 'secondary'}>
+                {saved.enforcement_enabled
+                  ? t('pages.platformConfig.enforced')
+                  : t('pages.platformConfig.shadowMode')}
+              </Badge>
+            ) : undefined
+          }
+          hint={
+            <>
+              <strong>{t('pages.platformConfig.licenseNote1Strong')}</strong>{' '}
+              {t('pages.platformConfig.licenseNote1')}{' '}
+              <code className="font-mono">LICENSE shadow-mode</code>{' '}
+              {t('pages.platformConfig.licenseNote2')}{' '}
+              <strong>{t('pages.platformConfig.licenseNote2Strong')}</strong>{' '}
+              {t('pages.platformConfig.licenseNote3')}{' '}
+              <code className="font-mono">403 LICENSE_REQUIRED</code>{' '}
+              {t('pages.platformConfig.licenseNote4')}{' '}
+              (<code className="font-mono">LICENSE_EXPIRED</code>){' '}
+              {t('pages.platformConfig.licenseNote5')}{' '}
+              <code className="font-mono">403 SEAT_LIMIT_REACHED</code>
+            </>
+          }
+        >
+          <label className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
+            <input
+              id="license-enforcement-enabled"
+              type="checkbox"
+              className="h-4 w-4"
+              checked={formData.enforcement_enabled}
+              disabled={saving}
+              onChange={(e) => setFormData({ enforcement_enabled: e.target.checked })}
+            />
+            {t('pages.platformConfig.enforceCheckbox')}
+          </label>
+        </ConfigField>
       </ConfigCardShell>
 
       <ConfirmDialog

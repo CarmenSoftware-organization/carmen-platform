@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { ConfigCardShell, ReadOnlyText } from './ConfigCardShell';
+import { ConfigCardShell, ConfigField } from './ConfigCardShell';
 import { INVITATION_CONFIG_DEFAULTS } from './invitationDefaults';
 import platformConfigService from '../../services/platformConfigService';
 import { parseApiError } from '../../utils/errorParser';
@@ -16,6 +15,8 @@ interface InvitationConfigCardProps {
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: () => void | Promise<void>;
+  /** แถบ audit ท้ายการ์ด — หน้าเพจเป็นเจ้าของข้อมูล */
+  footer?: React.ReactNode;
 }
 
 interface InvitationFormData {
@@ -46,6 +47,7 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
   onRequestEdit,
   onCancelEdit,
   onSaved,
+  footer,
 }) => {
   const { t } = useI18n();
   const [formData, setFormData] = useState<InvitationFormData>(() => toForm(config));
@@ -130,55 +132,51 @@ export const InvitationConfigCard: React.FC<InvitationConfigCardProps> = ({
       onRequestEdit={onRequestEdit}
       onSave={handleSave}
       onCancel={handleCancel}
+      footer={footer}
     >
-        <div className="space-y-2">
-          <Label htmlFor="invitation-base-url">{t('pages.platformConfig.baseUrl')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id="invitation-base-url"
-                value={formData.base_url}
-                onChange={(e) => handleChange('base_url', e.target.value)}
-                onBlur={() => handleBlur('base_url')}
-                className={fieldErrors.base_url ? 'border-destructive' : ''}
-                placeholder={t('pages.platformConfig.invitationUrlPlaceholder')}
-              />
-              {fieldErrors.base_url && (
-                <p className="text-xs text-destructive">{fieldErrors.base_url}</p>
-              )}
-            </>
-          ) : (
-            <ReadOnlyText value={form.base_url} />
-          )}
-          <p className="text-xs text-muted-foreground">
-            {t('pages.platformConfig.invitationHint1')}{' '}
-            <code className="font-mono">?token=…</code> {t('pages.platformConfig.invitationHint2')}{' '}
+      <ConfigField
+        label={t('pages.platformConfig.baseUrl')}
+        htmlFor="invitation-base-url"
+        isEditing={isEditing}
+        value={form.base_url}
+        mono
+        error={fieldErrors.base_url}
+        hint={
+          <>
+            {t('pages.platformConfig.invitationHint1')} <code className="font-mono">?token=…</code>{' '}
+            {t('pages.platformConfig.invitationHint2')}{' '}
             <code className="font-mono">https://inventory.example.com/invitations</code>.
-          </p>
-        </div>
+          </>
+        }
+      >
+        <Input
+          id="invitation-base-url"
+          value={formData.base_url}
+          onChange={(e) => handleChange('base_url', e.target.value)}
+          onBlur={() => handleBlur('base_url')}
+          className={fieldErrors.base_url ? 'border-destructive' : ''}
+          placeholder={t('pages.platformConfig.invitationUrlPlaceholder')}
+        />
+      </ConfigField>
 
-        <div className="space-y-2">
-          <Label htmlFor="invitation-expiry-days">{t('pages.platformConfig.expiryDays')}</Label>
-          {isEditing ? (
-            <>
-              <Input
-                id="invitation-expiry-days"
-                type="number"
-                min={1}
-                max={365}
-                value={formData.expiry_days}
-                onChange={(e) => handleChange('expiry_days', e.target.value)}
-                onBlur={() => handleBlur('expiry_days')}
-                className={fieldErrors.expiry_days ? 'border-destructive' : ''}
-              />
-              {fieldErrors.expiry_days && (
-                <p className="text-xs text-destructive">{fieldErrors.expiry_days}</p>
-              )}
-            </>
-          ) : (
-            <ReadOnlyText value={t('pages.platformConfig.daysValue', { count: form.expiry_days })} />
-          )}
-        </div>
+      <ConfigField
+        label={t('pages.platformConfig.expiryDays')}
+        htmlFor="invitation-expiry-days"
+        isEditing={isEditing}
+        value={t('pages.platformConfig.daysValue', { count: form.expiry_days })}
+        error={fieldErrors.expiry_days}
+      >
+        <Input
+          id="invitation-expiry-days"
+          type="number"
+          min={1}
+          max={365}
+          value={formData.expiry_days}
+          onChange={(e) => handleChange('expiry_days', e.target.value)}
+          onBlur={() => handleBlur('expiry_days')}
+          className={fieldErrors.expiry_days ? 'border-destructive' : ''}
+        />
+      </ConfigField>
     </ConfigCardShell>
   );
 };

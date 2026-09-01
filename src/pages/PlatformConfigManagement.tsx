@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import { FetchErrorState } from '../components/FetchErrorState';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
@@ -17,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
 import { normalizeAudit, latestActor } from '../utils/audit';
-import type { PlatformConfig } from '../types';
+import type { LicenseConfig, NotificationEmailConfig, PlatformConfig } from '../types';
 import { useI18n } from '../hooks/useI18n';
 
 /** การ์ดหนึ่งใบในหน้านี้ — ไม่ใช่คีย์ของ config เพราะคีย์ `invitation` มีสองการ์ด */
@@ -29,6 +30,32 @@ type CardId =
   | 'password_reset'
   | 'notification_email'
   | 'license';
+
+/**
+ * หัวข้อกลุ่ม — ป้ายตัวพิมพ์ใหญ่เล็ก ๆ พร้อมเส้นลากยาว ชุดเดียวกับหัวกลุ่มใน sidebar
+ *
+ * ของเดิมเป็น `text-sm font-semibold text-muted-foreground` ซึ่ง "เบากว่า" ชื่อการ์ดที่มัน
+ * ครอบอยู่ ลำดับชั้นจึงกลับหัว แบบนี้หัวกลุ่มเป็นคนละระดับกับชื่อการ์ดชัดเจน ไม่แข่งกัน
+ */
+const SectionHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex items-center gap-3">
+    <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+      {children}
+    </h2>
+    <span className="h-px flex-1 bg-border" />
+  </div>
+);
+
+/** หนึ่งช่องในแถบสถานะบนสุด — ป้ายกำกับ + สถานะจริงที่บันทึกไว้ */
+const StatusItem: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-muted-foreground">{label}</span>
+    {children}
+  </div>
+);
 
 const PlatformConfigManagement: React.FC = () => {
   const { hasPermission } = useAuth();
@@ -86,13 +113,31 @@ const PlatformConfigManagement: React.FC = () => {
   const passwordResetAudit = normalizeAudit(passwordReset);
   const notificationEmailAudit = normalizeAudit(notificationEmail);
   const licenseAudit = normalizeAudit(license);
-  // ค่ากริยา+actor ล่าสุดต่อการ์ด สำหรับแสดงในแถบ compact (I2) — คำนวณแยกจาก *Audit ด้านบน
+  // ค่ากริยา+actor ล่าสุดต่อการ์ด สำหรับแถบท้ายการ์ด — คำนวณแยกจาก *Audit ด้านบน
   // ที่ยังต้องใช้เดิมสำหรับ remount key
   const invitationLatest = latestActor(invitation);
   const signupLatest = latestActor(signup);
   const emailVerificationLatest = latestActor(emailVerification);
   const passwordResetLatest = latestActor(passwordReset);
+  const notificationEmailLatest = latestActor(notificationEmail);
   const licenseLatest = latestActor(license);
+
+  /** แถบ audit ท้ายการ์ด — รูปแบบเดียวกันทั้ง 6 ใบ และอยู่ *ใน* การ์ดที่มันอธิบาย */
+  const auditFooter = (latest: ReturnType<typeof latestActor>) => (
+    <AuditMeta
+      variant="compact"
+      verbKey={latest?.verbKey}
+      actor={latest?.actor}
+      className="text-xs text-muted-foreground"
+    />
+  );
+
+  // สถานะเปิด/ปิดสองตัวที่ "ปิดอยู่เงียบ ๆ" ได้ — อ่านด้วยกฎเดียวกับการ์ดของมันเอง
+  // (`=== true` ไม่ใช่ truthy สำหรับ license เพื่อให้ตรงกับผู้อ่านฝั่ง backend ทั้งสองตัว)
+  const enforcementOn =
+    ((license?.value ?? {}) as Partial<LicenseConfig>).enforcement_enabled === true;
+  const notificationOn =
+    ((notificationEmail?.value ?? {}) as Partial<NotificationEmailConfig>).enabled === true;
 
   return (
     <Layout>
@@ -110,17 +155,13 @@ const PlatformConfigManagement: React.FC = () => {
           </Card>
         ) : loading ? (
           <div className="space-y-6">
-            {[
-              { heading: t('pages.platformConfig.sectionEmailLinks'), cards: 4 },
-              { heading: t('pages.platformConfig.sectionInvitationLimits'), cards: 1 },
-              { heading: t('pages.platformConfig.sectionNotifications'), cards: 1 },
-              { heading: t('pages.platformConfig.sectionLicensing'), cards: 1 },
-            ].map((section) => (
-              <div key={section.heading} className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted-foreground">{section.heading}</h2>
+            <Skeleton className="h-12 w-full" />
+            {[4, 3].map((cards, section) => (
+              <div key={section} className="space-y-3">
+                <Skeleton className="h-4 w-48" />
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {Array.from({ length: section.cards }).map((_, i) => (
-                    <Skeleton key={i} className="h-56 w-full" />
+                  {Array.from({ length: cards }).map((_, i) => (
+                    <Skeleton key={i} className="h-48 w-full" />
                   ))}
                 </div>
               </div>
@@ -128,124 +169,106 @@ const PlatformConfigManagement: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">
-                {t('pages.platformConfig.sectionEmailLinks')}
-              </h2>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-1">
-                  <InvitationConfigCard
-                    // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-                    key={`invitation-${invitationAudit.updated?.at ?? invitationAudit.created?.at ?? 'default'}`}
-                    config={invitation}
-                    canManage={canManage}
-                    isEditing={editingCard === 'invitation'}
-                    onRequestEdit={() => setEditingCard('invitation')}
-                    onCancelEdit={() => setEditingCard(null)}
-                    onSaved={handleSaved}
-                  />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={invitationLatest?.verbKey}
-                    actor={invitationLatest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <SignupConfigCard
-                    // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-                    key={`signup-${signupAudit.updated?.at ?? signupAudit.created?.at ?? 'default'}`}
-                    config={signup}
-                    canManage={canManage}
-                    isEditing={editingCard === 'signup'}
-                    onRequestEdit={() => setEditingCard('signup')}
-                    onCancelEdit={() => setEditingCard(null)}
-                    onSaved={handleSaved}
-                  />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={signupLatest?.verbKey}
-                    actor={signupLatest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <LinkConfigCard
-                    key={`email_verification-${emailVerificationAudit.updated?.at ?? emailVerificationAudit.created?.at ?? 'default'}`}
-                    configKey="email_verification"
-                    title={t('pages.platformConfig.emailVerificationTitle')}
-                    description={t('pages.platformConfig.emailVerificationDescription')}
-                    urlExample="https://inventory.carmen.io/verify-email"
-                    defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
-                    config={emailVerification}
-                    canManage={canManage}
-                    isEditing={editingCard === 'email_verification'}
-                    onRequestEdit={() => setEditingCard('email_verification')}
-                    onCancelEdit={() => setEditingCard(null)}
-                    onSaved={handleSaved}
-                  />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={emailVerificationLatest?.verbKey}
-                    actor={emailVerificationLatest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <LinkConfigCard
-                    key={`password_reset-${passwordResetAudit.updated?.at ?? passwordResetAudit.created?.at ?? 'default'}`}
-                    configKey="password_reset"
-                    title={t('pages.platformConfig.passwordResetTitle')}
-                    description={t('pages.platformConfig.passwordResetDescription')}
-                    urlExample="https://inventory.carmen.io/reset-password"
-                    defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
-                    config={passwordReset}
-                    canManage={canManage}
-                    isEditing={editingCard === 'password_reset'}
-                    onRequestEdit={() => setEditingCard('password_reset')}
-                    onCancelEdit={() => setEditingCard(null)}
-                    onSaved={handleSaved}
-                  />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={passwordResetLatest?.verbKey}
-                    actor={passwordResetLatest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
-                </div>
-              </div>
+            {/*
+              สองสวิตช์ที่ปิดอยู่แล้วไม่มีอะไรเตือน — ของเดิมต้องเลื่อนลงสามจอถึงจะรู้ว่า
+              enforcement เปิดอยู่ไหม และอีเมลแจ้งเตือนส่งอยู่ไหม ตัวเลขอายุลิงก์ไม่อยู่ในแถบนี้
+              เพราะมันไม่ใช่สถานะ อ่านจากการ์ดตรง ๆ ได้อยู่แล้ว
+            */}
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-lg border bg-card px-4 py-3">
+              <StatusItem label={t('pages.platformConfig.licenseTitle')}>
+                <Badge variant={enforcementOn ? 'success' : 'secondary'}>
+                  {enforcementOn
+                    ? t('pages.platformConfig.enforced')
+                    : t('pages.platformConfig.shadowMode')}
+                </Badge>
+              </StatusItem>
+              <StatusItem label={t('pages.platformConfig.notificationTitle')}>
+                <Badge variant={notificationOn ? 'success' : 'secondary'}>
+                  {notificationOn ? t('pages.platformConfig.on') : t('pages.platformConfig.off')}
+                </Badge>
+              </StatusItem>
             </div>
 
             <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.platformConfig.sectionInvitationLimits')}</h2>
+              <SectionHeading>{t('pages.platformConfig.sectionEmailLinks')}</SectionHeading>
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-1">
-                  <InvitationLimitsCard
-                    // remount เมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
-                    key={`invitation-limits-${invitationAudit.updated?.at ?? invitationAudit.created?.at ?? 'default'}`}
-                    config={invitation}
-                    canManage={canManage}
-                    isEditing={editingCard === 'invitation_limits'}
-                    onRequestEdit={() => setEditingCard('invitation_limits')}
-                    onCancelEdit={() => setEditingCard(null)}
-                    onSaved={handleSaved}
-                  />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={invitationLatest?.verbKey}
-                    actor={invitationLatest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
-                </div>
+                <InvitationConfigCard
+                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา
+                  key={`invitation-${invitationAudit.updated?.at ?? invitationAudit.created?.at ?? 'default'}`}
+                  config={invitation}
+                  canManage={canManage}
+                  isEditing={editingCard === 'invitation'}
+                  onRequestEdit={() => setEditingCard('invitation')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(invitationLatest)}
+                />
+                <SignupConfigCard
+                  key={`signup-${signupAudit.updated?.at ?? signupAudit.created?.at ?? 'default'}`}
+                  config={signup}
+                  canManage={canManage}
+                  isEditing={editingCard === 'signup'}
+                  onRequestEdit={() => setEditingCard('signup')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(signupLatest)}
+                />
+                <LinkConfigCard
+                  key={`email_verification-${emailVerificationAudit.updated?.at ?? emailVerificationAudit.created?.at ?? 'default'}`}
+                  configKey="email_verification"
+                  title={t('pages.platformConfig.emailVerificationTitle')}
+                  description={t('pages.platformConfig.emailVerificationDescription')}
+                  urlExample="https://inventory.carmen.io/verify-email"
+                  defaults={{ base_url: 'http://localhost:3000/verify-email', expiry_hours: 24 }}
+                  config={emailVerification}
+                  canManage={canManage}
+                  isEditing={editingCard === 'email_verification'}
+                  onRequestEdit={() => setEditingCard('email_verification')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(emailVerificationLatest)}
+                />
+                <LinkConfigCard
+                  key={`password_reset-${passwordResetAudit.updated?.at ?? passwordResetAudit.created?.at ?? 'default'}`}
+                  configKey="password_reset"
+                  title={t('pages.platformConfig.passwordResetTitle')}
+                  description={t('pages.platformConfig.passwordResetDescription')}
+                  urlExample="https://inventory.carmen.io/reset-password"
+                  defaults={{ base_url: 'http://localhost:3000', expiry_hours: 24 }}
+                  config={passwordReset}
+                  canManage={canManage}
+                  isEditing={editingCard === 'password_reset'}
+                  onRequestEdit={() => setEditingCard('password_reset')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(passwordResetLatest)}
+                />
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.platformConfig.sectionNotifications')}</h2>
-              <div className="grid gap-4 lg:grid-cols-2">
+            {/*
+              สามกลุ่มที่เหลือมีกลุ่มละการ์ดเดียว — ของเดิมให้แต่ละกลุ่มเป็น grid 2 คอลัมน์
+              ของตัวเอง จึงเหลือครึ่งขวาว่างสามท่อนซ้อนกัน วางทั้งสามกลุ่มลงในกริดเดียวแทน
+              เหลือช่องว่างช่องเดียวที่มุมล่างขวา ซึ่งเป็นท้ายหน้าอยู่แล้ว
+            */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-3">
+                <SectionHeading>{t('pages.platformConfig.sectionInvitationLimits')}</SectionHeading>
+                <InvitationLimitsCard
+                  key={`invitation-limits-${invitationAudit.updated?.at ?? invitationAudit.created?.at ?? 'default'}`}
+                  config={invitation}
+                  canManage={canManage}
+                  isEditing={editingCard === 'invitation_limits'}
+                  onRequestEdit={() => setEditingCard('invitation_limits')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(invitationLatest)}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <SectionHeading>{t('pages.platformConfig.sectionNotifications')}</SectionHeading>
                 <NotificationEmailConfigCard
-                  // remount การ์ดเมื่อค่าที่เก็บไว้เปลี่ยน เพื่อให้ฟอร์มรีเซ็ตตามค่าที่เพิ่ง fetch มา —
-                  // การ์ดนี้วาด AuditMeta compact ของตัวเองอยู่แล้ว (Task 8) จึงไม่เติมซ้ำที่นี่
                   key={`notification_email-${notificationEmailAudit.updated?.at ?? notificationEmailAudit.created?.at ?? 'default'}`}
                   config={notificationEmail}
                   canManage={canManage}
@@ -253,30 +276,22 @@ const PlatformConfigManagement: React.FC = () => {
                   onRequestEdit={() => setEditingCard('notification_email')}
                   onCancelEdit={() => setEditingCard(null)}
                   onSaved={handleSaved}
+                  footer={auditFooter(notificationEmailLatest)}
                 />
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.platformConfig.sectionLicensing')}</h2>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-1">
-                  <LicenseEnforcementCard
-                    key={`license-${licenseAudit.updated?.at ?? licenseAudit.created?.at ?? 'default'}`}
-                    config={license}
-                    canManage={canManageLicense}
-                    isEditing={editingCard === 'license'}
-                    onRequestEdit={() => setEditingCard('license')}
-                    onCancelEdit={() => setEditingCard(null)}
-                    onSaved={handleSaved}
-                  />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={licenseLatest?.verbKey}
-                    actor={licenseLatest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
-                </div>
+              <div className="space-y-3">
+                <SectionHeading>{t('pages.platformConfig.sectionLicensing')}</SectionHeading>
+                <LicenseEnforcementCard
+                  key={`license-${licenseAudit.updated?.at ?? licenseAudit.created?.at ?? 'default'}`}
+                  config={license}
+                  canManage={canManageLicense}
+                  isEditing={editingCard === 'license'}
+                  onRequestEdit={() => setEditingCard('license')}
+                  onCancelEdit={() => setEditingCard(null)}
+                  onSaved={handleSaved}
+                  footer={auditFooter(licenseLatest)}
+                />
               </div>
             </div>
           </div>
