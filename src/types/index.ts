@@ -180,6 +180,33 @@ export interface BusinessUnit {
   doc_version?: number; // optimistic-lock token (read model)
 }
 
+// Platform database migration (super-admin หรือ deploy token) — /api-system/platform/migrations/*
+// ฝั่ง backend คืน stdout ดิบของ prisma มาใน `raw` หลัง sanitize แล้ว ฟิลด์ทั้งหมดเป็น optional
+// เพราะ controller ห่อด้วย Result<unknown> — สัญญาไม่ได้การันตีว่าจะมีครบทุกครั้ง
+export interface PlatformMigrationStatus {
+  has_pending?: boolean;
+  pending?: string[];
+  up_to_date?: boolean;
+  raw?: string;
+}
+
+export interface PlatformMigrationDeployResult {
+  success?: boolean;
+  already_up_to_date?: boolean;
+  applied_migrations?: string[];
+  raw?: string;
+}
+
+/** 'applied' = ทำเครื่องหมายว่ารันสำเร็จแล้ว · 'rolled-back' = ทำเครื่องหมายว่าย้อนกลับแล้ว */
+export type PlatformMigrationResolveAction = 'applied' | 'rolled-back';
+
+export interface PlatformMigrationResolveResult {
+  success?: boolean;
+  migration_name?: string;
+  action?: string;
+  raw?: string;
+}
+
 // Tenant database migration (super-admin) — /api-system/tenant/migrations/:bu_id/*
 export interface TenantMigrationStatus {
   bu_id: string;
@@ -1142,6 +1169,20 @@ export interface NotificationEmailConfig {
  */
 export interface LicenseConfig {
   enforcement_enabled: boolean;
+}
+
+/**
+ * สวิตช์เปิด/ปิด API migration ของฐานข้อมูลแพลตฟอร์ม — คีย์ `platform_migration` ใน Platform Config
+ * The on/off switch for the platform-database migration API.
+ *
+ * เคยเป็น env `PLATFORM_MIGRATION_API_ENABLED` ของ backend-gateway ย้ายมาเป็น config เพราะเป็นค่าที่
+ * ผู้ดูแลระบบเปิด/ปิดเอง แต่ **เขียนได้เฉพาะ super-admin** ไม่ใช่ผู้ถือ `platform_config.manage`
+ * ต่างจากคีย์อื่นทุกตัวในหน้านี้ — สิ่งที่มันเปิดคือ endpoint ที่บังคับ super-admin อยู่แล้ว
+ *
+ * guard ฝั่ง backend cache ไว้ 60 วินาที การสลับค่าจึงมีผลภายในหนึ่งนาที ไม่ใช่ทันที
+ */
+export interface PlatformMigrationConfig {
+  api_enabled: boolean;
 }
 
 /**
