@@ -17,11 +17,19 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../components/ui/select';
 import platformMigrationService from '../services/platformMigrationService';
+import platformSeedService from '../services/platformSeedService';
+import { OpRow } from './platformMigration/OpRow';
+import { RunConsole } from './platformMigration/RunConsole';
 import { migrationStatusCode } from '../utils/migrationError';
 import { parseApiError } from '../utils/errorParser';
 import { useI18n } from '../hooks/useI18n';
 import type { TFunction } from '../i18n/types';
-import type { PlatformMigrationStatus, PlatformMigrationResolveAction } from '../types';
+import type {
+  PlatformMigrationStatus,
+  PlatformMigrationResolveAction,
+  PlatformSeedOp,
+  SeedRunEvent,
+} from '../types';
 
 /**
  * แปลง error ของ platform-migration API เป็น toast ตามความหมายจริงของรหัส
@@ -47,6 +55,12 @@ const nowTime = (): string => {
 
 /** ชื่อโฟลเดอร์ migration ที่ backend ยอมรับ — ตัวเลข timestamp ตามด้วยชื่อ */
 const MIGRATION_NAME_RE = /^[0-9]{6,}_[A-Za-z0-9_-]+$/;
+
+/**
+ * `seed-permission` -> `seedPermission` — คีย์ i18n ของ op ตั้งจาก id เพื่อไม่ต้องมีตารางแมปคู่ขนาน
+ * ที่จะเพี้ยนจากทะเบียนฝั่ง backend ได้เงียบ ๆ
+ */
+const opKey = (id: string): string => id.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 
 /** output ดิบจาก prisma ที่ backend sanitize แล้ว — ยุบไว้เพราะยาวและมีค่าเฉพาะตอนสอบสวน */
 const RawOutput: React.FC<{ raw?: string; label: string }> = ({ raw, label }) => {
@@ -90,6 +104,13 @@ export const PlatformMigrationManagement: React.FC = () => {
   const [resolving, setResolving] = useState(false);
   const [confirmResolve, setConfirmResolve] = useState(false);
 
+  const [catalog, setCatalog] = useState<PlatformSeedOp[]>([]);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [runningOp, setRunningOp] = useState<string | null>(null);
+  const [runLines, setRunLines] = useState<string[]>([]);
+  const [runResult, setRunResult] = useState<{ success: boolean; exit_code: number } | null>(null);
+  const [confirmOp, setConfirmOp] = useState<PlatformSeedOp | null>(null);
+
   const fetchStatus = useCallback(async (isRefresh: boolean): Promise<void> => {
     if (isRefresh) setRefreshing(true);
     try {
@@ -107,6 +128,19 @@ export const PlatformMigrationManagement: React.FC = () => {
           : parseApiError(err).message,
       );
       if (isRefresh) notifyError(err, t);
+    }
+    // แยก try ของตัวเอง — catalog พังต้องไม่ทำให้ทั้งหน้าพัง สถานะ migration ยังอ่านได้อยู่
+    try {
+      setCatalog(await platformSeedService.getCatalog());
+      setCatalogError(null);
+    } catch (err) {
+      // นำหน้าด้วยข้อความที่แปลแล้ว แต่คงรายละเอียดดิบไว้ — ผู้อ่านหน้านี้คือ super-admin ที่
+      // "Cannot GET /api-system/platform/seeds/catalog" บอกได้ทันทีว่า backend ยังไม่ deploy
+      // Localized prefix, raw detail kept: the reader is a super-admin for whom the raw 404
+      // immediately says "the backend has not shipped yet".
+      setCatalogError(
+        `${t('pages.platformMigration.catalogLoadFailed')}: ${parseApiError(err).message}`,
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -149,10 +183,34 @@ export const PlatformMigrationManagement: React.FC = () => {
     }
   }, [fetchStatus, migrationName, resolveAction, t]);
 
+  const runOp = useCallback(async (op: PlatformSeedOp): Promise<void> => {
+    setRunningOp(op.id);
+    setRunLines([]);
+    setRunResult(null);
+    try {
+      const result = await platformSeedService.runStream(op.id, (e: SeedRunEvent) => {
+        if (e.type === 'start') setRunLines((prev) => [...prev, `$ ${e.command}`]);
+        if (e.type === 'log') setRunLines((prev) => [...prev, e.line]);
+      });
+      setRunResult(result);
+      if (result.success) {
+        toast.success(t('pages.platformMigration.opSucceeded'));
+      } else {
+        toast.error(t('pages.platformMigration.opFailed', { code: result.exit_code }));
+      }
+      await fetchStatus(false);
+    } catch (err) {
+      setRunResult({ success: false, exit_code: -1 });
+      notifyError(err, t);
+    } finally {
+      setRunningOp(null);
+    }
+  }, [fetchStatus, t]);
+
   const pending = status?.pending ?? [];
   const hasPending = status?.has_pending === true;
   const upToDate = status?.up_to_date === true;
-  const busy = deploying || resolving;
+  const busy = deploying || resolving || runningOp !== null;
   const resolveNameValid = MIGRATION_NAME_RE.test(migrationName.trim());
 
   return (
@@ -323,6 +381,68 @@ export const PlatformMigrationManagement: React.FC = () => {
                 )}
               </CardContent>
             </Card>
+
+            {catalogError ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <FetchErrorState
+                    message={catalogError}
+                    onRetry={() => void fetchStatus(true)}
+                    className="justify-start"
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {(['seed', 'check'] as const).map((group) => {
+                  const ops = catalog.filter((o) => o.group === group);
+                  if (ops.length === 0) return null;
+                  return (
+                    <Card key={group}>
+                      <CardContent className="space-y-2 pt-6">
+                        <div>
+                          <h2 className="text-sm font-semibold">
+                            {group === 'seed'
+                              ? t('pages.platformMigration.seedsTitle')
+                              : t('pages.platformMigration.checksTitle')}
+                          </h2>
+                          <p className="text-muted-foreground text-sm">
+                            {group === 'seed'
+                              ? t('pages.platformMigration.seedsDescription')
+                              : t('pages.platformMigration.checksDescription')}
+                          </p>
+                        </div>
+                        <div>
+                          {ops.map((op) => (
+                            <OpRow
+                              key={op.id}
+                              op={op}
+                              label={t(`pages.platformMigration.ops.${opKey(op.id)}.label` as never)}
+                              desc={t(`pages.platformMigration.ops.${opKey(op.id)}.desc` as never)}
+                              disabled={busy || loadError !== null}
+                              onRun={() => (op.readonly ? void runOp(op) : setConfirmOp(op))}
+                            />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
+                <RunConsole
+                  opLabel={
+                    runningOp
+                      ? t(`pages.platformMigration.ops.${opKey(runningOp)}.label` as never)
+                      : runResult
+                        ? t('pages.platformMigration.consoleLastRun')
+                        : null
+                  }
+                  lines={runLines}
+                  running={runningOp !== null}
+                  result={runResult}
+                />
+              </>
+            )}
           </>
         )}
       </div>
@@ -349,6 +469,24 @@ export const PlatformMigrationManagement: React.FC = () => {
         confirmText={t('pages.platformMigration.resolveButton')}
         confirmVariant="destructive"
         onConfirm={handleResolve}
+      />
+
+      <ConfirmDialog
+        open={confirmOp !== null}
+        onOpenChange={(open) => !open && setConfirmOp(null)}
+        title={t('pages.platformMigration.opConfirmTitle')}
+        description={
+          confirmOp?.id === 'check-seat-pool-view'
+            ? t('pages.platformMigration.opConfirmSeatPool')
+            : t('pages.platformMigration.opConfirmWrite')
+        }
+        confirmText={t('pages.platformMigration.opRun')}
+        confirmVariant="destructive"
+        onConfirm={async () => {
+          const op = confirmOp;
+          setConfirmOp(null);
+          if (op) await runOp(op);
+        }}
       />
 
       <DevDebugSheet
