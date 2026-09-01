@@ -20,7 +20,6 @@ import { format as sqlFormat } from 'sql-formatter';
 import { toast } from 'sonner';
 import { Play, Wand2, Search as SearchIcon, Eraser, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { cn } from '../../lib/utils';
 import type { DbObjectsResponse } from '../../types';
 import { countStatements, findStatementAt } from './sqlEditorHelpers';
 import { useI18n } from '../../hooks/useI18n';
@@ -31,7 +30,6 @@ interface SqlEditorProps {
   onRun?: (sqlToRun: string) => void;
   isRunning?: boolean;
   schema?: DbObjectsResponse;
-  height?: number;
 }
 
 // Build the { table: [columns] } map lang-sql uses for schema-aware autocomplete.
@@ -50,7 +48,6 @@ export function SqlEditor({
   onRun,
   isRunning = false,
   schema,
-  height = 360,
 }: SqlEditorProps) {
   const { t } = useI18n();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -79,9 +76,20 @@ export function SqlEditor({
       return true;
     }
     const doc = view.state.doc.toString();
-    const { start, end } = findStatementAt(doc, sel.head);
-    const stmt = doc.slice(start, end).trim().replace(/;\s*$/, '');
-    if (stmt) cb(stmt);
+    const stmtAt = (offset: number) => {
+      const { start, end } = findStatementAt(doc, offset);
+      return doc.slice(start, end).trim().replace(/;\s*$/, '');
+    };
+    // The caret sitting just past a trailing `;` resolves to the *next* (empty) statement, which
+    // is where the caret lands after typing a query — the single most common way to reach Run.
+    // Falling back one character puts it back inside the statement that was just typed, so Run
+    // does the obvious thing instead of no-oping. Only a genuinely empty editor reaches the toast.
+    const stmt = stmtAt(sel.head) || stmtAt(Math.max(0, sel.head - 1)) || doc.trim().replace(/;\s*$/, '');
+    if (!stmt) {
+      toast.error(t('pages.sqlWorkbench.nothingToRun'));
+      return true;
+    }
+    cb(stmt);
     return true;
   };
 
@@ -124,9 +132,16 @@ export function SqlEditor({
           indentWithTab,
         ]),
         EditorView.theme({
-          '&': { fontSize: '13px' },
+          // `height: 100%` resolves only against a definite parent height — true inside the
+          // desktop frame, false on mobile where the pane is sized by min-height, which
+          // collapsed the editor to a single line. Flex fill is correct in both.
+          '&': { fontSize: '13px', flex: '1 1 auto', minHeight: 0 },
+          // Grow the scroller to the full pane, not just the text: the empty space under the
+          // last line is still the editor, and clicking it should place the caret.
           '.cm-scroller': {
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            flexGrow: 1,
+            overflow: 'auto',
           },
           '.cm-gutters': {
             backgroundColor: 'transparent',
@@ -204,8 +219,12 @@ export function SqlEditor({
   const totalLines = value.split('\n').length;
   const stmtCount = countStatements(value);
 
+  // 2:3 against the result pane below: the rows are what the query was run for, and a query long
+  // enough to need more room scrolls inside its own pane rather than stealing height from them.
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-0 flex-[2] flex-col">
+      {/* One row, one job: everything here acts on the text in the editor. Persisting the text as
+          a database object lives on its own strip above, next to the name it saves under. */}
       <div className="flex flex-wrap items-center gap-1 border-b px-2 py-1.5">
         {onRun && (
           <Button
@@ -232,39 +251,34 @@ export function SqlEditor({
           <SearchIcon className="mr-1 size-3.5" />
           {t('pages.sqlWorkbench.find')}
         </Button>
-        <div className="ml-auto" />
         <Button
           size="sm"
           variant="ghost"
-          className="h-7 text-destructive"
+          className="text-destructive h-7"
           onClick={handleClear}
           title={t('pages.sqlWorkbench.clearEditorTitle')}
         >
           <Eraser className="mr-1 size-3.5" />
           {t('pages.sqlWorkbench.clear')}
         </Button>
+
+        {/* Editor meta rides the toolbar rather than a status bar of its own — it is one line of
+            text and a whole extra row for it costs more screen than it is worth in a pane that
+            has to share its height with the result grid. */}
+        <div className="text-muted-foreground ml-auto hidden items-center gap-x-3 pr-1 font-mono text-[11px] sm:flex">
+          <span>{t(totalLines === 1 ? 'pages.sqlWorkbench.metaLine' : 'pages.sqlWorkbench.metaLines', { count: totalLines })}</span>
+          <span aria-hidden="true" className="opacity-40">·</span>
+          <span>
+            {t(stmtCount === 1 ? 'pages.sqlWorkbench.metaStatement' : 'pages.sqlWorkbench.metaStatements', { count: stmtCount })}
+          </span>
+          <span aria-hidden="true" className="opacity-40">·</span>
+          <span>PostgreSQL</span>
+        </div>
       </div>
 
-      <div
-        ref={hostRef}
-        className="overflow-auto"
-        style={{ minHeight: height, maxHeight: height + 160 }}
-      />
-
-      <div
-        className={cn(
-          'bg-muted/30 text-muted-foreground flex flex-wrap items-center gap-x-4 border-t px-3 py-1 text-[11px]',
-        )}
-      >
-        <span>
-          <span className="text-foreground">{totalLines}</span> lines
-        </span>
-        <span>
-          <span className="text-foreground">{stmtCount}</span> statement
-          {stmtCount === 1 ? '' : 's'}
-        </span>
-        <span className="ml-auto">SQL · PostgreSQL</span>
-      </div>
+      {/* The min-heights are the mobile floor: below `lg` the frame is content-height, so the
+          flex weights have nothing to divide and each pane must claim a usable size of its own. */}
+      <div ref={hostRef} className="flex min-h-[12rem] flex-1 flex-col overflow-hidden" />
     </div>
   );
 }

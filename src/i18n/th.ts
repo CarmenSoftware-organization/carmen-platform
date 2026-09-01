@@ -2045,6 +2045,13 @@ export const th: Translations = {
       typeLabel: 'ชนิด',
       editingPrefix: 'กำลังแก้ไข:',
       sqlEditor: 'ตัวแก้ไข SQL',
+      // แถบเครื่องมือของตัวแก้ไข — เดิมเป็นแถบสถานะแถวล่างที่ไม่ได้แปล
+      metaLine: '{{count}} บรรทัด',
+      metaLines: '{{count}} บรรทัด',
+      metaStatement: '{{count}} คำสั่ง',
+      metaStatements: '{{count}} คำสั่ง',
+      nothingToRun: 'ไม่มีอะไรให้รัน — ตัวแก้ไขว่างเปล่า',
+      resultsIdle: 'รันคำสั่งเพื่อดูผลลัพธ์ตรงนี้',
     },
     emailSettings: {
       senderProfiles: 'โปรไฟล์ผู้ส่ง',

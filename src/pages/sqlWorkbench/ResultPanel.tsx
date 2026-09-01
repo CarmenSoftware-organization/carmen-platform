@@ -73,14 +73,13 @@ export function ResultPanel({
     return result.rows.slice(start, start + pageSize);
   })();
 
-  if (!result && !error && !isRunning) return null;
-
+  const idle = !result && !error && !isRunning;
   const errorLine = error ? parseErrorLine(error) : null;
 
   return (
-    <div className="rounded-lg border">
+    <div className="flex min-h-[16rem] flex-[3] flex-col border-t lg:min-h-0">
       {/* Header */}
-      <div className="bg-muted/30 flex flex-wrap items-center gap-2 border-b px-3 py-2">
+      <div className="bg-muted/30 flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2">
         {error ? (
           <AlertTriangle className="text-destructive size-4" />
         ) : (
@@ -119,7 +118,7 @@ export function ResultPanel({
               CSV
             </Button>
           )}
-          {onClose && (
+          {onClose && !idle && (
             <Button
               size="icon"
               variant="ghost"
@@ -135,8 +134,12 @@ export function ResultPanel({
       </div>
 
       {/* Body */}
-      {error ? (
-        <div className="p-3">
+      {idle ? (
+        <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center px-3 py-6 text-xs">
+          {t('pages.sqlWorkbench.resultsIdle')}
+        </div>
+      ) : error ? (
+        <div className="min-h-0 flex-1 overflow-auto p-3">
           <pre
             role="alert"
             className="border-destructive/30 bg-destructive/5 text-destructive rounded border p-3 text-xs whitespace-pre-wrap"
@@ -154,17 +157,17 @@ export function ResultPanel({
         <div
           role="status"
           aria-live="polite"
-          className="text-muted-foreground flex items-center justify-center py-10 text-sm"
+          className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center py-10 text-sm"
         >
           {t('pages.sqlWorkbench.runningQuery')}
         </div>
       ) : result && result.rowCount === 0 ? (
-        <div className="text-muted-foreground flex items-center justify-center py-10 text-sm">
+        <div className="text-muted-foreground flex min-h-0 flex-1 items-center justify-center py-10 text-sm">
           {t('pages.sqlWorkbench.noRowsReturned')}
         </div>
       ) : result ? (
         <>
-          <div className="max-h-[420px] overflow-auto">
+          <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse text-xs [&_th]:whitespace-nowrap">
               {/* ทึบ ไม่ใช่ `bg-muted/60 backdrop-blur` — หัวตารางนี้ปักอยู่กับที่ในกรอบเลื่อน
                   สูง 420px แถวผลลัพธ์จึงวิ่งผ่านใต้มันตลอด และที่ 60% แถวที่เลื่อนผ่านกลาย
@@ -220,7 +223,7 @@ export function ResultPanel({
 
           {/* Pagination */}
           {totalRows > pageSize && (
-            <div className="bg-muted/30 flex items-center gap-2 border-t px-3 py-1.5 text-xs">
+            <div className="bg-muted/30 flex shrink-0 items-center gap-2 border-t px-3 py-1.5 text-xs">
               <span className="text-muted-foreground">{t('table.rowsPerPage')}:</span>
               <select
                 className="bg-background rounded border px-1 py-0.5 text-xs"

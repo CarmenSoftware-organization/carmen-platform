@@ -19,13 +19,16 @@ interface ConnectionBarProps {
  * the live database you fire DDL at, so this bar makes the target unmistakable:
  * a stable per-tenant colour, the code in monospace, and a read-only / read-write
  * signal, so an operator can't Drop objects in the wrong tenant by accident.
+ *
+ * It is the top bar of the workbench frame rather than a card of its own: the tenant is not
+ * something you set and scroll past, it is the thing every keystroke below it is aimed at.
  */
 export function ConnectionBar({ bu, canWrite, onSwitch }: ConnectionBarProps) {
   const { t } = useI18n();
   const rail = bu ? buHueColor(bu.code) : 'hsl(var(--border))';
 
   return (
-    <div className="bg-card flex items-stretch overflow-hidden rounded-lg border shadow-xs">
+    <div className="bg-card flex shrink-0 items-stretch border-b">
       {/* live-target hue rail */}
       <div className="w-1 shrink-0" style={{ background: rail }} aria-hidden="true" />
 
@@ -64,7 +67,7 @@ export function ConnectionBar({ bu, canWrite, onSwitch }: ConnectionBarProps) {
                 </span>
                 <span>tenant db{bu.cluster_name ? ` · ${bu.cluster_name}` : ''}</span>
                 <span className="opacity-40">·</span>
-                <Badge variant={canWrite ? 'warning' : 'secondary'} className="px-1.5 py-0 text-[10px] font-mono">
+                <Badge variant={canWrite ? 'warning' : 'secondary'} className="px-1.5 py-0 font-mono text-[10px] whitespace-nowrap">
                   {canWrite ? t('pages.sqlWorkbench.readWrite') : t('pages.sqlWorkbench.readOnly')}
                 </Badge>
               </div>

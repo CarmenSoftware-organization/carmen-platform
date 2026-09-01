@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Database, Loader2, Save, Trash2 } from 'lucide-react';
+import { Loader2, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
@@ -316,47 +316,154 @@ export default function SqlWorkbench() {
 
   return (
     <Layout>
-      <div className="space-y-4 sm:space-y-6">
+      {/* A workbench is a tool you sit inside, not a document you scroll: on desktop the frame is
+          pinned to the viewport and only its three panes scroll, so the object tree, the SQL you
+          are writing and the rows it returned are all on screen at once. Below `lg` the frame
+          relaxes back to a normal stacked flow — a 390px column cannot usefully hold three panes. */}
+      <div className="flex flex-col gap-4 lg:h-[calc(100dvh-13.5rem)] lg:min-h-[34rem]">
         <PageHeader
           title={t('pages.sqlWorkbench.title')}
           subtitle={t('pages.sqlWorkbench.subtitle')}
-          actions={
-            <>
-              {canManage && loadedObject && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-destructive"
-                  onClick={() => setDropConfirm(true)}
-                  disabled={isDropping}
-                >
-                  {isDropping ? (
-                    <Loader2 className="mr-1 size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="mr-1 size-4" />
-                  )}
-                  {t('pages.sqlWorkbench.drop')}
-                </Button>
-              )}
-              {canManage && (
-                <Button size="sm" onClick={handleSave} disabled={isSaving || !buCode}>
-                  {isSaving ? (
-                    <Loader2 className="mr-1 size-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-1 size-4" />
-                  )}
-                  {t('pages.sqlWorkbench.save')}
-                </Button>
-              )}
-            </>
-          }
         />
 
-        <ConnectionBar
-          bu={selectedBu}
-          canWrite={canManage}
-          onSwitch={() => setSwitcherOpen(true)}
-        />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border shadow-xs">
+          <ConnectionBar
+            bu={selectedBu}
+            canWrite={canManage}
+            onSwitch={() => setSwitcherOpen(true)}
+          />
+
+          {!buCode ? (
+            <button
+              type="button"
+              onClick={() => setSwitcherOpen(true)}
+              className="text-muted-foreground hover:text-foreground flex min-h-0 flex-1 items-center justify-center px-6 py-16 text-sm transition-colors"
+            >
+              {t('pages.sqlWorkbench.selectBuToBegin')}
+            </button>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+              <aside className="flex max-h-[22rem] shrink-0 flex-col overflow-hidden border-b lg:max-h-none lg:w-72 lg:border-r lg:border-b-0">
+                <DbObjectTree
+                  data={dbObjects}
+                  isLoading={dbLoading}
+                  isError={dbError}
+                  onRetry={() => loadDbObjects(buCode)}
+                  onSelect={handlePickDbObject}
+                  loadingKey={loadingObjectKey}
+                />
+              </aside>
+
+              <div className="flex min-h-0 flex-1 flex-col">
+                {/* The object strip: name, type and the two buttons that write them to the
+                    database, on one line. These are save-time concerns, not query-time ones — as a
+                    three-column card at the top of the pane they were the first thing the eye hit
+                    on a page whose everyday job is running a SELECT, and they sat a screen-width
+                    away from the Save button they configure. */}
+                <div className="bg-muted/30 flex flex-wrap items-center gap-2 border-b px-3 py-2">
+                  <Label htmlFor="qd-object-name" className="text-muted-foreground text-xs">
+                    {t('pages.sqlWorkbench.objectName')}
+                  </Label>
+                  <Input
+                    id="qd-object-name"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    placeholder={t('pages.sqlWorkbench.objectNamePlaceholder')}
+                    className="h-7 w-52 font-mono text-xs"
+                  />
+                  {/* ผูกกับ Select ผ่าน aria-labelledby ไม่ใช่ htmlFor หรือการห่อ */}
+                  <Label id="qd-type-label" className="sr-only">
+                    {t('pages.sqlWorkbench.typeLabel')}
+                  </Label>
+                  <Select
+                    value={formQueryType}
+                    onValueChange={(v) => setFormQueryType(v as QueryType)}
+                  >
+                    <SelectTrigger aria-labelledby="qd-type-label" className="h-7 w-40 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {QUERY_TYPES.map((qt) => (
+                        <SelectItem key={qt.value} value={qt.value}>
+                          {t(qt.labelKey)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="ml-auto flex items-center gap-2">
+                    {loadedObject && (
+                      <p className="text-muted-foreground hidden min-w-0 truncate text-xs sm:block">
+                        {t('pages.sqlWorkbench.editingPrefix')}{' '}
+                        <span className="text-foreground font-mono">{loadedObject.name}</span>{' '}
+                        ({loadedObject.type})
+                      </p>
+                    )}
+                    {canManage && loadedObject && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive h-7"
+                        onClick={() => setDropConfirm(true)}
+                        disabled={isDropping}
+                      >
+                        {isDropping ? (
+                          <Loader2 className="mr-1 size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-1 size-3.5" />
+                        )}
+                        {t('pages.sqlWorkbench.drop')}
+                      </Button>
+                    )}
+                    {canManage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                      >
+                        {isSaving ? (
+                          <Loader2 className="mr-1 size-3.5 animate-spin" />
+                        ) : (
+                          <Save className="mr-1 size-3.5" />
+                        )}
+                        {t('pages.sqlWorkbench.save')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <SqlEditor
+                  value={formSqlText}
+                  onChange={setFormSqlText}
+                  // Run executes arbitrary SQL (incl. DDL/DML) against the tenant DB, same as
+                  // Save/Drop above — gate it on the same sql_workbench.manage permission rather
+                  // than relying on the backend to reject it. The client cannot reliably tell
+                  // SELECT apart from DML/DDL (sqlValidator.ts is explicitly UI-feedback-only,
+                  // not a security boundary), so this gates the whole executor rather than
+                  // pretending to allow read-only SELECT through a client-side parser. Omitting
+                  // onRun makes SqlEditor hide the Run button entirely (mirrors Save/Drop above)
+                  // and also disables the Ctrl/⌘+Enter shortcut, since runFromEditor no-ops when
+                  // the callback ref is undefined.
+                  onRun={canManage ? handleRun : undefined}
+                  isRunning={isRunning}
+                  schema={dbObjects ?? undefined}
+                />
+
+                {/* Always mounted, never conditional: the result pane holds its half of the pane
+                    whether or not a query has run, so pressing Run resizes nothing and the rows
+                    land where the eye is already looking. */}
+                <ResultPanel
+                  result={executeResult}
+                  error={executeError}
+                  isRunning={isRunning}
+                  onClose={resetResult}
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
         <BuSwitcher
           open={switcherOpen}
@@ -411,109 +518,6 @@ export default function SqlWorkbench() {
               setDropConfirm(false);
             }}
           />
-        )}
-
-        {!buCode ? (
-          <button
-            type="button"
-            onClick={() => setSwitcherOpen(true)}
-            className="text-muted-foreground hover:border-border/80 hover:text-foreground flex w-full items-center justify-center rounded-lg border border-dashed py-16 text-sm transition-colors"
-          >
-            {t('pages.sqlWorkbench.selectBuToBegin')}
-          </button>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="rounded-lg border lg:max-h-[calc(100vh-220px)] lg:overflow-hidden">
-              <DbObjectTree
-                data={dbObjects}
-                isLoading={dbLoading}
-                isError={dbError}
-                onRetry={() => loadDbObjects(buCode)}
-                onSelect={handlePickDbObject}
-                loadingKey={loadingObjectKey}
-              />
-            </aside>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 rounded-lg border p-4 sm:grid-cols-3">
-                <div>
-                  <Label htmlFor="qd-object-name" className="mb-1 block text-xs font-semibold">
-                    {t('pages.sqlWorkbench.objectName')}
-                  </Label>
-                  <Input
-                    id="qd-object-name"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    placeholder={t('pages.sqlWorkbench.objectNamePlaceholder')}
-                  />
-                </div>
-                <div>
-                  {/* ผูกกับ Select ด้านล่างผ่าน aria-labelledby ไม่ใช่ htmlFor หรือการห่อ */}
-                  <Label id="qd-type-label" className="mb-1 block text-xs font-semibold">
-                    {t('pages.sqlWorkbench.typeLabel')}
-                  </Label>
-                  <Select
-                    value={formQueryType}
-                    onValueChange={(v) => setFormQueryType(v as QueryType)}
-                  >
-                    <SelectTrigger aria-labelledby="qd-type-label">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {QUERY_TYPES.map((qt) => (
-                        <SelectItem key={qt.value} value={qt.value}>
-                          {t(qt.labelKey)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex flex-col justify-end">
-                  {loadedObject && (
-                    <p className="text-muted-foreground truncate text-xs">
-                      {t('pages.sqlWorkbench.editingPrefix')}{' '}
-                      <span className="text-foreground">
-                        {loadedObject.name}
-                      </span>{' '}
-                      ({loadedObject.type})
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-lg border">
-                <div className="flex items-center gap-2 border-b px-4 py-2">
-                  <Database className="text-muted-foreground size-4" />
-                  <span className="text-sm font-semibold">{t('pages.sqlWorkbench.sqlEditor')}</span>
-                </div>
-                <SqlEditor
-                  value={formSqlText}
-                  onChange={setFormSqlText}
-                  // Run executes arbitrary SQL (incl. DDL/DML) against the tenant DB, same as
-                  // Save/Drop below — gate it on the same sql_workbench.manage permission rather
-                  // than relying on the backend to reject it. The client cannot reliably tell
-                  // SELECT apart from DML/DDL (sqlValidator.ts is explicitly UI-feedback-only,
-                  // not a security boundary), so this gates the whole executor rather than
-                  // pretending to allow read-only SELECT through a client-side parser. Omitting
-                  // onRun makes SqlEditor hide the Run button entirely (mirrors Save/Drop below)
-                  // and also disables the Ctrl/⌘+Enter shortcut, since runFromEditor no-ops when
-                  // the callback ref is undefined.
-                  onRun={canManage ? handleRun : undefined}
-                  isRunning={isRunning}
-                  schema={dbObjects ?? undefined}
-                />
-              </div>
-
-              {(isRunning || executeResult || executeError) && (
-                <ResultPanel
-                  result={executeResult}
-                  error={executeError}
-                  isRunning={isRunning}
-                  onClose={resetResult}
-                />
-              )}
-            </div>
-          </div>
         )}
       </div>
     </Layout>

@@ -429,17 +429,25 @@ describe('SqlWorkbench — sql_workbench.manage gates (Run / Save / Drop)', () =
     );
   });
 
+  // Save lives on the object strip inside the workbench frame, which only exists once a tenant
+  // is connected — so both halves of this pair must connect one first. Asserting the negative
+  // from the no-tenant state would pass because the whole frame is absent, proving nothing about
+  // the permission gate.
   it('hides Save without sql_workbench.manage', async () => {
     hasPermission.mockImplementation((k: string) => k !== 'sql_workbench.manage');
+    const user = userEvent.setup();
     renderPage();
-    await screen.findByText(/select a business unit to begin/i);
+    await connectBu(user, 'Test Hotel');
+    await screen.findByLabelText('sql');
     expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
   });
 
   it('shows Save with sql_workbench.manage (discriminating control)', async () => {
     hasPermission.mockReturnValue(true);
+    const user = userEvent.setup();
     renderPage();
-    await screen.findByText(/select a business unit to begin/i);
+    await connectBu(user, 'Test Hotel');
+    await screen.findByLabelText('sql');
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
   });
 
