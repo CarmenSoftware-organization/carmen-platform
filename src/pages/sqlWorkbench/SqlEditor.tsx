@@ -3,12 +3,7 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, indentWithTab, history, historyKeymap } from '@codemirror/commands';
 import { sql, PostgreSQL } from '@codemirror/lang-sql';
-import {
-  bracketMatching,
-  indentOnInput,
-  syntaxHighlighting,
-  defaultHighlightStyle,
-} from '@codemirror/language';
+import { bracketMatching, indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search';
 import {
   autocompletion,
@@ -20,6 +15,7 @@ import { format as sqlFormat } from 'sql-formatter';
 import { toast } from 'sonner';
 import { Play, Wand2, Search as SearchIcon, Eraser, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { carmenEditorTheme, carmenHighlightStyle } from '../../lib/codemirrorTheme';
 import type { DbObjectsResponse } from '../../types';
 import { countStatements, findStatementAt } from './sqlEditorHelpers';
 import { useI18n } from '../../hooks/useI18n';
@@ -116,7 +112,7 @@ export function SqlEditor({
         indentOnInput(),
         closeBrackets(),
         autocompletion(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        syntaxHighlighting(carmenHighlightStyle, { fallback: true }),
         search({ top: true }),
         langCompartment.current.of(
           sql({ dialect: PostgreSQL, schema: buildSchemaMap(schema), upperCaseKeywords: true }),
@@ -134,23 +130,15 @@ export function SqlEditor({
           ...closeBracketsKeymap,
           indentWithTab,
         ]),
+        carmenEditorTheme('13px'),
+        // `height: 100%` resolves only against a definite parent height — true inside the
+        // desktop frame, false on mobile where the pane is sized by min-height, which
+        // collapsed the editor to a single line. Flex fill is correct in both. The scroller
+        // grows to the full pane so the empty space under the last line is still the editor,
+        // and clicking it places the caret.
         EditorView.theme({
-          // `height: 100%` resolves only against a definite parent height — true inside the
-          // desktop frame, false on mobile where the pane is sized by min-height, which
-          // collapsed the editor to a single line. Flex fill is correct in both.
-          '&': { fontSize: '13px', flex: '1 1 auto', minHeight: 0 },
-          // Grow the scroller to the full pane, not just the text: the empty space under the
-          // last line is still the editor, and clicking it should place the caret.
-          '.cm-scroller': {
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            flexGrow: 1,
-            overflow: 'auto',
-          },
-          '.cm-gutters': {
-            backgroundColor: 'transparent',
-            borderRight: '1px solid hsl(var(--border))',
-          },
-          '.cm-focused': { outline: 'none' },
+          '&': { flex: '1 1 auto', minHeight: 0 },
+          '.cm-scroller': { flexGrow: 1, overflow: 'auto' },
         }),
         updateListener,
       ],

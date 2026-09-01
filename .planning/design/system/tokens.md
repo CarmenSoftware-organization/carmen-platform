@@ -98,6 +98,17 @@ Not part of the standard shadcn set — carmen-specific.
 | `--zebra-hover` | `hsl(221 61% 48% / 0.045)` | `hsl(217 70% 60% / 0.08)` | Row hover fill |
 | `--zebra-hover-accent` | `hsl(221 61% 48% / 0.5)` | `hsl(217 70% 60% / 0.4)` | 3px inset left bar on hover |
 | `--bu-chip-s` / `--bu-chip-l` | `62%` / `46%` | `58%` / `58%` | Per-Business-Unit color identity (SQL Workbench). Hue derives from the BU code; S/L are theme-tuned |
+| `--code-keyword` | `221 61% 48%` | `217 70% 60%` | CodeMirror syntax: keywords, type names, XML tag names |
+| `--code-string` | `152 42% 30%` | `152 45% 45%` | CodeMirror syntax: string literals, XML attribute values |
+| `--code-literal` | `32 88% 32%` | `38 92% 55%` | CodeMirror syntax: numbers, booleans, `NULL` |
+| `--code-comment` | `33 5% 43%` | `35 6% 62%` | CodeMirror syntax: comments, operators, punctuation, angle brackets |
+
+> The `--code-*` group exists **because it cannot borrow the status tokens.** `--success` /
+> `--warning` are chip *backgrounds* that carry white text; used as text on the light ground a
+> numeric literal in `--warning` measures **3.08:1**. Every `--code-*` value is text-on-ground and
+> is held at or above 4.5:1 against `--background` in its own theme (see Contrast notes). They are
+> consumed only from `src/lib/codemirrorTheme.ts` via `hsl(var(--token))`, never as a Tailwind
+> class, so they are deliberately absent from `tailwind.config.js`.
 
 ---
 
@@ -225,6 +236,14 @@ Key text pairs against WCAG AA (4.5:1 body / 3:1 large):
 | `muted-foreground` on `background` (light) | ~4.9:1 | ✅ AA (body) |
 | `primary-foreground` (#FFF) on `primary` (light `#305FC5`) | ~5.3:1 | ✅ AA |
 | `muted-foreground` on `card` (dark) | ~5.6:1 | ✅ AA |
+| `code-keyword` on `background` (light / dark) | 5.59 / 5.08:1 | ✅ AA |
+| `code-string` on `background` (light / dark) | 5.85 / 5.91:1 | ✅ AA |
+| `code-literal` on `background` (light / dark) | 5.40 / 8.99:1 | ✅ AA |
+| `code-comment` on `background` (light / dark) | 4.79 / 6.81:1 | ✅ AA |
 
 > `primary` at `221 61% 48%` is intentionally dark enough that white text on it clears AA —
 > keep that in mind if the primary lightness is ever adjusted.
+
+> The `--code-*` ratios were measured in the browser off `getComputedStyle`, not estimated:
+> the light-theme values were tuned *downward in lightness* until they cleared 4.5:1, which is
+> why they do not match `--primary` / `--success` / `--warning` even though the dark ones do.

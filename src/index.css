@@ -45,6 +45,14 @@
   --zebra-even: rgba(24, 20, 16, 0.02);
   --zebra-hover: hsl(221 61% 48% / 0.045);
   --zebra-hover-accent: hsl(221 61% 48% / 0.5);
+  /* Code syntax palette (CodeMirror). Its own group on purpose: the status tokens are chip
+     BACKGROUNDS carrying white text, so borrowing --warning for a numeric literal put amber at
+     3.08:1 on the near-white ground. These are text-on-ground colours and every one of them is
+     kept at or above 4.5:1 against --background in its own theme. */
+  --code-keyword: 221 61% 48%;
+  --code-string: 152 42% 30%;
+  --code-literal: 32 88% 32%;
+  --code-comment: 33 5% 43%;
   /* per-BU colour identity (SQL Workbench): hue comes from the BU code, S/L tuned per theme */
   --bu-chip-s: 62%;
   --bu-chip-l: 46%;
@@ -87,6 +95,12 @@
   --zebra-even: rgba(255, 255, 255, 0.015);
   --zebra-hover: hsl(217 70% 60% / 0.08);
   --zebra-hover-accent: hsl(217 70% 60% / 0.4);
+  /* Syntax palette — see the note in :root. The dark ground is forgiving enough that these
+     land on the same hues as --primary / --success / --warning / --muted-foreground. */
+  --code-keyword: 217 70% 60%;
+  --code-string: 152 45% 45%;
+  --code-literal: 38 92% 55%;
+  --code-comment: 35 6% 62%;
   /* lighter chips read better on the dark ground */
   --bu-chip-s: 58%;
   --bu-chip-l: 58%;
