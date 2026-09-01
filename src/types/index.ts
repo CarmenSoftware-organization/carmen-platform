@@ -1457,8 +1457,14 @@ export interface BusinessUnitLicense {
 
 // ==================== Cluster BU License (tb_cluster_license) ====================
 
-/** สถานะของใบ — คำนวณจากวันที่ทุกครั้งที่อ่าน ไม่เก็บใน DB */
-export type ClusterLicenseStatus = 'active' | 'scheduled' | 'expired';
+/**
+ * สถานะของใบที่ผู้ใช้เห็น — คำนวณตอนอ่าน ไม่เก็บใน DB (ยกเว้น `cancelled` ที่มาจาก `cancelled_at`)
+ *
+ * `superseded` = ใบยังอยู่ในช่วงวันจริง แต่แพ้ใบที่ใหม่กว่า จึงไม่ให้โควตาแล้ว — เดิมใบพวกนี้
+ * ขึ้นป้าย `active` ปนกับใบที่ให้โควตาจริง ทำให้แยกไม่ออกว่าโควตามาจากใบไหน
+ * `cancelled` = ถูกยกเลิกด้วยมือ ไม่มีวันกลับมาให้โควตาอีก
+ */
+export type ClusterLicenseStatus = 'active' | 'superseded' | 'scheduled' | 'expired' | 'cancelled';
 
 /**
  * ใบซื้อโควตาจำนวน BU หนึ่งใบของ cluster
@@ -1479,6 +1485,19 @@ export interface ClusterLicense {
   doc_version: number;
   /** tie-break ลำดับที่สองของ "ใบที่ชนะ" รองจาก start_date (ดู `activeLicense` ใน utils/clusterLicense.ts) */
   created_at?: string | null;
+
+  /** ถูกยกเลิกเมื่อไร — null/undefined = ยังไม่ถูกยกเลิก · ใบที่ยกเลิกแล้วไม่ให้โควตาอีก */
+  cancelled_at?: string | null;
+  cancelled_by_id?: string | null;
+  cancel_reason?: string | null;
+
+  /**
+   * ใบนี้คือใบที่ backend view เลือกให้คลัสเตอร์นี้หรือไม่ — **backend เป็นคนตอบ ไม่ใช่ฝั่งนี้**
+   *
+   * `undefined` แปลว่าเส้นทางที่โหลดมาไม่ได้ถาม (เช่น `getAll` ราย cluster) **ห้ามอ่านเป็น false**
+   * ผู้เรียกที่มีใบครบทั้งคลัสเตอร์อยู่แล้วใช้ `statusMap()` ซึ่งตกไปที่ `activeLicense()` ให้เอง
+   */
+  is_in_force?: boolean;
 }
 
 // ==================== Fleet-wide license views (platform, cross-BU/cross-cluster) ====================

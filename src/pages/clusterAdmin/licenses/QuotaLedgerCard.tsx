@@ -4,7 +4,7 @@ import { RefreshCw } from 'lucide-react';
 import { CollapsibleGroupCard } from './CollapsibleGroupCard';
 import { AuditMeta } from '../../../components/AuditMeta';
 import { latestActor } from '../../../utils/audit';
-import { licenseStatus, activeLicense } from '../../../utils/clusterLicense';
+import { licenseStatus, activeLicense, statusMap } from '../../../utils/clusterLicense';
 import { isPerpetual, fmtDate } from '../../licenses/licenseDates';
 import { useI18n } from '../../../hooks/useI18n';
 import type { TKey } from '../../../i18n/types';
@@ -14,6 +14,9 @@ import type { ClusterLicense, ClusterLicenseStatus } from '../../../types';
 // render site (same shape as roleLabels.ts's ROLE_LABEL_KEYS).
 const STATUS_BADGE: Record<ClusterLicenseStatus, { variant: 'success' | 'secondary' | 'destructive'; labelKey: TKey }> = {
   active: { variant: 'success', labelKey: 'common.status.active' },
+  // ถูกแทนที่/ยกเลิก = สภาพปกติของใบที่หมดหน้าที่ ไม่ใช่ความผิดพลาด จึงเป็นเทา ไม่ใช่แดง
+  superseded: { variant: 'secondary', labelKey: 'common.status.superseded' },
+  cancelled: { variant: 'secondary', labelKey: 'common.status.cancelled' },
   scheduled: { variant: 'secondary', labelKey: 'common.status.scheduled' },
   expired: { variant: 'destructive', labelKey: 'common.status.expired' },
 };
@@ -38,6 +41,8 @@ export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: Quot
   const { t } = useI18n();
   const now = new Date();
   const winning = activeLicense(licenses, now);
+  // `superseded` ตัดสินจากใบเดียวไม่ได้ ต้องเห็นลิสต์ทั้งคลัสเตอร์ (การ์ดนี้มีครบอยู่แล้ว)
+  const statuses = statusMap(licenses, now);
 
   // Count + in-force clause, joined with a literal ' · ' in code rather than spliced from
   // unrelated fragments — same non-linguistic-separator pattern ClusterPeopleCard.tsx
@@ -90,7 +95,7 @@ export function QuotaLedgerCard({ licenses, loading, loadFailed, onRetry }: Quot
             </thead>
             <tbody>
               {licenses.map((l) => {
-                const badge = STATUS_BADGE[licenseStatus(l, now)];
+                const badge = STATUS_BADGE[statuses.get(l.id) ?? licenseStatus(l, now)];
                 const latest = latestActor(l);
                 return (
                   <tr key={l.id} className="border-b last:border-0">

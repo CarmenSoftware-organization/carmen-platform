@@ -5,8 +5,10 @@ import { normalizeAudit } from './audit';
 // re-export เพื่อไม่ให้ผู้เรียกเดิม (BuQuotaSection, ClusterEdit) และเทสต์เดิมพัง
 export { isPerpetual, PERPETUAL_END_DATE };
 
-/** สถานะของใบ ณ เวลาที่กำหนด */
+/** สถานะของใบ ณ เวลาที่กำหนด — ไม่รู้จัก `superseded` เพราะตัดสินจากใบเดียวไม่ได้ (ดู `statusMap`) */
 export function licenseStatus(lic: ClusterLicense, now: Date = new Date()): ClusterLicenseStatus {
+  // ยกเลิกแล้วชนะทุกเงื่อนไขวันที่ — ใบที่ยกเลิกกลางสัญญายังอยู่ในช่วงวันของตัวเองอยู่
+  if (lic.cancelled_at) return 'cancelled';
   const t = now.getTime();
   if (Date.parse(lic.start_date) > t) return 'scheduled';
   if (Date.parse(lic.end_date) <= t) return 'expired';
@@ -29,6 +31,9 @@ export function licenseStatus(lic: ClusterLicense, now: Date = new Date()): Clus
  * @returns ใบที่ชนะ หรือ null เมื่อไม่มีใบไหนคุ้มครองอยู่ (cap = 0)
  */
 export function activeLicense(list: ClusterLicense[], now: Date = new Date()): ClusterLicense | null {
+  // ใบที่ยกเลิกแล้วถูก licenseStatus คืนเป็น 'cancelled' จึงหลุดจาก filter นี้เอง — ตรงกับ
+  // `AND cancelled_at IS NULL` ใน v_cluster_bu_cap เป๊ะ ถ้าสองที่นี้ไม่ตรงกัน FE จะโชว์ cap
+  // จากใบที่ backend ไม่นับแล้ว
   const covering = list.filter((l) => licenseStatus(l, now) === 'active');
   if (covering.length === 0) return null;
   return covering.reduce((best, cur) => {
@@ -47,6 +52,44 @@ export function activeLicense(list: ClusterLicense[], now: Date = new Date()): C
 
     return cur.id > best.id ? cur : best;
   });
+}
+
+/**
+ * สถานะของทุกใบในลิสต์ รวม `superseded` ที่ `licenseStatus` ตัดสินเองไม่ได้
+ *
+ * `superseded` ต้องรู้ว่ามีใบอื่นที่ใหม่กว่าไหม จึงต้องเห็นลิสต์ทั้งคลัสเตอร์ ไม่ใช่ใบเดียว —
+ * นี่คือเหตุผลที่ฟังก์ชันนี้มีอยู่แทนที่จะขยาย `licenseStatus`
+ *
+ * ใบไหน in force เชื่อ `is_in_force` จาก backend ก่อนเสมอ (view เป็นคนตัดสิน) ตกไปที่
+ * `activeLicense()` เฉพาะตอนที่ทั้งลิสต์ไม่มีใบไหนส่ง `is_in_force` มาเลย — เส้นทางที่โหลดผ่าน
+ * `getAll` ราย cluster ยังไม่มีฟิลด์นี้ · ห้ามอ่าน `is_in_force === undefined` เป็น false ทีละใบ
+ * ไม่งั้นหน้าที่ยังไม่ได้อัปเดตจะแสดงว่าไม่มีใบไหน in force เลย
+ *
+ * Statuses for every licence in one pass, including `superseded` — which a single licence can
+ * never determine for itself. Trusts the backend's `is_in_force` (the view decides) and only
+ * falls back to `activeLicense()` when no row in the list carries the field at all.
+ *
+ * @param list - ใบทั้งหมดของคลัสเตอร์เดียว / Every licence of ONE cluster
+ * @param now - เวลาอ้างอิง / Reference time
+ * @returns แมป id ของใบ → สถานะ / Map of licence id to its status
+ */
+export function statusMap(
+  list: ClusterLicense[],
+  now: Date = new Date(),
+): Map<string, ClusterLicenseStatus> {
+  const backendKnows = list.some((l) => l.is_in_force !== undefined);
+  const winnerId = backendKnows
+    ? list.find((l) => l.is_in_force)?.id
+    : activeLicense(list, now)?.id;
+
+  const out = new Map<string, ClusterLicenseStatus>();
+  for (const l of list) {
+    const base = licenseStatus(l, now);
+    // เฉพาะใบที่ยังอยู่ในช่วงวันเท่านั้นที่ถูก "แทนที่" ได้ — ใบ scheduled/expired/cancelled
+    // มีเหตุผลของตัวเองอยู่แล้วว่าทำไมไม่ให้โควตา
+    out.set(l.id, base === 'active' && l.id !== winnerId ? 'superseded' : base);
+  }
+  return out;
 }
 
 /**

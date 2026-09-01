@@ -170,6 +170,8 @@ export const th: Translations = {
       archived: 'เก็บถาวรแล้ว',
       expired: 'หมดอายุ',
       scheduled: 'ตั้งเวลาไว้',
+      superseded: 'ถูกแทนที่',
+      cancelled: 'ยกเลิกแล้ว',
       published: 'เผยแพร่แล้ว',
       updated: 'อัปเดตแล้ว',
       unknown: 'ไม่ทราบ',
@@ -181,6 +183,8 @@ export const th: Translations = {
       saveChanges: 'บันทึกการแก้ไข',
       delete: 'ลบ',
       remove: 'นำออก',
+      // ยกเลิกใบ ≠ นำใบออก — ใบที่ยกเลิกยังอยู่ในบัญชี แค่ไม่ให้โควตาแล้ว
+      cancelLicense: 'ยกเลิกใบ',
       clear: 'ล้าง',
       addUser: 'เพิ่มผู้ใช้',
       start: 'เริ่ม',
@@ -1297,6 +1301,9 @@ export const th: Translations = {
       addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
       licenseNumber: 'เลขที่ไลเซนส์',
       removeLicenseTitle: 'นำไลเซนส์ออก',
+      cancelLicenseTitle: 'ยกเลิกใบนี้',
+      cancelBuQuotaDescription: 'ยกเลิกใบ {{count}}-BU นี้ ใบจะยังอยู่ในบัญชีและตรวจย้อนหลังได้ แต่จะไม่ให้โควตาอีกต่อไป ยกเลิกแล้วเปิดกลับไม่ได้',
+      cancelBuQuotaInForceDescription: 'ใบนี้คือใบที่ให้โควตาอยู่จริง ยกเลิกแล้วโควตาของคลัสเตอร์จะเปลี่ยนจาก {{from}} เป็น {{to}} หน่วยธุรกิจทันที ยกเลิกแล้วเปิดกลับไม่ได้',
       noLicensesYetTitle: 'ยังไม่มีไลเซนส์',
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
 
@@ -1429,6 +1436,8 @@ export const th: Translations = {
       subscriptionStateColumn: 'สถานะ',
 
       licenseRemoved: 'นำไลเซนส์ออกแล้ว',
+      licenseCancelled: 'ยกเลิกใบแล้ว',
+      cancelLicenseFailedTitle: 'ยกเลิกใบไม่สำเร็จ',
       removeLicenseFailedTitle: 'นำไลเซนส์ออกไม่สำเร็จ',
     },
 

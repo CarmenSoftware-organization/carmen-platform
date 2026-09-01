@@ -9,7 +9,7 @@ import { EmptyState } from '../../../components/EmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton';
 import { AuditMeta } from '../../../components/AuditMeta';
 import { LicenseCoverageBar, type CoverageInterval } from '../LicenseCoverageBar';
-import { activeLicense, licenseStatus, isPerpetual, isExpiringSoon } from '../../../utils/clusterLicense';
+import { activeLicense, licenseStatus, statusMap, isPerpetual, isExpiringSoon } from '../../../utils/clusterLicense';
 import { latestActor } from '../../../utils/audit';
 import { fmtDate, daysLeft, coverageWindow } from '../licenseDates';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
@@ -61,17 +61,24 @@ export interface BuQuotaLedger {
   loadFailed: boolean;
   reload: () => void;
   remove: (id: string) => Promise<void>;
+  /** ยกเลิกใบ — ใบยังอยู่ในรายการหลังทำเสร็จ ต่างจาก `remove` ที่เอาใบออกจากสายตา */
+  cancel: (id: string, docVersion: number) => Promise<void>;
 }
 
 // Pure data + catalog keys, module scope — no `t` call here, matching the STATUS_VARIANT/
 // STATUS_LABEL_KEYS split established in LicensePurchaseForm.tsx / PurchaseLicenseTable.tsx.
 const STATUS_VARIANT: Record<ClusterLicenseStatus, 'success' | 'secondary' | 'destructive'> = {
   active: 'success',
+  // ถูกแทนที่/ยกเลิก = สภาพปกติของใบที่หมดหน้าที่ ไม่ใช่ความผิดพลาด จึงเป็นเทา ไม่ใช่แดง
+  superseded: 'secondary',
+  cancelled: 'secondary',
   scheduled: 'secondary',
   expired: 'destructive',
 };
 const STATUS_LABEL_KEYS: Record<ClusterLicenseStatus, TKey> = {
   active: 'common.status.active',
+  superseded: 'common.status.superseded',
+  cancelled: 'common.status.cancelled',
   scheduled: 'common.status.scheduled',
   expired: 'common.status.expired',
 };
@@ -94,7 +101,7 @@ export function BuQuotaSection({
 }: BuQuotaSectionProps) {
   const { t } = useI18n();
   const { thresholds } = useExpiryThresholds();
-  const { licenses, loading, saving, loadFailed, reload, remove } = ledger;
+  const { licenses, loading, saving, loadFailed, reload, remove, cancel } = ledger;
   const now = new Date();
   const nowMs = now.getTime();
   // แกนขยับได้แค่เมื่อข้ามเดือน — ผูก memo กับเดือนปัจจุบันแทนตัว `now` สดที่เปลี่ยนทุก render
@@ -104,9 +111,12 @@ export function BuQuotaSection({
 
   const [showExpired, setShowExpired] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<ClusterLicense | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<ClusterLicense | null>(null);
 
   // ใบที่ชนะ — ตัวเดียวกับที่ backend ใช้ตัดสิน ไม่ใช่ "ใบล่าสุดในรายการ"
   const winning = activeLicense(licenses, now);
+  // สถานะทุกใบในครั้งเดียว — `superseded` ตัดสินจากใบเดียวไม่ได้ ต้องเห็นลิสต์ทั้งคลัสเตอร์
+  const statuses = statusMap(licenses, now);
   const expired = licenses.filter((l) => licenseStatus(l, now) === 'expired');
   const visible = showExpired ? licenses : licenses.filter((l) => licenseStatus(l, now) !== 'expired');
 
@@ -274,7 +284,7 @@ export function BuQuotaSection({
                 </thead>
                 <tbody>
                   {visible.map((l) => {
-                    const status = licenseStatus(l, now);
+                    const status = statuses.get(l.id) ?? licenseStatus(l, now);
                     const latest = latestActor(l);
                     return (
                       <tr key={l.id} className="border-b last:border-0">
@@ -316,6 +326,17 @@ export function BuQuotaSection({
                             <Button variant="ghost" size="sm" asChild>
                               <Link to={`/licenses/bu-quota/${l.id}/edit`}>{t('common.action.edit')}</Link>
                             </Button>
+                            {/* ใบที่ยกเลิกไปแล้วไม่มีปุ่มนี้ — ยิงซ้ำได้แค่ 409 กลับมา */}
+                            {!l.cancelled_at && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setCancelTarget(l)}
+                                disabled={saving}
+                              >
+                                {t('common.action.cancelLicense')}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -351,6 +372,33 @@ export function BuQuotaSection({
             onConfirm={async () => {
               if (removeTarget) await remove(removeTarget.id);
               setRemoveTarget(null);
+            }}
+          />
+        )}
+
+        {canManage && (
+          <ConfirmDialog
+            open={!!cancelTarget}
+            onOpenChange={(o) => !o && setCancelTarget(null)}
+            title={t('pages.licenses.cancelLicenseTitle')}
+            description={
+              cancelTarget && statuses.get(cancelTarget.id) === 'active'
+                // ยกเลิกใบที่ให้โควตาอยู่จริง — บอกตัวเลขที่จะเปลี่ยนไป ไม่ใช่คำเตือนลอย ๆ
+                // โควตาใหม่มาจากใบรองที่จะขึ้นมาแทน หรือ 0 เมื่อไม่มีใบรอง
+                ? t('pages.licenses.cancelBuQuotaInForceDescription', {
+                    from: cancelTarget.licensed_bus,
+                    to:
+                      activeLicense(
+                        licenses.filter((x) => x.id !== cancelTarget.id),
+                        now,
+                      )?.licensed_bus ?? 0,
+                  })
+                : t('pages.licenses.cancelBuQuotaDescription', { count: cancelTarget?.licensed_bus ?? 0 })
+            }
+            confirmVariant="destructive"
+            onConfirm={async () => {
+              if (cancelTarget) await cancel(cancelTarget.id, cancelTarget.doc_version);
+              setCancelTarget(null);
             }}
           />
         )}

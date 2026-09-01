@@ -180,6 +180,8 @@ export const en = {
       archived: 'Archived',
       expired: 'Expired',
       scheduled: 'Scheduled',
+      superseded: 'Superseded',
+      cancelled: 'Cancelled',
       published: 'Published',
       updated: 'Updated',
       unknown: 'Unknown',
@@ -194,6 +196,8 @@ export const en = {
       saveChanges: 'Save Changes',
       delete: 'Delete',
       remove: 'Remove',
+      // Cancelling is not removing — a cancelled licence stays in the ledger, it just stops granting quota
+      cancelLicense: 'Cancel license',
       clear: 'Clear',
       addUser: 'Add User',
       start: 'Start',
@@ -1663,6 +1667,9 @@ export const en = {
       // descriptions differ (BU count vs. seat count) and stay page-local; only the shared
       // title is seeded here.
       removeLicenseTitle: 'Remove license',
+      cancelLicenseTitle: 'Cancel this license',
+      cancelBuQuotaDescription: 'Cancel this {{count}}-BU license. It stays in the ledger and remains auditable, but stops granting quota. Cancelling cannot be undone.',
+      cancelBuQuotaInForceDescription: 'This is the license currently granting quota. Cancelling it changes the cluster quota from {{from}} to {{to}} business units immediately. Cancelling cannot be undone.',
       // BuQuotaSection.tsx + SeatSection.tsx EmptyState title — the two files' descriptions
       // differ and stay page-local; only the shared title is seeded here.
       noLicensesYetTitle: 'No licenses yet',
@@ -1905,6 +1912,8 @@ export const en = {
       // (byte-identical 'Could not load licenses', already seeded for PurchaseLicenseTable's
       // EmptyState title; the hook's toast renders the same words in a different UI shell).
       licenseRemoved: 'License removed',
+      licenseCancelled: 'License cancelled',
+      cancelLicenseFailedTitle: 'Could not cancel the license',
       removeLicenseFailedTitle: 'Could not remove the license',
     },
 
