@@ -291,6 +291,59 @@
   pointer-events: none;
 }
 
+/* SQL Workbench result grid — freeze the row-number column.
+
+   Purpose-built rather than reusing `.table-sticky-left`: that rule freezes the first TWO
+   columns because a DataTable's first two are the checkbox and `#`. This grid has no checkbox
+   column, so its second column is query data — the reader must be able to scroll it away.
+
+   Scoped to `tr[data-result-row]` on purpose. The virtual window's spacer rows are a single
+   `td[colspan]` covering the full width; sticky-positioning that would pin an opaque
+   full-width block to the left edge of the scroller. */
+.result-grid-sticky-first thead th:first-child,
+.result-grid-sticky-first tbody tr[data-result-row] td:first-child {
+  position: -webkit-sticky;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  /* `border-collapse: collapse` hands the borders to the table, not the cell, so a sticky
+     cell's own right border does not travel with it and the column loses its edge the moment
+     the grid is scrolled. An inset shadow belongs to the cell and does. */
+  box-shadow: inset -1px 0 0 hsl(var(--border));
+}
+
+/* The corner cell sits under the vertical AND the horizontal freeze, so it has to outrank the
+   other header cells rather than tie with them. */
+.result-grid-sticky-first thead th:first-child {
+  z-index: 15;
+  background-color: hsl(var(--muted));
+}
+
+.result-grid-sticky-first tbody tr[data-result-row] td:first-child {
+  background-color: hsl(var(--background));
+}
+
+/* A frozen cell overlays scrolled content, so it must stay opaque — the row's own
+   `hover:bg-muted/40` is translucent and would let the scrolled cells beneath bleed through.
+   Layer the tint over an opaque base as a background-image instead. */
+.result-grid-sticky-first tbody tr[data-result-row]:hover td:first-child {
+  background-color: hsl(var(--background));
+  background-image: linear-gradient(hsl(var(--muted) / 0.4), hsl(var(--muted) / 0.4));
+}
+
+/* Edge cue: a translucent shadow, never a fade to the page colour — fading repaints the ground
+   over the neighbouring cell and greys out its first character. */
+.result-grid-sticky-first tbody tr[data-result-row] td:first-child::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 12px;
+  height: 100%;
+  background: linear-gradient(to left, transparent, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
+}
+
 /* Opt-in third frozen column (e.g. clusters: # + Code + Name). The frozen offsets
    must equal the actual rendered widths of the columns to their left. Under
    table-auto those widths vary with content and viewport, so DataTable measures

@@ -129,7 +129,7 @@ export function ResultPanel({
 
   return (
     <div
-      className="flex min-h-[16rem] flex-col border-t lg:min-h-0 lg:border-t-0"
+      className="flex min-h-[16rem] min-w-0 flex-col border-t lg:min-h-0 lg:border-t-0"
       style={{ flexGrow: grow, flexShrink: 1, flexBasis: 0 }}
     >
       {/* Header */}
@@ -222,7 +222,7 @@ export function ResultPanel({
       ) : result ? (
         <>
           <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full border-collapse text-xs [&_th]:whitespace-nowrap">
+            <table className="result-grid-sticky-first w-full border-collapse text-xs [&_th]:whitespace-nowrap">
               {/* ทึบ ไม่ใช่ `bg-muted/60 backdrop-blur` — หัวตารางนี้ปักอยู่กับที่ในกรอบเลื่อน
                   สูง 420px แถวผลลัพธ์จึงวิ่งผ่านใต้มันตลอด และที่ 60% แถวที่เลื่อนผ่านกลาย
                   เป็นเงาทับชื่อคอลัมน์ที่กำลังใช้อ่านผลอยู่ เหตุผลเดียวกับแถบ header ใน
