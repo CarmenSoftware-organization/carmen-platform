@@ -4,6 +4,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { ApplicationRegistrySummary } from './applicationManagement/ApplicationRegistrySummary';
+import { ApplicationReachCell } from './applicationManagement/ApplicationReachCell';
+import { formatDevice } from '../utils/device';
 import type { ApplicationSummaryData } from '../types';
 import applicationService from '../services/applicationService';
 import { getErrorDetail, devLog } from '../utils/errorParser';
@@ -53,6 +55,10 @@ const ApplicationManagement: React.FC = () => {
   const [summary, setSummary] = useState<ApplicationSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState(false);
+  // ขนาด catalog คือสิ่งที่เปลี่ยน `207 API` จากเลขทึบให้เป็นรัศมี — 207 ไม่มีความหมาย
+  // จนกว่าจะรู้ว่า catalog มีกี่ตัว เก็บเป็นตัวเลขเปล่าโดยให้ 0 แปลว่า "ยังไม่รู้" เพราะทุก
+  // จุดที่อ่านค่านี้ต้องรองรับกรณีไม่มีตัวหารอยู่แล้ว ธง loading แยกจะเป็นแค่วิธีพูดซ้ำ
+  const [catalogSize, setCatalogSize] = useState(0);
 
   const storedSearch = localStorage.getItem('search_applications') || '';
   const storedFilters = getStoredJSON<string[]>('filters_applications', []);
@@ -139,6 +145,22 @@ const ApplicationManagement: React.FC = () => {
   useEffect(() => {
     loadSummary();
   }, [loadSummary]);
+
+  // Best-effort: a failed catalog fetch must not degrade the list. `ApplicationReachCell`
+  // falls back to the unanchored rendering, so there is nothing to tell the user about and
+  // no retry to offer.
+  useEffect(() => {
+    let cancelled = false;
+    applicationService
+      .getApiCatalog()
+      .then(({ api_names }) => {
+        if (!cancelled) setCatalogSize(api_names.length);
+      })
+      .catch((err: unknown) => devLog('Failed to load API catalog for reach scale:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -258,13 +280,21 @@ const ApplicationManagement: React.FC = () => {
         const copied = copiedId === id;
         return (
           <div className="flex flex-col gap-0.5 min-w-0">
-            <Link
-              to={`/applications/${row.original.id}/edit`}
-              className="text-primary hover:underline whitespace-nowrap"
-              title={row.original.name}
-            >
-              {row.original.name}
-            </Link>
+            <div className="flex min-w-0 items-center gap-2">
+              <Link
+                to={`/applications/${row.original.id}/edit`}
+                className="text-primary hover:underline whitespace-nowrap"
+                title={row.original.name}
+              >
+                {row.original.name}
+              </Link>
+              {/* วาดเฉพาะข้อยกเว้น — คอลัมน์ Status เดิมทาสีเขียวให้กรณีปกติทุกแถว
+                  กรณีที่การตรวจสอบตามหาคือแอปที่ปิดใช้งานแล้วแต่ App ID ยังอยู่ในมือใครสักคน
+                  (เหตุผลเดียวกับ UserPlatformManagement) */}
+              {!row.original.is_active && (
+                <Badge variant="warning" className="shrink-0 text-xs">{t('common.status.inactive')}</Badge>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="font-mono text-[11px] text-muted-foreground truncate min-w-0" title={id}>
                 {id}
@@ -295,26 +325,25 @@ const ApplicationManagement: React.FC = () => {
       id: 'access',
       header: t('pages.applications.columnAccess'),
       enableSorting: false,
-      meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
+      // ความกว้างคงที่ ไม่ใช่ปล่อยให้ยืดตามเนื้อหา — ไม้บรรทัดที่ยาวไม่เท่ากันในแต่ละแถว
+      // วัดอะไรไม่ได้ และนี่คือคอลัมน์ที่ทั้งหน้ามีไว้เพื่ออ่านเทียบกัน
+      meta: { headerClassName: 'lg:w-56', cellClassName: 'lg:w-56' },
       cell: ({ row }) => (
-        row.original.allow_all
-          ? <Badge variant="outline">{t('pages.applications.allApis')}</Badge>
-          : <Badge variant="outline">{t('pages.applications.nApis', { count: row.original.api_names?.length ?? 0 })}</Badge>
+        <ApplicationReachCell
+          name={row.original.name}
+          allowAll={Boolean(row.original.allow_all)}
+          apiNames={row.original.api_names ?? []}
+          catalogSize={catalogSize}
+        />
       ),
     },
     {
       accessorKey: 'device',
       header: t('pages.applications.device'),
-      cell: ({ row }) => <Badge variant="secondary">{row.original.device || 'web'}</Badge>,
-    },
-    {
-      accessorKey: 'is_active',
-      header: t('common.status.label'),
-      meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
+      // ข้อความเงียบ ไม่ใช่ pill — แถบทะเบียนด้านบนบอก histogram อุปกรณ์ไปแล้ว
+      // pill เทารายแถวแย่งสายตาไปจากคอลัมน์ที่หน้านี้มีไว้ให้อ่าน
       cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? t('common.status.active') : t('common.status.inactive')}
-        </Badge>
+        <span className="text-muted-foreground text-xs">{formatDevice(row.original.device || 'web')}</span>
       ),
     },
     ...auditColumns<Application>({ t }),
@@ -358,7 +387,7 @@ const ApplicationManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, handleCopyId, copiedId, t, activityTrail]);
+  ], [navigate, handleDelete, handleCopyId, copiedId, t, activityTrail, catalogSize]);
 
   return (
     <Layout>

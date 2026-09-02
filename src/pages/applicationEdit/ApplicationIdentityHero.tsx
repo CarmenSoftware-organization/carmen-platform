@@ -7,6 +7,7 @@ import { AuditMeta } from '../../components/AuditMeta';
 import type { NormalizedAudit } from '../../utils/audit';
 import type { TFunction } from '../../i18n/types';
 import { useI18n } from '../../hooks/useI18n';
+import { formatDevice } from '../../utils/device';
 
 /** One-line summary of an app's API reach — full access, or the granted endpoint/module count. */
 export function accessSummary(allowAll: boolean, apiNames: string[], t?: TFunction): string {
@@ -88,7 +89,7 @@ export function ApplicationIdentityHero({
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || t('pages.applications.unnamedApplication')}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-            <Badge variant="secondary" className="capitalize">{device || 'web'}</Badge>
+            <Badge variant="secondary">{formatDevice(device || 'web')}</Badge>
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>
             {appId && <AppIdChip appId={appId} />}
           </div>

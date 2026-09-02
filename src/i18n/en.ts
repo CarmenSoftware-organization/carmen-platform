@@ -3789,6 +3789,13 @@ export const en = {
       endpointSpreadPP: '{{endpoints}} endpoints across {{modules}} modules',
       endpointSpreadPS: '{{endpoints}} endpoints across {{modules}} module',
       endpointSpreadSP: '{{endpoints}} endpoint across {{modules}} modules',
+      // ApplicationReachCell — เศษส่วนเทียบ catalog แทน badge ที่อ่านเทียบกันไม่ได้
+      reachAria: '{{name}}: {{count}} of {{total}} endpoints',
+      reachFullAria: '{{name}}: full access to all {{total}} endpoints',
+      reachUnanchoredAria: '{{name}}: {{count}} endpoints',
+      reachFullUnanchoredAria: '{{name}}: full access to every endpoint',
+      nModules: '{{count}} module',
+      nModulesPlural: '{{count}} modules',
       unnamedApplication: '(unnamed application)',
       applicationsLower: 'applications',
       devices: 'Devices',

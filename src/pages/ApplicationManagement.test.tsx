@@ -92,6 +92,9 @@ const setupGetAll = (mainResponse: typeof listResponse | typeof emptyResponse) =
 // unrelated summary-band difference affecting button/role queries).
 const summaryResponse = { total: 0, active: 0, inactive: 0, deleted: 0, full_access: 0, scoped: 0, devices: [] };
 
+// 10 endpoints in the catalog — the denominator every reach fraction on this page divides by.
+const catalogNames = Array.from({ length: 10 }, (_, i) => `mod.endpoint_${i}`);
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('localStorage', makeLocalStorage());
@@ -100,6 +103,10 @@ beforeEach(() => {
   setupGetAll(listResponse);
   asMock(applicationService.delete).mockResolvedValue({});
   asMock(applicationService.getRegistrySummary).mockResolvedValue(summaryResponse);
+  // The Access column anchors each app's reach to the catalog size (`ApplicationReachCell`).
+  // The fetch is best-effort, so an unstubbed catalog would silently drop the denominator
+  // rather than fail — stubbed here so the reach assertions below exercise the anchored rendering.
+  asMock(applicationService.getApiCatalog).mockResolvedValue({ groups: [], api_names: catalogNames });
 });
 
 const renderPage = () =>
