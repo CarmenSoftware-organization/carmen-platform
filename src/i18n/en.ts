@@ -4232,6 +4232,8 @@ export const en = {
       cronExpression: 'Cron expression',
       maxRetries: 'Max retries',
       timeoutSeconds: 'Timeout (seconds)',
+      notifyAt: 'Notify recipients at',
+      notifyAtHint: 'Time of day recipients are told the report is ready — separate from when the report runs. Leave empty to notify as soon as the run finishes.',
     },
     // I7 fix: nextRuns() parses without a timezone and this preview renders with
     // toLocaleString(), so the three run times shown are the viewer's local time — the

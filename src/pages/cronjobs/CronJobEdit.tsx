@@ -46,6 +46,7 @@ const emptyForm: CronJobWriteInput = {
   cron_expression: '',
   job_config: {},
   is_active: true,
+  notify_at: '',
   max_retries: 0,
   timeout_seconds: 300,
 };
@@ -94,6 +95,8 @@ const CronJobEdit: React.FC = () => {
         cron_expression: job.cron_expression ?? '',
         job_config: job.job_config ?? {},
         is_active: job.is_active ?? true,
+        // '' ไม่ใช่ค่าที่ขาดหาย — มันคือ "ยังไม่ได้ตั้งเวลาแจ้ง" ซึ่ง Go แปลว่าแจ้งทันทีที่รันเสร็จ
+        notify_at: job.notify_at ?? '',
         max_retries: job.max_retries ?? 0,
         timeout_seconds: job.timeout_seconds ?? 300,
       };
@@ -405,13 +408,34 @@ const CronJobEdit: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-base">{t('cronjob.section.schedule')}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <CronScheduleField
                 value={formData.cron_expression}
                 onChange={handleCronChange}
                 readOnly={readOnly}
                 error={fieldErrors.cron_expression}
               />
+              {/* notify_at เป็นคอลัมน์บนแถว ไม่ได้อยู่ใน job_config และมีความหมายเฉพาะ
+                  job type report — ชนิดอื่นไม่มี executor ตัวไหนอ่านมันเลย */}
+              {formData.job_type === 'report' && (
+                <div className="space-y-2">
+                  <Label htmlFor="notify_at">{t('cronjob.field.notifyAt')}</Label>
+                  <Input
+                    id="notify_at"
+                    name="notify_at"
+                    type="time"
+                    className="w-40"
+                    disabled={readOnly}
+                    value={formData.notify_at ?? ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, notify_at: e.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t('cronjob.field.notifyAtHint')}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
