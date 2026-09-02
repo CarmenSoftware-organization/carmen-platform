@@ -6,6 +6,59 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 <!-- Generated from src/data/changelog.json — do not edit by hand. -->
 
+## [1.0.0] - 2026-09-02
+
+### Added
+- Cluster admin workspace: a cluster's own admins get a profile page, their business units, members, and invitations without platform access
+- License Center: every seat licence and BU-quota licence across the fleet in one place, with search, filters, and sorting
+- Subscriptions: list, create, and edit contracts as one contract per business unit, with entitlements picked per module
+- Licence feature groups: sell a named bundle instead of ticking features one by one
+- BU-quota licences: a cluster's business-unit allowance now comes from purchased licences, with an over-limit badge and an expiring-soon counter that filters the fleet
+- Thai/English language switcher across the whole app, in the header and the mobile user menu
+- Usage Analytics page with preset and custom date ranges, per-app and per-user filters
+- Activity Events page with a detail sheet for each event
+- Record change history: a History button on 11 pages opens a timeline with a field-by-field diff
+- Audit metadata (who created or last changed a record, and when) across list tables and edit pages
+- Feature flags: set a feature's state on /platform/features; the menu and routes follow it
+- Platform database pools: manage shared database servers centrally, and point a business unit at a pool and schema instead of storing its own credentials
+- Platform database migrations console: status, deploy, and resolve, plus 14 seed and check operations with a live run log
+- Email routing panel: edit the route on the diagram itself, with sender profiles and their utilization beside it
+- Broadcast management: compose, schedule, and expire announcements, with a preview of what recipients see
+- Platform Config: sign-up, invitation, notification email, rate limits, licence enforcement, and configurable expiry thresholds
+- Super Admins registry with email, and granting rights through a typeahead instead of a raw id
+- User platform registry: who holds which platform rights, granted per scope and several roles at a time
+- Role reach: a role's permissions measured against the full catalogue, including what it cannot reach
+- Applications reach ruler: how much of the API catalogue each application actually covers
+- Browser errors and traces are reported to SigNoz through the gateway
+- Carmen logo and image placeholders across the shell
+
+### Changed
+- Every list page reads its summary band from a dedicated endpoint instead of pulling the whole table
+- Long edit pages are split into tabs — business unit edit is five tabs instead of one 2,250px scroll
+- Detail pages read as a record you can scan for problems rather than a locked form: licences, users, super admins, platform rights, database pools, roles, applications, and platform config
+- Page furniture is the same everywhere: one back link, Save and Cancel in the bottom bar, underlined section tabs, and a single page title at one size
+- Navigation is grouped — License Management, Database, and Analytics
+- SQL Workbench: results scroll virtually, the editor and results split is draggable, and syntax highlighting follows dark mode
+- The header user menu shows the full name, the app and backend versions, and the language switcher
+- Cluster and business-unit forms no longer ask for ids and codes the system already knows
+- Below the large breakpoint, list tables become one card per row
+- Releases are cut by scripts/release.mjs with pre-flight guards and typecheck, lint, and test gates
+
+### Fixed
+- A date query parameter that could not be parsed blanked the whole app on Analytics
+- Activity Events failed to load behind ad blockers, which filtered the old request path
+- The fleet capacity band followed the search box, and a failure after the first successful load was invisible
+- Editing a broadcast sent every field and was rejected once its content was locked; only changed fields are sent now
+- Seat caps were read from a key the detail endpoint does not send, and a real quota of zero displayed as unlimited
+- Cluster admins were shown links they could not follow, and the permission boundary sent them to the wrong recovery page
+- Clearing four fields on business-unit edit looked saved but did not persist
+- Sortable columns that did nothing when clicked, because the sort had no value to read
+- Global CSS reset now sits in a base layer, so utility classes win again on Tailwind 4
+
+### Security
+- react-router upgraded to v7, closing an open-redirect vulnerability
+- Dependency upgrade programme across eight phases: Node 24 LTS, Tailwind 4, zod 4, lucide-react, react-markdown 10, and the test tooling
+
 ## [0.2.0] - 2026-08-05
 
 ### Added
