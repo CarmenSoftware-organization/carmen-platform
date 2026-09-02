@@ -29,6 +29,7 @@ import { TableSkeleton } from '../components/TableSkeleton';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import Can from '../components/Can';
 import { normalizeAudit } from '../utils/audit';
+import { relativeTime } from '../utils/relativeTime';
 import type { PaginateParams, PlatformUserRow, PlatformUserRegistrySummary } from "../types";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useI18n } from '../hooks/useI18n';
@@ -288,17 +289,29 @@ const UserPlatformManagement: React.FC = () => {
     toast.success(t('toast.exported'));
   };
 
+  // The scope rail only earns its column of space when it separates something. On a page
+  // where every holder is platform-wide (the common shape — platform roles are granted to
+  // a handful of people, usually all at the widest scope) it marks every row identically
+  // and becomes pure noise, while the scope name still reads on every row via RoleChips.
+  const mixedScopes = useMemo(
+    () => new Set(rows.map((r) => hasPlatformWide(r.roles))).size > 1,
+    [rows],
+  );
+
   const columns = useMemo<ColumnDef<PlatformUserRow, unknown>[]>(() => [
     {
       accessorKey: 'username',
       header: t('pages.userPlatform.columnUser'),
-      meta: { card: 'title' },
+      // `w-px` shrinks this column to its content under `tableLayout="auto"`, so the slack
+      // the browser used to dump here (~200px of blank space beside the emails) goes to
+      // the roles column instead — the one whose content actually varies in length.
+      meta: { card: 'title', headerClassName: 'w-px', cellClassName: 'whitespace-nowrap' },
       cell: ({ row }) => {
         const r = row.original;
         const name = [r.firstname, r.lastname].filter(Boolean).join(' ');
         return (
-          <div className="flex items-stretch gap-3">
-            <ScopeRail platformWide={hasPlatformWide(r.roles)} />
+          <div className={mixedScopes ? 'flex items-stretch gap-3' : 'flex items-stretch'}>
+            {mixedScopes && <ScopeRail platformWide={hasPlatformWide(r.roles)} />}
             <div className="min-w-0">
               <Link
                 to={`/platform/user-platform/${r.user_id}`}
@@ -307,7 +320,7 @@ const UserPlatformManagement: React.FC = () => {
                 {name || r.username || '-'}
               </Link>
               {!r.is_active && (
-                <Badge variant="secondary" className="ml-2 text-xs">{t('common.status.inactive')}</Badge>
+                <Badge variant="warning" className="ml-2 text-xs">{t('common.status.inactive')}</Badge>
               )}
               <div className="text-muted-foreground truncate text-xs">{r.email || '-'}</div>
             </div>
@@ -319,13 +332,19 @@ const UserPlatformManagement: React.FC = () => {
       id: 'roles',
       header: t('pages.userPlatform.columnRolesScope'),
       enableSorting: false,
+      // The one flexible column: `w-full` under auto layout hands it every pixel the
+      // fixed-width neighbours don't claim.
+      meta: { headerClassName: 'w-full' },
       cell: ({ row }) => <RoleChips roles={row.original.roles} />,
     },
     {
       accessorKey: 'last_granted_at',
       id: 'last_granted_at',
       header: t('pages.userPlatform.columnGranted'),
-      meta: { headerClassName: 'w-44' },
+      // No fixed width: with the roles column claiming the slack via `w-full`, a `w-44`
+      // here was not respected and the grantor line wrapped to three lines, growing every
+      // row from 37px to 50px. `whitespace-nowrap` sizes the column to its content instead.
+      meta: { cellClassName: 'whitespace-nowrap', headerClassName: 'whitespace-nowrap' },
       cell: ({ row }) => {
         const roles = row.original.roles;
         // The grantor shown belongs to the most recent grant, which is the one the
@@ -337,9 +356,15 @@ const UserPlatformManagement: React.FC = () => {
           return !accAt || at > accAt ? r : acc;
         }, undefined);
         const by = newest ? normalizeAudit(newest).created?.name : undefined;
+        // Age is the scannable quantity in an access review ("what was granted recently,
+        // what has sat unreviewed for a year"), so it leads; the exact timestamp stays
+        // one hover away rather than being dropped.
+        const at = row.original.last_granted_at ?? undefined;
+        const absolute = fmtDateTime(at);
+        const ago = relativeTime(at, new Date(), t);
         return (
-          <div className="text-muted-foreground space-y-0.5 text-[11px] leading-tight">
-            <div>{fmtDateTime(row.original.last_granted_at ?? undefined)}</div>
+          <div className="text-muted-foreground space-y-0.5 text-[11px] leading-tight" title={absolute}>
+            <div className="text-foreground text-xs">{ago || absolute}</div>
             <div>{by ? t('pages.userPlatform.grantedBy', { name: by }) : t('pages.userPlatform.grantedByUnknown')}</div>
           </div>
         );
@@ -379,7 +404,7 @@ const UserPlatformManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, t]);
+  ], [navigate, t, mixedScopes]);
 
   return (
     <Layout>
@@ -410,6 +435,7 @@ const UserPlatformManagement: React.FC = () => {
           error={!!error}
           onRetry={() => fetchRows(paginate)}
           onShowInactive={() => handleStatusFilter('false')}
+          onShowPlatformWide={() => handleScopeFilter(scopeFilter === 'platform' ? '' : 'platform')}
         />
 
         <Card>
