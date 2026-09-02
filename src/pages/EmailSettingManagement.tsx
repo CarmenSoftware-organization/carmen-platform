@@ -119,6 +119,7 @@ const EmailSettingManagement: React.FC = () => {
               loadError={routingError}
               canManage={canManage}
               isEditing={editingPurpose === 'routing'}
+              shortcutsEnabled={pendingSwitch === null}
               onRequestEdit={() => requestEdit('routing')}
               onCancelEdit={() => setEditingPurpose(null)}
               onSaved={(next) => {
