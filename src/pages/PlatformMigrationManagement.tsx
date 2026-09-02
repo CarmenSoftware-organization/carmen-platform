@@ -1,7 +1,9 @@
 // src/pages/PlatformMigrationManagement.tsx
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Database, RefreshCw, Loader2, Play, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Database, RefreshCw, Loader2, Play, Wrench, ChevronDown, ChevronRight, ScanSearch, Sprout,
+} from 'lucide-react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { FetchErrorState } from '../components/FetchErrorState';
@@ -23,6 +25,7 @@ import { BuSwitcher } from '../components/BuSwitcher';
 import { OpRow } from './platformMigration/OpRow';
 import { RunConsole } from './platformMigration/RunConsole';
 import { useRunLog, splitRaw } from './platformMigration/runLog';
+import { cn } from '../lib/utils';
 import { migrationStatusCode } from '../utils/migrationError';
 import { devLog, parseApiError } from '../utils/errorParser';
 import { useI18n } from '../hooks/useI18n';
@@ -309,26 +312,64 @@ export const PlatformMigrationManagement: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* สถานะ */}
-            <Card>
+            {/* สถานะกับปุ่มที่แก้มันอยู่ในกรอบเดียวกัน — เดิมแยกสองการ์ด ผู้อ่านจึงเห็นอาการ
+                ในใบหนึ่งแล้วต้องเชื่อมเองว่าปุ่มในใบถัดไปคือยาของมัน ขอบซ้ายสีบอกสถานะจากระยะ
+                ที่อ่านตัวหนังสือไม่ทัน: อำพัน = มีของค้าง, เขียว = ตามแล้ว, เทา = ไม่รู้ */}
+            <Card
+              className={cn(
+                'border-l-4',
+                loadError !== null
+                  ? 'border-l-muted-foreground/30'
+                  : hasPending
+                    ? 'border-l-warning bg-warning/5'
+                    : upToDate
+                      ? 'border-l-success'
+                      : 'border-l-muted-foreground/30',
+              )}
+            >
               <CardContent className="space-y-4 pt-6">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Database className="h-5 w-5 text-muted-foreground shrink-0" />
-                  <h2 className="text-sm font-semibold">{t('pages.platformMigration.statusTitle')}</h2>
-                  {loadError ? null : hasPending ? (
-                    <Badge variant="warning">
-                      {t('pages.platformMigration.pendingCount', { count: pending.length })}
-                    </Badge>
-                  ) : upToDate ? (
-                    <Badge variant="success">{t('pages.platformMigration.upToDate')}</Badge>
-                  ) : (
-                    <Badge variant="secondary">{t('pages.platformMigration.statusUnknown')}</Badge>
-                  )}
-                  {lastChecked && !loadError && (
-                    <span className="text-xs text-muted-foreground">
-                      {t('pages.platformMigration.lastChecked', { time: lastChecked })}
-                    </span>
-                  )}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Database className="text-muted-foreground h-4 w-4 shrink-0" />
+                      <span className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                        {t('pages.platformMigration.statusTitle')}
+                      </span>
+                      {lastChecked && !loadError && (
+                        <span className="text-muted-foreground text-xs tabular-nums">
+                          · {t('pages.platformMigration.lastChecked', { time: lastChecked })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-lg font-semibold tracking-tight">
+                      {loadError !== null || (!hasPending && !upToDate)
+                        ? t('pages.platformMigration.statusUnknown')
+                        : hasPending
+                          ? t('pages.platformMigration.pendingCount', { count: pending.length })
+                          : t('pages.platformMigration.upToDate')}
+                    </p>
+                    {loadError === null && (
+                      <p className="text-muted-foreground text-sm">
+                        {hasPending
+                          ? t('pages.platformMigration.statePending')
+                          : upToDate
+                            ? t('pages.platformMigration.stateUpToDate')
+                            : t('pages.platformMigration.stateUnknown')}
+                      </p>
+                    )}
+                  </div>
+                  {/* ปุ่มเดียวที่หน้านี้มีให้กดเมื่อมีของค้าง — เด่นเมื่อมีงานให้ทำ เงียบลงเมื่อไม่มี */}
+                  <Button
+                    variant={hasPending ? 'default' : 'outline'}
+                    className="shrink-0 self-start"
+                    onClick={() => setConfirmDeploy(true)}
+                    disabled={busy || loadError !== null}
+                  >
+                    {deploying
+                      ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      : <Play className="mr-2 h-4 w-4" />}
+                    {t('pages.platformMigration.deployButton')}
+                  </Button>
                 </div>
 
                 {loadError ? (
@@ -340,9 +381,9 @@ export const PlatformMigrationManagement: React.FC = () => {
                 ) : (
                   <>
                     {pending.length > 0 && (
-                      <ul className="space-y-1">
+                      <ul className="space-y-1 border-t pt-3">
                         {pending.map((name) => (
-                          <li key={name} className="text-xs sm:text-sm font-mono break-all">
+                          <li key={name} className="font-mono text-xs break-all sm:text-sm">
                             {name}
                           </li>
                         ))}
@@ -351,27 +392,6 @@ export const PlatformMigrationManagement: React.FC = () => {
                     <RawOutput raw={status?.raw} label={t('pages.platformMigration.rawOutput')} />
                   </>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Deploy */}
-            <Card>
-              <CardContent className="space-y-4 pt-6">
-                <div>
-                  <h2 className="text-sm font-semibold">{t('pages.platformMigration.deployTitle')}</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {t('pages.platformMigration.deployDescription')}
-                  </p>
-                </div>
-                <Button
-                  onClick={() => setConfirmDeploy(true)}
-                  disabled={busy || loadError !== null}
-                >
-                  {deploying
-                    ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    : <Play className="mr-2 h-4 w-4" />}
-                  {t('pages.platformMigration.deployButton')}
-                </Button>
               </CardContent>
             </Card>
 
@@ -466,17 +486,31 @@ export const PlatformMigrationManagement: React.FC = () => {
                 {(['seed', 'check'] as const).map((group) => {
                   const ops = catalog.filter((o) => o.group === group);
                   if (ops.length === 0) return null;
+                  const isSeed = group === 'seed';
                   return (
-                    <Card key={group}>
+                    /* ขอบซ้ายอำพันติดเฉพาะการ์ดที่เขียนจริง — เดิมทั้งสองใบหน้าตาเหมือนกันเป๊ะ
+                       ทั้งที่ใบหนึ่งแตะข้อมูลของทุก cluster ส่วนอีกใบอ่านอย่างเดียว
+                       ทำเครื่องหมายที่ของอันตราย ไม่ใช่ที่ของปลอดภัย */
+                    <Card key={group} className={isSeed ? 'border-l-4 border-l-warning' : undefined}>
                       <CardContent className="space-y-2 pt-6">
-                        <div>
-                          <h2 className="text-sm font-semibold">
-                            {group === 'seed'
-                              ? t('pages.platformMigration.seedsTitle')
-                              : t('pages.platformMigration.checksTitle')}
-                          </h2>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {isSeed
+                              ? <Sprout className="text-muted-foreground h-4 w-4 shrink-0" />
+                              : <ScanSearch className="text-muted-foreground h-4 w-4 shrink-0" />}
+                            <h2 className="text-sm font-semibold">
+                              {isSeed
+                                ? t('pages.platformMigration.seedsTitle')
+                                : t('pages.platformMigration.checksTitle')}
+                            </h2>
+                            {isSeed && (
+                              <Badge variant="warning">
+                                {t('pages.platformMigration.seedsWrites')}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-muted-foreground text-sm">
-                            {group === 'seed'
+                            {isSeed
                               ? t('pages.platformMigration.seedsDescription')
                               : t('pages.platformMigration.checksDescription')}
                           </p>
@@ -486,6 +520,7 @@ export const PlatformMigrationManagement: React.FC = () => {
                             <OpRow
                               key={op.id}
                               op={op}
+                              tone={group}
                               label={t(`pages.platformMigration.ops.${opKey(op.id)}.label` as never)}
                               desc={t(`pages.platformMigration.ops.${opKey(op.id)}.desc` as never)}
                               disabled={busy || loadError !== null}
