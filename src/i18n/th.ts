@@ -367,6 +367,17 @@ export const th: Translations = {
       fri: 'วันศุกร์',
       sat: 'วันเสาร์',
     },
+    // ตัวย่อวันสำหรับปุ่มติ๊กวันในสัปดาห์ของตัวสร้าง cron — `weekday` ด้านบนเป็นชื่อเต็ม
+    // ('วันจันทร์') ซึ่งยาวเกินกว่าจะวางเรียงเจ็ดปุ่มในแถวเดียวบนมือถือได้
+    weekdayShort: {
+      sun: 'อา',
+      mon: 'จ',
+      tue: 'อ',
+      wed: 'พ',
+      thu: 'พฤ',
+      fri: 'ศ',
+      sat: 'ส',
+    },
     monthShort: {
       jan: 'ม.ค.',
       feb: 'ก.พ.',
@@ -3234,6 +3245,30 @@ export const th: Translations = {
     },
     schedule: {
       localTimezoneCaption: 'เวลาที่แสดงเป็นเขตเวลาของเครื่องคุณ ({{zone}}) — scheduler อาจทำงานคนละเขตเวลา',
+      mode: 'รูปแบบ',
+      modeOption: {
+        everyNMinutes: 'ทุกไม่กี่นาที',
+        hourly: 'ทุกชั่วโมง',
+        daily: 'ทุกวัน',
+        weekly: 'ทุกสัปดาห์',
+        monthly: 'ทุกเดือน',
+        custom: 'กำหนดเอง',
+      },
+      every: 'ทุก ๆ',
+      minutesUnit: 'นาที',
+      atMinute: 'ที่นาทีที่',
+      atTime: 'เวลา',
+      onDayOfMonth: 'วันที่',
+      onWeekdays: 'วัน',
+      weekdaysRequired: 'เลือกอย่างน้อยหนึ่งวัน',
+      customHint: 'พิมพ์ทีละช่อง หรือแก้ที่ expression ด้านบนก็ได้ ทั้งสองทางเชื่อมกันอยู่',
+      cronField: {
+        minute: 'นาที',
+        hour: 'ชั่วโมง',
+        dayOfMonth: 'วันที่',
+        month: 'เดือน',
+        dayOfWeek: 'วันในสัปดาห์',
+      },
     },
     type: {
       report: 'รายงาน',

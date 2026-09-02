@@ -496,6 +496,17 @@ export const en = {
       fri: 'Friday',
       sat: 'Saturday',
     },
+    // Short day labels for the cron builder's weekday toggles — `weekday` above holds the
+    // full names, which are too long to line seven buttons up in one row on mobile.
+    weekdayShort: {
+      sun: 'Sun',
+      mon: 'Mon',
+      tue: 'Tue',
+      wed: 'Wed',
+      thu: 'Thu',
+      fri: 'Fri',
+      sat: 'Sat',
+    },
     monthShort: {
       jan: 'Jan',
       feb: 'Feb',
@@ -4244,6 +4255,30 @@ export const en = {
     // server's actual next-run time are the same fact.
     schedule: {
       localTimezoneCaption: 'Times shown in your local timezone ({{zone}}) — the scheduler may run in a different one.',
+      mode: 'Pattern',
+      modeOption: {
+        everyNMinutes: 'Every few minutes',
+        hourly: 'Hourly',
+        daily: 'Daily',
+        weekly: 'Weekly',
+        monthly: 'Monthly',
+        custom: 'Custom',
+      },
+      every: 'Every',
+      minutesUnit: 'minutes',
+      atMinute: 'At minute',
+      atTime: 'At',
+      onDayOfMonth: 'On day',
+      onWeekdays: 'On',
+      weekdaysRequired: 'Pick at least one day',
+      customHint: 'Edit the fields, or the expression above — both stay in sync.',
+      cronField: {
+        minute: 'Minute',
+        hour: 'Hour',
+        dayOfMonth: 'Day of month',
+        month: 'Month',
+        dayOfWeek: 'Day of week',
+      },
     },
     type: {
       report: 'Report',
