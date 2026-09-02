@@ -12,9 +12,20 @@ interface BusinessUnitMultiSelectProps {
   value: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
+  /**
+   * Which BU field `value`/`onChange` key by. Defaults to `'id'` — the genuine foreign key
+   * used by every existing caller (e.g. NewsEdit.tsx's `business_unit_ids`). Pass `'code'`
+   * only when the consumer's field is actually a BU *code* (e.g. cronjob job_config's
+   * `bu_codes`, which a backend resolves by code, not id) — the component already loads
+   * both `id` and `code` on every row, so this only changes which one `value` is compared
+   * and written against.
+   */
+  keyBy?: 'id' | 'code';
 }
 
-export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = ({ value, onChange, disabled }) => {
+export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = ({
+  value, onChange, disabled, keyBy = 'id',
+}) => {
   const { t } = useI18n();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,8 +56,8 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
   }, []);
 
   const selectedBus = useMemo(
-    () => businessUnits.filter((bu) => value.includes(bu.id)),
-    [businessUnits, value],
+    () => businessUnits.filter((bu) => value.includes(keyBy === 'code' ? bu.code : bu.id)),
+    [businessUnits, value, keyBy],
   );
 
   const filtered = useMemo(() => {
@@ -57,10 +68,11 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
     );
   }, [businessUnits, search]);
 
-  const toggle = (buId: string) => {
+  const toggle = (bu: BusinessUnit) => {
     if (disabled) return;
-    if (value.includes(buId)) onChange(value.filter((v) => v !== buId));
-    else onChange([...value, buId]);
+    const key = keyBy === 'code' ? bu.code : bu.id;
+    if (value.includes(key)) onChange(value.filter((v) => v !== key));
+    else onChange([...value, key]);
   };
 
   if (loading) return <Skeleton className="h-40 w-full" />;
@@ -78,7 +90,7 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
               {!disabled && (
                 <button
                   type="button"
-                  onClick={() => toggle(bu.id)}
+                  onClick={() => toggle(bu)}
                   className="ml-0.5 hover:text-foreground"
                   aria-label={t('common.action.removeAria', { name: bu.name })}
                 >
@@ -110,8 +122,8 @@ export const BusinessUnitMultiSelect: React.FC<BusinessUnitMultiSelectProps> = (
                 <label key={bu.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={value.includes(bu.id)}
-                    onChange={() => toggle(bu.id)}
+                    checked={value.includes(keyBy === 'code' ? bu.code : bu.id)}
+                    onChange={() => toggle(bu)}
                     className="h-4 w-4 rounded border-input"
                   />
                   <span className="text-sm">{bu.code} - {bu.name}</span>

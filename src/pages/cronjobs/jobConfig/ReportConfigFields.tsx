@@ -102,6 +102,7 @@ export default function ReportConfigFields({
           value={value.bu_codes ?? []}
           onChange={(bu_codes) => onChange({ ...value, bu_codes })}
           disabled={readOnly}
+          keyBy="code"
         />
         <p className="text-xs text-muted-foreground">{t('cronjob.config.buCodesEmptyMeansAll')}</p>
       </div>
