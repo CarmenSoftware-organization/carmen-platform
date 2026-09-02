@@ -1,29 +1,27 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import licenseFeatureService from '../services/licenseFeatureService';
-import type { LicenseFeatureAdminRow } from '../types';
-import { type FeatureState } from '../constants/featureFlags';
-import { moduleOf } from './licenses/subscriptionEdit/featureSelection';
-import { getErrorDetail, devLog } from '../utils/errorParser';
-import { isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
-import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useI18n } from '../hooks/useI18n';
-import { useAuth } from '../context/AuthContext';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent } from '../components/ui/card';
-import { TableSkeleton } from '../components/TableSkeleton';
-import { EmptyState } from '../components/EmptyState';
-import { FetchErrorState } from '../components/FetchErrorState';
-import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { CatalogStateBar, type CatalogFilter } from './licenseFeatures/CatalogStateBar';
-import { ModuleShelf, type ModuleGroup } from './licenseFeatures/ModuleShelf';
-import { generateCSV, downloadCSV } from '../utils/csvExport';
+import licenseFeatureService from '../../services/licenseFeatureService';
+import type { LicenseFeatureAdminRow } from '../../types';
+import { type FeatureState } from '../../constants/featureFlags';
+import { moduleOf } from '../licenses/subscriptionEdit/featureSelection';
+import { getErrorDetail, devLog } from '../../utils/errorParser';
+import { isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { useI18n } from '../../hooks/useI18n';
+import { useAuth } from '../../context/AuthContext';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card, CardContent } from '../../components/ui/card';
+import { TableSkeleton } from '../../components/TableSkeleton';
+import { EmptyState } from '../../components/EmptyState';
+import { FetchErrorState } from '../../components/FetchErrorState';
+import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { CatalogStateBar, type CatalogFilter } from '../licenseFeatures/CatalogStateBar';
+import { ModuleShelf, type ModuleGroup } from '../licenseFeatures/ModuleShelf';
+import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { Tags, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
-import type { TKey } from '../i18n/types';
+import type { TKey } from '../../i18n/types';
 
 /**
  * คีย์คำอธิบายของหน้านี้โดยเฉพาะ — **ห้ามใช้ของหน้า Feature Flags ซ้ำ**
@@ -68,8 +66,12 @@ function byOrderThenKey(a: LicenseFeatureAdminRow, b: LicenseFeatureAdminRow): n
  * การรวบหลายแถวเป็นชุดเดียวแล้วยิง PATCH ทีละตัวบังคับให้ต้องออกแบบ UX ตอนสำเร็จครึ่ง ๆ
  * ("สำเร็จ 18 ล้มเหลว 2 — แต่ 2 อันไหน") ทั้งที่ปัญหานั้นไม่มีอยู่ถ้าไม่รวบ
  * ผลพลอยได้คือหน้านี้ไม่ต้องมี useUnsavedChanges เพราะไม่มีสถานะค้าง
+ *
+ * **เป็น panel ไม่ใช่หน้า** — `Layout` กับ `PageHeader` เป็นของ `LicenseCatalog` ที่ครอบอยู่
+ * ปุ่ม Export จึงลงมาอยู่ในแถบเครื่องมือของตัวเอง ไม่ขึ้นไปบนหัวหน้าที่สอง tab ใช้ร่วมกัน:
+ * ปุ่มบนหัวที่สลับตัวเองตาม tab อ่านสะดุดในงานที่ทำซ้ำทุกวัน
  */
-const LicenseFeatureManagement: React.FC = () => {
+export const FeatureCatalogPanel: React.FC = () => {
   const { t } = useI18n();
   const { hasPermission } = useAuth();
   const canManage = hasPermission('license_feature.manage');
@@ -271,36 +273,32 @@ const LicenseFeatureManagement: React.FC = () => {
   );
 
   return (
-    <Layout>
+    <>
       <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          title={t('pages.licenseFeatures.title')}
-          subtitle={t('pages.licenseFeatures.subtitle')}
-          actions={
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleExport}
-              disabled={visible.length === 0}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {t('common.action.export')}
-            </Button>
-          }
-        />
-
         <Card>
           <CardContent className="space-y-3 py-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                ref={searchInputRef}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('pages.licenseFeatures.searchPlaceholder')}
-                className="pl-9"
-                aria-label={t('pages.licenseFeatures.searchPlaceholder')}
-              />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={searchInputRef}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t('pages.licenseFeatures.searchPlaceholder')}
+                  className="pl-9"
+                  aria-label={t('pages.licenseFeatures.searchPlaceholder')}
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExport}
+                disabled={visible.length === 0}
+                className="shrink-0"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {t('common.action.export')}
+              </Button>
             </div>
             <CatalogStateBar
               counts={counts}
@@ -383,8 +381,8 @@ const LicenseFeatureManagement: React.FC = () => {
           ]}
         />
       )}
-    </Layout>
+    </>
   );
 };
 
-export default LicenseFeatureManagement;
+export default FeatureCatalogPanel;

@@ -1,34 +1,32 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ColumnDef } from '@tanstack/react-table';
-import Layout from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import licenseFeatureGroupService from '../services/licenseFeatureGroupService';
-import subscriptionService from '../services/subscriptionService';
-import type { LicenseFeatureGroup } from '../types';
-import { getErrorDetail, devLog } from '../utils/errorParser';
-import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useI18n } from '../hooks/useI18n';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent } from '../components/ui/card';
-import { DataTable } from '../components/ui/data-table';
-import { TableSkeleton } from '../components/TableSkeleton';
-import { EmptyState } from '../components/EmptyState';
-import { FetchErrorState } from '../components/FetchErrorState';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
+import licenseFeatureGroupService from '../../services/licenseFeatureGroupService';
+import subscriptionService from '../../services/subscriptionService';
+import type { LicenseFeatureGroup } from '../../types';
+import { getErrorDetail, devLog } from '../../utils/errorParser';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
+import { useI18n } from '../../hooks/useI18n';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent } from '../../components/ui/card';
+import { DataTable } from '../../components/ui/data-table';
+import { TableSkeleton } from '../../components/TableSkeleton';
+import { EmptyState } from '../../components/EmptyState';
+import { FetchErrorState } from '../../components/FetchErrorState';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
-import Can from '../components/Can';
-import { FeatureCompositionBar } from './licenses/FeatureCompositionBar';
-import { cn } from '../lib/utils';
-import { generateCSV, downloadCSV } from '../utils/csvExport';
+} from '../../components/ui/dropdown-menu';
+import Can from '../../components/Can';
+import { FeatureCompositionBar } from '../licenses/FeatureCompositionBar';
+import { cn } from '../../lib/utils';
+import { generateCSV, downloadCSV } from '../../utils/csvExport';
 import { LayoutGrid, Plus, Search, Download, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,10 +43,14 @@ import { toast } from 'sonner';
  * เรียงเริ่มต้นตาม `sort_order` — ลำดับนี้คือลำดับที่ชุดจะโผล่บนฟอร์มขายจริง คอลัมน์ `#`
  * ที่ DataTable แถมมาเป็นเลขแถวของมุมมองปัจจุบัน ไม่ใช่ค่านั้น จึงต้องมีคอลัมน์ `sort_order`
  * แยกต่างหากที่มีป้ายกำกับของตัวเอง
+ *
+ * **เป็น panel ไม่ใช่หน้า** — `Layout` กับ `PageHeader` เป็นของ `LicenseCatalog` ที่ครอบอยู่
+ * ปุ่ม Export กับ New group จึงลงมาอยู่ในแถบเครื่องมือของ panel นี้เอง ไม่ขึ้นไปบนหัวหน้าที่
+ * ใช้ร่วมกับ tab Features: ปุ่ม primary ที่สลับตัวเองตาม tab อ่านสะดุดในงานที่ทำซ้ำทุกวัน
  */
 const PAGE_SIZE = 200;
 
-const LicenseFeatureGroupManagement: React.FC = () => {
+export const GroupCatalogPanel: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -314,27 +316,8 @@ const LicenseFeatureGroupManagement: React.FC = () => {
   ], [t, duplicateOrders, catalogTotal]);
 
   return (
-    <Layout>
+    <>
       <div className="space-y-4 sm:space-y-6">
-        <PageHeader
-          title={t('pages.licenseFeatureGroups.title')}
-          subtitle={t('pages.licenseFeatureGroups.subtitle')}
-          actions={
-            <div className="flex gap-3">
-              <Button size="sm" variant="outline" onClick={handleExport} disabled={filtered.length === 0}>
-                <Download className="mr-2 h-4 w-4" />
-                {t('common.action.export')}
-              </Button>
-              <Can permission="license_feature_group.manage">
-                <Button size="sm" onClick={() => navigate('/license-feature-groups/new')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('pages.licenseFeatureGroups.newGroup')}
-                </Button>
-              </Can>
-            </div>
-          }
-        />
-
         <Card>
           <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
             <div className="relative flex-1">
@@ -357,6 +340,18 @@ const LicenseFeatureGroupManagement: React.FC = () => {
               />
               {t('pages.licenseFeatureGroups.activeOnly')}
             </label>
+            <div className="flex shrink-0 gap-3">
+              <Button size="sm" variant="outline" onClick={handleExport} disabled={filtered.length === 0}>
+                <Download className="mr-2 h-4 w-4" />
+                {t('common.action.export')}
+              </Button>
+              <Can permission="license_feature_group.manage">
+                <Button size="sm" onClick={() => navigate('/license-feature-groups/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('pages.licenseFeatureGroups.newGroup')}
+                </Button>
+              </Can>
+            </div>
           </CardContent>
         </Card>
 
@@ -423,8 +418,8 @@ const LicenseFeatureGroupManagement: React.FC = () => {
           ]}
         />
       )}
-    </Layout>
+    </>
   );
 };
 
-export default LicenseFeatureGroupManagement;
+export default GroupCatalogPanel;

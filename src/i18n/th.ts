@@ -1290,6 +1290,11 @@ export const th: Translations = {
       emptyTitle: 'ไม่พบฟีเจอร์ที่ตรงกับเงื่อนไข',
       emptyDescription: 'ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ',
     },
+    licenseCatalog: {
+      title: 'แค็ตตาล็อก license',
+      tabBundles: 'ชุดที่ขาย',
+      tabFeatures: 'ฟีเจอร์',
+    },
     licenseFeatureGroups: {
       title: 'กลุ่มสิทธิ์ license',
       subtitle: 'ชุด feature ที่จัดไว้ล่วงหน้า ใช้ตอนขายสัญญา',

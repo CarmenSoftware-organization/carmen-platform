@@ -29,8 +29,8 @@ const ClusterLicenseDetail = lazy(() => import("./pages/licenses/ClusterLicenseD
 const ClusterAdminLicenses = lazy(() => import("./pages/clusterAdmin/ClusterAdminLicenses"));
 const SubscriptionForm = lazy(() => import("./pages/licenses/SubscriptionForm"));
 const LicensePurchaseForm = lazy(() => import("./pages/licenses/LicensePurchaseForm"));
-const LicenseFeatureGroupManagement = lazy(() => import("./pages/LicenseFeatureGroupManagement"));
-const LicenseFeatureManagement = lazy(() => import("./pages/LicenseFeatureManagement"));
+// หน้าเดียวสอง tab แต่ยังสองเส้นทาง — ด่านสิทธิ์/flag ของแต่ละ tab จึงยังเป็นของ route ตัวเอง
+const LicenseCatalog = lazy(() => import("./pages/LicenseCatalog"));
 const LicenseFeatureGroupEdit = lazy(() => import("./pages/LicenseFeatureGroupEdit"));
 const TenantMigrationManagement = lazy(() => import("./pages/TenantMigrationManagement"));
 const PlatformMigrationManagement = lazy(() => import("./pages/PlatformMigrationManagement"));
@@ -289,7 +289,7 @@ function AppContent() {
               path="/license-features"
               element={
                 <PrivateRoute requiredPermission="license_feature.read" feature="license_features">
-                  <LicenseFeatureManagement />
+                  <LicenseCatalog tab="features" />
                 </PrivateRoute>
               }
             />
@@ -297,7 +297,7 @@ function AppContent() {
               path="/license-feature-groups"
               element={
                 <PrivateRoute requiredPermission="license_feature_group.read" feature="license_feature_groups">
-                  <LicenseFeatureGroupManagement />
+                  <LicenseCatalog tab="bundles" />
                 </PrivateRoute>
               }
             />
