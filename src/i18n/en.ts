@@ -3089,6 +3089,14 @@ export const en = {
       chooseProfile: 'Choose a profile',
       useDefault: 'Use the default',
       defaultAppliesNote: 'Applies to every flow not chosen explicitly, including flows added later',
+      // RoutingPanel — ผังสายฝั่งปลายทาง
+      carries: 'Carries',
+      laneDark: 'No flow sends through this profile',
+      laneLegend: 'Solid = chosen for that flow · dashed = falls through to the default',
+      laneMissingProfile: 'Deleted profile',
+      laneMissingWarning: 'The routing still points at a profile that no longer exists — these flows have no sender',
+      laneInactiveWarning: 'This profile is inactive, but flows still route to it',
+      noDefaultWarning: 'No default profile chosen — {{count}} flows have no sender',
       // EMAIL_FLOWS descriptions (constants/emailFlows.ts)
       flowRegisterDescription: 'The verify-email link before an account is created, and the "account already exists" email',
       flowVerifyEmailDescription: 'The verify-email link for accounts created before the order was reversed, and the admin-created path',

@@ -130,7 +130,7 @@ Some pages are **config pages, not Management pages**, and intentionally deviate
 
 Examples that still exist:
 - `src/pages/ReportFormGroupManagement.tsx` — one card per report group.
-- `src/pages/EmailSettingManagement.tsx` — one card per email sender purpose (capped at 3, ever). The page holds `editingPurpose` so only one card is editable at a time; each card owns its own form state and calls the service directly.
+- `src/pages/EmailSettingManagement.tsx` — a routing panel (`emailSettings/RoutingPanel.tsx`) over one card per **named sender profile**. Profiles are free-form rows, not a fixed set of purposes — the old "one card per purpose, capped at 3" shape is gone. The page holds `editingPurpose` so only one card is editable at a time; each card owns its own form state and calls the service directly. The flow→profile mapping is fetched **at the page** (`useEmailRouting`) and derived into destination-side lanes (`emailSettings/routingLanes.ts`), because the panel and every profile card must read one shared answer — a card that says "no flow sends through this profile" while the panel disagrees is what makes an admin delete the wrong profile.
 
 (`PrintTemplateMapping*`, formerly this section's example, was deleted along with the feature on both frontend and backend — don't reference it again.)
 
