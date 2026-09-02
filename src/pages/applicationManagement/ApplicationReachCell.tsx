@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
-import { moduleOf } from '../../utils/apiCatalog';
+import { reachOf } from '../../utils/apiReach';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
 
@@ -40,10 +40,8 @@ interface ApplicationReachCellProps {
  */
 export function ApplicationReachCell({ name, allowAll, apiNames, catalogSize }: ApplicationReachCellProps) {
   const { t } = useI18n();
-  const anchored = catalogSize > 0;
-  const granted = allowAll ? catalogSize : apiNames.length;
-  const full = allowAll || (anchored && granted >= catalogSize);
-  const modules = allowAll ? 0 : new Set(apiNames.map(moduleOf)).size;
+  // Arithmetic shared with ApplicationIdentityHero — see utils/apiReach.
+  const { granted, anchored, full, modules, percent } = reachOf({ allowAll, apiNames, catalogSize });
 
   const label = full
     ? anchored
@@ -60,7 +58,7 @@ export function ApplicationReachCell({ name, allowAll, apiNames, catalogSize }: 
           <div className="bg-muted hidden h-1.5 w-full flex-1 overflow-hidden rounded-full lg:block">
             <span
               className={cn('block h-full rounded-full', full ? 'bg-warning' : 'bg-primary')}
-              style={{ width: `${Math.min(100, (granted / catalogSize) * 100)}%` }}
+              style={{ width: `${percent}%` }}
             />
           </div>
         )}
