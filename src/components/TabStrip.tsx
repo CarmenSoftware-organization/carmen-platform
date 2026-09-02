@@ -14,6 +14,8 @@ interface TabStripProps<Id extends string> {
   tabs: TabStripItem<Id>[];
   value: Id;
   onChange: (tab: Id) => void;
+  /** ชื่อของแถบสำหรับ screen reader — จำเป็นเมื่อแถบทำหน้าที่นำทางระดับหน้า */
+  ariaLabel?: string;
 }
 
 /**
@@ -26,7 +28,7 @@ interface TabStripProps<Id extends string> {
  * one shows licences), and a shared `BuTabId` union would let a tab from one page typecheck
  * on the other. What is genuinely shared is the drawing, which lives here alone.
  */
-export function TabStrip<Id extends string>({ tabs, value, onChange }: TabStripProps<Id>) {
+export function TabStrip<Id extends string>({ tabs, value, onChange, ariaLabel }: TabStripProps<Id>) {
   const { t } = useI18n();
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +51,7 @@ export function TabStrip<Id extends string>({ tabs, value, onChange }: TabStripP
           rest, and centring it drops its underline a pixel below the others. */}
       <TabsList
         ref={stripRef}
+        aria-label={ariaLabel}
         className="scroll-mt-20 flex h-auto w-full items-stretch justify-start overflow-x-auto rounded-none bg-transparent p-0"
       >
         {tabs.map((tab) => (

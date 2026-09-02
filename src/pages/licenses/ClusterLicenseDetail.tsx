@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { TabStrip, type TabStripItem } from '../../components/TabStrip';
 import clusterService from '../../services/clusterService';
 import businessUnitService from '../../services/businessUnitService';
 import clusterLicenseService from '../../services/clusterLicenseService';
@@ -168,6 +168,12 @@ const ClusterLicenseDetail: React.FC = () => {
 
   const stripLoading = clusterLoading || quotaLedger.loading || seats.loading || subs.loading;
 
+  const LAYER_TABS = useMemo<TabStripItem<LicenseTabId>[]>(() => [
+    { id: 'quota', label: t('pages.licenses.buQuota') },
+    { id: 'seats', label: t('common.field.seats') },
+    { id: 'subscriptions', label: t('common.label.subscriptions') },
+  ], [t]);
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -185,55 +191,54 @@ const ClusterLicenseDetail: React.FC = () => {
 
         <LicenseHealthStrip facts={facts} loading={stripLoading} onJump={selectTab} />
 
-        <Tabs value={activeTab} onValueChange={(v) => isTabId(v) && selectTab(v)}>
-          <TabsList aria-label={t('pages.licenses.licenseLayersNav')}>
-            <TabsTrigger value="quota">{t('pages.licenses.buQuota')}</TabsTrigger>
-            <TabsTrigger value="seats">{t('common.field.seats')}</TabsTrigger>
-            <TabsTrigger value="subscriptions">{t('common.label.subscriptions')}</TabsTrigger>
-          </TabsList>
+        <TabStrip
+          tabs={LAYER_TABS}
+          value={activeTab}
+          onChange={selectTab}
+          ariaLabel={t('pages.licenses.licenseLayersNav')}
+        />
 
-          <TabsContent value="quota" className="mt-4">
-            <BuQuotaSection
-              clusterId={clusterId!}
-              clusterCode={cluster?.code ?? ''}
-              clusterName={cluster?.name ?? ''}
-              canManage={canManage}
-              // ต้องอ่านจากแหล่งเดียวกับ ClusterEdit.tsx:637-639 และ ClusterLicenseTable.tsx:102
-              // (`cluster.bu_used` จาก backend view) ไม่ใช่นับ `bus.length` เองฝั่ง client —
-              // ถ้า backend กรอง soft-deleted หรือ scope ต่างจาก client เมื่อไร สามหน้านี้จะ
-              // แสดงเลขไม่ตรงกันเงียบ ๆ
-              buUsed={cluster?.bu_used ?? 0}
-              businessUnits={bus}
-              ledger={quotaLedger}
-              // ตารางอันดับ BU ในแท็บนี้แสดงแกนเวลา "สัญญา" ของแต่ละ BU — ใช้ชุดเดียวกับ
-              // แท็บ Subscriptions และแถบสรุป ไม่ยิงคำขอของตัวเอง
-              subscriptions={subs.items}
-              subscriptionsLoading={subs.loading}
-              subscriptionsFailed={subs.failed}
-            />
-          </TabsContent>
+        {activeTab === 'quota' && (
+          <BuQuotaSection
+            clusterId={clusterId!}
+            clusterCode={cluster?.code ?? ''}
+            clusterName={cluster?.name ?? ''}
+            canManage={canManage}
+            // ต้องอ่านจากแหล่งเดียวกับ ClusterEdit.tsx:637-639 และ ClusterLicenseTable.tsx:102
+            // (`cluster.bu_used` จาก backend view) ไม่ใช่นับ `bus.length` เองฝั่ง client —
+            // ถ้า backend กรอง soft-deleted หรือ scope ต่างจาก client เมื่อไร สามหน้านี้จะ
+            // แสดงเลขไม่ตรงกันเงียบ ๆ
+            buUsed={cluster?.bu_used ?? 0}
+            businessUnits={bus}
+            ledger={quotaLedger}
+            // ตารางอันดับ BU ในแท็บนี้แสดงแกนเวลา "สัญญา" ของแต่ละ BU — ใช้ชุดเดียวกับ
+            // แท็บ Subscriptions และแถบสรุป ไม่ยิงคำขอของตัวเอง
+            subscriptions={subs.items}
+            subscriptionsLoading={subs.loading}
+            subscriptionsFailed={subs.failed}
+          />
+        )}
 
-          <TabsContent value="seats" className="mt-4">
-            <SeatSection
-              rows={seats.rows}
-              loading={seats.loading}
-              reload={() => void seats.reload()}
-              canManage={canManage}
-            />
-          </TabsContent>
+        {activeTab === 'seats' && (
+          <SeatSection
+            rows={seats.rows}
+            loading={seats.loading}
+            reload={() => void seats.reload()}
+            canManage={canManage}
+          />
+        )}
 
-          <TabsContent value="subscriptions" className="mt-4">
-            <SubscriptionSection
-              clusterId={clusterId!}
-              canManage={canManage}
-              items={subs.items}
-              loading={subs.loading}
-              failed={subs.failed}
-              errorMsg={subs.errorMsg}
-              reload={() => void subs.reload()}
-            />
-          </TabsContent>
-        </Tabs>
+        {activeTab === 'subscriptions' && (
+          <SubscriptionSection
+            clusterId={clusterId!}
+            canManage={canManage}
+            items={subs.items}
+            loading={subs.loading}
+            failed={subs.failed}
+            errorMsg={subs.errorMsg}
+            reload={() => void subs.reload()}
+          />
+        )}
       </div>
     </Layout>
   );

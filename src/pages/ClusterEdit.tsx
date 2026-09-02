@@ -10,7 +10,8 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, X, UserPlus, Search, Loader2, SearchX, ArrowLeft } from 'lucide-react';
+import { Save, X, UserPlus, Search, Loader2, SearchX } from 'lucide-react';
+import { BackLink } from '../components/BackLink';
 import { toast } from 'sonner';
 import { EmptyState } from '../components/EmptyState';
 import { validateField } from '../utils/validation';
@@ -520,15 +521,9 @@ const ClusterEdit: React.FC = () => {
           <>
             {/* The back link is the page's, not the plate's, now that the plate has moved out
              *  of the first column — a way out anchored to the top of a preview off to the
-             *  right is not a way out anyone finds. Same 44px ::before tap target it carried
-             *  inside the plate. */}
-            <Link
-              to="/clusters"
-              className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
-            >
-              <ArrowLeft className="size-4" />
-              {t('breadcrumb.clusters')}
-            </Link>
+             *  right is not a way out anyone finds. The 44px tap target now lives in
+             *  `BackLink`, which every edit page's way-out shares. */}
+            <BackLink to="/clusters" label={t('breadcrumb.clusters')} />
 
             {/* Two columns from `lg` up, form first. The plate is a picture of what you are
              *  typing, so it has to be visible *while* you type: stacked above the form it

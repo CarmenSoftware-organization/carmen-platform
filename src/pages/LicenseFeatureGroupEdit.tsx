@@ -27,7 +27,7 @@ import { cn } from '../lib/utils';
 import { validateField } from '../utils/validation';
 import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
-import { Save, Loader2, ArrowLeft, SearchX, Info } from 'lucide-react';
+import { Save, Loader2, ArrowLeft, SearchX, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LicenseFeatureGroupFormData {
@@ -365,32 +365,15 @@ const LicenseFeatureGroupEdit: React.FC = () => {
 
   return (
     <Layout>
-      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4 pb-24 sm:space-y-6">
         <PageHeader
+          backTo="/license-feature-groups"
           title={
             isNew
               ? t('pages.licenseFeatureGroups.newGroup')
               : formData.name || t('pages.licenseFeatureGroups.editGroup')
           }
           subtitle={t('pages.licenseFeatureGroups.subtitle')}
-          actions={
-            <div className="flex gap-3">
-              <Button type="button" size="sm" variant="outline" onClick={handleCancel}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t('common.action.back')}
-              </Button>
-              {canManage && (
-                <Button type="submit" size="sm" disabled={saving}>
-                  {saving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  {t('common.action.saveChanges')}
-                </Button>
-              )}
-            </div>
-          }
         />
 
         {error && (
@@ -583,6 +566,38 @@ const LicenseFeatureGroupEdit: React.FC = () => {
           </CardContent>
         </Card>
       </form>
+
+      {canManage && (
+        <div className="unsaved-bar fixed bottom-0 left-0 right-0 z-40 md:left-16 lg:left-60">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              {hasChanges ? (
+                <>
+                  <span className="bg-warning h-2 w-2 animate-pulse rounded-full" />
+                  <span>{t('common.state.unsavedChanges')}</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">{t('common.state.noChanges')}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                <X className="mr-2 h-4 w-4" />
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={saving || (!isNew && !hasChanges)}
+                onClick={() => formRef.current?.requestSubmit()}
+              >
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {process.env.NODE_ENV === 'development' && (
         <DevDebugSheet

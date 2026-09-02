@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Building2, Users, type LucideIcon } from 'lucide-react';
+import { Building2, Users, type LucideIcon } from 'lucide-react';
+import { BackLink } from '../../components/BackLink';
 import { Card } from '../../components/ui/card';
 import { AuditMeta } from '../../components/AuditMeta';
 import { BrandingImageUpload } from '../../components/BrandingImageUpload';
@@ -159,16 +159,8 @@ export function ClusterPlate({
        *  directly in the page container, which spans the tab body, so it has somewhere to
        *  stick to. */}
       <div className="space-y-3">
-        {/* ::before stretches the tap area to 44px while the link stays 20px tall — the same
-         *  measured fix `InlineField` and `BuPropertyPlate` carry. */}
         <div className="flex items-center justify-between gap-3">
-          <Link
-            to={backTo}
-            className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
-          >
-            <ArrowLeft className="size-4" />
-            {t('breadcrumb.clusters')}
-          </Link>
+          <BackLink to={backTo} label={t('breadcrumb.clusters')} />
           {headerAction}
         </div>
 

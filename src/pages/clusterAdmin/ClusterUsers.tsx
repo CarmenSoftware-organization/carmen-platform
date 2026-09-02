@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { UserPlus } from 'lucide-react';
@@ -10,7 +10,7 @@ import InviteUserDialog from './InviteUserDialog';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { TabStrip, type TabStripItem } from '../../components/TabStrip';
 import { SearchInput } from '../../components/SearchInput';
 import { DevDebugSheet } from '../../components/ui/dev-debug-sheet';
 import clusterService from '../../services/clusterService';
@@ -103,6 +103,11 @@ const ClusterUsers: React.FC = () => {
     setTab('invitations');
   };
 
+  const USER_TABS = useMemo<TabStripItem<'members' | 'invitations'>[]>(() => [
+    { id: 'members', label: t('pages.clusterAdmin.membersTab'), count: members.length },
+    { id: 'invitations', label: t('pages.clusterAdmin.invitationsTab'), count: invitations.length },
+  ], [t, members.length, invitations.length]);
+
   return (
     <ClusterAdminLayout>
       <div className="space-y-6 sm:space-y-8">
@@ -120,13 +125,15 @@ const ClusterUsers: React.FC = () => {
         {accessLost ? (
           <ClusterAccessLost />
         ) : (
-          <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'invitations')}>
-            <TabsList>
-              <TabsTrigger value="members">{t('pages.clusterAdmin.membersTabLabel', { count: members.length })}</TabsTrigger>
-              <TabsTrigger value="invitations">{t('pages.clusterAdmin.invitationsTabLabel', { count: invitations.length })}</TabsTrigger>
-            </TabsList>
+          <>
+            <TabStrip
+              tabs={USER_TABS}
+              value={tab}
+              onChange={setTab}
+              ariaLabel={t('pages.clusterAdmin.usersPageTitle')}
+            />
 
-            <TabsContent value="members">
+            {tab === 'members' ? (
               <Card>
                 <CardHeader>
                   <SearchInput
@@ -145,9 +152,7 @@ const ClusterUsers: React.FC = () => {
                   />
                 </CardContent>
               </Card>
-            </TabsContent>
-
-            <TabsContent value="invitations">
+            ) : (
               <Card>
                 <CardContent>
                   <InvitationsTable
@@ -158,8 +163,8 @@ const ClusterUsers: React.FC = () => {
                   />
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
+            )}
+          </>
         )}
       </div>
 

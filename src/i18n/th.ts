@@ -1632,8 +1632,8 @@ export const th: Translations = {
       failedToLoadMembers: 'โหลดรายชื่อสมาชิกไม่สำเร็จ',
       failedToLoadInvitations: 'โหลดคำเชิญไม่สำเร็จ',
       usersPageSubtitle: 'จัดการสมาชิกและคำเชิญที่รอดำเนินการสำหรับ cluster นี้',
-      membersTabLabel: 'สมาชิก ({{count}})',
-      invitationsTabLabel: 'คำเชิญ ({{count}})',
+      membersTab: 'สมาชิก',
+      invitationsTab: 'คำเชิญ',
       searchMembersPlaceholder: 'ค้นหาสมาชิก...',
 
       // --- Task 3: ClusterPeopleCard.tsx ---
