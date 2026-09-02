@@ -3706,6 +3706,13 @@ export const en = {
       inactiveCount: '{{count}} inactive',
       roleBarAria: '{{name}}: {{count}} permission',
       roleBarAriaPlural: '{{name}}: {{count}} permissions',
+      // reach — count read against the catalog it is drawn from (RoleReachCell + the band)
+      reachAria: '{{name}}: {{count}} of {{total}} permissions',
+      reachFullAria: '{{name}}: full access to all {{total}} permissions',
+      ofCatalog: 'of {{total}} in the catalog',
+      removedCount: '{{count}} removed',
+      nResources: '{{count}} resource',
+      nResourcesPlural: '{{count}} resources',
       // ── RoleEdit ──
       loadFailedOne: 'Failed to load role: {{detail}}',
       catalogLoadFailedDetail: 'Failed to load permission catalog: {{detail}}',
@@ -3727,8 +3734,9 @@ export const en = {
       descriptionPlaceholder: 'Optional description',
       createRole: 'Create Role',
       settings: 'Settings',
-      noAccessOther: 'No access to {{count}} other resource.',
-      noAccessOtherPlural: 'No access to {{count}} other resources.',
+      // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
+      // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
+      withheldLegend: 'Dashed actions are in the catalog but not granted to this role.',
       // grantSummary — ประกอบจากหลายท่อนคั่นด้วย ' · ' เดิมปั้นพหูพจน์ตอนรัน
       noPermissionsGranted: 'No permissions granted',
       nPermissions: '{{count}} permission',

@@ -23,6 +23,7 @@ vi.mock('../context/AuthContext', () => ({
 vi.mock('../services/roleService', () => ({
   default: {
     getById: vi.fn(),
+    getAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
@@ -81,6 +82,7 @@ beforeEach(() => {
   auth.isSuperAdmin = false;
   auth.hasPermission = () => true;
   asMock(permissionService.getCatalog).mockResolvedValue(fakeCatalog);
+  asMock(roleService.getAll).mockResolvedValue({ data: [] });
 });
 
 describe('RoleEdit (integration)', () => {
@@ -203,5 +205,67 @@ describe('RoleEdit — permission catalog states', () => {
     expect(permissionService.getCatalog).toHaveBeenCalledTimes(2);
     expect(await screen.findByText('cluster')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+// The read-only grant view is the page's whole reason to exist, and nothing above ever
+// looked at it — the suite stayed green through a rewrite of it.
+describe('RoleEdit — the read-only grant view', () => {
+  it('shows the actions the role does NOT hold, not only the ones it does', async () => {
+    asMock(roleService.getById).mockResolvedValue({ data: fakeRole });
+    renderAt('/platform/roles/r1/edit');
+
+    // `cluster.read` is granted, `cluster.update` is in the catalog and withheld. Both are
+    // on screen; only the withheld one is drawn as an outline.
+    const granted = await screen.findByText('read');
+    const withheld = screen.getByText('update');
+    expect(granted.className).not.toContain('border-dashed');
+    expect(withheld.className).toContain('border-dashed');
+  });
+
+  it('greys nothing when the catalog is unavailable — a missing action is not a withheld one', async () => {
+    asMock(roleService.getById).mockResolvedValue({ data: fakeRole });
+    asMock(permissionService.getCatalog).mockRejectedValue(new Error('boom'));
+    renderAt('/platform/roles/r1/edit');
+
+    expect(await screen.findByText('read')).toBeInTheDocument();
+    // Without the catalog the page cannot know `cluster.update` exists, so it must not
+    // imply that it was deliberately withheld.
+    expect(screen.queryByText('update')).not.toBeInTheDocument();
+    expect(document.querySelector('.border-dashed')).toBeNull();
+  });
+});
+
+describe('RoleEdit — audit borrowed from the list endpoint', () => {
+  it('asks the list endpoint for this one role by id', async () => {
+    asMock(roleService.getById).mockResolvedValue({ data: fakeRole });
+    renderAt('/platform/roles/r1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Billing Admin' });
+
+    expect(roleService.getAll).toHaveBeenCalledWith(
+      expect.objectContaining({ advance: JSON.stringify({ where: { id: 'r1' } }) }),
+    );
+  });
+
+  it('renders the borrowed history (discriminating control for the mismatch case below)', async () => {
+    asMock(roleService.getById).mockResolvedValue({ data: fakeRole });
+    asMock(roleService.getAll).mockResolvedValue({
+      data: [{ id: 'r1', audit: { created: { at: '2020-01-01T00:00:00Z' } } }],
+    });
+    renderAt('/platform/roles/r1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Billing Admin' });
+
+    expect(await screen.findByText(/Created/)).toBeInTheDocument();
+  });
+
+  it('ignores a row that is not this role rather than showing its history', async () => {
+    asMock(roleService.getById).mockResolvedValue({ data: fakeRole });
+    asMock(roleService.getAll).mockResolvedValue({
+      data: [{ id: 'someone-else', audit: { created: { at: '2020-01-01T00:00:00Z' } } }],
+    });
+    renderAt('/platform/roles/r1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Billing Admin' });
+
+    expect(screen.queryByText(/Created/)).not.toBeInTheDocument();
   });
 });

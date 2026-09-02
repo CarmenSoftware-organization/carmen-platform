@@ -2678,6 +2678,13 @@ export const th: Translations = {
       inactiveCount: 'ไม่ใช้งาน {{count}}',
       roleBarAria: '{{name}}: {{count}} สิทธิ์',
       roleBarAriaPlural: '{{name}}: {{count}} สิทธิ์',
+      // reach — อ่านจำนวนสิทธิ์เทียบกับ catalog ที่มันถูกหยิบมา (RoleReachCell + แถบสรุป)
+      reachAria: '{{name}}: {{count}} จาก {{total}} สิทธิ์',
+      reachFullAria: '{{name}}: ถือครบทุกสิทธิ์ทั้ง {{total}} รายการ',
+      ofCatalog: 'จากทั้งหมด {{total}} สิทธิ์',
+      removedCount: 'ถูกลบ {{count}}',
+      nResources: '{{count}} resource',
+      nResourcesPlural: '{{count}} resource',
       loadFailedOne: 'โหลดบทบาทไม่สำเร็จ: {{detail}}',
       catalogLoadFailedDetail: 'โหลดรายการสิทธิ์ไม่สำเร็จ: {{detail}}',
       catalogForbidden: 'ไม่มีสิทธิ์ platform_role.read จึงโหลดรายการสิทธิ์ไม่ได้',
@@ -2696,8 +2703,9 @@ export const th: Translations = {
       descriptionPlaceholder: 'คำอธิบาย (ไม่บังคับ)',
       createRole: 'สร้างบทบาท',
       settings: 'การตั้งค่า',
-      noAccessOther: 'ไม่มีสิทธิ์อีก {{count}} ทรัพยากร',
-      noAccessOtherPlural: 'ไม่มีสิทธิ์อีก {{count}} ทรัพยากร',
+      // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
+      // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
+      withheldLegend: 'ปุ่มเส้นประคือสิทธิ์ที่มีใน catalog แต่บทบาทนี้ไม่ได้รับ',
       noPermissionsGranted: 'ยังไม่ได้ให้สิทธิ์',
       nPermissions: '{{count}} สิทธิ์',
       nPermissionsPlural: '{{count}} สิทธิ์',
