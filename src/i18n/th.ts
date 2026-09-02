@@ -2703,8 +2703,9 @@ export const th: Translations = {
       descriptionPlaceholder: 'คำอธิบาย (ไม่บังคับ)',
       createRole: 'สร้างบทบาท',
       settings: 'การตั้งค่า',
-      noAccessOther: 'ไม่มีสิทธิ์อีก {{count}} ทรัพยากร',
-      noAccessOtherPlural: 'ไม่มีสิทธิ์อีก {{count}} ทรัพยากร',
+      // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
+      // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
+      withheldLegend: 'ปุ่มเส้นประคือสิทธิ์ที่มีใน catalog แต่บทบาทนี้ไม่ได้รับ',
       noPermissionsGranted: 'ยังไม่ได้ให้สิทธิ์',
       nPermissions: '{{count}} สิทธิ์',
       nPermissionsPlural: '{{count}} สิทธิ์',

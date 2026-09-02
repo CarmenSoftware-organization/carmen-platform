@@ -52,14 +52,25 @@ interface RoleIdentityHeroProps {
   isActive: boolean;
   permissions: string[];
   catalogSize: number;
+  /**
+   * The page's own, richer reading of the grant ("10 permissions · 10 of 20 resources · read
+   * only"). The hero and the permissions card used to state the reach separately, ~90px
+   * apart, in two different phrasings — and the hero's was strictly the poorer of the two,
+   * carrying no denominator. One sentence, stated once, at the top.
+   *
+   * Ignored when the role holds the entire catalog: the full-access warning outranks any
+   * breakdown, and it is the only line here that is styled as an alert.
+   */
+  reachText?: string;
   audit?: NormalizedAudit;
   actions?: React.ReactNode;
 }
 
 /** Read-first identity header for a platform role: who it is + how much it can do. */
-export function RoleIdentityHero({ name, isActive, permissions, catalogSize, audit, actions }: RoleIdentityHeroProps) {
+export function RoleIdentityHero({ name, isActive, permissions, catalogSize, reachText, audit, actions }: RoleIdentityHeroProps) {
   const { t } = useI18n();
-  const reach = permissionSummary(permissions, catalogSize, t);
+  const computed = permissionSummary(permissions, catalogSize, t);
+  const reach = computed.full || !reachText ? computed : { ...computed, text: reachText };
 
   return (
     <Card className="overflow-hidden p-0">

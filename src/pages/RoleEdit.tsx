@@ -61,6 +61,13 @@ const RoleEdit: React.FC = () => {
   // (the useUnsavedChanges diff target) purely so `normalizeAudit()` gets the real record.
   // `rawResponse` above can be the `{ data }` envelope, not the record itself.
   const [roleRecord, setRoleRecord] = useState<unknown>(null);
+  // `GET /platform/roles/:id` returns no audit block at all (id, doc_version, name,
+  // description, is_active, permissions — that is the whole payload), so this page knew
+  // strictly less about the role than the list that linked to it: the list shows created and
+  // updated, and clicking through made them vanish. The list endpoint is asked for this one
+  // role and its audit lifted off that row — best-effort, matched on `id` rather than on the
+  // position of a result, so a mismatch renders nothing instead of another role's history.
+  const [listAudit, setListAudit] = useState<unknown>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [docVersion, setDocVersion] = useState<number | undefined>(undefined);
 
@@ -137,6 +144,23 @@ const RoleEdit: React.FC = () => {
     }
   }, [id, t]);
 
+  const fetchAudit = useCallback(async (roleId: string) => {
+    try {
+      const res = await roleService.getAll({
+        page: 1,
+        perpage: 1,
+        advance: JSON.stringify({ where: { id: roleId } }),
+      });
+      const rows = res.data;
+      const row = Array.isArray(rows) ? rows.find((r) => r?.id === roleId) : undefined;
+      if (row) setListAudit(row);
+    } catch (err: unknown) {
+      // Nothing to tell the user: the page's own load succeeded, and the audit line simply
+      // stays empty — which is exactly how it read before this fetch existed.
+      devLog('Failed to load role audit from the list endpoint:', err);
+    }
+  }, []);
+
   const fetchCatalog = useCallback(() => {
     setCatalogLoading(true);
     setCatalogFailed(false);
@@ -169,6 +193,7 @@ const RoleEdit: React.FC = () => {
 
     if (!isNew) {
       fetchRole();
+      if (id) fetchAudit(id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -252,14 +277,24 @@ const RoleEdit: React.FC = () => {
   };
 
   // The read-only view of the grant, derived in catalog order so it speaks the same
-  // vocabulary as PermissionPicker: resource as the heading, bare action verbs beside
-  // it, `granted/total` as the ratio. Repeating the resource inside every key (the old
-  // `cluster` heading over a `cluster.read` badge) said the same word twice and hid the
-  // only thing a reader wants — how much of each resource this role actually holds.
+  // vocabulary as PermissionPicker: resource as the heading, bare action verbs beside it.
+  // Repeating the resource inside every key (the old `cluster` heading over a `cluster.read`
+  // badge) said the same word twice and hid the only thing a reader wants — how much of each
+  // resource this role actually holds.
+  //
+  // Every catalog row is kept, granted or not, with each action carrying its own `granted`
+  // flag. What a role *cannot* reach is half of an access review, and the granted-only
+  // rendering this replaced could only gesture at it: a `1/4` counter with no shape, and a
+  // 20-resource catalog reduced to a muted "no access to 10 other resources" footnote in the
+  // smallest type on the page. Showing the withheld actions greyed in place makes a role
+  // legible as a shape — and because the row order is the catalog's, the same shape is
+  // comparable between two roles.
   //
   // The catalog can fail or still be loading, and the read-only view has to survive that:
-  // without it we can still show which actions were granted (the keys carry that), just
-  // not which ones were withheld. `complete` says which of the two we are rendering.
+  // without it we can still show which actions were granted (the keys carry that), just not
+  // which ones were withheld. `complete` says which of the two we are rendering — the
+  // incomplete rendering must never grey anything, because it cannot tell a withheld action
+  // from one it simply never learned about.
   const grantView = useMemo(() => {
     const granted = new Set(formData.permissions);
 
@@ -269,19 +304,20 @@ const RoleEdit: React.FC = () => {
         byResource.set(p.resource, [...(byResource.get(p.resource) ?? []), p]);
       }
       const rows = Array.from(byResource.entries())
-        .map(([resource, items]) => ({
-          resource,
-          // Only what this role actually holds. `total` still comes from the full catalog
-          // group, so the n/m badge stays the one signal of how much of the resource is held.
-          actions: items
-            .filter((p) => granted.has(p.key))
-            .map((p) => ({ action: p.action, description: p.description }))
-            .sort((a, b) => actionRank(a.action) - actionRank(b.action)),
-          total: items.length,
-        }))
-        .filter((r) => r.actions.length > 0)
+        .map(([resource, items]) => {
+          const actions = items
+            .map((p) => ({ action: p.action, description: p.description, granted: granted.has(p.key) }))
+            .sort((a, b) => actionRank(a.action) - actionRank(b.action));
+          return {
+            resource,
+            actions,
+            total: items.length,
+            grantedCount: actions.filter((a) => a.granted).length,
+          };
+        })
         .sort((a, b) => resourceRank(a.resource) - resourceRank(b.resource));
-      return { rows, complete: true, totalResources: byResource.size, untouched: byResource.size - rows.length };
+      const held = rows.filter((r) => r.grantedCount > 0).length;
+      return { rows, complete: true, totalResources: byResource.size, heldResources: held, untouched: byResource.size - held };
     }
 
     const byResource = new Map<string, string[]>();
@@ -294,14 +330,23 @@ const RoleEdit: React.FC = () => {
     const rows = Array.from(byResource.entries())
       .sort(([a], [b]) => resourceRank(a) - resourceRank(b))
       .map(([resource, actions]) => ({
-      resource,
-      actions: actions
-        .map((action) => ({ action, description: undefined as string | undefined }))
-        .sort((a, b) => actionRank(a.action) - actionRank(b.action)),
-      total: actions.length,
+        resource,
+        actions: actions
+          .map((action) => ({ action, description: undefined as string | undefined, granted: true }))
+          .sort((a, b) => actionRank(a.action) - actionRank(b.action)),
+        total: actions.length,
+        grantedCount: actions.length,
       }));
-    return { rows, complete: false, totalResources: byResource.size, untouched: 0 };
+    return { rows, complete: false, totalResources: byResource.size, heldResources: rows.length, untouched: 0 };
   }, [formData.permissions, catalog]);
+
+  // The record's own audit wins whenever the endpoint grows one; until then the list row is
+  // the only source. Emptiness is the signal for falling back — `normalizeAudit` returns `{}`
+  // for a record with no audit in any of the three shapes it knows.
+  const roleAudit = useMemo(() => {
+    const own = normalizeAudit(roleRecord);
+    return own.created || own.updated ? own : normalizeAudit(listAudit);
+  }, [roleRecord, listAudit]);
 
   // One sentence saying what this role IS. 'read only' is claimed only when every granted
   // action really is `read` — never inferred from the role's name or description.
@@ -312,8 +357,9 @@ const RoleEdit: React.FC = () => {
       n === 1 ? t('pages.roles.nPermissions', { count: n }) : t('pages.roles.nPermissionsPlural', { count: n }),
     ];
     if (grantView.complete)
-      parts.push(t('pages.roles.resourceSpread', { shown: grantView.rows.length, total: grantView.totalResources }));
-    const verbs = new Set(grantView.rows.flatMap((r) => r.actions.map((a) => a.action)));
+      parts.push(t('pages.roles.resourceSpread', { shown: grantView.heldResources, total: grantView.totalResources }));
+    // `rows` now carries withheld actions too — only the granted ones describe the role.
+    const verbs = new Set(grantView.rows.flatMap((r) => r.actions.filter((a) => a.granted).map((a) => a.action)));
     // `verbs` เป็นค่า action ของ API (read/create/update/…) ไม่แปล — แปลเฉพาะวลี 'read only'
     if (verbs.size === 1 && verbs.has('read')) parts.push(t('pages.roles.readOnly'));
     else if (verbs.size > 1 && verbs.size <= 3) parts.push(Array.from(verbs).sort().join(' · '));
@@ -405,7 +451,8 @@ const RoleEdit: React.FC = () => {
           isActive={formData.is_active}
           permissions={formData.permissions}
           catalogSize={catalog.length}
-          audit={normalizeAudit(roleRecord)}
+          reachText={!isNew && !editing ? grantSummary : undefined}
+          audit={roleAudit}
           actions={
             !isNew && !editing && (
               <Can permission="platform_role.update">
@@ -429,9 +476,9 @@ const RoleEdit: React.FC = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>{t('pages.roles.permissionsHeading')}</CardTitle>
-                  <CardDescription>
-                    {editing ? t('pages.roles.selectPermissions') : grantSummary}
-                  </CardDescription>
+                  {/* Read mode states the reach once, in the hero. Repeating it here put the
+                      same sentence twice within one viewport. */}
+                  {editing && <CardDescription>{t('pages.roles.selectPermissions')}</CardDescription>}
                 </CardHeader>
                 <CardContent>
                   {editing ? (
@@ -462,38 +509,47 @@ const RoleEdit: React.FC = () => {
                     <div>
                       {/* One grid for the whole list: the tracks are the container's, so every
                           row shares them. A grid per row would size its own resource column and
-                          stagger the verbs across rows. */}
-                      <div className="grid grid-cols-[minmax(0,max-content)_1fr_auto] items-baseline gap-x-4 gap-y-2">
+                          stagger the verbs across rows.
+
+                          The two columns only exist from `sm` up. At 390px a name as long as
+                          `license_feature_group` leaves ~130px for the verbs, so a four-action
+                          resource wraps to four lines and the shape stops being readable —
+                          below `sm` each row stacks instead (`sm:contents` hands the pair back
+                          to the grid once there is room for it). */}
+                      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,max-content)_1fr] sm:items-baseline sm:gap-x-4 sm:gap-y-2">
                       {grantView.rows.map((row) => (
-                        <React.Fragment key={row.resource}>
-                          <span className="font-mono text-sm">{row.resource}</span>
+                        <div key={row.resource} className="mb-3 last:mb-0 sm:contents">
+                          {/* A resource this role cannot touch at all recedes with its verbs —
+                              still counted and still in place, but never competing with the
+                              resources the role actually reaches. */}
+                          <span className={`mb-1 block font-mono text-sm sm:mb-0${row.grantedCount === 0 ? ' text-muted-foreground/60' : ''}`}>
+                            {row.resource}
+                          </span>
                           <span className="flex flex-wrap gap-1.5">
                             {row.actions.map((a) => (
                               <Badge
                                 key={a.action}
                                 variant="secondary"
                                 title={a.description}
-                                className="border-transparent bg-primary/10 text-primary"
+                                className={
+                                  a.granted
+                                    ? 'border-transparent bg-primary/10 text-primary'
+                                    : 'border-border text-muted-foreground/60 border border-dashed bg-transparent font-normal'
+                                }
                               >
                                 {a.action}
                               </Badge>
                             ))}
                           </span>
-                          {grantView.complete ? (
-                            <Badge variant="secondary" className="text-xs tabular-nums">
-                              {row.actions.length}/{row.total}
-                            </Badge>
-                          ) : (
-                            <span />
-                          )}
-                        </React.Fragment>
+                        </div>
                       ))}
                       </div>
-                      {grantView.complete && grantView.untouched > 0 && (
-                        <p className="pt-3 text-xs text-muted-foreground">
-                          {grantView.untouched === 1
-                            ? t('pages.roles.noAccessOther', { count: grantView.untouched })
-                            : t('pages.roles.noAccessOtherPlural', { count: grantView.untouched })}
+                      {/* The legend earns its place only where a dashed chip actually appears —
+                          the incomplete rendering greys nothing, so it would explain a
+                          distinction that is not on screen. */}
+                      {grantView.complete && grantView.rows.some((r) => r.grantedCount < r.total) && (
+                        <p className="text-muted-foreground border-border mt-4 border-t pt-3 text-xs">
+                          {t('pages.roles.withheldLegend')}
                         </p>
                       )}
                     </div>
