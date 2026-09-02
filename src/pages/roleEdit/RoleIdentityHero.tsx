@@ -87,7 +87,7 @@ export function RoleIdentityHero({ name, isActive, permissions, catalogSize, rea
         </div>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || t('pages.roles.unnamedRole')}</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{name || t('pages.roles.unnamedRole')}</h1>
           {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>

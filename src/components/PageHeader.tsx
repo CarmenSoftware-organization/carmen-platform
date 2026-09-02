@@ -5,13 +5,17 @@ import type { NormalizedAudit } from '../utils/audit';
 import { useI18n } from '../hooks/useI18n';
 
 export function PageHeader({
-  title, subtitle, actions, backTo, beforeTitle, audit, now,
+  title, subtitle, actions, backTo, beforeTitle, afterTitle, audit, now,
 }: {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
   backTo?: string;
   beforeTitle?: React.ReactNode;
+  // ป้ายสถานะที่ยืนข้างชื่อเรื่อง — อยู่ **นอก** <h1> โดยตั้งใจ ซ้อนเข้าไปข้างในจะทำให้คำว่า
+  // "Active" กลายเป็นส่วนหนึ่งของ accessible name ของหัวข้อ กับดักเดียวกับที่ ClusterPlate
+  // และ ClusterDraftPlate เขียนเตือนไว้
+  afterTitle?: React.ReactNode;
   // แถบ "ใครสร้าง/แก้เมื่อไหร่" ใต้ subtitle — ส่งผลลัพธ์ของ normalizeAudit(record) เข้ามา
   audit?: NormalizedAudit;
   now?: Date;
@@ -31,7 +35,14 @@ export function PageHeader({
         )}
         {beforeTitle}
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
+          {afterTitle ? (
+            <div className="flex min-w-0 items-center gap-3">
+              <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
+              <div className="shrink-0">{afterTitle}</div>
+            </div>
+          ) : (
+            <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
+          )}
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           {audit && <AuditMeta variant="header" audit={audit} now={now} />}
         </div>
