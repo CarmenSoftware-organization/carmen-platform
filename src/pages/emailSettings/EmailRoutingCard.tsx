@@ -1,22 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Pencil, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import platformConfigService from '../../services/platformConfigService';
 import { EMAIL_FLOWS } from '../../constants/emailFlows';
 import { parseApiError } from '../../utils/errorParser';
 import { RoutingPanel } from './RoutingPanel';
+import type { RoutingEditContext } from './RoutingPanel';
+import { buildRoutingMap } from './routingLanes';
 import type { RoutingMap } from './routingLanes';
-import type { EmailRoutingConfig, EmailSetting } from '../../types';
+import type { EmailFlow, EmailRoutingConfig, EmailSetting } from '../../types';
 import { useI18n } from '../../hooks/useI18n';
 
 interface EmailRoutingCardProps {
@@ -27,20 +23,29 @@ interface EmailRoutingCardProps {
   loadError: string;
   canManage: boolean;
   isEditing: boolean;
+  /** false เมื่อหน้ามี dialog ของตัวเองทับอยู่ — ดูเหตุผลตรงที่เรียก useGlobalShortcuts */
+  shortcutsEnabled?: boolean;
   onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: (next: EmailRoutingConfig) => void | Promise<void>;
 }
 
-/** ค่าที่ใช้ในดรอปดาวน์แทน "ไม่ระบุ" — Select ของ Radix ใช้ค่าว่างเป็น value ไม่ได้ */
-const USE_DEFAULT = '__default__';
+/**
+ * ลายนิ้วมือของ mapping สำหรับเทียบว่ามีอะไรเปลี่ยนจริงไหม
+ *
+ * เทียบ `JSON.stringify` ของ object ตรง ๆ ไม่ได้ เพราะ draft สร้างคีย์ด้วยการ `delete` และเพิ่ม
+ * กลับ ลำดับคีย์จึงต่างจาก snapshot ที่ backend ส่งมา ทั้งที่ค่าเท่ากันทุกตัว — dirty check ที่
+ * ผิดพลาดแบบนี้จะเด้ง "ทิ้งการแก้ไข?" ใส่ผู้ดูแลที่ไม่ได้แก้อะไรเลย แล้วเขาจะเลิกอ่านกล่องนั้น
+ */
+const fingerprint = (r: EmailRoutingConfig): string =>
+  JSON.stringify([r.default ?? '', ...EMAIL_FLOWS.map((f) => r[f.value] ?? '')]);
 
 /**
- * แผงสายอีเมล — โหมดอ่านคือผัง `RoutingPanel` โหมดแก้คือดรอปดาวน์รายเส้นทาง
+ * แผงสายอีเมล — ผังเดียวกันทั้งโหมดอ่านและโหมดแก้
  *
- * สองโหมดตอบคนละคำถามโดยตั้งใจ ตอนอ่านผู้ดูแลถามว่า "ตอนนี้อะไรออกจากปากไหน" ซึ่งอ่านจากฝั่ง
- * โปรไฟล์ได้ตรงกว่า ตอนแก้ผู้ดูแลถามว่า "เส้นทางนี้ควรไปที่ไหน" ซึ่งต้องเรียงตามเส้นทาง เดิมหน้า
- * นี้ใช้รูปเดียวกันทั้งสองโหมด ผลคือโหมดอ่านกลายเป็นฟอร์มที่กดไม่ได้ 6 ช่อง
+ * เดิมโหมดแก้สลับผังทั้งใบเป็นดรอปดาวน์ 6 ช่อง ซึ่งคือรูปที่ผังนี้ตั้งใจแทนที่ตั้งแต่ต้น ผลคือ
+ * ผู้ดูแลกดแก้เพราะเห็นคำเตือนบนผัง แล้วคำเตือนนั้นหายไปพร้อมกับผังในจังหวะเดียวกัน ตอนนี้
+ * โหมดแก้เปลี่ยนแค่สิ่งที่จับต้องได้: chip กดเปลี่ยนปลายทางได้ หัวเลนมีปุ่มตั้งค่าเริ่มต้น
  *
  * mapping ที่บันทึกไว้มาจากหน้าแม่ (`useEmailRouting`) ไม่ใช่ยิงเองที่นี่ เพราะการ์ดโปรไฟล์
  * ต้องอ่านชุดเดียวกัน — ดูเหตุผลเต็มในหัวไฟล์ของ hook
@@ -56,33 +61,59 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
   loadError,
   canManage,
   isEditing,
+  shortcutsEnabled = true,
   onRequestEdit,
   onCancelEdit,
   onSaved,
 }) => {
   const { t } = useI18n();
-  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [draft, setDraft] = useState<EmailRoutingConfig>({ default: '' });
+  const [baseline, setBaseline] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  const liveProfiles = profiles.filter((p) => p.is_active !== false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   // ตั้ง draft ใหม่ทุกครั้งที่เข้าโหมดแก้ ไม่ใช่ครั้งเดียวตอนโหลดเสร็จ — ระหว่างที่การ์ดยังคาอยู่
   // หน้าอาจ refetch mapping จากการบันทึกที่อื่น ถ้าไม่ reseed ผู้ดูแลจะแก้ทับค่าที่เห็นไม่ตรงกับ
-  // ผังด้านบน guard `isEditing` กันไม่ให้ effect ไปล้างสิ่งที่กำลังพิมพ์อยู่กลางคัน
+  // ผังด้านบน guard `isEditing` กันไม่ให้ effect ไปล้างสิ่งที่กำลังแก้อยู่กลางคัน
   useEffect(() => {
     if (!isEditing || !routing) return;
-    setDraft({
-      default: routing.default ?? '',
-      ...Object.fromEntries(
-        EMAIL_FLOWS.map((f) => [f.value, routing[f.value] ?? USE_DEFAULT]),
-      ),
-    });
+    const seed: EmailRoutingConfig = { ...routing, default: routing.default ?? '' };
+    setDraft(seed);
+    setBaseline(fingerprint(seed));
     setError('');
     // routing ตั้งใจไม่อยู่ใน deps: ต้อง seed จาก snapshot ตอนเข้าโหมดแก้เท่านั้น ถ้าใส่เข้าไป
     // การบันทึกของตัวเองจะย้อนกลับมาล้าง draft ระหว่างที่ยังเปิดฟอร์มค้างอยู่
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
+
+  // ผังของ "สิ่งที่กำลังจะบันทึก" — buildRoutingMap รับ mapping รูปเดียวกับที่ backend เก็บอยู่แล้ว
+  // ป้อน draft เข้าไปจึงได้ผังของอนาคตฟรี ๆ โดยไม่ต้องมีตรรกะสำรองสำหรับโหมดแก้
+  const draftMap = useMemo(() => buildRoutingMap(draft, profiles), [draft, profiles]);
+
+  const moveFlow = (flow: EmailFlow, profileId: string | null) => {
+    setDraft((prev) => {
+      const next = { ...prev };
+      // null = ตกทอด: ลบคีย์ทิ้งไปเลย ไม่ใช่เขียน id ของ default ลงไป เส้นทางจะได้ตามค่าเริ่มต้น
+      // ไปเรื่อย ๆ แม้ผู้ดูแลเปลี่ยน default ทีหลัง ซึ่งเป็นพฤติกรรมที่ผังสื่อด้วย chip เส้นประ
+      if (profileId === null) delete next[flow];
+      else next[flow] = profileId;
+      return next;
+    });
+  };
+
+  const setDefault = (profileId: string) => {
+    setDraft((prev) => ({ ...prev, default: profileId }));
+  };
+
+  const editContext: RoutingEditContext = {
+    profiles,
+    defaultProfileName: profiles.find((p) => p.id === draft.default)?.name ?? '',
+    onMoveFlow: moveFlow,
+    onSetDefault: setDefault,
+  };
+
+  const dirty = isEditing && fingerprint(draft) !== baseline;
 
   const handleSave = async () => {
     if (!draft.default) {
@@ -92,12 +123,8 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
     try {
       setSaving(true);
       setError('');
-      const payload: EmailRoutingConfig = { default: draft.default };
-      for (const flow of EMAIL_FLOWS) {
-        const chosen = draft[flow.value];
-        // ไม่บันทึกคีย์ของเส้นทางที่เลือก "ใช้ค่าเริ่มต้น" — ปล่อยให้ backend ตกไปใช้ default เอง
-        if (chosen && chosen !== USE_DEFAULT) payload[flow.value] = chosen;
-      }
+      // draft คือ payload อยู่แล้ว: เส้นทางที่ตกทอดถูก delete ออกไปตั้งแต่ตอนกดเลือกในเมนู
+      const payload: EmailRoutingConfig = { ...draft };
       await platformConfigService.update('email_routing', payload);
       toast.success(t('pages.emailSettings.routingSavedToast'));
       await onSaved(payload);
@@ -110,6 +137,26 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
       setSaving(false);
     }
   };
+
+  const handleCancel = () => {
+    // ทิ้งของที่แก้ไว้ต้องถามก่อนเสมอ — หน้านี้ถามอยู่แล้วตอนสลับไปแก้การ์ดอื่น การกด Cancel
+    // แล้วหายเงียบจึงเป็นความไม่สม่ำเสมอที่ผู้ดูแลเรียนรู้ไม่ได้ว่าเมื่อไหร่งานจะปลอดภัย
+    if (dirty) {
+      setConfirmCancel(true);
+      return;
+    }
+    onCancelEdit();
+  };
+
+  // Ctrl/⌘+S และ Escape ผูกที่การ์ดที่กำลังแก้ ไม่ใช่ที่หน้า — หน้ารับประกันว่ามีการ์ดเดียว
+  // ที่ isEditing ได้ในเวลาหนึ่ง ๆ ปิดคีย์ลัดเมื่อมี dialog ทับอยู่ (ทั้ง confirm ของหน้าและของ
+  // การ์ดใบนี้เอง) เพราะ useGlobalShortcuts ฟังที่ window — Escape จะทะลุไปสั่ง cancel พร้อมกับ
+  // ปิด dialog ทำลาย draft ที่ dialog นั้นมีไว้ปกป้องพอดี
+  useGlobalShortcuts(
+    isEditing && shortcutsEnabled && !confirmCancel
+      ? { onSave: () => void handleSave(), onCancel: handleCancel }
+      : {},
+  );
 
   return (
     <Card role="region" aria-label={t('pages.emailSettings.routingTitle')}>
@@ -134,57 +181,12 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
           <p className="text-destructive text-sm">{loadError}</p>
         ) : isEditing ? (
           <>
-            <div className="space-y-2">
-              <Label htmlFor="routing-default">{t('common.label.default')}</Label>
-              <Select
-                value={draft.default}
-                onValueChange={(v) => setDraft((prev) => ({ ...prev, default: v }))}
-              >
-                <SelectTrigger id="routing-default">
-                  <SelectValue placeholder={t('pages.emailSettings.chooseProfile')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {liveProfiles.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-muted-foreground text-xs">
-                {t('pages.emailSettings.defaultAppliesNote')}
-              </p>
-            </div>
-
-            {EMAIL_FLOWS.map((flow) => (
-              <div key={flow.value} className="space-y-2">
-                <Label htmlFor={`routing-${flow.value}`}>{flow.label}</Label>
-                <Select
-                  value={draft[flow.value] ?? USE_DEFAULT}
-                  onValueChange={(v) => setDraft((prev) => ({ ...prev, [flow.value]: v }))}
-                >
-                  <SelectTrigger id={`routing-${flow.value}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={USE_DEFAULT}>
-                      {t('pages.emailSettings.useDefault')}
-                    </SelectItem>
-                    {liveProfiles.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-muted-foreground text-xs">{t(flow.descriptionKey)}</p>
-              </div>
-            ))}
+            <RoutingPanel map={draftMap} edit={editContext} />
 
             {error && <p className="text-destructive text-xs">{error}</p>}
 
             <div className="flex gap-3 pt-2">
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} disabled={saving || !dirty}>
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -192,7 +194,7 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
                 )}
                 {saving ? t('common.busy.saving') : t('common.action.saveChanges')}
               </Button>
-              <Button variant="outline" onClick={onCancelEdit} disabled={saving}>
+              <Button variant="outline" onClick={handleCancel} disabled={saving}>
                 <X className="mr-2 h-4 w-4" />
                 {t('common.cancel')}
               </Button>
@@ -202,6 +204,19 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
           <RoutingPanel map={map} />
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title={t('pages.emailSettings.discardTitle')}
+        description={t('pages.emailSettings.discardRoutingDescription')}
+        confirmText={t('pages.emailSettings.discardAction')}
+        confirmVariant="destructive"
+        onConfirm={() => {
+          setConfirmCancel(false);
+          onCancelEdit();
+        }}
+      />
     </Card>
   );
 };
