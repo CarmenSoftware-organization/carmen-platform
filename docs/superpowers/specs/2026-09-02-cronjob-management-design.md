@@ -5,18 +5,30 @@
 
 ---
 
-## Deploy order — four steps, must not be reordered
+## Deploy order — five steps, must not be reordered
 
 ```
 1. micro-cronjobs      — migration "docVersion" + API accepts created_by_id / updated_by_id / doc_version
 2. seed permission     — cronjob.read / cronjob.manage into the platform permission catalog
 3. backend-gateway     — platform_cronjobs module
-4. carmen-platform     — the new pages
+4. grant api names     — the nine cronjob.* entries to the carmen-platform application
+5. carmen-platform     — the new pages
 ```
 
 Step 2 cannot precede step 1's deploy but **must** precede step 3: `PlatformPermissionGuard` denies
 everyone when the permission row is missing, so a gateway that ships first is a gateway nobody can
-call. Step 4 before step 3 gives a page that 404s end to end.
+call. Step 5 before step 3 gives a page that 404s end to end.
+
+**Step 4 was missing from the first version of this document, and it fails closed and silently.**
+Every route carries an `AppIdGuard` naming one of nine api names (`cronjob.findAll`,
+`cronjob.status`, `cronjob.findOne`, `cronjob.create`, `cronjob.update`, `cronjob.delete`,
+`cronjob.start`, `cronjob.stop`, `cronjob.execute`). Regenerating `app-api-catalog.generated.ts`
+makes those names *selectable* — it does not *grant* them. `AppIdGuard` consults the application's
+own allowlist, so on any environment where the `carmen-platform` application row does not carry
+`allow_all = true`, every request returns 401 "This application id (x-app-id) is not found or not
+allowed to access this api" and the whole page is dead. DEV has `allow_all = true`; **UAT uses a
+different application id and does not**, so this step is the one that decides whether the feature
+works there.
 
 **Warning:** pushing a branch that carries a migration applies it on DEV within ~2 minutes without a
 merge. This has caught the team twice. Do not push step 1's branch until its content is final.
@@ -341,6 +353,23 @@ gates in the gateway (including `app-api-catalog`, the one most often forgotten)
 6. Check the list and edit pages at 390px using the iframe viewport probe
 
 ---
+
+## Open decision — the `cleanup` job type
+
+`micro-cronjobs/internal/executor/cleanup.go` is a stub: it logs a line, returns `nil`, and carries
+a `// TODO: implement cleanup logic per type`. Nothing anywhere enumerates what its `action` and
+`type` values may contain.
+
+So the `cleanup` form is a typed form over an undefined vocabulary attached to a worker that does
+nothing — and `cleanup` is the **default** `job_type` on the new-job form, which makes it the one a
+distracted operator is most likely to save. Such a job reports success on every tick, forever.
+
+Two ways out, and the choice is the reader's, not this document's:
+- implement the Go executor, and define the `action` / `type` vocabulary, or
+- drop `cleanup` from the job-type list until it exists, and change the form's default
+
+Until one of those happens, the spec's claim of "real typed forms for all six `job_type`s" holds for
+five.
 
 ## Known limitations
 
