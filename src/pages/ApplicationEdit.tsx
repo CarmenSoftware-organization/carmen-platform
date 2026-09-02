@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -28,7 +28,9 @@ import { formatDevice } from '../utils/device';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
-import { groupApiNames, actionOf } from '../utils/apiCatalog';
+import { groupApiNames, actionOf, isAuthorityAction, countAuthority } from '../utils/apiCatalog';
+import { reachOf } from '../utils/apiReach';
+import { cn } from '../lib/utils';
 import type { ApiCatalogGroup, DeviceType } from '../types';
 import { DEVICE_OPTIONS } from '../types';
 import { HIT_SLOP_44 } from '../lib/hitSlop';
@@ -80,6 +82,34 @@ const ApplicationEdit: React.FC = () => {
   const formRef = useRef<HTMLFormElement>(null);
 
   const selectClassName = "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
+
+  // The catalog is the denominator for everything this page says about reach. It is fetched on
+  // mount (not on entering edit mode) because the read view needs it just as much: `207` means
+  // nothing without the `883` it is drawn from — the defect the list fixed in #254.
+  const catalogExtent = useMemo(() => {
+    if (catalogGroups.length === 0) return undefined;
+    const all = catalogGroups.flatMap((g) => g.api_names);
+    return { size: all.length, modules: catalogGroups.length, authority: countAuthority(all) };
+  }, [catalogGroups]);
+
+  /** Catalog size per module — lets a granted module say 4/11 rather than a bare 4. */
+  const catalogSizeByModule = useMemo(
+    () => new Map(catalogGroups.map((g) => [g.module, g.api_names.length])),
+    [catalogGroups],
+  );
+
+  /** Every api_name the catalog currently defines — the set a grant is measured against. */
+  const catalogNames = useMemo(
+    () => new Set(catalogGroups.flatMap((g) => g.api_names)),
+    [catalogGroups],
+  );
+
+  const grantedReach = reachOf({
+    allowAll: formData.allow_all,
+    apiNames: formData.api_names,
+    catalogSize: catalogExtent?.size ?? 0,
+  });
+  const grantedAuthority = countAuthority(formData.api_names);
 
   const hasChanges = editing && JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
@@ -380,6 +410,7 @@ const ApplicationEdit: React.FC = () => {
               allowAll={formData.allow_all}
               apiNames={formData.api_names}
               audit={normalizeAudit(appRecord)}
+              catalog={catalogExtent}
               actions={
                 <>
                   {/* ปุ่มอ่านประวัติแสดงเสมอ ไม่ผูกกับโหมดแก้ไข — application ไม่สังกัด cluster
@@ -440,9 +471,25 @@ const ApplicationEdit: React.FC = () => {
                   )}
 
                   {formData.allow_all ? (
-                    <div className="text-warning bg-warning/10 flex items-start gap-2 rounded-md px-3 py-2.5 text-sm">
-                      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                      <span>{t('pages.applications.allowAllWarning')}</span>
+                    <div className="space-y-2">
+                      <div className="text-warning bg-warning/10 flex items-start gap-2 rounded-md px-3 py-2.5 text-sm">
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                        <span>{t('pages.applications.allowAllWarning')}</span>
+                      </div>
+                      {/* An app on allow_all keeps whatever api_names it was granted before, and the
+                          record still carries them. Saying so is the difference between "turning
+                          this off drops the app to nothing" and "turning this off leaves it these
+                          207" — the whole question anyone asking to narrow a GOD-mode app has. */}
+                      {formData.api_names.length > 0 && (
+                        <p className="text-muted-foreground text-xs">
+                          {t(
+                            formData.api_names.length === 1
+                              ? 'pages.applications.dormantGrants'
+                              : 'pages.applications.dormantGrantsPlural',
+                            { count: formData.api_names.length },
+                          )}
+                        </p>
+                      )}
                     </div>
                   ) : editing ? (
                     <div className="space-y-2 border-t pt-4">
@@ -595,14 +642,23 @@ const ApplicationEdit: React.FC = () => {
                                           <div className="flex flex-wrap gap-1.5 px-2 pb-2 pl-7">
                                             {g.api_names.map((api) => {
                                               const selected = formData.api_names.includes(api);
+                                              // Only authority verbs are tinted. Tinting every write
+                                              // would colour roughly half the catalog, at which point
+                                              // the tint marks nothing — the exception has to stay an
+                                              // exception to be readable at chip size.
+                                              const authority = isAuthorityAction(api);
                                               return (
                                                 <Button
                                                   key={api}
                                                   type="button"
                                                   variant={selected ? 'default' : 'outline'}
                                                   size="sm"
-                                                  className="h-7 text-xs gap-1"
-                                                  title={api}
+                                                  className={cn(
+                                                    'h-7 gap-1 text-xs',
+                                                    authority && !selected && 'border-warning/50 text-warning',
+                                                    authority && selected && 'bg-warning text-warning-foreground hover:bg-warning/90',
+                                                  )}
+                                                  title={authority ? t('pages.applications.authorityTitle', { api }) : api}
                                                   onClick={() => toggleApiName(api)}
                                                   aria-pressed={selected}
                                                 >
@@ -620,28 +676,128 @@ const ApplicationEdit: React.FC = () => {
                               </>
                             );
                           })()}
-                          <p className="text-xs text-muted-foreground">{formData.api_names.length} selected</p>
+                          {/* The number this whole panel exists to move, on the same ruler the
+                              header and the list use. It was a grey `207 selected` — the smallest
+                              text on the page, with no denominator to read it against. */}
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2">
+                            <div
+                              className="flex min-w-0 flex-1 items-center gap-2"
+                              role="status"
+                              aria-live="polite"
+                              aria-label={
+                                grantedReach.anchored
+                                  ? t('pages.applications.selectedOfCatalog', { count: grantedReach.granted, total: catalogExtent!.size })
+                                  : t('pages.applications.selectedCount', { count: grantedReach.granted })
+                              }
+                            >
+                              {grantedReach.anchored && (
+                                <div className="bg-muted h-1.5 min-w-0 flex-1 overflow-hidden rounded-full">
+                                  <span
+                                    className={cn('block h-full rounded-full', grantedReach.full ? 'bg-warning' : 'bg-primary')}
+                                    style={{ width: `${grantedReach.percent}%` }}
+                                  />
+                                </div>
+                              )}
+                              <span className="shrink-0 font-mono text-sm tabular-nums">
+                                <span className={cn('font-semibold', grantedReach.full && 'text-warning')}>{grantedReach.granted}</span>
+                                {grantedReach.anchored && <span className="text-muted-foreground">/{catalogExtent!.size}</span>}
+                              </span>
+                            </div>
+                            {grantedAuthority > 0 && (
+                              <span className="text-warning shrink-0 text-xs font-medium">
+                                {t('pages.applications.authorityCount', { count: grantedAuthority })}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
                   ) : formData.api_names.length === 0 ? (
                     <p className="text-muted-foreground text-sm">{t('pages.applications.noEndpointsGranted')}</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {groupApiNames(formData.api_names).map((g) => (
-                        <div key={g.module} className="space-y-1.5">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            {g.module} <span className="text-muted-foreground">({g.api_names.length})</span>
+                  ) : (() => {
+                    const groups = groupApiNames(formData.api_names);
+                    const reached = new Set(groups.map((g) => g.module));
+                    // #252 established that a permission surface has to name what the holder
+                    // cannot reach, not only what it can. Here that is the catalog modules this
+                    // app never touches — invisible until now, because the read view only ever
+                    // drew the modules that happened to be granted.
+                    const untouched = catalogGroups.filter((g) => !reached.has(g.module)).map((g) => g.module);
+                    return (
+                      <div className="space-y-3">
+                        {grantedAuthority > 0 && (
+                          <p className="text-warning flex items-center gap-1.5 text-xs font-medium">
+                            <AlertTriangle className="size-3.5 shrink-0" />
+                            {t('pages.applications.authorityLegend', { count: grantedAuthority })}
                           </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {g.api_names.map((api) => (
-                              <Badge key={api} variant="outline" className="text-xs" title={api}>{actionOf(api)}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        )}
+                        {groups.map((g) => {
+                          const total = catalogSizeByModule.get(g.module);
+                          // Real data carries grants the catalog no longer defines (a renamed
+                          // module, a retired endpoint). Counting those into the numerator would
+                          // print `7/6` — a fraction that reads as a rendering bug and quietly
+                          // destroys the denominator's meaning. They are counted apart instead,
+                          // which is also the only place on the platform that says they exist.
+                          const stale = total === undefined
+                            ? 0
+                            : g.api_names.filter((api) => !catalogNames.has(api)).length;
+                          const known = g.api_names.length - stale;
+                          // Authority actions lead each module: at 35 modules nobody reads to the
+                          // end of a row, and the far end is where `delete` used to sit.
+                          const ordered = [...g.api_names].sort((a, b) => {
+                            const d = Number(isAuthorityAction(b)) - Number(isAuthorityAction(a));
+                            return d !== 0 ? d : a.localeCompare(b);
+                          });
+                          return (
+                            <div key={g.module} className="space-y-1.5">
+                              <p className="text-muted-foreground text-xs font-medium">
+                                {g.module}{' '}
+                                <span className="font-mono tabular-nums">
+                                  {total === undefined ? g.api_names.length : known}
+                                  {total !== undefined && <span className="text-muted-foreground/70">/{total}</span>}
+                                </span>
+                                {stale > 0 && (
+                                  <span
+                                    className="text-warning font-mono"
+                                    title={t('pages.applications.staleGrantsTitle', { count: stale })}
+                                  >
+                                    {' '}+{stale}
+                                  </span>
+                                )}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {ordered.map((api) => {
+                                  const authority = isAuthorityAction(api);
+                                  return (
+                                    <Badge
+                                      key={api}
+                                      variant="outline"
+                                      className={cn('text-xs', authority && 'border-warning/50 text-warning')}
+                                      title={authority ? t('pages.applications.authorityTitle', { api }) : api}
+                                    >
+                                      {actionOf(api)}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {untouched.length > 0 && (
+                          <p
+                            className="text-muted-foreground border-t pt-3 text-xs"
+                            title={t('pages.applications.untouchedModulesTitle', { modules: untouched.join(', ') })}
+                          >
+                            {t(
+                              untouched.length === 1
+                                ? 'pages.applications.untouchedModules'
+                                : 'pages.applications.untouchedModulesPlural',
+                              { count: untouched.length },
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
@@ -707,7 +863,11 @@ const ApplicationEdit: React.FC = () => {
                         ))}
                       </select>
                     ) : (
-                      <div><Badge variant="secondary">{formatDevice(formData.device)}</Badge></div>
+                      /* The hero already carries device and status as badges. Repeating them as
+                         badges 60px away made the same fact look like two facts; the rail keeps
+                         the field (so entering edit mode changes controls, not the document —
+                         #253) but states it quietly. */
+                      <ReadOnlyField value={formatDevice(formData.device)} />
                     )}
                   </div>
 
@@ -726,11 +886,9 @@ const ApplicationEdit: React.FC = () => {
                         <span className="text-sm">{t('common.status.active')}</span>
                       </label>
                     ) : (
-                      <div>
-                        <Badge variant={formData.is_active ? 'success' : 'secondary'}>
-                          {formData.is_active ? t('common.status.active') : t('common.status.inactive')}
-                        </Badge>
-                      </div>
+                      <ReadOnlyField
+                        value={formData.is_active ? t('common.status.active') : t('common.status.inactive')}
+                      />
                     )}
                   </div>
                 </CardContent>
