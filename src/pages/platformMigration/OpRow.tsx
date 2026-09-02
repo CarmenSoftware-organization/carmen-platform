@@ -10,6 +10,8 @@ interface OpRowProps {
   desc: string;
   /** ปิดปุ่มเพราะมี op อื่นวิ่งอยู่ หรือหน้าอยู่ในสถานะอ่านสถานะไม่ได้ */
   disabled: boolean;
+  /** กดแล้วจะมีกล่องถามค่าก่อน ไม่ใช่เริ่มรันทันที — ปุ่มต้องบอกด้วยจุดไข่ปลา */
+  needsInput?: boolean;
   onRun: () => void;
 }
 
@@ -19,7 +21,7 @@ interface OpRowProps {
  * `missing` ปิดปุ่มตั้งแต่แรกแทนที่จะปล่อยให้กดแล้วได้ 422 — ธงนี้มาจาก backend ที่ตรวจไฟล์จริง
  * ใน image ไม่ใช่การเดาจากฝั่งหน้าเว็บ
  */
-export function OpRow({ op, label, desc, disabled, onRun }: OpRowProps) {
+export function OpRow({ op, label, desc, disabled, needsInput, onRun }: OpRowProps) {
   const { t } = useI18n();
   return (
     <div className="flex flex-col gap-2 border-b py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -46,7 +48,7 @@ export function OpRow({ op, label, desc, disabled, onRun }: OpRowProps) {
         onClick={onRun}
       >
         <Play className="mr-2 h-4 w-4" />
-        {t('pages.platformMigration.opRun')}
+        {needsInput ? t('pages.platformMigration.opRunWithInput') : t('pages.platformMigration.opRun')}
       </Button>
     </div>
   );

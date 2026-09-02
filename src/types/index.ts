@@ -193,6 +193,19 @@ export interface BusinessUnit {
  * `missing` เป็นจริงเมื่อไฟล์สคริปต์ไม่มีใน image ที่ deploy อยู่ — ปุ่มต้องถูกปิดตั้งแต่แรก
  * ไม่ใช่ปล่อยให้กดแล้วค่อยพัง
  */
+/**
+ * ค่าที่ op หนึ่งตัวต้องการก่อนรัน ประกาศมาจากทะเบียนฝั่ง backend
+ *
+ * หน้าเว็บอ่านฟิลด์นี้เพื่อรู้ว่าต้องถามอะไรก่อนกดรัน แทนที่จะฝัง id ของ op ไว้ในโค้ดหน้าเว็บ —
+ * ถ้าวันหนึ่ง op ตัวอื่นต้องการ BU ด้วย มันจะได้ dialog เองโดยไม่ต้องแก้ที่นี่
+ * The page reads this instead of hardcoding op ids, so a new per-BU op gets the dialog free.
+ */
+export interface PlatformSeedOpParam {
+  name: string;
+  type: 'uuid';
+  required: boolean;
+}
+
 export interface PlatformSeedOp {
   id: string;
   group: 'seed' | 'check';
@@ -200,6 +213,8 @@ export interface PlatformSeedOp {
   writes: boolean;
   readonly: boolean;
   missing: boolean;
+  /** ไม่มีหรือว่าง = กดรันได้ทันที · มี = ต้องถามค่าก่อน */
+  params?: PlatformSeedOpParam[];
 }
 
 /** เหตุการณ์ที่สตรีมกลับระหว่างรัน op หนึ่งตัว — รูปเดียวกับ SeedRunEvent ฝั่ง micro-business */
