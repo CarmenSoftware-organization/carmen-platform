@@ -122,7 +122,9 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 **Spacing:** page wrapper `space-y-4 sm:space-y-6` · card content `space-y-4` · field `space-y-2` · button gaps `gap-3`.
 
-**Type:** page title `text-2xl sm:text-3xl font-bold tracking-tight` · subtitle `text-sm sm:text-base text-muted-foreground` · body `text-sm` · meta `text-xs` or `text-[11px]` · code `text-[10px] sm:text-xs font-mono`.
+**Type:** page title and subtitle come from **`<PageHeader>`** (`text-xl font-semibold tracking-tight` / `text-sm text-muted-foreground`) — never hand-roll an `<h1>` for a page title; this file used to document `text-2xl sm:text-3xl font-bold`, which contradicted the component 50 pages actually use. · body `text-sm` · meta `text-xs` or `text-[11px]` · code `text-[10px] sm:text-xs font-mono`.
+
+**Page furniture:** the way out of an Edit page is `<PageHeader backTo=…>` when the page draws a `PageHeader`, and **`<BackLink to label>`** when it draws its own hero instead (`UserIdentityHero`, `ClusterPlate`, `NewsMasthead`, …) — never both, and never a `<Button>Back</Button>` in the actions row. Save/Cancel belong in the `.unsaved-bar` at the bottom, not in `PageHeader actions`. Page-level section nav is **`<TabStrip>`** (underlined); the pill `ui/tabs` primitive is for mode switches *inside* a form.
 
 **Icon convention:** `mr-2 h-4 w-4` inside buttons with text; `h-5 w-5` for standalone icon buttons (`size="icon"`).
 

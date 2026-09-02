@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useI18n } from '../hooks/useI18n';
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
 import userService from "../services/userService";
@@ -16,7 +16,8 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { DevDebugSheet } from "../components/ui/dev-debug-sheet";
-import { Save, Pencil, X, Plus, Loader2, KeyRound, ArrowLeft, SearchX } from "lucide-react";
+import { Save, Pencil, X, Plus, Loader2, KeyRound, SearchX } from "lucide-react";
+import { BackLink } from '../components/BackLink';
 import { EmptyState } from "../components/EmptyState";
 import { UserIdentityHero } from "./userEdit/UserIdentityHero";
 import { UserAccessTree } from "./userEdit/UserAccessTree";
@@ -549,13 +550,7 @@ const UserEdit: React.FC = () => {
           <PageHeader backTo="/users" title={t('common.action.addUser')} subtitle={t('pages.users.createSubtitle')} />
         ) : (
           <>
-            <Link
-              to="/users"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t('breadcrumb.users')}
-            </Link>
+            <BackLink to="/users" label={t('breadcrumb.users')} />
 
             <UserIdentityHero
               name={heroName}

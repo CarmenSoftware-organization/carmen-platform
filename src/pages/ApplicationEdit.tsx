@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
@@ -18,7 +18,8 @@ import { ChipInput } from '../components/ui/chip-input';
 import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, ArrowLeft, AlertTriangle, SearchX } from 'lucide-react';
+import { Save, Pencil, X, Loader2, Search, ChevronRight, ChevronDown, AlertTriangle, SearchX } from 'lucide-react';
+import { BackLink } from '../components/BackLink';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
@@ -394,13 +395,7 @@ const ApplicationEdit: React.FC = () => {
           />
         ) : (
           <>
-            <Link
-              to="/applications"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t('breadcrumb.applications')}
-            </Link>
+            <BackLink to="/applications" label={t('breadcrumb.applications')} />
 
             <ApplicationIdentityHero
               name={formData.name}

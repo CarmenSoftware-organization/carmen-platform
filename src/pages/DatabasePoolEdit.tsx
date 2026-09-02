@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import databasePoolService from '../services/databasePoolService';
@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmptyState } from '../components/EmptyState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, ArrowLeft, SearchX, Eye, EyeOff, Copy } from 'lucide-react';
+import { Save, Pencil, X, Loader2, SearchX, Eye, EyeOff, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
@@ -389,15 +389,8 @@ const DatabasePoolEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        <Link
-          to="/platform/database-pools"
-          className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('pages.databasePools.title')}
-        </Link>
-
         <PageHeader
+          backTo="/platform/database-pools"
           title={headerTitle}
           subtitle={isNew ? t('pages.databasePools.newSubtitle') : undefined}
           audit={normalizeAudit(poolRecord)}

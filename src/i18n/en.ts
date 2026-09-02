@@ -2228,8 +2228,8 @@ export const en = {
       failedToLoadMembers: 'Failed to load members',
       failedToLoadInvitations: 'Failed to load invitations',
       usersPageSubtitle: 'Manage members and pending invitations for this cluster',
-      membersTabLabel: 'Members ({{count}})',
-      invitationsTabLabel: 'Invitations ({{count}})',
+      membersTab: 'Members',
+      invitationsTab: 'Invitations',
       searchMembersPlaceholder: 'Search members...',
 
       // --- Task 3: ClusterPeopleCard.tsx ---

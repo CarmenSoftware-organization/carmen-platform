@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart3, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import Can from '../components/Can';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -121,18 +122,16 @@ const UsageAnalytics: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('nav.usageAnalytics')}</h1>
-            <p className="text-sm text-muted-foreground sm:text-base">
-              {t('pages.usageAnalytics.subtitle')}
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleExport} disabled={loading}>
-            <Download className="mr-2 h-4 w-4" />
-            {t('common.action.exportCsv')}
-          </Button>
-        </div>
+        <PageHeader
+          title={t('nav.usageAnalytics')}
+          subtitle={t('pages.usageAnalytics.subtitle')}
+          actions={
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+              <Download className="mr-2 h-4 w-4" />
+              {t('common.action.exportCsv')}
+            </Button>
+          }
+        />
 
         <Card>
           <CardContent className="flex flex-wrap items-end gap-3 p-4">

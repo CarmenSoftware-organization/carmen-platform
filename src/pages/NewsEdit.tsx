@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import newsService from '../services/newsService';
 import { Button } from '../components/ui/button';
@@ -10,7 +10,8 @@ import { Badge } from '../components/ui/badge';
 import { ChipInput } from '../components/ui/chip-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Save, Pencil, X, Loader2, ArrowLeft } from 'lucide-react';
+import { Save, Pencil, X, Loader2 } from 'lucide-react';
+import { BackLink } from '../components/BackLink';
 import { toast } from 'sonner';
 import Can from '../components/Can';
 import { ActivityTrailSheet } from '../components/activityTrail/ActivityTrailSheet';
@@ -296,13 +297,7 @@ const NewsEdit: React.FC = () => {
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
         <div className="flex items-center justify-between gap-3">
-          <Link
-            to="/news"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            {t('breadcrumb.news')}
-          </Link>
+          <BackLink to="/news" label={t('breadcrumb.news')} />
           {!isNew && (
             /* news ผูกได้หลาย BU จึงไม่มี cluster เดียว — PLATFORM_SCOPED_RECORD ทำให้
                เหลือทางเดียวคือสิทธิ์ระดับ platform ตรงกับที่ backend บังคับ */

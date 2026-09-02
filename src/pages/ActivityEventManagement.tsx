@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Download, Eye, MousePointerClick, SlidersHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
@@ -253,18 +254,16 @@ const ActivityEventManagement: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('nav.activityEvents')}</h1>
-            <p className="text-sm text-muted-foreground sm:text-base">
-              {t('pages.activityEvents.subtitle')}
-            </p>
-          </div>
-          <Button variant="outline" onClick={handleExport} disabled={loading}>
-            <Download className="mr-2 h-4 w-4" />
-            {t('common.action.exportCsv')}
-          </Button>
-        </div>
+        <PageHeader
+          title={t('nav.activityEvents')}
+          subtitle={t('pages.activityEvents.subtitle')}
+          actions={
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+              <Download className="mr-2 h-4 w-4" />
+              {t('common.action.exportCsv')}
+            </Button>
+          }
+        />
 
         <Card>
           <CardContent className="space-y-4 p-4">

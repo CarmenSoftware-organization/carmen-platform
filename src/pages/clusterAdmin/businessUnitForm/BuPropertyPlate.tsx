@@ -1,5 +1,4 @@
-import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { BackLink } from '../../../components/BackLink';
 import { Card } from '../../../components/ui/card';
 import { StatusToggle } from '../../../components/StatusToggle';
 import { HeroName } from '../../businessUnitEdit/HeroName';
@@ -40,15 +39,7 @@ export function BuPropertyPlate({
 
   return (
     <div className="space-y-3">
-      {/* ::before ยืดพื้นที่แตะเป็น 44px โดยกล่องยังสูง 20px เท่าเดิม — ท่าเดียวกับ InlineField
-          ที่วัดแล้วว่าลิงก์นี้สูงแค่ 20px บนจอ 390px ซึ่งเล็กกว่าเป้าแตะขั้นต่ำ */}
-      <Link
-        to={backTo}
-        className="text-muted-foreground hover:text-foreground relative inline-flex items-center gap-1.5 text-sm before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
-      >
-        <ArrowLeft className="size-4" />
-        {t('common.label.businessUnitsLabel')}
-      </Link>
+      <BackLink to={backTo} label={t('common.label.businessUnitsLabel')} />
 
       <Card className="p-0">
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:p-6">

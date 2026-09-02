@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import roleService from '../services/roleService';
@@ -16,7 +16,8 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmptyState } from '../components/EmptyState';
 import { FetchErrorState } from '../components/FetchErrorState';
 import Can from '../components/Can';
-import { Save, Pencil, X, Loader2, ArrowLeft, SearchX } from 'lucide-react';
+import { Save, Pencil, X, Loader2, SearchX } from 'lucide-react';
+import { BackLink } from '../components/BackLink';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
 import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
@@ -458,13 +459,7 @@ const RoleEdit: React.FC = () => {
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6 pb-24">
-        <Link
-          to="/platform/roles"
-          className="text-muted-foreground hover:text-foreground inline-flex min-h-11 items-center gap-1.5 text-sm transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t('breadcrumb.roles')}
-        </Link>
+        <BackLink to="/platform/roles" label={t('breadcrumb.roles')} />
 
         <RoleIdentityHero
           name={formData.name}
