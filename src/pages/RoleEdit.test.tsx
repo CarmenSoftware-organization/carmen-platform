@@ -269,3 +269,48 @@ describe('RoleEdit — audit borrowed from the list endpoint', () => {
     expect(screen.queryByText(/Created/)).not.toBeInTheDocument();
   });
 });
+
+// Edit mode is now the same grid with the verbs made pressable, so the interaction that
+// used to live in PermissionPicker has no test of its own any more.
+describe('RoleEdit — editing the grant in place', () => {
+  const enterEditMode = async () => {
+    asMock(roleService.getById).mockResolvedValue({ data: fakeRole });
+    renderAt('/platform/roles/r1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Billing Admin' });
+    await userEvent.click(screen.getByRole('button', { name: /Edit/ }));
+  };
+
+  it('grants a withheld verb when it is pressed', async () => {
+    await enterEditMode();
+
+    // `cluster.update` is in the catalog and withheld — in edit mode it is a target, not
+    // just a greyed label.
+    const update = screen.getByRole('button', { name: 'update' });
+    expect(update).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(update);
+    expect(screen.getByRole('button', { name: 'update' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('revokes a granted verb when it is pressed again', async () => {
+    await enterEditMode();
+
+    const read = screen.getByRole('button', { name: 'read' });
+    expect(read).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(read);
+    expect(screen.getByRole('button', { name: 'read' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('grants the whole resource from the row control, then clears it', async () => {
+    await enterEditMode();
+
+    // `cluster` holds 1 of 2, so the control offers the whole resource first.
+    await userEvent.click(screen.getByRole('button', { name: 'All' }));
+    expect(screen.getByRole('button', { name: 'read' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'update' })).toHaveAttribute('aria-pressed', 'true');
+
+    // Now that everything is on, the same control clears it — the discriminating half.
+    await userEvent.click(screen.getByRole('button', { name: 'None' }));
+    expect(screen.getByRole('button', { name: 'read' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'update' })).toHaveAttribute('aria-pressed', 'false');
+  });
+});

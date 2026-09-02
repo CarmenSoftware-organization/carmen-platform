@@ -249,8 +249,14 @@ export const en = {
       download: 'Download',
       upload: 'Upload',
       format: 'Format',
-      // Pairs with clearAll above — PermissionPicker.tsx's per-resource toggle button.
+      // Pairs with clearAll above.
       selectAll: 'Select all',
+      // PermissionGrid's per-resource toggle. Deliberately shorter than selectAll/clearAll:
+      // it sits inline after the verbs, once per resource, so at 20 resources the full
+      // phrase became the loudest repeated string on the screen — louder than the verbs it
+      // exists to operate on.
+      grantAll: 'All',
+      grantNone: 'None',
       // BusinessUnitMultiSelect.tsx / UserMultiSelect.tsx's selected-chip remove
       // aria-label — byte-identical template in both files.
       removeAria: 'Remove {{name}}',

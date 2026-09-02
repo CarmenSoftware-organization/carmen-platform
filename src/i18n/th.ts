@@ -212,6 +212,11 @@ export const th: Translations = {
       format: 'จัดรูปแบบ',
       // คู่กับ clearAll ข้างบน — ปุ่ม toggle ต่อ resource ของ PermissionPicker.tsx
       selectAll: 'เลือกทั้งหมด',
+      // ปุ่มสลับรายทรัพยากรของ PermissionGrid จงใจสั้นกว่า selectAll/clearAll เพราะอยู่ต่อ
+      // ท้ายกริยาในแถว ทรัพยากร 20 ตัวทำให้วลีเต็มกลายเป็นสตริงที่ดังที่สุดบนจอ ดังกว่ากริยา
+      // ที่มันมีไว้สั่งงานเสียเอง
+      grantAll: 'ทั้งหมด',
+      grantNone: 'ไม่เอา',
       // aria-label ปุ่มนำ chip ออกของ BusinessUnitMultiSelect.tsx / UserMultiSelect.tsx —
       // ข้อความเดียวกันเป๊ะทั้งสองไฟล์
       removeAria: 'นำ {{name}} ออก',
