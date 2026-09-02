@@ -50,13 +50,19 @@ describe('Changelog', () => {
     // number or category name — so a match here proves entry text is searched.
     // Resolve that version by content, not by index: every release prepends an
     // entry, which shifts a hardcoded index onto the wrong version.
-    const match = changelogData.versions.find((v) =>
-      JSON.stringify(v.changes).toLowerCase().includes('broadcast')
-    );
+    const mentionsBroadcast = (v: (typeof changelogData.versions)[number]) =>
+      JSON.stringify(v.changes).toLowerCase().includes('broadcast');
+    const match = changelogData.versions.find(mentionsBroadcast);
     if (!match) throw new Error('changelog.json no longer contains a "broadcast" entry');
+    // Resolve the version that must disappear by content too. This used to assert on
+    // versions[0], which quietly assumed the newest release never mentions Broadcast —
+    // and once 1.0.0 did, the test demanded v1.0.0 be both present and absent, failing
+    // on data alone with nothing wrong in the component.
+    const absent = changelogData.versions.find((v) => !mentionsBroadcast(v));
+    if (!absent) throw new Error('changelog.json has no version without a "broadcast" entry');
     await user.type(box, 'broadcast');
     expect(await screen.findByText(`v${match.version}`)).toBeInTheDocument();
-    expect(screen.queryByText(`v${changelogData.versions[0].version}`)).not.toBeInTheDocument();
+    expect(screen.queryByText(`v${absent.version}`)).not.toBeInTheDocument();
   });
 
   it('restores all versions when the search is cleared', async () => {
