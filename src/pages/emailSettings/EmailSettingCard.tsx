@@ -294,7 +294,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
     <Card role="region" aria-label={label}>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
         <div className="min-w-0">
-          <CardTitle className="text-base">{label}</CardTitle>
+          <CardTitle className="text-base font-medium">{label}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
         {isNew ? (
