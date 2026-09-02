@@ -9,6 +9,8 @@ import { Badge } from '../../components/ui/badge';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { PasswordField } from './PasswordField';
 import { TestEmailDialog } from './TestEmailDialog';
+import { FlowChip } from './RoutingPanel';
+import type { RoutingLane } from './routingLanes';
 import emailSettingService from '../../services/emailSettingService';
 import { parseApiError } from '../../utils/errorParser';
 import { validateField } from '../../utils/validation';
@@ -24,6 +26,11 @@ interface EmailSettingCardProps {
   label: string;
   description: string;
   setting: EmailSetting | null;
+  /**
+   * เลนของโปรไฟล์นี้ในแผงสายด้านบน — null ระหว่างที่ mapping ยังโหลดไม่เสร็จหรือโหลดไม่สำเร็จ
+   * ซึ่งต้องเงียบไว้ ไม่ใช่แสดงว่า "ไม่มีเส้นทางใดใช้" เพราะนั่นเป็นคำโกหกที่ทำให้ลบโปรไฟล์ผิดตัว
+   */
+  lane: RoutingLane | null;
   canManage: boolean;
   isEditing: boolean;
   callerIdentity?: string;
@@ -78,9 +85,22 @@ const toForm = (s: EmailSetting | null): EmailSettingFormData =>
       }
     : { ...emptyForm };
 
-const ReadOnlyText: React.FC<{ value: string }> = ({ value }) => (
-  <div className="flex h-9 w-full items-center rounded-md border border-input bg-muted/50 px-3 py-1 text-sm">
-    {value || '-'}
+/**
+ * แถวอ่านอย่างเดียว — ข้อความล้วน ไม่ใช่กล่องมีกรอบ
+ *
+ * เดิมที่นี่ใช้ `ReadOnlyText` ที่วาดกรอบ `border bg-muted/50 h-9` เหมือน input ที่ถูก disable
+ * ผลคือหน้าที่กดอะไรไม่ได้เลยดูเหมือนฟอร์มที่รอกรอก กรอบสี่เหลี่ยมถูกสงวนไว้ให้สิ่งที่พิมพ์ได้
+ */
+const ReadOnlyRow: React.FC<{ label: string; value: string; mono?: boolean }> = ({
+  label,
+  value,
+  mono = false,
+}) => (
+  <div className="min-w-0 space-y-0.5">
+    <dt className="text-muted-foreground text-xs">{label}</dt>
+    <dd className={mono ? 'truncate font-mono text-[13px]' : 'truncate text-sm'}>
+      {value || '—'}
+    </dd>
   </div>
 );
 
@@ -89,6 +109,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   label,
   description,
   setting,
+  lane,
   canManage,
   isEditing,
   callerIdentity = '',
@@ -134,6 +155,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   }, [isEditing, setting]);
 
   const docVersion = useMemo(() => getDocVersion(setting), [setting]);
+  const carried = lane ? [...lane.explicit, ...lane.inherited] : [];
 
   const setValue = (name: keyof EmailSettingFormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -240,7 +262,9 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   );
 
   return (
-    <Card>
+    // ชื่อโปรไฟล์ปรากฏสองที่บนหน้าเดียวโดยตั้งใจ: เลนในแผงสายด้านบน กับหัวการ์ดใบนี้ การ์ดจึงต้อง
+    // เป็นภูมิภาคที่เรียกชื่อได้ ไม่งั้นทั้งผู้ใช้ screen reader และเทสต์ต่างแยกไม่ออกว่าอยู่ที่ไหน
+    <Card role="region" aria-label={label}>
       <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
         <div className="min-w-0">
           <CardTitle className="text-base">{label}</CardTitle>
@@ -257,14 +281,38 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
 
       <CardContent className="space-y-4">
         {!isEditing && !isNew && (
-          <div className="space-y-1 text-sm">
-            <div>
-              {setting.from_name ? `${setting.from_name} <${setting.from_email}>` : setting.from_email}
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="truncate text-sm">
+                {setting.from_name
+                  ? `${setting.from_name} <${setting.from_email}>`
+                  : setting.from_email}
+              </p>
+              {/* ค่า transport คือสิ่งที่พังจริงเวลาเมลไม่ออก จึงเป็น mono ให้อ่านทีละอักขระได้ */}
+              <p className="text-muted-foreground truncate font-mono text-[11px]">
+                {`${setting.smtp_host}:${setting.smtp_port}`}
+                {setting.smtp_secure ? ' · implicit TLS' : ''}
+              </p>
             </div>
-            <div className="text-muted-foreground">
-              {`${setting.smtp_host}:${setting.smtp_port}`}
-              {setting.smtp_secure ? ' · implicit TLS' : ''}
-            </div>
+
+            {lane &&
+              (carried.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-muted-foreground text-xs">
+                    {t('pages.emailSettings.carries')}
+                  </span>
+                  {lane.explicit.map((flow) => (
+                    <FlowChip key={flow.value} flow={flow} />
+                  ))}
+                  {lane.inherited.map((flow) => (
+                    <FlowChip key={flow.value} flow={flow} inherited />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  {t('pages.emailSettings.laneDark')}
+                </p>
+              ))}
           </div>
         )}
 
@@ -397,16 +445,14 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
         )}
 
         {!isEditing && !isNew && (
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">{t('pages.emailSettings.smtpUsername')}</Label>
-              <ReadOnlyText value={setting.smtp_username ?? ''} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">{t('common.field.note')}</Label>
-              <ReadOnlyText value={setting.note ?? ''} />
-            </div>
-          </div>
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <ReadOnlyRow
+              label={t('pages.emailSettings.smtpUsername')}
+              value={setting.smtp_username ?? ''}
+              mono
+            />
+            <ReadOnlyRow label={t('common.field.note')} value={setting.note ?? ''} />
+          </dl>
         )}
 
         {canManage && (

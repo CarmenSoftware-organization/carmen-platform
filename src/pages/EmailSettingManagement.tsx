@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
@@ -11,7 +11,9 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmailSettingCard } from './emailSettings/EmailSettingCard';
 import { EmailRoutingCard } from './emailSettings/EmailRoutingCard';
 import emailSettingService from '../services/emailSettingService';
+import { buildRoutingMap, laneOf } from './emailSettings/routingLanes';
 import { useAuth } from '../context/AuthContext';
+import { useEmailRouting } from '../hooks/useEmailRouting';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
 import { AuditMeta } from '../components/AuditMeta';
@@ -32,6 +34,16 @@ const EmailSettingManagement: React.FC = () => {
   const [addingProfile, setAddingProfile] = useState(false);
   const [pendingSwitch, setPendingSwitch] = useState<string | null>(null);
   const [rawResponse, setRawResponse] = useState<unknown>(null);
+
+  // mapping อยู่ที่หน้า ไม่ใช่ในการ์ด mapping: ทั้งแผงสายด้านบนและป้าย "รับสาย" บนการ์ดโปรไฟล์
+  // แต่ละใบต้องอ่านชุดเดียวกัน ไม่งั้นสองที่บนจอเดียวกันพูดคนละเรื่องได้ — ดูหัวไฟล์ของ hook
+  const {
+    routing,
+    loading: routingLoading,
+    error: routingError,
+    apply: applyRouting,
+  } = useEmailRouting();
+  const routingMap = useMemo(() => buildRoutingMap(routing, settings), [routing, settings]);
 
   // Any open editor counts as unsaved work: the card owns the form state, so the
   // page cannot inspect dirtiness without coupling to it. Guarding on "an editor
@@ -101,11 +113,18 @@ const EmailSettingManagement: React.FC = () => {
           <div className="space-y-4">
             <EmailRoutingCard
               profiles={settings}
+              routing={routing}
+              map={routingMap}
+              loading={routingLoading}
+              loadError={routingError}
               canManage={canManage}
               isEditing={editingPurpose === 'routing'}
               onRequestEdit={() => requestEdit('routing')}
               onCancelEdit={() => setEditingPurpose(null)}
-              onSaved={() => handleSaved('routing')}
+              onSaved={(next) => {
+                applyRouting(next);
+                return handleSaved('routing');
+              }}
             />
 
             <div className="flex items-center justify-between">
@@ -126,6 +145,7 @@ const EmailSettingManagement: React.FC = () => {
                   label={t('pages.emailSettings.newProfileLabel')}
                   description={t('pages.emailSettings.newProfileDescription')}
                   setting={null}
+                  lane={null}
                   canManage={canManage}
                   isEditing={editingPurpose === 'new'}
                   shortcutsEnabled={pendingSwitch === null}
@@ -144,12 +164,19 @@ const EmailSettingManagement: React.FC = () => {
                 // Wrapped in a div (EmailSettingCard itself is a self-contained Card
                 // from a file outside this task's scope) so the compact audit line can
                 // sit just below the card without touching EmailSettingCard.tsx.
-                <div key={`${setting.id}-${setting.doc_version ?? 'new'}`} className="space-y-1.5">
+                // min-w-0: grid item ได้ `min-width: auto` มาโดยปริยาย จึงกว้างตามเนื้อหาที่ยาว
+                // ที่สุดในนั้น (ที่อยู่ผู้ส่ง และแถวป้ายเส้นทาง) แทนที่จะหดตามคอลัมน์ ผลคือทั้งหน้า
+                // เลื่อนแนวนอนได้ที่ 390px — วัดได้ 460px ในกริด 348px ก่อนใส่คลาสนี้
+                <div
+                  key={`${setting.id}-${setting.doc_version ?? 'new'}`}
+                  className="min-w-0 space-y-1.5"
+                >
                   <EmailSettingCard
                     profileKey={setting.id}
                     label={setting.name}
                     description={setting.note ?? t('pages.emailSettings.defaultProfileNote')}
                     setting={setting}
+                    lane={laneOf(routingMap, setting.id)}
                     canManage={canManage}
                     isEditing={editingPurpose === setting.id}
                     shortcutsEnabled={pendingSwitch === null}

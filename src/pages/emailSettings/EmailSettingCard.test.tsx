@@ -39,6 +39,7 @@ const baseProps = {
   profileKey: 'p-1',
   label: 'No-reply',
   description: 'อีเมลอัตโนมัติ',
+  lane: null,
   canManage: true,
   isEditing: false,
   onRequestEdit: vi.fn(),

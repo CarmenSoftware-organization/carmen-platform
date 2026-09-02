@@ -89,9 +89,11 @@ describe('EmailSettingManagement', () => {
   it('renders one card per stored profile, plus the routing card', async () => {
     svc.getAll.mockResolvedValue({ data: [noReply, support] });
     renderPage();
-    expect(await screen.findByText('No-reply')).toBeInTheDocument();
-    expect(screen.getByText('Support')).toBeInTheDocument();
-    expect(screen.getByText('Email routing')).toBeInTheDocument();
+    // ถามหา region ไม่ใช่ข้อความ: ชื่อโปรไฟล์ปรากฏทั้งในเลนของแผงสายและในหัวการ์ด การถาม
+    // ด้วย findByText จะเจอสองที่แล้วพัง ซึ่งไม่ได้แปลว่าการ์ดหาย
+    expect(await screen.findByRole('region', { name: 'No-reply' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Support' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Email routing' })).toBeInTheDocument();
     // โปรไฟล์เป็นรายการหลักแล้ว — ไม่มีการ์ด "ยังไม่ตั้งค่า" ของ purpose ที่ยังไม่มีแถวอีกต่อไป
     expect(screen.queryByText('Billing')).not.toBeInTheDocument();
   });
@@ -100,7 +102,10 @@ describe('EmailSettingManagement', () => {
     auth.hasPermission = (perm) => perm === 'email_setting.read';
     svc.getAll.mockResolvedValue({ data: [noReply] });
     renderPage();
-    expect(await screen.findByText(/no-reply@carmen\.io/)).toBeInTheDocument();
+    // ที่อยู่ผู้ส่งขึ้นทั้งในเลนของแผงสาย (`อีเมล · host:port`) และในการ์ด (`ชื่อ <อีเมล>`)
+    // จึงถามเฉพาะในการ์ด เพื่อให้ยังยืนยันได้ว่า "การ์ดแสดงข้อมูล แต่ไม่มีปุ่มแก้"
+    const card = await screen.findByRole('region', { name: 'No-reply' });
+    expect(within(card).getByText('Carmen <no-reply@carmen.io>')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Send test email' })).not.toBeInTheDocument();
   });
