@@ -5,6 +5,7 @@ import { FetchErrorState } from '../../components/FetchErrorState';
 import { cn } from '../../lib/utils';
 import type { ApplicationSummaryData, DeviceCount } from '../../types';
 import { useI18n } from '../../hooks/useI18n';
+import { formatDevice } from '../../utils/device';
 
 const DEVICE_ORDER = ['web', 'mobile', 'desktop', 'pos'];
 const rank = (d: string) => {
@@ -20,8 +21,6 @@ const rank = (d: string) => {
  */
 const byPlatform = (devices: DeviceCount[]): DeviceCount[] =>
   [...devices].sort((a, b) => rank(a.device) - rank(b.device) || a.device.localeCompare(b.device));
-
-const capDevice = (d: string) => (d === 'pos' ? 'POS' : d.charAt(0).toUpperCase() + d.slice(1));
 
 function ScopeLegend({ color, label, value, warn }: { color: string; label: string; value: number; warn?: boolean }) {
   return (
@@ -100,7 +99,7 @@ export function ApplicationRegistrySummary({ summary, loading, error = false, on
                 <div className="flex flex-wrap gap-1.5">
                   {byPlatform(summary.devices ?? []).map((d) => (
                     <span key={d.device} className="text-muted-foreground inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs">
-                      {capDevice(d.device)}
+                      {formatDevice(d.device)}
                       <span className="text-foreground font-mono text-[12px] font-semibold tabular-nums">{d.count}</span>
                     </span>
                   ))}

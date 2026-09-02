@@ -32,7 +32,9 @@ describe('ApplicationIdentityHero', () => {
   it('shows the name, device, status and scoped access summary', () => {
     render(<ApplicationIdentityHero {...base} />);
     expect(screen.getByRole('heading', { name: 'mobile-app' })).toBeInTheDocument();
-    expect(screen.getByText('mobile')).toBeInTheDocument();
+    // `formatDevice`, not a CSS `capitalize` — the text node itself carries the display form,
+    // which is what lets `pos` render as `POS` here and in the registry band by one rule.
+    expect(screen.getByText('Mobile')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('2 endpoints across 2 modules')).toBeInTheDocument();
   });

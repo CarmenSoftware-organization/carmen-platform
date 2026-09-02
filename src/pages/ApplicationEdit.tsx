@@ -24,6 +24,7 @@ import { validateField } from '../utils/validation';
 import { getErrorDetail, devLog, isNotFoundError } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { normalizeAudit } from '../utils/audit';
+import { formatDevice } from '../utils/device';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -706,7 +707,7 @@ const ApplicationEdit: React.FC = () => {
                         ))}
                       </select>
                     ) : (
-                      <div><Badge variant="secondary" className="capitalize">{formData.device}</Badge></div>
+                      <div><Badge variant="secondary">{formatDevice(formData.device)}</Badge></div>
                     )}
                   </div>
 
