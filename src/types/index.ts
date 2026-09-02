@@ -1656,3 +1656,84 @@ export interface LicenseFeatureGroupWriteInput {
   sort_order?: number;
   is_active?: boolean;
 }
+
+// ==================== Cronjobs ("CRONJOBS"."Cronjob") ====================
+
+export type CronJobType =
+  | 'report'
+  | 'notification'
+  | 'cleanup'
+  | 'dashboard_refresh'
+  | 'activity_rollup'
+  | 'activity_retention';
+
+export interface ReportJobConfig {
+  template_id?: string;
+  bu_codes?: string[];
+  format?: string;
+  filters?: Record<string, string>;
+  recipients?: string[];
+  delivery?: { type?: string; viewer_endpoint?: string };
+  notifications?: { web?: boolean; email?: boolean; mail_source?: string };
+}
+export interface NotificationJobConfig {
+  title?: string;
+  message?: string;
+  type?: string;
+  category?: string;
+  user_ids?: string[];
+}
+export interface CleanupJobConfig { action?: string; type?: string; older_than?: string }
+export interface DashboardRefreshJobConfig { bu_codes?: string[]; tier?: string }
+export interface ActivityRollupJobConfig { days_back?: number }
+export interface ActivityRetentionJobConfig { retention_days?: number; batch_size?: number }
+
+export type CronJobConfig =
+  | ReportJobConfig
+  | NotificationJobConfig
+  | CleanupJobConfig
+  | DashboardRefreshJobConfig
+  | ActivityRollupJobConfig
+  | ActivityRetentionJobConfig;
+
+/** หนึ่งแถวใน "CRONJOBS"."Cronjob" — ตารางนี้ใช้ร่วมกับ micro-report
+ *  แถวที่มี source_service เป็นของ service อื่น แก้/ลบจากหน้านี้ไม่ได้ (gateway ตอบ 409) */
+export interface CronJob {
+  id: string;
+  name: string;
+  description?: string;
+  job_type: CronJobType;
+  cron_expression: string;
+  job_config?: CronJobConfig;
+  source_service?: string;
+  source_id?: string;
+  is_active: boolean;
+  last_run_at?: string;
+  next_run_at?: string;
+  last_error?: string;
+  run_count?: number;
+  max_retries?: number;
+  retry_count?: number;
+  timeout_seconds?: number;
+  created_at?: string;
+  created_by_id?: string;
+  updated_at?: string;
+  updated_by_id?: string;
+  doc_version?: number;
+}
+
+export interface CronJobsResponse {
+  data: CronJob[];
+  paginate?: PaginateInfo;
+}
+
+export interface CronJobWriteInput {
+  name: string;
+  description?: string;
+  job_type?: CronJobType;   // create only — locked when editing
+  cron_expression: string;
+  job_config: CronJobConfig;
+  is_active: boolean;
+  max_retries?: number;
+  timeout_seconds?: number;
+}

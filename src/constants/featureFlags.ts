@@ -63,6 +63,8 @@ export const FEATURE_CATALOG: readonly FeatureDefinition[] = [
   // Analytics
   { key: 'usage_analytics', labelKey: 'nav.usageAnalytics', groupKey: 'navGroup.analytics', defaultState: 'active' },
   { key: 'activity_events', labelKey: 'nav.activityEvents', groupKey: 'navGroup.analytics', defaultState: 'active' },
+  // Scheduling
+  { key: 'cronjobs', labelKey: 'nav.cronjobs', groupKey: 'navGroup.scheduling', defaultState: 'active' },
   // Platform
   { key: 'applications', labelKey: 'nav.applications', groupKey: 'navGroup.platform', defaultState: 'active' },
   { key: 'email_settings', labelKey: 'nav.emailSettings', groupKey: 'navGroup.platform', defaultState: 'active' },

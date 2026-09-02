@@ -40,12 +40,14 @@ export const en = {
     databasePools: 'Database Pools',
     cluster: 'Cluster',
     featureFlags: 'Feature Flags',
+    cronjobs: 'Scheduled Jobs',
   },
   navGroup: {
     organization: 'Organization',
     licenseManagement: 'License Management',
     content: 'Content',
     analytics: 'Analytics',
+    scheduling: 'Scheduling',
     platform: 'Platform',
     database: 'Database',
     // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*
@@ -4147,6 +4149,181 @@ export const en = {
       detailProps: 'props',
       detailUserAgent: 'user agent',
       viewWholeSession: 'View this entire session',
+    },
+  },
+  // Cronjob management (2026-09-02 spec, Task 7). `config` backs the six job_type-specific
+  // field groups under pages/cronjobs/jobConfig/ — one block shared by all six rather than
+  // six separate namespaces, since several fields (bu_codes, type) repeat across job types.
+  // Task 9 (CronJobManagement, the list page) added column / status / owner / action /
+  // confirm / summary / filter below, plus the started/stopped/dispatched/deleted toast keys.
+  cronjob: {
+    config: {
+      daysBack: 'Days back',
+      daysBackHint: 'How many days of activity to roll up on each run.',
+      retentionDays: 'Retention days',
+      retentionDaysHint: 'Records older than this many days are purged.',
+      batchSize: 'Batch size',
+      batchSizeHint: 'Maximum rows deleted per batch.',
+      action: 'Action',
+      type: 'Type',
+      olderThan: 'Older than',
+      olderThanPlaceholder: 'e.g. 30d',
+      olderThanHint: 'A duration the cleanup job understands, e.g. 30d, 90d, 1y.',
+      buCodes: 'Business units',
+      buCodesEmptyMeansAll: 'Leave empty to include every business unit.',
+      // I1 fix: report.go rejects an empty bu_codes with "report job config missing
+      // bu_codes" — a new key rather than editing buCodesEmptyMeansAll, which stays
+      // correct for DashboardRefreshConfigFields (empty really does mean "all" there).
+      buCodesRequiredHint: 'Required — select at least one business unit, or the run will fail.',
+      tier: 'Tier',
+      tierAll: 'All tiers',
+      title: 'Title',
+      message: 'Message',
+      category: 'Category',
+      userIds: 'Recipient users',
+      userIdsLoadFailed: 'Failed to load users',
+      userIdsNoneSelected: 'No users selected',
+      userIdsNoneFound: 'No users found',
+      userIdsEmptyMeansAll: 'Leave empty to notify every user.',
+      // I2 fix: notification.go rejects an empty user_ids with "notification job config
+      // missing user_ids" — a new key rather than editing userIdsEmptyMeansAll.
+      userIdsRequiredHint: 'Required — select at least one user, or the run will fail.',
+      templateId: 'Report template',
+      templateIdPlaceholder: 'Select a report template',
+      templateIdLoadFailed: 'Failed to load report templates',
+      format: 'Format',
+      formatPlaceholder: 'Select a format',
+      filters: 'Filters',
+      filterKeyPlaceholder: 'Key',
+      filterValuePlaceholder: 'Value',
+      addFilter: 'Add filter',
+      removeFilterAria: 'Remove filter',
+      recipients: 'Recipient users',
+      recipientsHint: 'Select the platform users who should receive this report.',
+      deliveryType: 'Delivery method',
+      deliveryTypeFile: 'File',
+      deliveryTypeViewerUrl: 'Viewer URL',
+      notificationsWeb: 'Notify in web app',
+      notificationsEmail: 'Notify by email',
+      mailSource: 'Mail source',
+      mailSourceInternal: 'Internal',
+      mailSourceExternal: 'External',
+    },
+    // Task 8: CronJobEdit (create/edit page) + CronScheduleField. `type` is shared with
+    // Task 9's list column/filter — added here first since the job_type Select needs it.
+    newTitle: 'New Scheduled Job',
+    singularTitle: 'Scheduled Job',
+    notFoundTitle: 'Scheduled job not found',
+    notFoundDescription: "This scheduled job doesn't exist, or it may have been deleted. Check the link, or pick one from the list.",
+    backToList: 'Back to Scheduled Jobs',
+    loadFailedOne: 'Failed to load this scheduled job: {{detail}}',
+    loadingOneAria: 'Loading scheduled job',
+    // `{{service}}` is job.source_service, e.g. "micro-report".
+    readOnlyBanner: 'This job is owned by {{service}} and can only be changed there. You can still review its configuration here.',
+    history: 'History',
+    section: {
+      basics: 'Basics',
+      schedule: 'Schedule',
+      execution: 'Execution',
+      typeConfig: 'Type-specific configuration',
+    },
+    field: {
+      jobType: 'Job type',
+      cronExpression: 'Cron expression',
+      maxRetries: 'Max retries',
+      timeoutSeconds: 'Timeout (seconds)',
+    },
+    // I7 fix: nextRuns() parses without a timezone and this preview renders with
+    // toLocaleString(), so the three run times shown are the viewer's local time — the
+    // scheduler runs in a server-resolved timezone, which the browser cannot know. This
+    // caption is honest about that gap rather than pretending the preview and the
+    // server's actual next-run time are the same fact.
+    schedule: {
+      localTimezoneCaption: 'Times shown in your local timezone ({{zone}}) — the scheduler may run in a different one.',
+    },
+    type: {
+      report: 'Report',
+      notification: 'Notification',
+      cleanup: 'Cleanup',
+      dashboard_refresh: 'Dashboard refresh',
+      activity_rollup: 'Activity rollup',
+      activity_retention: 'Activity retention',
+    },
+    validation: {
+      // describeCron returns '' for an empty/untouched field and null only for a genuinely
+      // invalid expression — this string is for the null case only. An empty field gets
+      // common.validation.requiredMessage instead (see CronJobEdit.handleSave).
+      invalidCron: 'This cron expression is not valid.',
+    },
+    toast: {
+      created: 'Scheduled job created',
+      saved: 'Scheduled job saved',
+      started: 'Scheduled job started',
+      stopped: 'Scheduled job stopped',
+      // POST /execute returns the moment the job is handed to a background worker — the
+      // outcome is unknown at this point, so this is deliberately toast.info, never .success.
+      dispatched: 'Run dispatched — the job is now running in the background',
+      deleted: 'Scheduled job deleted',
+    },
+    error: {
+      // The gateway returns HTTP 409 for two unrelated reasons, told apart only by
+      // `error_code` in the response body: FOREIGN_OWNED_JOB (this message) vs
+      // DOC_VERSION_CONFLICT (isVersionConflict / notifyVersionConflict). Keep them separate.
+      foreignOwned: 'This job is owned by {{service}} and cannot be changed here.',
+    },
+    // Task 9: CronJobManagement (the list page) + CronJobFilterSheet.
+    pluralTitle: 'Scheduled Jobs',
+    subtitle: 'Cron-driven jobs running across every business unit — reports, notifications, cleanup, and platform maintenance.',
+    addJob: 'Add Scheduled Job',
+    searchPlaceholder: 'Search scheduled jobs...',
+    loadingAria: 'Loading scheduled jobs',
+    loading: 'Loading...',
+    emptyTitle: 'No scheduled jobs yet',
+    emptyDescription: 'Add a scheduled job to automate reports, notifications, cleanup, or other recurring platform work.',
+    column: {
+      name: 'Name',
+      type: 'Type',
+      schedule: 'Schedule',
+      status: 'Status',
+      owner: 'Owner',
+      lastRun: 'Last run',
+      nextRun: 'Next run',
+      runs: 'Runs',
+    },
+    status: {
+      running: 'Running',
+      stopped: 'Stopped',
+    },
+    owner: {
+      platform: 'Platform',
+    },
+    action: {
+      start: 'Start',
+      stop: 'Stop',
+      runNow: 'Run now',
+      // {{service}} is job.source_service, e.g. "micro-report".
+      foreignOwnedTooltip: 'Owned by {{service}} — edit and delete are disabled here.',
+    },
+    confirm: {
+      deleteTitle: 'Delete scheduled job',
+      deleteBody: 'Delete "{{name}}"? This cannot be undone.',
+    },
+    summary: {
+      total: 'Total',
+      running: 'Running',
+      stopped: 'Stopped',
+      withErrors: 'With errors',
+      foreignOwned: 'Foreign-owned',
+      activeInScheduler: 'Active in scheduler',
+      // Four of the six figures are computed from the rows currently loaded, not the whole
+      // filtered set — a count that silently means "this page only" while looking
+      // page-independent misreports, so this is spelled out rather than left implicit.
+      pageScopeCaption: 'Running, Stopped, With errors and Foreign-owned count only the rows loaded on this page — Total and Active in scheduler cover every job.',
+      unavailable: 'Unavailable',
+    },
+    filter: {
+      description: 'Narrow the list by type or status.',
+      apply: 'Apply',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
