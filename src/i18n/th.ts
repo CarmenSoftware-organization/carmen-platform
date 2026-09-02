@@ -3230,6 +3230,9 @@ export const th: Translations = {
       maxRetries: 'จำนวนครั้งที่ลองใหม่สูงสุด',
       timeoutSeconds: 'ระยะเวลาหมดเวลา (วินาที)',
     },
+    schedule: {
+      localTimezoneCaption: 'เวลาที่แสดงเป็นเขตเวลาของเครื่องคุณ ({{zone}}) — scheduler อาจทำงานคนละเขตเวลา',
+    },
     type: {
       report: 'รายงาน',
       notification: 'การแจ้งเตือน',

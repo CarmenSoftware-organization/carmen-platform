@@ -43,11 +43,20 @@ export default function CronScheduleField({ value, onChange, readOnly, error }: 
       )}
       {sentence && <p className="text-sm text-muted-foreground">{sentence}</p>}
       {upcoming.length > 0 && (
-        <ul className="text-xs text-muted-foreground space-y-0.5">
-          {upcoming.map((d) => (
-            <li key={d.toISOString()}>{d.toLocaleString()}</li>
-          ))}
-        </ul>
+        <>
+          <ul className="text-xs text-muted-foreground space-y-0.5">
+            {upcoming.map((d) => (
+              <li key={d.toISOString()}>{d.toLocaleString()}</li>
+            ))}
+          </ul>
+          {/* I7 fix: this preview is computed in the browser's timezone, but the scheduler
+              runs in a server-resolved one — we cannot know that zone from here, so this
+              caption is honest about which timezone the numbers above are in rather than
+              silently presenting them as the same fact as the server's own next-run time. */}
+          <p className="text-[11px] text-muted-foreground">
+            {t('cronjob.schedule.localTimezoneCaption', { zone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
+          </p>
+        </>
       )}
     </div>
   );

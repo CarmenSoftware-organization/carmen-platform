@@ -4233,6 +4233,14 @@ export const en = {
       maxRetries: 'Max retries',
       timeoutSeconds: 'Timeout (seconds)',
     },
+    // I7 fix: nextRuns() parses without a timezone and this preview renders with
+    // toLocaleString(), so the three run times shown are the viewer's local time — the
+    // scheduler runs in a server-resolved timezone, which the browser cannot know. This
+    // caption is honest about that gap rather than pretending the preview and the
+    // server's actual next-run time are the same fact.
+    schedule: {
+      localTimezoneCaption: 'Times shown in your local timezone ({{zone}}) — the scheduler may run in a different one.',
+    },
     type: {
       report: 'Report',
       notification: 'Notification',
