@@ -3229,6 +3229,8 @@ export const th: Translations = {
       cronExpression: 'Cron expression',
       maxRetries: 'จำนวนครั้งที่ลองใหม่สูงสุด',
       timeoutSeconds: 'ระยะเวลาหมดเวลา (วินาที)',
+      notifyAt: 'เวลาแจ้งผู้รับ',
+      notifyAtHint: 'เวลาที่จะแจ้งผู้รับว่ารายงานพร้อมแล้ว — คนละเวลากับตอนที่รายงานรัน เว้นว่างไว้เพื่อแจ้งทันทีที่รันเสร็จ',
     },
     schedule: {
       localTimezoneCaption: 'เวลาที่แสดงเป็นเขตเวลาของเครื่องคุณ ({{zone}}) — scheduler อาจทำงานคนละเขตเวลา',

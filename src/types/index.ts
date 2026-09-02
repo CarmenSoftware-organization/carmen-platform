@@ -1712,6 +1712,10 @@ export interface CronJob {
   next_run_at?: string;
   last_error?: string;
   run_count?: number;
+  /** เวลาที่ควรแจ้งผู้รับว่ารายงานพร้อมแล้ว รูป "HH:mm" — คนละเรื่องกับเวลาที่ job รัน
+   *  เป็นคอลัมน์บนแถว ไม่ได้อยู่ใน job_config และมีความหมายเฉพาะ job_type = 'report'
+   *  ไม่มีค่า = แจ้งทันทีที่รันเสร็จ */
+  notify_at?: string;
   max_retries?: number;
   retry_count?: number;
   timeout_seconds?: number;
@@ -1734,6 +1738,8 @@ export interface CronJobWriteInput {
   cron_expression: string;
   job_config: CronJobConfig;
   is_active: boolean;
+  /** "HH:mm" หรือ '' เพื่อล้างค่า — Go ตอบ 400 ถ้าผิดรูป ใช้เฉพาะ job_type = 'report' */
+  notify_at?: string;
   max_retries?: number;
   timeout_seconds?: number;
 }
