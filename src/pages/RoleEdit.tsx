@@ -24,7 +24,7 @@ import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../util
 import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Skeleton } from '../components/ui/skeleton';
-import PermissionPicker from '../components/PermissionPicker';
+import { PermissionGrid } from './roleEdit/PermissionGrid';
 import { actionRank } from '../utils/permissionOrder';
 import { resourceRank } from '../components/nav/platformNav';
 import { ReadOnlyField } from '../components/ReadOnlyField';
@@ -306,7 +306,7 @@ const RoleEdit: React.FC = () => {
       const rows = Array.from(byResource.entries())
         .map(([resource, items]) => {
           const actions = items
-            .map((p) => ({ action: p.action, description: p.description, granted: granted.has(p.key) }))
+            .map((p) => ({ key: p.key, action: p.action, description: p.description, granted: granted.has(p.key) }))
             .sort((a, b) => actionRank(a.action) - actionRank(b.action));
           return {
             resource,
@@ -332,7 +332,7 @@ const RoleEdit: React.FC = () => {
       .map(([resource, actions]) => ({
         resource,
         actions: actions
-          .map((action) => ({ action, description: undefined as string | undefined, granted: true }))
+          .map((action) => ({ key: `${resource}.${action}`, action, description: undefined as string | undefined, granted: true }))
           .sort((a, b) => actionRank(a.action) - actionRank(b.action)),
         total: actions.length,
         grantedCount: actions.length,
@@ -347,6 +347,26 @@ const RoleEdit: React.FC = () => {
     const own = normalizeAudit(roleRecord);
     return own.created || own.updated ? own : normalizeAudit(listAudit);
   }, [roleRecord, listAudit]);
+
+  const togglePermission = useCallback((key: string) => {
+    setFormData((f) => ({
+      ...f,
+      permissions: f.permissions.includes(key)
+        ? f.permissions.filter((k) => k !== key)
+        : [...f.permissions, key],
+    }));
+  }, []);
+
+  const toggleResource = useCallback((keys: string[], allOn: boolean) => {
+    setFormData((f) => {
+      const next = new Set(f.permissions);
+      for (const k of keys) {
+        if (allOn) next.delete(k);
+        else next.add(k);
+      }
+      return { ...f, permissions: Array.from(next) };
+    });
+  }, []);
 
   // One sentence saying what this role IS. 'read only' is claimed only when every granted
   // action really is `read` — never inferred from the role's name or description.
@@ -452,6 +472,7 @@ const RoleEdit: React.FC = () => {
           permissions={formData.permissions}
           catalogSize={catalog.length}
           reachText={!isNew && !editing ? grantSummary : undefined}
+          description={!editing ? formData.description : undefined}
           audit={roleAudit}
           actions={
             !isNew && !editing && (
@@ -470,7 +491,10 @@ const RoleEdit: React.FC = () => {
         )}
 
         <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_minmax(300px,340px)]">
+          {/* The rail is a form, so it only exists while there is a form. Reading a role, it
+              was three fields of which two repeated the header immediately above it, and it
+              held the permissions grid to two thirds of the width for the privilege. */}
+          <div className={`grid grid-cols-1 gap-4 sm:gap-6${editing ? ' lg:grid-cols-[1fr_minmax(300px,340px)]' : ''}`}>
             {/* Permissions — what the role can do */}
             <div className="min-w-0 space-y-4 sm:space-y-6">
               <Card>
@@ -481,73 +505,44 @@ const RoleEdit: React.FC = () => {
                   {editing && <CardDescription>{t('pages.roles.selectPermissions')}</CardDescription>}
                 </CardHeader>
                 <CardContent>
-                  {editing ? (
-                    catalogFailed ? (
+                  {/* Both modes render the same grid. The branching below is only about
+                      whether the catalog is available to render it from — a failure or an
+                      empty catalog is the one thing that genuinely changes what can be shown,
+                      and it changes it identically for a reader and an editor. */}
+                  {catalogFailed && catalog.length === 0 ? (
+                    editing ? (
                       <FetchErrorState
                         message={t('pages.roles.catalogFetchFailed')}
                         onRetry={fetchCatalog}
                       />
-                    ) : catalogLoading ? (
-                      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground" role="status">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {t('pages.roles.catalogLoading')}
-                      </div>
-                    ) : catalog.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4 text-center">
-                        {t('pages.roles.catalogEmpty')}
-                      </p>
+                    ) : formData.permissions.length === 0 ? (
+                      <p className="text-muted-foreground py-4 text-center text-sm">{t('pages.roles.emptyPermissions')}</p>
                     ) : (
-                      <PermissionPicker
-                        catalog={catalog}
-                        value={formData.permissions}
-                        onChange={(next) => setFormData(f => ({ ...f, permissions: next }))}
-                      />
+                      // Without the catalog the page still knows every key the role holds, so
+                      // it renders those and nothing else. It must not grey anything: it
+                      // cannot tell a withheld action from one it never learned about.
+                      <PermissionGrid rows={grantView.rows} />
                     )
-                  ) : formData.permissions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4 text-center">{t('pages.roles.emptyPermissions')}</p>
+                  ) : catalogLoading ? (
+                    <div className="text-muted-foreground flex items-center justify-center py-8 text-sm" role="status">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('pages.roles.catalogLoading')}
+                    </div>
+                  ) : catalog.length === 0 ? (
+                    <p className="text-muted-foreground py-4 text-center text-sm">
+                      {t('pages.roles.catalogEmpty')}
+                    </p>
                   ) : (
                     <div>
-                      {/* One grid for the whole list: the tracks are the container's, so every
-                          row shares them. A grid per row would size its own resource column and
-                          stagger the verbs across rows.
-
-                          The two columns only exist from `sm` up. At 390px a name as long as
-                          `license_feature_group` leaves ~130px for the verbs, so a four-action
-                          resource wraps to four lines and the shape stops being readable —
-                          below `sm` each row stacks instead (`sm:contents` hands the pair back
-                          to the grid once there is room for it). */}
-                      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,max-content)_1fr] sm:items-baseline sm:gap-x-4 sm:gap-y-2">
-                      {grantView.rows.map((row) => (
-                        <div key={row.resource} className="mb-3 last:mb-0 sm:contents">
-                          {/* A resource this role cannot touch at all recedes with its verbs —
-                              still counted and still in place, but never competing with the
-                              resources the role actually reaches. */}
-                          <span className={`mb-1 block font-mono text-sm sm:mb-0${row.grantedCount === 0 ? ' text-muted-foreground/60' : ''}`}>
-                            {row.resource}
-                          </span>
-                          <span className="flex flex-wrap gap-1.5">
-                            {row.actions.map((a) => (
-                              <Badge
-                                key={a.action}
-                                variant="secondary"
-                                title={a.description}
-                                className={
-                                  a.granted
-                                    ? 'border-transparent bg-primary/10 text-primary'
-                                    : 'border-border text-muted-foreground/60 border border-dashed bg-transparent font-normal'
-                                }
-                              >
-                                {a.action}
-                              </Badge>
-                            ))}
-                          </span>
-                        </div>
-                      ))}
-                      </div>
-                      {/* The legend earns its place only where a dashed chip actually appears —
-                          the incomplete rendering greys nothing, so it would explain a
-                          distinction that is not on screen. */}
-                      {grantView.complete && grantView.rows.some((r) => r.grantedCount < r.total) && (
+                      <PermissionGrid
+                        rows={grantView.rows}
+                        onToggle={editing ? togglePermission : undefined}
+                        onToggleResource={editing ? toggleResource : undefined}
+                      />
+                      {/* The legend earns its place only where a dashed chip actually appears
+                          — and only for a reader: while editing, a dashed verb is a button you
+                          press, which explains itself. */}
+                      {!editing && grantView.complete && grantView.rows.some((r) => r.grantedCount < r.total) && (
                         <p className="text-muted-foreground border-border mt-4 border-t pt-3 text-xs">
                           {t('pages.roles.withheldLegend')}
                         </p>
@@ -558,7 +553,8 @@ const RoleEdit: React.FC = () => {
               </Card>
             </div>
 
-            {/* Settings — rail */}
+            {/* Settings — rail. Edit mode only: see the grid comment above. */}
+            {editing && (
             <div className="space-y-4 sm:space-y-6 lg:sticky lg:top-4 lg:self-start">
               <Card>
                 <CardHeader>
@@ -632,6 +628,7 @@ const RoleEdit: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+            )}
           </div>
         </form>
       </div>

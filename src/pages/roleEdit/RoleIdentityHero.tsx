@@ -62,12 +62,19 @@ interface RoleIdentityHeroProps {
    * breakdown, and it is the only line here that is styled as an alert.
    */
   reachText?: string;
+  /**
+   * Shown under the name in read mode. It used to live only in the Settings rail, where it
+   * sat beside a Name field that restated this header's own `<h1>` and a Status field that
+   * restated its badge — three facts, two of them duplicates, in a card the reader had
+   * already passed. Read mode drops that rail; the one fact it carried alone lands here.
+   */
+  description?: string;
   audit?: NormalizedAudit;
   actions?: React.ReactNode;
 }
 
 /** Read-first identity header for a platform role: who it is + how much it can do. */
-export function RoleIdentityHero({ name, isActive, permissions, catalogSize, reachText, audit, actions }: RoleIdentityHeroProps) {
+export function RoleIdentityHero({ name, isActive, permissions, catalogSize, reachText, description, audit, actions }: RoleIdentityHeroProps) {
   const { t } = useI18n();
   const computed = permissionSummary(permissions, catalogSize, t);
   const reach = computed.full || !reachText ? computed : { ...computed, text: reachText };
@@ -81,6 +88,7 @@ export function RoleIdentityHero({ name, isActive, permissions, catalogSize, rea
 
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || t('pages.roles.unnamedRole')}</h1>
+          {description && <p className="text-muted-foreground mt-1 text-sm">{description}</p>}
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>
           </div>
