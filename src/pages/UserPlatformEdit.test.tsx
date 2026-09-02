@@ -25,12 +25,16 @@ vi.mock('sonner', () => ({ toast }));
 
 vi.mock('../services/userService', () => ({ default: { getById: vi.fn() } }));
 vi.mock('../services/userRoleService', () => ({ default: { list: vi.fn(), add: vi.fn(), remove: vi.fn() } }));
+// The page enriches each grant with its actor from the registry endpoint — the per-user
+// roles endpoint carries no audit. Mocked so the test never reaches real axios.
+vi.mock('../services/userPlatformService', () => ({ default: { getAll: vi.fn() } }));
 vi.mock('../services/roleService', () => ({ default: { getAll: vi.fn() } }));
 vi.mock('../services/clusterService', () => ({ default: { getAll: vi.fn() } }));
 
 import UserPlatformEdit from './UserPlatformEdit';
 import userService from '../services/userService';
 import userRoleService from '../services/userRoleService';
+import userPlatformService from '../services/userPlatformService';
 import roleService from '../services/roleService';
 import clusterService from '../services/clusterService';
 
@@ -57,6 +61,7 @@ beforeEach(() => {
   auth.hasPermission = () => true;
   asMock(userService.getById).mockResolvedValue({ data: fakeUser });
   asMock(userRoleService.list).mockResolvedValue([assignment]);
+  asMock(userPlatformService.getAll).mockResolvedValue({ data: [], paginate: { total: 0 } });
   asMock(roleService.getAll).mockResolvedValue({ data: [{ id: 'r1', name: 'Platform Admin' }] });
   asMock(clusterService.getAll).mockResolvedValue({ data: [{ id: 'c1', name: 'Acme Cluster' }] });
 });
@@ -76,14 +81,16 @@ describe('UserPlatformEdit (integration)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Jane Doe' })).toBeInTheDocument();
     expect(screen.getByText('Platform Admin')).toBeInTheDocument();
-    expect(screen.getByText('Platform')).toBeInTheDocument();
+    // The scope is carried by the reach band, not by a per-row 'Platform' label: a lone
+    // platform-wide group suppresses its heading because the band already says it.
+    expect(screen.getByText(/reaches the entire platform/i)).toBeInTheDocument();
   });
 });
 
 // SECURITY. Every write surface on this page is gated on user_platform.manage:
-//   1. the Add Role button          (UserPlatformEdit.tsx:211)
-//   2. the per-assignment Remove    (UserPlatformEdit.tsx:235)
-//   3. the add-role mini-form       (UserPlatformEdit.tsx:252)
+//   1. the Add Role trigger         (UserPlatformEdit.tsx — <Can> around <AddRoleSheet>)
+//   2. the per-assignment Remove    (userPlatformEdit/RoleGrantList.tsx — <Can> around the button)
+//   3. the grant form itself        (userPlatformEdit/AddRoleSheet.tsx, inside gate 1)
 // These tests must FAIL if gate 1 or 2 is deleted. See the note on gate 3 below.
 describe('UserPlatformEdit — role write surfaces are gated on user_platform.manage', () => {
   it('hides Add Role and Remove without user_platform.manage', async () => {
@@ -117,7 +124,7 @@ describe('UserPlatformEdit — role write surfaces are gated on user_platform.ma
     expect(screen.queryByRole('button', { name: /remove platform admin/i })).toBeNull();
   });
 
-  // Gate 3 (the mini-form at :252) is only reachable through gate 1's Add Role button,
+  // Gate 3 (the sheet's form) is only reachable through gate 1's Add Role trigger,
   // so no UI path can open the form without user_platform.manage — this asserts the
   // reachable behaviour. NOTE: because both gates read the same permission and the form
   // has no other opener, deleting gate 3 *alone* would not fail any test. It is
