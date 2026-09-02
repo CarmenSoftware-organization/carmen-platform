@@ -4203,7 +4203,6 @@ export const en = {
       deliveryType: 'Delivery method',
       deliveryTypeFile: 'File',
       deliveryTypeViewerUrl: 'Viewer URL',
-      viewerEndpoint: 'Viewer endpoint',
       notificationsWeb: 'Notify in web app',
       notificationsEmail: 'Notify by email',
       mailSource: 'Mail source',

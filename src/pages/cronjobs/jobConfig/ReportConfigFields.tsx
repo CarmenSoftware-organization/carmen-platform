@@ -291,20 +291,13 @@ export default function ReportConfigFields({
         </Select>
       </div>
 
-      {deliveryType === 'viewer_url' && (
-        <div className="space-y-2">
-          <Label htmlFor="report_viewer_endpoint">{t('cronjob.config.viewerEndpoint')}</Label>
-          <Input
-            id="report_viewer_endpoint"
-            disabled={readOnly}
-            value={value.delivery?.viewer_endpoint ?? ''}
-            onChange={(e) => onChange({
-              ...value,
-              delivery: { ...value.delivery, viewer_endpoint: e.target.value },
-            })}
-          />
-        </div>
-      )}
+      {/* I5 fix: viewer_endpoint used to be a free-text URL here, and report.go's
+          in-cluster worker POSTs to it carrying an x-user-id header — a browser-writable
+          field controlling a server-side POST is an authenticated SSRF primitive gated
+          only on cronjob.manage. Deliberately no input for it: resolveViewerEndpoint in
+          report.go composes a safe default (its own configured service URL + bu_code)
+          whenever delivery.viewer_endpoint is absent or not an http(s) URL, so leaving
+          it unset is the correct choice, not a missing feature. */}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <label className="flex items-center gap-2">

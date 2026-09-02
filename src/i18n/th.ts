@@ -3203,7 +3203,6 @@ export const th: Translations = {
       deliveryType: 'วิธีการส่ง',
       deliveryTypeFile: 'ไฟล์',
       deliveryTypeViewerUrl: 'ลิงก์ดูรายงาน',
-      viewerEndpoint: 'ปลายทางลิงก์ดูรายงาน',
       notificationsWeb: 'แจ้งเตือนในเว็บแอป',
       notificationsEmail: 'แจ้งเตือนทางอีเมล',
       mailSource: 'แหล่งอีเมล',
