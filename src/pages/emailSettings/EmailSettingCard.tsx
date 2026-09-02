@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Save, Send, Trash2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Save, Send, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -125,6 +125,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [confirmUnset, setConfirmUnset] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [testOpen, setTestOpen] = useState(false);
 
   // การ์ดไม่ unmount เมื่อออกจากโหมดแก้ไข (มีแค่ isEditing เปลี่ยน) ต่างจาก PasswordField
@@ -157,6 +158,15 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   const docVersion = useMemo(() => getDocVersion(setting), [setting]);
   const carried = lane ? [...lane.explicit, ...lane.inherited] : [];
 
+  // เทียบกับ toForm(setting) ตรง ๆ แทนที่จะเก็บ snapshot แยก — การ์ดเข้าโหมดแก้ด้วยการ seed
+  // จาก setting เสมอ (ดู effect ด้านบน) ค่านั้นจึงเป็น baseline ที่ถูกต้องอยู่แล้ว และ state
+  // ที่น้อยลงหนึ่งตัวคือจุดที่ desync ไม่ได้ · password นับด้วย: PasswordField เก็บค่าไว้เอง
+  // การเปลี่ยนรหัสผ่านโดยไม่แตะช่องอื่นเลยจึงมองไม่เห็นใน formData
+  const dirty = useMemo(
+    () => password !== undefined || JSON.stringify(formData) !== JSON.stringify(toForm(setting)),
+    [formData, password, setting],
+  );
+
   const setValue = (name: keyof EmailSettingFormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
@@ -169,8 +179,8 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
 
   const validateAll = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = 'Profile name is required';
-    if (!formData.from_email.trim()) errors.from_email = 'From email is required';
+    if (!formData.name.trim()) errors.name = t('pages.emailSettings.profileNameRequired');
+    if (!formData.from_email.trim()) errors.from_email = t('pages.emailSettings.fromEmailRequired');
     else {
       const message = validateField('from_email', formData.from_email);
       if (message) errors.from_email = message;
@@ -178,7 +188,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
     if (!formData.smtp_host.trim()) errors.smtp_host = t('pages.emailSettings.smtpHostRequired');
     const port = Number(formData.smtp_port);
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      errors.smtp_port = 'Port must be a whole number between 1 and 65535';
+      errors.smtp_port = t('pages.emailSettings.smtpPortRange');
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -240,11 +250,23 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
     }
   };
 
-  const handleCancel = () => {
+  const discard = () => {
     setFormData(toForm(setting));
     setPassword(undefined);
     setFieldErrors({});
+    setConfirmCancel(false);
     onCancelEdit();
+  };
+
+  const handleCancel = () => {
+    // ทิ้งของที่แก้ไว้ต้องถามก่อนเสมอ — หน้านี้ถามอยู่แล้วตอนสลับไปแก้การ์ดอื่น การกด Cancel
+    // แล้วหายเงียบจึงเป็นความไม่สม่ำเสมอที่ผู้ดูแลเรียนรู้ไม่ได้ว่าเมื่อไหร่งานจะปลอดภัย
+    // (รหัสผ่านที่พิมพ์ไว้ก็นับเป็นของที่แก้ ทั้งที่ไม่โผล่ในช่องไหนเลย — ดู `dirty`)
+    if (dirty) {
+      setConfirmCancel(true);
+      return;
+    }
+    discard();
   };
 
   // Ctrl/⌘+S และ Escape ผูกที่การ์ดที่กำลังแก้ ไม่ใช่ที่หน้า — หน้ารับประกันว่ามีการ์ดเดียว
@@ -255,8 +277,10 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   // ConfirmDialog เป็น dialog ของหน้า ไม่ใช่ของการ์ด จึงไม่ stop propagation ของ Escape
   // ที่ useGlobalShortcuts ฟังที่ window; ถ้าไม่ปิดคีย์ลัดตรงนี้ Escape จะไปโดน onCancel
   // ของการ์ด (handleCancel) พร้อมกับที่ปิด dialog เอง — ทำลาย draft ที่ dialog มีไว้ปกป้อง
+  // confirmCancel เป็น dialog ของการ์ดใบนี้เอง แต่เหตุผลเดียวกับ shortcutsEnabled ใช้ได้ตรง ๆ:
+  // Escape ที่ตั้งใจปิดกล่องยืนยันจะทะลุไปสั่ง handleCancel ด้วย แล้วเปิดกล่องซ้ำไม่รู้จบ
   useGlobalShortcuts(
-    isEditing && shortcutsEnabled
+    isEditing && shortcutsEnabled && !confirmCancel
       ? { onSave: () => void handleSave(), onCancel: handleCancel }
       : {},
   );
@@ -294,27 +318,33 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
                 {setting.smtp_secure ? ' · implicit TLS' : ''}
               </p>
             </div>
-
-            {lane &&
-              (carried.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-muted-foreground text-xs">
-                    {t('pages.emailSettings.carries')}
-                  </span>
-                  {lane.explicit.map((flow) => (
-                    <FlowChip key={flow.value} flow={flow} />
-                  ))}
-                  {lane.inherited.map((flow) => (
-                    <FlowChip key={flow.value} flow={flow} inherited />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-xs">
-                  {t('pages.emailSettings.laneDark')}
-                </p>
-              ))}
           </div>
         )}
+
+        {/*
+          แถบเส้นทางอยู่นอก `!isEditing` โดยตั้งใจ — ฟอร์มแก้ไขมีช่อง `Active` ซึ่งปลดแล้ว
+          ทุกเส้นทางที่วิ่งเข้าโปรไฟล์นี้ส่งไม่ได้ ถ้าแถบนี้หายไปตอนแก้ ผู้ดูแลจะตัดสินใจปิด
+          โปรไฟล์ในจังหวะเดียวกับที่หลักฐานว่ามีใครพึ่งมันอยู่หายจากจอ ซึ่งเป็นความผิดพลาด
+          ที่ไม่มีทางรู้ตัวจนกว่าเมลจะเงียบ · chip ยังกดไม่ได้: การ์ดนี้ไม่ใช่ที่แก้เส้นทาง
+          แผงสายด้านบนเป็น (ดู RoutingPanel) การ์ดนี้แค่ต้องไม่ปิดบังมัน
+        */}
+        {!isNew &&
+          lane &&
+          (carried.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground text-xs">
+                {t('pages.emailSettings.carries')}
+              </span>
+              {lane.explicit.map((flow) => (
+                <FlowChip key={flow.value} flow={flow} />
+              ))}
+              {lane.inherited.map((flow) => (
+                <FlowChip key={flow.value} flow={flow} inherited />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-xs">{t('pages.emailSettings.laneDark')}</p>
+          ))}
 
         {!isEditing && isNew && (
           <p className="text-sm text-muted-foreground">
@@ -431,6 +461,17 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
               {t('common.status.active')}
             </label>
 
+            {/*
+              เตือนตอนกำลังตัดสินใจ ไม่ใช่หลังบันทึกไปแล้ว — แผงสายด้านบนขึ้นคำเตือน "เลนพัง"
+              ก็จริง แต่นั่นเกิดหลังจากเมลหยุดส่งไปแล้ว ตรงนี้คือจุดเดียวที่ยังกลับตัวได้ฟรี
+            */}
+            {!formData.is_active && carried.length > 0 && (
+              <p className="text-destructive flex items-start gap-1.5 text-xs lg:col-span-2">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {t('pages.emailSettings.deactivateWarning', { count: carried.length })}
+              </p>
+            )}
+
             <div className="space-y-2 lg:col-span-2">
               <Label htmlFor={`note_${profileKey}`}>{t('common.field.note')}</Label>
               <Input
@@ -459,18 +500,20 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
           <div className="flex flex-wrap items-center gap-3 pt-2">
             {isEditing ? (
               <>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
+                <Button size="sm" onClick={handleSave} disabled={saving || !dirty}>
                   {saving ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="mr-2 h-4 w-4" />
                   )}
-                  {saving ? 'Saving...' : 'Save'}
+                  {saving ? t('common.busy.saving') : t('common.action.save')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving}>
                   {t('common.cancel')}
                 </Button>
-                <span className="text-xs text-muted-foreground">{t('pages.emailSettings.saveBeforeTest')}</span>
+                {/* เดิมมีข้อความ "Save before you can test" ห้อยอยู่ตรงนี้ตลอดเวลาที่แก้ ทั้งที่
+                    ปุ่มส่งเมลทดสอบหายไปจากแถวนี้แล้วจริง ๆ — การอธิบายว่าทำไมของที่มองไม่เห็น
+                    ถึงมองไม่เห็น ทำให้แถวปุ่มยาวขึ้นโดยไม่ได้เพิ่มสิ่งที่กดได้ */}
               </>
             ) : (
               <>
@@ -499,6 +542,17 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
           </div>
         )}
       </CardContent>
+
+      {/* นอก `!isNew`: การ์ดโปรไฟล์ใหม่ก็มีของที่ยังไม่บันทึกให้ทิ้งได้เหมือนกัน */}
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title={t('pages.emailSettings.discardTitle')}
+        description={t('pages.emailSettings.discardProfileDescription', { label })}
+        confirmText={t('pages.emailSettings.discardAction')}
+        confirmVariant="destructive"
+        onConfirm={discard}
+      />
 
       {!isNew && (
         <>
