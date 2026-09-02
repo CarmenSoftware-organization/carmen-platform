@@ -4171,6 +4171,10 @@ export const en = {
       olderThanHint: 'A duration the cleanup job understands, e.g. 30d, 90d, 1y.',
       buCodes: 'Business units',
       buCodesEmptyMeansAll: 'Leave empty to include every business unit.',
+      // I1 fix: report.go rejects an empty bu_codes with "report job config missing
+      // bu_codes" — a new key rather than editing buCodesEmptyMeansAll, which stays
+      // correct for DashboardRefreshConfigFields (empty really does mean "all" there).
+      buCodesRequiredHint: 'Required — select at least one business unit, or the run will fail.',
       tier: 'Tier',
       tierAll: 'All tiers',
       title: 'Title',
@@ -4181,6 +4185,9 @@ export const en = {
       userIdsNoneSelected: 'No users selected',
       userIdsNoneFound: 'No users found',
       userIdsEmptyMeansAll: 'Leave empty to notify every user.',
+      // I2 fix: notification.go rejects an empty user_ids with "notification job config
+      // missing user_ids" — a new key rather than editing userIdsEmptyMeansAll.
+      userIdsRequiredHint: 'Required — select at least one user, or the run will fail.',
       templateId: 'Report template',
       templateIdPlaceholder: 'Select a report template',
       templateIdLoadFailed: 'Failed to load report templates',

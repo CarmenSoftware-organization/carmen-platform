@@ -154,7 +154,10 @@ export default function ReportConfigFields({
           disabled={readOnly}
           keyBy="code"
         />
-        <p className="text-xs text-muted-foreground">{t('cronjob.config.buCodesEmptyMeansAll')}</p>
+        {/* I1 fix: unlike dashboard_refresh, report.go errors with "report job config
+            missing bu_codes" when this is empty — the "leave empty" hint was copied
+            from DashboardRefreshConfigFields, where empty genuinely means "all". */}
+        <p className="text-xs text-muted-foreground">{t('cronjob.config.buCodesRequiredHint')}</p>
       </div>
 
       <div className="space-y-2">

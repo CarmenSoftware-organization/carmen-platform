@@ -164,7 +164,10 @@ export default function NotificationConfigFields({
             )}
           </>
         )}
-        <p className="text-xs text-muted-foreground">{t('cronjob.config.userIdsEmptyMeansAll')}</p>
+        {/* I2 fix: notification.go errors with "notification job config missing user_ids"
+            when this is empty — the "leave empty" hint was copied from
+            DashboardRefreshConfigFields' bu_codes hint, where empty genuinely means "all". */}
+        <p className="text-xs text-muted-foreground">{t('cronjob.config.userIdsRequiredHint')}</p>
       </div>
     </div>
   );
