@@ -20,6 +20,7 @@ import JobConfigFields from './jobConfig';
 import { Save, X, Loader2, SearchX, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseApiError, isNotFoundError } from '../../utils/errorParser';
+import { validateField } from '../../utils/validation';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { normalizeAudit } from '../../utils/audit';
 import { describeCron } from '../../utils/cronExpression';
@@ -133,6 +134,13 @@ const CronJobEdit: React.FC = () => {
     if (fieldErrors[name]) setFieldErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  // เฉพาะ `name` เท่านั้น — ฟิลด์เดียวที่บังคับ (มี * ในป้าย) รูปแบบเดียวกับ
+  // DatabasePoolEdit.tsx's handleBlur ห้ามขยายไปฟิลด์อื่นตามคำสั่งเดิม "no extra validation"
+  const handleNameBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const err = validateField('name', e.target.value, { required: true, label: t('common.field.name') }, t);
+    if (err) setFieldErrors(prev => ({ ...prev, name: err }));
+  };
+
   const handleActiveChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, is_active: e.target.checked }));
   };
@@ -157,6 +165,16 @@ const CronJobEdit: React.FC = () => {
 
   const handleSave = async () => {
     if (!hasPermission('cronjob.manage') || readOnly) return;
+
+    // Go handler's update path is `if input.Name != nil { existing.Name = *input.Name }` —
+    // no non-empty check server-side, so a blank name here would reach the database.
+    // onBlur (handleNameBlur) already catches typing-then-clearing, but Ctrl/Cmd+S and the
+    // native form submit both bypass blur, so it must be re-checked here too.
+    const nameErr = validateField('name', formData.name, { required: true, label: t('common.field.name') }, t);
+    if (nameErr) {
+      setFieldErrors(prev => ({ ...prev, name: nameErr }));
+      return;
+    }
 
     const trimmedCron = formData.cron_expression.trim();
     if (!trimmedCron) {
@@ -206,6 +224,19 @@ const CronJobEdit: React.FC = () => {
       };
       if (detail.response?.status === 409 && detail.response.data?.error_code === 'FOREIGN_OWNED_JOB') {
         toast.error(t('cronjob.error.foreignOwned', { service: detail.response.data.source_service ?? '' }));
+        return;
+      }
+      // micro-cronjobs (Go) รายงานความขัดแย้งของ doc_version เป็น error_code: 'VERSION_CONFLICT'
+      // ที่ระดับบนสุดของ response body ตรง ๆ — คนละ contract กับ isVersionConflict ด้านล่าง ซึ่ง
+      // เขียนไว้สำหรับทรัพยากรที่หลังบ้านเป็น Prisma (คืน code: 'DOC_VERSION_CONFLICT' หรือ
+      // ข้อความที่มีคำว่า "modified by another request"/"doc_version") ข้อความจริงของ cronjob คือ
+      // "cronjob was modified by someone else" ซึ่งไม่ตรงกับ regex นั้นเลย ทำให้ isVersionConflict
+      // คืน false เสมอสำหรับ cronjob แม้จะเป็น version conflict จริง จึงต้องเช็ค error_code ของ
+      // cronjob เองก่อน แล้วค่อยเรียก isVersionConflict เป็น fallback ไว้เผื่อ (ห้ามลบสองอันใดอันหนึ่งทิ้ง
+      // เพื่อ "ลดความซ้ำซ้อน" — คนละ contract กันจริง ๆ)
+      if (detail.response?.status === 409 && detail.response.data?.error_code === 'VERSION_CONFLICT') {
+        notifyVersionConflict(t);
+        await load();
         return;
       }
       if (isVersionConflict(err)) {
@@ -317,6 +348,7 @@ const CronJobEdit: React.FC = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    onBlur={handleNameBlur}
                     disabled={readOnly}
                     className={fieldErrors.name ? 'border-destructive' : ''}
                   />
