@@ -2962,7 +2962,6 @@ export const en = {
       dialogXmlTab: 'Dialog XML',
       contentXmlTab: 'Content XML',
       previewTab: 'Preview',
-      invalidAria: 'Invalid',
       createTemplate: 'Create Template',
       // ป้ายฟิลด์บังคับ ป้อนเข้า common.validation.requiredMessage
       fieldLabelReportGroup: 'Report group',

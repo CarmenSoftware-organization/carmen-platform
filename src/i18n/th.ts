@@ -3043,7 +3043,6 @@ export const th: Translations = {
       dialogXmlTab: 'Dialog XML',
       contentXmlTab: 'Content XML',
       previewTab: 'ตัวอย่าง',
-      invalidAria: 'ไม่ถูกต้อง',
       createTemplate: 'สร้างเทมเพลต',
       fieldLabelReportGroup: 'กลุ่มรายงาน',
       fieldLabelTemplateType: 'ชนิดเทมเพลต',

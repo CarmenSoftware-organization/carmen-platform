@@ -13,7 +13,7 @@ import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { TabStrip, type TabStripItem } from '../components/TabStrip';
 import { Skeleton } from '../components/ui/skeleton';
 import { ChipInput } from '../components/ui/chip-input';
 import { XmlEditor } from '../components/XmlEditor';
@@ -422,6 +422,12 @@ const ReportTemplateEdit: React.FC = () => {
   const isForm = formData.template_type === 'form';
   const dialogLines = countLines(formData.dialog);
   const contentLines = countLines(formData.content);
+
+  const XML_TABS: TabStripItem<typeof activeTab>[] = [
+    { id: 'dialog', label: t('pages.reportTemplates.dialogXmlTab'), count: dialogLines, hasError: !dialogValidation.valid },
+    { id: 'content', label: t('pages.reportTemplates.contentXmlTab'), count: contentLines, hasError: !contentValidation.valid },
+    { id: 'preview', label: t('pages.reportTemplates.previewTab') },
+  ];
 
   return (
     <Layout>
@@ -1089,38 +1095,11 @@ const ReportTemplateEdit: React.FC = () => {
             <div>
               <Card>
                 <CardHeader>
-                  <Tabs
-                    value={activeTab}
-                    onValueChange={(v) => setActiveTab(v as typeof activeTab)}
-                  >
-                    <TabsList>
-                      <TabsTrigger value="dialog">
-                        {t('pages.reportTemplates.dialogXmlTab')}
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {dialogLines}
-                        </Badge>
-                        {!dialogValidation.valid && (
-                          <span
-                            className="ml-1.5 h-1.5 w-1.5 rounded-full bg-destructive"
-                            aria-label={t('pages.reportTemplates.invalidAria')}
-                          />
-                        )}
-                      </TabsTrigger>
-                      <TabsTrigger value="content">
-                        {t('pages.reportTemplates.contentXmlTab')}
-                        <Badge variant="outline" className="ml-2 text-xs">
-                          {contentLines}
-                        </Badge>
-                        {!contentValidation.valid && (
-                          <span
-                            className="ml-1.5 h-1.5 w-1.5 rounded-full bg-destructive"
-                            aria-label={t('pages.reportTemplates.invalidAria')}
-                          />
-                        )}
-                      </TabsTrigger>
-                      <TabsTrigger value="preview">{t('pages.reportTemplates.previewTab')}</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                  {/* แถบนี้เคยเขียน count badge กับจุดแดง error ขึ้นมาเอง ซึ่งเป็น markup
+                      ชุดเดียวกับที่ `TabStrip` วาดจาก prop `count` และ `hasError` เป๊ะ ๆ
+                      panel ยังเป็น <div hidden> เหมือนเดิม — `TabStrip` วาดแค่แถบ ไม่ถือ
+                      เนื้อหา ตัว CodeMirror จึงยัง mount ค้างไว้ตามที่ pages/CLAUDE.md สั่ง */}
+                  <TabStrip tabs={XML_TABS} value={activeTab} onChange={setActiveTab} />
                 </CardHeader>
                 <CardContent>
                   {loading ? (

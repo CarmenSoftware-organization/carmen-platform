@@ -128,7 +128,7 @@ Wired pages: Cluster, BusinessUnit, User, ReportTemplate, Application, Role, New
 
 **Status beside a title:** pass it as `<PageHeader afterTitle={<Badge …/>}>`, which renders it in the title row but **outside** the `<h1>` — nesting a badge inside folds "Active" into the heading's accessible name.
 
-**Page furniture:** the way out of an Edit page is `<PageHeader backTo=…>` when the page draws a `PageHeader`, and **`<BackLink to label>`** when it draws its own hero instead (`UserIdentityHero`, `ClusterPlate`, `NewsMasthead`, …) — never both, and never a `<Button>Back</Button>` in the actions row. Save/Cancel belong in the `.unsaved-bar` at the bottom, not in `PageHeader actions`. Page-level section nav is **`<TabStrip>`** (underlined); the pill `ui/tabs` primitive is for mode switches *inside* a form.
+**Page furniture:** the way out of an Edit page is `<PageHeader backTo=…>` when the page draws a `PageHeader`, and **`<BackLink to label>`** when it draws its own hero instead (`UserIdentityHero`, `ClusterPlate`, `NewsMasthead`, …) — never both, and never a `<Button>Back</Button>` in the actions row. Save/Cancel belong in the `.unsaved-bar` at the bottom, not in `PageHeader actions`. Section nav is **`<TabStrip>`** (underlined) — including tabs that sit inside a panel `Card`, as Report Template Edit's XML tabs do; pass per-tab facts as its `count` and `hasError` props rather than hand-rolling a badge and a dot. The pill `ui/tabs` primitive is left for mode switches *inside* a form, where the choice changes what you are submitting: `BroadcastCompose` (audience, send-now/schedule) is the only page still using it.
 
 **Icon convention:** `mr-2 h-4 w-4` inside buttons with text; `h-5 w-5` for standalone icon buttons (`size="icon"`).
 
