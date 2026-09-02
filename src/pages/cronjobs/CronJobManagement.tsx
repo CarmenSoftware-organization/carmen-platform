@@ -25,7 +25,7 @@ import { relativeTime } from '../../utils/relativeTime';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useI18n } from '../../hooks/useI18n';
 import { useAuth } from '../../context/AuthContext';
-import type { CronJob } from '../../types';
+import type { CronJob, CronJobType } from '../../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { TKey } from '../../i18n/types';
 
@@ -37,6 +37,16 @@ const fmt = (v?: string | null) => {
   if (Number.isNaN(d.getTime())) return '-';
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+// job_config มี bu_codes เฉพาะสองประเภทนี้ (ReportJobConfig / DashboardRefreshJobConfig)
+// ประเภทอื่นไม่ผูกกับหน่วยธุรกิจเลย จึงต้องแยก "ไม่เกี่ยวข้อง" ออกจาก "ยังไม่ได้เลือก"
+const BU_SCOPED_TYPES: CronJobType[] = ['report', 'dashboard_refresh'];
+
+const buCodesOf = (job: CronJob): string[] => {
+  if (!BU_SCOPED_TYPES.includes(job.job_type)) return [];
+  const codes = (job.job_config as { bu_codes?: string[] } | undefined)?.bu_codes;
+  return Array.isArray(codes) ? codes.filter(Boolean) : [];
 };
 
 function SummaryStat({ label, value }: { label: string; value: React.ReactNode }) {
@@ -208,6 +218,36 @@ const CronJobManagement: React.FC = () => {
       cell: ({ row }) => <Badge variant="secondary">{t(`cronjob.type.${row.original.job_type}` as TKey)}</Badge>,
     },
     {
+      id: 'bu',
+      // เรียงจากเซิร์ฟเวอร์ไม่ได้ (ค่าอยู่ใน JSON ของ job_config) จึงไม่เปิด enableSorting
+      accessorFn: (r) => buCodesOf(r).join(', '),
+      header: t('cronjob.column.businessUnit'),
+      cell: ({ row }) => {
+        const job = row.original;
+        const codes = buCodesOf(job);
+        if (codes.length === 0) {
+          // dashboard_refresh ที่เว้นว่าง = ทำทุกหน่วยธุรกิจ (ตรงกับ hint ในหน้าแก้ไข)
+          // report ที่เว้นว่างคือ config ไม่ครบ — Go จะ error ตอนรัน จึงไม่พูดว่า "ทุกหน่วย"
+          if (job.job_type === 'dashboard_refresh') {
+            return <span className="text-xs text-muted-foreground">{t('cronjob.bu.all')}</span>;
+          }
+          return <span className="text-xs text-muted-foreground">—</span>;
+        }
+        const shown = codes.slice(0, 2);
+        const overflow = codes.length - shown.length;
+        return (
+          <div className="flex flex-wrap items-center gap-1" title={codes.join(', ')}>
+            {shown.map((code) => (
+              <code key={code} className="font-mono text-[10px] sm:text-xs">{code}</code>
+            ))}
+            {overflow > 0 && (
+              <span className="text-[11px] text-muted-foreground">+{overflow}</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: 'cron_expression',
       header: t('cronjob.column.schedule'),
       cell: ({ row }) => {
@@ -277,7 +317,6 @@ const CronJobManagement: React.FC = () => {
       header: '',
       cell: ({ row }) => {
         const job = row.original;
-        const foreign = Boolean(job.source_service);
         // A row's own Start/Stop/Run-now going inert while it's mid-flight is the guard — no
         // whole-table disable, no spinner overlay. Without this a double-click on a slow
         // connection dispatches the action twice; for Run-now that's not a harmless retry —
@@ -303,8 +342,7 @@ const CronJobManagement: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              disabled={foreign}
-              title={foreign ? t('cronjob.action.foreignOwnedTooltip', { service: job.source_service ?? '' }) : t('common.action.edit')}
+              title={t('common.action.edit')}
               aria-label={t('common.action.edit')}
               onClick={() => navigate(`/cronjobs/${job.id}/edit`)}
             >
@@ -313,8 +351,7 @@ const CronJobManagement: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              disabled={foreign}
-              title={foreign ? t('cronjob.action.foreignOwnedTooltip', { service: job.source_service ?? '' }) : t('common.action.delete')}
+              title={t('common.action.delete')}
               aria-label={t('common.action.delete')}
               onClick={() => setDeleteTarget(job)}
             >
@@ -349,11 +386,17 @@ const CronJobManagement: React.FC = () => {
       job_type_label: t(`cronjob.type.${item.job_type}` as TKey),
       status_label: item.is_active ? t('cronjob.status.running') : t('cronjob.status.stopped'),
       owner_label: item.source_service || t('cronjob.owner.platform'),
+      bu_label: (() => {
+        const codes = buCodesOf(item);
+        if (codes.length > 0) return codes.join(', ');
+        return item.job_type === 'dashboard_refresh' ? t('cronjob.bu.all') : '';
+      })(),
     }));
     const csv = generateCSV(rows, [
       { key: 'name', label: t('cronjob.column.name') },
       { key: 'description', label: t('common.field.description') },
       { key: 'job_type_label', label: t('cronjob.column.type') },
+      { key: 'bu_label', label: t('cronjob.column.businessUnit') },
       { key: 'cron_expression', label: t('cronjob.column.schedule') },
       { key: 'status_label', label: t('cronjob.column.status') },
       { key: 'owner_label', label: t('cronjob.column.owner') },
@@ -495,7 +538,11 @@ const CronJobManagement: React.FC = () => {
         open={deleteTarget !== null}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
         title={t('cronjob.confirm.deleteTitle')}
-        description={t('cronjob.confirm.deleteBody', { name: deleteTarget?.name ?? '' })}
+        description={deleteTarget?.source_service
+          // job ที่ service อื่นสร้างไว้ = กำหนดการรายงานของ BU นั้น ลบแล้ว BU สร้างคืนเองไม่ได้
+          // จากหน้านี้ กล่องยืนยันจึงต้องบอกว่ากำลังลบของใคร ไม่ใช่แค่ชื่อ job
+          ? t('cronjob.confirm.deleteBodyForeign', { name: deleteTarget.name, service: deleteTarget.source_service })
+          : t('cronjob.confirm.deleteBody', { name: deleteTarget?.name ?? '' })}
         confirmText={t('common.action.delete')}
         confirmVariant="destructive"
         onConfirm={handleDeleteConfirmed}

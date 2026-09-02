@@ -3216,7 +3216,7 @@ export const th: Translations = {
     backToList: 'กลับไปหน้ารายการงานตามเวลา',
     loadFailedOne: 'โหลดงานตามเวลานี้ไม่สำเร็จ: {{detail}}',
     loadingOneAria: 'กำลังโหลดงานตามเวลา',
-    readOnlyBanner: 'งานนี้เป็นของ {{service}} แก้ไขได้เฉพาะจากที่นั่น หน้านี้ยังดูรายละเอียดการตั้งค่าได้',
+    foreignOwnedBanner: 'งานนี้ถูกสร้างโดย {{service}} ให้หน่วยธุรกิจหนึ่ง การแก้ที่นี่มีผลกับหน่วยธุรกิจนั้นทันที และจะเห็นการเปลี่ยนแปลงที่คอนโซลของ service นั้นด้วย',
     history: 'ประวัติ',
     section: {
       basics: 'ข้อมูลพื้นฐาน',
@@ -3268,12 +3268,16 @@ export const th: Translations = {
     column: {
       name: 'ชื่อ',
       type: 'ประเภท',
+      businessUnit: 'หน่วยธุรกิจ',
       schedule: 'กำหนดเวลา',
       status: 'สถานะ',
       owner: 'เจ้าของ',
       lastRun: 'รันล่าสุด',
       nextRun: 'รันครั้งถัดไป',
       runs: 'จำนวนครั้งที่รัน',
+    },
+    bu: {
+      all: 'ทุกหน่วยธุรกิจ',
     },
     status: {
       running: 'กำลังทำงาน',
@@ -3286,11 +3290,11 @@ export const th: Translations = {
       start: 'เริ่ม',
       stop: 'หยุด',
       runNow: 'รันทันที',
-      foreignOwnedTooltip: 'เป็นของ {{service}} — แก้ไขและลบถูกปิดใช้งานที่นี่',
     },
     confirm: {
       deleteTitle: 'ลบงานตามเวลา',
       deleteBody: 'ลบ "{{name}}" ใช่หรือไม่? การกระทำนี้ย้อนกลับไม่ได้',
+      deleteBodyForeign: 'ลบ "{{name}}" ใช่หรือไม่? {{service}} สร้างงานนี้ให้หน่วยธุรกิจหนึ่ง การลบที่นี่จะลบกำหนดการของหน่วยธุรกิจนั้นไปด้วย และย้อนกลับไม่ได้',
     },
     summary: {
       total: 'ทั้งหมด',

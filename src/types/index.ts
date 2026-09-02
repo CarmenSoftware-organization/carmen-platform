@@ -1697,7 +1697,8 @@ export type CronJobConfig =
   | ActivityRetentionJobConfig;
 
 /** หนึ่งแถวใน "CRONJOBS"."Cronjob" — ตารางนี้ใช้ร่วมกับ micro-report
- *  แถวที่มี source_service เป็นของ service อื่น แก้/ลบจากหน้านี้ไม่ได้ (gateway ตอบ 409) */
+ *  แถวที่มี source_service เป็น job ที่ service อื่นสร้างไว้ (micro-report เขียนกำหนดการรายงาน
+ *  ของแต่ละ BU ลงตารางนี้) — แก้/ลบจากคอนโซล platform ได้ แต่มีผลกับ BU นั้นทันที */
 export interface CronJob {
   id: string;
   name: string;
