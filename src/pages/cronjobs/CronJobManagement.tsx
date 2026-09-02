@@ -66,6 +66,12 @@ const CronJobManagement: React.FC = () => {
   const [activeJobs, setActiveJobs] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CronJob | null>(null);
+  // The id of the row currently mid-flight on Start/Stop/Run now — disables those three
+  // buttons on that row so a double-click cannot dispatch the action twice. Delete already
+  // has its own guard (ConfirmDialog manages its own loading/disabled state), so it's not
+  // tracked here. A single id is enough since a row can only have one of these in flight at
+  // once (all three buttons for a row are disabled together while it is set).
+  const [actingJobId, setActingJobId] = useState<string | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,26 +131,35 @@ const CronJobManagement: React.FC = () => {
   }, []);
 
   const handleStart = useCallback(async (job: CronJob) => {
+    setActingJobId(job.id);
     try {
       await cronjobService.start(job.id);
       toast.success(t('cronjob.toast.started'));
       await refresh();
     } catch (err) {
       toast.error(getErrorDetail(err, t));
+    } finally {
+      // finally, not just the success path — an error must still release the row, or a
+      // failed Start/Stop/Run-now would leave those buttons permanently disabled.
+      setActingJobId(null);
     }
   }, [refresh, t]);
 
   const handleStop = useCallback(async (job: CronJob) => {
+    setActingJobId(job.id);
     try {
       await cronjobService.stop(job.id);
       toast.success(t('cronjob.toast.stopped'));
       await refresh();
     } catch (err) {
       toast.error(getErrorDetail(err, t));
+    } finally {
+      setActingJobId(null);
     }
   }, [refresh, t]);
 
   const handleExecute = useCallback(async (job: CronJob) => {
+    setActingJobId(job.id);
     try {
       await cronjobService.execute(job.id);
       // info, NOT success: POST /execute returns the moment the job is handed to a background
@@ -153,6 +168,8 @@ const CronJobManagement: React.FC = () => {
       toast.info(t('cronjob.toast.dispatched'));
     } catch (err) {
       toast.error(getErrorDetail(err, t));
+    } finally {
+      setActingJobId(null);
     }
   }, [t]);
 
@@ -261,19 +278,26 @@ const CronJobManagement: React.FC = () => {
       cell: ({ row }) => {
         const job = row.original;
         const foreign = Boolean(job.source_service);
+        // A row's own Start/Stop/Run-now going inert while it's mid-flight is the guard — no
+        // whole-table disable, no spinner overlay. Without this a double-click on a slow
+        // connection dispatches the action twice; for Run-now that's not a harmless retry —
+        // the endpoint hands the job to a background worker and returns before the outcome
+        // is known, so two clicks genuinely start two independent runs (duplicate report
+        // emails, duplicate notifications, a cleanup job's deletion running twice).
+        const acting = actingJobId === job.id;
         if (!canManage) return null;
         return (
           <div className="flex items-center gap-3">
             {job.is_active ? (
-              <Button variant="ghost" size="icon" onClick={() => handleStop(job)} title={t('cronjob.action.stop')} aria-label={t('cronjob.action.stop')}>
+              <Button variant="ghost" size="icon" disabled={acting} onClick={() => handleStop(job)} title={t('cronjob.action.stop')} aria-label={t('cronjob.action.stop')}>
                 <Pause className="h-5 w-5" />
               </Button>
             ) : (
-              <Button variant="ghost" size="icon" onClick={() => handleStart(job)} title={t('cronjob.action.start')} aria-label={t('cronjob.action.start')}>
+              <Button variant="ghost" size="icon" disabled={acting} onClick={() => handleStart(job)} title={t('cronjob.action.start')} aria-label={t('cronjob.action.start')}>
                 <Play className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={() => handleExecute(job)} title={t('cronjob.action.runNow')} aria-label={t('cronjob.action.runNow')}>
+            <Button variant="ghost" size="icon" disabled={acting} onClick={() => handleExecute(job)} title={t('cronjob.action.runNow')} aria-label={t('cronjob.action.runNow')}>
               <Zap className="h-5 w-5" />
             </Button>
             <Button
@@ -300,7 +324,7 @@ const CronJobManagement: React.FC = () => {
         );
       },
     },
-  ], [t, lang, canManage, navigate, handleStart, handleStop, handleExecute]);
+  ], [t, lang, canManage, navigate, handleStart, handleStop, handleExecute, actingJobId]);
 
   // Four of six figures are computed from the rows currently loaded — labelled as covering
   // only this page (see the caption rendered below the band). Total (paginate.total) and
