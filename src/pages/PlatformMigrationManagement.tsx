@@ -1,5 +1,5 @@
 // src/pages/PlatformMigrationManagement.tsx
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Database, RefreshCw, Loader2, Play, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
 import Layout from '../components/Layout';
@@ -18,13 +18,17 @@ import {
 } from '../components/ui/select';
 import platformMigrationService from '../services/platformMigrationService';
 import platformSeedService from '../services/platformSeedService';
+import businessUnitService from '../services/businessUnitService';
+import { BuSwitcher } from '../components/BuSwitcher';
 import { OpRow } from './platformMigration/OpRow';
 import { RunConsole } from './platformMigration/RunConsole';
+import { useRunLog, splitRaw } from './platformMigration/runLog';
 import { migrationStatusCode } from '../utils/migrationError';
-import { parseApiError } from '../utils/errorParser';
+import { devLog, parseApiError } from '../utils/errorParser';
 import { useI18n } from '../hooks/useI18n';
 import type { TFunction } from '../i18n/types';
 import type {
+  BusinessUnit,
   PlatformMigrationStatus,
   PlatformMigrationResolveAction,
   PlatformSeedOp,
@@ -36,15 +40,17 @@ import type {
  * ล้อ handleMigrationError ของฝั่ง tenant แต่ใช้คีย์ข้อความคนละชุด เพราะ 403 ที่นี่
  * เกิดได้จาก env PLATFORM_MIGRATION_API_ENABLED ปิดอยู่ ไม่ใช่แค่เรื่องสิทธิ์ผู้ใช้
  */
-const notifyError = (err: unknown, t: TFunction): void => {
+const errorText = (err: unknown, t: TFunction): string => {
   const code = migrationStatusCode(err);
-  if (code === 403) {
-    toast.error(t('pages.platformMigration.disabledOrSuperAdmin'));
-  } else if (code === 409) {
-    toast.warning(t('pages.platformMigration.alreadyRunning'));
-  } else {
-    toast.error(parseApiError(err).message);
-  }
+  if (code === 403) return t('pages.platformMigration.disabledOrSuperAdmin');
+  if (code === 409) return t('pages.platformMigration.alreadyRunning');
+  return parseApiError(err).message;
+};
+
+const notifyError = (err: unknown, t: TFunction): void => {
+  const message = errorText(err, t);
+  if (migrationStatusCode(err) === 409) toast.warning(message);
+  else toast.error(message);
 };
 
 const nowTime = (): string => {
@@ -55,6 +61,23 @@ const nowTime = (): string => {
 
 /** ชื่อโฟลเดอร์ migration ที่ backend ยอมรับ — ตัวเลข timestamp ตามด้วยชื่อ */
 const MIGRATION_NAME_RE = /^[0-9]{6,}_[A-Za-z0-9_-]+$/;
+
+/**
+ * op ที่ไม่ให้กดจากคอนโซลนี้ — backend ยังมีในทะเบียนและยังเรียกจากที่อื่นได้
+ *
+ * `check-seat-pool-view` เป็นตัวเดียวในกลุ่ม check ที่เขียนแถวจริงบนใบอนุญาตของลูกค้า
+ * (ใน transaction ที่ย้อนกลับเสมอ แต่ระหว่างรันมันล็อกแถวไว้จริง) กรองที่นี่แล้วปุ่มหายไป
+ * โดยไม่ต้องรอ backend deploy — ถ้าวันหนึ่ง backend ถอดมันออกจาก catalog เอง บรรทัดนี้กลายเป็น
+ * no-op ไม่ใช่ของพัง
+ */
+const HIDDEN_OPS = new Set(['check-seat-pool-view']);
+
+/**
+ * op นี้ต้องถาม BU ก่อนรันไหม — ตัดสินจากพารามิเตอร์ที่ทะเบียนประกาศ ไม่ใช่จาก id ของ op
+ * ถ้าวันหนึ่งมี op ตัวที่สองที่ทำงานราย BU มันจะได้ dialog เองโดยไม่ต้องแก้ไฟล์นี้
+ */
+const buParamOf = (op: PlatformSeedOp): string | null =>
+  op.params?.find((p) => p.type === 'uuid' && /(^|_)bu(_|$)/.test(p.name))?.name ?? null;
 
 /**
  * `seed-permission` -> `seedPermission` — คีย์ i18n ของ op ตั้งจาก id เพื่อไม่ต้องมีตารางแมปคู่ขนาน
@@ -107,9 +130,16 @@ export const PlatformMigrationManagement: React.FC = () => {
   const [catalog, setCatalog] = useState<PlatformSeedOp[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [runningOp, setRunningOp] = useState<string | null>(null);
-  const [runLines, setRunLines] = useState<string[]>([]);
-  const [runResult, setRunResult] = useState<{ success: boolean; exit_code: number } | null>(null);
   const [confirmOp, setConfirmOp] = useState<PlatformSeedOp | null>(null);
+
+  // op ที่ต้องเลือก BU ก่อน: pickBuFor คือตัวที่ dialog กำลังถามให้ · pickedBu คือคำตอบที่รอยืนยัน
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [pickBuFor, setPickBuFor] = useState<PlatformSeedOp | null>(null);
+  const [pickedBu, setPickedBu] = useState<BusinessUnit | null>(null);
+  const buLoadedRef = useRef(false);
+
+  // สมุดบันทึกเล่มเดียวของทั้งหน้า — deploy, resolve และทุก op เขียนลงที่นี่
+  const { runs, startRun, appendLines, finishRun, clearRuns } = useRunLog();
 
   const fetchStatus = useCallback(async (isRefresh: boolean): Promise<void> => {
     if (isRefresh) setRefreshing(true);
@@ -131,8 +161,22 @@ export const PlatformMigrationManagement: React.FC = () => {
     }
     // แยก try ของตัวเอง — catalog พังต้องไม่ทำให้ทั้งหน้าพัง สถานะ migration ยังอ่านได้อยู่
     try {
-      setCatalog(await platformSeedService.getCatalog());
+      const ops = (await platformSeedService.getCatalog()).filter((o) => !HIDDEN_OPS.has(o.id));
+      setCatalog(ops);
       setCatalogError(null);
+
+      // โหลดรายชื่อ BU เฉพาะเมื่อทะเบียนบอกว่ามี op ที่ต้องถาม และโหลดครั้งเดียวต่อการเปิดหน้า —
+      // fetchStatus ถูกเรียกซ้ำหลังทุกการรัน การดึง BU 200 รายการทุกครั้งเป็นการเสียเปล่า
+      if (!buLoadedRef.current && ops.some((o) => buParamOf(o))) {
+        buLoadedRef.current = true;
+        try {
+          setBusinessUnits((await businessUnitService.getAll({ perpage: 200 })).data ?? []);
+        } catch (err) {
+          // ไม่ทำให้ทั้งหน้าพัง — op อื่นยังกดได้ ส่วนตัวที่ต้องเลือก BU จะบอกเองตอนกดว่าไม่มีให้เลือก
+          buLoadedRef.current = false;
+          devLog('platformSeed:businessUnits', err);
+        }
+      }
     } catch (err) {
       // นำหน้าด้วยข้อความที่แปลแล้ว แต่คงรายละเอียดดิบไว้ — ผู้อ่านหน้านี้คือ super-admin ที่
       // "Cannot GET /api-system/platform/seeds/catalog" บอกได้ทันทีว่า backend ยังไม่ deploy
@@ -153,46 +197,70 @@ export const PlatformMigrationManagement: React.FC = () => {
 
   const handleDeploy = useCallback(async (): Promise<void> => {
     setDeploying(true);
+    const runId = startRun('deploy', t('pages.platformMigration.deployButton'));
+    appendLines(runId, ['$ prisma migrate deploy']);
     try {
       const result = await platformMigrationService.deploy();
       const applied = result.applied_migrations ?? [];
+      const raw = splitRaw(result.raw);
+      // ถ้า backend ไม่ได้คืน stdout ดิบมา ยังเหลือรายชื่อ migration ที่ลงไปให้อ่านได้
+      appendLines(runId, raw.length > 0 ? raw : applied.map((name) => `Applied ${name}`));
       if (result.already_up_to_date || applied.length === 0) {
+        appendLines(runId, [t('pages.platformMigration.deployNothing')]);
         toast.info(t('pages.platformMigration.deployNothing'));
       } else {
-        toast.success(t('pages.platformMigration.deploySuccess', { count: applied.length }));
+        const done = t('pages.platformMigration.deploySuccess', { count: applied.length });
+        appendLines(runId, [done]);
+        toast.success(done);
       }
+      finishRun(runId, 'success', 0);
       await fetchStatus(false);
     } catch (err) {
+      appendLines(runId, [errorText(err, t)]);
+      finishRun(runId, 'failed');
       notifyError(err, t);
     } finally {
       setDeploying(false);
     }
-  }, [fetchStatus, t]);
+  }, [appendLines, fetchStatus, finishRun, startRun, t]);
 
   const handleResolve = useCallback(async (): Promise<void> => {
+    const name = migrationName.trim();
     setResolving(true);
+    const runId = startRun('resolve', `${t('pages.platformMigration.resolveButton')} ${name}`);
+    appendLines(runId, [`$ prisma migrate resolve --${resolveAction} ${name}`]);
     try {
-      await platformMigrationService.resolve(migrationName.trim(), resolveAction);
-      toast.success(t('pages.platformMigration.resolveSuccess', { name: migrationName.trim() }));
+      const result = await platformMigrationService.resolve(name, resolveAction);
+      appendLines(runId, splitRaw(result.raw));
+      const done = t('pages.platformMigration.resolveSuccess', { name });
+      appendLines(runId, [done]);
+      finishRun(runId, 'success', 0);
+      toast.success(done);
       setMigrationName('');
       await fetchStatus(false);
     } catch (err) {
+      appendLines(runId, [errorText(err, t)]);
+      finishRun(runId, 'failed');
       notifyError(err, t);
     } finally {
       setResolving(false);
     }
-  }, [fetchStatus, migrationName, resolveAction, t]);
+  }, [appendLines, fetchStatus, finishRun, migrationName, resolveAction, startRun, t]);
 
-  const runOp = useCallback(async (op: PlatformSeedOp): Promise<void> => {
+  const runOp = useCallback(async (op: PlatformSeedOp, bu?: BusinessUnit | null): Promise<void> => {
     setRunningOp(op.id);
-    setRunLines([]);
-    setRunResult(null);
+    const opLabel = t(`pages.platformMigration.ops.${opKey(op.id)}.label` as never);
+    // ป้ายในสมุดต้องบอกด้วยว่ารันกับ BU ไหน — สมุดเก็บหลายรายการ ถ้าเห็นแต่ชื่อ op เหมือนกันสามแถว
+    // ก็แยกไม่ออกว่าแถวไหนของ BU ใด
+    const buParam = buParamOf(op);
+    const runId = startRun(op.group, bu ? `${opLabel} · ${bu.code}` : opLabel);
     try {
+      const params = buParam && bu ? { [buParam]: bu.id } : undefined;
       const result = await platformSeedService.runStream(op.id, (e: SeedRunEvent) => {
-        if (e.type === 'start') setRunLines((prev) => [...prev, `$ ${e.command}`]);
-        if (e.type === 'log') setRunLines((prev) => [...prev, e.line]);
-      });
-      setRunResult(result);
+        if (e.type === 'start') appendLines(runId, [`$ ${e.command}`]);
+        if (e.type === 'log') appendLines(runId, [e.line]);
+      }, params);
+      finishRun(runId, result.success ? 'success' : 'failed', result.exit_code);
       if (result.success) {
         toast.success(t('pages.platformMigration.opSucceeded'));
       } else {
@@ -200,12 +268,13 @@ export const PlatformMigrationManagement: React.FC = () => {
       }
       await fetchStatus(false);
     } catch (err) {
-      setRunResult({ success: false, exit_code: -1 });
+      appendLines(runId, [errorText(err, t)]);
+      finishRun(runId, 'failed');
       notifyError(err, t);
     } finally {
       setRunningOp(null);
     }
-  }, [fetchStatus, t]);
+  }, [appendLines, fetchStatus, finishRun, startRun, t]);
 
   const pending = status?.pending ?? [];
   const hasPending = status?.has_pending === true;
@@ -420,7 +489,19 @@ export const PlatformMigrationManagement: React.FC = () => {
                               label={t(`pages.platformMigration.ops.${opKey(op.id)}.label` as never)}
                               desc={t(`pages.platformMigration.ops.${opKey(op.id)}.desc` as never)}
                               disabled={busy || loadError !== null}
-                              onRun={() => (op.readonly ? void runOp(op) : setConfirmOp(op))}
+                              needsInput={buParamOf(op) !== null}
+                              onRun={() => {
+                                // op ที่ต้องการ BU ถามก่อนเสมอ แม้จะเป็น readonly — ไม่มีค่า
+                                // ที่จะรันด้วยได้เลยถ้าไม่ถาม
+                                if (buParamOf(op)) {
+                                  setPickedBu(null);
+                                  setPickBuFor(op);
+                                } else if (op.readonly) {
+                                  void runOp(op);
+                                } else {
+                                  setConfirmOp(op);
+                                }
+                              }}
                             />
                           ))}
                         </div>
@@ -428,21 +509,12 @@ export const PlatformMigrationManagement: React.FC = () => {
                     </Card>
                   );
                 })}
-
-                <RunConsole
-                  opLabel={
-                    runningOp
-                      ? t(`pages.platformMigration.ops.${opKey(runningOp)}.label` as never)
-                      : runResult
-                        ? t('pages.platformMigration.consoleLastRun')
-                        : null
-                  }
-                  lines={runLines}
-                  running={runningOp !== null}
-                  result={runResult}
-                />
               </>
             )}
+
+            {/* คอนโซลอยู่นอกกิ่ง catalogError โดยตั้งใจ — ทะเบียน seed โหลดไม่ขึ้นไม่ได้แปลว่า
+                deploy/resolve ใช้ไม่ได้ ผลของสองปุ่มนั้นยังต้องมีที่ลง */}
+            <RunConsole runs={runs} running={busy} onClear={clearRuns} />
           </>
         )}
       </div>
@@ -473,19 +545,50 @@ export const PlatformMigrationManagement: React.FC = () => {
 
       <ConfirmDialog
         open={confirmOp !== null}
-        onOpenChange={(open) => !open && setConfirmOp(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmOp(null);
+            setPickedBu(null);
+          }
+        }}
         title={t('pages.platformMigration.opConfirmTitle')}
         description={
-          confirmOp?.id === 'check-seat-pool-view'
-            ? t('pages.platformMigration.opConfirmSeatPool')
+          pickedBu
+            ? t('pages.platformMigration.opConfirmWriteBu', {
+              code: pickedBu.code,
+              name: pickedBu.name,
+            })
             : t('pages.platformMigration.opConfirmWrite')
         }
         confirmText={t('pages.platformMigration.opRun')}
         confirmVariant="destructive"
         onConfirm={async () => {
           const op = confirmOp;
+          const bu = pickedBu;
           setConfirmOp(null);
-          if (op) await runOp(op);
+          setPickedBu(null);
+          if (op) await runOp(op, bu);
+        }}
+      />
+
+      {/* เลือก BU ก่อนรัน op ที่ทำงานราย BU — ใช้ตัวเดียวกับ SQL Workbench และหน้านำเข้าข้อมูล
+          ผู้ใช้จึงเจอวิธีเลือก BU แบบเดิมทุกที่ */}
+      <BuSwitcher
+        open={pickBuFor !== null}
+        onOpenChange={(open) => { if (!open) setPickBuFor(null); }}
+        businessUnits={businessUnits}
+        currentCode=""
+        onSelect={(code) => {
+          const op = pickBuFor;
+          const bu = businessUnits.find((b) => b.code === code) ?? null;
+          setPickBuFor(null);
+          if (!op || !bu) return;
+          setPickedBu(bu);
+          if (op.readonly) {
+            void runOp(op, bu);
+          } else {
+            setConfirmOp(op);
+          }
         }}
       />
 

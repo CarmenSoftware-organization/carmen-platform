@@ -26,6 +26,7 @@ const platformSeedService = {
   runStream: async (
     opId: string,
     onEvent: (e: SeedRunEvent) => void,
+    params?: Record<string, string>,
   ): Promise<{ success: boolean; exit_code: number }> => {
     await refreshAccessToken().catch(() => {});
     const base = api.defaults.baseURL ?? '';
@@ -36,7 +37,11 @@ const platformSeedService = {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
           'x-app-id': (import.meta.env.REACT_APP_API_APP_ID ?? '') as string,
+          'Content-Type': 'application/json',
         },
+        // ส่ง body เสมอ แม้ไม่มี params — op ที่ประกาศ params ไว้จะได้ 422 กลับมาพร้อมข้อความว่า
+        // ขาดอะไร ซึ่งอ่านออกกว่าปล่อยให้สคริปต์ exit 1 พร้อม usage ของ CLI
+        body: JSON.stringify({ params: params ?? {} }),
       },
     );
     if (!res.ok) {
