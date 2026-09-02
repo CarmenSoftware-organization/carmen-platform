@@ -94,10 +94,13 @@ describe('EmailSettingCard', () => {
   });
 
 
-  it('replaces the test button with an explanation while editing', () => {
+  // The card used to print "Save before you can test" beside the buttons while editing.
+  // The explanation is gone on purpose — the missing button says it — so this now asserts
+  // the button's absence alone, which was always the behaviour that mattered.
+  it('hides the test button while editing', () => {
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
     expect(screen.queryByRole('button', { name: 'Send test email' })).not.toBeInTheDocument();
-    expect(screen.getByText('Save before you can test')).toBeInTheDocument();
+    expect(screen.queryByText(/before you can test/i)).not.toBeInTheDocument();
   });
 
   it('sends doc_version on update and reports success', async () => {
@@ -142,6 +145,10 @@ describe('EmailSettingCard', () => {
     await user.click(screen.getByRole('button', { name: 'Change password' }));
     await user.type(screen.getByLabelText('SMTP password'), 'temporary');
     await user.clear(screen.getByLabelText('SMTP password'));
+    // Blanking the password returns the card to pristine, which now disables Save (there
+    // genuinely is nothing to send). Touch another field so a save is reachable — the
+    // assertion under test is still that smtp_password is absent from the payload.
+    await user.type(screen.getByLabelText('From name'), 'X');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(svc.update).toHaveBeenCalled());
     expect(svc.update.mock.calls[0][1]).not.toHaveProperty('smtp_password');
@@ -204,6 +211,8 @@ describe('EmailSettingCard', () => {
     });
     const onSaved = vi.fn();
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} onSaved={onSaved} />);
+    // Save is disabled until something actually changes, so make an edit to reach it.
+    await user.type(screen.getByLabelText('From name'), 'X');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ keepEditing: true }));
   });
@@ -214,6 +223,7 @@ describe('EmailSettingCard', () => {
       response: { status: 409, data: { message: 'Record was modified by another request' } },
     });
     render(<EmailSettingCard {...baseProps} isEditing setting={setting} />);
+    await user.type(screen.getByLabelText('From name'), 'X');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     // notifyVersionConflict() (src/utils/docVersion.ts) is the single canonical conflict
     // toast — assert through the already-mocked `sonner` toast rather than mocking

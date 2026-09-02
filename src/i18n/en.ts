@@ -195,6 +195,9 @@ export const en = {
       // held the bare word 'Back' — before adding this one.
       back: 'Back',
       saveChanges: 'Save Changes',
+      // The compact card-footer twin of saveChanges above — EmailSettingCard.tsx's own
+      // button reads the bare word; it had the string hardcoded until this slice.
+      save: 'Save',
       delete: 'Delete',
       remove: 'Remove',
       // Cancelling is not removing — a cancelled licence stays in the ledger, it just stops granting quota
@@ -3094,6 +3097,13 @@ export const en = {
       carries: 'Carries',
       laneDark: 'No flow sends through this profile',
       laneLegend: 'Solid = chosen for that flow · dashed = falls through to the default',
+      profileNameRequired: 'Profile name is required',
+      fromEmailRequired: 'From email is required',
+      smtpPortRange: 'Port must be a whole number between 1 and 65535',
+      deactivateWarning:
+        'Turning this off stops {{count}} flows from sending — move them to another profile first',
+      discardProfileDescription:
+        'The changes you made to {{label}} have not been saved yet.',
       laneEditHint:
         'Click a flow to send it through another profile · dashed = follows the default, including flows added later',
       laneMissingProfile: 'Deleted profile',
@@ -3122,7 +3132,6 @@ export const en = {
       implicitTls: 'Implicit TLS',
       implicitTlsHint: 'Turn on for implicit TLS (usually port 465) — port 587 normally uses STARTTLS, so leave it off',
       notePlaceholder: 'Who owns this mailbox / which provider',
-      saveBeforeTest: 'Save before you can test',
       configure: 'Configure',
       unset: 'Clear setting',
       unsetTitle: 'Clear profile {{label}}',

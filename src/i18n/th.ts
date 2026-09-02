@@ -181,6 +181,7 @@ export const th: Translations = {
       // Promoted from PageHeader.tsx's own back-link aria-label (i18n phase-2 slice-5 fix
       // wave FIX 4) — see en.ts for the reasoning.
       back: 'กลับ',
+      save: 'บันทึก',
       saveChanges: 'บันทึกการแก้ไข',
       delete: 'ลบ',
       remove: 'นำออก',
@@ -2104,6 +2105,12 @@ export const th: Translations = {
       carries: 'รับสาย',
       laneDark: 'ไม่มีเส้นทางใดส่งผ่านโปรไฟล์นี้',
       laneLegend: 'เส้นทึบ = เลือกไว้ตรง ๆ · เส้นประ = ตกมาตามค่าเริ่มต้น',
+      profileNameRequired: 'ต้องระบุชื่อโปรไฟล์',
+      fromEmailRequired: 'ต้องระบุอีเมลผู้ส่ง',
+      smtpPortRange: 'พอร์ตต้องเป็นจำนวนเต็มระหว่าง 1 ถึง 65535',
+      deactivateWarning:
+        'ปิดแล้ว {{count}} เส้นทางจะส่งไม่ได้ — ย้ายไปโปรไฟล์อื่นก่อน',
+      discardProfileDescription: 'การแก้ไข {{label}} ที่ทำไว้ยังไม่ได้บันทึก',
       laneEditHint:
         'กดที่เส้นทางเพื่อย้ายไปส่งผ่านโปรไฟล์อื่น · เส้นประ = ตามค่าเริ่มต้น รวมถึงเส้นทางที่เพิ่มใหม่ในอนาคต',
       laneMissingProfile: 'โปรไฟล์ที่ถูกลบไปแล้ว',
@@ -2130,7 +2137,6 @@ export const th: Translations = {
       implicitTls: 'Implicit TLS',
       implicitTlsHint: 'เปิดเมื่อใช้ implicit TLS (มักเป็นพอร์ต 465) — พอร์ต 587 ปกติใช้ STARTTLS ให้ปิดไว้',
       notePlaceholder: 'ใครเป็นเจ้าของ mailbox นี้ / ใช้ provider อะไร',
-      saveBeforeTest: 'บันทึกก่อนจึงจะทดสอบได้',
       configure: 'ตั้งค่า',
       unset: 'ยกเลิกการตั้งค่า',
       unsetTitle: 'ยกเลิกการตั้งค่าโปรไฟล์ {{label}}',

@@ -239,7 +239,10 @@ describe('EmailSettingManagement', () => {
     dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Discard changes' }));
 
-    // Save without ever reopening the password field — the abandoned password must not ride along.
+    // Save without ever reopening the password field — the abandoned password must not ride
+    // along. The discards left the card pristine, which disables Save, so make one innocuous
+    // edit first; that edit is what proves the abandoned secret is not carried with it.
+    await user.type(screen.getByLabelText('From name'), 'X');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(svc.update).toHaveBeenCalled());
     expect(svc.update.mock.calls[0][1]).not.toHaveProperty('smtp_password');
