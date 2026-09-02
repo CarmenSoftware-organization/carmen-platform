@@ -4202,6 +4202,54 @@ export const en = {
       mailSourceInternal: 'Internal',
       mailSourceExternal: 'External',
     },
+    // Task 8: CronJobEdit (create/edit page) + CronScheduleField. `type` is shared with
+    // Task 9's list column/filter — added here first since the job_type Select needs it.
+    newTitle: 'New Scheduled Job',
+    singularTitle: 'Scheduled Job',
+    notFoundTitle: 'Scheduled job not found',
+    notFoundDescription: "This scheduled job doesn't exist, or it may have been deleted. Check the link, or pick one from the list.",
+    backToList: 'Back to Scheduled Jobs',
+    loadFailedOne: 'Failed to load this scheduled job: {{detail}}',
+    loadingOneAria: 'Loading scheduled job',
+    // `{{service}}` is job.source_service, e.g. "micro-report".
+    readOnlyBanner: 'This job is owned by {{service}} and can only be changed there. You can still review its configuration here.',
+    history: 'History',
+    section: {
+      basics: 'Basics',
+      schedule: 'Schedule',
+      execution: 'Execution',
+      typeConfig: 'Type-specific configuration',
+    },
+    field: {
+      jobType: 'Job type',
+      cronExpression: 'Cron expression',
+      maxRetries: 'Max retries',
+      timeoutSeconds: 'Timeout (seconds)',
+    },
+    type: {
+      report: 'Report',
+      notification: 'Notification',
+      cleanup: 'Cleanup',
+      dashboard_refresh: 'Dashboard refresh',
+      activity_rollup: 'Activity rollup',
+      activity_retention: 'Activity retention',
+    },
+    validation: {
+      // describeCron returns '' for an empty/untouched field and null only for a genuinely
+      // invalid expression — this string is for the null case only. An empty field gets
+      // common.validation.requiredMessage instead (see CronJobEdit.handleSave).
+      invalidCron: 'This cron expression is not valid.',
+    },
+    toast: {
+      created: 'Scheduled job created',
+      saved: 'Scheduled job saved',
+    },
+    error: {
+      // The gateway returns HTTP 409 for two unrelated reasons, told apart only by
+      // `error_code` in the response body: FOREIGN_OWNED_JOB (this message) vs
+      // DOC_VERSION_CONFLICT (isVersionConflict / notifyVersionConflict). Keep them separate.
+      foreignOwned: 'This job is owned by {{service}} and cannot be changed here.',
+    },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched
