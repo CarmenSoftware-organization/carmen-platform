@@ -129,7 +129,7 @@ export function NewsMasthead({
                 </>
               )}
             </div>
-            {editing ? titleEditor : <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title || t('pages.news.untitled')}</h1>}
+            {editing ? titleEditor : <h1 className="text-xl font-semibold tracking-tight">{title || t('pages.news.untitled')}</h1>}
           </div>
           {actions && <div className="shrink-0">{actions}</div>}
         </div>

@@ -229,9 +229,10 @@ const Layout: React.FC<LayoutProps> = ({ children, navItems: navItemsProp, heade
                       size="sm"
                       className="shadow-xs"
                     />
-                    <h1 className="hidden truncate text-lg font-bold text-foreground sm:block">
+                    {/* <span> ไม่ใช่ <h1> — ดูเหตุผลที่ Sidebar.tsx */}
+                    <span className="hidden truncate text-lg font-bold text-foreground sm:block">
                       {brand.name}
-                    </h1>
+                    </span>
                   </>
                 )}
               </Link>

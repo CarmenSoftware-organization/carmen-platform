@@ -350,7 +350,7 @@ const NewsEdit: React.FC = () => {
                   placeholder={t('pages.news.headline')}
                   aria-label={t('pages.news.headline')}
                   className={cn(
-                    'w-full border-b border-transparent bg-transparent pb-1 text-2xl font-bold tracking-tight outline-hidden transition-colors placeholder:text-muted-foreground/40 focus:border-primary sm:text-3xl',
+                    'w-full border-b border-transparent bg-transparent pb-1 text-xl font-semibold tracking-tight outline-hidden transition-colors placeholder:text-muted-foreground/40 focus:border-primary',
                     fieldErrors.title && 'border-destructive',
                   )}
                   required

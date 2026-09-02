@@ -198,10 +198,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                   size="md"
                   className="shadow-xs transition-transform duration-300 group-hover:scale-105"
                 />
+                {/* ชื่อแบรนด์ไม่ใช่ <h1> ของเอกสาร — ชื่อหน้าใน PageHeader ต่างหากที่เป็น
+                    วัดบน /cluster-admin/:id/users แล้วเคยได้ <h1> สามตัวในหน้าเดียว สองตัว
+                    เป็นชื่อคลัสเตอร์ที่แข่งกับชื่อหน้า ตัว <Link> ที่ครอบมี aria-label เป็นชื่อ
+                    แบรนด์อยู่แล้ว ถอดหัวข้อออกจึงไม่เสียอะไรกับ screen reader */}
                 {!isCollapsed && (
-                  <h1 className="text-xl font-bold text-foreground truncate" title={brand.name}>
+                  <span className="text-xl font-bold text-foreground truncate" title={brand.name}>
                     {brand.name}
-                  </h1>
+                  </span>
                 )}
               </>
             )}

@@ -56,7 +56,7 @@ export function UserIdentityHero({
         </Avatar>
 
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || '(unnamed user)'}</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{name || '(unnamed user)'}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             {username && (
               <span className="text-primary bg-primary/10 rounded px-1.5 py-0.5 font-mono text-xs font-semibold">

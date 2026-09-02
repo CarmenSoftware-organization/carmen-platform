@@ -114,7 +114,7 @@ export function ApplicationIdentityHero({
             squeezes the name down to two characters at 390px. Below ~256px of room the row wraps
             and the header gets its full width back. */}
         <div className="min-w-0 flex-1 basis-64">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{name || t('pages.applications.unnamedApplication')}</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{name || t('pages.applications.unnamedApplication')}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
             <Badge variant="secondary">{formatDevice(device || 'web')}</Badge>
             <Badge variant={isActive ? 'success' : 'secondary'}>{isActive ? t('common.status.active') : t('common.status.inactive')}</Badge>

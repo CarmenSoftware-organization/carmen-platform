@@ -3,6 +3,7 @@ import { Network } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Layout from '../../components/Layout';
 import { EmptyState } from '../../components/EmptyState';
+import { PageHeader } from '../../components/PageHeader';
 import { Card, CardHeader, CardTitle } from '../../components/ui/card';
 import { useI18n } from '../../hooks/useI18n';
 
@@ -27,12 +28,10 @@ const ClusterAdminEntry = () => {
   return (
     <Layout navItems={[]}>
       <div className="space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('breadcrumb.clusterAdmin')}</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {t('pages.clusterAdmin.chooseAClusterToAdminister')}
-          </p>
-        </div>
+        <PageHeader
+          title={t('breadcrumb.clusterAdmin')}
+          subtitle={t('pages.clusterAdmin.chooseAClusterToAdminister')}
+        />
 
         {adminScope.clusters.length === 0 ? (
           <EmptyState
