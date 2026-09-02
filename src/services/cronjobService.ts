@@ -47,7 +47,11 @@ const cronjobService = {
     const encodedFilter = encodeFilter(filter);
     if (encodedFilter) params.set('filter', encodedFilter);
     const res = await api.get(`${BASE}?${params.toString()}`);
-    return res.data.data ?? res.data;
+    // Result.ok แผ่ envelope ออกเป็น top-level: { data: CronJob[], paginate: {...} }
+    // ห้ามใช้ท่า `res.data.data ?? res.data` แบบ endpoint ที่คืน object เดี่ยว —
+    // ที่นี่ res.data.data คืออาร์เรย์แถวและ truthy จึงกินชั้นเกินไปหนึ่งชั้น
+    // ทำให้ paginate หายและหน้าลิสต์ว่างทั้งที่ gateway คืนข้อมูลครบ
+    return res.data;
   },
 
   getById: async (id: string): Promise<CronJob> => {
