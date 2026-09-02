@@ -9,6 +9,32 @@ const defaultSearchFields = ['name', 'description', 'job_type', 'source_service'
 const BASE = '/api-system/platform/cronjobs';
 
 /**
+ * Encode a filter object as the gateway's "key:value;key:value" grammar
+ * (parseFilterString in apps/backend-gateway/src/shared-dto/paginate.dto.ts), NOT the
+ * `filter={"a":"b"}` JSON that QueryParams/buildQuery emit for every other service.
+ * platform_cronjobs.service.ts (findAll) reads paginate.filter as that key:value map —
+ * sending JSON produces keys like `{"job_type"` that never match, so every filter here
+ * was silently a no-op. Hence this service hand-builds its query string instead of
+ * calling buildQuery with the filter included, unlike its neighbours.
+ *
+ * Known gap: parseFilterString drops a "key:value" pair whose value is empty
+ * (`if (key && value)`), so an empty-string value can never survive this wire format.
+ * CronJobFilterSheet deliberately sends `source_service: ''` to mean "no owning
+ * service" (Platform owner). That pair is still encoded correctly below
+ * (`source_service:`), but the gateway parser drops it before platform_cronjobs
+ * .service.ts ever sees it, so the "Platform" owner filter has no effect until the
+ * gateway's parseFilterString is changed to distinguish "omitted" from "intentionally
+ * empty" — out of scope for this frontend-only fix.
+ */
+function encodeFilter(filter: PaginateParams['filter']): string {
+  if (!filter || Array.isArray(filter) || typeof filter !== 'object') return '';
+  return Object.entries(filter)
+    .filter(([key]) => key)
+    .map(([key, value]) => `${key}:${value ?? ''}`)
+    .join(';');
+}
+
+/**
  * งานตามเวลาใน "CRONJOBS"."Cronjob"
  *
  * micro-cronjob ไม่มี auth ของตัวเอง ทุกอย่างจึงผ่าน gateway เท่านั้น
@@ -16,7 +42,11 @@ const BASE = '/api-system/platform/cronjobs';
  */
 const cronjobService = {
   getAll: async (paginate: PaginateParams = {}): Promise<CronJobsResponse> => {
-    const res = await api.get(`${BASE}?${buildQuery(paginate, defaultSearchFields)}`);
+    const { filter, ...rest } = paginate;
+    const params = new URLSearchParams(buildQuery(rest, defaultSearchFields));
+    const encodedFilter = encodeFilter(filter);
+    if (encodedFilter) params.set('filter', encodedFilter);
+    const res = await api.get(`${BASE}?${params.toString()}`);
     return res.data.data ?? res.data;
   },
 
