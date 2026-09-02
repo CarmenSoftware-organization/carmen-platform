@@ -3,12 +3,13 @@ import 'cronstrue/locales/th';
 import { CronExpressionParser } from 'cron-parser';
 
 /**
- * แปลง cron expression เป็นประโยคที่คนอ่านได้ คืน null เมื่อ expression ไม่ถูกต้อง
- * ผู้เรียกใช้ null เป็นสัญญาณ validate — ไม่ต้อง parse ซ้ำเอง
+ * แปลง cron expression เป็นประโยคที่คนอ่านได้
+ * null = ไม่ถูกต้อง, '' = ยังไม่ได้พิมพ์อะไร, สตริงอื่น = ประโยคที่แปลได้แล้ว
+ * ผู้เรียกใช้ `=== null` เป็นสัญญาณ validate — ไม่ต้อง parse ซ้ำเอง
  */
 export const describeCron = (expr: string, locale: 'th' | 'en' = 'en'): string | null => {
   const trimmed = expr.trim();
-  if (!trimmed) return null;
+  if (!trimmed) return '';
   try {
     return cronstrue.toString(trimmed, { locale, throwExceptionOnParseError: true });
   } catch {
