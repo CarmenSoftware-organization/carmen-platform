@@ -1646,6 +1646,16 @@ export const en = {
       emptyTitle: 'No features match',
       emptyDescription: 'Try a different search term or state filter.',
     },
+    /**
+     * ชื่อของหน้าที่ครอบสอง tab — คงที่ทั้งสอง tab โดยเจตนา
+     * ป้าย tab จงใจไม่ใช้ nav.* ซ้ำ: ในหน้าที่ชื่อว่า "License Catalog" อยู่แล้ว
+     * คำว่า "License" ในป้าย tab เป็นคำซ้ำที่ไม่ได้บอกอะไรเพิ่ม
+     */
+    licenseCatalog: {
+      title: 'License Catalog',
+      tabBundles: 'Bundles',
+      tabFeatures: 'Features',
+    },
     licenseFeatureGroups: {
       title: 'License Feature Groups',
       subtitle: 'Curated bundles of licence features, used when selling a subscription',
