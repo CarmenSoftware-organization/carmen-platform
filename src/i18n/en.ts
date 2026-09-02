@@ -3706,6 +3706,13 @@ export const en = {
       inactiveCount: '{{count}} inactive',
       roleBarAria: '{{name}}: {{count}} permission',
       roleBarAriaPlural: '{{name}}: {{count}} permissions',
+      // reach — count read against the catalog it is drawn from (RoleReachCell + the band)
+      reachAria: '{{name}}: {{count}} of {{total}} permissions',
+      reachFullAria: '{{name}}: full access to all {{total}} permissions',
+      ofCatalog: 'of {{total}} in the catalog',
+      removedCount: '{{count}} removed',
+      nResources: '{{count}} resource',
+      nResourcesPlural: '{{count}} resources',
       // ── RoleEdit ──
       loadFailedOne: 'Failed to load role: {{detail}}',
       catalogLoadFailedDetail: 'Failed to load permission catalog: {{detail}}',

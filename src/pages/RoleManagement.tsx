@@ -6,6 +6,8 @@ import { PageHeader } from '../components/PageHeader';
 import { RolesAccessSummary } from './roleManagement/RolesAccessSummary';
 import type { RolesSummaryData } from '../types';
 import roleService from '../services/roleService';
+import permissionService from '../services/permissionService';
+import { RoleReachCell } from './roleManagement/RoleReachCell';
 import { getErrorDetail, devLog, parseApiError } from '../utils/errorParser';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -35,6 +37,8 @@ interface RoleRow {
   description?: string;
   is_active?: boolean;
   permission_count?: number;
+  /** Resource families this role touches. Server-side; absent until the backend ships it. */
+  resource_count?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -58,6 +62,11 @@ const RoleManagement: React.FC = () => {
   const [summary, setSummary] = useState<RolesSummaryData | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState(false);
+  // The size of the permission catalog is what turns `permission_count` from an opaque
+  // integer into a reach: 51 means nothing until you know the catalog holds 51. Kept as a
+  // plain number with 0 meaning "not known" — every consumer here already has to handle the
+  // unanchored case, so a separate loading flag would only be a second way to say it.
+  const [catalogSize, setCatalogSize] = useState(0);
 
   const storedSearch = localStorage.getItem('search_roles') || '';
   const storedFilters = getStoredJSON<string[]>('filters_roles', []);
@@ -137,6 +146,22 @@ const RoleManagement: React.FC = () => {
   useEffect(() => {
     loadSummary();
   }, [loadSummary]);
+
+  // Best-effort: a failed catalog fetch must not degrade the list. Everything that reads
+  // `catalogSize` falls back to the unanchored rendering this page had before, so there is
+  // nothing to tell the user about and no retry to offer.
+  useEffect(() => {
+    let cancelled = false;
+    permissionService
+      .getCatalog()
+      .then((items) => {
+        if (!cancelled) setCatalogSize(items.length);
+      })
+      .catch((err: unknown) => devLog('Failed to load permission catalog for reach scale:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -249,11 +274,14 @@ const RoleManagement: React.FC = () => {
       id: 'permission_count',
       header: t('pages.roles.columnPermissions'),
       enableSorting: false,
-      meta: { cellClassName: 'text-center' },
+      meta: { headerClassName: 'w-56', cellClassName: 'w-56' },
       cell: ({ row }) => (
-        <Badge variant="secondary">
-          {row.original.permission_count ?? 0}
-        </Badge>
+        <RoleReachCell
+          name={row.original.name}
+          permissionCount={row.original.permission_count ?? 0}
+          catalogSize={catalogSize}
+          resourceCount={row.original.resource_count}
+        />
       ),
     },
     {
@@ -307,7 +335,7 @@ const RoleManagement: React.FC = () => {
         </DropdownMenu>
       ),
     },
-  ], [navigate, handleDelete, t]);
+  ], [navigate, handleDelete, t, catalogSize]);
 
   return (
     <Layout>
@@ -346,7 +374,7 @@ const RoleManagement: React.FC = () => {
           }
         />
 
-        <RolesAccessSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} />
+        <RolesAccessSummary summary={summary} loading={summaryLoading} error={summaryError} onRetry={loadSummary} catalogSize={catalogSize} />
 
         <Card>
           <CardHeader className="space-y-3">

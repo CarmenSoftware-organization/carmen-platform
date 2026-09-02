@@ -2678,6 +2678,13 @@ export const th: Translations = {
       inactiveCount: 'ไม่ใช้งาน {{count}}',
       roleBarAria: '{{name}}: {{count}} สิทธิ์',
       roleBarAriaPlural: '{{name}}: {{count}} สิทธิ์',
+      // reach — อ่านจำนวนสิทธิ์เทียบกับ catalog ที่มันถูกหยิบมา (RoleReachCell + แถบสรุป)
+      reachAria: '{{name}}: {{count}} จาก {{total}} สิทธิ์',
+      reachFullAria: '{{name}}: ถือครบทุกสิทธิ์ทั้ง {{total}} รายการ',
+      ofCatalog: 'จากทั้งหมด {{total}} สิทธิ์',
+      removedCount: 'ถูกลบ {{count}}',
+      nResources: '{{count}} resource',
+      nResourcesPlural: '{{count}} resource',
       loadFailedOne: 'โหลดบทบาทไม่สำเร็จ: {{detail}}',
       catalogLoadFailedDetail: 'โหลดรายการสิทธิ์ไม่สำเร็จ: {{detail}}',
       catalogForbidden: 'ไม่มีสิทธิ์ platform_role.read จึงโหลดรายการสิทธิ์ไม่ได้',
