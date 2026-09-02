@@ -4149,6 +4149,60 @@ export const en = {
       viewWholeSession: 'View this entire session',
     },
   },
+  // Cronjob management (2026-09-02 spec, Task 7). `config` backs the six job_type-specific
+  // field groups under pages/cronjobs/jobConfig/ — one block shared by all six rather than
+  // six separate namespaces, since several fields (bu_codes, type) repeat across job types.
+  // Later tasks in the same spec add cronjob.field / cronjob.validation / cronjob.toast /
+  // cronjob.error / cronjob.column / cronjob.type / cronjob.status / cronjob.owner /
+  // cronjob.action / cronjob.confirm alongside this block.
+  cronjob: {
+    config: {
+      daysBack: 'Days back',
+      daysBackHint: 'How many days of activity to roll up on each run.',
+      retentionDays: 'Retention days',
+      retentionDaysHint: 'Records older than this many days are purged.',
+      batchSize: 'Batch size',
+      batchSizeHint: 'Maximum rows deleted per batch.',
+      action: 'Action',
+      type: 'Type',
+      olderThan: 'Older than',
+      olderThanPlaceholder: 'e.g. 30d',
+      olderThanHint: 'A duration the cleanup job understands, e.g. 30d, 90d, 1y.',
+      buCodes: 'Business units',
+      buCodesEmptyMeansAll: 'Leave empty to include every business unit.',
+      tier: 'Tier',
+      tierAll: 'All tiers',
+      title: 'Title',
+      message: 'Message',
+      category: 'Category',
+      userIds: 'Recipient users',
+      userIdsLoadFailed: 'Failed to load users',
+      userIdsNoneSelected: 'No users selected',
+      userIdsNoneFound: 'No users found',
+      userIdsEmptyMeansAll: 'Leave empty to notify every user.',
+      templateId: 'Report template',
+      templateIdPlaceholder: 'Select a report template',
+      templateIdLoadFailed: 'Failed to load report templates',
+      format: 'Format',
+      formatPlaceholder: 'Select a format',
+      filters: 'Filters',
+      filterKeyPlaceholder: 'Key',
+      filterValuePlaceholder: 'Value',
+      addFilter: 'Add filter',
+      removeFilterAria: 'Remove filter',
+      recipients: 'Recipients',
+      recipientsPlaceholder: 'ops@example.com, finance@example.com',
+      deliveryType: 'Delivery method',
+      deliveryTypeFile: 'File',
+      deliveryTypeViewerUrl: 'Viewer URL',
+      viewerEndpoint: 'Viewer endpoint',
+      notificationsWeb: 'Notify in web app',
+      notificationsEmail: 'Notify by email',
+      mailSource: 'Mail source',
+      mailSourceInternal: 'Internal',
+      mailSourceExternal: 'External',
+    },
+  },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
   // means threading `t` through 132 call sites in pages that are otherwise untouched
   // this phase, so the strings stay English in the code for now. The keys live here
