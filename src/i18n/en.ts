@@ -4219,7 +4219,9 @@ export const en = {
     loadFailedOne: 'Failed to load this scheduled job: {{detail}}',
     loadingOneAria: 'Loading scheduled job',
     // `{{service}}` is job.source_service, e.g. "micro-report".
-    readOnlyBanner: 'This job is owned by {{service}} and can only be changed there. You can still review its configuration here.',
+    // Copy changed with the gateway guard removal: these rows are editable from the
+    // platform console now, so the banner warns about blast radius rather than refusing.
+    foreignOwnedBanner: 'This job was created by {{service}} for a business unit. Changes here take effect immediately for that BU, and its own console will show your edit.',
     history: 'History',
     section: {
       basics: 'Basics',
@@ -4285,12 +4287,17 @@ export const en = {
     column: {
       name: 'Name',
       type: 'Type',
+      businessUnit: 'Business unit',
       schedule: 'Schedule',
       status: 'Status',
       owner: 'Owner',
       lastRun: 'Last run',
       nextRun: 'Next run',
       runs: 'Runs',
+    },
+    bu: {
+      // ว่าง = ทุกหน่วยธุรกิจ เฉพาะ dashboard_refresh เท่านั้น
+      all: 'All BUs',
     },
     status: {
       running: 'Running',
@@ -4304,11 +4311,11 @@ export const en = {
       stop: 'Stop',
       runNow: 'Run now',
       // {{service}} is job.source_service, e.g. "micro-report".
-      foreignOwnedTooltip: 'Owned by {{service}} — edit and delete are disabled here.',
     },
     confirm: {
       deleteTitle: 'Delete scheduled job',
       deleteBody: 'Delete "{{name}}"? This cannot be undone.',
+      deleteBodyForeign: 'Delete "{{name}}"? {{service}} created this job for a business unit — deleting it here removes that BU\'s schedule, and it cannot be undone.',
     },
     summary: {
       total: 'Total',

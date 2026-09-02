@@ -17,7 +17,7 @@ import { EmptyState } from '../../components/EmptyState';
 import Can from '../../components/Can';
 import CronScheduleField from './CronScheduleField';
 import JobConfigFields from './jobConfig';
-import { Save, X, Loader2, SearchX, Info } from 'lucide-react';
+import { Save, X, Loader2, SearchX, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseApiError, isNotFoundError } from '../../utils/errorParser';
 import { validateField } from '../../utils/validation';
@@ -75,9 +75,10 @@ const CronJobEdit: React.FC = () => {
 
   const formRef = useRef<HTMLFormElement>(null);
 
-  // job ที่มี source_service เป็นของ service อื่น (เช่น micro-report) แก้จากหน้านี้ไม่ได้ —
-  // gateway ตอบ 409 FOREIGN_OWNED_JOB — หน้ายังเปิดดูได้ปกติ แค่ทุกช่องปิดการพิมพ์
-  const readOnly = Boolean(sourceService);
+  // job ที่มี source_service เป็นของ service อื่นสร้างไว้ (เช่น micro-report เขียนกำหนดการ
+  // รายงานของแต่ละ BU ลงตารางเดียวกันนี้) — แก้ได้จากหน้านี้แล้ว แต่ต้องเตือนก่อนว่าที่แก้อยู่
+  // คือของ BU นั้น ไม่ใช่ job ที่ platform สร้างเอง
+  const foreignOwned = Boolean(sourceService);
 
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData ?? emptyForm);
   useUnsavedChanges(hasChanges);
@@ -167,7 +168,7 @@ const CronJobEdit: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!hasPermission('cronjob.manage') || readOnly) return;
+    if (!hasPermission('cronjob.manage')) return;
 
     // Go handler's update path is `if input.Name != nil { existing.Name = *input.Name }` —
     // no non-empty check server-side, so a blank name here would reach the database.
@@ -217,6 +218,9 @@ const CronJobEdit: React.FC = () => {
         setNotFound(true);
         return;
       }
+      // FOREIGN_OWNED_JOB: gateway รุ่นใหม่ไม่ตอบรหัสนี้แล้ว (ด่าน assertPlatformOwned ถูกถอด
+      // ออกจาก update/delete) แต่ยังต้องจับไว้ เพราะ FE ขึ้นก่อน BE ได้ และถ้า BE ยังเป็นรุ่นเก่า
+      // ผู้ใช้ต้องเห็นเหตุผลจริง ไม่ใช่ข้อความ conflict ทั่วไป
       // ลำดับสำคัญ ห้ามสลับ: gateway ตอบ 409 ด้วยสองเหตุผลที่แยกกันไม่ได้จาก status code เดียว
       // ต้องอ่าน error_code ก่อนเสมอ — isVersionConflict ใน utils/docVersion.ts จับแค่
       // status 409 (+เนื้อความ) เท่านั้น ไม่รู้จัก error_code เลย ถ้าเช็ค isVersionConflict ก่อน
@@ -330,10 +334,10 @@ const CronJobEdit: React.FC = () => {
           <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md" role="alert">{error}</div>
         )}
 
-        {readOnly && (
-          <div className="flex items-start gap-2 rounded-md border bg-muted/50 p-3 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{t('cronjob.readOnlyBanner', { service: sourceService ?? '' })}</span>
+        {foreignOwned && (
+          <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm" role="note">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden="true" />
+            <span>{t('cronjob.foreignOwnedBanner', { service: sourceService ?? '' })}</span>
           </div>
         )}
 
@@ -352,7 +356,6 @@ const CronJobEdit: React.FC = () => {
                     value={formData.name}
                     onChange={handleChange}
                     onBlur={handleNameBlur}
-                    disabled={readOnly}
                     className={fieldErrors.name ? 'border-destructive' : ''}
                   />
                   {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
@@ -363,7 +366,7 @@ const CronJobEdit: React.FC = () => {
                   <Select
                     value={formData.job_type ?? 'cleanup'}
                     onValueChange={handleJobTypeChange}
-                    disabled={!isNew || readOnly}
+                    disabled={!isNew}
                   >
                     <SelectTrigger id="job_type"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -381,7 +384,6 @@ const CronJobEdit: React.FC = () => {
                     name="description"
                     value={formData.description ?? ''}
                     onChange={handleChange}
-                    disabled={readOnly}
                     rows={2}
                   />
                 </div>
@@ -394,7 +396,6 @@ const CronJobEdit: React.FC = () => {
                       id="is_active"
                       checked={formData.is_active}
                       onChange={handleActiveChange}
-                      disabled={readOnly}
                       className="h-4 w-4 rounded border-input"
                     />
                     <span className="text-sm">{t('common.status.active')}</span>
@@ -412,7 +413,6 @@ const CronJobEdit: React.FC = () => {
               <CronScheduleField
                 value={formData.cron_expression}
                 onChange={handleCronChange}
-                readOnly={readOnly}
                 error={fieldErrors.cron_expression}
               />
               {/* notify_at เป็นคอลัมน์บนแถว ไม่ได้อยู่ใน job_config และมีความหมายเฉพาะ
@@ -425,7 +425,6 @@ const CronJobEdit: React.FC = () => {
                     name="notify_at"
                     type="time"
                     className="w-40"
-                    disabled={readOnly}
                     value={formData.notify_at ?? ''}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, notify_at: e.target.value }))
@@ -454,7 +453,6 @@ const CronJobEdit: React.FC = () => {
                     min={0}
                     value={formData.max_retries ?? 0}
                     onChange={handleNumberChange}
-                    disabled={readOnly}
                   />
                 </div>
                 <div className="space-y-2">
@@ -466,7 +464,6 @@ const CronJobEdit: React.FC = () => {
                     min={0}
                     value={formData.timeout_seconds ?? 300}
                     onChange={handleNumberChange}
-                    disabled={readOnly}
                   />
                 </div>
               </div>
@@ -482,7 +479,6 @@ const CronJobEdit: React.FC = () => {
                 job_type={formData.job_type!}
                 value={formData.job_config}
                 onChange={(job_config) => setFormData(prev => ({ ...prev, job_config }))}
-                readOnly={readOnly}
                 fieldErrors={fieldErrors}
               />
             </CardContent>
@@ -528,7 +524,7 @@ const CronJobEdit: React.FC = () => {
               <Button
                 type="button"
                 size="sm"
-                disabled={saving || readOnly || (!isNew && !hasChanges)}
+                disabled={saving || (!isNew && !hasChanges)}
                 onClick={() => formRef.current?.requestSubmit()}
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
