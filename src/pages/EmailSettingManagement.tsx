@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import Layout from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Button } from '../components/ui/button';
@@ -18,6 +18,29 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
 import type { EmailSetting } from '../types';
 import { useI18n } from '../hooks/useI18n';
+
+/**
+ * หัวข้อของ section หนึ่งบล็อก — หน้านี้มีสอง section ที่เป็น peer กัน (สายอีเมล กับโปรไฟล์
+ * ผู้ส่ง) จึงต้องประกาศตัวด้วยน้ำหนักเดียวกัน
+ *
+ * เดิม "Sender profiles" เป็น label เล็กจาง (14px จาง) ส่วนสายอีเมลไม่มีหัวข้อ section เลย
+ * มีแต่หัวการ์ด (16px เข้ม) ผลคือลำดับชั้นกลับหัวสองชั้น: ตัวที่อยู่สูงกว่าในโครงสร้างดูเบา
+ * กว่าตัวที่ต่ำกว่า และลำดับ heading ในเอกสารเป็น H1 → H3 → H2 → H3 ซึ่งข้ามชั้น
+ * ตอนนี้ทั้งคู่เป็น H2 หน้าตาเดียวกัน แล้วหัวการ์ดค่อยเป็น H3 ที่เบากว่าตามลำดับจริง
+ */
+const SectionHeading: React.FC<{
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+}> = ({ title, description, action }) => (
+  <div className="flex items-start justify-between gap-3">
+    <div className="min-w-0">
+      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+      {description && <p className="text-muted-foreground mt-0.5 text-sm">{description}</p>}
+    </div>
+    {action}
+  </div>
+);
 
 const EmailSettingManagement: React.FC = () => {
   const { t } = useI18n();
@@ -109,32 +132,63 @@ const EmailSettingManagement: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <EmailRoutingCard
+            <div className="space-y-3">
+              <SectionHeading
+                title={t('pages.emailSettings.routingTitle')}
+                description={t('pages.emailSettings.routingDescription')}
+                action={
+                  canManage &&
+                  editingPurpose !== 'routing' &&
+                  !routingLoading &&
+                  !routingError && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => requestEdit('routing')}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      {t('pages.emailSettings.editRouting')}
+                    </Button>
+                  )
+                }
+              />
+              <EmailRoutingCard
               profiles={settings}
               routing={routing}
               map={routingMap}
               loading={routingLoading}
               loadError={routingError}
-              canManage={canManage}
               isEditing={editingPurpose === 'routing'}
               shortcutsEnabled={pendingSwitch === null}
-              onRequestEdit={() => requestEdit('routing')}
               onCancelEdit={() => setEditingPurpose(null)}
               onSaved={(next) => {
                 applyRouting(next);
                 return handleSaved('routing');
               }}
-            />
-
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-muted-foreground">{t('pages.emailSettings.senderProfiles')}</h2>
-              {canManage && !addingProfile && (
-                <Button variant="outline" size="sm" onClick={() => { setAddingProfile(true); requestEdit('new'); }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('pages.emailSettings.addProfile')}
-                </Button>
-              )}
+              />
             </div>
+
+            <SectionHeading
+              title={t('pages.emailSettings.senderProfiles')}
+              action={
+                canManage &&
+                !addingProfile && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => {
+                      setAddingProfile(true);
+                      requestEdit('new');
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('pages.emailSettings.addProfile')}
+                  </Button>
+                )
+              }
+            />
 
             <div className="grid gap-4 lg:grid-cols-2">
               {addingProfile && (

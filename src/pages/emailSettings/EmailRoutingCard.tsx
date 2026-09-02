@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Pencil, Save, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Loader2, Save, X } from 'lucide-react';
+import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
@@ -21,11 +21,9 @@ interface EmailRoutingCardProps {
   map: RoutingMap;
   loading: boolean;
   loadError: string;
-  canManage: boolean;
   isEditing: boolean;
   /** false เมื่อหน้ามี dialog ของตัวเองทับอยู่ — ดูเหตุผลตรงที่เรียก useGlobalShortcuts */
   shortcutsEnabled?: boolean;
-  onRequestEdit: () => void;
   onCancelEdit: () => void;
   onSaved: (next: EmailRoutingConfig) => void | Promise<void>;
 }
@@ -59,10 +57,8 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
   map,
   loading,
   loadError,
-  canManage,
   isEditing,
   shortcutsEnabled = true,
-  onRequestEdit,
   onCancelEdit,
   onSaved,
 }) => {
@@ -159,21 +155,11 @@ export const EmailRoutingCard: React.FC<EmailRoutingCardProps> = ({
   );
 
   return (
+    // ชื่อและคำอธิบายของ section ย้ายไปอยู่ที่หน้าแล้ว (SectionHeading) พร้อมปุ่มแก้ไข —
+    // การ์ดใบนี้เป็น section เดียวเทียบเท่า "Sender profiles" ไม่ใช่การ์ดใบหนึ่งในนั้น การมี
+    // หัวการ์ดเป็นของตัวเองทำให้มันกลายเป็น H3 ที่ไม่มี H2 ครอบ อ่านแล้วอยู่คนละชั้นกับเพื่อน
+    // aria-label ยังอยู่: หัวข้ออยู่นอกกรอบแล้ว ถ้าไม่มี label ภูมิภาคนี้จะไม่มีชื่อเรียก
     <Card role="region" aria-label={t('pages.emailSettings.routingTitle')}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-        <div className="min-w-0">
-          <CardTitle className="text-base">{t('pages.emailSettings.routingTitle')}</CardTitle>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {t('pages.emailSettings.routingDescription')}
-          </p>
-        </div>
-        {canManage && !isEditing && !loading && !loadError && (
-          <Button variant="outline" size="sm" onClick={onRequestEdit}>
-            <Pencil className="mr-2 h-4 w-4" />
-            {t('pages.emailSettings.editRouting')}
-          </Button>
-        )}
-      </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
           <p className="text-muted-foreground text-sm">{t('common.busy.loading')}</p>
