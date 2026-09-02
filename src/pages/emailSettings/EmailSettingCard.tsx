@@ -7,6 +7,8 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { AuditMeta } from '../../components/AuditMeta';
+import { normalizeAudit } from '../../utils/audit';
 import { PasswordField } from './PasswordField';
 import { TestEmailDialog } from './TestEmailDialog';
 import { FlowChip } from './RoutingPanel';
@@ -156,6 +158,7 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
   }, [isEditing, setting]);
 
   const docVersion = useMemo(() => getDocVersion(setting), [setting]);
+  const audit = useMemo(() => normalizeAudit(setting), [setting]);
   const carried = lane ? [...lane.explicit, ...lane.inherited] : [];
 
   // เทียบกับ toForm(setting) ตรง ๆ แทนที่จะเก็บ snapshot แยก — การ์ดเข้าโหมดแก้ด้วยการ seed
@@ -540,6 +543,23 @@ export const EmailSettingCard: React.FC<EmailSettingCardProps> = ({
               </>
             )}
           </div>
+        )}
+
+        {/*
+          ที่มาของแถวนี้อยู่ในกรอบการ์ด ไม่ใช่ลอยอยู่ใต้กรอบเหมือนเดิม — ข้อความ "ใครแก้ล่าสุด"
+          ที่วางนอกการ์ดอ่านได้ว่าเป็นของหน้า ไม่ใช่ของโปรไฟล์ใบนี้ ทั้งที่มันเจาะจงถึงใบเดียว
+          และเมื่อการ์ดวางเป็นกริดสองคอลัมน์ที่สูงไม่เท่ากัน บรรทัดที่ลอยอยู่ข้างนอกจะไปเรียง
+          ใกล้การ์ดใบถัดไปมากกว่าใบที่มันพูดถึง
+
+          แสดงในโหมดแก้ด้วย: จังหวะที่กำลังจะเขียนทับคือจังหวะที่ "ใครแตะล่าสุด" มีค่าที่สุด
+          (เรื่องเดียวกับ 409) · การ์ดโปรไฟล์ใหม่ไม่มี audit ให้แสดง AuditMeta คืน null เอง
+        */}
+        {(audit.created || audit.updated) && (
+          <AuditMeta
+            variant="header"
+            audit={audit}
+            className="text-muted-foreground border-t pt-3 text-xs"
+          />
         )}
       </CardContent>
 

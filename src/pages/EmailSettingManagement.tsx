@@ -16,8 +16,6 @@ import { useAuth } from '../context/AuthContext';
 import { useEmailRouting } from '../hooks/useEmailRouting';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { getErrorDetail } from '../utils/errorParser';
-import { AuditMeta } from '../components/AuditMeta';
-import { latestActor } from '../utils/audit';
 import type { EmailSetting } from '../types';
 import { useI18n } from '../hooks/useI18n';
 
@@ -156,21 +154,19 @@ const EmailSettingManagement: React.FC = () => {
                   onSaved={() => { setAddingProfile(false); void handleSaved('new'); }}
                 />
               )}
-              {settings.map((setting) => {
-                const latest = latestActor(setting);
-                return (
+              {settings.map((setting) => (
                 // Keying on doc_version remounts the card whenever the stored row
                 // changes, which is exactly what the 409 path needs: the form resets
                 // to the freshly-fetched values while the page keeps it in edit mode.
-                // Wrapped in a div (EmailSettingCard itself is a self-contained Card
-                // from a file outside this task's scope) so the compact audit line can
-                // sit just below the card without touching EmailSettingCard.tsx.
+                // แถวที่มาเคยอยู่ใต้การ์ดตรงนี้ ตอนนี้ย้ายเข้าไปอยู่ในกรอบการ์ดแล้ว (ดูเหตุผล
+                // ที่ท้าย CardContent ของ EmailSettingCard) div ที่เหลือมีไว้เพื่อ min-w-0 อย่างเดียว
+                //
                 // min-w-0: grid item ได้ `min-width: auto` มาโดยปริยาย จึงกว้างตามเนื้อหาที่ยาว
                 // ที่สุดในนั้น (ที่อยู่ผู้ส่ง และแถวป้ายเส้นทาง) แทนที่จะหดตามคอลัมน์ ผลคือทั้งหน้า
                 // เลื่อนแนวนอนได้ที่ 390px — วัดได้ 460px ในกริด 348px ก่อนใส่คลาสนี้
                 <div
                   key={`${setting.id}-${setting.doc_version ?? 'new'}`}
-                  className="min-w-0 space-y-1.5"
+                  className="min-w-0"
                 >
                   <EmailSettingCard
                     profileKey={setting.id}
@@ -186,15 +182,8 @@ const EmailSettingManagement: React.FC = () => {
                     onCancelEdit={() => setEditingPurpose(null)}
                     onSaved={(opts) => handleSaved(setting.id, opts)}
                   />
-                  <AuditMeta
-                    variant="compact"
-                    verbKey={latest?.verbKey}
-                    actor={latest?.actor}
-                    className="text-muted-foreground px-1 text-xs"
-                  />
                 </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         )}
