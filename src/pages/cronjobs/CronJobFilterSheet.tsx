@@ -29,25 +29,24 @@ export interface CronJobFilterSheetProps {
 }
 
 /**
- * Three fixed Selects (job_type / status / owner) — no `advance` filter grammar, per the
- * design doc ("Non-goals"). Each Select uses the `'all'`-sentinel convention already used in
+ * Two fixed Selects (job_type / status) — no `advance` filter grammar, per the design doc
+ * ("Non-goals"). Each Select uses the `'all'`-sentinel convention already used in
  * ActivityEventManagement.tsx and jobConfig/ReportConfigFields.tsx: `<SelectItem value="">`
  * throws at runtime on the pinned Radix version, so the empty/"any" choice is represented as
  * the literal string `'all'` in the UI and converted back to an absent key when writing the
  * filter object the service forwards.
  *
- * The gateway's filter grammar (platform_cronjobs.service.ts) only supports *exact* equality:
- * `source_service === ''` for platform-owned, or `source_service === <exact string>` for one
- * named foreign service. There is no "any foreign service" operator and no endpoint that
- * enumerates the foreign source_service values in use, so the Owner select offers exactly the
- * two values the backend can answer — All and Platform — rather than faking a third option the
- * gateway cannot honour.
+ * There used to be a third Select here (Owner: All / Platform), sending
+ * `source_service: ''` to mean "platform-owned only". It was removed: the gateway's shared
+ * `parseFilterString` (apps/backend-gateway/src/shared-dto/paginate.dto.ts) guards with
+ * `if (key && value)`, so a pair whose value is an empty string is dropped before it ever
+ * reaches platform_cronjobs.service.ts — the filter silently matched everything instead of
+ * excluding foreign-owned jobs. A select that cannot filter is worse than an absent one.
  */
 export default function CronJobFilterSheet({ open, onOpenChange, filter, onApply, onClear }: CronJobFilterSheetProps) {
   const { t } = useI18n();
   const [jobType, setJobType] = useState(filter.job_type ?? '');
   const [status, setStatus] = useState(filter.is_active ?? '');
-  const [owner, setOwner] = useState(filter.source_service !== undefined ? 'platform' : '');
 
   // The Sheet does not unmount between opens, so without this the fields would keep showing
   // whatever was pending from the last time it was open — including a pending edit the user
@@ -56,16 +55,12 @@ export default function CronJobFilterSheet({ open, onOpenChange, filter, onApply
     if (!open) return;
     setJobType(filter.job_type ?? '');
     setStatus(filter.is_active ?? '');
-    setOwner(filter.source_service !== undefined ? 'platform' : '');
   }, [open, filter]);
 
   const handleApply = () => {
     const next: Record<string, string> = {};
     if (jobType) next.job_type = jobType;
     if (status) next.is_active = status;
-    // '' is itself a meaningful value here (platform-owned = source_service equals empty
-    // string on the wire) — the presence of the key, not its truthiness, is what matters.
-    if (owner === 'platform') next.source_service = '';
     onApply(next);
     onOpenChange(false);
   };
@@ -73,7 +68,6 @@ export default function CronJobFilterSheet({ open, onOpenChange, filter, onApply
   const handleClear = () => {
     setJobType('');
     setStatus('');
-    setOwner('');
     onClear();
     onOpenChange(false);
   };
@@ -107,17 +101,6 @@ export default function CronJobFilterSheet({ open, onOpenChange, filter, onApply
                 <SelectItem value="all">{t('common.option.all')}</SelectItem>
                 <SelectItem value="true">{t('cronjob.status.running')}</SelectItem>
                 <SelectItem value="false">{t('cronjob.status.stopped')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="cronjob-filter-owner">{t('cronjob.column.owner')}</Label>
-            <Select value={owner || 'all'} onValueChange={(v) => setOwner(v === 'all' ? '' : v)}>
-              <SelectTrigger id="cronjob-filter-owner"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('common.option.all')}</SelectItem>
-                <SelectItem value="platform">{t('cronjob.owner.platform')}</SelectItem>
               </SelectContent>
             </Select>
           </div>

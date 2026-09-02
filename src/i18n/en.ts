@@ -4322,7 +4322,7 @@ export const en = {
       unavailable: 'Unavailable',
     },
     filter: {
-      description: 'Narrow the list by type, status, or owner.',
+      description: 'Narrow the list by type or status.',
       apply: 'Apply',
     },
   },

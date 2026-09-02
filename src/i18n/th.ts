@@ -3301,7 +3301,7 @@ export const th: Translations = {
       unavailable: 'ไม่สามารถใช้งานได้',
     },
     filter: {
-      description: 'กรองรายการตามประเภท สถานะ หรือเจ้าของ',
+      description: 'กรองรายการตามประเภทหรือสถานะ',
       apply: 'นำไปใช้',
     },
   },
