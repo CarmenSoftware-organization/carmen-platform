@@ -40,12 +40,14 @@ export const en = {
     databasePools: 'Database Pools',
     cluster: 'Cluster',
     featureFlags: 'Feature Flags',
+    cronjobs: 'Scheduled Jobs',
   },
   navGroup: {
     organization: 'Organization',
     licenseManagement: 'License Management',
     content: 'Content',
     analytics: 'Analytics',
+    scheduling: 'Scheduling',
     platform: 'Platform',
     database: 'Database',
     // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*

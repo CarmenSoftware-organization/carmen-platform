@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Network, Building2, Users, FileText, Newspaper, Megaphone, AppWindow,
   ShieldCheck, ShieldAlert, UserCog, DatabaseZap, Database, DatabaseBackup, LayoutGrid, Mail, FileSpreadsheet,
-  BarChart3, MousePointerClick, Settings, Server, KeyRound, ToggleLeft, Tags
+  BarChart3, MousePointerClick, Settings, Server, KeyRound, ToggleLeft, Tags, Clock
 } from 'lucide-react';
 import type { NavItem } from '../Sidebar';
 import type { FeatureState } from '../../constants/featureFlags';
@@ -31,6 +31,9 @@ const ALL_PLATFORM_NAV_ITEMS: NavItem[] = [
   // `groupKey`, so splitting these two would render two separate "Analytics" headings.
   { path: '/analytics', labelKey: 'nav.usageAnalytics', icon: BarChart3, permission: 'activity_event.read', groupKey: 'navGroup.analytics', feature: 'usage_analytics' },
   { path: '/activity-events', labelKey: 'nav.activityEvents', icon: MousePointerClick, permission: 'activity_event.detail', groupKey: 'navGroup.analytics', feature: 'activity_events' },
+  // Scheduling — งานตามเวลา ไม่ใช่การตั้งค่าระบบ จึงเป็นกลุ่มของตัวเอง
+  // Sidebar จัดกลุ่มจากแถวที่ groupKey ซ้ำกันติดกัน แถวนี้ต้องไม่ถูกคั่น
+  { path: '/cronjobs', labelKey: 'nav.cronjobs', icon: Clock, permission: 'cronjob.read', groupKey: 'navGroup.scheduling', feature: 'cronjobs' },
   // Platform
   { path: '/platform/configs', labelKey: 'nav.platformConfig', icon: Settings, permission: 'platform_config.read', groupKey: 'navGroup.platform', feature: 'platform_config' },
   { path: '/platform/email-settings', labelKey: 'nav.emailSettings', icon: Mail, permission: 'email_setting.read', groupKey: 'navGroup.platform', feature: 'email_settings' },

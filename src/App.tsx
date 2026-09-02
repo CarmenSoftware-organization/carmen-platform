@@ -60,6 +60,8 @@ const EmailSettingManagement = lazy(() => import("./pages/EmailSettingManagement
 const PlatformConfigManagement = lazy(() => import("./pages/PlatformConfigManagement"));
 const DatabasePoolManagement = lazy(() => import("./pages/DatabasePoolManagement"));
 const DatabasePoolEdit = lazy(() => import("./pages/DatabasePoolEdit"));
+const CronJobManagement = lazy(() => import("./pages/cronjobs/CronJobManagement"));
+const CronJobEdit = lazy(() => import("./pages/cronjobs/CronJobEdit"));
 const FeatureFlagManagement = lazy(() => import("./pages/FeatureFlagManagement"));
 const ClusterAdminEntry = lazy(() => import("./pages/clusterAdmin/ClusterAdminEntry"));
 const ClusterProfile = lazy(() => import("./pages/clusterAdmin/ClusterProfile"));
@@ -522,6 +524,30 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="database_pool.read" feature="database_pools">
                   <DatabasePoolEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/cronjobs"
+              element={
+                <PrivateRoute requiredPermission="cronjob.read" feature="cronjobs">
+                  <CronJobManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/cronjobs/new"
+              element={
+                <PrivateRoute requiredPermission="cronjob.read" feature="cronjobs">
+                  <CronJobEdit />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/cronjobs/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="cronjob.read" feature="cronjobs">
+                  <CronJobEdit />
                 </PrivateRoute>
               }
             />
