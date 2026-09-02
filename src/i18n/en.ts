@@ -4152,9 +4152,8 @@ export const en = {
   // Cronjob management (2026-09-02 spec, Task 7). `config` backs the six job_type-specific
   // field groups under pages/cronjobs/jobConfig/ — one block shared by all six rather than
   // six separate namespaces, since several fields (bu_codes, type) repeat across job types.
-  // Later tasks in the same spec add cronjob.field / cronjob.validation / cronjob.toast /
-  // cronjob.error / cronjob.column / cronjob.type / cronjob.status / cronjob.owner /
-  // cronjob.action / cronjob.confirm alongside this block.
+  // Task 9 (CronJobManagement, the list page) added column / status / owner / action /
+  // confirm / summary / filter below, plus the started/stopped/dispatched/deleted toast keys.
   cronjob: {
     config: {
       daysBack: 'Days back',
@@ -4243,12 +4242,72 @@ export const en = {
     toast: {
       created: 'Scheduled job created',
       saved: 'Scheduled job saved',
+      started: 'Scheduled job started',
+      stopped: 'Scheduled job stopped',
+      // POST /execute returns the moment the job is handed to a background worker — the
+      // outcome is unknown at this point, so this is deliberately toast.info, never .success.
+      dispatched: 'Run dispatched — the job is now running in the background',
+      deleted: 'Scheduled job deleted',
     },
     error: {
       // The gateway returns HTTP 409 for two unrelated reasons, told apart only by
       // `error_code` in the response body: FOREIGN_OWNED_JOB (this message) vs
       // DOC_VERSION_CONFLICT (isVersionConflict / notifyVersionConflict). Keep them separate.
       foreignOwned: 'This job is owned by {{service}} and cannot be changed here.',
+    },
+    // Task 9: CronJobManagement (the list page) + CronJobFilterSheet.
+    pluralTitle: 'Scheduled Jobs',
+    subtitle: 'Cron-driven jobs running across every business unit — reports, notifications, cleanup, and platform maintenance.',
+    addJob: 'Add Scheduled Job',
+    searchPlaceholder: 'Search scheduled jobs...',
+    loadingAria: 'Loading scheduled jobs',
+    loading: 'Loading...',
+    emptyTitle: 'No scheduled jobs yet',
+    emptyDescription: 'Add a scheduled job to automate reports, notifications, cleanup, or other recurring platform work.',
+    column: {
+      name: 'Name',
+      type: 'Type',
+      schedule: 'Schedule',
+      status: 'Status',
+      owner: 'Owner',
+      lastRun: 'Last run',
+      nextRun: 'Next run',
+      runs: 'Runs',
+    },
+    status: {
+      running: 'Running',
+      stopped: 'Stopped',
+    },
+    owner: {
+      platform: 'Platform',
+    },
+    action: {
+      start: 'Start',
+      stop: 'Stop',
+      runNow: 'Run now',
+      // {{service}} is job.source_service, e.g. "micro-report".
+      foreignOwnedTooltip: 'Owned by {{service}} — edit and delete are disabled here.',
+    },
+    confirm: {
+      deleteTitle: 'Delete scheduled job',
+      deleteBody: 'Delete "{{name}}"? This cannot be undone.',
+    },
+    summary: {
+      total: 'Total',
+      running: 'Running',
+      stopped: 'Stopped',
+      withErrors: 'With errors',
+      foreignOwned: 'Foreign-owned',
+      activeInScheduler: 'Active in scheduler',
+      // Four of the six figures are computed from the rows currently loaded, not the whole
+      // filtered set — a count that silently means "this page only" while looking
+      // page-independent misreports, so this is spelled out rather than left implicit.
+      pageScopeCaption: 'Running, Stopped, With errors and Foreign-owned count only the rows loaded on this page — Total and Active in scheduler cover every job.',
+      unavailable: 'Unavailable',
+    },
+    filter: {
+      description: 'Narrow the list by type, status, or owner.',
+      apply: 'Apply',
     },
   },
   // Reserved for phase 2. `errorParser.ts` is a pure module: translating these three
