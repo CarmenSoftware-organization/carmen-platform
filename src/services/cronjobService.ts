@@ -4,7 +4,7 @@ import type { CronJob, CronJobsResponse, CronJobWriteInput, PaginateParams } fro
 
 // ตรงกับ SEARCHABLE ฝั่ง gateway (platform_cronjobs.service.ts)
 // คีย์บนสาย wire เป็นตัวเล็กล้วนเสมอ — เขียน camelCase แล้วคำค้นหายเงียบ
-const defaultSearchFields = ['name', 'description', 'job_type', 'source_service'];
+const defaultSearchFields = ['name', 'description', 'job_type', 'cron_expression', 'source_service'];
 
 const BASE = '/api-system/platform/cronjobs';
 
