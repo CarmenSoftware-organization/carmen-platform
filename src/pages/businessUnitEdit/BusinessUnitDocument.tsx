@@ -356,12 +356,9 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
         </>
       )}
 
-      {activeTab === 'users' && (
-        <>
-          {usersSlot}
-          {licensesSlot}
-        </>
-      )}
+      {activeTab === 'users' && usersSlot}
+
+      {activeTab === 'licenses' && licensesSlot}
     </div>
   );
 }

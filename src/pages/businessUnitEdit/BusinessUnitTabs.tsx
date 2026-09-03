@@ -1,8 +1,11 @@
 import { TabStrip, type TabStripItem } from '../../components/TabStrip';
 
-export type BuTabId = 'general' | 'location' | 'formats' | 'technical' | 'users';
+export type BuTabId = 'general' | 'location' | 'formats' | 'technical' | 'users' | 'licenses';
 
-export const BU_TAB_IDS: BuTabId[] = ['general', 'location', 'formats', 'technical', 'users'];
+// ลำดับนี้ไม่ใช่แค่ลำดับที่วาด — `tabsWithErrors` เดินตามอาร์เรย์นี้เพื่อเลือกแท็บที่ Save จะกระโดดไป
+// จึงต้องเรียงตามที่ผู้ใช้เห็นเสมอ ('licenses' ไม่มีฟิลด์ในฟอร์ม จึงไม่มีทางถูกเลือก แต่ต้องอยู่ในนี้
+// เพราะ `isBuTabId` ใช้ตัวเดียวกันตรวจ deep link `?tab=licenses`)
+export const BU_TAB_IDS: BuTabId[] = ['general', 'location', 'formats', 'technical', 'users', 'licenses'];
 
 export const isBuTabId = (v: string | null): v is BuTabId =>
   !!v && (BU_TAB_IDS as string[]).includes(v);
