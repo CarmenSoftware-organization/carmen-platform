@@ -313,6 +313,38 @@ Phase B เพิ่มคีย์ 3 ชั้น**ของจริง** (`sy
 `system_admin.workflow` แล้วต้องได้ `403 LICENSE_REQUIRED` โดยเปิด `LICENSE_ENFORCEMENT`
 ก่อนเสมอ — ไม่งั้นจะผ่านเพราะ shadow mode ไม่ใช่เพราะโค้ดถูก
 
+#### ผลโพรบ — ทำแล้วเมื่อ 2026-09-03 บน DEV · **หนี้ข้อนี้ปิดแล้ว**
+
+สวิตช์: `tb_platform_config` namespace `license` → `enforcement_enabled: true` (ตรวจก่อนยิงทุกครั้ง
+ตามที่ §5.0 บังคับ) · BU ที่ใช้: `MOCK1` · gateway: `https://dev.blueledgers.com:4001`
+
+| สิทธิ์ในกลุ่มที่ผูกกับสัญญา | `GET …/workflows/purchase-request` | `GET …/workflows` | `DELETE …/workflows/:id` |
+|---|---|---|---|
+| Full Access (79 คีย์) | 200 | 200 | — |
+| `[system_admin, ….purchase_request]` ← **ขาดชั้นกลาง** | **403** `LICENSE_REQUIRED` · `feature: ….purchase_request` | — | **403** · `feature: system_admin.workflow` |
+| `[system_admin, system_admin.workflow, ….purchase_request]` | **200** | — | 404 `WORKFLOW_NOT_FOUND` |
+| `[system_admin, system_admin.workflow]` | **403** · `feature: ….purchase_request` | **200** | — |
+
+อ่านตารางนี้ได้ 4 อย่าง:
+
+1. **แถว 2 คือหนี้ที่ต้องใช้คืน** — ชั้นกลางหายแล้วถูกบล็อกจริง ไม่ใช่แค่ผ่านเทสต์ในโปรเซส
+   คราวนี้ผ่าน `LicenseInterceptor` + สวิตช์ + `resolveHiddenKeys` ครบทั้งเส้นทาง
+2. **แถว 3 พิสูจน์ว่าด่านทำงานสองทิศ** ไม่ใช่บล็อกทุกอย่าง · `404` ของ DELETE คือหลักฐานว่า
+   ผ่านด่าน license แล้วไปถึง handler จริง (id ที่ยิงเป็น UUID ปลอม MOCK1 ไม่มี workflow เลย)
+3. **คู่ 403/404 ของ DELETE ยืนยัน §5.1** — `feature` ในคำตอบเป็น `system_admin.workflow`
+   ไม่ใช่รายประเภท แปลว่าการเขียนตกที่ fallback = พ่อ ตามที่ D3′ เคาะไว้จริง
+4. **แถว 4 คือฟีเจอร์ที่ Phase B ขาย** — ถือพ่อแต่ไม่ถือประเภทนั้น เห็นรายการรวมได้ (200)
+   แต่ประเภทที่ไม่ได้ซื้อถูกปิด (403)
+
+**บั๊กที่โพรบนี้งัดเจอ:** สถานะ "ขาดชั้นกลาง" ในแถว 2 **สร้างผ่าน API ปกติได้** ไม่ต้องแก้ DB
+ด้วยมือเลย — `LicenseFeatureGroupService.setFeatures` ตัดคีย์ที่จุดแรก (`k.indexOf('.')`)
+เพื่อหาพ่อ ซึ่งเป็นตรรกะของ catalog 2 ชั้นที่ Phase A ลืมตามแก้ ส่งลูกชั้น 3 เข้าไปจึงได้
+`system_admin` ติดมาตัวเดียว หน้าเว็บกันไว้อยู่แล้ว (Phase A เติมครบสายฝั่ง frontend)
+แต่ API เปิดโล่ง แก้แล้วใน backend PR #490 (ไต่ `parent_key` จนสุดสาย)
+
+ข้อมูลทดสอบคืนค่าเดิมครบแล้ว: `MOCK1` กลับไปผูก Full Access 79 คีย์ · กลุ่ม `PROBE-TREE` ลบทิ้ง
+· ยืนยันด้วยการยิงซ้ำได้ `200`
+
 ### 5.1 ความหมายที่เคาะแล้ว: อ่านแยกตาม type / เขียนคุมที่พ่อ (D3′)
 
 - `.purchase_request` = **เห็น workflow ประเภทนั้นได้** — คุม `GET /workflows/purchase-request`

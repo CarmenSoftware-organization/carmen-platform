@@ -1,6 +1,6 @@
 # License feature tree — Phase B Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** ขาย workflow แยกตามประเภทเอกสารได้ — เพิ่ม 3 feature ชั้นที่ 3
 (`system_admin.workflow.purchase_request` / `.purchase_order` / `.store_requisition`)
@@ -75,7 +75,7 @@
 - Produces: feature key ใหม่ 3 ตัว + `LICENSE_ROUTE_FEATURES` entry
   `config:workflows/purchase-request` ฯลฯ — Task 2 (fixture) และ Task 4 (โพรบ) ใช้
 
-- [ ] **Step 1: ยืนยันว่า Phase A ลง `main` แล้ว แล้วเปิด branch**
+- [x] **Step 1: ยืนยันว่า Phase A ลง `main` แล้ว แล้วเปิด branch**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
@@ -88,7 +88,7 @@ git checkout -b feat/license-workflow-per-type
 Expected: `grep -c` ได้ `1` ทั้งสองบรรทัด · ถ้าได้ `0` แปลว่า Phase A ยังไม่ merge
 **หยุดทันที บอกผู้ใช้ อย่าทำต่อบนกิ่งซ้อน**
 
-- [ ] **Step 2: ย้าย `config:workflows` ออกจาก `ROUTE_RESOURCE_MAP`**
+- [x] **Step 2: ย้าย `config:workflows` ออกจาก `ROUTE_RESOURCE_MAP`**
 
 ลบบรรทัดนี้ออกจาก `ROUTE_RESOURCE_MAP` (บรรทัด 117):
 
@@ -103,7 +103,7 @@ Expected: `grep -c` ได้ `1` ทั้งสองบรรทัด · ถ
 **อย่าแตะ** `"app:workflows"` (บรรทัด 80) — คนละ group และไม่มี endpoint รายประเภท
 **อย่าแตะ** `"config:workflow-comments"` ใน `SUB_RESOURCE_SEGMENTS`
 
-- [ ] **Step 3: เพิ่มกฎ sub-path**
+- [x] **Step 3: เพิ่มกฎ sub-path**
 
 ใน `SUB_PATH_RESOURCE_MAP` เพิ่มต่อจาก `"app:reports"`:
 
@@ -130,7 +130,7 @@ Expected: `grep -c` ได้ `1` ทั้งสองบรรทัด · ถ
   },
 ```
 
-- [ ] **Step 4: เพิ่ม permission resource — `view` อย่างเดียว**
+- [x] **Step 4: เพิ่ม permission resource — `view` อย่างเดียว**
 
 ใน `seed.permission.data.ts` ต่อท้ายบล็อก `// system admin workflow`:
 
@@ -157,7 +157,7 @@ Expected: `grep -c` ได้ `1` ทั้งสองบรรทัด · ถ
 **เพิ่มแค่ `view`** — ใส่ `create`/`update`/`delete` จะทำให้
 `check.endpoint-permission-coverage` รายงาน `EXTRA_ACTION` เพราะไม่มี endpoint รองรับ
 
-- [ ] **Step 5: เพิ่มคีย์ใหม่ลงแมป role → permission**
+- [x] **Step 5: เพิ่มคีย์ใหม่ลงแมป role → permission**
 
 ใน `seed.role-permission.ts` ทุกจุดที่มี `"system_admin.workflow": []` ให้เพิ่มสามบรรทัด
 ต่อท้ายด้วยค่าเดียวกัน:
@@ -178,7 +178,7 @@ grep -c '"system_admin.workflow": \[\]' packages/prisma-shared-schema-platform/p
 
 ใช้ตัวเลขที่ได้ยืนยันว่าแก้ครบทุกจุด (คาดว่า 4)
 
-- [ ] **Step 6: regenerate แล้วตรวจรูปของ catalog**
+- [x] **Step 6: regenerate แล้วตรวจรูปของ catalog**
 
 ```bash
 bun run generate:license-catalog
@@ -196,7 +196,7 @@ Expected:
   `config:workflows/purchase-request` + `/purchase-order` + `/store-requisition`
 - generator ต้อง**ไม่โยน** `assert_no_gap` (พ่อ `system_admin.workflow` มีอยู่จริง)
 
-- [ ] **Step 7: ด่านความครอบคลุมของ permission**
+- [x] **Step 7: ด่านความครอบคลุมของ permission**
 
 ```bash
 bun run packages/prisma-shared-schema-platform/prisma/check.endpoint-permission-coverage.ts
@@ -206,7 +206,7 @@ Expected: `VERDICT: COVERED` · ถ้าขึ้น `MISSING_PERMISSION` แ�
 ถ้าขึ้น `EXTRA_ACTION` แปลว่าใส่ action เกิน (ดู Step 4) ถ้าขึ้น `ORPHAN_RESOURCE`
 แปลว่า resource ที่เพิ่มไม่มี endpoint ชี้ถึง — กลับไปดู Step 3
 
-- [ ] **Step 8: ต่อ assertion ใน spec เดิมของ resolver**
+- [x] **Step 8: ต่อ assertion ใน spec เดิมของ resolver**
 
 ใน `apps/backend-gateway/src/license/license-route-resolver.spec.ts` เพิ่ม `describe` ต่อ
 จากกลุ่ม `sub-path features (SUB_PATH_RESOURCE_MAP)` ที่มีอยู่ (**ไม่สร้างไฟล์ใหม่**):
@@ -242,7 +242,7 @@ describe('workflow per-type features', () => {
 });
 ```
 
-- [ ] **Step 9: รันสวีตและ static ทั้งชุด**
+- [x] **Step 9: รันสวีตและ static ทั้งชุด**
 
 ```bash
 cd apps/backend-gateway && bunx jest src/license --runInBand --forceExit 2>&1 | grep -E "Tests:|Test Suites:"
@@ -257,7 +257,7 @@ bun run audit:app-api-catalog-drift
 Expected: ทุกอย่างผ่าน · **`audit:fe-license-fixture` จะแดงตอนนี้** และนั่นถูกต้อง —
 Task 2 คือตัวแก้ อย่าเพิ่งรันหรือกังวลกับมันในขั้นนี้
 
-- [ ] **Step 10: Commit (ยังไม่ push)**
+- [x] **Step 10: Commit (ยังไม่ push)**
 
 ```
 git add packages/prisma-shared-schema-platform/prisma apps/backend-gateway/src/license
@@ -296,7 +296,7 @@ Claude-Session: <session url>
 `https://raw.githubusercontent.com/.../carmen-inventory-frontend-react/main/constant/__fixtures__/license-catalog.ts`
 คือ **`main` เสมอ** ไม่ใช่ commit ที่กำลังรีวิว ⇒ PR ของ BE จะแดงจนกว่า fixture จะลง `main`
 
-- [ ] **Step 1: เปิด branch จาก `main`**
+- [x] **Step 1: เปิด branch จาก `main`**
 
 รีโปนี้ค้างอยู่บนกิ่งอื่น (`fix/drop-dead-legacy-frontend-refs` ตอนสำรวจ) — ต้องกลับ `main` ก่อน
 
@@ -309,7 +309,7 @@ git checkout -b feat/license-workflow-per-type-fixture
 
 ถ้า `git status --short` ไม่ว่าง **หยุดแล้วถามผู้ใช้** อย่า stash หรือทิ้งงานค้างของเขา
 
-- [ ] **Step 2: regenerate fixture**
+- [x] **Step 2: regenerate fixture**
 
 **เงื่อนไขที่พลาดง่ายที่สุดของ task นี้:** `scripts/gen-license-fixture.ts:30,42` อ่าน
 `license-catalog.generated.ts` จาก **sibling checkout ในเครื่อง**
@@ -331,7 +331,7 @@ Expected: diff มี **เฉพาะบรรทัดที่เพิ่�
 หัวไฟล์เขียนเตือนไว้เองว่าคีย์ที่หายอันตรายกว่าคีย์ที่เพิ่ม เพราะแปลว่า backend ลบหรือ
 เปลี่ยนชื่อ และหน้าที่ชี้ไปคีย์นั้นจะถูกล็อกถาวรตอนเปิด enforcement โดยไม่มี admin bypass
 
-- [ ] **Step 3: รันสวีตของรีโปนั้น**
+- [x] **Step 3: รันสวีตของรีโปนั้น**
 
 ```bash
 bun run test 2>&1 | tail -15
@@ -340,7 +340,7 @@ bun run test 2>&1 | tail -15
 Expected: ผ่าน โดยเฉพาะ `constant/module-list.license-feature.test.ts` ซึ่งเป็นตัวที่ใช้ fixture
 · ถ้าแดง **ห้ามแก้ fixture ให้เทสต์ผ่าน** — หัวไฟล์ห้ามไว้ชัดเจน ให้แก้ `module-list.ts` แทน
 
-- [ ] **Step 4: Commit, push, PR, merge เข้า `main`**
+- [x] **Step 4: Commit, push, PR, merge เข้า `main`**
 
 ข้อความ commit:
 
@@ -366,7 +366,7 @@ Claude-Session: <session url>
 **Interfaces:**
 - Consumes: Task 1 (commit ในเครื่อง) + Task 2 (fixture ที่ลง `main` แล้ว)
 
-- [ ] **Step 1: ยืนยันว่า fixture ลง `main` จริงแล้ว**
+- [x] **Step 1: ยืนยันว่า fixture ลง `main` จริงแล้ว**
 
 ```bash
 cd /Users/samutpra/GitHub/carmensoftware-organize/carmen-turborepo-backend-v2
@@ -376,7 +376,7 @@ bun run audit:fe-license-fixture
 Expected: ผ่าน · ถ้ายังแดง แปลว่า Task 2 ยังไม่ merge หรือ merge ผิดกิ่ง — **กลับไปทำ Task 2
 ให้จบก่อน อย่า push**
 
-- [ ] **Step 2: push + เปิด PR**
+- [x] **Step 2: push + เปิด PR**
 
 เขียน body ลงไฟล์ก่อนแล้วใช้ `--body-file` (heredoc ตรงๆ ทำให้ GateGuard ตีกลับ)
 เนื้อ PR ต้องมี:
@@ -405,7 +405,7 @@ gh pr create --base main --title "feat(license): ขาย workflow แยกต
 
 **Files:** ไม่มีไฟล์ถาวร
 
-- [ ] **Step 1: เตรียมกลุ่มสิทธิ์ที่ "ชั้นกลางหาย"**
+- [x] **Step 1: เตรียมกลุ่มสิทธิ์ที่ "ชั้นกลางหาย"**
 
 ที่ `/license-feature-groups/:id/edit` บน DEV — **UI สร้างสถานะนี้ไม่ได้แล้ว** (Phase A
 บังคับเติมบรรพบุรุษครบสาย) จึงต้องแก้แถวใน `tb_license_feature_group_item` ตรงๆ ให้กลุ่ม
@@ -414,12 +414,12 @@ gh pr create --base main --title "feat(license): ขาย workflow แยกต
 
 **นั่นคือประเด็นของการทดสอบ** — ด่านนี้มีไว้กันสถานะที่เกิดจากการแก้ DB ด้วยมือ
 
-- [ ] **Step 2: ยืนยันว่าสวิตช์ enforcement เปิดอยู่จริง**
+- [x] **Step 2: ยืนยันว่าสวิตช์ enforcement เปิดอยู่จริง**
 
 ถ้า `LICENSE_ENFORCEMENT` ปิด request จะผ่านเพราะ shadow mode **ไม่ใช่เพราะโค้ดถูก**
 ตรวจค่าสวิตช์ก่อนสรุปผลทุกครั้ง — ผลที่ได้ตอนปิดสวิตช์ไม่มีความหมายเลย
 
-- [ ] **Step 3: ยิงจริง — นี่คือข้อที่พิสูจน์ทั้ง Phase A และ B**
+- [x] **Step 3: ยิงจริง — นี่คือข้อที่พิสูจน์ทั้ง Phase A และ B**
 
 ```bash
 curl -i -X GET 'https://<dev-gateway>/api/config/<bu_code>/workflows/purchase-request' \
@@ -431,13 +431,13 @@ Expected: **`403` พร้อม `{"code":"LICENSE_REQUIRED"}`**
 ถ้าได้ `200` = evaluator ยังข้ามชั้นกลาง → เป็นบั๊กของ Phase A ที่หลุด production ไปแล้ว
 ต้องรายงานทันที ไม่ใช่แก้เงียบ ๆ
 
-- [ ] **Step 4: เติมชั้นกลางกลับแล้วยิงซ้ำ**
+- [x] **Step 4: เติมชั้นกลางกลับแล้วยิงซ้ำ**
 
 เพิ่ม `system_admin.workflow` เข้ากลุ่ม แล้วยิง URL เดิม
 
 Expected: `200` · คู่กับ Step 3 นี่คือหลักฐานว่าด่านทำงานทั้งสองทิศ ไม่ใช่บล็อกทุกอย่าง
 
-- [ ] **Step 5: ตรวจว่าการเขียนคุมที่พ่อจริง (D3′)**
+- [x] **Step 5: ตรวจว่าการเขียนคุมที่พ่อจริง (D3′)**
 
 ด้วยกลุ่มที่ถือ `[system_admin, system_admin.workflow.purchase_request]` **โดยไม่มีพ่อ**:
 
@@ -449,14 +449,14 @@ curl -i -X DELETE 'https://<dev-gateway>/api/config/<bu_code>/workflows/<some-id
 Expected: `403 LICENSE_REQUIRED` — เพราะ DELETE ตกที่ fallback = พ่อ ซึ่งไม่ได้ถือ
 นี่คือการยืนยัน §5.1 ว่า "เขียนคุมที่พ่อ" ทำงานจริง ไม่ใช่แค่ทฤษฎี
 
-- [ ] **Step 6: ตรวจหน้าจอ**
+- [x] **Step 6: ตรวจหน้าจอ**
 
 `/license-catalog` — `Purchase Request` / `Purchase Order` / `Store Requisition`
 ต้องเยื้องอยู่**ใต้** `Workflow` และไม่ไปกองท้ายชั้นวาง `System Admin`
 · `/license-feature-groups/:id/edit` — ติ๊กตัวใดตัวหนึ่งแล้วคีย์ที่ได้ต้องครบ 3 ชั้น
 · ตรวจที่ desktop และ 390px
 
-- [ ] **Step 7: คืนค่าข้อมูลทดสอบ**
+- [x] **Step 7: คืนค่าข้อมูลทดสอบ**
 
 คืนกลุ่มสิทธิ์ที่แก้ไว้ใน Step 1/4 ให้กลับเป็นของเดิม แล้วบันทึกผลโพรบลงสเปก §5.0
 เปลี่ยนจาก "หนี้ที่ต้องใช้คืน" เป็น "ตรวจแล้วเมื่อ <วันที่> ผลเป็น <อะไร>"
@@ -471,3 +471,21 @@ Expected: `403 LICENSE_REQUIRED` — เพราะ DELETE ตกที่ fall
 - **ไม่แตะ `app:workflows`** (group `app`) — ไม่มี endpoint รายประเภท
 - **ไม่แตะ `carmen-platform`** — Phase A ทำให้ UI รองรับ 3 ชั้นไปแล้ว
 - **ไม่แตะ `accounting.*`** — เป็น Phase C
+
+---
+
+## สถานะ — ปิดครบทั้ง 4 task เมื่อ 2026-09-03
+
+| task | ผลลัพธ์ |
+|---|---|
+| 1 | backend PR [#489](https://github.com/CarmenSoftware-organization/carmen-turborepo-backend-v2/pull/489) merged (`461a8257b`) · catalog 76 → 79 |
+| 2 | inventory PR [#124](https://github.com/CarmenSoftware-organization/carmen-inventory-frontend-react/pull/124) merged (`3e74806a8`) · fixture ไม่มีคีย์หาย |
+| 3 | `audit:fe-license-fixture` เขียว 79/79 · deploy DEV สำเร็จ |
+| 4 | โพรบสดครบทุกขั้น — ผลอยู่ใน §5.0 ของสเปก |
+
+**ของแถมจาก Task 4:** โพรบงัดเจอว่า `LicenseFeatureGroupService.setFeatures` ยังตัดคีย์
+ที่จุดแรกเพื่อหาพ่อ ทำให้ API สร้างกลุ่มที่ขาดชั้นกลาง (= ขายแล้วใช้ไม่ได้) ได้เงียบ ๆ
+แก้ใน [#490](https://github.com/CarmenSoftware-organization/carmen-turborepo-backend-v2/pull/490)
+
+**ยังไม่ทำ:** Phase C (`accounting.*`) · ทั้งสาม repo ยังไม่ขึ้น production
+(carmen-platform ต้อง `git push origin main:vercel` แยก)
