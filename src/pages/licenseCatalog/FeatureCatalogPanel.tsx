@@ -213,7 +213,12 @@ export const FeatureCatalogPanel: React.FC = () => {
       rows.map((r) => r.key),
     ).length;
     if (count === 0) return '';
-    return ` ${t('pages.licenseFeatures.hideConfirmDescendants', { count })}`;
+    return ` ${t(
+      count === 1
+        ? 'pages.licenseFeatures.hideConfirmDescendantsOne'
+        : 'pages.licenseFeatures.hideConfirmDescendantsMany',
+      { count },
+    )}`;
   }, [pendingHide, rows, t]);
 
   const handleExport = () => {
@@ -385,10 +390,15 @@ export const FeatureCatalogPanel: React.FC = () => {
         onOpenChange={(open) => !open && setPendingHide(null)}
         title={t('pages.licenseFeatures.hideConfirmTitle')}
         description={
-          t('pages.licenseFeatures.hideConfirmDescription', {
-            label: pendingHide?.label ?? '',
-            count: pendingHide?.affected_bu_count ?? 0,
-          }) + hideDescendantWarning
+          t(
+            (pendingHide?.affected_bu_count ?? 0) === 1
+              ? 'pages.licenseFeatures.hideConfirmDescriptionOne'
+              : 'pages.licenseFeatures.hideConfirmDescriptionMany',
+            {
+              label: pendingHide?.label ?? '',
+              count: pendingHide?.affected_bu_count ?? 0,
+            },
+          ) + hideDescendantWarning
         }
         confirmText={t('pages.licenseFeatures.hideConfirmAction')}
         confirmVariant="destructive"

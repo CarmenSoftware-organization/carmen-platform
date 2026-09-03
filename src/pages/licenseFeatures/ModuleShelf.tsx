@@ -195,7 +195,12 @@ const AffectedBuCount: React.FC<{ count?: number }> = ({ count }) => {
         'shrink-0 text-xs tabular-nums lg:w-20 lg:text-right',
         count === 0 ? 'text-muted-foreground/60' : 'text-muted-foreground',
       )}
-      title={t('pages.licenseFeatures.affectedBuTooltip', { count })}
+      title={t(
+        count === 1
+          ? 'pages.licenseFeatures.affectedBuTooltipOne'
+          : 'pages.licenseFeatures.affectedBuTooltipMany',
+        { count },
+      )}
     >
       {t('pages.licenseFeatures.affectedBu', { count })}
     </span>
