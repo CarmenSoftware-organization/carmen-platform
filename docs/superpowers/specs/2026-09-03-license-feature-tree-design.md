@@ -108,7 +108,7 @@ Phase B/C แตะ (เพิ่ม key) และ **FE ฝั่งนั้�
 | D4 | แบ่งงาน | 3 phase แยกสเปก: A โครงสร้าง · B workflow · C accounting |
 | D5 | `sort_order` | เว้นแถบให้หลาน ไม่แตะเลขเดิมของ 78 แถว |
 
-## 4. Phase A — ทำ catalog เป็นต้นไม้ n ชั้น
+## 4. Phase A — ทำ catalog เป็นต้นไม้ n ชั้น · **เสร็จแล้ว 2026-09-03**
 
 ไม่เพิ่ม feature ใหม่สักตัว เป็นงานโครงสร้างล้วน
 
@@ -287,7 +287,7 @@ bun run audit:license-catalog
 **PR:** 2 repo ⇒ 2 PR **ลำดับ merge ไม่สำคัญ** เพราะทั้งสองฝั่งเป็น no-op กับข้อมูล 2 ชั้น
 (FE: แบนต้นไม้ 2 ชั้น = ผลเดิม; BE: `ancestors=[module]` = ผลเดิม)
 
-## 5. Phase B — `system_admin.workflow.<type>` (ต้องมี A ก่อน)
+## 5. Phase B — `system_admin.workflow.<type>` (ต้องมี A ก่อน) · **เสร็จแล้ว 2026-09-03**
 
 ### 5.0 หนี้ที่ยกมาจาก Phase A — โพรบสด **ต้องทำในเฟสนี้**
 
@@ -378,7 +378,7 @@ Phase B เพิ่มคีย์ 3 ชั้น**ของจริง** (`sy
 - `GET /workflows/:workflow_id` และ `/:workflow_id/edit-availability` — `:workflow_id`
   เป็น uuid ไม่ตรง prefix ใดจึงตกไป fallback ตามที่ต้องการ
 
-## 6. Phase C — `accounting.*` แบบ planned (ต้องมี A ก่อน)
+## 6. Phase C — `accounting.*` แบบ planned (ต้องมี A ก่อน) · **เสร็จแล้ว 2026-09-03**
 
 ขอบเขต:
 
@@ -395,6 +395,52 @@ Phase B เพิ่มคีย์ 3 ชั้น**ของจริง** (`sy
   `system_admin.business_unit`, `system_admin.user_activity`) — พวกนี้จะ**โผล่เข้า catalog
   เป็นครั้งแรก** ต้องตัดสินใจว่าจะให้มาด้วยหรือ exclude และต้องทำ FE fixture ให้ทัน
 - เพิ่ม key ⇒ ข้อจำกัดลำดับ deploy เดียวกับ Phase B
+
+### 6.1 ผลลัพธ์ — ทำแล้วเมื่อ 2026-09-03 · **ขึ้น DEV ครบแล้ว**
+
+BE [#491](https://github.com/CarmenSoftware-organization/carmen-turborepo-backend-v2/pull/491) ·
+fixture [inventory#125](https://github.com/CarmenSoftware-organization/carmen-inventory-frontend-react/pull/125)
+· catalog 79 → 89 · `carmen-platform` ไม่ต้องแก้โค้ดเลยสักบรรทัด
+
+**คำตอบของข้อจำกัดข้อแรก: ไม่ให้ 3 ตัวนั้นมาด้วย** — และไม่ได้ทำด้วย allowlist ตามอำเภอใจ
+แต่แยกเป็นเซ็ตใหม่ `PLANNED_LICENSE_RESOURCES` เพราะสองเซ็ตตอบคนละคำถาม:
+
+| เซ็ต | คำถามที่มันตอบ | ใครถาม |
+|---|---|---|
+| `PLANNED_RESOURCES` | "ยกโทษให้ที่ยังไม่มี endpoint ไหม" | `check.endpoint-permission-coverage` |
+| `PLANNED_LICENSE_RESOURCES` | "อยู่ในใบเสนอราคาไหม" | generator ของ license catalog |
+
+เหตุผลรายตัว (อ่านจากคอมเมนต์ที่ `seed.permission.data.ts` เขียนไว้เองตั้งแต่ 2026-07-23):
+
+- `system_admin.config_email` — *ถูกแทนที่ไปแล้ว* ตั้งค่าอีเมลย้ายไปอยู่ใต้ `config/app-config`
+- `system_admin.business_unit` — จัดการที่ `api/business-units` ซึ่งเป็น platform-level
+  (`/api-system`) ที่ `resolveRouteFeature` คืน `null` ให้เสมอ ⇒ ขายไปก็ไม่มี route ไหนถึง
+- `system_admin.user_activity` — planned จริง แต่ยังไม่มีใครเคาะว่าจะขายแยกเป็นรายการ
+
+ถ้าลากทั้งก้อนเข้ามาจะได้ feature ที่ **ขายได้แต่ไม่มี route ไปถึง** ซึ่งเป็นบั๊กเดียวกับ
+`report.schedule` ที่ generator เขียนเตือนตัวเองไว้ · `assert_planned_sets_agree()` ล้มตั้งแต่
+generate ถ้าเซ็ตใหม่มีตัวที่ไม่อยู่ในเซ็ตเดิม
+
+**คำตอบของ §2.4 (`state` default เป็น `active`):** seeder เขียน `state` **เฉพาะตอน `create`**
+ไม่แตะแถวที่มีอยู่แล้ว — ไม่ขัดกฎเดิมที่ว่า state เป็นค่าที่ผู้ดูแลเคาะเอง เพราะแถวที่เพิ่งเกิด
+ยังไม่มีการตัดสินใจของใครให้ทับ · ยืนยันบน DEV: `created 10, updated 79, retired 0` แล้ว
+หน้า `/license-features` ขึ้น **79 Sellable / 10 Closed** ตรงตามที่ตั้งใจ
+
+**ผลข้างเคียงที่ต้องรู้:** `sort_order` ของทั้ง 79 แถวเดิม **ขยับ `+1000` เท่ากันหมด** เพราะ
+`accounting` กลายเป็นโมดูลแรกตามตัวอักษร และ base คิดจากลำดับโมดูล — **ลำดับที่แสดงผลไม่เปลี่ยน
+เลยสักตัว** (ตรวจด้วยการเรียงทั้งชุดก่อน/หลังแล้วเทียบ ได้ลำดับเดียวกันเป๊ะ ส่วนต่างมีค่าเดียวคือ
+`+1000`) · Phase A ตั้งใจไม่ให้เลขเดิมขยับ ซึ่งทำได้เพราะไม่มีโมดูลใหม่ เฟสนี้เลี่ยงไม่ได้
+
+**frontend ไม่ต้องแก้อะไร** — `FeatureSelectionCard` มี `moduleBlocked` อยู่แล้ว: module ที่
+`inactive` และยังไม่ถูกเลือกจะบล็อกลูกทุกตัว ตรวจบน DEV แล้วทั้ง 9 chip เป็น `disabled` จริง
+และ Full Access ยังเป็น 79 of 89 ไม่ถูกลากคีย์ใหม่เข้าไปเอง · ตรวจ 390px แล้วไม่มี element
+ล้นขอบ การเยื้อง 3 ชั้นถูกต้อง (16px → 36px)
+
+**เรื่องเล็กที่แก้ไปด้วย:** `humanize` ได้ชุด `ACRONYMS` = {ap, ar, gl} ไม่งั้น label เป็น
+"Ap" / "Ar" / "Gl" ที่อ่านไม่ออก — ตรวจแล้วว่าไม่มี label ของแถวเดิมเปลี่ยนสักตัว
+
+**ยังไม่ได้ทำ:** ยังไม่ได้รัน seed ของ **permission** บน DEV (accounting มีแค่ `view` และทุก
+บทบาทเป็น `[]` จึงยังไม่ให้สิทธิ์ใคร) ค่อยรันพร้อมตอน endpoint จริงลง
 
 ## 7. สิ่งที่จงใจไม่ทำ
 
