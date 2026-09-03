@@ -288,6 +288,30 @@ bun run audit:license-catalog
 
 ## 5. Phase B — `system_admin.workflow.<type>` (ต้องมี A ก่อน)
 
+### 5.0 หนี้ที่ยกมาจาก Phase A — โพรบสด **ต้องทำในเฟสนี้**
+
+Phase A §4.7 ด่านที่ 2 (โพรบ 3 ชั้นในเบราว์เซอร์ + curl ที่ต้องได้ 403 ตอนชั้นกลางหาย)
+**ไม่ได้ทำ** และถูกเลื่อนมาที่นี่โดยผู้ใช้ตัดสิน (2026-09-03)
+
+เหตุผล: gateway ที่รันในเครื่องชี้ไปที่ `dev.blueledgers.com:6432` ซึ่งเป็น **DB ของ DEV
+ที่ใช้ร่วมกัน** ไม่ใช่ local · การทำโพรบตามแผนจึงต้อง (1) seed คีย์ปลอมลงตารางที่คนอื่นใช้
+(2) แก้ license feature group ที่นั่นด้วยมือ (3) restart process ของผู้ใช้ด้วย build ใหม่
+— แตะของใช้ร่วมกัน 3 จุดเพื่อทดสอบคีย์ที่ต้องตามลบทีหลัง
+
+Phase B เพิ่มคีย์ 3 ชั้น**ของจริง** (`system_admin.workflow.purchase_request`) โพรบจึงกลายเป็น
+การตรวจ feature จริงที่ต้องตรวจอยู่แล้ว ไม่ใช่งานเพิ่ม
+
+**สิ่งที่ใช้แทนไปก่อนใน Phase A** — 6 assertion ในสวีตที่มีอยู่ ที่รันเส้นทาง 3 ชั้นในโปรเซส:
+`license.evaluator.spec.ts` (ชั้นกลางหาย → `LICENSE_REQUIRED`, ครบสาย → ผ่าน) และ
+`featureSelection.test.ts` (ติ๊กหลานเติมครบสาย, ถอดแล้วคลายสาย, ถอดชั้นกลางลากหลาน,
+เหลือพี่น้องสายยังอยู่) · **อ่อนกว่าโพรบสด** เพราะไม่ผ่าน `LicenseInterceptor`,
+ไม่ผ่านสวิตช์ `LICENSE_ENFORCEMENT` และไม่ผ่าน `resolveHiddenKeys`
+
+**เกณฑ์ผ่านของ Phase B ต้องรวมข้อนี้:** ยิง `GET /api/config/<bu>/workflows/purchase-request`
+ด้วย group ที่ถือ `[system_admin, system_admin.workflow.purchase_request]` แต่**ไม่มี**
+`system_admin.workflow` แล้วต้องได้ `403 LICENSE_REQUIRED` โดยเปิด `LICENSE_ENFORCEMENT`
+ก่อนเสมอ — ไม่งั้นจะผ่านเพราะ shadow mode ไม่ใช่เพราะโค้ดถูก
+
 ขอบเขต:
 
 - `SUB_PATH_RESOURCE_MAP` ที่ `config:workflows` → prefixes

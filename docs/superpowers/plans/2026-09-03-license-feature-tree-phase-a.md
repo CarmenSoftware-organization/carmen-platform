@@ -1009,6 +1009,18 @@ Claude-Session: https://claude.ai/code/session_01NsmSnGmcoZ1S7hRByaQLDR
 
 ### Task 6: โพรบ 3 ชั้นแบบใช้แล้วทิ้ง แล้วเปิด PR
 
+> **สถานะจริงหลังรัน (2026-09-03):** Step 1 ทำแล้วผ่าน (generator ให้
+> `parent_key: system_admin.workflow`, `label: "Probe"`, `sort_order: 9501`,
+> `ancestors: [system_admin, system_admin.workflow]`) แล้วคืนค่าทิ้ง repo สะอาด
+>
+> **Step 2–4 ไม่ได้ทำ** — gateway ในเครื่องชี้ `dev.blueledgers.com:6432` ซึ่งเป็น DB ของ DEV
+> ที่ใช้ร่วมกัน โพรบจึงต้องแตะของใช้ร่วมกัน 3 จุด ผู้ใช้ตัดสินให้เลื่อนไป Phase B ที่มีคีย์
+> 3 ชั้นของจริง · รายละเอียดและเกณฑ์ผ่านอยู่ที่ **§5.0 ของสเปก**
+>
+> ใช้ 6 assertion ในสวีตที่มีอยู่แทนไปก่อน (`license.evaluator.spec.ts`,
+> `featureSelection.test.ts`) ซึ่ง**อ่อนกว่า** เพราะไม่ผ่าน interceptor / สวิตช์ enforcement
+
+
 Phase A ไม่เพิ่ม feature สักตัว ⇒ เปิดเบราว์เซอร์แล้วไม่มีอะไรให้ดู ความเสี่ยงจริงทั้งหมด
 (render 3 ชั้น, toggle เติมบรรพบุรุษ, evaluator ตรวจชั้นกลาง) กระตุ้นด้วยข้อมูลวันนี้ไม่ได้เลย
 **task นี้บังคับ ห้ามข้าม** — ไม่งั้นจะ merge โค้ดที่ไม่เคยถูกรันแม้แต่บรรทัดเดียว
