@@ -1,4 +1,5 @@
 import type { LicenseFeature } from '../../../types';
+import { ancestorsOf, descendantKeys, flattenDescendants } from '../../../utils/featureTree';
 
 /**
  * Pure state-transition logic for `FeatureSelectionCard` — kept out of the component so it can be
@@ -13,7 +14,8 @@ import type { LicenseFeature } from '../../../types';
 
 export interface FeatureGroup {
   module: LicenseFeature;
-  children: LicenseFeature[];
+  /** ลูกหลาน**ทุกชั้น**ของโมดูลนี้ เรียงแบบ depth-first · depth 1 = ลูกตรง, 2 = หลาน */
+  children: (LicenseFeature & { depth: number })[];
 }
 
 /**
@@ -38,9 +40,13 @@ function byOrderThenKey(a: LicenseFeature, b: LicenseFeature): number {
 }
 
 /**
- * module → children, sorted. `parent_key === null` is a top-level module (contract §5); the
- * backend already returns rows pre-sorted by `sort_order` then `key`, but re-sorting here is
- * cheap and keeps this function correct even if that guarantee ever changes.
+ * module → ลูกหลาน**ทุกชั้น** เรียงแบบ depth-first (`parent_key === null` คือโมดูลราก)
+ *
+ * เดิม filter `parent_key === m.key` ซึ่งเทียบชั้นเดียว — พอ catalog กลายเป็นต้นไม้ n ชั้น
+ * หลานจะหายไปจาก picker ทั้งตัว ขายไม่ได้เลยทั้งที่อยู่ใน catalog
+ *
+ * `flattenDescendants` เรียงด้วยโครงต้นไม้ ไม่ใช่ `sort_order` ดิบ เพราะ generator วางหลาน
+ * ไว้แถบ `+500` ของโมดูลราก การเรียงด้วย `sort_order` ตรง ๆ จะทำให้หลานไปกองท้ายรายการ
  */
 export function groupCatalog(catalog: LicenseFeature[]): FeatureGroup[] {
   const modules = catalog
@@ -49,10 +55,7 @@ export function groupCatalog(catalog: LicenseFeature[]): FeatureGroup[] {
     .sort(byOrderThenKey);
   return modules.map((m) => ({
     module: m,
-    children: catalog
-      .filter((f) => f.parent_key === m.key)
-      .slice()
-      .sort(byOrderThenKey),
+    children: flattenDescendants(catalog, m.key),
   }));
 }
 
@@ -112,9 +115,13 @@ export function selectedModuleCount(featureKeys: string[], catalog: LicenseFeatu
 }
 
 /**
- * Search filter: a group matches if its module label/key matches, or any child does. When only
- * children match, the group is kept with just the matching children (not the whole set) — a
- * group whose module label matches keeps every child, mirroring ApplicationEdit's catalog filter.
+ * Search filter: a group matches if its module label/key matches, or any descendant does. When
+ * only descendants match, the group is kept with just those (not the whole set) — a group whose
+ * module label matches keeps every child, mirroring ApplicationEdit's catalog filter.
+ *
+ * บรรพบุรุษของแถวที่ตรงถูกเก็บไว้ด้วย ไม่งั้นค้นเจอหลานแต่พ่อหาย แล้วการเยื้องตาม `depth`
+ * จะอ่านเป็นรายการลอย ๆ ที่ไม่รู้ว่าอยู่ใต้อะไร · คัดจาก `g.children` เดิมเพื่อรักษาลำดับ
+ * depth-first กับค่า `depth` ที่คำนวณไว้แล้ว
  */
 export function filterGroups(groups: FeatureGroup[], query: string): FeatureGroup[] {
   const q = query.trim().toLowerCase();
@@ -123,47 +130,66 @@ export function filterGroups(groups: FeatureGroup[], query: string): FeatureGrou
     .map((g) => {
       const moduleMatch = g.module.label.toLowerCase().includes(q) || g.module.key.toLowerCase().includes(q);
       if (moduleMatch) return g;
-      const children = g.children.filter(
+      const hit = g.children.filter(
         (c) => c.label.toLowerCase().includes(q) || c.key.toLowerCase().includes(q),
       );
-      return { ...g, children };
+      if (hit.length === 0) return { ...g, children: [] };
+      const keep = new Set<string>();
+      hit.forEach((c) => {
+        keep.add(c.key);
+        ancestorsOf(c.key, g.children).forEach((a) => keep.add(a));
+      });
+      return { ...g, children: g.children.filter((c) => keep.has(c.key)) };
     })
     .filter((g) => g.children.length > 0);
 }
 
 /**
- * Toggle one feature, keeping the module-parent invariant: a child selected implies its module
- * is selected, and a module with no selected children is not selected either. Backend re-derives
- * the parent on save regardless, but the UI must agree with it the moment a box is checked, or
+ * Toggle one feature, keeping the parent invariant at **every** level: a selected node implies
+ * every one of its ancestors is selected, and an ancestor with no selected descendants is not
+ * selected either. Backend re-derives nothing, so the UI is the only place this holds — and
  * "procurement unchecked but Purchase Request checked" reads as broken.
+ *
+ * เดินสาย `parent_key` ผ่าน `ancestorsOf` ไม่ใช้ `moduleOf()` อีกแล้ว: `moduleOf` ให้แค่โมดูลราก
+ * ติ๊ก `system_admin.workflow.purchase_request` แล้วเติมให้แค่ `system_admin` ไม่เติม
+ * `system_admin.workflow` ⇒ ได้กลุ่มที่ evaluator ฝั่ง gateway บล็อกเอง (ขายของที่ตัวเองบล็อก)
  *
  * The `startsWith(`${module}.`)` prefix (WITH the trailing dot) is load-bearing: without it,
  * clearing `procurement` would also clear an unrelated module named `procurement_extra`.
  */
-export function toggleFeature(featureKeys: string[], key: string, checked: boolean): string[] {
+export function toggleFeature(
+  featureKeys: string[],
+  key: string,
+  checked: boolean,
+  catalog: LicenseFeature[],
+): string[] {
   const next = new Set(featureKeys);
-  const module = moduleOf(key);
-  const childPrefix = `${module}.`;
+  const ancestors = ancestorsOf(key, catalog);
 
   if (checked) {
     next.add(key);
-    next.add(module);
-  } else {
-    next.delete(key);
-    if (key === module) {
-      Array.from(next).forEach((k) => { if (k.startsWith(childPrefix)) next.delete(k); });
-    } else {
-      const hasChild = Array.from(next).some((k) => k.startsWith(childPrefix));
-      if (!hasChild) next.delete(module);
-    }
+    ancestors.forEach((a) => next.add(a));
+    return Array.from(next).sort();
+  }
+
+  next.delete(key);
+  descendantKeys(key, next).forEach((k) => next.delete(k));
+
+  // ไล่ถอดบรรพบุรุษจากใกล้ที่สุดขึ้นไป — พ่อที่ไม่เหลือลูกที่ถูกเลือกต้องหลุดตาม และการถอดพ่อ
+  // อาจทำให้ปู่ไม่เหลือลูกด้วย จึงต้องไล่ทีละชั้น ไม่ใช่ตรวจครั้งเดียว
+  for (const a of ancestors.slice().reverse()) {
+    if (descendantKeys(a, next).length === 0) next.delete(a);
   }
   return Array.from(next).sort();
 }
 
 /**
- * Select/deselect every child of one module (+ the module itself) in one shot — backs the
- * "ทั้งหมด / ไม่เอา" buttons. `toggleFeature` alone can't do "select all children" because
- * `checked: true` with `key === module` only adds the module key, not its children.
+ * Select/deselect every descendant of one module (+ the module itself) in one shot — backs the
+ * "ทั้งหมด / ไม่เอา" buttons. `toggleFeature` alone can't do "select all" because
+ * `checked: true` with `key === module` only adds the module key, not what hangs under it.
+ *
+ * `childKeys` ที่ผู้เรียกส่งมาคือ `g.children.map(c => c.key)` ซึ่งตอนนี้เป็นลูกหลาน**ทุกชั้น**แล้ว
+ * ฟังก์ชันนี้จึงไม่ต้องเดินต้นไม้เอง แต่ยังต้องเติม/ถอดตัวโมดูลเองเหมือนเดิม
  */
 export function setModuleSelection(
   featureKeys: string[],

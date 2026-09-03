@@ -1653,6 +1653,8 @@ export const en = {
       hideConfirmTitle: 'Hide this feature?',
       hideConfirmDescription:
         '“{{label}}” will disappear from the menu for {{count}} business units that hold it today, including ones that already paid, and their users will no longer be able to open that page. This deletes nothing — set it back to Active and the menu returns within a minute.',
+      hideConfirmDescendants:
+        'And because this feature has {{count}} features nested under it, those stop working too — even the ones still marked Active.',
       hideConfirmAction: 'Hide it',
       filterAll: 'All states',
       searchPlaceholder: 'Search by key or name',

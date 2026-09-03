@@ -67,6 +67,28 @@ describe('groupCatalog', () => {
   it('returns an empty array for an empty catalog', () => {
     expect(groupCatalog([])).toEqual([]);
   });
+
+  it('marks direct children with depth 1', () => {
+    const groups = groupCatalog(catalog);
+    const procurement = groups.find((g) => g.module.key === 'procurement')!;
+    expect(procurement.children.every((c) => c.depth === 1)).toBe(true);
+  });
+
+  it('includes grandchildren under their own parent, depth-first, with depth 2', () => {
+    const deep: LicenseFeature[] = [
+      feature({ key: 'system_admin', parent_key: null, label: 'System Admin', sort_order: 7000 }),
+      feature({ key: 'system_admin.role', parent_key: 'system_admin', label: 'Role', sort_order: 7001 }),
+      feature({ key: 'system_admin.workflow', parent_key: 'system_admin', label: 'Workflow', sort_order: 7002 }),
+      // หลานอยู่แถบ +500 ตามที่ generator วางไว้ — เรียงด้วย sort_order ดิบมันจะไปกองท้าย
+      feature({ key: 'system_admin.workflow.pr', parent_key: 'system_admin.workflow', label: 'Pr', sort_order: 7501 }),
+    ];
+    const [group] = groupCatalog(deep);
+    expect(group.children.map((c) => [c.key, c.depth])).toEqual([
+      ['system_admin.role', 1],
+      ['system_admin.workflow', 1],
+      ['system_admin.workflow.pr', 2],
+    ]);
+  });
 });
 
 describe('filterGroups', () => {
@@ -106,9 +128,9 @@ describe('filterGroups', () => {
   });
 });
 
-describe('toggleFeature — module-parent invariant', () => {
+describe('toggleFeature — ancestor invariant', () => {
   it('checking a child adds the child and its parent module', () => {
-    expect(toggleFeature([], 'procurement.purchase_request', true)).toEqual([
+    expect(toggleFeature([], 'procurement.purchase_request', true, catalog)).toEqual([
       'procurement',
       'procurement.purchase_request',
     ]);
@@ -119,6 +141,7 @@ describe('toggleFeature — module-parent invariant', () => {
       ['procurement', 'procurement.purchase_request'],
       'procurement.purchase_request',
       false,
+      catalog,
     );
     expect(result).toEqual([]);
   });
@@ -128,6 +151,7 @@ describe('toggleFeature — module-parent invariant', () => {
       ['procurement', 'procurement.purchase_request', 'procurement.purchase_order'],
       'procurement.purchase_request',
       false,
+      catalog,
     );
     expect(result).toEqual(['procurement', 'procurement.purchase_order']);
   });
@@ -137,6 +161,7 @@ describe('toggleFeature — module-parent invariant', () => {
       ['procurement', 'procurement.purchase_request', 'procurement.purchase_order'],
       'procurement',
       false,
+      catalog,
     );
     expect(result).toEqual([]);
   });
@@ -146,14 +171,54 @@ describe('toggleFeature — module-parent invariant', () => {
       ['procurement', 'procurement.purchase_request', 'procurement_extra', 'procurement_extra.widget'],
       'procurement',
       false,
+      catalog,
     );
     expect(result).toEqual(['procurement_extra', 'procurement_extra.widget']);
   });
 
   it('keeps the key list sorted after every mutation', () => {
-    const step1 = toggleFeature([], 'procurement.purchase_order', true);
-    const step2 = toggleFeature(step1, 'procurement.purchase_request', true);
+    const step1 = toggleFeature([], 'procurement.purchase_order', true, catalog);
+    const step2 = toggleFeature(step1, 'procurement.purchase_request', true, catalog);
     expect(step2).toEqual([...step2].sort());
+  });
+
+  // เหตุผลทั้งหมดที่ toggleFeature เลิกใช้ moduleOf() — moduleOf ให้แค่โมดูลราก คีย์ 3 ชั้น
+  // จึงเคยถูกติ๊กโดยที่ชั้นกลางไม่ถูกเติม ซึ่งได้กลุ่มที่ evaluator ฝั่ง gateway บล็อกเอง
+  // catalog จริงยังไม่มีคีย์ 3 ชั้น ที่นี่จึงเป็นที่เดียวที่รูปนั้นถูกรัน
+  describe('three-level keys', () => {
+    const deep: LicenseFeature[] = [
+      feature({ key: 'accounting', parent_key: null, label: 'Accounting', sort_order: 1000 }),
+      feature({ key: 'accounting.config', parent_key: 'accounting', label: 'Config', sort_order: 1001 }),
+      feature({ key: 'accounting.config.ap', parent_key: 'accounting.config', label: 'Ap', sort_order: 1501 }),
+      feature({ key: 'accounting.config.ar', parent_key: 'accounting.config', label: 'Ar', sort_order: 1502 }),
+    ];
+
+    it('checking a grandchild adds every ancestor, not just the root module', () => {
+      expect(toggleFeature([], 'accounting.config.ap', true, deep)).toEqual([
+        'accounting',
+        'accounting.config',
+        'accounting.config.ap',
+      ]);
+    });
+
+    it('unchecking the last grandchild unwinds the whole chain', () => {
+      const held = ['accounting', 'accounting.config', 'accounting.config.ap'];
+      expect(toggleFeature(held, 'accounting.config.ap', false, deep)).toEqual([]);
+    });
+
+    it('unchecking one grandchild keeps the chain while a sibling remains', () => {
+      const held = ['accounting', 'accounting.config', 'accounting.config.ap', 'accounting.config.ar'];
+      expect(toggleFeature(held, 'accounting.config.ap', false, deep)).toEqual([
+        'accounting',
+        'accounting.config',
+        'accounting.config.ar',
+      ]);
+    });
+
+    it('unchecking the middle level takes its grandchildren with it', () => {
+      const held = ['accounting', 'accounting.config', 'accounting.config.ap', 'accounting.config.ar'];
+      expect(toggleFeature(held, 'accounting.config', false, deep)).toEqual([]);
+    });
   });
 });
 

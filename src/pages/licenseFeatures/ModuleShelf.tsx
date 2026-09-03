@@ -13,8 +13,13 @@ export interface ModuleGroup {
   moduleKey: string;
   /** แถวของโมดูลเอง (`parent_key === null`) — ขายแยกได้ จึงมีสถานะของตัวเอง */
   moduleRow?: LicenseFeatureAdminRow;
-  /** ลูกที่ผ่านตัวกรองปัจจุบันแล้ว เรียงตาม sort_order → key */
-  children: LicenseFeatureAdminRow[];
+  /**
+   * ลูกหลาน**ทุกชั้น**ที่ผ่านตัวกรองปัจจุบันแล้ว เรียงแบบ depth-first · depth 1 = ลูกตรง
+   *
+   * เรียงด้วยโครงต้นไม้ ไม่ใช่ `sort_order` ดิบ เพราะ generator วางหลานไว้แถบ `+500`
+   * ของโมดูลราก — เรียงด้วย sort_order ตรง ๆ หลานจะไปกองท้ายชั้นวางแทนที่จะอยู่ใต้พ่อ
+   */
+  children: (LicenseFeatureAdminRow & { depth: number })[];
   /** จำนวนลูกทั้งหมดของโมดูลนี้ ก่อนกรอง — ตัวหารของข้อความ "แสดง x จาก y" */
   totalChildren: number;
   /** สถานะของลูกทั้งโมดูล ก่อนกรอง */
@@ -111,8 +116,11 @@ export const ModuleShelf: React.FC<ModuleShelfProps> = ({
             {children.map((row) => (
               <li
                 key={row.id}
+                // ค่าเยื้องขึ้นกับ depth ตอน runtime ซึ่ง Tailwind JIT สร้างคลาสให้ไม่ได้
+                // (มันสแกนหาคลาสจากซอร์สตอน build) จึงต้องเป็น inline style · pr-4 แทน px-4
+                style={{ paddingLeft: `${1 + (row.depth - 1) * 1.25}rem` }}
                 className={cn(
-                  'flex flex-col gap-2 px-4 py-3',
+                  'flex flex-col gap-2 py-3 pr-4',
                   'lg:flex-row lg:items-center lg:justify-between lg:gap-4',
                   savingId === row.id && 'opacity-60',
                 )}
