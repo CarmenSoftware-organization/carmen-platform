@@ -219,6 +219,8 @@ export const en = {
       // sites already shared the one key, so there was nothing to reconcile.
       end: 'End',
       manageLicences: 'Manage licences',   // British spelling, as in the source
+      // ปุ่มออกสัญญาใบใหม่จากการ์ด User Licenses ในหน้า Business Unit — คู่กับ manageLicences
+      newSubscription: 'New subscription',
       export: 'Export',
       // The two analytics pages' header button, which says 'Export CSV' rather than the
       // bare 'Export' above; DatabasePoolManagement.tsx holds a third, still-untranslated

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -18,6 +19,13 @@ interface BusinessUnitLicensesCardProps {
    * การ์ดนี้ถูกใช้สอง shell และ cluster admin ไม่มี `subscription.read` จึงเข้า `/licenses/*` ไม่ได้
    */
   manageHref: string;
+  /**
+   * ปลายทางของปุ่ม "New subscription" — **ผู้เรียกเป็นคนตัดสินเช่นเดียวกับ `manageHref`**
+   * ไม่ส่งมา = ไม่มีปุ่ม ซึ่งเป็นค่าตั้งต้นโดยเจตนา: การ์ดนี้ถูกใช้สอง shell และ cluster admin
+   * ไม่มี `subscription.manage` จึงผ่าน `PrivateRoute` ของ `/licenses/subscriptions/new` ไม่ได้
+   * ผู้เรียกที่ส่งค่านี้ต้องครอบด้วย `<Can permission="subscription.manage">` เองด้วย
+   */
+  createHref?: string;
   now?: Date;
 }
 
@@ -26,7 +34,7 @@ interface BusinessUnitLicensesCardProps {
  * เพื่อไม่ให้มีสองที่ที่เขียนของเดียวกันแล้วเพี้ยนจากกัน
  */
 export default function BusinessUnitLicensesCard({
-  licenses, loading, clusterSeat, manageHref, now = new Date(),
+  licenses, loading, clusterSeat, manageHref, createHref, now = new Date(),
 }: BusinessUnitLicensesCardProps) {
   const { t } = useI18n();
   const { thresholds } = useExpiryThresholds();
@@ -37,7 +45,7 @@ export default function BusinessUnitLicensesCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-3">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{t('pages.businessUnits.userLicensesTitle')}</h3>
           {loading ? (
@@ -58,9 +66,19 @@ export default function BusinessUnitLicensesCard({
             <Badge key={l.id} variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
           ))}
         </div>
-        <Button asChild size="sm" variant="outline">
-          <Link to={manageHref}>{t('common.action.manageLicences')}</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Button asChild size="sm" variant="outline">
+            <Link to={manageHref}>{t('common.action.manageLicences')}</Link>
+          </Button>
+          {createHref && (
+            <Button asChild size="sm">
+              <Link to={createHref}>
+                <Plus className="mr-2 h-4 w-4" />
+                {t('common.action.newSubscription')}
+              </Link>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="text-xs text-muted-foreground">
         {t('pages.businessUnits.seatsManagedInLicenseCenter')}
