@@ -22,7 +22,15 @@ React 19 + Vite + Vitest (carmen-platform) · Prisma (schema อ่านอย�
 - **ไม่เขียนเทสต์ใหม่** ตามความต้องการของผู้ใช้ — แต่ **สวีตที่มีอยู่ต้องเขียว** งานเทสต์ในแผนนี้คือ
   การตามแก้ไฟล์ spec ที่ signature พังเท่านั้น (Task 2 และ Task 4) ห้ามสร้างไฟล์
   `*.test.ts` / `*.spec.ts` ใหม่
-- **BE lint ใช้ `bunx eslint` เท่านั้น** — `bun run lint` มี `--fix` และเขียนทับทั้งรีโป
+- **BE ไม่มี eslint config ที่ root** — `lint` เป็น `turbo run lint` รายเวิร์กสเปซ และ
+  `scripts/` ไม่ได้อยู่ในเวิร์กสเปซไหน จึงไม่ถูก lint หรือ type-check โดย gate ของ repo เอง
+  ใช้ `bunx tsc --noEmit --skipLibCheck --target es2022 --module esnext --moduleResolution bundler --strict <file>`
+  ยิงตรงแทน · ในเวิร์กสเปซที่มี config ให้ใช้ `bunx eslint <path>` ไม่ใช่ `bun run lint`
+  (ตัวหลังมี `--fix` และเขียนทับทั้งรีโป)
+- **`@repo/rpc-contract` build ด้วย `bun run build:package`** ไม่ใช่ `build` (ไม่มี task ชื่อนั้น)
+  — `dist/` ค้างจะทำให้ `check-types` ของ gateway แดงด้วย error ที่ไม่เกี่ยวกับงานเลย
+- **FE `tsconfig.json` ตั้ง `target: es5` ไม่มี `downlevelIteration`** — spread บน
+  `Iterable<T>` (`[...keys]`) คอมไพล์ไม่ผ่าน ใช้ `Array.from()` แทน
 - **ห้ามแตะ** `src/utils/apiCatalog.ts` (`moduleOf` คนละตัว ใช้กับ API name ของ Application)
 - **ห้ามแก้ไฟล์ generated ด้วยมือ** — แก้ที่ `scripts/generate-license-catalog/run.ts` แล้ว regenerate
 - **branch:** BE ใช้ `feat/license-feature-tree-phase-a` · FE ใช้ `feat/license-feature-tree`
