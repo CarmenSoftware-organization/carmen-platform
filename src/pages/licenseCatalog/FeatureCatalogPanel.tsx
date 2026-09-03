@@ -3,6 +3,7 @@ import licenseFeatureService from '../../services/licenseFeatureService';
 import type { LicenseFeatureAdminRow } from '../../types';
 import { type FeatureState } from '../../constants/featureFlags';
 import { moduleOf } from '../licenses/subscriptionEdit/featureSelection';
+import { descendantKeys, flattenDescendants } from '../../utils/featureTree';
 import { getErrorDetail, devLog } from '../../utils/errorParser';
 import { isVersionConflict, notifyVersionConflict } from '../../utils/docVersion';
 import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
@@ -41,15 +42,6 @@ const LICENSE_STATE_HINT: Record<FeatureState, TKey> = {
 };
 
 const EMPTY_STATE_COUNTS: Record<FeatureState, number> = { active: 0, inactive: 0, hide: 0 };
-
-/**
- * ลำดับเดียวกับ backend: `sort_order asc` แล้วต่อด้วย `key asc` · เทียบ `key` ด้วย `<`/`>`
- * ไม่ใช่ `localeCompare` เพื่อให้เป็นลำดับ byte เดียวกับ Postgres ไม่ใช่ลำดับตาม locale ของเบราว์เซอร์
- */
-function byOrderThenKey(a: LicenseFeatureAdminRow, b: LicenseFeatureAdminRow): number {
-  if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-  return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
-}
 
 /**
  * แค็ตตาล็อก license feature — client-filtered ไม่ใช่ server-side
@@ -170,13 +162,31 @@ export const FeatureCatalogPanel: React.FC = () => {
       shownChildren.set(m, arr);
     });
 
+    // เติมบรรพบุรุษของแถวที่ผ่านตัวกรองกลับเข้ามา — `flattenDescendants` เดินจากโมดูลลงมา
+    // ถ้าตัวกรองซ่อนพ่อไว้แต่โชว์ลูก มันจะเดินไปไม่ถึงลูก แล้วลูกหายจากชั้นวางทั้งที่ตรงคำค้น
+    const byKey = new Map(rows.map((r) => [r.key, r]));
+    shownChildren.forEach((arr, moduleKey) => {
+      const present = new Set(arr.map((r) => r.key));
+      arr.slice().forEach((r) => {
+        let p = r.parent_key;
+        while (p !== null && p !== moduleKey && !present.has(p)) {
+          const row = byKey.get(p);
+          if (!row) break;
+          arr.push(row);
+          present.add(p);
+          p = row.parent_key;
+        }
+      });
+      shownChildren.set(moduleKey, arr);
+    });
+
     return Array.from(shownModules)
       .map((moduleKey) => {
         const stat = totals.get(moduleKey);
         return {
           moduleKey,
           moduleRow: moduleRows.get(moduleKey),
-          children: (shownChildren.get(moduleKey) ?? []).slice().sort(byOrderThenKey),
+          children: flattenDescendants(shownChildren.get(moduleKey) ?? [], moduleKey),
           totalChildren: stat?.total ?? 0,
           childStates: stat?.states ?? { ...EMPTY_STATE_COUNTS },
         };
@@ -188,6 +198,23 @@ export const FeatureCatalogPanel: React.FC = () => {
         return a.moduleKey < b.moduleKey ? -1 : a.moduleKey > b.moduleKey ? 1 : 0;
       });
   }, [rows, visible]);
+
+  /**
+   * ประโยคเตือนต่อท้ายกล่องยืนยันตอนซ่อน — ว่างเมื่อไม่มีของย่อย
+   *
+   * gateway ตัดคีย์ที่ `state='hide'` ออกจาก `features` **ก่อน** ตรวจบรรพบุรุษ
+   * (`resolveHiddenKeys` + `evaluateLicense`) การซ่อนชั้นกลางจึงฆ่าลูกหลานทั้งกิ่งของทุก BU
+   * โดยที่ลูกยังขึ้นสถานะ "ใช้งาน" อยู่บนหน้านี้ ผลข้างเคียงนี้ตั้งใจ แต่ต้องเห็นก่อนกด
+   */
+  const hideDescendantWarning = useMemo(() => {
+    if (!pendingHide) return '';
+    const count = descendantKeys(
+      pendingHide.key,
+      rows.map((r) => r.key),
+    ).length;
+    if (count === 0) return '';
+    return ` ${t('pages.licenseFeatures.hideConfirmDescendants', { count })}`;
+  }, [pendingHide, rows, t]);
 
   const handleExport = () => {
     const csv = generateCSV(
@@ -357,10 +384,12 @@ export const FeatureCatalogPanel: React.FC = () => {
         open={pendingHide !== null}
         onOpenChange={(open) => !open && setPendingHide(null)}
         title={t('pages.licenseFeatures.hideConfirmTitle')}
-        description={t('pages.licenseFeatures.hideConfirmDescription', {
-          label: pendingHide?.label ?? '',
-          count: pendingHide?.affected_bu_count ?? 0,
-        })}
+        description={
+          t('pages.licenseFeatures.hideConfirmDescription', {
+            label: pendingHide?.label ?? '',
+            count: pendingHide?.affected_bu_count ?? 0,
+          }) + hideDescendantWarning
+        }
         confirmText={t('pages.licenseFeatures.hideConfirmAction')}
         confirmVariant="destructive"
         onConfirm={async () => {
