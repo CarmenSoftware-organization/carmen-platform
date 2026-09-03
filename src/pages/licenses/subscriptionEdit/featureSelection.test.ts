@@ -181,6 +181,45 @@ describe('toggleFeature — ancestor invariant', () => {
     const step2 = toggleFeature(step1, 'procurement.purchase_request', true, catalog);
     expect(step2).toEqual([...step2].sort());
   });
+
+  // เหตุผลทั้งหมดที่ toggleFeature เลิกใช้ moduleOf() — moduleOf ให้แค่โมดูลราก คีย์ 3 ชั้น
+  // จึงเคยถูกติ๊กโดยที่ชั้นกลางไม่ถูกเติม ซึ่งได้กลุ่มที่ evaluator ฝั่ง gateway บล็อกเอง
+  // catalog จริงยังไม่มีคีย์ 3 ชั้น ที่นี่จึงเป็นที่เดียวที่รูปนั้นถูกรัน
+  describe('three-level keys', () => {
+    const deep: LicenseFeature[] = [
+      feature({ key: 'accounting', parent_key: null, label: 'Accounting', sort_order: 1000 }),
+      feature({ key: 'accounting.config', parent_key: 'accounting', label: 'Config', sort_order: 1001 }),
+      feature({ key: 'accounting.config.ap', parent_key: 'accounting.config', label: 'Ap', sort_order: 1501 }),
+      feature({ key: 'accounting.config.ar', parent_key: 'accounting.config', label: 'Ar', sort_order: 1502 }),
+    ];
+
+    it('checking a grandchild adds every ancestor, not just the root module', () => {
+      expect(toggleFeature([], 'accounting.config.ap', true, deep)).toEqual([
+        'accounting',
+        'accounting.config',
+        'accounting.config.ap',
+      ]);
+    });
+
+    it('unchecking the last grandchild unwinds the whole chain', () => {
+      const held = ['accounting', 'accounting.config', 'accounting.config.ap'];
+      expect(toggleFeature(held, 'accounting.config.ap', false, deep)).toEqual([]);
+    });
+
+    it('unchecking one grandchild keeps the chain while a sibling remains', () => {
+      const held = ['accounting', 'accounting.config', 'accounting.config.ap', 'accounting.config.ar'];
+      expect(toggleFeature(held, 'accounting.config.ap', false, deep)).toEqual([
+        'accounting',
+        'accounting.config',
+        'accounting.config.ar',
+      ]);
+    });
+
+    it('unchecking the middle level takes its grandchildren with it', () => {
+      const held = ['accounting', 'accounting.config', 'accounting.config.ap', 'accounting.config.ar'];
+      expect(toggleFeature(held, 'accounting.config', false, deep)).toEqual([]);
+    });
+  });
 });
 
 describe('setModuleSelection — backs the "ทั้งหมด / ไม่เอา" buttons', () => {
