@@ -132,7 +132,14 @@ const BusinessUnitEdit: React.FC = () => {
       { id: 'formats', label: t('pages.businessUnits.formatsTab') },
       { id: 'technical', label: t('pages.businessUnits.technicalTab') },
     ];
-    if (!isNew) base.push({ id: 'users', label: t('pages.businessUnits.usersLabel'), count: users.buUsers.length });
+    if (!isNew) {
+      base.push({ id: 'users', label: t('pages.businessUnits.usersLabel'), count: users.buUsers.length });
+      // ไลเซนส์แยกออกจาก Users เป็นแท็บของตัวเอง: ที่นั่งกับรายชื่อผู้ใช้เป็นคนละเรื่อง — ที่นั่งมาจาก
+      // สัญญาระดับคลัสเตอร์ ส่วนรายชื่อเป็นสมาชิกของ BU นี้ `count` เป็นจำนวนใบทั้งหมดของ BU
+      // ไม่ใช่จำนวนใบที่ยัง active เพราะ badge บนแท็บบอกว่า "มีอะไรอยู่ข้างใน" ไม่ใช่สรุปสถานะ
+      // (การ์ดข้างในบอกที่นั่งกับใบที่ active อยู่แล้ว)
+      base.push({ id: 'licenses', label: t('pages.businessUnits.licensesTab'), count: licenses.licenses.length });
+    }
     // Renamed from the pre-existing `(t) =>` — now that `t` is this component's translator,
     // reusing the name here would shadow it.
     return base.map((tab) => ({ ...tab, hasError: errored.includes(tab.id) }));

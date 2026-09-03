@@ -2659,6 +2659,8 @@ export const en = {
       locationTab: 'Location',
       formatsTab: 'Formats',
       technicalTab: 'Technical',
+      // แท็บที่แยกออกมาจาก Users — ที่นั่งกับรายชื่อผู้ใช้เป็นคนละเรื่อง
+      licensesTab: 'Licenses',
       createSubtitle: 'Create a new business unit',
       // Shown in the sticky action bar on the create route in place of 'No changes', which
       // described a record that does not exist yet. The three required fields sit in two

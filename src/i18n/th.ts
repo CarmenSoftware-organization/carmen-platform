@@ -1883,6 +1883,7 @@ export const th: Translations = {
       locationTab: 'ที่ตั้ง',
       formatsTab: 'รูปแบบ',
       technicalTab: 'เทคนิค',
+      licensesTab: 'ไลเซนส์',
       createSubtitle: 'สร้างหน่วยธุรกิจใหม่',
       editSubtitle: 'รายละเอียดหน่วยธุรกิจ',
       stillNeeded: 'ยังต้องกรอก: {{fields}}',
