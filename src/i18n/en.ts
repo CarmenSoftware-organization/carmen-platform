@@ -127,7 +127,7 @@ export const en = {
     switchBu: 'Switch business unit',
     chooseBu: 'Search and select the tenant business unit you want to operate on.',
     buList: 'Business units',
-    searchBuPlaceholder: 'Search {{count}} business units by code, name or cluster…',
+    searchBuPlaceholder: 'Search {{count}} {{count#business unit|business units}} by code, name or cluster…',
     buCount: '{{count}} BUs',
     buNoMatches: 'No BU matches “{{search}}”.',
     buNoMatchesHint: 'Try a code (T02) or a cluster name.',
@@ -542,7 +542,7 @@ export const en = {
       // state, same register as noExpiry/expires/quotaExpires/expiringSoon above, not a
       // field name. Thai copied verbatim from pages.licenses.daysLeft, unchanged — all four
       // call sites already shared the one key, so there was nothing to reconcile.
-      daysLeft: '{{count}} days left',
+      daysLeft: '{{count}} {{count#day|days}} left',
       unsavedChanges: 'Unsaved changes',
       noChanges: 'No changes',
       // TabStrip.tsx's own error-dot aria-label (i18n phase-2 slice-5 fix wave FIX 4):
@@ -773,7 +773,7 @@ export const en = {
       // two fragments because the column half only renders when the parser reports one.
       lineLabel: 'Line {{line}}',
       colLabel: ', col {{column}}',
-      linesCount: '{{count}} lines',
+      linesCount: '{{count}} {{count#line|lines}}',
       clearDialogTitle: 'Clear editor?',
       // "Ctrl/⌘+Z" is a keyboard-shortcut notation, not prose — kept as-is inside the
       // translated sentence, same treatment shortcuts.* gets elsewhere.
@@ -1250,7 +1250,7 @@ export const en = {
       scheduleForLater: 'Schedule for later',
       customEllipsis: 'Custom…',
       otherEllipsis: 'Other…',
-      daysCount: '{{count}} days',
+      daysCount: '{{count}} {{count#day|days}}',
       reset: 'Reset',
       schedule: 'Schedule',
       send: 'Send',
@@ -1399,7 +1399,7 @@ export const en = {
         hourAgo: '{{count}} hour ago',
         hoursAgo: '{{count}} hours ago',
         yesterday: 'yesterday',
-        daysAgo: '{{count}} days ago',
+        daysAgo: '{{count}} {{count#day|days}} ago',
         weekAgo: '{{count}} week ago',
         weeksAgo: '{{count}} weeks ago',
       },
@@ -1448,7 +1448,7 @@ export const en = {
       // ทูลทิปของการ์ดสรุปที่กดไม่ได้ชั่วคราว — buildAdvance เมิน `states` ทั้งหมดเมื่อ
       // expiringSoon เปิดอยู่ ตัวกรองสถานะจึงต้องบอกว่าทำไมกดไม่ได้ ไม่ใช่กดแล้วเงียบ
       clearExpiringSoonFirst: 'Turn off "Expiring soon" to filter by state',
-      notMigratedToGroups: 'This contract still holds {{count}} features directly and no group yet. Picking a group replaces them.',
+      notMigratedToGroups: 'This contract still holds {{count}} {{count#feature|features}} directly and no group yet. Picking a group replaces them.',
       noGroupsAvailable: 'No licence feature groups exist yet. Create one in',
       groupsSelectedSummary: '{{groups}} groups selected · {{features}} features in total',
       manageGroups: 'Manage groups',
@@ -1481,11 +1481,11 @@ export const en = {
       pickStartDateFirst: 'Pick a start date to choose an end of month',
       // One number per sentence, never a translated fragment dropped into a translated frame.
       coversOneYear: 'Covers 1 year',
-      coversYears: 'Covers {{count}} years',
+      coversYears: 'Covers {{count}} {{count#year|years}}',
       coversOneMonth: 'Covers 1 month',
-      coversMonths: 'Covers {{count}} months',
+      coversMonths: 'Covers {{count}} {{count#month|months}}',
       coversOneDay: 'Covers 1 day',
-      coversDays: 'Covers {{count}} days',
+      coversDays: 'Covers {{count}} {{count#day|days}}',
       coversMonthsAndDays: 'Covers {{months}} months and {{days}} days',
       // เศษ 1 วันเคยอ่านว่า "and 1 days" — คำเดียวที่ต้องแยกกิ่ง ไม่ใช่ระบบ plural ทั้งชุด
       coversMonthsAndOneDay: 'Covers {{months}} months and 1 day',
@@ -1709,19 +1709,19 @@ export const en = {
       // `featuresOfTotal` ใช้เมื่อโหลดขนาดแค็ตตาล็อกได้ · `featuresOnly` คือขากลับตอนโหลดไม่ได้
       // ซึ่งเป็นตอนเดียวกับที่แถบสัดส่วนหายไป — ตัวเลขที่ไม่มีตัวหารต้องไม่มีแถบด้วย
       featuresOfTotal: '{{count}} of {{total}} features',
-      featuresOnly: '{{count}} features',
+      featuresOnly: '{{count}} {{count#feature|features}}',
       ordinalHint: 'Sort order {{n}} — where this bundle sits on the sales form',
       ordinalDuplicateHint: 'Sort order {{n}} is shared with another group — the order on the sales form is not decided',
       inUseCount: 'Used by {{count}} contracts',
       inUseCountOne: 'Used by 1 contract',
       inUseNone: 'Not used by any contract',
       showingCount: '{{shown}} of {{total}} groups',
-      deleteBodyInUse: '{{count}} live contracts are on this bundle. Check them before deleting — the group and its feature list will be removed. This cannot be undone.',
+      deleteBodyInUse: '{{count}} live {{count#contract|contracts}} {{count#is|are}} on this bundle. Check {{count#it|them}} before deleting — the group and its feature list will be removed. This cannot be undone.',
       // ── หน้าแก้ไข ──
       inUseWarningTitle: '{{count}} contracts are on this bundle',
       inUseWarningTitleOne: '1 contract is on this bundle',
       inUseWarningBody: 'Those contracts reference this group, so adding or removing a feature affects all of them at once — not just the group.',
-      deactivateWarning: 'Turning this off takes the bundle off the sales form. Check the {{count}} contracts already on it first.',
+      deactivateWarning: 'Turning this off takes the bundle off the sales form. Check the {{count}} {{count#contract|contracts}} already on it first.',
       sortOrderHint: 'Where this bundle sits on the sales form — lower comes first',
       orderOnSalesForm: 'on the sales form',
       orderDuplicate: 'Another group already holds this order — the order on the sales form is not decided',
@@ -1753,13 +1753,13 @@ export const en = {
       // "unavailable" independently, which is NOT the same as zero — see the strip's docblock.
       healthBuUsage: '{{used}} / {{cap}} BU',
       healthBuNoQuota: 'No BU quota',
-      healthSeatsCount: '{{count}} seats',
-      healthContractsCount: '{{count}} contracts',
+      healthSeatsCount: '{{count}} {{count#seat|seats}}',
+      healthContractsCount: '{{count}} {{count#contract|contracts}}',
       healthOverQuota: '{{count}} BU over quota',
       healthBuWithoutSeats: '{{count}} BU without seats',
       healthExpiredContracts: '{{count}} expired',
       healthExpiringContracts: '{{count}} expiring soon',
-      healthQuotaEndsIn: 'BU quota ends in {{count}} days',
+      healthQuotaEndsIn: 'BU quota ends in {{count}} {{count#day|days}}',
       healthAllClear: 'Nothing needs attention',
       healthSomeUnavailable: 'Some figures could not be loaded',
       healthUnavailableShort: 'unavailable',
@@ -1775,7 +1775,7 @@ export const en = {
       // Inline replacements for the hero-sized EmptyState the per-BU cards used to render.
       seatsNoLicenseInline: 'No seat license',
       activeLicensesCount: '{{count}} active',
-      expiredDaysAgo: 'expired {{count}} days ago',
+      expiredDaysAgo: 'expired {{count}} {{count#day|days}} ago',
       // licenseKindConfig.ts (BU_QUOTA_CONFIG.newPageTitle) + BuQuotaSection.tsx (the
       // "Add BU quota license" button — hardcoded there, not read from config).
       addBuQuotaLicense: 'Add BU quota license',
@@ -1888,7 +1888,7 @@ export const en = {
       // term moved onto a plate, and the card below it now holds only what can be typed.
       issuedPlateAria: 'Issued license',
       // Counterpart to expiredDaysAgo above, for a licence whose coverage has not started yet.
-      startsInDays: 'Starts in {{count}} days',
+      startsInDays: 'Starts in {{count}} {{count#day|days}}',
       amendTitle: 'Amend this license',
       amendDescription: 'The amount, coverage period, and reference can be changed. The owner and license number cannot.',
       licenseDetailsTitle: 'License details',
@@ -1991,8 +1991,8 @@ export const en = {
       // Task 4 (sections/* + hooks below) — BuQuotaSection.tsx.
       buQuotaCardTitle: 'BU Quota Licenses',
       buQuotaLoadFailedDescription: 'Could not load licenses for this cluster — the quota is unknown, not zero.',
-      quotaNoExpiry: 'Quota: {{count}} business units · no expiry',
-      quotaExpires: 'Quota: {{count}} business units · expires {{date}}',
+      quotaNoExpiry: 'Quota: {{count}} {{count#business unit|business units}} · no expiry',
+      quotaExpires: 'Quota: {{count}} {{count#business unit|business units}} · expires {{date}}',
       noLicenseInForce: 'No license in force — this cluster cannot create business units',
       buQuotaLoadFailedBanner: 'License data for this cluster could not be loaded — the quota and Over limit figures below are unknown, not zero.',
       businessUnitsInUse: 'Business units in use: {{used}} / {{total}}',
@@ -2422,8 +2422,8 @@ export const en = {
       // phrase-per-branch discipline as pages.licenses.seatSummary*/quotaExpires).
       licenceCountOne: '{{count}} licence',
       licenceCountMany: '{{count}} licences',
-      inForceBusinessUnitsNoExpiry: 'in force: {{count}} business units, no expiry',
-      inForceBusinessUnitsToDate: 'in force: {{count}} business units, to {{date}}',
+      inForceBusinessUnitsNoExpiry: 'in force: {{count}} {{count#business unit|business units}}, no expiry',
+      inForceBusinessUnitsToDate: 'in force: {{count}} {{count#business unit|business units}}, to {{date}}',
       noneInForce: 'none in force',
       buQuotaLicencesLabel: 'BU quota licences',
       // NOT a reuse of pages.licenses.buQuotaDataUnavailable ('License data...', American) —
@@ -3136,7 +3136,7 @@ export const en = {
       fromEmailRequired: 'From email is required',
       smtpPortRange: 'Port must be a whole number between 1 and 65535',
       deactivateWarning:
-        'Turning this off stops {{count}} flows from sending — move them to another profile first',
+        'Turning this off stops {{count}} {{count#flow|flows}} from sending — move {{count#it|them}} to another profile first',
       discardProfileDescription:
         'The changes you made to {{label}} have not been saved yet.',
       laneEditHint:
@@ -3144,7 +3144,7 @@ export const en = {
       laneMissingProfile: 'Deleted profile',
       laneMissingWarning: 'The routing still points at a profile that no longer exists — these flows have no sender',
       laneInactiveWarning: 'This profile is inactive, but flows still route to it',
-      noDefaultWarning: 'No default profile chosen — {{count}} flows have no sender',
+      noDefaultWarning: 'No default profile chosen — {{count}} {{count#flow|flows}} {{count#has|have}} no sender',
       // EMAIL_FLOWS descriptions (constants/emailFlows.ts)
       flowRegisterDescription: 'The verify-email link before an account is created, and the "account already exists" email',
       flowVerifyEmailDescription: 'The verify-email link for accounts created before the order was reversed, and the admin-created path',
@@ -3224,7 +3224,7 @@ export const en = {
       noPreviewRowsPlural: 'No preview rows were returned for the {{count}} rows in this sheet.',
       noDataRows: 'This sheet has no data rows.',
       importedSummary: 'Imported {{inserted}} · updated {{updated}} · skipped {{skipped}} · failed {{failed}}',
-      createdLookups: ' · created {{count}} lookups',
+      createdLookups: ' · created {{count}} {{count#lookup|lookups}}',
       // Soft-delete dialog — เนื้อความสลับกับ <code>/<strong> จึงแยกเป็นท่อน ๆ
       softDeleteTitle: 'Soft-delete existing rows?',
       softDeleteNone1: 'There are no active rows in',
@@ -3283,7 +3283,7 @@ export const en = {
       subtitle: 'Prisma migrations for the shared platform database every cluster reads',
       refresh: 'Check status',
       consoleTitle: 'Run console',
-      consoleRuns: '{{count}} runs',
+      consoleRuns: '{{count}} {{count#run|runs}}',
       consoleClear: 'Clear',
       consoleCopyAll: 'Copy all',
       consoleCopyRun: 'Copy the log of {{label}}',
@@ -3444,8 +3444,8 @@ export const en = {
       baseUrl: 'Base URL',
       expiryHours: 'Expiry (hours)',
       expiryDays: 'Expiry (days)',
-      hoursValue: '{{count}} hours',
-      daysValue: '{{count}} days',
+      hoursValue: '{{count}} {{count#hour|hours}}',
+      daysValue: '{{count}} {{count#day|days}}',
       // คำอธิบายใต้ Base URL — แยกสามท่อนเพราะมี <code> คั่นกลางสองตัว
       // ยุบเป็นคีย์เดียวไม่ได้ ไม่งั้น <code> จะหายไปพร้อม font-mono ของมัน
       baseUrlHint1: 'The destination page in the inventory app that the link in the email points to — not this console. The system appends',
@@ -3472,7 +3472,7 @@ export const en = {
       rateLimitsDescription: 'How many invitations may be issued in a given window',
       perAdminPerHour: 'Per admin / hour',
       perClusterPerDay: 'Per cluster / day',
-      invitationsValue: '{{count}} invitations',
+      invitationsValue: '{{count}} {{count#invitation|invitations}}',
       // สองย่อหน้าคำเตือน — มี <strong> คั่นกลาง จึงแยกท่อน
       limitsNote1: 'The defaults are deliberately high — opening a new hotel and inviting 30–50 staff at once is normal. These caps guard against abuse,',
       limitsNoteStrong1: 'not a security boundary',
@@ -3847,7 +3847,7 @@ export const en = {
       // ApplicationReachCell — เศษส่วนเทียบ catalog แทน badge ที่อ่านเทียบกันไม่ได้
       reachAria: '{{name}}: {{count}} of {{total}} endpoints',
       reachFullAria: '{{name}}: full access to all {{total}} endpoints',
-      reachUnanchoredAria: '{{name}}: {{count}} endpoints',
+      reachUnanchoredAria: '{{name}}: {{count}} {{count#endpoint|endpoints}}',
       reachFullUnanchoredAria: '{{name}}: full access to every endpoint',
       nModules: '{{count}} module',
       nModulesPlural: '{{count}} modules',
@@ -3896,8 +3896,8 @@ export const en = {
       untouchedModulesTitle: 'Modules with nothing granted: {{modules}}',
       dormantGrants: 'Still holds {{count}} scoped endpoints underneath \u2014 they take effect again if full access is turned off.',
       selectedOfCatalog: '{{count}} of {{total}} endpoints selected',
-      selectedCount: '{{count}} endpoints selected',
-      staleGrantsTitle: '{{count}} granted endpoints are no longer in the catalog',
+      selectedCount: '{{count}} {{count#endpoint|endpoints}} selected',
+      staleGrantsTitle: '{{count}} granted {{count#endpoint|endpoints}} {{count#is|are}} no longer in the catalog',
       dormantGrantsPlural: 'Still holds {{count}} scoped endpoints underneath \u2014 they take effect again if full access is turned off.',
       createApplication: 'Create Application',
     },
@@ -4001,7 +4001,7 @@ export const en = {
       noBuMatchFilters: 'No business units match your filters.',
       overLimit: 'Over limit',
       licenseLimitReached: 'License limit reached ({{used}}/{{cap}})',
-      overLimitNote: '{{count}} business units are beyond the licensed quota of {{cap}}. They are read-only until more quota is purchased.',
+      overLimitNote: '{{count}} {{count#business unit|business units}} {{count#is|are}} beyond the licensed quota of {{cap}}. {{count#It is|They are}} read-only until more quota is purchased.',
       overLimitRankTitle: 'Quota {{cap}} · this unit ranks {{rank}}',
       editBuAria: 'Edit {{name}}',
       buSingularLower: 'business unit',
