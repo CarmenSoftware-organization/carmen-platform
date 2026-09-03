@@ -1649,13 +1649,20 @@ export const en = {
       moduleClosedCount: 'closed {{count}}',
       moduleHiddenCount: 'hidden {{count}}',
       affectedBu: '{{count}} BU',
-      affectedBuTooltip: 'In use by {{count}} business units — they lose this menu if it is hidden',
+      // One/Many pairs: this catalog has no plural engine, so a count-noun that inflects
+      // needs both forms and a ternary at the call site (same shape as pages.news.reachOne).
+      affectedBuTooltipOne: 'In use by {{count}} business unit — it loses this menu if it is hidden',
+      affectedBuTooltipMany: 'In use by {{count}} business units — they lose this menu if it is hidden',
       affectedBuHeader: 'Business units',
       stateSaved: 'State updated',
       hideConfirmTitle: 'Hide this feature?',
-      hideConfirmDescription:
+      hideConfirmDescriptionOne:
+        '“{{label}}” will disappear from the menu for {{count}} business unit that holds it today, even if it already paid, and its users will no longer be able to open that page. This deletes nothing — set it back to Active and the menu returns within a minute.',
+      hideConfirmDescriptionMany:
         '“{{label}}” will disappear from the menu for {{count}} business units that hold it today, including ones that already paid, and their users will no longer be able to open that page. This deletes nothing — set it back to Active and the menu returns within a minute.',
-      hideConfirmDescendants:
+      hideConfirmDescendantsOne:
+        'And because this feature has {{count}} feature nested under it, that one stops working too — even if it is still marked Active.',
+      hideConfirmDescendantsMany:
         'And because this feature has {{count}} features nested under it, those stop working too — even the ones still marked Active.',
       hideConfirmAction: 'Hide it',
       filterAll: 'All states',
