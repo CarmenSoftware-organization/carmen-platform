@@ -102,6 +102,11 @@ const SubscriptionForm: React.FC = () => {
   const [formData, setFormData] = useState<SubscriptionFormData>(() => ({
     ...emptyFormData,
     cluster_id: searchParams.get('cluster_id') || '',
+    // เปิดมาจากหน้า Business Unit — ปุ่ม "New subscription" ในการ์ด User Licenses ส่ง BU ที่ผู้ใช้
+    // เปิดอยู่มาให้ ไม่ต้องมาไล่เลือกซ้ำจาก roster ทั้งคลัสเตอร์ ค่านี้เป็นเพียงค่าตั้งต้นของ picker:
+    // ถ้า BU ไม่ได้อยู่ในคลัสเตอร์ที่ส่งมาคู่กัน `<select>` จะไม่มี option ตรงกันและกลับไปเป็นค่าว่าง
+    // เอง — ตรงกับด่านบังคับกรอกตอนกด Create อยู่แล้ว
+    business_unit_id: id ? '' : (searchParams.get('business_unit_id') || ''),
     // A new contract starts today unless it is told otherwise — that is what nearly every one of
     // them does, and it is also what unlocks the month-end row, which has nothing to measure from
     // until a start exists. On an existing subscription this is overwritten by `load()` before

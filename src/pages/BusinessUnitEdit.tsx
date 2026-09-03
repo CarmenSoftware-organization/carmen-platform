@@ -115,6 +115,11 @@ const BusinessUnitEdit: React.FC = () => {
     ? hasPermission('cluster.create')
     : hasPermission('cluster.update', { clusterId: formData.cluster_id || UNRESOLVED_CLUSTER_ID });
 
+  // สิทธิ์ออกสัญญาใบใหม่ — ตรงกับ `requiredPermission` ของ `/licenses/subscriptions/new` ไม่ใช่
+  // `canEdit` ของหน้านี้: การแก้ BU กับการขายไลเซนส์เป็นคนละอำนาจ (cluster admin มีอย่างแรก
+  // ไม่มีอย่างหลัง) ปุ่มที่ผูกผิดตัวจะพาผู้ใช้ไปชนหน้าที่เตะกลับ
+  const canCreateSubscription = hasPermission('subscription.manage');
+
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(savedFormData);
   useUnsavedChanges(hasChanges);
 
@@ -736,6 +741,16 @@ const BusinessUnitEdit: React.FC = () => {
                 loading={licenses.loading}
                 clusterSeat={clusterSeat}
                 manageHref={formData.cluster_id ? `/licenses/${formData.cluster_id}#seats` : '/licenses'}
+                /* ออกสัญญาใบใหม่ให้ BU นี้ — ฟอร์มสร้างรับ cluster/BU จาก query เพื่อไม่ต้องเลือกซ้ำ
+                   สิ่งที่ผู้ใช้เพิ่งเปิดอยู่. ไม่มี cluster ก็ไม่มีปุ่ม: สัญญาผูกกับคลัสเตอร์เสมอ และ
+                   ลิงก์ที่พา BU ไปโดยไม่มีคลัสเตอร์จะได้ picker ที่หา BU นั้นไม่เจอ. ปุ่มถูกกันด้วย
+                   `subscription.manage` ซึ่งเป็นสิทธิ์เดียวกับที่ `/licenses/subscriptions/new`
+                   บังคับใน `PrivateRoute` — ไม่งั้นปุ่มจะพาไปหน้าที่เตะกลับ */
+                createHref={
+                  canCreateSubscription && formData.cluster_id
+                    ? `/licenses/subscriptions/new?cluster_id=${encodeURIComponent(formData.cluster_id)}&business_unit_id=${encodeURIComponent(id!)}`
+                    : undefined
+                }
               />
             ) : null
           }

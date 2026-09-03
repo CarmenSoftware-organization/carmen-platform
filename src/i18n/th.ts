@@ -194,6 +194,7 @@ export const th: Translations = {
       start: 'เริ่ม',
       end: 'สิ้นสุด',
       manageLicences: 'จัดการไลเซนส์',
+      newSubscription: 'สร้างสัญญาใหม่',
       export: 'ส่งออก',
       exportCsv: 'ส่งออก CSV',
       edit: 'แก้ไข',
