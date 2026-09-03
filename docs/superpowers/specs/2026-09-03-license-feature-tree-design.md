@@ -103,7 +103,8 @@ Phase B/C แตะ (เพิ่ม key) และ **FE ฝั่งนั้�
 |---|---|---|
 | D1 | `accounting.*` มี backend แล้วหรือยัง | ยังไม่มี แต่กำลังจะสร้าง — ต้อง "จอง" key ล่วงหน้า |
 | D2 | catalog กี่ชั้น | ทำเป็น n ชั้นจริง (ไม่แบนชื่อ ไม่แยกโมดูลใหม่) |
-| D3 | ความหมายของ `workflow.<type>` | เป็นตัวคูณบนตัวแม่ — ต้องซื้อ `system_admin.workflow` ก่อนเสมอ และการเขียนต้องมีด่านใหม่ที่อ่าน `workflow_type` จาก body |
+| D3 | ความหมายของ `workflow.<type>` | **แก้ 2026-09-03:** อ่านแยกตาม type / เขียนคุมที่พ่อ — ดู D3′ |
+| D3′ | เหตุที่ล้ม D3 เดิม | D3 เดิมคือ "ตัวคูณบนตัวแม่ + ด่านใหม่อ่าน `workflow_type` จาก body" · เคาะไปตอนยังไม่ได้เปิดโค้ด พอเปิดแล้วพบว่า **ทำไม่ได้**: `WorkflowUpdateSchema` ให้ `workflow_type` เป็น optional (partial update ไม่ส่งก็ได้), `PUT /:id/notification` ไม่มีฟิลด์นี้เลย และ `DELETE /:id` **ไม่มี body** ⇒ interceptor ตัดสิน PUT/DELETE ไม่ได้ถ้าไม่ยิง RPC ถาม type จาก id ในทุกการเขียน · ย้ายไปบังคับที่ micro-business ก็ไม่ได้ เพราะ `x-bu-datas` ถูกอ่านเฉพาะใน `backend-gateway` (grep ทั้ง repo) micro-business มองไม่เห็น license เลย |
 | D4 | แบ่งงาน | 3 phase แยกสเปก: A โครงสร้าง · B workflow · C accounting |
 | D5 | `sort_order` | เว้นแถบให้หลาน ไม่แตะเลขเดิมของ 78 แถว |
 
@@ -312,13 +313,29 @@ Phase B เพิ่มคีย์ 3 ชั้น**ของจริง** (`sy
 `system_admin.workflow` แล้วต้องได้ `403 LICENSE_REQUIRED` โดยเปิด `LICENSE_ENFORCEMENT`
 ก่อนเสมอ — ไม่งั้นจะผ่านเพราะ shadow mode ไม่ใช่เพราะโค้ดถูก
 
+### 5.1 ความหมายที่เคาะแล้ว: อ่านแยกตาม type / เขียนคุมที่พ่อ (D3′)
+
+- `.purchase_request` = **เห็น workflow ประเภทนั้นได้** — คุม `GET /workflows/purchase-request`
+- **การสร้าง/แก้/ลบ workflow ใดๆ ต้องถือ `system_admin.workflow`** ซึ่งเป็นพ่อ
+  ⇒ ตกที่ fallback ของ `SUB_PATH_RESOURCE_MAP` ตามธรรมชาติ ไม่ต้องเขียนด่านใหม่เลย
+- `GET /workflows` (ไม่มี prefix, คืนทุกประเภท) ก็ตกที่พ่อเช่นกัน — ซื้อ `.purchase_request`
+  เดี่ยว ๆ จึงไม่เปิด endpoint รวม
+
+เหตุผล: สิ่งที่ขายจริงคือ "workflow ของประเภทเอกสารที่ลูกค้าซื้อ" — คนที่ซื้อแค่ระบบ PR
+ควรเห็นเฉพาะ workflow ของ PR ส่วนสิทธิ์ **แก้** workflow เป็นงานแอดมินซึ่งเป็นของเดียว
+ทั้งระบบอยู่แล้ว · และไม่แตะเส้นทางร้อนของทุกการเขียน
+
+ถ้าวันหนึ่งต้องคุมการเขียนรายประเภทจริง ๆ ค่อยเพิ่มด่านที่ resolve `workflow_id` → type
+ทีหลังได้ โดยไม่ต้องรื้อของที่ทำในเฟสนี้ — และตอนนั้นต้องตอบให้ได้ก่อนว่า RPC นั้นล้มแล้ว
+จะ fail-open หรือ fail-closed (`license.interceptor.ts` เขียนไว้ยาวว่าการอ่านไม่สำเร็จ
+ต้อง fail-open ทุกกรณี)
+
 ขอบเขต:
 
 - `SUB_PATH_RESOURCE_MAP` ที่ `config:workflows` → prefixes
   `purchase-request` | `purchase-order` | `store-requisition`,
   fallback `system_admin.workflow` (ท่าเดียวกับ `report.list` / `.history` / `.schedule`)
-- ด่านใหม่ฝั่งเขียน: อ่าน `workflow_type` จาก body แล้วเทียบกับ feature ที่ถือ
-  `LicenseInterceptor` ปัจจุบันอ่านแต่ URL ⇒ เป็น layer ที่ยังไม่มี
+- **ไม่มีด่านใหม่ฝั่งเขียน** — ยกเลิกตาม D3′
 
 ข้อจำกัด:
 
