@@ -393,24 +393,20 @@ const BusinessUnitForm: React.FC = () => {
     setError('');
   };
 
-  // Backend requires code + name; cluster_id is guaranteed by the route guard, not a
-  // form field, so it needs no client-side check here.
+  // Backend requires name; cluster_id is guaranteed by the route guard, not a form field, so
+  // it needs no client-side check here.
   //
-  // The code check below is kept even though this page no longer renders a Code field —
-  // formData.code is populated only from the API response now, never by a user, so in
-  // practice this branch is unreachable today. It stays as a defensive guard rather than
-  // being deleted: buildPayload() below drops any '' value from the save payload, so a
-  // blank code (a malformed load, or a future change to fetchBusinessUnit) would otherwise
-  // omit a backend-required field from update() silently and surface as an opaque 400
-  // instead of this page's normal inline-validation toast.
+  // No `code` check here on purpose (final review, bu-auto-code): the update DTO now ignores
+  // `code` entirely, so a blank/malformed one can no longer produce the opaque 400 a prior
+  // version of this guard was defending against. This page also renders no Code field, so a
+  // "Code is required" error here would have blocked Save with no control on screen to fix it
+  // — a dead end, not a safety net. Don't re-add it.
   const validateRequired = (): boolean => {
     // "Name is required" is used both here and by the not-clearable guard below — composed
     // once from the generic required-field template so both stay in sync (same pattern as
     // BroadcastEdit.tsx/NewsEdit.tsx's own required-title checks).
     const nameRequiredMessage = t('common.validation.requiredMessage', { label: t('common.field.name') });
     const errs: Record<string, string> = {};
-    if (!formData.code.trim()) errs.code = t('common.validation.requiredMessage', { label: t('common.field.code') });
-    else errs.code = validateField('code', formData.code, undefined, t);
     if (!formData.name.trim()) errs.name = nameRequiredMessage;
     // ล้างค่าฟิลด์กลุ่มนี้ = 400 จาก backend จับที่นี่ก่อนยิง
     for (const key of NOT_CLEARABLE_FIELDS) {
