@@ -130,6 +130,10 @@ export const th: Translations = {
     connected: 'เชื่อมต่อแล้ว',
     navigate: 'เลื่อน',
     connect: 'เชื่อมต่อ',
+    toggle: 'เลือก',
+    selectedCount: 'เลือกแล้ว {{count}}',
+    clearSelection: 'ล้าง',
+    continueWith: 'ดำเนินการต่อ {{count}} BU',
     close: 'ปิด',
   },
   shortcuts: {
@@ -2297,6 +2301,10 @@ export const th: Translations = {
       opConfirmTitle: 'รันงานนี้?',
       opConfirmWrite: 'งานนี้เขียนลงฐานข้อมูลกลางที่ทุก cluster ใช้ร่วมกัน หยุดกลางคันไม่ได้',
       opConfirmWriteBu: 'งานนี้เขียนบทบาทของแอปและสิทธิ์ของบทบาทให้ {{name}} ({{code}}) เท่านั้น หยุดกลางคันไม่ได้',
+      opConfirmWriteBus: 'งานนี้เขียนบทบาทของแอปและสิทธิ์ของบทบาทให้หน่วยธุรกิจ {{count}} แห่ง ไล่ทีละแห่ง: {{codes}} หยุดกลางคันไม่ได้',
+      opBatchSucceeded: 'รันครบทั้ง {{count}} หน่วยธุรกิจ',
+      opBatchPartial: 'สำเร็จ {{ok}} ล้มเหลว {{failed}} — เปิดรายการที่ล้มเหลวในคอนโซลด้านล่าง',
+      opBatchFailed: 'ล้มเหลวทั้ง {{count}} หน่วยธุรกิจ',
       catalogLoadFailed: 'โหลดทะเบียนงานไม่สำเร็จ',
       ops: {
         seedCurrencyIso: { label: 'สกุลเงิน ISO', desc: 'รายการรหัสสกุลเงินมาตรฐาน ISO 4217' },

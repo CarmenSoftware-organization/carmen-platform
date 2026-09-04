@@ -135,10 +135,11 @@ export const PlatformMigrationManagement: React.FC = () => {
   const [runningOp, setRunningOp] = useState<string | null>(null);
   const [confirmOp, setConfirmOp] = useState<PlatformSeedOp | null>(null);
 
-  // op ที่ต้องเลือก BU ก่อน: pickBuFor คือตัวที่ dialog กำลังถามให้ · pickedBu คือคำตอบที่รอยืนยัน
+  // op ที่ต้องเลือก BU ก่อน: pickBuFor คือตัวที่ dialog กำลังถามให้ · pickedBus คือคำตอบที่รอยืนยัน
+  // (เลือกได้หลายตัว แล้วรันไล่ทีละตัว — ดู runOpBatch)
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [pickBuFor, setPickBuFor] = useState<PlatformSeedOp | null>(null);
-  const [pickedBu, setPickedBu] = useState<BusinessUnit | null>(null);
+  const [pickedBus, setPickedBus] = useState<BusinessUnit[]>([]);
   const buLoadedRef = useRef(false);
 
   // สมุดบันทึกเล่มเดียวของทั้งหน้า — deploy, resolve และทุก op เขียนลงที่นี่
@@ -250,8 +251,16 @@ export const PlatformMigrationManagement: React.FC = () => {
     }
   }, [appendLines, fetchStatus, finishRun, migrationName, resolveAction, startRun, t]);
 
-  const runOp = useCallback(async (op: PlatformSeedOp, bu?: BusinessUnit | null): Promise<void> => {
-    setRunningOp(op.id);
+  /**
+   * รัน op หนึ่งตัวกับ BU หนึ่งตัว (หรือไม่มี BU เลย) แล้วคืนผลให้ผู้เรียก
+   *
+   * ตัวนี้ไม่ toast และไม่ fetchStatus เอง เพราะถูกเรียกวนในชุดได้ — ห้าตัวที่รันติดกันต้องได้
+   * ข้อความสรุปใบเดียว ไม่ใช่ห้าใบซ้อนกัน หน้าที่นั้นเป็นของ runOpBatch
+   */
+  const runOnce = useCallback(async (
+    op: PlatformSeedOp,
+    bu?: BusinessUnit | null,
+  ): Promise<{ ok: boolean; exitCode?: number }> => {
     const opLabel = t(`pages.platformMigration.ops.${opKey(op.id)}.label` as never);
     // ป้ายในสมุดต้องบอกด้วยว่ารันกับ BU ไหน — สมุดเก็บหลายรายการ ถ้าเห็นแต่ชื่อ op เหมือนกันสามแถว
     // ก็แยกไม่ออกว่าแถวไหนของ BU ใด
@@ -264,20 +273,57 @@ export const PlatformMigrationManagement: React.FC = () => {
         if (e.type === 'log') appendLines(runId, [e.line]);
       }, params);
       finishRun(runId, result.success ? 'success' : 'failed', result.exit_code);
-      if (result.success) {
-        toast.success(t('pages.platformMigration.opSucceeded'));
-      } else {
-        toast.error(t('pages.platformMigration.opFailed', { code: result.exit_code }));
-      }
-      await fetchStatus(false);
+      return { ok: result.success, exitCode: result.exit_code };
     } catch (err) {
       appendLines(runId, [errorText(err, t)]);
       finishRun(runId, 'failed');
+      // ตัวที่ throw คือตัวที่ล้มก่อนได้ exit code (เช่น 401/422) — บอกรายตัวที่นี่ เพราะข้อความ
+      // สรุปท้ายชุดบอกได้แค่จำนวน ไม่ได้บอกว่าพังเพราะอะไร
       notifyError(err, t);
+      return { ok: false };
+    }
+  }, [appendLines, finishRun, startRun, t]);
+
+  /**
+   * รัน op กับ BU ที่เลือกไว้ ไล่ทีละตัวตามลำดับ
+   *
+   * เรียงกันไม่ใช่ขนาน: ปลายทางเป็นสคริปต์ prisma ที่เขียนฐานข้อมูลเดียวกัน ยิงพร้อมกันห้าเส้น
+   * คือการเชิญ deadlock มาเอง และ log ที่สตรีมสลับกันก็อ่านไม่ออก
+   *
+   * ตัวที่ล้มไม่หยุดทั้งชุด — เจตนา: ผู้ใช้เลือกมาห้า BU เพราะอยากให้ครบห้า การหยุดที่ตัวที่สอง
+   * ทิ้งงานค้างสามตัวโดยไม่มีใครรู้ ผลรายตัวยังแยกดูได้จากคอนโซล
+   */
+  const runOpBatch = useCallback(async (op: PlatformSeedOp, bus: BusinessUnit[]): Promise<void> => {
+    setRunningOp(op.id);
+    try {
+      // ไม่มี BU = op ที่ไม่ได้ทำงานราย BU — รันรอบเดียวโดยไม่ส่ง param
+      const targets: (BusinessUnit | null)[] = bus.length > 0 ? bus : [null];
+      const results: { ok: boolean; exitCode?: number }[] = [];
+      for (const bu of targets) {
+        results.push(await runOnce(op, bu));
+      }
+
+      const okCount = results.filter((r) => r.ok).length;
+      const failed = results.length - okCount;
+      if (results.length === 1) {
+        const only = results[0];
+        if (only.ok) toast.success(t('pages.platformMigration.opSucceeded'));
+        else if (only.exitCode !== undefined) {
+          toast.error(t('pages.platformMigration.opFailed', { code: only.exitCode }));
+        }
+      } else if (failed === 0) {
+        toast.success(t('pages.platformMigration.opBatchSucceeded', { count: okCount }));
+      } else if (okCount === 0) {
+        toast.error(t('pages.platformMigration.opBatchFailed', { count: failed }));
+      } else {
+        toast.warning(t('pages.platformMigration.opBatchPartial', { ok: okCount, failed }));
+      }
+
+      await fetchStatus(false);
     } finally {
       setRunningOp(null);
     }
-  }, [appendLines, fetchStatus, finishRun, startRun, t]);
+  }, [fetchStatus, runOnce, t]);
 
   const pending = status?.pending ?? [];
   const hasPending = status?.has_pending === true;
@@ -529,10 +575,10 @@ export const PlatformMigrationManagement: React.FC = () => {
                                 // op ที่ต้องการ BU ถามก่อนเสมอ แม้จะเป็น readonly — ไม่มีค่า
                                 // ที่จะรันด้วยได้เลยถ้าไม่ถาม
                                 if (buParamOf(op)) {
-                                  setPickedBu(null);
+                                  setPickedBus([]);
                                   setPickBuFor(op);
                                 } else if (op.readonly) {
-                                  void runOp(op);
+                                  void runOpBatch(op, []);
                                 } else {
                                   setConfirmOp(op);
                                 }
@@ -583,26 +629,33 @@ export const PlatformMigrationManagement: React.FC = () => {
         onOpenChange={(open) => {
           if (!open) {
             setConfirmOp(null);
-            setPickedBu(null);
+            setPickedBus([]);
           }
         }}
         title={t('pages.platformMigration.opConfirmTitle')}
         description={
-          pickedBu
+          // หนึ่ง BU ยังใช้ข้อความเดิมที่บอกชื่อเต็ม — ชื่อบอกได้ว่าเลือกถูกตัวไหม ซึ่งรายชื่อรหัส
+          // ยาว ๆ ของหลายตัวทำแทนไม่ได้ พอเกินหนึ่งจึงเปลี่ยนเป็นจำนวน + รายการรหัส
+          pickedBus.length === 1
             ? t('pages.platformMigration.opConfirmWriteBu', {
-              code: pickedBu.code,
-              name: pickedBu.name,
+              code: pickedBus[0].code,
+              name: pickedBus[0].name,
             })
-            : t('pages.platformMigration.opConfirmWrite')
+            : pickedBus.length > 1
+              ? t('pages.platformMigration.opConfirmWriteBus', {
+                count: pickedBus.length,
+                codes: pickedBus.map((b) => b.code).join(', '),
+              })
+              : t('pages.platformMigration.opConfirmWrite')
         }
         confirmText={t('pages.platformMigration.opRun')}
         confirmVariant="destructive"
         onConfirm={async () => {
           const op = confirmOp;
-          const bu = pickedBu;
+          const bus = pickedBus;
           setConfirmOp(null);
-          setPickedBu(null);
-          if (op) await runOp(op, bu);
+          setPickedBus([]);
+          if (op) await runOpBatch(op, bus);
         }}
       />
 
@@ -613,14 +666,18 @@ export const PlatformMigrationManagement: React.FC = () => {
         onOpenChange={(open) => { if (!open) setPickBuFor(null); }}
         businessUnits={businessUnits}
         currentCode=""
-        onSelect={(code) => {
+        multiple
+        // โหมด multiple ไม่เรียก onSelect — prop ยังบังคับตาม type ของคอมโพเนนต์ที่หน้าอื่นใช้
+        onSelect={() => {}}
+        onSelectMany={(codes) => {
           const op = pickBuFor;
-          const bu = businessUnits.find((b) => b.code === code) ?? null;
+          const byCode = new Map(businessUnits.map((b) => [b.code, b]));
+          const bus = codes.map((c) => byCode.get(c)).filter((b): b is BusinessUnit => Boolean(b));
           setPickBuFor(null);
-          if (!op || !bu) return;
-          setPickedBu(bu);
+          if (!op || bus.length === 0) return;
+          setPickedBus(bus);
           if (op.readonly) {
-            void runOp(op, bu);
+            void runOpBatch(op, bus);
           } else {
             setConfirmOp(op);
           }
