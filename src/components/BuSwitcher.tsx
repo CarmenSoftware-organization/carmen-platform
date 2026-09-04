@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Star } from 'lucide-react';
+import { Check, Search, Star } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 import type { BusinessUnit } from '../types';
 import { buHueColor, buInitials } from '../utils/buHue';
@@ -41,6 +42,13 @@ interface BuSwitcherProps {
   businessUnits: BusinessUnit[];
   currentCode: string;
   onSelect: (code: string) => void;
+  /**
+   * เลือกได้หลาย BU ในครั้งเดียว — คลิก/Enter สลับติ๊กแทนที่จะปิดกล่องทันที และต้องกดยืนยันเอง
+   * ต้องมาคู่กับ `onSelectMany` ไม่งั้นการยืนยันจะไม่มีที่ลง
+   */
+  multiple?: boolean;
+  /** เรียกครั้งเดียวตอนกดยืนยันในโหมด multiple — เรียงตามลำดับที่แสดงในรายการ ไม่ใช่ลำดับที่กด */
+  onSelectMany?: (codes: string[]) => void;
 }
 
 /**
@@ -48,8 +56,8 @@ interface BuSwitcherProps {
  * code / name / cluster, arrow-key to navigate, Enter to connect. Recents are
  * pinned on top (persisted per browser); the rest is grouped by cluster.
  *
- * Phase 2 (multi-BU batch) will add a per-row "add to scope" action here — left
- * unbuilt on purpose rather than shipping a dead control.
+ * โหมด `multiple` เปิดการเลือกหลาย BU ในครั้งเดียว (ผู้เรียกใช้รันเป็นชุด) โหมดปกติไม่เปลี่ยน
+ * พฤติกรรมเลย: คลิกแล้วเลือกและปิดกล่องทันทีเหมือนเดิม
  */
 export function BuSwitcher({
   open,
@@ -57,15 +65,21 @@ export function BuSwitcher({
   businessUnits,
   currentCode,
   onSelect,
+  multiple = false,
+  onSelectMany,
 }: BuSwitcherProps) {
   const { t } = useI18n();
   const [search, setSearch] = useState('');
   const [active, setActive] = useState(0);
+  const [checked, setChecked] = useState<string[]>([]);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Reset the query each time the palette opens.
+  // Reset the query (and any pending multi-selection) each time the palette opens.
   useEffect(() => {
-    if (open) setSearch('');
+    if (open) {
+      setSearch('');
+      setChecked([]);
+    }
   }, [open]);
 
   const { sections, flat } = useMemo(() => {
@@ -115,8 +129,24 @@ export function BuSwitcher({
   }, [active]);
 
   const select = (code: string) => {
+    if (multiple) {
+      setChecked((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
+      return;
+    }
     writeRecent(code);
     onSelect(code);
+    onOpenChange(false);
+  };
+
+  /**
+   * ยืนยันการเลือกหลายตัว — ส่งกลับเรียงตามลำดับที่แสดงในรายการ ไม่ใช่ลำดับที่ผู้ใช้กด
+   * เพราะผู้เรียกใช้รันไล่ตามลำดับนั้น และ log ที่เรียงตามสายตาผู้ใช้อ่านง่ายกว่า
+   */
+  const confirmMany = () => {
+    const codes = flat.map((b) => b.code).filter((c) => checked.includes(c));
+    if (codes.length === 0) return;
+    codes.forEach(writeRecent);
+    onSelectMany?.(codes);
     onOpenChange(false);
   };
 
@@ -129,6 +159,11 @@ export function BuSwitcher({
       if (flat.length) setActive((i) => (i - 1 + flat.length) % flat.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      // ⌘/Ctrl+Enter = ยืนยันทั้งชุด · Enter เปล่า = สลับติ๊กแถวที่อยู่
+      if (multiple && (e.metaKey || e.ctrlKey)) {
+        confirmMany();
+        return;
+      }
       const bu = flat[active];
       if (bu) select(bu.code);
     }
@@ -174,6 +209,7 @@ export function BuSwitcher({
         <div
           id="bu-switcher-list"
           role="listbox"
+          aria-multiselectable={multiple || undefined}
           aria-label={t('switcher.buList')}
           className="max-h-[52vh] overflow-y-auto p-1.5"
         >
@@ -196,6 +232,7 @@ export function BuSwitcher({
                   flatIndex += 1;
                   const idx = flatIndex;
                   const isActive = idx === active;
+                  const isChecked = multiple && checked.includes(bu.code);
                   const isCurrent = bu.code === currentCode;
                   return (
                     <button
@@ -206,7 +243,9 @@ export function BuSwitcher({
                       }}
                       type="button"
                       role="option"
-                      aria-selected={isActive}
+                      // โหมด multi: aria-selected คือ "ติ๊กแล้วหรือยัง" ตามรูปของ listbox หลายค่า
+                      // ส่วนแถวที่คีย์บอร์ดอยู่บอกผ่าน aria-activedescendant ของช่องค้นหาอยู่แล้ว
+                      aria-selected={multiple ? isChecked : isActive}
                       onClick={() => select(bu.code)}
                       onMouseMove={() => setActive(idx)}
                       className={cn(
@@ -214,6 +253,17 @@ export function BuSwitcher({
                         isActive && 'bg-accent',
                       )}
                     >
+                      {multiple && (
+                        <span
+                          className={cn(
+                            'grid size-4 shrink-0 place-items-center rounded-[4px] border',
+                            isChecked && 'bg-primary border-primary text-primary-foreground',
+                          )}
+                          aria-hidden="true"
+                        >
+                          {isChecked && <Check className="size-3" strokeWidth={3} />}
+                        </span>
+                      )}
                       <span
                         className="grid size-6 shrink-0 place-items-center rounded-md text-[9px] font-bold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
                         style={{ background: buHueColor(bu.code) }}
@@ -244,17 +294,32 @@ export function BuSwitcher({
         </div>
 
         {/* footer */}
-        <div className="text-muted-foreground bg-muted/40 flex items-center gap-4 border-t px-4 py-2 text-[11px]">
+        <div className="text-muted-foreground bg-muted/40 flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-4 py-2 text-[11px]">
           <span className="flex items-center gap-1.5">
             <Kbd>↑</Kbd>
             <Kbd>↓</Kbd> {t('switcher.navigate')}
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>↵</Kbd> {t('switcher.connect')}
+            <Kbd>↵</Kbd> {multiple ? t('switcher.toggle') : t('switcher.connect')}
           </span>
           <span className="flex items-center gap-1.5">
             <Kbd>esc</Kbd> {t('switcher.close')}
           </span>
+          {multiple && (
+            <div className="ml-auto flex items-center gap-2">
+              <span className="tabular-nums">
+                {t('switcher.selectedCount', { count: checked.length })}
+              </span>
+              {checked.length > 0 && (
+                <Button variant="ghost" size="sm" className="h-7" onClick={() => setChecked([])}>
+                  {t('switcher.clearSelection')}
+                </Button>
+              )}
+              <Button size="sm" className="h-7" disabled={checked.length === 0} onClick={confirmMany}>
+                {t('switcher.continueWith', { count: checked.length })}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

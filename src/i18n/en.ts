@@ -136,7 +136,11 @@ export const en = {
     connected: 'connected',
     navigate: 'navigate',
     connect: 'connect',
+    toggle: 'select',
     close: 'close',
+    selectedCount: '{{count}} selected',
+    clearSelection: 'Clear',
+    continueWith: 'Continue with {{count}} {{count#BU|BUs}}',
   },
   shortcuts: {
     title: 'Keyboard Shortcuts',
@@ -3314,6 +3318,10 @@ export const en = {
       opConfirmTitle: 'Run this operation?',
       opConfirmWrite: 'This writes to the database every cluster shares. It cannot be interrupted once started.',
       opConfirmWriteBu: 'This writes application roles and their permissions for {{name}} ({{code}}) only. It cannot be interrupted once started.',
+      opConfirmWriteBus: 'This writes application roles and their permissions for {{count}} business units, one after another: {{codes}}. It cannot be interrupted once started.',
+      opBatchSucceeded: 'Finished for all {{count}} {{count#business unit|business units}}',
+      opBatchPartial: 'Finished {{ok}}, failed {{failed}} — open the failed runs in the console below',
+      opBatchFailed: 'Failed for all {{count}} {{count#business unit|business units}}',
       catalogLoadFailed: 'Could not load the operation catalog',
       ops: {
         seedCurrencyIso: { label: 'ISO currencies', desc: 'The standard ISO 4217 currency code list' },
