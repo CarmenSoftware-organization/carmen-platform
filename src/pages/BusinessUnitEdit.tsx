@@ -459,9 +459,11 @@ const BusinessUnitEdit: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       setError(t('pages.businessUnits.fixHighlightedFieldsPrefix') + Object.values(active).join(', '));
-      // db_schema lives in Technical while code/cluster live in General, so a failed Save
+      // db_schema lives in Technical while cluster_id lives in General, so a failed Save
       // can highlight a field on a tab the user cannot see. Jump to the first tab that
-      // holds one — without it, Save just looks like it did nothing.
+      // holds one — without it, Save just looks like it did nothing. (`code` used to be
+      // a second General-tab field here too, but it dropped out of `errs` entirely once
+      // validateRequired() stopped checking it — the platform sets it, not the user.)
       const target = tabsWithErrors(active)[0];
       if (target && target !== activeTab) handleTabChange(target);
       return false;
@@ -473,9 +475,10 @@ const BusinessUnitEdit: React.FC = () => {
    * ช่องบังคับที่ยังว่างอยู่ ใช้เฉพาะตอนสร้างใหม่
    *
    * แถบล่างเคยขึ้นคำว่า "No changes" บนหน้าสร้างใหม่ ซึ่งเป็นสถานะของระเบียนที่ยังไม่มีตัวตน
-   * — ไม่ได้บอกอะไรและไม่ตรงกับสิ่งที่ผู้ใช้กำลังทำ ช่องบังคับสามช่องยังกระจายอยู่คนละที่ด้วย
-   * (ชื่อคือ <h1>, code กับ cluster อยู่ในกลุ่ม Details) ที่ว่างตรงนั้นจึงเอามาบอกว่าเหลืออะไร
-   * พอครบแล้วไม่ต้องขึ้นอะไรเลย ปุ่ม Create ที่กดได้พูดแทนตัวเองได้อยู่แล้ว
+   * — ไม่ได้บอกอะไรและไม่ตรงกับสิ่งที่ผู้ใช้กำลังทำ ช่องบังคับเหลือสองช่องและยังกระจายอยู่คนละที่ด้วย
+   * (ชื่อคือ <h1>, cluster อยู่ในกลุ่ม Details) ที่ว่างตรงนั้นจึงเอามาบอกว่าเหลืออะไร code เคยเป็น
+   * ช่องที่สามในรายการนี้แต่หลุดออกไปแล้ว เพราะแพลตฟอร์มเป็นคนตั้งให้ตอนสร้าง ผู้ใช้ไม่มีช่องให้กรอก
+   * — อย่าใส่กลับเข้ามา พอครบแล้วไม่ต้องขึ้นอะไรเลย ปุ่ม Create ที่กดได้พูดแทนตัวเองได้อยู่แล้ว
    */
   const missingRequired = useMemo(() => {
     const missing: string[] = [];
