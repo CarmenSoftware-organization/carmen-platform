@@ -1987,6 +1987,7 @@ export const th: Translations = {
       notSetOption: '— ยังไม่ได้ตั้งค่า —',
       schemaLabel: 'Schema',
       schemaPlaceholder: 'cbr_prod',
+      generateSchema: 'สุ่มชื่อ',
       databaseConnectionTitle: 'การเชื่อมต่อฐานข้อมูล',
       databaseConnectionDescription: 'Database pool และ schema ที่ใช้ร่วมกัน',
       databasePoolPermissionRequired: 'การเปลี่ยน database pool ต้องมีสิทธิ์ระดับแพลตฟอร์ม',

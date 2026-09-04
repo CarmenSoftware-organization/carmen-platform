@@ -2866,6 +2866,7 @@ export const en = {
       // Format-example placeholder, not prose — identical value in both languages, same
       // rationale as pages.clusterAdmin.emailPlaceholder ('name@example.com').
       schemaPlaceholder: 'cbr_prod',
+      generateSchema: 'Generate',
       databaseConnectionTitle: 'Database Connection',
       databaseConnectionDescription: 'Shared database pool and schema',
       databasePoolPermissionRequired: 'Changing the database pool requires a platform-level permission.',
