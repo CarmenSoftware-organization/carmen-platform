@@ -1901,6 +1901,8 @@ export const th: Translations = {
       repointButton: 'ย้ายจุดเชื่อมต่อ',
       // Copied verbatim from pages.clusterAdmin.copiedHotelAddressToCompany.
       copiedHotelAddressToCompany: 'คัดลอกที่อยู่โรงแรมไปยังที่อยู่บริษัทแล้ว',
+      // Final-review fix (Important 1, bu-auto-code) — see en.ts for the full explanation.
+      duplicateNameError: 'มีหน่วยธุรกิจชื่อนี้อยู่ใน cluster นี้แล้ว',
 
       // --- Task 4: BusinessUnitBrandingCard.tsx ---
       brandingDescription: 'โลโก้และรูปประจำตัวที่แสดงทั่วทั้งแพลตฟอร์ม',

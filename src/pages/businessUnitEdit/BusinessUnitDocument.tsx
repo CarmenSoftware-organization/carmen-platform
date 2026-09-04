@@ -214,13 +214,28 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       {activeTab === 'general' && (
         <>
           <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
-            {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
-                validateRequired() enforces — they are the only ones marked required. */}
+            {/* `cluster_id` and `name` (the latter in the header) are the two fields
+                validateRequired() enforces — they are the only ones marked required.
+                `code` used to be a third, but it is no longer a field the user sets: the
+                platform assigns it at creation and ignores it on update (see the read-only
+                block below), so there is nothing left here to validate — don't add it back. */}
             <Group
               label={t('pages.businessUnits.detailsGroup')}
               description={t('pages.businessUnits.detailsGroupDescription')}
             >
-              {inline('code', t('common.field.code'), { mono: true, width: 'xs', validate: true, required: true, maxLength: 20 })}
+              {/* code เป็นรหัสที่แพลตฟอร์มตั้งตอนสร้าง ไม่ใช่ช่องกรอก — หน้า new จึงไม่มีอะไรจะแสดง
+                  (แถวยังไม่เกิด รหัสจึงยังไม่มี) และหน้า edit แสดงอย่างเดียวแก้ไม่ได้ เพราะ
+                  backend เพิกเฉยต่อ code ที่ส่งมาใน update อยู่แล้ว การเปิดให้พิมพ์ได้จะเป็นช่อง
+                  ที่รับค่าแล้วทิ้ง หน้า cluster-admin ถอดช่องนี้ออกด้วยเหตุผลเดียวกัน (BusinessUnitForm.tsx:42)
+                  ไม่ใช่ InlineField: ไม่มีอะไรให้กดเข้าโหมดแก้ — รูปเดียวกับแถว maxUsers ข้างล่าง */}
+              {!isNew && (
+                <div className="grid grid-cols-1 gap-0.5 py-1.5 sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
+                  <span className="text-muted-foreground pt-2 text-xs">{t('common.field.code')}</span>
+                  <div className="min-w-0">
+                    <ReadOnlyText value={f.code} className="max-w-[14rem] font-mono" />
+                  </div>
+                </div>
+              )}
               {inline('alias_name', t('common.field.alias'), { width: 'xs', validate: true, maxLength: BU_ALIAS_MAX })}
               {inline('cluster_id', t('common.label.cluster'), { type: 'select', options: clusterOptions, required: true })}
               {/* Read-only since Task 3.5 — this used to be a typed-in ceiling; it is now a sum of

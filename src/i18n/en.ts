@@ -2690,6 +2690,13 @@ export const en = {
       // Promotion signal vs pages.clusterAdmin.copiedHotelAddressToCompany (2 files / 2
       // slices).
       copiedHotelAddressToCompany: 'Copied hotel address to company address',
+      // Final-review fix (Important 1, bu-auto-code): the backend now rejects a create/update
+      // that would leave two business units with the same name in one cluster (409
+      // BUSINESS_UNIT_ALREADY_EXISTS, message "Business unit already exists" — doesn't name a
+      // field). doSave()'s catch routes that specific 409 onto fieldErrors.name and reuses this
+      // string for the banner, instead of the raw backend sentence, so the fix reads as
+      // actionable rather than a bare fact.
+      duplicateNameError: 'A business unit with this name already exists in this cluster.',
 
       // --- Task 4: BusinessUnitBrandingCard.tsx ---
       brandingDescription: 'Logo and avatar shown across the platform',

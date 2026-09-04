@@ -15,7 +15,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { Save, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getErrorDetail, parseApiError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -421,6 +421,11 @@ const BusinessUnitEdit: React.FC = () => {
     delete payload.db_schema;
     delete payload.database_pool_name;   // ค่าแสดงผลล้วน ไม่มีในสัญญาฝั่ง backend
 
+    // code ไม่เคยมาจากผู้ใช้อีกแล้ว: ตอนสร้างมันว่าง (backend เป็นคนตั้ง) ตอนแก้มันคือค่าที่โหลด
+    // มาแล้วส่งกลับไปเฉย ๆ ซึ่ง backend เพิกเฉยอยู่แล้ว ตัดออกทั้งสองทางเพื่อไม่ให้ payload
+    // อ้างว่ากำลังตั้งค่าที่มันตั้งไม่ได้
+    delete payload.code;
+
     // ส่งฟิลด์ pool เฉพาะเมื่อค่าต่างจากที่โหลดมา — backend ตรวจ `!== undefined` แล้วบังคับ
     // ด่าน canWriteClusterViaPlatformRole ส่งค่าเดิมซ้ำไปจะทำให้คนที่ไม่มีสิทธิ์ระดับ
     // แพลตฟอร์มโดน 403 ทั้งที่ไม่ได้แตะฟิลด์นี้
@@ -440,13 +445,11 @@ const BusinessUnitEdit: React.FC = () => {
     return payload;
   };
 
-  // Backend requires cluster_id, code, name (is_hq/is_active always sent). Guard
-  // them client-side so a blank required field never fires a doomed request.
+  // Backend requires cluster_id + name (is_hq/is_active always sent). `code` ไม่อยู่ในนี้แล้ว —
+  // แพลตฟอร์มเป็นคนตั้งให้ตอนสร้าง ผู้ใช้ไม่มีช่องให้กรอกและไม่มีอะไรให้ตรวจ
   const validateRequired = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.cluster_id) errs.cluster_id = t('common.validation.selectRequired', { label: t('common.label.cluster') });
-    if (!formData.code.trim()) errs.code = t('common.validation.requiredMessage', { label: t('common.field.code') });
-    else errs.code = validateField('code', formData.code, undefined, t);
     if (!formData.name.trim()) errs.name = t('common.validation.requiredMessage', { label: t('common.field.name') });
     // db_schema is optional (empty = not configured), but a non-empty value must still
     // be a valid postgres identifier before Save goes through — onBlur alone only
@@ -456,9 +459,11 @@ const BusinessUnitEdit: React.FC = () => {
     setFieldErrors((prev) => ({ ...prev, ...errs }));
     if (Object.keys(active).length > 0) {
       setError(t('pages.businessUnits.fixHighlightedFieldsPrefix') + Object.values(active).join(', '));
-      // db_schema lives in Technical while code/cluster live in General, so a failed Save
+      // db_schema lives in Technical while cluster_id lives in General, so a failed Save
       // can highlight a field on a tab the user cannot see. Jump to the first tab that
-      // holds one — without it, Save just looks like it did nothing.
+      // holds one — without it, Save just looks like it did nothing. (`code` used to be
+      // a second General-tab field here too, but it dropped out of `errs` entirely once
+      // validateRequired() stopped checking it — the platform sets it, not the user.)
       const target = tabsWithErrors(active)[0];
       if (target && target !== activeTab) handleTabChange(target);
       return false;
@@ -470,17 +475,17 @@ const BusinessUnitEdit: React.FC = () => {
    * ช่องบังคับที่ยังว่างอยู่ ใช้เฉพาะตอนสร้างใหม่
    *
    * แถบล่างเคยขึ้นคำว่า "No changes" บนหน้าสร้างใหม่ ซึ่งเป็นสถานะของระเบียนที่ยังไม่มีตัวตน
-   * — ไม่ได้บอกอะไรและไม่ตรงกับสิ่งที่ผู้ใช้กำลังทำ ช่องบังคับสามช่องยังกระจายอยู่คนละที่ด้วย
-   * (ชื่อคือ <h1>, code กับ cluster อยู่ในกลุ่ม Details) ที่ว่างตรงนั้นจึงเอามาบอกว่าเหลืออะไร
-   * พอครบแล้วไม่ต้องขึ้นอะไรเลย ปุ่ม Create ที่กดได้พูดแทนตัวเองได้อยู่แล้ว
+   * — ไม่ได้บอกอะไรและไม่ตรงกับสิ่งที่ผู้ใช้กำลังทำ ช่องบังคับเหลือสองช่องและยังกระจายอยู่คนละที่ด้วย
+   * (ชื่อคือ <h1>, cluster อยู่ในกลุ่ม Details) ที่ว่างตรงนั้นจึงเอามาบอกว่าเหลืออะไร code เคยเป็น
+   * ช่องที่สามในรายการนี้แต่หลุดออกไปแล้ว เพราะแพลตฟอร์มเป็นคนตั้งให้ตอนสร้าง ผู้ใช้ไม่มีช่องให้กรอก
+   * — อย่าใส่กลับเข้ามา พอครบแล้วไม่ต้องขึ้นอะไรเลย ปุ่ม Create ที่กดได้พูดแทนตัวเองได้อยู่แล้ว
    */
   const missingRequired = useMemo(() => {
     const missing: string[] = [];
     if (!formData.name.trim()) missing.push(t('common.field.name'));
-    if (!formData.code.trim()) missing.push(t('common.field.code'));
     if (!formData.cluster_id) missing.push(t('common.label.cluster'));
     return missing;
-  }, [formData.name, formData.code, formData.cluster_id, t]);
+  }, [formData.name, formData.cluster_id, t]);
 
   // Actual save request — split out of handleSave so the pool-repoint confirm dialog
   // can invoke it directly on confirm without re-running the gate that opened it.
@@ -526,7 +531,31 @@ const BusinessUnitEdit: React.FC = () => {
         notifyVersionConflict(t);
         await fetchBusinessUnit();
       } else {
-        setError(t('toast.saveFailed', { entity: t('entity.businessUnit.lower') }) + ': ' + getErrorDetail(err, t));
+        // BUSINESS_UNIT_ALREADY_EXISTS (409): the backend now rejects a create/update that
+        // would leave two business units with the same name in one cluster. Its message
+        // ("Business unit already exists") doesn't name a field, so parseApiError() below
+        // never produces a `fields` entry for it on its own — detect the catalog code and
+        // route the error onto `name` by hand, since name is the field the user actually
+        // has to change. isVersionConflict() above already claims the OTHER 409 this save
+        // can hit (a stale doc_version), so this check only needs to confirm the code, not
+        // re-derive that discrimination. getErrorDetail() (used elsewhere on this page for
+        // loads) is deliberately NOT used here: it redacts to a generic "try again later" in
+        // production, which made this deterministic, retry-proof conflict unrecoverable for
+        // real users — see rule 12 / agent-os/standards/errors/catch-blocks.md.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data?.error?.code;
+        const isDuplicateName = status === 409 && code === 'BUSINESS_UNIT_ALREADY_EXISTS';
+        const { message, fields } = parseApiError(err, t);
+        setFieldErrors((prev) => ({
+          ...prev,
+          ...fields,
+          ...(isDuplicateName ? { name: t('pages.businessUnits.duplicateNameError') } : {}),
+        }));
+        setError(
+          t('toast.saveFailed', { entity: t('entity.businessUnit.lower') }) +
+            ': ' +
+            (isDuplicateName ? t('pages.businessUnits.duplicateNameError') : message),
+        );
       }
     } finally {
       setSaving(false);
