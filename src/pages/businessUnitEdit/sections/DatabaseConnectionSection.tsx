@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { Button } from '../../../components/ui/button';
 import Can from '../../../components/Can';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import databasePoolService from '../../../services/databasePoolService';
+import { generateSchemaName } from '../../../utils/databasePool';
 import { getErrorDetail } from '../../../utils/errorParser';
 import { CollapsibleSection, ReadOnlyText, selectClassName } from '../shared';
 import { useI18n } from '../../../hooks/useI18n';
@@ -115,15 +117,30 @@ const PoolPicker: React.FC<PoolPickerProps> = ({ formData, fieldErrors, onBlur, 
 
       <div className="space-y-2">
         <Label htmlFor="db_schema">{t('pages.businessUnits.schemaLabel')}</Label>
-        <Input
-          id="db_schema"
-          name="db_schema"
-          value={formData.db_schema}
-          onChange={(e) => onPoolChange('db_schema', e.target.value)}
-          onBlur={onBlur}
-          placeholder={t('pages.businessUnits.schemaPlaceholder')}
-          className={fieldErrors.db_schema ? 'border-destructive' : ''}
-        />
+        <div className="flex gap-2">
+          <Input
+            id="db_schema"
+            name="db_schema"
+            value={formData.db_schema}
+            onChange={(e) => onPoolChange('db_schema', e.target.value)}
+            onBlur={onBlur}
+            placeholder={t('pages.businessUnits.schemaPlaceholder')}
+            className={`flex-1 ${fieldErrors.db_schema ? 'border-destructive' : ''}`}
+          />
+          {/* ตั้งชื่อให้เฉพาะตอนช่องยังว่าง — ชื่อ schema ที่ผูกข้อมูลจริงไว้แล้วสุ่มทับไม่ได้
+              ปุ่มจึงถูกปิดแทนที่จะซ่อน: ตำแหน่งช่องไม่ขยับตอนพิมพ์ตัวแรก และผู้ใช้ยังเห็นว่า
+              ล้างช่องแล้วสุ่มใหม่ได้ */}
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0"
+            disabled={!!formData.db_schema.trim()}
+            onClick={() => onPoolChange('db_schema', generateSchemaName())}
+          >
+            <Wand2 className="mr-2 h-4 w-4" />
+            {t('pages.businessUnits.generateSchema')}
+          </Button>
+        </div>
         {fieldErrors.db_schema && (
           <p className="text-xs text-destructive">{fieldErrors.db_schema}</p>
         )}
