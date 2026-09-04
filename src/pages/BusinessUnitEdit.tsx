@@ -15,7 +15,7 @@ import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { Save, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateField } from '../utils/validation';
-import { getErrorDetail, devLog } from '../utils/errorParser';
+import { getErrorDetail, parseApiError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
@@ -531,7 +531,31 @@ const BusinessUnitEdit: React.FC = () => {
         notifyVersionConflict(t);
         await fetchBusinessUnit();
       } else {
-        setError(t('toast.saveFailed', { entity: t('entity.businessUnit.lower') }) + ': ' + getErrorDetail(err, t));
+        // BUSINESS_UNIT_ALREADY_EXISTS (409): the backend now rejects a create/update that
+        // would leave two business units with the same name in one cluster. Its message
+        // ("Business unit already exists") doesn't name a field, so parseApiError() below
+        // never produces a `fields` entry for it on its own — detect the catalog code and
+        // route the error onto `name` by hand, since name is the field the user actually
+        // has to change. isVersionConflict() above already claims the OTHER 409 this save
+        // can hit (a stale doc_version), so this check only needs to confirm the code, not
+        // re-derive that discrimination. getErrorDetail() (used elsewhere on this page for
+        // loads) is deliberately NOT used here: it redacts to a generic "try again later" in
+        // production, which made this deterministic, retry-proof conflict unrecoverable for
+        // real users — see rule 12 / agent-os/standards/errors/catch-blocks.md.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        const code = (err as { response?: { data?: { error?: { code?: string } } } })?.response?.data?.error?.code;
+        const isDuplicateName = status === 409 && code === 'BUSINESS_UNIT_ALREADY_EXISTS';
+        const { message, fields } = parseApiError(err, t);
+        setFieldErrors((prev) => ({
+          ...prev,
+          ...fields,
+          ...(isDuplicateName ? { name: t('pages.businessUnits.duplicateNameError') } : {}),
+        }));
+        setError(
+          t('toast.saveFailed', { entity: t('entity.businessUnit.lower') }) +
+            ': ' +
+            (isDuplicateName ? t('pages.businessUnits.duplicateNameError') : message),
+        );
       }
     } finally {
       setSaving(false);
