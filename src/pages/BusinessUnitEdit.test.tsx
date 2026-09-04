@@ -150,21 +150,6 @@ describe('BusinessUnitEdit (one-document)', () => {
     expect(businessUnitService.getById).not.toHaveBeenCalled();
   });
 
-  it('blocks create when the required code is missing, without calling the API', async () => {
-    const user = userEvent.setup();
-    renderAt('/business-units/new?cluster_id=c1');
-    // name is required too; set it so only code is missing.
-    await user.click(await screen.findByRole('button', { name: /unnamed business unit/i }));
-    await user.type(screen.getByRole('textbox', { name: /business unit name/i }), 'New BU');
-    await user.tab();
-
-    await user.click(await screen.findByRole('button', { name: /create business unit/i }));
-
-    expect(businessUnitService.create).not.toHaveBeenCalled();
-    // shown both in the error banner and inline under the Code field
-    expect((await screen.findAllByText(/code is required/i)).length).toBeGreaterThan(0);
-  });
-
   it('creates when required fields are present', async () => {
     const user = userEvent.setup();
     asMock(businessUnitService.create).mockResolvedValue({ data: { id: 'bu9' } });
@@ -176,16 +161,15 @@ describe('BusinessUnitEdit (one-document)', () => {
     await user.click(await screen.findByRole('button', { name: /unnamed business unit/i }));
     await user.type(screen.getByRole('textbox', { name: /business unit name/i }), 'New BU');
     await user.tab();
-    await user.click(screen.getByRole('button', { name: /^set code…$/i }));
-    await user.type(screen.getByRole('textbox', { name: 'Code' }), 'BU9');
-    await user.tab();
 
     await user.click(await screen.findByRole('button', { name: /create business unit/i }));
 
     expect(businessUnitService.create).toHaveBeenCalledTimes(1);
     expect(asMock(businessUnitService.create).mock.calls[0][0]).toMatchObject({
-      code: 'BU9', name: 'New BU', cluster_id: 'c1',
+      name: 'New BU', cluster_id: 'c1',
     });
+    // code ไม่อยู่ใน payload อีกแล้ว — แพลตฟอร์มเป็นคนตั้งให้ตอนสร้าง
+    expect(asMock(businessUnitService.create).mock.calls[0][0]).not.toHaveProperty('code');
     // REGRESSION (finding #1): a successful create must land on the registered
     // `/business-units/:id/edit` route, not the unregistered `/business-units/:id`
     // — the latter falls through App.tsx's catch-all straight to the 404 page.

@@ -421,6 +421,11 @@ const BusinessUnitEdit: React.FC = () => {
     delete payload.db_schema;
     delete payload.database_pool_name;   // ค่าแสดงผลล้วน ไม่มีในสัญญาฝั่ง backend
 
+    // code ไม่เคยมาจากผู้ใช้อีกแล้ว: ตอนสร้างมันว่าง (backend เป็นคนตั้ง) ตอนแก้มันคือค่าที่โหลด
+    // มาแล้วส่งกลับไปเฉย ๆ ซึ่ง backend เพิกเฉยอยู่แล้ว ตัดออกทั้งสองทางเพื่อไม่ให้ payload
+    // อ้างว่ากำลังตั้งค่าที่มันตั้งไม่ได้
+    delete payload.code;
+
     // ส่งฟิลด์ pool เฉพาะเมื่อค่าต่างจากที่โหลดมา — backend ตรวจ `!== undefined` แล้วบังคับ
     // ด่าน canWriteClusterViaPlatformRole ส่งค่าเดิมซ้ำไปจะทำให้คนที่ไม่มีสิทธิ์ระดับ
     // แพลตฟอร์มโดน 403 ทั้งที่ไม่ได้แตะฟิลด์นี้
@@ -440,13 +445,11 @@ const BusinessUnitEdit: React.FC = () => {
     return payload;
   };
 
-  // Backend requires cluster_id, code, name (is_hq/is_active always sent). Guard
-  // them client-side so a blank required field never fires a doomed request.
+  // Backend requires cluster_id + name (is_hq/is_active always sent). `code` ไม่อยู่ในนี้แล้ว —
+  // แพลตฟอร์มเป็นคนตั้งให้ตอนสร้าง ผู้ใช้ไม่มีช่องให้กรอกและไม่มีอะไรให้ตรวจ
   const validateRequired = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.cluster_id) errs.cluster_id = t('common.validation.selectRequired', { label: t('common.label.cluster') });
-    if (!formData.code.trim()) errs.code = t('common.validation.requiredMessage', { label: t('common.field.code') });
-    else errs.code = validateField('code', formData.code, undefined, t);
     if (!formData.name.trim()) errs.name = t('common.validation.requiredMessage', { label: t('common.field.name') });
     // db_schema is optional (empty = not configured), but a non-empty value must still
     // be a valid postgres identifier before Save goes through — onBlur alone only
@@ -477,10 +480,9 @@ const BusinessUnitEdit: React.FC = () => {
   const missingRequired = useMemo(() => {
     const missing: string[] = [];
     if (!formData.name.trim()) missing.push(t('common.field.name'));
-    if (!formData.code.trim()) missing.push(t('common.field.code'));
     if (!formData.cluster_id) missing.push(t('common.label.cluster'));
     return missing;
-  }, [formData.name, formData.code, formData.cluster_id, t]);
+  }, [formData.name, formData.cluster_id, t]);
 
   // Actual save request — split out of handleSave so the pool-repoint confirm dialog
   // can invoke it directly on confirm without re-running the gate that opened it.

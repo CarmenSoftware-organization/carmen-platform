@@ -76,7 +76,6 @@ const setup = (overrides: Partial<React.ComponentProps<typeof BusinessUnitDocume
 // have no control here can never be set on create nor changed on edit — the
 // `code` regression (400 on create) was exactly this.
 const EDITABLE_FIELDS: [keyof BusinessUnitFormData, string][] = [
-  ['code', 'Code'],
   ['alias_name', 'Alias'],
   ['description', 'Description'],
   ['hotel_name', 'Hotel name'],
@@ -144,28 +143,6 @@ describe('BusinessUnitDocument', () => {
     // เป็น InlineField ปุ่มนี้จะกลับมาปรากฏและ assertion นี้จะแดง (ดูหลักฐาน RED ใน task-3.5-report.md)
     expect(screen.queryByRole('button', { name: /max users/i })).not.toBeInTheDocument();
   });
-
-  it('lets the user set the required code on a new business unit', async () => {
-    const user = userEvent.setup();
-    const { onCommit } = setup();
-
-    await user.click(screen.getByRole('button', { name: /set code/i }));
-    await user.type(screen.getByRole('textbox', { name: 'Code' }), 'HQ-01');
-    await user.tab();
-
-    expect(onCommit).toHaveBeenCalledWith('code', 'HQ-01');
-  });
-
-  it('validates the code on commit', async () => {
-    const user = userEvent.setup();
-    const { onValidate } = setup();
-
-    await user.click(screen.getByRole('button', { name: /set code/i }));
-    await user.type(screen.getByRole('textbox', { name: 'Code' }), 'x');
-    await user.tab();
-
-    expect(onValidate).toHaveBeenCalledWith('code', 'x');
-  });
 });
 
 describe('BusinessUnitDocument — copy hotel address to company', () => {
@@ -195,12 +172,5 @@ describe('BusinessUnitDocument - character counters', () => {
     setup();
     await user.click(screen.getByRole('button', { name: /^set description…$/i }));
     expect(screen.getByText('0 / 500')).toBeInTheDocument();
-  });
-
-  it('shows a 0 / 20 counter when editing the code', async () => {
-    const user = userEvent.setup();
-    setup();
-    await user.click(screen.getByRole('button', { name: /set code/i }));
-    expect(screen.getByText('0 / 20')).toBeInTheDocument();
   });
 });
