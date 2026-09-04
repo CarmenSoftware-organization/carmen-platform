@@ -214,8 +214,11 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
       {activeTab === 'general' && (
         <>
           <Card className="overflow-hidden p-0 [&>div:first-child]:border-t-0">
-            {/* `code` and `cluster_id` (with `name`, in the header) are the three fields
-                validateRequired() enforces — they are the only ones marked required. */}
+            {/* `cluster_id` and `name` (the latter in the header) are the two fields
+                validateRequired() enforces — they are the only ones marked required.
+                `code` used to be a third, but it is no longer a field the user sets: the
+                platform assigns it at creation and ignores it on update (see the read-only
+                block below), so there is nothing left here to validate — don't add it back. */}
             <Group
               label={t('pages.businessUnits.detailsGroup')}
               description={t('pages.businessUnits.detailsGroupDescription')}
