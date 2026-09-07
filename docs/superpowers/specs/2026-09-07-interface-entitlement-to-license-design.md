@@ -76,10 +76,35 @@ interface                             (parent_key: null)   ← module ใหม�
    └─ interface.pms.protel
 ```
 
-- เข้าระบบผ่าน `seed.license-feature.data.ts` ตัวเดิม **ไม่สร้างทางเข้าใหม่**
-- `state = active` ทั้ง 12 แถว (ไม่ใช่ `planned`) เพราะของเหล่านี้ขายอยู่แล้ววันนี้
+- `state = active` ทั้ง 12 แถว เพราะของเหล่านี้ขายอยู่แล้ววันนี้
 - catalog รองรับ n ชั้นอยู่แล้วและมีคีย์ 3 ชั้นใช้จริง (`accounting.config.ap`) จึงไม่ใช่ของใหม่
 - seed **ไม่เขียนทับ `state` ของแถวที่มีอยู่แล้ว** ตามที่ประกาศไว้ใน schema — รันซ้ำปลอดภัย
+
+**ทางเข้า catalog — ผ่าน generator เท่านั้น**
+
+`seed.license-feature.data.ts` เป็น **ไฟล์ที่ถูกสร้างอัตโนมัติ** (`GENERATED FILE — DO NOT EDIT
+BY HAND`) จาก `scripts/generate-license-catalog/run.ts` และมีด่าน `check.license-catalog-drift.ts`
+ใน CI ที่รัน generator ซ้ำแล้วเทียบ — แก้มือเมื่อไหร่ CI แดงทันที
+
+ต้องเพิ่ม **source set ใหม่ `LICENSE_ONLY_RESOURCES`** ใน `permission.route-map.ts`: คีย์ที่
+**มีของจริงและขายอยู่แล้ว แต่ไม่มี permission/route รองรับ** generator ปล่อยออกมาเป็น
+`state = active` และ **ยกเว้นจาก `assert_planned_sets_agree()`**
+
+**ทำไมใช้ `PLANNED_LICENSE_RESOURCES` ที่มีอยู่แล้วไม่ได้** — สองเหตุผลที่ตายตัว:
+
+1. generator บังคับให้ทุกคีย์ที่มาทางนั้นเกิดเป็น `state = inactive` โดยเจตนา ("ไม่งั้นขายได้
+   ทั้งที่ยังไม่มีของ" — รอยเดิมของ `report.schedule`) และ `inactive` แปลว่า *"กลุ่มที่ผูกคีย์นี้ไว้
+   แล้วเก็บไว้ได้ แต่**เพิ่มเข้ากลุ่มใหม่ไม่ได้**"* (`carmen-platform/src/types/index.ts:1483`)
+   ⇒ สคริปต์ grandfathering เขียน DB ตรงได้อยู่ แต่หลังจากนั้น**ไม่มีใครขาย interface ให้ BU
+   ใหม่ได้เลย** ฟีเจอร์ตายตั้งแต่วันแรก
+2. generator บังคับว่าทุกตัวใน `PLANNED_LICENSE_RESOURCES` ต้องอยู่ใน `PLANNED_RESOURCES` ด้วย
+   ซึ่งเป็นเซ็ต "ยกโทษให้ที่ยังไม่มี endpoint" — ใส่ interface ลงไปคือโกหกด่าน
+   `check.endpoint-permission-coverage`
+
+generator เขียน 2 ไฟล์: `seed.license-feature.data.ts` และ
+`apps/backend-gateway/src/license/license-catalog.generated.ts` (แผนที่ route → feature) คีย์
+`interface.*` ไม่มี route ชี้ไปหา จึงไม่ปรากฏในไฟล์หลัง ซึ่งถูกต้อง — การล็อกเกิดที่ FE ไม่ใช่ที่
+`LicenseInterceptor`
 
 ### 4.2 ไม่มีตารางใหม่
 
