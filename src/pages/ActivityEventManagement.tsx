@@ -18,6 +18,7 @@ import { SearchInput } from '../components/SearchInput';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { DateRangeFilter } from '../components/analytics/DateRangeFilter';
 import { EventDetailSheet } from './activityEvents/EventDetailSheet';
+import { useEventTypeLabel } from './activityEvents/useEventTypeLabel';
 import { useGlobalShortcuts } from '../components/KeyboardShortcuts';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { optionLabel, useAnalyticsFilterOptions } from '../hooks/useAnalyticsFilterOptions';
@@ -139,6 +140,8 @@ const ActivityEventManagement: React.FC = () => {
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
 
+  const eventTypeLabel = useEventTypeLabel();
+
   const columns = useMemo<ColumnDef<ActivityEvent, unknown>[]>(() => [
     {
       accessorKey: 'server_ts',
@@ -169,7 +172,7 @@ const ActivityEventManagement: React.FC = () => {
       accessorKey: 'event_type',
       header: t('pages.activityEvents.columnType'),
       meta: { card: 'badge' },
-      cell: ({ row }) => <Badge variant="secondary">{row.original.event_type}</Badge>,
+      cell: ({ row }) => <Badge variant="secondary">{eventTypeLabel(row.original.event_type)}</Badge>,
     },
     {
       accessorKey: 'page_path',
@@ -206,7 +209,7 @@ const ActivityEventManagement: React.FC = () => {
         </Button>
       ),
     },
-  ], [t]);
+  ], [t, eventTypeLabel]);
 
   const handlePaginateChange = ({ page, perpage }: { page: number; perpage: number }) => {
     localStorage.setItem('perpage_activity_events', String(perpage));
@@ -246,7 +249,7 @@ const ActivityEventManagement: React.FC = () => {
     pagePath && { label: t('pages.activityEvents.chipPage', { value: pagePath }), clear: () => { setPagePath(''); flushPagePath(''); resetPage(); } },
     sessionId && { label: t('pages.activityEvents.chipSession', { value: sessionId.slice(0, 8) }), clear: () => { setSessionId(''); flushSessionId(''); resetPage(); } },
     userId && { label: t('pages.activityEvents.chipUser', { value: userId.slice(0, 8) }), clear: () => { setUserId(''); flushUserId(''); resetPage(); } },
-    eventType && { label: t('pages.activityEvents.chipType', { value: eventType }), clear: () => { setEventType(''); resetPage(); } },
+    eventType && { label: t('pages.activityEvents.chipType', { value: eventTypeLabel(eventType) }), clear: () => { setEventType(''); resetPage(); } },
     buCode && { label: t('pages.activityEvents.chipBu', { value: optionLabel(buOptions, buCode) }), clear: () => { setBuCode(''); resetPage(); } },
     appId && { label: t('pages.activityEvents.chipApp', { value: optionLabel(appOptions, appId) }), clear: () => { setAppId(''); resetPage(); } },
   ].filter(Boolean) as { label: string; clear: () => void }[];

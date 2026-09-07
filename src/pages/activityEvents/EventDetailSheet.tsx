@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { JsonViewer } from '../../components/ui/json-viewer';
 import { useI18n } from '../../hooks/useI18n';
+import { useEventTypeLabel } from './useEventTypeLabel';
 import type { ActivityEvent } from '../../types';
 
 interface EventDetailSheetProps {
@@ -28,6 +29,7 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
 /** รายละเอียดเต็มของหนึ่ง event — เปิดจากคอลัมน์ actions ในตาราง */
 export const EventDetailSheet: React.FC<EventDetailSheetProps> = ({ event, onClose, onViewSession }) => {
   const { t } = useI18n();
+  const eventTypeLabel = useEventTypeLabel();
 
   return (
     <Sheet open={!!event} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -42,7 +44,7 @@ export const EventDetailSheet: React.FC<EventDetailSheetProps> = ({ event, onClo
             <div className="divide-y divide-border">
               <Row label={t('pages.activityEvents.detailServerTime')}>{fmt(event.server_ts)}</Row>
               <Row label={t('pages.activityEvents.detailClientTime')}>{fmt(event.client_ts)}</Row>
-              <Row label={t('pages.activityEvents.columnType')}><Badge variant="secondary">{event.event_type}</Badge></Row>
+              <Row label={t('pages.activityEvents.columnType')}><Badge variant="secondary">{eventTypeLabel(event.event_type)}</Badge></Row>
               <Row label={t('pages.activityEvents.columnUser')}>{event.user_name || event.user_id}</Row>
               <Row label={t('common.field.email')}>{event.user_email || '-'}</Row>
               <Row label={t('entity.businessUnit.title')}>{event.bu_code || '-'}</Row>
