@@ -2892,10 +2892,11 @@ export const en = {
     // The two pages that render <DateRangeFilter>. Neither had ANY English before this
     // wave — both were Thai-only — so unlike every earlier slice these English values are
     // NEW COPY, not byte-preserved literals, and no existing test asserts against them.
-    // The Thai is each page's existing wording moved across unchanged. Where a shared key
-    // already held the same English but a different Thai word (common.field.type is
-    // 'ประเภท'; this page's column says 'ชนิด'), a page-local key preserves the page's own
-    // word instead of silently rewording the Thai UI — flagged for the owner's read.
+    // The Thai is each page's existing wording moved across unchanged. These page-local
+    // keys once held 'ชนิด' where the shared common.field.type held 'ประเภท' for the same
+    // English 'Type'; the owner settled that split in favour of 'ประเภท' everywhere, so the
+    // Thai side is now uniform. Keep it that way — a page that reintroduces 'ชนิด' will read
+    // as two words for one thing on the same screen.
     reportTemplates: {
       subtitle: 'Manage report templates with dialog (XML) and content (.frx to XML)',
       addTemplate: 'Add Template',
