@@ -39,7 +39,6 @@ const groups: OpsGroup[] = [
     captionKey: 'pages.landing.captionContent',
     items: [
       { nameKey: 'nav.reportTemplates', descKey: 'pages.landing.descReportTemplates' },
-      { nameKey: 'pages.landing.itemPrintMapping', descKey: 'pages.landing.descPrintMapping' },
       { nameKey: 'nav.news', descKey: 'pages.landing.descNews' },
       { nameKey: 'nav.broadcasts', descKey: 'pages.landing.descBroadcasts' },
     ],
