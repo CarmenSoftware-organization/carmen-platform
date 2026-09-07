@@ -26,7 +26,6 @@ import { useAuth } from '../context/AuthContext';
 import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
-import InterfaceEntitlementCard from '../components/InterfaceEntitlementCard';
 import { initialFormData, aliasBound } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
@@ -759,11 +758,6 @@ const BusinessUnitEdit: React.FC = () => {
                   buCode={formData.code}
                   buName={formData.name}
                   hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                  isSuperAdmin={isSuperAdmin}
-                />
-                <InterfaceEntitlementCard
-                  key={`interface-${id}`}
-                  buCode={formData.code}
                   isSuperAdmin={isSuperAdmin}
                 />
               </>

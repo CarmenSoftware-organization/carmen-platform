@@ -829,21 +829,6 @@ export const en = {
       confirmDescription: 'Apply {{count}} pending migration(s) to {{name}} ({{code}})? This applies schema changes to the tenant database and cannot be undone.',
       applyButton: 'Apply migrations',
     },
-    interfaceEntitlementCard: {
-      title: 'Interface Entitlement',
-      description: 'Which external-system interfaces this business unit may configure. Leave empty to allow every interface; select specific brands to restrict the BU to those.',
-      toggleNone: 'None',
-      saveButton: 'Save entitlement',
-      savedToast: 'Interface entitlement saved',
-      notRestrictedNote: 'Not restricted. BU sees all interfaces.',
-      // INTERFACE_CATALOG group label (interfaceCatalog.ts). 'POS'/'PMS' and every brand
-      // name (Carmen GL, Oracle Micros, …) are deliberately left untranslated — industry
-      // abbreviations and product names — so only this one group label needs a key.
-      catalogAccounting: 'Accounting',
-      // INTERFACE_CATALOG brand label for accounting_external — the one brand name that is
-      // a generic noun phrase rather than a product name, so it gets translated.
-      catalogExternalSystem: 'External system',
-    },
     businessUnitMultiSelect: {
       noneSelected: 'No business units selected',
     },

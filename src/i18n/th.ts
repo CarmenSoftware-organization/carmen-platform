@@ -612,16 +612,6 @@ export const th: Translations = {
       confirmDescription: 'ใช้งาน Migration ที่ค้างอยู่ {{count}} รายการกับ {{name}} ({{code}}) หรือไม่? การดำเนินการนี้จะเปลี่ยนโครงสร้างฐานข้อมูลของ tenant และไม่สามารถย้อนกลับได้',
       applyButton: 'ใช้งาน Migration',
     },
-    interfaceEntitlementCard: {
-      title: 'สิทธิ์การใช้งานอินเทอร์เฟซ',
-      description: 'อินเทอร์เฟซระบบภายนอกที่หน่วยธุรกิจนี้สามารถตั้งค่าได้ เว้นว่างไว้เพื่ออนุญาตทุกอินเทอร์เฟซ หรือเลือกแบรนด์เฉพาะเพื่อจำกัดสิทธิ์ของ BU นี้',
-      toggleNone: 'ไม่มี',
-      saveButton: 'บันทึกสิทธิ์การใช้งาน',
-      savedToast: 'บันทึกสิทธิ์การใช้งานอินเทอร์เฟซแล้ว',
-      notRestrictedNote: 'ไม่ถูกจำกัด BU มองเห็นทุกอินเทอร์เฟซ',
-      catalogAccounting: 'บัญชี',
-      catalogExternalSystem: 'ระบบภายนอก',
-    },
     businessUnitMultiSelect: {
       noneSelected: 'ยังไม่ได้เลือกหน่วยธุรกิจ',
     },
