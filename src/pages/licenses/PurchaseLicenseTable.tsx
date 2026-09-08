@@ -35,7 +35,9 @@ type StatusFilterValue = 'active' | 'superseded' | 'scheduled' | 'expired' | 'ca
 // ปุ่มกรองที่ไม่มีวันคืนผลเมื่อผู้ใช้ดูแท็บที่นั่งอยู่ คือปุ่มที่หลอกคน
 const STATUS_VALUES: StatusFilterValue[] = ['active', 'scheduled', 'expired'];
 
-const STATUS_VARIANT: Record<StatusFilterValue, 'success' | 'secondary' | 'destructive'> = {
+type StatusBadgeVariant = 'success' | 'secondary' | 'destructive' | 'warning';
+
+const STATUS_VARIANT: Record<StatusFilterValue, StatusBadgeVariant> = {
   active: 'success',
   superseded: 'secondary',
   cancelled: 'secondary',
@@ -100,8 +102,8 @@ const withTiebreaker = (sort: string): string => {
  * (column cells, CSV) อ่านจากรูปกลางนี้อย่างเดียว ไม่ต้องแตกสาขาตามชนิดซ้ำอีก — วันที่ถูก
  * format ไว้ล่วงหน้าแล้วเพื่อให้ตารางกับ CSV เห็นค่าเดียวกันเป๊ะเสมอ ส่วน `status` เก็บเป็น
  * enum ดิบ (`StatusFilterValue`) ไม่ใช่ label ที่แปลแล้ว — badge ในตารางและคอลัมน์ CSV
- * ต้อง resolve ผ่าน `statusLabel()` เองคนละจุด (ตารางใน `columns`, CSV ใน `handleExport`)
- * เพื่อไม่ผูก locale ไว้ในแถวกลาง แต่ทั้งสองจุดต้องเรียก `statusLabel()` ตัวเดียวกันเสมอ
+ * ต้อง resolve ผ่าน `rowStatusLabel()` เองคนละจุด (ตารางใน `columns`, CSV ใน `handleExport`)
+ * เพื่อไม่ผูก locale ไว้ในแถวกลาง แต่ทั้งสองจุดต้องเรียก `rowStatusLabel()` ตัวเดียวกันเสมอ
  * ไม่งั้นค่าที่เห็นในตารางกับไฟล์ที่ export จะไม่ตรงกัน
  */
 interface FleetLicenseRow {
@@ -115,13 +117,20 @@ interface FleetLicenseRow {
   status: StatusFilterValue;
   reference_no: string;
   /**
-   * มีค่าจริงเฉพาะใบโควตา BU (อ่านผ่าน `normalizeAudit` ไม่ใช่ `quota.created_at` ตรง ๆ — ดู
-   * คอมเมนต์ที่ `toFleetRow`) ใบที่นั่ง (`BusinessUnitLicense`) ไม่มีคอลัมน์นี้ในฝั่ง backend เลย
-   * จึงเป็น `null` เสมอ — ไม่ใช่บั๊ก
+   * มีค่าจริงทั้งใบโควตา BU และใบ interface (อ่านผ่าน `normalizeAudit` ไม่ใช่ `row.created_at`
+   * ตรง ๆ — ดูคอมเมนต์ที่ `toFleetRow`) มีแต่ **ใบที่นั่ง** (`BusinessUnitLicense`) ที่ไม่มี
+   * คอลัมน์นี้ในฝั่ง backend เลย จึงเป็น `null` เสมอ — ไม่ใช่บั๊ก
    */
   created_at?: string | null;
-  /** ชื่อคนสร้างใบ — มีค่าจริงเฉพาะใบโควตา BU เช่นเดียวกับ `created_at` */
+  /** ชื่อคนสร้างใบ — มีค่าจริงทุกชนิดยกเว้นใบที่นั่ง เช่นเดียวกับ `created_at` */
   created_by_name?: string;
+  /**
+   * เวลา/คนแก้ล่าสุด — ใบ interface ส่งมาจริง (`InterfaceLicense` มี `updated_at`/`updated_by_id`)
+   * ใบอีกสองชนิดไม่มี ค่าคู่นี้ไม่มีคอลัมน์ในตาราง (ดูคอมเมนต์ที่ `columns`) แต่ CSV ประกาศ
+   * คอลัมน์ Updated ไว้อยู่แล้ว — ไม่แม็พไว้ที่นี่คือปล่อยให้ไฟล์ export ว่างทั้งที่มีข้อมูล
+   */
+  updated_at?: string | null;
+  updated_by_name?: string;
   /**
    * คลัสเตอร์ที่เจ้าของใบสังกัด — มีค่าเฉพาะใบที่นั่ง (`SeatLicenseRow` พ่วง `cluster_*` มาให้)
    * ใบโควตา BU ไม่เซ็ตค่านี้เพราะคลัสเตอร์ **คือ** เจ้าของใบอยู่แล้ว (ดู `showCluster`)
@@ -134,7 +143,18 @@ interface FleetLicenseRow {
    */
   group_code?: string;
   group_name?: string;
+  /**
+   * ใบ interface ที่ "วันยังไม่หมด แต่ใช้ไม่ได้" เพราะสัญญาแม่ไม่ active — backend ตอบมาใน
+   * `in_force`/`contract_state` คอลัมน์สถานะที่คำนวณจากวันอย่างเดียวจะขึ้น "Active" ให้ใบที่
+   * ไม่ให้สิทธิ์อะไรเลย ธงนี้จึงเปลี่ยน **ป้ายที่แสดง** อย่างเดียว (ตาราง + CSV) ไม่แตะตัวกรอง
+   * สถานะกับ `buildAdvance` ที่ยังอิงวันที่ล้วน เพราะ backend ไม่มีคอลัมน์ให้กรองด้วย `in_force`
+   */
+  interface_capped?: boolean;
 }
+
+/** สีป้ายสถานะของแถว — คู่กับ `rowStatusLabel` ในคอมโพเนนต์ ใบที่ถูกสัญญาแม่ครอบไม่ใช่ "ปกติ" */
+const rowStatusVariant = (r: FleetLicenseRow): StatusBadgeVariant =>
+  r.interface_capped ? 'warning' : STATUS_VARIANT[r.status];
 
 function toFleetRow(
   kind: LicenseKind,
@@ -159,15 +179,18 @@ function toFleetRow(
     const base = clusterLicenseStatus(quota, now);
     return base === 'active' && quota.is_in_force === false ? 'superseded' : base;
   };
-  // ใบ interface ใช้สูตรวันเดียวกับใบที่นั่ง (`t <= end`) — ไม่หยิบ `state`/`in_force` จาก backend
-  // มาปน: `in_force` รวมสถานะสัญญาแม่เข้ามาด้วย ซึ่งไม่ใช่สถานะของ *ใบ* ที่คอลัมน์นี้ตอบ
+  // ใบ interface ใช้สูตร **วัน** เดียวกับใบที่นั่ง (`t <= end`) เพื่อให้ตรงกับตัวกรองที่แปลงเป็น
+  // ช่วงวันที่ (`buildAdvance`) — ส่วน `in_force` (ที่รวมสถานะสัญญาแม่เข้ามาด้วย) ไม่ทับค่านี้
+  // แต่ไปอยู่ที่ `interface_capped` ซึ่งเปลี่ยนเฉพาะป้ายที่แสดง ไม่เปลี่ยนค่าที่ใช้กรอง
   const status: StatusFilterValue = isBuOwned
     ? buLicenseStatus(row as unknown as Parameters<typeof buLicenseStatus>[0], now)
     : quotaStatus();
-  // ใบที่นั่ง (BusinessUnitLicense) ไม่มี audit ในฝั่ง backend เลย — ใบโควตา BU มีจริงเพราะ
-  // cluster-license.service.ts select มาให้แล้ว อ่านผ่าน normalizeAudit ไม่ใช่ quota.created_at
-  // ตรง ๆ (เดิมทำแบบนั้นและไม่ได้ชื่อคนสร้างมาด้วย) เพื่อรองรับทั้งรูปแบนและรูป nested เหมือนทุกจุดอื่น
-  const quotaAudit = isBuOwned ? {} : normalizeAudit(quota);
+  // ใบที่นั่ง (BusinessUnitLicense) ไม่มี audit ในฝั่ง backend เลย — อีกสองชนิดมีจริง (ใบโควตา BU
+  // จาก cluster-license.service.ts, ใบ interface จาก DTO ที่มี created_*/updated_* ครบ) เงื่อนไข
+  // จึงเป็น `kind === 'seat'` ไม่ใช่ `isBuOwned` ที่กลืนใบ interface ไปด้วยเพราะเจ้าของเป็น BU
+  // เหมือนกัน · อ่านผ่าน normalizeAudit ไม่ใช่ row.created_at ตรง ๆ (เดิมทำแบบนั้นและไม่ได้ชื่อ
+  // คนสร้างมาด้วย) เพื่อรองรับทั้งรูปแบนและรูป nested เหมือนทุกจุดอื่น
+  const rowAudit = kind === 'seat' ? {} : normalizeAudit(row);
   return {
     id: row.id,
     license_number: row.license_number,
@@ -180,12 +203,15 @@ function toFleetRow(
     end_date: showNoExpiry && isPerpetual(row.end_date) ? noExpiryLabel : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
-    created_at: quotaAudit.created?.at ?? null,
-    created_by_name: quotaAudit.created?.name,
+    created_at: rowAudit.created?.at ?? null,
+    created_by_name: rowAudit.created?.name,
+    updated_at: rowAudit.updated?.at ?? null,
+    updated_by_name: rowAudit.updated?.name,
     cluster_code: isBuOwned ? seat.cluster_code : undefined,
     cluster_name: isBuOwned ? seat.cluster_name : undefined,
     group_code: kind === 'interface' ? inf.group?.code : undefined,
     group_name: kind === 'interface' ? inf.group?.name : undefined,
+    interface_capped: kind === 'interface' && status === 'active' && inf.in_force === false,
   };
 }
 
@@ -230,6 +256,17 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
   // license-status column and the active-filter chip) and the Sheet's filter buttons all
   // call this, so a given status can never read two ways on one page.
   const statusLabel = useCallback((s: StatusFilterValue) => t(STATUS_LABEL_KEYS[s]), [t]);
+  /**
+   * ป้ายสถานะ **ของแถว** — ต่างจาก `statusLabel` ตรงที่รู้จัก `interface_capped` ด้วย ใบ interface
+   * ที่วันยังไม่หมดแต่สัญญาแม่ไม่ active ให้สิทธิ์อะไรไม่ได้เลย การพิมพ์ "Active" ให้มันคือการโกหก
+   * ทั้งตารางและ CSV ต้องเรียกตัวนี้ตัวเดียวกัน ไม่งั้นไฟล์ที่ export ไม่ตรงกับที่ตาเห็นบนจอ
+   * (ตัวกรองสถานะยังอิงวันที่ล้วนตามเดิม — ดู `buildAdvance`)
+   */
+  const rowStatusLabel = useCallback(
+    (r: FleetLicenseRow) =>
+      r.interface_capped ? t('pages.businessUnits.interfaceCapped') : statusLabel(r.status),
+    [statusLabel, t],
+  );
   const ownerLabel = t(OWNER_LABEL_KEYS[config.kind]);
   const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
 
@@ -359,7 +396,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     const csvRows = rows.map((r) => ({
       ...r,
       ...auditCsvFields(normalizeAudit(r)),
-      status: statusLabel(r.status),
+      status: rowStatusLabel(r),
     }));
     const csv = generateCSV(csvRows, [
       { key: 'license_number', label: t('pages.licenses.licenseNumber') },
@@ -386,12 +423,11 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
   };
 
   const columns = useMemo<ColumnDef<FleetLicenseRow, unknown>[]>(() => {
-    // FleetLicenseRow ไม่มี updated_at เลย และ toFleetRow() ก็ไม่มีทางเซ็ตให้ได้ เพราะ DTO
-    // ทั้งสองฝั่ง backend (BusinessUnitLicenseListRowDto, ClusterLicenseListRowDto) ไม่ส่ง
-    // updated_at มาเลยสักตัว — ต่างจาก created_at (ดูคอมเมนต์ที่ interface ด้านบน) ที่ใบโควตา
-    // BU มีข้อมูลจริง คอลัมน์ Updated ที่นี่จะว่างถาวรเพราะ mapping เป็นตัวกั้น ไม่ใช่รอ backend
-    // ส่งเพิ่มในอนาคตเหมือนตาราง licenses/ อื่น (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement
-    // และ broadcastColumns.tsx) จึงหยิบมาแค่คอลัมน์ Created ตัวเดียว
+    // หยิบมาแค่คอลัมน์ Created ตัวเดียว: DTO ของใบที่นั่งกับใบโควตา BU
+    // (BusinessUnitLicenseListRowDto, ClusterLicenseListRowDto) ไม่ส่ง updated_at มาเลย มีแต่ใบ
+    // interface ที่ส่งครบ — เปิดคอลัมน์ Updated ที่นี่จะได้คอลัมน์ว่างถาวรในสองในสามแท็บ
+    // (เจอกรณีเดียวกันมาแล้วที่ SuperAdminManagement และ broadcastColumns.tsx) ส่วน CSV ที่
+    // ประกาศคอลัมน์ Updated ไว้อยู่แล้วยังได้ค่าของใบ interface ครบ เพราะ toFleetRow แม็พไว้
     const [createdColumn] = auditColumns<FleetLicenseRow>({ t });
     return [
       {
@@ -487,9 +523,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
         // ไม่มี `className="capitalize"` แล้ว — ค่าจากตัวคำนวณเป็น Title Case อยู่แล้วตอนภาษาอังกฤษ
         // (ดู statusLabel/common.status.*) ภาษาไทยไม่มี case ให้ capitalize เลยแปล
         cell: ({ row }) => (
-          <Badge variant={STATUS_VARIANT[row.original.status]}>
-            {statusLabel(row.original.status)}
-          </Badge>
+          <Badge variant={rowStatusVariant(row.original)}>{rowStatusLabel(row.original)}</Badge>
         ),
       },
       {
@@ -502,7 +536,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       },
       createdColumn,
     ];
-  }, [config, t, ownerLabel, amountLabel, statusLabel]);
+  }, [config, t, ownerLabel, amountLabel, rowStatusLabel]);
 
   return (
     <div className="space-y-3">

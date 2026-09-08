@@ -90,11 +90,15 @@ export default function BusinessUnitInterfaceLicensesCard({
               className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
             >
               <div className="min-w-0 space-y-0.5">
+                {/* อ่าน `group` แบบกันพลาดเหมือนที่ตาราง/ฟอร์มทำ — endpoint ราย BU อาจไม่ pack
+                    `group` มาให้สักแถว แล้ว map ทั้งก้อนจะ throw ตอน render ทำให้แท็บ Licenses
+                    ทั้งแท็บขาวทั้งหน้า ไม่ใช่แค่แถวเดียวหาย */}
                 <div className="font-mono">
-                  {l.group.code} <span className="text-muted-foreground">· {l.license_number}</span>
+                  {l.group?.code ?? l.license_feature_group_id}{' '}
+                  <span className="text-muted-foreground">· {l.license_number}</span>
                 </div>
                 <div className="text-muted-foreground">
-                  {l.group.name} · {fmtDate(l.start_date)} – {fmtDate(l.end_date)}
+                  {l.group?.name ?? ''} · {fmtDate(l.start_date)} – {fmtDate(l.end_date)}
                 </div>
               </div>
               <div className="flex items-center gap-2">

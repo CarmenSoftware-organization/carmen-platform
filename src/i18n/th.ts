@@ -1132,6 +1132,9 @@ export const th: Translations = {
       noGroupsAvailable: 'ยังไม่มีกลุ่มสิทธิ์ในระบบ สร้างได้ที่',
       groupsSelectedSummary: 'เลือกไว้ {{groups}} กลุ่ม · รวม {{features}} feature',
       manageGroups: 'จัดการกลุ่ม',
+      interfaceGroupLeftover:
+        'กลุ่ม interface ที่ยังค้างบนสัญญานี้ — ต้องย้ายไปใบสิทธิ์ interface กดนำออกที่นี่',
+      removeLeftoverGroup: 'นำออก',
       purchasedGroups: 'กลุ่มสิทธิ์ที่ซื้อ',
       groupEntitlementsForBu: 'กลุ่มสิทธิ์ที่ให้กับ {{code}}',
       // `clearSearch` and `selectedCount` were dropped from this object (fix round 1): both

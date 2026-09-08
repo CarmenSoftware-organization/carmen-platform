@@ -1442,6 +1442,9 @@ export const en = {
       noGroupsAvailable: 'No licence feature groups exist yet. Create one in',
       groupsSelectedSummary: '{{groups}} groups selected · {{features}} features in total',
       manageGroups: 'Manage groups',
+      interfaceGroupLeftover:
+        'Interface group still on this contract — must move to an interface license; remove it here',
+      removeLeftoverGroup: 'Remove',
       purchasedGroups: 'Purchased groups',
       groupEntitlementsForBu: 'Licence groups granted to {{code}}',
       // --- authored English for strings that existed only in Thai ---
