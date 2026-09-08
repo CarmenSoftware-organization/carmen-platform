@@ -1317,6 +1317,13 @@ export const th: Translations = {
       editGroup: 'แก้ไขกลุ่ม',
       code: 'รหัส',
       codeHint: 'เปลี่ยนไม่ได้หลังสร้างกลุ่มแล้ว',
+      // --- Task B4: ชนิดกลุ่ม standard/interface ---
+      kind: 'ชนิด',
+      kindStandard: 'ทั่วไป',
+      kindInterface: 'Interface',
+      kindStandardHint: 'ขายบนใบสัญญาหลัก',
+      kindInterfaceHint: 'ขายบนใบสิทธิ์ interface (INF) ใบละหนึ่งกลุ่ม',
+      kindLocked: 'ตั้งได้ตอนสร้างเท่านั้น — เปลี่ยนแล้วเท่ากับย้ายสิทธิ์ที่ขายไปแล้วข้ามชนิดใบ',
       name: 'ชื่อ',
       description: 'คำอธิบาย',
       sortOrder: 'ลำดับ',

@@ -13,6 +13,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
+import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmptyState } from '../components/EmptyState';
@@ -29,6 +30,7 @@ import { parseApiError, isNotFoundError, devLog } from '../utils/errorParser';
 import { getDocVersion, isVersionConflict, notifyVersionConflict } from '../utils/docVersion';
 import { Save, Loader2, ArrowLeft, SearchX, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
+import type { LicenseFeatureGroupKind } from '../types';
 
 interface LicenseFeatureGroupFormData {
   code: string;
@@ -36,6 +38,8 @@ interface LicenseFeatureGroupFormData {
   description: string;
   sort_order: string; // เก็บเป็นสตริงในฟอร์ม แปลงเป็นตัวเลขตอนส่ง
   is_active: boolean;
+  /** ตั้งได้ตอนสร้างเท่านั้น — ส่งเฉพาะสาขา create ไม่เคยอยู่ใน payload ของ PATCH */
+  kind: LicenseFeatureGroupKind;
 }
 
 const emptyForm: LicenseFeatureGroupFormData = {
@@ -44,6 +48,7 @@ const emptyForm: LicenseFeatureGroupFormData = {
   description: '',
   sort_order: '0',
   is_active: true,
+  kind: 'standard',
 };
 
 /** เพดานเดียวกับหน้ารายการ — จำนวนกลุ่มมีเพดานเชิงโครงสร้าง ไม่ได้งอกตามการใช้งาน */
@@ -145,6 +150,7 @@ const LicenseFeatureGroupEdit: React.FC = () => {
     description?: string | null;
     sort_order: number;
     is_active: boolean;
+    kind?: LicenseFeatureGroupKind;
     feature_keys?: string[];
     subscription_count?: number;
   }) => {
@@ -154,6 +160,8 @@ const LicenseFeatureGroupEdit: React.FC = () => {
       description: detail.description ?? '',
       sort_order: String(detail.sort_order ?? 0),
       is_active: detail.is_active ?? true,
+      // gateway รุ่นก่อน A1 ยังไม่ส่งคีย์นี้ — ไม่มีคือ 'standard' ตามที่ประกาศไว้ที่ตัว type
+      kind: detail.kind ?? 'standard',
     };
     setFormData(next);
     setSavedFormData(next);
@@ -213,7 +221,10 @@ const LicenseFeatureGroupEdit: React.FC = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  const handleFieldChange = (name: keyof LicenseFeatureGroupFormData, value: string | boolean) => {
+  const handleFieldChange = (
+    name: keyof LicenseFeatureGroupFormData,
+    value: string | boolean | LicenseFeatureGroupKind,
+  ) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => {
       if (!prev[name]) return prev;
@@ -266,9 +277,12 @@ const LicenseFeatureGroupEdit: React.FC = () => {
 
     try {
       if (isNew) {
+        // `kind` ส่งที่นี่ที่เดียว — `buildMetaPayload` ที่ PATCH ใช้ร่วมกันจงใจไม่ถือคีย์นี้
+        // เพราะ backend ไม่รับใน PATCH เหมือน `code`
         const created = await licenseFeatureGroupService.create({
           ...buildMetaPayload(),
           code: formData.code.trim(),
+          kind: formData.kind,
         });
         const detail = created?.data ?? (created as never);
         // ตั้ง feature เฉพาะเมื่อมีการเลือกไว้ — กลุ่มเปล่าเป็นสภาพที่ถูกต้อง ไม่ต้องยิง request เปล่า
@@ -429,6 +443,51 @@ const LicenseFeatureGroupEdit: React.FC = () => {
                           </span>
                         </div>
                       )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label>{t('pages.licenseFeatureGroups.kind')}</Label>
+                      {isNew && canManage ? (
+                        <div
+                          role="group"
+                          aria-label={t('pages.licenseFeatureGroups.kind')}
+                          className="bg-muted flex h-9 items-center rounded-md p-0.5"
+                        >
+                          <StatusModeButton
+                            active={formData.kind === 'standard'}
+                            disabled={false}
+                            onClick={() => handleFieldChange('kind', 'standard')}
+                          >
+                            {t('pages.licenseFeatureGroups.kindStandard')}
+                          </StatusModeButton>
+                          <StatusModeButton
+                            active={formData.kind === 'interface'}
+                            disabled={false}
+                            onClick={() => handleFieldChange('kind', 'interface')}
+                          >
+                            {t('pages.licenseFeatureGroups.kindInterface')}
+                          </StatusModeButton>
+                        </div>
+                      ) : (
+                        // ชนิดของกลุ่มที่ออกไปแล้วแก้ไม่ได้ — เหตุผลอยู่ข้าง ๆ ไม่ใช่ช่อง disabled
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <Badge variant="secondary">
+                            {t(
+                              formData.kind === 'interface'
+                                ? 'pages.licenseFeatureGroups.kindInterface'
+                                : 'pages.licenseFeatureGroups.kindStandard',
+                            )}
+                          </Badge>
+                          <span className="text-muted-foreground text-xs">
+                            {t('pages.licenseFeatureGroups.kindLocked')}
+                          </span>
+                        </div>
+                      )}
+                      <p className="text-muted-foreground text-xs">
+                        {formData.kind === 'interface'
+                          ? t('pages.licenseFeatureGroups.kindInterfaceHint')
+                          : t('pages.licenseFeatureGroups.kindStandardHint')}
+                      </p>
                     </div>
 
                     <div className="space-y-2">

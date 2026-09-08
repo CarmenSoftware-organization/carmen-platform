@@ -58,7 +58,12 @@ export function GroupSelectionCard({
         subscriptionService.getFeatureCatalog(),
       ]);
       if (list.status === 'rejected') throw list.reason;
-      setGroups(Array.isArray(list.value?.data) ? list.value.data : []);
+      // กลุ่ม interface ขายบนใบ INF — ใบสัญญาห้ามถือ (backend 400 ตั้งแต่เฟส 4) จึงไม่โชว์ให้เลือกตั้งแต่ต้น
+      setGroups(
+        (Array.isArray(list.value?.data) ? list.value.data : []).filter(
+          (g) => (g.kind ?? 'standard') === 'standard',
+        ),
+      );
       // catalog ใช้แค่แปลง key เป็นชื่อที่อ่านออก — ล้มได้โดยไม่ทำให้การ์ดพัง
       if (cat.status === 'fulfilled') {
         setCatalog(Array.isArray(cat.value?.data) ? cat.value.data : []);

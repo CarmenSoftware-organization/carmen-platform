@@ -1678,6 +1678,14 @@ export const en = {
       editGroup: 'Edit group',
       code: 'Code',
       codeHint: 'Cannot be changed after the group is created',
+      // --- Task B4: ชนิดกลุ่ม standard/interface ---
+      kind: 'Kind',
+      kindStandard: 'Standard',
+      kindInterface: 'Interface',
+      kindStandardHint: 'Sold on the main subscription',
+      // "licence" spelt American here to match the neighbouring keys in this file.
+      kindInterfaceHint: 'Sold on an interface license (INF), one group per license',
+      kindLocked: 'Set when the group is created — changing it would move sold entitlements between license kinds',
       name: 'Name',
       description: 'Description',
       sortOrder: 'Sort order',
