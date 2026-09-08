@@ -2482,6 +2482,7 @@ export const th: Translations = {
       subscriptionDays: 'ใบสัญญา',
       buQuotaDays: 'ใบโควตา BU',
       seatDays: 'ใบที่นั่ง BU',
+      interfaceDays: 'ใบสิทธิ์ interface',
       savedThresholdsToast: 'บันทึกเกณฑ์ใกล้หมดอายุแล้ว',
       thresholdsNote1:
         'เป็นเกณฑ์แสดงผล ไม่ใช่เกณฑ์บังคับใช้ เพิ่มค่าแล้วคำเตือนขึ้นเร็วขึ้นเท่านั้น ไม่ได้ให้หรือถอนสิทธิ์ใคร',

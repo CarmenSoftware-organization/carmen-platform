@@ -29,6 +29,7 @@ interface ThresholdsFormData {
   subscription_days: string;
   bu_quota_days: string;
   seat_days: string;
+  interface_days: string;
 }
 
 /**
@@ -40,6 +41,7 @@ const DEFAULTS: ExpiryThresholdsConfig = {
   subscription_days: 30,
   bu_quota_days: 30,
   seat_days: 30,
+  interface_days: 30,
 };
 
 /**
@@ -55,6 +57,7 @@ const toForm = (config: PlatformConfig | null): ThresholdsFormData => {
     subscription_days: pick('subscription_days'),
     bu_quota_days: pick('bu_quota_days'),
     seat_days: pick('seat_days'),
+    interface_days: pick('interface_days'),
   };
 };
 
@@ -115,8 +118,9 @@ export const ExpiryThresholdsCard: React.FC<ExpiryThresholdsCardProps> = ({
       subscription_days: validate(formData.subscription_days),
       bu_quota_days: validate(formData.bu_quota_days),
       seat_days: validate(formData.seat_days),
+      interface_days: validate(formData.interface_days),
     };
-    if (errors.subscription_days || errors.bu_quota_days || errors.seat_days) {
+    if (errors.subscription_days || errors.bu_quota_days || errors.seat_days || errors.interface_days) {
       setFieldErrors(errors);
       return;
     }
@@ -127,6 +131,7 @@ export const ExpiryThresholdsCard: React.FC<ExpiryThresholdsCardProps> = ({
         subscription_days: Number(formData.subscription_days),
         bu_quota_days: Number(formData.bu_quota_days),
         seat_days: Number(formData.seat_days),
+        interface_days: Number(formData.interface_days),
       });
       toast.success(t('pages.platformConfig.savedThresholdsToast'));
       // ให้ป้ายในหน้า /licenses และ /clusters สะท้อนค่าใหม่โดยไม่ต้องรีโหลดทั้งแอป — ถ้าไม่เรียก
@@ -218,6 +223,25 @@ export const ExpiryThresholdsCard: React.FC<ExpiryThresholdsCardProps> = ({
           onChange={(e) => handleChange('seat_days', e.target.value)}
           onBlur={() => handleBlur('seat_days')}
           className={fieldErrors.seat_days ? 'border-destructive' : ''}
+        />
+      </ConfigField>
+
+      <ConfigField
+        label={t('pages.platformConfig.interfaceDays')}
+        htmlFor="expiry-interface-days"
+        isEditing={isEditing}
+        value={t('pages.platformConfig.daysValue', { count: form.interface_days })}
+        error={fieldErrors.interface_days}
+      >
+        <Input
+          id="expiry-interface-days"
+          type="number"
+          min={1}
+          max={365}
+          value={formData.interface_days}
+          onChange={(e) => handleChange('interface_days', e.target.value)}
+          onBlur={() => handleBlur('interface_days')}
+          className={fieldErrors.interface_days ? 'border-destructive' : ''}
         />
       </ConfigField>
     </ConfigCardShell>

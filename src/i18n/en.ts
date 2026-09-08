@@ -3510,6 +3510,7 @@ export const en = {
       subscriptionDays: 'Subscription licences',
       buQuotaDays: 'BU-quota licences',
       seatDays: 'BU seat licences',
+      interfaceDays: 'Interface licences',
       savedThresholdsToast: 'Expiring-soon thresholds saved',
       thresholdsNote1:
         'These are display thresholds, not enforcement ones. Raising them makes warnings appear earlier; it never grants or revokes access.',

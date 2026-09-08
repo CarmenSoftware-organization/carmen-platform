@@ -14,6 +14,7 @@ export const DEFAULT_EXPIRY_THRESHOLDS: ExpiryThresholdsConfig = {
   subscription_days: 30,
   bu_quota_days: 30,
   seat_days: 30,
+  interface_days: 30,
 };
 
 interface ExpiryThresholdContextValue {
