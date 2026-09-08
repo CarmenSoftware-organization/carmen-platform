@@ -1918,6 +1918,13 @@ export const th: Translations = {
       clusterPoolSeatsUsed: 'พูลระดับ cluster: ใช้ไป {{used}} / {{cap}} ที่นั่ง',
       seatsManagedInLicenseCenter: 'จัดการที่นั่งได้ที่ License Center',
 
+      // --- Task B3: BusinessUnitInterfaceLicensesCard.tsx ---
+      interfaceLicensesTitle: 'ใบสิทธิ์ interface',
+      interfaceInForceCount: 'ใช้ได้จริง {{count}} จาก {{total}} ใบ',
+      interfaceCapped: 'ถูกครอบด้วยสัญญาหลัก',
+      interfaceCappedHint: 'มีใบที่วันยังไม่หมด แต่สัญญาหลัก{{state}} — interface ปิดอยู่จนกว่าจะต่อสัญญา',
+      noInterfaceLicenses: 'ยังไม่มีใบสิทธิ์ interface ของหน่วยธุรกิจนี้',
+
       // --- Task 4: BusinessUnitUsersCard.tsx ---
       activeCountBadge: 'ใช้งาน {{count}} ราย',
       ofTotalUsers: 'จากทั้งหมด {{total}} คน',

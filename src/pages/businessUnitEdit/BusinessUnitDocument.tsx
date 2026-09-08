@@ -64,6 +64,8 @@ interface BusinessUnitDocumentProps {
   advancedExtraSlot?: React.ReactNode;
   usersSlot?: React.ReactNode;
   licensesSlot?: React.ReactNode;
+  /** ใบสิทธิ์ interface — คนละชนิดกับที่นั่ง จึงเป็นการ์ดของตัวเองใต้ `licensesSlot` ไม่ใช่ก้อนเดียวกัน */
+  interfaceLicensesSlot?: React.ReactNode;
 }
 
 export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
@@ -102,6 +104,7 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
     advancedExtraSlot,
     usersSlot,
     licensesSlot,
+    interfaceLicensesSlot,
   } = props;
 
   // `canEdit` is the one source of write access on this page. Each section already
@@ -373,7 +376,12 @@ export default function BusinessUnitDocument(props: BusinessUnitDocumentProps) {
 
       {activeTab === 'users' && usersSlot}
 
-      {activeTab === 'licenses' && licensesSlot}
+      {activeTab === 'licenses' && (
+        <>
+          {licensesSlot}
+          {interfaceLicensesSlot}
+        </>
+      )}
     </div>
   );
 }

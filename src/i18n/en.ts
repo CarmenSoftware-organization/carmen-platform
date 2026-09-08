@@ -2727,6 +2727,16 @@ export const en = {
       clusterPoolSeatsUsed: 'Cluster pool: {{used}} / {{cap}} seats used',
       seatsManagedInLicenseCenter: 'Seats are managed in the License Center.',
 
+      // --- Task B3: BusinessUnitInterfaceLicensesCard.tsx ---
+      // "license" spelt American here to match every neighbouring key in this file
+      // (userLicensesTitle, seatsFromActiveLicense*) even though the spec text says "licence".
+      interfaceLicensesTitle: 'Interface licenses',
+      interfaceInForceCount: '{{count}} of {{total}} licenses in force',
+      interfaceCapped: 'Capped by contract',
+      // {{state}} is a translated common.status.* label for InterfaceLicense.contract_state.
+      interfaceCappedHint: 'Some licenses are still within their dates, but the main contract is {{state}} — interfaces stay off until it is renewed',
+      noInterfaceLicenses: 'No interface license has been issued for this business unit',
+
       // --- Task 4: BusinessUnitUsersCard.tsx ---
       activeCountBadge: '{{count}} Active',
       ofTotalUsers: 'of {{total}} total',

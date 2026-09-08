@@ -21,7 +21,7 @@ import { normalizeAudit } from '../utils/audit';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useI18n } from '../hooks/useI18n';
 import { Skeleton } from '../components/ui/skeleton';
-import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense } from '../types';
+import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense, InterfaceLicense } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
@@ -30,11 +30,13 @@ import { initialFormData, aliasBound } from './businessUnitEdit/types';
 import type { DefaultCurrency, BusinessUnitFormData } from './businessUnitEdit/types';
 import { useBusinessUnitUsers } from './businessUnitEdit/useBusinessUnitUsers';
 import businessUnitLicenseService from '../services/businessUnitLicenseService';
+import businessUnitInterfaceLicenseService from '../services/businessUnitInterfaceLicenseService';
 import { useLicenseLedger } from './licenses/useLicenseLedger';
 import { sumActiveLicenses, licenseStatus } from '../utils/buLicense';
 import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCard';
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from './businessUnitEdit/BusinessUnitLicensesCard';
+import BusinessUnitInterfaceLicensesCard from './businessUnitEdit/BusinessUnitInterfaceLicensesCard';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
@@ -85,6 +87,9 @@ const BusinessUnitEdit: React.FC = () => {
 
   const users = useBusinessUnitUsers(id, formData.cluster_id, isNew);
   const licenses = useLicenseLedger<BusinessUnitLicense>(id, businessUnitLicenseService);
+  // ใบสิทธิ์ interface เป็น ledger คนละก้อนกับที่นั่ง (คนละ endpoint คนละกติกาสถานะ) —
+  // ใช้ hook ตัวเดียวกันซ้ำได้เพราะ service มี getAll/delete รูปเดียวกัน
+  const interfaceLicenses = useLicenseLedger<InterfaceLicense>(id, businessUnitInterfaceLicenseService);
   // hook เดิมคืน activeSeats/activeLicenseCount มาให้ ส่วนหัวเอกสารใช้สองค่านี้ —
   // คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
   const activeSeats = sumActiveLicenses(licenses.licenses);
@@ -137,7 +142,12 @@ const BusinessUnitEdit: React.FC = () => {
       // สัญญาระดับคลัสเตอร์ ส่วนรายชื่อเป็นสมาชิกของ BU นี้ `count` เป็นจำนวนใบทั้งหมดของ BU
       // ไม่ใช่จำนวนใบที่ยัง active เพราะ badge บนแท็บบอกว่า "มีอะไรอยู่ข้างใน" ไม่ใช่สรุปสถานะ
       // (การ์ดข้างในบอกที่นั่งกับใบที่ active อยู่แล้ว)
-      base.push({ id: 'licenses', label: t('pages.businessUnits.licensesTab'), count: licenses.licenses.length });
+      // นับรวมใบ interface ด้วย — แท็บเดียวถือสองการ์ด badge จึงต้องบอกจำนวนของทั้งแท็บ
+      base.push({
+        id: 'licenses',
+        label: t('pages.businessUnits.licensesTab'),
+        count: licenses.licenses.length + interfaceLicenses.licenses.length,
+      });
     }
     // Renamed from the pre-existing `(t) =>` — now that `t` is this component's translator,
     // reusing the name here would shadow it.
@@ -779,6 +789,22 @@ const BusinessUnitEdit: React.FC = () => {
                 createHref={
                   canCreateSubscription && formData.cluster_id
                     ? `/licenses/subscriptions/new?cluster_id=${encodeURIComponent(formData.cluster_id)}&business_unit_id=${encodeURIComponent(id!)}`
+                    : undefined
+                }
+              />
+            ) : null
+          }
+          interfaceLicensesSlot={
+            !isNew ? (
+              <BusinessUnitInterfaceLicensesCard
+                licenses={interfaceLicenses.licenses}
+                loading={interfaceLicenses.loading}
+                manageHref="/licenses?tab=interface"
+                /* ปุ่มออกใบใหม่ผูกกับ `subscription.manage` ตัวเดียวกับ `PrivateRoute` ของ
+                   `/licenses/interface/new` — ไม่งั้นปุ่มจะพาผู้ใช้ไปชนหน้าที่เตะกลับ */
+                createHref={
+                  canCreateSubscription
+                    ? `/licenses/interface/new?bu=${encodeURIComponent(id!)}&ownerLabel=${encodeURIComponent(`${formData.code} - ${formData.name}`)}`
                     : undefined
                 }
               />
