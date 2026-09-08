@@ -14,7 +14,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Forbidden from "./pages/Forbidden";
 import NotFound from "./pages/NotFound";
-import { SEAT_CONFIG, BU_QUOTA_CONFIG } from "./pages/licenses/licenseKindConfig";
+import { SEAT_CONFIG, BU_QUOTA_CONFIG, INTERFACE_CONFIG } from "./pages/licenses/licenseKindConfig";
 import "./App.css";
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -240,6 +240,22 @@ function AppContent() {
               element={
                 <PrivateRoute requiredPermission="subscription.read" feature="licenses">
                   <LicensePurchaseForm config={BU_QUOTA_CONFIG} mode="edit" />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/interface/new"
+              element={
+                <PrivateRoute requiredPermission="subscription.manage" feature="licenses">
+                  <LicensePurchaseForm config={INTERFACE_CONFIG} mode="create" />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/licenses/interface/:id/edit"
+              element={
+                <PrivateRoute requiredPermission="subscription.read" feature="licenses">
+                  <LicensePurchaseForm config={INTERFACE_CONFIG} mode="edit" />
                 </PrivateRoute>
               }
             />

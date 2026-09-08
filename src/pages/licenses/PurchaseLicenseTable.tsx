@@ -22,7 +22,7 @@ import { normalizeAudit, auditCsvFields } from '../../utils/audit';
 import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
-import type { SeatLicenseRow, BuQuotaLicenseRow, PaginateParams } from '../../types';
+import type { SeatLicenseRow, BuQuotaLicenseRow, InterfaceLicenseRow, PaginateParams } from '../../types';
 import type { TKey } from '../../i18n/types';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 
@@ -61,10 +61,14 @@ const STATUS_LABEL_KEYS: Record<StatusFilterValue, TKey> = {
 const OWNER_LABEL_KEYS: Record<LicenseKind, TKey> = {
   seat: 'entity.businessUnit.title',
   'bu-quota': 'common.label.cluster',
+  // ใบ interface มีเจ้าของเป็น BU เหมือนใบที่นั่ง
+  interface: 'entity.businessUnit.title',
 };
 const AMOUNT_LABEL_KEYS: Record<LicenseKind, TKey> = {
   seat: 'common.field.seats',
   'bu-quota': 'pages.licenses.buQuota',
+  // ค่าหลักของใบ interface คือกลุ่มสิทธิ์ ไม่ใช่จำนวน — คอลัมน์ค่าหลักจึงวาดคนละแบบ (ดู `selector`)
+  interface: 'pages.licenses.featureGroup',
 };
 
 const DEFAULT_SORT_ID = 'license_number';
@@ -124,18 +128,27 @@ interface FleetLicenseRow {
    */
   cluster_code?: string;
   cluster_name?: string;
+  /**
+   * กลุ่มสิทธิ์ที่ใบนี้ขาย — มีค่าเฉพาะใบ interface (`selector: 'feature-group'`) ใบอีกสองชนิด
+   * ขายเป็น "จำนวน" ซึ่งอยู่ใน `amount` แล้ว
+   */
+  group_code?: string;
+  group_name?: string;
 }
 
 function toFleetRow(
   kind: LicenseKind,
-  row: SeatLicenseRow | BuQuotaLicenseRow,
+  row: SeatLicenseRow | BuQuotaLicenseRow | InterfaceLicenseRow,
   now: Date,
   showNoExpiry: boolean,
   noExpiryLabel: string,
 ): FleetLicenseRow {
-  const isSeat = kind === 'seat';
+  // เจ้าของเป็น BU สำหรับทุกชนิดยกเว้นโควตา BU (ที่เจ้าของ **คือ** คลัสเตอร์) — เขียนเป็นข้อยกเว้น
+  // ตัวเดียวแทน `kind === 'seat'` เพื่อไม่ต้องไล่แก้ทุกจุดทุกครั้งที่มีชนิดใบใหม่ที่เจ้าของเป็น BU
+  const isBuOwned = kind !== 'bu-quota';
   const seat = row as SeatLicenseRow;
   const quota = row as BuQuotaLicenseRow;
+  const inf = row as InterfaceLicenseRow;
   // สูตรสถานะสองชนิดไม่เท่ากัน (ดูคอมเมนต์ใน utils/buLicense.ts กับ utils/clusterLicense.ts) —
   // ห้ามคิดสูตรใหม่ที่นี่ เรียกของเดิมเท่านั้น เหมือนที่ LicensePurchaseForm.tsx ทำ
   // ตารางนี้แบ่งหน้าและรวมหลายคลัสเตอร์ จึงไม่มีลิสต์ใบครบของคลัสเตอร์ใดเลย — คำนวณ `superseded`
@@ -146,25 +159,33 @@ function toFleetRow(
     const base = clusterLicenseStatus(quota, now);
     return base === 'active' && quota.is_in_force === false ? 'superseded' : base;
   };
-  const status: StatusFilterValue = isSeat ? buLicenseStatus(seat, now) : quotaStatus();
+  // ใบ interface ใช้สูตรวันเดียวกับใบที่นั่ง (`t <= end`) — ไม่หยิบ `state`/`in_force` จาก backend
+  // มาปน: `in_force` รวมสถานะสัญญาแม่เข้ามาด้วย ซึ่งไม่ใช่สถานะของ *ใบ* ที่คอลัมน์นี้ตอบ
+  const status: StatusFilterValue = isBuOwned
+    ? buLicenseStatus(row as unknown as Parameters<typeof buLicenseStatus>[0], now)
+    : quotaStatus();
   // ใบที่นั่ง (BusinessUnitLicense) ไม่มี audit ในฝั่ง backend เลย — ใบโควตา BU มีจริงเพราะ
   // cluster-license.service.ts select มาให้แล้ว อ่านผ่าน normalizeAudit ไม่ใช่ quota.created_at
   // ตรง ๆ (เดิมทำแบบนั้นและไม่ได้ชื่อคนสร้างมาด้วย) เพื่อรองรับทั้งรูปแบนและรูป nested เหมือนทุกจุดอื่น
-  const quotaAudit = isSeat ? {} : normalizeAudit(quota);
+  const quotaAudit = isBuOwned ? {} : normalizeAudit(quota);
   return {
     id: row.id,
     license_number: row.license_number,
-    owner_code: isSeat ? seat.business_unit_code : quota.cluster_code,
-    owner_name: isSeat ? seat.business_unit_name : quota.cluster_name,
-    amount: isSeat ? seat.licensed_users : quota.licensed_bus,
+    owner_code: isBuOwned ? seat.business_unit_code : quota.cluster_code,
+    owner_name: isBuOwned ? seat.business_unit_name : quota.cluster_name,
+    // ใบ interface ไม่มีจำนวนเลย — 0 ที่นี่ไม่มีใครอ่าน เพราะคอลัมน์ค่าหลักของมันวาดจาก
+    // `group_code`/`group_name` แทน (ดู `selector` ใน columns) และ CSV ก็ไม่ส่งคอลัมน์ amount
+    amount: kind === 'seat' ? seat.licensed_users : kind === 'bu-quota' ? quota.licensed_bus : 0,
     start_date: fmtDate(row.start_date),
     end_date: showNoExpiry && isPerpetual(row.end_date) ? noExpiryLabel : fmtDate(row.end_date),
     status,
     reference_no: row.reference_no || '-',
     created_at: quotaAudit.created?.at ?? null,
     created_by_name: quotaAudit.created?.name,
-    cluster_code: isSeat ? seat.cluster_code : undefined,
-    cluster_name: isSeat ? seat.cluster_name : undefined,
+    cluster_code: isBuOwned ? seat.cluster_code : undefined,
+    cluster_name: isBuOwned ? seat.cluster_name : undefined,
+    group_code: kind === 'interface' ? inf.group?.code : undefined,
+    group_name: kind === 'interface' ? inf.group?.name : undefined,
   };
 }
 
@@ -183,10 +204,10 @@ function buildAdvance(kind: LicenseKind, status: StatusFilterValue | null): stri
   const now = new Date().toISOString();
   if (status === 'scheduled') return JSON.stringify({ where: { start_date: { gt: now } } });
   if (status === 'expired') {
-    return JSON.stringify({ where: { end_date: kind === 'seat' ? { lt: now } : { lte: now } } });
+    return JSON.stringify({ where: { end_date: kind !== 'bu-quota' ? { lt: now } : { lte: now } } });
   }
   return JSON.stringify({
-    where: kind === 'seat'
+    where: kind !== 'bu-quota'
       ? { start_date: { lte: now }, end_date: { gte: now } }
       : { start_date: { lte: now }, end_date: { gt: now } },
   });
@@ -329,6 +350,9 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
   const activeFilterCount = statusFilter ? 1 : 0;
 
   const handleExport = () => {
+    // คอลัมน์ค่าหลักของ CSV สลับตามชนิดใบ ต้องประกาศชนิดให้ชัดก่อน spread — array literal ที่
+    // spread เข้ามาจะถูกอนุมานเป็น `key: string` แล้ว generic ของ generateCSV รับไม่ได้
+    type CsvColumn = { key: keyof (typeof csvRows)[number]; label: string };
     // export เฉพาะหน้าปัจจุบันที่โหลดมาแล้ว (`rows`) ไม่ยิงคำขอ perpage:-1 แยกต่างหาก —
     // แพทเทิร์นเดิมเคยทำแบบนั้นแล้วเลิกใช้ (ดู memory: List summary block เลิก perpage:-1)
     // และตรงกับ SubscriptionTable.tsx ที่ export `items` ของหน้าปัจจุบันเช่นกัน
@@ -340,8 +364,15 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
     const csv = generateCSV(csvRows, [
       { key: 'license_number', label: t('pages.licenses.licenseNumber') },
       { key: 'owner_code', label: t('pages.licenses.ownerCodeColumn', { owner: ownerLabel }) },
+      // ค่าหลักของใบต่างชนิดกันคนละรูป — ใบกลุ่มสิทธิ์ส่งรหัส+ชื่อกลุ่มแทนคอลัมน์จำนวนที่เป็น 0
+      // เสมอ (ดู `toFleetRow`) การส่ง 0 ออกไปคือการ export ตัวเลขที่ไม่มีความหมาย
       { key: 'owner_name', label: t('pages.licenses.ownerNameColumn', { owner: ownerLabel }) },
-      { key: 'amount', label: amountLabel },
+      ...(config.selector === 'feature-group'
+        ? ([
+            { key: 'group_code', label: `${amountLabel} (${t('common.field.code')})` },
+            { key: 'group_name', label: amountLabel },
+          ] as CsvColumn[])
+        : ([{ key: 'amount', label: amountLabel }] as CsvColumn[])),
       { key: 'start_date', label: t('common.field.startDate') },
       { key: 'end_date', label: t('common.field.endDate') },
       { key: 'status', label: t('common.status.label') },
@@ -408,14 +439,30 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           </div>
         ),
       },
-      {
-        accessorKey: 'amount',
-        // id คือชื่อฟิลด์จริงบนสาย (`licensed_users`/`licensed_bus`) ไม่ใช่ `amount` ที่เป็นชื่อ
-        // ฟิลด์กลางในไฟล์นี้ — DataTable ส่ง id นี้ตรงไปเป็นค่า `sort` ให้ backend
-        id: config.amountField,
-        header: amountLabel,
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.amount}</span>,
-      },
+      config.selector === 'feature-group'
+        ? ({
+            id: 'group',
+            header: amountLabel,
+            // `license_feature_group_id` เป็น uuid ดิบ เรียงตามมันคือเรียงตามค่าที่ผู้ใช้ไม่เห็น
+            // และ `group.code` ที่เห็นจริงมาจาก join ไม่ใช่คอลัมน์บนตารางใบ — ปิดการเรียงไว้
+            enableSorting: false,
+            // ไม่มี `meta.card` เหมือนคอลัมน์จำนวนที่มันมาแทน — ค่าหลักของใบเป็น "ค่า" ไม่ใช่ตัวตน
+            // ของแถว การยัดเข้าหัวการ์ดคู่กับเลขที่ใบและเจ้าของทำให้หัวการ์ดมีสามก้อนสองบรรทัด
+            cell: ({ row }: { row: Row<FleetLicenseRow> }) => (
+              <div className="flex flex-col">
+                <span className="font-mono text-xs">{row.original.group_code}</span>
+                <span className="text-xs text-muted-foreground">{row.original.group_name}</span>
+              </div>
+            ),
+          } as ColumnDef<FleetLicenseRow, unknown>)
+        : {
+            accessorKey: 'amount',
+            // id คือชื่อฟิลด์จริงบนสาย (`licensed_users`/`licensed_bus`) ไม่ใช่ `amount` ที่เป็นชื่อ
+            // ฟิลด์กลางในไฟล์นี้ — DataTable ส่ง id นี้ตรงไปเป็นค่า `sort` ให้ backend
+            id: config.amountField,
+            header: amountLabel,
+            cell: ({ row }) => <span className="font-mono text-xs">{row.original.amount}</span>,
+          },
       {
         id: 'coverage',
         header: t('pages.licenses.coverageColumn'),
