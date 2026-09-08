@@ -1772,13 +1772,16 @@ export const en = {
       // licenseKindConfig.ts (SEAT_CONFIG.newPageTitle) + SeatSection.tsx (the "Add seat
       // license" button — hardcoded there, not read from config).
       addSeatLicense: 'Add seat license',
-      addInterfaceLicense: 'Add interface licence',
+      addInterfaceLicense: 'Add interface license',
       // ค่าหลักของใบสิทธิ์ interface — ป้ายช่องในฟอร์ม หัวคอลัมน์ในตาราง และป้ายบนแผ่นป้ายใบ
       featureGroup: 'Feature group',
       selectFeatureGroup: 'Select an interface group',
       // {{state}} คือ contract_state ที่แปลผ่าน common.status.* — ใบยังไม่หมดอายุ แต่สัญญาแม่
       // ตัดสิทธิ์อยู่ ผู้ใช้ต้องรู้ว่าปัญหาอยู่ที่สัญญา ไม่ใช่ที่ใบ
-      cappedByContract: 'Licence dates are valid, but the main contract is {{state}} — interfaces are off until it is renewed',
+      cappedByContract: 'License dates are valid, but the main contract is {{state}} — interfaces are off until it is renewed',
+      // สองบรรทัดใต้ช่องเลือกกลุ่ม — "โหลดไม่ได้" กับ "ไม่มีของให้ขาย" คนละปัญหา คนละทางแก้
+      featureGroupsLoadFailed: 'Could not load feature groups',
+      noSellableInterfaceGroups: 'No active interface group to sell — create one under License Feature Groups first',
       // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
       // (field Label).
       licenseNumber: 'License Number',
@@ -1808,7 +1811,7 @@ export const en = {
       // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
       // pages.news/pages.users precedent of a dedicated pages.<slice>.title key.
       title: 'Licenses',
-      subtitle: 'Fleet-wide license status by cluster, subscription, seat licences, BU quota or interface licences.',
+      subtitle: 'Fleet-wide license status by cluster, subscription, seat licenses, BU quota or interface licenses.',
       // FleetCapacity's `expiringLabel` prop — distinct from quotaExpiringToggle below
       // (ClusterLicenseTable's Sheet button/badge), a shorter, different string.
       buQuotaExpiring: 'BU quota expiring',
@@ -1817,7 +1820,7 @@ export const en = {
       viewBySubscription: 'By subscription',
       viewBySeat: 'By seat license',
       viewByBuQuota: 'By BU quota',
-      viewByInterface: 'By interface licence',
+      viewByInterface: 'By interface license',
 
       // ClusterLicenseDetail.tsx
       clusterNotFoundOrDeleted: 'Cluster not found or deleted',

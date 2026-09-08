@@ -208,6 +208,8 @@ interface LicenseFieldsCardProps {
   licenseNumber?: string;
   /** ตัวเลือกกลุ่มสิทธิ์ — มีสมาชิกเฉพาะตอนสร้างใบชนิด `selector: 'feature-group'` เท่านั้น */
   groupOptions: LicenseFeatureGroup[];
+  /** สถานะการโหลดของ `groupOptions` — รายการว่างตอน 'ready' คือคนละเรื่องกับตอน 'failed' */
+  groupOptionsState: 'loading' | 'ready' | 'failed';
   /** ป้ายกลุ่มของใบที่ออกแล้ว ("CODE · ชื่อ") — สตริงว่างเมื่อใบชนิดนี้ไม่ใช้กลุ่ม */
   groupLabel: string;
   /** โหมดสร้าง — ตัวตนของใบ (เจ้าของ/คลัสเตอร์/เลขที่ใบ) แสดงในการ์ดนี้เฉพาะตอนสร้าง
@@ -257,7 +259,8 @@ function TermModeButton({
  */
 function LicenseFieldsCard({
   config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, cluster, licenseNumber, isNew,
-  groupOptions, groupLabel, onChange, onAmountChange, onBlur, onFocus, onNoExpiryChange,
+  groupOptions, groupOptionsState, groupLabel, onChange, onAmountChange, onBlur, onFocus,
+  onNoExpiryChange,
 }: LicenseFieldsCardProps) {
   const { t } = useI18n();
   const ownerLabel = t(OWNER_LABEL_KEYS[config.kind]);
@@ -321,7 +324,11 @@ function LicenseFieldsCard({
             <Label htmlFor="amount">{editing ? t('common.field.required', { label: amountLabel }) : amountLabel}</Label>
             {editing && config.selector === 'feature-group' && isNew ? (
               <>
-                <Select value={draft.amount} onValueChange={onAmountChange}>
+                <Select
+                  value={draft.amount}
+                  onValueChange={onAmountChange}
+                  disabled={groupOptionsState === 'loading'}
+                >
                   <SelectTrigger
                     id="amount"
                     aria-label={amountLabel}
@@ -337,6 +344,16 @@ function LicenseFieldsCard({
                     ))}
                   </SelectContent>
                 </Select>
+                {/* ช่องเลือกที่เปิดแล้วว่างเปล่าต้องบอกเหตุผลตรงนั้น ไม่ใช่ให้ผู้ใช้ไปค้นพบเองตอนกดบันทึก
+                 *  แล้วได้แค่ "ต้องเลือก" ซึ่งไม่บอกว่าเลือกอะไรไม่ได้เพราะอะไร */}
+                {groupOptionsState === 'failed' && (
+                  <p className="text-destructive text-xs">{t('pages.licenses.featureGroupsLoadFailed')}</p>
+                )}
+                {groupOptionsState === 'ready' && groupOptions.length === 0 && (
+                  <p className="text-muted-foreground text-xs">
+                    {t('pages.licenses.noSellableInterfaceGroups')}
+                  </p>
+                )}
                 {fieldErrors.amount && <p className="text-destructive text-xs">{fieldErrors.amount}</p>}
               </>
             ) : config.selector === 'feature-group' ? (
@@ -534,6 +551,11 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // ตัวเลือกกลุ่มสิทธิ์ของใบชนิด `selector: 'feature-group'` — โหลดเฉพาะโหมดสร้าง เพราะกลุ่ม
   // แก้ไม่ได้หลังออกใบ โหมดแก้ไขจึงไม่มีอะไรให้เลือก (และไม่ควรยิงคำขอที่ไม่มีใครใช้ผล)
   const [groupOptions, setGroupOptions] = useState<LicenseFeatureGroup[]>([]);
+  // สถานะของ "รายการตัวเลือก" ไม่ใช่ของ "ค่าที่เลือก" — รายการว่างมีสองความหมายที่ต่างกันคนละเรื่อง
+  // (ยังโหลดไม่เสร็จ / โหลดพัง / โหลดสำเร็จแต่ไม่มีกลุ่มให้ขาย) ถ้าไม่แยกไว้ ทั้งสามกรณีจะกลายเป็น
+  // ช่องเลือกที่เปิดแล้วว่างเปล่าเหมือนกันหมด แล้วผู้ใช้จะได้แค่ "ต้องเลือก" ตอนกดบันทึก
+  const [groupOptionsState, setGroupOptionsState] =
+    useState<'loading' | 'ready' | 'failed'>('loading');
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
@@ -637,6 +659,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   useEffect(() => {
     if (config.selector !== 'feature-group' || !isNew) return;
     let alive = true;
+    setGroupOptionsState('loading');
     licenseFeatureGroupService
       .getAll({ page: 1, perpage: 200, sort: 'sort_order:asc' })
       .then((res) => {
@@ -645,8 +668,16 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
         // ขายได้เฉพาะกลุ่ม interface ที่ยังขายอยู่ — กลุ่ม standard ผูกใบนี้ไม่ได้ backend ตอบ 400
         // `kind` เป็น optional ฝั่ง type (gateway รุ่นก่อน A1 ไม่ส่งมา) อ่าน absent เป็น 'standard'
         setGroupOptions(rows.filter((g) => (g.kind ?? 'standard') === 'interface' && g.is_active));
+        setGroupOptionsState('ready');
       })
-      .catch((err: unknown) => devLog('feature group options fetch failed', err));
+      .catch((err: unknown) => {
+        if (!alive) return;
+        // 403 ที่ catalog กลุ่มสิทธิ์ทำให้หน้านี้ใช้ไม่ได้ทั้งหน้า ไม่ใช่แค่ช่องเดียวหาย — ต้องพูด
+        // ออกมา ไม่ใช่กลืนลง devLog แล้วปล่อยให้ผู้ใช้ไปเจอ "ต้องเลือก" ตอนกดบันทึก
+        devLog('feature group options fetch failed', err);
+        setGroupOptions([]);
+        setGroupOptionsState('failed');
+      });
     return () => { alive = false; };
   }, [config.selector, isNew]);
 
@@ -700,7 +731,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     // ให้เป็นจำนวนเต็มบวก ซึ่ง uuid ของกลุ่มไม่มีวันผ่าน ใช้คีย์ required ตัวเดียวกับที่มันใช้
     const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
     const amountErr = config.selector === 'feature-group'
-      ? (draft.amount ? '' : t('common.validation.requiredMessage', { label: amountLabel }))
+      ? (draft.amount ? '' : t('common.validation.selectRequired', { label: amountLabel }))
       : validateField('amount', draft.amount, { required: true, label: amountLabel }, t);
     if (amountErr) next.amount = amountErr;
     const startErr = validateField('start_date', draft.start_date, { required: true, label: t('common.validation.startDate') }, t);
@@ -979,6 +1010,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 cluster={null}
                 isNew
                 groupOptions={groupOptions}
+                groupOptionsState={groupOptionsState}
                 groupLabel={groupLabel}
                 onChange={handleChange}
                 onAmountChange={handleAmountChange}
@@ -1065,6 +1097,7 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               licenseNumber={licenseNumber}
               isNew={false}
               groupOptions={groupOptions}
+              groupOptionsState={groupOptionsState}
               groupLabel={groupLabel}
               onChange={handleChange}
               onAmountChange={handleAmountChange}

@@ -1398,6 +1398,8 @@ export const th: Translations = {
       addInterfaceLicense: 'เพิ่มใบสิทธิ์ interface',
       featureGroup: 'กลุ่มสิทธิ์',
       selectFeatureGroup: 'เลือกกลุ่มสิทธิ์ interface',
+      featureGroupsLoadFailed: 'โหลดกลุ่มสิทธิ์ไม่สำเร็จ',
+      noSellableInterfaceGroups: 'ยังไม่มีกลุ่มสิทธิ์ interface ที่ขายอยู่ — สร้างที่หน้ากลุ่มสิทธิ์ก่อน',
       cappedByContract: 'วันของใบยังไม่หมด แต่สัญญาหลัก{{state}} — interface ปิดอยู่จนกว่าจะต่อสัญญา',
       licenseNumber: 'เลขที่ไลเซนส์',
       removeLicenseTitle: 'นำไลเซนส์ออก',
