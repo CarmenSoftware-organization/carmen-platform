@@ -1,7 +1,7 @@
 # แยกสิทธิ์ interface ออกเป็นใบอนุญาตชนิดใหม่ (INF)
 
 **วันที่:** 2026-09-09
-**สถานะ:** design — ยังไม่มีแผนดำเนินการ
+**สถานะ:** design อนุมัติแล้ว · แผน: `docs/superpowers/plans/2026-09-09-interface-license-split.md`
 **รีโปที่เกี่ยวข้อง:** `carmen-platform` (FE) · `carmen-backend-v2` (BE + gateway) · `carmen-inventory-frontend-react` (ผู้บริโภคสิทธิ์)
 
 ## 1. โจทย์
@@ -98,13 +98,22 @@ partial unique index ที่วันนี้แปลว่า "หนึ่
 ที่ active" แล้วลืมสัญญาหลัก จะปล่อยให้ลูกค้าที่สัญญาหมดยิง POS เข้ามาได้ ⇒ ฟังก์ชันคำนวณต้องมี
 **ตัวเดียว** และทั้ง gateway guard กับ endpoint ที่ inventory FE อ่าน ต้องเรียกตัวเดียวกัน
 
-**รหัสข้อผิดพลาดแยกตัว:** เพิ่ม `403 INTERFACE_LICENSE_EXPIRED` สำหรับ route ที่ถูกกันด้วยคีย์
-`interface.*` เท่านั้น แยกจาก `403 LICENSE_EXPIRED` เดิม — ลูกค้าต้องแยกออกระหว่าง "สัญญาหมด
-ติดต่อฝ่ายขาย" กับ "สิทธิ์เชื่อมต่อ POS หมด ระบบอื่นยังใช้ได้"
+**สัญญาณ "INF หมดแต่สัญญาหลักยังอยู่" ส่งผ่าน `GET /api/license` ไม่ใช่รหัส 403 ใหม่**
+(แก้ 2026-09-09 ตอนเขียนแผน — ร่างแรกสั่งเพิ่ม `403 INTERFACE_LICENSE_EXPIRED` "สำหรับ route ที่ถูกกัน
+ด้วยคีย์ `interface.*`" แต่ route แบบนั้น**ไม่มีอยู่จริง**: `LICENSE_ROUTE_FEATURES` ใน
+`apps/backend-gateway/src/license/license-catalog.generated.ts` ไม่มี entry ใดชี้ไปคีย์ `interface.*`
+`LicenseInterceptor` จึงไม่เคยตัดสิน route interface เลย รหัสนั้นจะเป็นโค้ดตายที่ไม่มีใครยิงถึง)
 
-**ต้องยืนยันกับ swagger ก่อนเขียนแผน:** endpoint ที่ inventory FE ใช้อ่านสิทธิ์ interface วันนี้คือ
-ตัวไหน และคืนคีย์ดิบหรือรูปอื่น — สัญญานั้นคือสิ่งที่ห้ามพัง เพราะ inventory FE อยู่คนละรีโปและ
-deploy คนละรอบ
+สิ่งที่ลูกค้าเห็นจริงมาจาก `GET /api/license` ราย BU: `features` / `expired_features` / `state`
+inventory FE (`hooks/use-interface-entitlement.ts`) แปลเป็น "เห็นและแก้ได้ / เห็นแต่แก้ไม่ได้ / ไม่เห็น"
+ราย brand อยู่แล้ว และลด `entitled → expired` เองเมื่อ `state` ของ BU ไม่ active ⇒ กติกาที่ backend
+ต้องรักษาคือ:
+
+- สัญญาหลัก active: คีย์จากใบ INF ที่ครอบเวลานี้ → `features` · คีย์จากใบ INF ที่หมดแล้ว → `expired_features`
+- สัญญาหลักไม่ active: คีย์จากใบ INF **ทุกใบ** → `expired_features` (ถูกครอบด้วยสัญญาหลัก)
+- `state` และ `end_date` ของ BU ยังมาจากสัญญาหลักเท่านั้น — ใบ INF ไม่มีสิทธิ์กำหนด (§1)
+
+**inventory FE ไม่ต้องแก้** — รูป response ไม่เปลี่ยน แค่ที่มาของคีย์เปลี่ยน
 
 ## 5. หน้าจอฝั่ง platform FE
 
@@ -197,15 +206,18 @@ production (`api-carmen-web.pncsb-app.com`) มีกลุ่ม `inf_*` ผู
 
 - ด่านสถิต: `bun run typecheck` + `bun run lint` + suite เดิมต้องเขียวครบ
 - เบราว์เซอร์: desktop + 390px (ผ่าน iframe probe — `resize_window` ใช้ไม่ได้ในสภาพแวดล้อมนี้)
-- ยิง endpoint จริงบน DEV ครบ 4 กรณี และต้อง **เห็น 403 กับ 200 จริง**
-  (การไม่เห็น log ไม่ใช่หลักฐานว่าไม่ถูกบล็อก):
+- ยิง `GET /api/license` จริงบน DEV ผ่าน gateway ครบ 4 กรณี และต้อง **เห็นค่าเปลี่ยนจริงทั้ง 4 แถว**
+  (การไม่เห็น log ไม่ใช่หลักฐาน · เลื่อนวันผ่าน UI ไม่แตะ DB · cache 60 วิถูกล้างตอนเขียน):
 
-| สัญญาหลัก | ใบ INF | route interface | route อื่น |
-|---|---|---|---|
-| active | active | 200 | 200 |
-| active | หมด | 403 `INTERFACE_LICENSE_EXPIRED` | 200 |
-| หมด | active | 403 `LICENSE_EXPIRED` | 403 `LICENSE_EXPIRED` |
-| หมด | หมด | 403 `LICENSE_EXPIRED` | 403 `LICENSE_EXPIRED` |
+| สัญญาหลัก | ใบ INF ของ BU | `features` มี `interface.*` | `expired_features` มี `interface.*` | `state` |
+|---|---|---|---|---|
+| active | ครอบวันนี้ | ✅ | ❌ | active |
+| active | หมดแล้ว | ❌ | ✅ | active |
+| หมด | ครอบวันนี้ | ❌ | ✅ | expired |
+| หมด | หมดแล้ว | ❌ | ✅ | expired |
+
+  route เขียนของ inventory ที่ถูก license-gate ยังตอบ `403 LICENSE_EXPIRED` เมื่อสัญญาหลักหมดเหมือนเดิม
+  (ไม่มี route ใดถูก gate ด้วยคีย์ `interface.*` — ดู §4)
 
 ## 8. ที่ไม่อยู่ในขอบเขต
 
