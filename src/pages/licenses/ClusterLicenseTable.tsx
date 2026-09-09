@@ -264,11 +264,14 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
       // เรียงได้เพราะเป็นคอลัมน์จริงของ tb_cluster — backend แปลง `sort` เป็น orderBy ของ Prisma ตรง ๆ
       { accessorKey: 'name', header: t('common.field.name'), meta: { card: 'title' } },
       {
-        id: 'bu_quota',
+        // id = คีย์ view sort ที่ backend รองรับ (VIEW_SORT_COLUMNS ใน cluster.service.ts —
+        // `sortedClusterIdsByViewColumn` เรียงใน SQL ผ่าน view แล้วคืน id ตามลำดับ) ชุดเดียวกับที่
+        // /clusters ใช้ · เรียงตาม **used** (ตัวเลขตัวแรกที่เซลล์แสดง) ไม่ใช่ cap
+        // TanStack ให้ getCanSort() เป็น false ถ้าไม่มี accessor — ต้องมีเพื่อปลดล็อกปุ่มหัวคอลัมน์
+        // แม้การเรียงจริงจะทำที่ backend
+        id: 'bu_count',
+        accessorFn: (row) => row.bu_used,
         header: t('pages.licenses.buQuotaColumn'),
-        // เรียงไม่ได้: `bu_cap`/`bu_used` มาจาก view ไม่ใช่คอลัมน์ของ tb_cluster — `orderBy` ของ Prisma
-        // จึงอ้างถึงไม่ได้ (ตัวกรองทำได้เพราะแปลงเป็น id list ก่อน แต่ `id: { in }` ไม่รักษาลำดับ)
-        enableSorting: false,
         cell: ({ row }) => {
           const cap = row.original.bu_cap ?? 0;
           const used = row.original.bu_used ?? 0;
@@ -282,17 +285,19 @@ const ClusterLicenseTable: React.FC<ClusterLicenseTableProps> = ({
         },
       },
       {
-        id: 'seats',
+        // คีย์ view sort เช่นกัน — เรียงตามคนที่ถือที่นั่งจริง (ตัวเศษของมิเตอร์)
+        id: 'user_count',
+        accessorFn: (row) => row.users_count,
         header: t('common.field.seats'),
-        enableSorting: false,
         cell: ({ row }) => (
           <CapacityMeter used={row.original.users_count} cap={row.original.total_max_license_users} />
         ),
       },
       {
-        id: 'bu_cap_end',
+        // คีย์ view sort เช่นกัน — backend เรียง NULLS LAST ทั้งสองทิศ cluster ที่ไม่มีใบไม่ลอยขึ้นหัว
+        id: 'bu_cap_end_date',
+        accessorFn: (row) => row.bu_cap_end_date,
         header: t('common.state.quotaExpires'),
-        enableSorting: false,
         cell: ({ row }) => {
           const end = row.original.bu_cap_end_date;
           // ไม่มีวันหมดอายุ = ไม่มีอะไรต้องดู — เดิมพิมพ์ "No expiry" ซ้ำทุกแถวจนกลายเป็นคอลัมน์

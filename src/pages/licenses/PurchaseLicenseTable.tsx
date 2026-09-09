@@ -447,11 +447,12 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       },
       ...(config.showCluster
         ? [{
-            id: 'cluster',
+            // คีย์แบบจุดสองชั้น: ใบ → BU → cluster ล้วนเป็น relation to-one · QueryParams.orderBy ฝั่ง
+            // backend ซ้อนได้ไม่จำกัดชั้น (`{ tb_business_unit: { tb_cluster: { name } } }`) — คอลัมน์นี้
+            // แสดงเฉพาะใบที่เจ้าของเป็น BU (`showCluster`) คีย์จึงคงที่ ไม่ต้องอยู่ใน config
+            id: 'tb_business_unit.tb_cluster.name',
+            accessorKey: 'cluster_name',
             header: t('common.label.cluster'),
-            // cluster_code/cluster_name มาจาก join ผ่าน business_unit_id → tb_cluster ไม่ใช่คอลัมน์
-            // จริงบนตารางใบ — เรียงไม่ได้ ด้วยเหตุผลเดียวกับคอลัมน์ owner ข้างล่าง
-            enableSorting: false,
             cell: ({ row }: { row: Row<FleetLicenseRow> }) => (
               <div className="flex flex-col">
                 <span>{row.original.cluster_name || '-'}</span>
@@ -461,12 +462,10 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
           } as ColumnDef<FleetLicenseRow, unknown>]
         : []),
       {
-        id: 'owner',
+        // เจ้าของเป็น relation to-one ของตารางใบ — คีย์แบบจุดต่างกันตามชนิด (ดู `ownerSortKey`)
+        id: config.ownerSortKey,
+        accessorKey: 'owner_name',
         header: ownerLabel,
-        // เจ้าของมาจาก join ผ่าน business_unit_id/cluster_id ไม่ใช่คอลัมน์ตรงบนตารางใบ — ไม่อยู่ใน
-        // รายการคอลัมน์ที่ design doc ยืนยันว่าเรียงได้ (license_number, start_date, end_date, จำนวน)
-        // ปิดการเรียงไว้ก่อนเพื่อความปลอดภัยแทนที่จะเดา
-        enableSorting: false,
         meta: { card: 'title' },
         cell: ({ row }) => (
           <div className="flex flex-col">
@@ -477,11 +476,11 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       },
       config.selector === 'feature-group'
         ? ({
-            id: 'group',
+            // เรียงตามรหัสกลุ่มผ่าน relation (`{ tb_license_feature_group: { code } }`) ไม่ใช่
+            // `license_feature_group_id` ที่เป็น uuid ดิบซึ่งเรียงแล้วได้ลำดับที่ผู้ใช้มองไม่เห็นความหมาย
+            id: 'tb_license_feature_group.code',
+            accessorKey: 'group_code',
             header: amountLabel,
-            // `license_feature_group_id` เป็น uuid ดิบ เรียงตามมันคือเรียงตามค่าที่ผู้ใช้ไม่เห็น
-            // และ `group.code` ที่เห็นจริงมาจาก join ไม่ใช่คอลัมน์บนตารางใบ — ปิดการเรียงไว้
-            enableSorting: false,
             // ไม่มี `meta.card` เหมือนคอลัมน์จำนวนที่มันมาแทน — ค่าหลักของใบเป็น "ค่า" ไม่ใช่ตัวตน
             // ของแถว การยัดเข้าหัวการ์ดคู่กับเลขที่ใบและเจ้าของทำให้หัวการ์ดมีสามก้อนสองบรรทัด
             cell: ({ row }: { row: Row<FleetLicenseRow> }) => (
@@ -500,11 +499,11 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
             cell: ({ row }) => <span className="font-mono text-xs">{row.original.amount}</span>,
           },
       {
-        id: 'coverage',
+        // เซลล์แสดงสองวันที่ แต่เรียงด้วย `end_date` ตัวเดียว — วันหมดอายุคือสิ่งที่คนไล่ดูในตารางใบ
+        // (แบบเดียวกับคอลัมน์ Period ของตารางสัญญาที่เรียง/ค่าเริ่มต้นด้วย end_date)
+        id: 'end_date',
+        accessorKey: 'end_date',
         header: t('pages.licenses.coverageColumn'),
-        // ครอบคลุมสองคอลัมน์จริง (start_date, end_date) การเรียงคลิกเดียวไม่มีความหมายชัดเจนว่า
-        // เรียงด้วยฟิลด์ไหน จึงปิดไว้ — สองฟิลด์นั้นเรียงได้จริงถ้าจะเปิดคอลัมน์แยกในอนาคต
-        enableSorting: false,
         cell: ({ row }) => (
           <span className="text-xs whitespace-nowrap">
             {row.original.start_date} – {row.original.end_date}
@@ -529,9 +528,7 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       {
         accessorKey: 'reference_no',
         header: t('pages.licenses.referenceNoColumn'),
-        // ค้นหาได้ (`license_number`/`reference_no` เป็นสอง searchfields เดียวที่ backend รับ)
-        // แต่ไม่อยู่ในรายการคอลัมน์ที่ยืนยันว่าเรียงได้
-        enableSorting: false,
+        // คอลัมน์จริงบนตารางใบทุกชนิด — เรียงผ่าน Prisma orderBy ตรง ๆ
         cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.reference_no}</span>,
       },
       createdColumn,

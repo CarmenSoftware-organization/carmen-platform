@@ -35,6 +35,13 @@ export interface LicenseKindConfig {
    *  `common.label.cluster` — ดู `OWNER_LABEL_KEYS` ในสองไฟล์ที่ใช้ config นี้) การเปิดที่นั่น
    *  จะได้ Cluster สองคอลัมน์ซ้ำกัน */
   showCluster: boolean;
+  /**
+   * คีย์ sort บนสายของคอลัมน์เจ้าของใน `PurchaseLicenseTable` — คีย์แบบจุดที่ QueryParams.orderBy
+   * ฝั่ง backend แปลงเป็น orderBy ซ้อนของ Prisma (`tb_business_unit.name` → `{ tb_business_unit:
+   * { name } }`) เจ้าของเป็น relation to-one ของตารางใบทุกชนิด จึงเรียงผ่าน Prisma ได้ตรง ๆ
+   * เรียงตาม **ชื่อ** เพราะชื่อคือบรรทัดเด่นที่เซลล์แสดง (รหัสอยู่บรรทัดรอง)
+   */
+  ownerSortKey: 'tb_business_unit.name' | 'tb_cluster.name';
   /** เส้นทางกลับของ `PageHeader backTo` */
   listPath: string;
   /** segment ของ route แก้ไข ('seats' | 'bu-quota') — ใช้ประกอบ path ตอน navigate หลังสร้างสำเร็จ
@@ -79,6 +86,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
   showNoExpiry: false,
   showNote: false,
   showCluster: true,
+  ownerSortKey: 'tb_business_unit.name',
   listPath: '/licenses',
   editPathSegment: 'seats',
   expiryThresholdField: 'seat_days',
@@ -95,6 +103,7 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   showNoExpiry: true,
   showNote: true,
   showCluster: false,
+  ownerSortKey: 'tb_cluster.name',
   listPath: '/licenses',
   editPathSegment: 'bu-quota',
   expiryThresholdField: 'bu_quota_days',
@@ -123,6 +132,7 @@ export const INTERFACE_CONFIG: LicenseKindConfig = {
   showNoExpiry: false,
   showNote: true,
   showCluster: true,
+  ownerSortKey: 'tb_business_unit.name',
   listPath: '/licenses?tab=interface',
   editPathSegment: 'interface',
   expiryThresholdField: 'interface_days',
