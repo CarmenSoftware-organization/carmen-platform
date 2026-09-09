@@ -152,7 +152,6 @@ const ActivityEventManagement: React.FC = () => {
     {
       accessorKey: 'user_name',
       header: t('pages.activityEvents.columnUser'),
-      enableSorting: false,
       cell: ({ row }) => (
         <div className="min-w-0">
           {/* user_id ประกาศเป็น non-optional แต่ถ้า backend ส่ง null มาจริง .slice() จะ throw
@@ -166,7 +165,7 @@ const ActivityEventManagement: React.FC = () => {
         </div>
       ),
     },
-    { accessorKey: 'bu_code', header: t('pages.activityEvents.columnBu'), enableSorting: false,
+    { accessorKey: 'bu_code', header: t('pages.activityEvents.columnBu'),
       cell: ({ row }) => row.original.bu_code || '-' },
     {
       accessorKey: 'event_type',
@@ -186,7 +185,6 @@ const ActivityEventManagement: React.FC = () => {
     {
       accessorKey: 'element_id',
       header: t('pages.activityEvents.columnElement'),
-      enableSorting: false,
       cell: ({ row }) => (
         <span className="block max-w-[180px] truncate font-mono text-xs"
               title={row.original.element_text || row.original.element_id || ''}>
@@ -194,7 +192,7 @@ const ActivityEventManagement: React.FC = () => {
         </span>
       ),
     },
-    { accessorKey: 'app_name', header: t('pages.activityEvents.columnApp'), enableSorting: false, meta: { card: 'hidden' },
+    { accessorKey: 'app_name', header: t('pages.activityEvents.columnApp'), meta: { card: 'hidden' },
       cell: ({ row }) => row.original.app_name || '-' },
     {
       id: 'actions',

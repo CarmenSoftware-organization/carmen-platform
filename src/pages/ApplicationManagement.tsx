@@ -324,7 +324,9 @@ const ApplicationManagement: React.FC = () => {
     {
       id: 'access',
       header: t('pages.applications.columnAccess'),
-      enableSorting: false,
+      // ค่าที่ accessor คืนไม่ถูกใช้เรียง (server-side) แต่ต้องมีเพื่อให้ TanStack เปิดปุ่มที่หัวคอลัมน์
+      // backend เรียง allow_all ก่อน แล้วตามจำนวน API ที่ยังไม่ถูกลบ (application.service.ts `access`)
+      accessorFn: (row) => (row.allow_all ? Number.MAX_SAFE_INTEGER : (row.api_names?.length ?? 0)),
       // ความกว้างคงที่ ไม่ใช่ปล่อยให้ยืดตามเนื้อหา — ไม้บรรทัดที่ยาวไม่เท่ากันในแต่ละแถว
       // วัดอะไรไม่ได้ และนี่คือคอลัมน์ที่ทั้งหน้ามีไว้เพื่ออ่านเทียบกัน
       meta: { headerClassName: 'lg:w-56', cellClassName: 'lg:w-56' },
