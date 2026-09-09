@@ -11,13 +11,13 @@ import { FleetCapacity } from '../clusterManagement/FleetCapacity';
 import ClusterLicenseTable from './ClusterLicenseTable';
 import SubscriptionTable from './SubscriptionTable';
 import { PurchaseLicenseTable } from './PurchaseLicenseTable';
-import { SEAT_CONFIG, BU_QUOTA_CONFIG } from './licenseKindConfig';
+import { SEAT_CONFIG, BU_QUOTA_CONFIG, INTERFACE_CONFIG } from './licenseKindConfig';
 import type { FleetSummary } from '../../types';
 
-type LicenseView = 'cluster' | 'subscription' | 'seat' | 'bu-quota';
+type LicenseView = 'cluster' | 'subscription' | 'seat' | 'bu-quota' | 'interface';
 const VIEW_KEY = 'license_center_view';
 const VIEW_PARAM = 'tab';
-const VIEWS: LicenseView[] = ['cluster', 'subscription', 'seat', 'bu-quota'];
+const VIEWS: LicenseView[] = ['cluster', 'subscription', 'seat', 'bu-quota', 'interface'];
 
 /**
  * ค่าที่มาจากภายนอก (localStorage และ `?tab=`) ต้องตรวจสมาชิกภาพก่อนใช้ — `as LicenseView`
@@ -95,6 +95,7 @@ const LicenseCenter: React.FC = () => {
     { id: 'subscription', label: t('pages.licenses.viewBySubscription') },
     { id: 'seat', label: t('pages.licenses.viewBySeat') },
     { id: 'bu-quota', label: t('pages.licenses.viewByBuQuota') },
+    { id: 'interface', label: t('pages.licenses.viewByInterface') },
   ], [t]);
 
   // แถบสรุปอ่านจาก endpoint เฉพาะทางที่ไม่รับตัวกรองเลย จึงเป็นตัวเลขทั้ง fleet เสมอ
@@ -173,8 +174,10 @@ const LicenseCenter: React.FC = () => {
           <SubscriptionTable embedded />
         ) : view === 'seat' ? (
           <PurchaseLicenseTable config={SEAT_CONFIG} />
-        ) : (
+        ) : view === 'bu-quota' ? (
           <PurchaseLicenseTable config={BU_QUOTA_CONFIG} />
+        ) : (
+          <PurchaseLicenseTable config={INTERFACE_CONFIG} />
         )}
       </div>
     </Layout>

@@ -132,6 +132,7 @@ export const GroupCatalogPanel: React.FC = () => {
       [
         { key: 'sort_order', label: t('pages.licenseFeatureGroups.sortOrder') },
         { key: 'code', label: t('pages.licenseFeatureGroups.code') },
+        { key: 'kind', label: t('pages.licenseFeatureGroups.kind') },
         { key: 'name', label: t('pages.licenseFeatureGroups.name') },
         { key: 'description', label: t('pages.licenseFeatureGroups.description') },
         { key: 'feature_count', label: t('pages.licenseFeatureGroups.featureCount') },
@@ -188,13 +189,22 @@ export const GroupCatalogPanel: React.FC = () => {
       header: t('pages.licenseFeatureGroups.code'),
       meta: { headerClassName: 'w-48', cellClassName: 'w-48', card: 'title' },
       cell: ({ row }) => (
-        <Link
-          to={`/license-feature-groups/${row.original.id}/edit`}
-          className="font-mono text-xs text-primary hover:underline"
-          title={row.original.code}
-        >
-          {row.original.code}
-        </Link>
+        <>
+          <Link
+            to={`/license-feature-groups/${row.original.id}/edit`}
+            className="font-mono text-xs text-primary hover:underline"
+            title={row.original.code}
+          >
+            {row.original.code}
+          </Link>
+          {/* ป้ายขึ้นเฉพาะกลุ่ม interface — 'standard' เป็นค่าปกติ ไม่ต้องบอกซ้ำทุกแถว
+              (gateway รุ่นก่อน A1 ไม่ส่ง `kind` มา อ่านเป็น 'standard') */}
+          {(row.original.kind ?? 'standard') === 'interface' && (
+            <Badge variant="secondary" className="ml-2">
+              {t('pages.licenseFeatureGroups.kindInterface')}
+            </Badge>
+          )}
+        </>
       ),
     },
     {

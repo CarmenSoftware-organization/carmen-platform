@@ -179,6 +179,7 @@ export const th: Translations = {
       scheduled: 'ตั้งเวลาไว้',
       superseded: 'ถูกแทนที่',
       cancelled: 'ยกเลิกแล้ว',
+      none: 'ไม่มีสัญญา',
       published: 'เผยแพร่แล้ว',
       updated: 'อัปเดตแล้ว',
       unknown: 'ไม่ทราบ',
@@ -1131,6 +1132,9 @@ export const th: Translations = {
       noGroupsAvailable: 'ยังไม่มีกลุ่มสิทธิ์ในระบบ สร้างได้ที่',
       groupsSelectedSummary: 'เลือกไว้ {{groups}} กลุ่ม · รวม {{features}} feature',
       manageGroups: 'จัดการกลุ่ม',
+      interfaceGroupLeftover:
+        'กลุ่ม interface ที่ยังค้างบนสัญญานี้ — ต้องย้ายไปใบสิทธิ์ interface กดนำออกที่นี่',
+      removeLeftoverGroup: 'นำออก',
       purchasedGroups: 'กลุ่มสิทธิ์ที่ซื้อ',
       groupEntitlementsForBu: 'กลุ่มสิทธิ์ที่ให้กับ {{code}}',
       // `clearSearch` and `selectedCount` were dropped from this object (fix round 1): both
@@ -1316,6 +1320,13 @@ export const th: Translations = {
       editGroup: 'แก้ไขกลุ่ม',
       code: 'รหัส',
       codeHint: 'เปลี่ยนไม่ได้หลังสร้างกลุ่มแล้ว',
+      // --- Task B4: ชนิดกลุ่ม standard/interface ---
+      kind: 'ชนิด',
+      kindStandard: 'ทั่วไป',
+      kindInterface: 'Interface',
+      kindStandardHint: 'ขายบนใบสัญญาหลัก',
+      kindInterfaceHint: 'ขายบนใบสิทธิ์ interface (INF) ใบละหนึ่งกลุ่ม',
+      kindLocked: 'ตั้งได้ตอนสร้างเท่านั้น — เปลี่ยนแล้วเท่ากับย้ายสิทธิ์ที่ขายไปแล้วข้ามชนิดใบ',
       name: 'ชื่อ',
       description: 'คำอธิบาย',
       sortOrder: 'ลำดับ',
@@ -1394,6 +1405,12 @@ export const th: Translations = {
       expiredDaysAgo: 'หมดอายุมาแล้ว {{count}} วัน',
       addBuQuotaLicense: 'เพิ่มไลเซนส์โควตา BU',
       addSeatLicense: 'เพิ่มไลเซนส์ที่นั่ง',
+      addInterfaceLicense: 'เพิ่มใบสิทธิ์ interface',
+      featureGroup: 'กลุ่มสิทธิ์',
+      selectFeatureGroup: 'เลือกกลุ่มสิทธิ์ interface',
+      featureGroupsLoadFailed: 'โหลดกลุ่มสิทธิ์ไม่สำเร็จ',
+      noSellableInterfaceGroups: 'ยังไม่มีกลุ่มสิทธิ์ interface ที่ขายอยู่ — สร้างที่หน้ากลุ่มสิทธิ์ก่อน',
+      cappedByContract: 'วันของใบยังไม่หมด แต่สัญญาหลัก{{state}} — interface ปิดอยู่จนกว่าจะต่อสัญญา',
       licenseNumber: 'เลขที่ไลเซนส์',
       removeLicenseTitle: 'นำไลเซนส์ออก',
       cancelLicenseTitle: 'ยกเลิกใบนี้',
@@ -1403,13 +1420,14 @@ export const th: Translations = {
       clearAllFilters: 'ล้างตัวกรองทั้งหมด',
 
       title: 'ไลเซนส์',
-      subtitle: 'สถานะไลเซนส์ทั้ง fleet แยกตามคลัสเตอร์ สัญญา ไลเซนส์ที่นั่ง หรือโควตา BU',
+      subtitle: 'สถานะไลเซนส์ทั้ง fleet แยกตามคลัสเตอร์ สัญญา ไลเซนส์ที่นั่ง โควตา BU หรือใบสิทธิ์ interface',
       buQuotaExpiring: 'โควตา BU ใกล้หมดอายุ',
       selectViewAria: 'เลือกมุมมองไลเซนส์',
       viewByCluster: 'ตามคลัสเตอร์',
       viewBySubscription: 'ตามสัญญา',
       viewBySeat: 'ตามไลเซนส์ที่นั่ง',
       viewByBuQuota: 'ตามโควตา BU',
+      viewByInterface: 'ตามใบสิทธิ์ interface',
 
       clusterNotFoundOrDeleted: 'ไม่พบ Cluster หรืออาจถูกลบไปแล้ว',
       clusterUnavailable: 'Cluster ใช้งานไม่ได้',
@@ -1909,6 +1927,13 @@ export const th: Translations = {
       seatsFromActiveLicenseMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
       clusterPoolSeatsUsed: 'พูลระดับ cluster: ใช้ไป {{used}} / {{cap}} ที่นั่ง',
       seatsManagedInLicenseCenter: 'จัดการที่นั่งได้ที่ License Center',
+
+      // --- Task B3: BusinessUnitInterfaceLicensesCard.tsx ---
+      interfaceLicensesTitle: 'ใบสิทธิ์ interface',
+      interfaceInForceCount: 'ใช้ได้จริง {{count}} จาก {{total}} ใบ',
+      interfaceCapped: 'ถูกครอบด้วยสัญญาหลัก',
+      interfaceCappedHint: 'มีใบที่วันยังไม่หมด แต่สัญญาหลัก{{state}} — interface ปิดอยู่จนกว่าจะต่อสัญญา',
+      noInterfaceLicenses: 'ยังไม่มีใบสิทธิ์ interface ของหน่วยธุรกิจนี้',
 
       // --- Task 4: BusinessUnitUsersCard.tsx ---
       activeCountBadge: 'ใช้งาน {{count}} ราย',
@@ -2482,6 +2507,7 @@ export const th: Translations = {
       subscriptionDays: 'ใบสัญญา',
       buQuotaDays: 'ใบโควตา BU',
       seatDays: 'ใบที่นั่ง BU',
+      interfaceDays: 'ใบสิทธิ์ interface',
       savedThresholdsToast: 'บันทึกเกณฑ์ใกล้หมดอายุแล้ว',
       thresholdsNote1:
         'เป็นเกณฑ์แสดงผล ไม่ใช่เกณฑ์บังคับใช้ เพิ่มค่าแล้วคำเตือนขึ้นเร็วขึ้นเท่านั้น ไม่ได้ให้หรือถอนสิทธิ์ใคร',

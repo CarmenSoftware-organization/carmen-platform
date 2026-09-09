@@ -1242,6 +1242,8 @@ export interface ExpiryThresholdsConfig {
   bu_quota_days: number;
   /** ใบที่นั่งของ BU */
   seat_days: number;
+  /** ใบสิทธิ์ interface (tb_business_unit_interface_license) ใบชนิดใหม่แยกจาก seat */
+  interface_days: number;
 }
 
 /**
@@ -1637,7 +1639,15 @@ export interface LicenseFeatureGroup {
   created_by_id?: string | null;
   updated_at?: string | null;
   updated_by_id?: string | null;
+  /**
+   * ชนิดกลุ่ม: 'standard' (สัญญาปกติ) หรือ 'interface' (ขายผ่านใบสิทธิ์ interface ชนิดใหม่)
+   * optional เพราะ gateway รุ่นก่อน A1 ยังไม่ส่งคีย์นี้มา — ให้อ่านเป็น 'standard' เมื่อไม่มี
+   */
+  kind?: LicenseFeatureGroupKind;
 }
+
+/** ชนิดของ License Feature Group — คู่กับ `kind` ของ `LicenseFeatureGroup` */
+export type LicenseFeatureGroupKind = 'standard' | 'interface';
 
 export interface LicenseFeatureGroupDetail extends LicenseFeatureGroup {
   /** เรียงจากน้อยไปมาก · รวม module แม่ที่ backend เติมให้เองด้วย ไม่ใช่เฉพาะที่ผู้ใช้ติ๊ก */
@@ -1655,6 +1665,64 @@ export interface LicenseFeatureGroupWriteInput {
   description?: string | null;
   sort_order?: number;
   is_active?: boolean;
+  /** สร้างเท่านั้น — backend ไม่รับใน PATCH เหมือน `code` เพราะเปลี่ยนชนิดกลุ่มหลังสร้างแล้วผิดเจตนา */
+  kind?: LicenseFeatureGroupKind;
+}
+
+// ==================== BU Interface License (tb_business_unit_interface_license) ====================
+// ใบสิทธิ์ชนิดใหม่แยกจาก seat license — ขายกลุ่ม feature ที่ตั้ง kind: 'interface' เท่านั้น
+
+/**
+ * สถานะของใบสิทธิ์ interface ที่คำนวณจากช่วงวันที่ (`start_date`/`end_date`) ล้วน ๆ
+ * ไม่เกี่ยวกับสถานะสัญญาที่อ้างอิง (`contract_state`)
+ */
+export type InterfaceLicenseState = 'active' | 'scheduled' | 'expired';
+
+/**
+ * ใบสิทธิ์ interface หนึ่งใบของ BU หนึ่งราย (nested resource ใต้ business unit)
+ *
+ * `in_force` มา **จาก backend เท่านั้น** ห้ามคำนวณเองฝั่ง FE — มันรวมทั้งช่วงวันที่ของใบ
+ * (`state === 'active'`) และสถานะสัญญาที่อ้างอิง (`contract_state`) เข้าด้วยกัน การคำนวณซ้ำฝั่ง
+ * client เสี่ยงหลุดกรณีขอบ (เช่น สัญญาแม่หมดอายุแต่ใบยังอยู่ในช่วงวันที่ที่ active)
+ * `state` คือสถานะจาก**วันที่ของใบ**อย่างเดียว ('active' | 'scheduled' | 'expired')
+ */
+export interface InterfaceLicense {
+  id: string;
+  business_unit_id: string;
+  /** ระบบออกให้เอง (เหมือน seat license) — ไม่อยู่ใน create DTO */
+  license_number: string;
+  license_feature_group_id: string;
+  /** สรุปกลุ่มที่อ้างอิง — backend join มาให้ ไม่ต้อง fetch แยก */
+  group: { id: string; code: string; name: string };
+  start_date: string;
+  end_date: string;
+  reference_no?: string | null;
+  note?: string | null;
+  doc_version: number;
+  /** สถานะจากช่วงวันที่ของใบเอง */
+  state: InterfaceLicenseState;
+  /** มาจาก backend เท่านั้น — ห้ามคำนวณเอง ดู doc ด้านบน */
+  in_force: boolean;
+  /** สถานะของสัญญาที่ใบนี้อ้างอิง แยกจาก `state` ของตัวใบ */
+  contract_state: 'active' | 'expired' | 'inactive' | 'none';
+  created_at?: string | null;
+  created_by_id?: string | null;
+  updated_at?: string | null;
+  updated_by_id?: string | null;
+}
+
+/** แถวในมุมมองรายใบทั้ง fleet — มีเจ้าของ + cluster พ่วงมาเหมือน `SeatLicenseRow`/`BuQuotaLicenseRow` */
+export interface InterfaceLicenseRow extends InterfaceLicense {
+  business_unit_code: string;
+  business_unit_name: string;
+  cluster_id: string;
+  cluster_code: string;
+  cluster_name: string;
+}
+
+export interface InterfaceLicensesResponse {
+  data: InterfaceLicenseRow[];
+  paginate: { total: number; page: number; perpage: number; pages: number };
 }
 
 // ==================== Cronjobs ("CRONJOBS"."Cronjob") ====================

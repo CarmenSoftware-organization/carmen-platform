@@ -189,6 +189,9 @@ export const en = {
       scheduled: 'Scheduled',
       superseded: 'Superseded',
       cancelled: 'Cancelled',
+      // สถานะ "ไม่มีสัญญา" ของ `InterfaceLicense.contract_state` — ใบมีอยู่จริงแต่ไม่มีสัญญาแม่
+      // ให้อ้าง ต่างจาก 'inactive' ที่มีสัญญาแต่ปิดอยู่
+      none: 'No contract',
       published: 'Published',
       updated: 'Updated',
       unknown: 'Unknown',
@@ -1439,6 +1442,9 @@ export const en = {
       noGroupsAvailable: 'No licence feature groups exist yet. Create one in',
       groupsSelectedSummary: '{{groups}} groups selected · {{features}} features in total',
       manageGroups: 'Manage groups',
+      interfaceGroupLeftover:
+        'Interface group still on this contract — must move to an interface license; remove it here',
+      removeLeftoverGroup: 'Remove',
       purchasedGroups: 'Purchased groups',
       groupEntitlementsForBu: 'Licence groups granted to {{code}}',
       // --- authored English for strings that existed only in Thai ---
@@ -1675,6 +1681,14 @@ export const en = {
       editGroup: 'Edit group',
       code: 'Code',
       codeHint: 'Cannot be changed after the group is created',
+      // --- Task B4: ชนิดกลุ่ม standard/interface ---
+      kind: 'Kind',
+      kindStandard: 'Standard',
+      kindInterface: 'Interface',
+      kindStandardHint: 'Sold on the main subscription',
+      // "licence" spelt American here to match the neighbouring keys in this file.
+      kindInterfaceHint: 'Sold on an interface license (INF), one group per license',
+      kindLocked: 'Set when the group is created — changing it would move sold entitlements between license kinds',
       name: 'Name',
       description: 'Description',
       sortOrder: 'Sort order',
@@ -1769,6 +1783,16 @@ export const en = {
       // licenseKindConfig.ts (SEAT_CONFIG.newPageTitle) + SeatSection.tsx (the "Add seat
       // license" button — hardcoded there, not read from config).
       addSeatLicense: 'Add seat license',
+      addInterfaceLicense: 'Add interface license',
+      // ค่าหลักของใบสิทธิ์ interface — ป้ายช่องในฟอร์ม หัวคอลัมน์ในตาราง และป้ายบนแผ่นป้ายใบ
+      featureGroup: 'Feature group',
+      selectFeatureGroup: 'Select an interface group',
+      // {{state}} คือ contract_state ที่แปลผ่าน common.status.* — ใบยังไม่หมดอายุ แต่สัญญาแม่
+      // ตัดสิทธิ์อยู่ ผู้ใช้ต้องรู้ว่าปัญหาอยู่ที่สัญญา ไม่ใช่ที่ใบ
+      cappedByContract: 'License dates are valid, but the main contract is {{state}} — interfaces are off until it is renewed',
+      // สองบรรทัดใต้ช่องเลือกกลุ่ม — "โหลดไม่ได้" กับ "ไม่มีของให้ขาย" คนละปัญหา คนละทางแก้
+      featureGroupsLoadFailed: 'Could not load feature groups',
+      noSellableInterfaceGroups: 'No active interface group to sell — create one under License Feature Groups first',
       // PurchaseLicenseTable.tsx (column header + CSV export label) + LicensePurchaseForm.tsx
       // (field Label).
       licenseNumber: 'License Number',
@@ -1798,7 +1822,7 @@ export const en = {
       // reuse-check scope (common/entity/breadcrumb/error only), kept page-local per the
       // pages.news/pages.users precedent of a dedicated pages.<slice>.title key.
       title: 'Licenses',
-      subtitle: 'Fleet-wide license status by cluster, subscription, seat license, or BU quota.',
+      subtitle: 'Fleet-wide license status by cluster, subscription, seat licenses, BU quota or interface licenses.',
       // FleetCapacity's `expiringLabel` prop — distinct from quotaExpiringToggle below
       // (ClusterLicenseTable's Sheet button/badge), a shorter, different string.
       buQuotaExpiring: 'BU quota expiring',
@@ -1807,6 +1831,7 @@ export const en = {
       viewBySubscription: 'By subscription',
       viewBySeat: 'By seat license',
       viewByBuQuota: 'By BU quota',
+      viewByInterface: 'By interface license',
 
       // ClusterLicenseDetail.tsx
       clusterNotFoundOrDeleted: 'Cluster not found or deleted',
@@ -2713,6 +2738,16 @@ export const en = {
       clusterPoolSeatsUsed: 'Cluster pool: {{used}} / {{cap}} seats used',
       seatsManagedInLicenseCenter: 'Seats are managed in the License Center.',
 
+      // --- Task B3: BusinessUnitInterfaceLicensesCard.tsx ---
+      // "license" spelt American here to match every neighbouring key in this file
+      // (userLicensesTitle, seatsFromActiveLicense*) even though the spec text says "licence".
+      interfaceLicensesTitle: 'Interface licenses',
+      interfaceInForceCount: '{{count}} of {{total}} licenses in force',
+      interfaceCapped: 'Capped by contract',
+      // {{state}} is a translated common.status.* label for InterfaceLicense.contract_state.
+      interfaceCappedHint: 'Some licenses are still within their dates, but the main contract is {{state}} — interfaces stay off until it is renewed',
+      noInterfaceLicenses: 'No interface license has been issued for this business unit',
+
       // --- Task 4: BusinessUnitUsersCard.tsx ---
       activeCountBadge: '{{count}} Active',
       ofTotalUsers: 'of {{total}} total',
@@ -3510,6 +3545,7 @@ export const en = {
       subscriptionDays: 'Subscription licences',
       buQuotaDays: 'BU-quota licences',
       seatDays: 'BU seat licences',
+      interfaceDays: 'Interface licences',
       savedThresholdsToast: 'Expiring-soon thresholds saved',
       thresholdsNote1:
         'These are display thresholds, not enforcement ones. Raising them makes warnings appear earlier; it never grants or revokes access.',

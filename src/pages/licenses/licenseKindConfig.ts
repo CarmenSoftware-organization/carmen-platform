@@ -1,9 +1,10 @@
+import businessUnitInterfaceLicenseService from '../../services/businessUnitInterfaceLicenseService';
 import businessUnitLicenseService from '../../services/businessUnitLicenseService';
 import clusterLicenseService from '../../services/clusterLicenseService';
 import clusterService from '../../services/clusterService';
 import type { ExpiryThresholdsConfig } from '../../types';
 
-export type LicenseKind = 'seat' | 'bu-quota';
+export type LicenseKind = 'seat' | 'bu-quota' | 'interface';
 
 /**
  * ทุกอย่างที่ต่างกันระหว่างใบที่นั่งกับใบโควตา BU อยู่ในไฟล์นี้ไฟล์เดียว
@@ -14,8 +15,14 @@ export type LicenseKind = 'seat' | 'bu-quota';
  */
 export interface LicenseKindConfig {
   kind: LicenseKind;
-  /** ชื่อฟิลด์จำนวนบนสาย */
-  amountField: 'licensed_users' | 'licensed_bus';
+  /**
+   * ช่องค่าหลักของใบ — `amount` = จำนวน (<Input type=number>) · `feature-group` = เลือกกลุ่มสิทธิ์
+   * `kind='interface'` หนึ่งกลุ่ม (<Select>) · ฟอร์ม/ตารางสลับ UI ด้วยฟิลด์นี้ **ไม่ใช่** ด้วย
+   * `kind === 'interface'` กระจายทั่ว — ความรู้เรื่องชนิดใบต้องอยู่ที่ไฟล์นี้ที่เดียว
+   */
+  selector: 'amount' | 'feature-group';
+  /** ชื่อฟิลด์ค่าหลักบนสาย — จำนวน หรือ id ของกลุ่มสิทธิ์ (ดู `selector`) */
+  amountField: 'licensed_users' | 'licensed_bus' | 'license_feature_group_id';
   /** ชื่อ query param ที่ใช้ prefill เจ้าของตอนสร้าง */
   ownerParam: 'bu' | 'cluster';
   /** ใบชนิดนี้มีสวิตช์ "ไม่มีวันหมดอายุ" ไหม (sentinel ปี 2099) */
@@ -38,7 +45,10 @@ export interface LicenseKindConfig {
    *  ชื่อฟิลด์เท่านั้น ไม่ใช่ตัวเลข ค่าจริงมาจาก backend และตั้งค่าได้จากหน้าจอ (#227)
    *  หน้าที่ hardcode 30 จะขัดกับป้ายในตารางที่มาจากใบเดียวกัน */
   expiryThresholdField: keyof ExpiryThresholdsConfig;
-  service: typeof businessUnitLicenseService | typeof clusterLicenseService;
+  service:
+    | typeof businessUnitLicenseService
+    | typeof clusterLicenseService
+    | typeof businessUnitInterfaceLicenseService;
 
   /**
    * อ่าน "เจ้าของใบใช้ไปแล้วเท่าไร" — ตัวหารที่ทำให้จำนวนบนใบมีความหมาย · `null` = ชนิดนี้ไม่มี
@@ -63,6 +73,7 @@ export interface LicenseKindConfig {
 
 export const SEAT_CONFIG: LicenseKindConfig = {
   kind: 'seat',
+  selector: 'amount',
   amountField: 'licensed_users',
   ownerParam: 'bu',
   showNoExpiry: false,
@@ -78,6 +89,7 @@ export const SEAT_CONFIG: LicenseKindConfig = {
 
 export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   kind: 'bu-quota',
+  selector: 'amount',
   amountField: 'licensed_bus',
   ownerParam: 'cluster',
   showNoExpiry: true,
@@ -96,4 +108,25 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
   },
   cancel: (clusterId: string, id: string, docVersion: number) =>
     clusterLicenseService.cancel(clusterId, id, { doc_version: docVersion }),
+};
+
+/**
+ * ใบสิทธิ์ interface — ใบชนิดที่สาม · เจ้าของคือ BU เหมือนที่นั่ง แต่ค่าหลักคือ "กลุ่มสิทธิ์" ไม่ใช่จำนวน
+ * ไม่มีสวิตช์ไม่มีวันหมดอายุ: สิทธิ์จริงถูกครอบด้วยสัญญาหลักอยู่แล้ว ใบอมตะเป็นคำโกหก (สเปก §3.2)
+ * ยกเลิกไม่ได้ (เหมือนที่นั่ง) · `readUsage` ไม่มี — ใบนี้ไม่มีตัวหาร
+ */
+export const INTERFACE_CONFIG: LicenseKindConfig = {
+  kind: 'interface',
+  selector: 'feature-group',
+  amountField: 'license_feature_group_id',
+  ownerParam: 'bu',
+  showNoExpiry: false,
+  showNote: true,
+  showCluster: true,
+  listPath: '/licenses?tab=interface',
+  editPathSegment: 'interface',
+  expiryThresholdField: 'interface_days',
+  service: businessUnitInterfaceLicenseService,
+  readUsage: null,
+  cancel: null,
 };

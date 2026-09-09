@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { cn } from '../../lib/utils';
@@ -25,6 +26,7 @@ import { useGlobalShortcuts } from '../../components/KeyboardShortcuts';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../hooks/useI18n';
 import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
+import licenseFeatureGroupService from '../../services/licenseFeatureGroupService';
 import { IssuedLicensePlate } from './licenseEdit/IssuedLicensePlate';
 import type { StatusBadgeInfo } from './licenseEdit/IssuedLicensePlate';
 import { toIsoStartOfDay, toIsoEndOfDay, isPerpetual, fmtDate, PERPETUAL_END_DATE } from './licenseDates';
@@ -32,11 +34,12 @@ import { licenseStatus as buLicenseStatus } from '../../utils/buLicense';
 import { licenseStatus as clusterLicenseStatus } from '../../utils/clusterLicense';
 import type { LicenseKind, LicenseKindConfig } from './licenseKindConfig';
 import type {
-  BusinessUnitLicense, ClusterLicense, SeatLicenseRow, BuQuotaLicenseRow, BuLicenseStatus, ClusterLicenseStatus,
+  BusinessUnitLicense, ClusterLicense, SeatLicenseRow, BuQuotaLicenseRow, InterfaceLicenseRow,
+  LicenseFeatureGroup, BuLicenseStatus, ClusterLicenseStatus,
 } from '../../types';
 import type { TKey } from '../../i18n/types';
 
-type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow;
+type LicenseRow = SeatLicenseRow | BuQuotaLicenseRow | InterfaceLicenseRow;
 
 // Pure data (variant), no translation involved — stays a module constant.
 const STATUS_VARIANT: Record<BuLicenseStatus | ClusterLicenseStatus, StatusBadgeInfo['variant']> = {
@@ -68,14 +71,19 @@ const STATUS_LABEL_KEYS: Record<BuLicenseStatus | ClusterLicenseStatus, TKey> = 
 const OWNER_LABEL_KEYS: Record<LicenseKind, TKey> = {
   seat: 'entity.businessUnit.title',
   'bu-quota': 'common.label.cluster',
+  // ใบ interface มีเจ้าของเป็น BU เหมือนใบที่นั่ง — คนละชนิดใบ แต่ป้ายเจ้าของตัวเดียวกัน
+  interface: 'entity.businessUnit.title',
 };
 const AMOUNT_LABEL_KEYS: Record<LicenseKind, TKey> = {
   seat: 'common.field.seats',
   'bu-quota': 'pages.licenses.buQuota',
+  // ค่าหลักของใบ interface ไม่ใช่จำนวน แต่เป็นกลุ่มสิทธิ์ที่ขาย (ดู `selector` ใน config)
+  interface: 'pages.licenses.featureGroup',
 };
 const NEW_PAGE_TITLE_KEYS: Record<LicenseKind, TKey> = {
   seat: 'pages.licenses.addSeatLicense',
   'bu-quota': 'pages.licenses.addBuQuotaLicense',
+  interface: 'pages.licenses.addInterfaceLicense',
 };
 
 /**
@@ -104,7 +112,8 @@ const emptyDraft = (now: Date): LicenseDraft => ({
 });
 
 const draftFromLicense = (l: {
-  amount: number;
+  /** จำนวน (ใบที่นั่ง/โควตา) หรือ id ของกลุ่มสิทธิ์ (ใบ interface) — ร่างเก็บเป็นสตริงเสมอ */
+  amount: number | string;
   start_date: string;
   end_date: string;
   reference_no?: string | null;
@@ -124,7 +133,9 @@ const draftFromLicense = (l: {
  * ชื่อฟิลด์เจ้าของต่างกันไปตามชนิด นี่คือหนึ่งในสองจุดในไฟล์นี้ที่ต้องรู้ความต่างนั้น
  */
 function ownerFromRow(kind: LicenseKind, row: LicenseRow): { id: string; label: string } {
-  if (kind === 'seat') {
+  // ทุกชนิดที่เจ้าของเป็น BU (ที่นั่ง + interface) อ่านฟิลด์ชุดเดียวกัน — เหลือใบโควตา BU
+  // ชนิดเดียวที่เจ้าของเป็นคลัสเตอร์ เขียนเป็น `!== 'bu-quota'` เพื่อไม่ต้องไล่เพิ่มทุกครั้งที่มีชนิดใหม่
+  if (kind !== 'bu-quota') {
     const r = row as SeatLicenseRow;
     return { id: r.business_unit_id, label: `${r.business_unit_code} - ${r.business_unit_name}` };
   }
@@ -168,7 +179,10 @@ function clusterFromRow(
 
 /** สถานะของแถวที่โหลดมา — เรียกฟังก์ชันคนละตัวกันตามชนิด ห้ามคิดสูตรใหม่ที่นี่ (ดูคอมเมนต์ config) */
 function statusOfRow(kind: LicenseKind, row: LicenseRow, now: Date): BuLicenseStatus | ClusterLicenseStatus {
-  if (kind === 'seat') return buLicenseStatus(row as unknown as BusinessUnitLicense, now);
+  // ใบ interface มี start/end รูปเดียวกับใบที่นั่ง จึงใช้สูตรวันเดียวกัน (`t <= end` ยังคุ้มครอง)
+  // ห้ามหยิบ `in_force` มาปนตรงนี้ — มันรวมสถานะสัญญาแม่เข้ามาด้วย ซึ่งไม่ใช่สถานะของ *ใบ*
+  // (แบนเนอร์ "ถูกครอบด้วยสัญญา" ใต้แผ่นป้ายเป็นที่พูดเรื่องนั้นแยกต่างหาก)
+  if (kind !== 'bu-quota') return buLicenseStatus(row as unknown as BusinessUnitLicense, now);
   // ฟอร์มโหลดใบเดียวผ่าน getByIdPlatform จึงไม่มีเพื่อนให้เทียบว่าใบไหนชนะ — `is_in_force`
   // ที่ backend คำนวณจาก v_cluster_bu_cap คือคำตอบเดียว · `undefined` = ไม่รู้ ให้คงสถานะเดิม
   const quota = row as unknown as ClusterLicense;
@@ -192,12 +206,21 @@ interface LicenseFieldsCardProps {
   cluster: { id: string; label: string } | null;
   /** undefined ตอนสร้าง — ระบบยังไม่ออกเลขให้ */
   licenseNumber?: string;
+  /** ตัวเลือกกลุ่มสิทธิ์ — มีสมาชิกเฉพาะตอนสร้างใบชนิด `selector: 'feature-group'` เท่านั้น */
+  groupOptions: LicenseFeatureGroup[];
+  /** สถานะการโหลดของ `groupOptions` — รายการว่างตอน 'ready' คือคนละเรื่องกับตอน 'failed' */
+  groupOptionsState: 'loading' | 'ready' | 'failed';
+  /** ป้ายกลุ่มของใบที่ออกแล้ว ("CODE · ชื่อ") — สตริงว่างเมื่อใบชนิดนี้ไม่ใช้กลุ่ม */
+  groupLabel: string;
   /** โหมดสร้าง — ตัวตนของใบ (เจ้าของ/คลัสเตอร์/เลขที่ใบ) แสดงในการ์ดนี้เฉพาะตอนสร้าง
    *  โหมดแก้ไขย้ายไปอยู่บน `IssuedLicensePlate` ทั้งชุด เหลือการ์ดนี้ไว้เฉพาะช่องที่พิมพ์ได้ */
   isNew: boolean;
   /** รับ textarea ด้วย — ช่องหมายเหตุเป็น `Textarea` แล้ว ตัว handler อ่านแค่ `name`/`value`
    *  ซึ่งมีเหมือนกันทั้งสอง element จึงไม่ต้องแยกทาง */
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  /** ช่องค่าหลักแบบ `<Select>` ไม่มี event ให้ส่ง — Radix คืนค่าเป็นสตริงล้วน จึงมีทางเข้าของ
+   *  ตัวเองแทนการปั้น ChangeEvent ปลอมมาหลอก `onChange` (ซึ่งต้อง cast ทิ้ง type ทั้งก้อน) */
+  onAmountChange: (value: string) => void;
   onBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   onFocus: (e: React.FocusEvent<HTMLInputElement>) => void;
   onNoExpiryChange: (checked: boolean) => void;
@@ -236,7 +259,8 @@ function TermModeButton({
  */
 function LicenseFieldsCard({
   config, draft, noExpiry, fieldErrors, editing, ownerText, ownerId, cluster, licenseNumber, isNew,
-  onChange, onBlur, onFocus, onNoExpiryChange,
+  groupOptions, groupOptionsState, groupLabel, onChange, onAmountChange, onBlur, onFocus,
+  onNoExpiryChange,
 }: LicenseFieldsCardProps) {
   const { t } = useI18n();
   const ownerLabel = t(OWNER_LABEL_KEYS[config.kind]);
@@ -298,7 +322,45 @@ function LicenseFieldsCard({
 
           <div className="space-y-2">
             <Label htmlFor="amount">{editing ? t('common.field.required', { label: amountLabel }) : amountLabel}</Label>
-            {editing ? (
+            {editing && config.selector === 'feature-group' && isNew ? (
+              <>
+                <Select
+                  value={draft.amount}
+                  onValueChange={onAmountChange}
+                  disabled={groupOptionsState === 'loading'}
+                >
+                  <SelectTrigger
+                    id="amount"
+                    aria-label={amountLabel}
+                    className={fieldErrors.amount ? 'border-destructive' : ''}
+                  >
+                    <SelectValue placeholder={t('pages.licenses.selectFeatureGroup')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groupOptions.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        <span className="font-mono text-xs">{g.code}</span> · {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* ช่องเลือกที่เปิดแล้วว่างเปล่าต้องบอกเหตุผลตรงนั้น ไม่ใช่ให้ผู้ใช้ไปค้นพบเองตอนกดบันทึก
+                 *  แล้วได้แค่ "ต้องเลือก" ซึ่งไม่บอกว่าเลือกอะไรไม่ได้เพราะอะไร */}
+                {groupOptionsState === 'failed' && (
+                  <p className="text-destructive text-xs">{t('pages.licenses.featureGroupsLoadFailed')}</p>
+                )}
+                {groupOptionsState === 'ready' && groupOptions.length === 0 && (
+                  <p className="text-muted-foreground text-xs">
+                    {t('pages.licenses.noSellableInterfaceGroups')}
+                  </p>
+                )}
+                {fieldErrors.amount && <p className="text-destructive text-xs">{fieldErrors.amount}</p>}
+              </>
+            ) : config.selector === 'feature-group' ? (
+              // กลุ่มแก้ไม่ได้หลังออกใบ — เปลี่ยนกลุ่ม = เปลี่ยนสิ่งที่ขาย ต้องออกใบใหม่ (เหมือน license_number)
+              // ค่าที่โชว์คือป้ายกลุ่มจากแถว ไม่ใช่ `draft.amount` ซึ่งเป็น uuid ดิบที่ผู้ใช้อ่านไม่ออก
+              <ReadOnlyField value={groupLabel} className="font-mono" />
+            ) : editing ? (
               <>
                 <Input
                   type="number"
@@ -486,6 +548,14 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
 
   // เจ้าของใช้ไปแล้วเท่าไร — `undefined` = ไม่รู้ (ชนิดนี้ไม่มีตัวหาร หรืออ่านไม่สำเร็จ) ห้ามอ่านเป็น 0
   const [ownerUsage, setOwnerUsage] = useState<number | undefined>(undefined);
+  // ตัวเลือกกลุ่มสิทธิ์ของใบชนิด `selector: 'feature-group'` — โหลดเฉพาะโหมดสร้าง เพราะกลุ่ม
+  // แก้ไม่ได้หลังออกใบ โหมดแก้ไขจึงไม่มีอะไรให้เลือก (และไม่ควรยิงคำขอที่ไม่มีใครใช้ผล)
+  const [groupOptions, setGroupOptions] = useState<LicenseFeatureGroup[]>([]);
+  // สถานะของ "รายการตัวเลือก" ไม่ใช่ของ "ค่าที่เลือก" — รายการว่างมีสองความหมายที่ต่างกันคนละเรื่อง
+  // (ยังโหลดไม่เสร็จ / โหลดพัง / โหลดสำเร็จแต่ไม่มีกลุ่มให้ขาย) ถ้าไม่แยกไว้ ทั้งสามกรณีจะกลายเป็น
+  // ช่องเลือกที่เปิดแล้วว่างเปล่าเหมือนกันหมด แล้วผู้ใช้จะได้แค่ "ต้องเลือก" ตอนกดบันทึก
+  const [groupOptionsState, setGroupOptionsState] =
+    useState<'loading' | 'ready' | 'failed'>('loading');
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
@@ -538,7 +608,10 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
       setLicenseNumber(data.license_number);
       setDocVersion(getDocVersion(data));
 
-      const amount = Number((data as unknown as Record<string, unknown>)[config.amountField]);
+      // ค่าหลักเป็นตัวเลขหรือ id กลุ่มแล้วแต่ชนิดใบ — `Number()` ทับ uuid จะได้ NaN แล้วร่างจะ
+      // กลายเป็นสตริง "NaN" ที่ไหลไปโผล่บนหน้าจอ (และไปเทียบกับ savedDraft ไม่ตรงตลอดกาล)
+      const rawAmount = (data as unknown as Record<string, unknown>)[config.amountField];
+      const amount = config.selector === 'amount' ? Number(rawAmount) : String(rawAmount ?? '');
       // `config.showNoExpiry &&` เป็นส่วนบังคับ ไม่ใช่แค่กันเหนียว — ใบที่นั่ง (showNoExpiry: false)
       // ไม่มีสวิตช์ "No expiry" ในฟอร์มเลย ถ้าคำนวณ perpetual จาก isPerpetual() เฉย ๆ โดยไม่เช็ค
       // config ก่อน ใบที่นั่งที่บังเอิญมี end_date เป็น 2099 (เช่นจาก migration) จะเข้าโหมด perpetual
@@ -581,9 +654,43 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
     return () => { stale = true; };
   }, [config, ownerId]);
 
+  // ตัวเลือกกลุ่มสิทธิ์ — ล้มเหลว = ไม่มีตัวเลือกให้เลือก ไม่ใช่หน้าล้ม (เหมือนตัวหารด้านบน)
+  // ขอ perpage 200 ครั้งเดียวไม่ทำ paginate: catalog กลุ่มมีขนาดจำกัดโดยธรรมชาติ (สิบต้น ๆ บน DEV)
+  useEffect(() => {
+    if (config.selector !== 'feature-group' || !isNew) return;
+    let alive = true;
+    setGroupOptionsState('loading');
+    licenseFeatureGroupService
+      .getAll({ page: 1, perpage: 200, sort: 'sort_order:asc' })
+      .then((res) => {
+        if (!alive) return;
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        // ขายได้เฉพาะกลุ่ม interface ที่ยังขายอยู่ — กลุ่ม standard ผูกใบนี้ไม่ได้ backend ตอบ 400
+        // `kind` เป็น optional ฝั่ง type (gateway รุ่นก่อน A1 ไม่ส่งมา) อ่าน absent เป็น 'standard'
+        setGroupOptions(rows.filter((g) => (g.kind ?? 'standard') === 'interface' && g.is_active));
+        setGroupOptionsState('ready');
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        // 403 ที่ catalog กลุ่มสิทธิ์ทำให้หน้านี้ใช้ไม่ได้ทั้งหน้า ไม่ใช่แค่ช่องเดียวหาย — ต้องพูด
+        // ออกมา ไม่ใช่กลืนลง devLog แล้วปล่อยให้ผู้ใช้ไปเจอ "ต้องเลือก" ตอนกดบันทึก
+        devLog('feature group options fetch failed', err);
+        setGroupOptions([]);
+        setGroupOptionsState('failed');
+      });
+    return () => { alive = false; };
+  }, [config.selector, isNew]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setDraft((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
+
+  // `<Select>` ไม่มี event ให้ส่งต่อ — ทางเข้าของตัวเองแทนการปั้น ChangeEvent ปลอม
+  const handleAmountChange = (value: string) => {
+    setDraft((prev) => ({ ...prev, amount: value }));
+    setFieldErrors((prev) => ({ ...prev, amount: '' }));
     setError('');
   };
 
@@ -620,7 +727,12 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // — เช็คตรงนี้ตอน submit เหมือน SubscriptionForm
   const validateBeforeSubmit = (): boolean => {
     const next: Record<string, string> = {};
-    const amountErr = validateField('amount', draft.amount, { required: true, label: t(AMOUNT_LABEL_KEYS[config.kind]) }, t);
+    // ค่าหลักแบบกลุ่มสิทธิ์ตรวจได้แค่ "เลือกแล้วหรือยัง" — `validateField('amount', …)` บังคับ
+    // ให้เป็นจำนวนเต็มบวก ซึ่ง uuid ของกลุ่มไม่มีวันผ่าน ใช้คีย์ required ตัวเดียวกับที่มันใช้
+    const amountLabel = t(AMOUNT_LABEL_KEYS[config.kind]);
+    const amountErr = config.selector === 'feature-group'
+      ? (draft.amount ? '' : t('common.validation.selectRequired', { label: amountLabel }))
+      : validateField('amount', draft.amount, { required: true, label: amountLabel }, t);
     if (amountErr) next.amount = amountErr;
     const startErr = validateField('start_date', draft.start_date, { required: true, label: t('common.validation.startDate') }, t);
     if (startErr) next.start_date = startErr;
@@ -650,7 +762,11 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // `undefined` "ให้ผลเหมือนกันเป๊ะ" ซึ่งถูก — แต่สรุปผิดว่านั่นแปลว่าล้างค่าไม่ได้เลย (ลืมเช็ค `''`
   // เทียบกับ `??`) จริง ๆ แล้วแค่เลิกส่ง `null` แล้วส่ง `''` ตรง ๆ ก็ล้างค่าได้ปกติ — ไม่ต้องแก้ backend
   const buildPayload = (): Record<string, unknown> => ({
-    [config.amountField]: Number(draft.amount),
+    // ค่าหลัก: จำนวน (number) หรือ id กลุ่ม (string) — กลุ่มส่งเฉพาะตอนสร้าง เพราะแก้ไม่ได้หลัง
+    // ออกใบ และ update DTO ของ backend ไม่มีฟิลด์นี้เลย (ส่งไปก็ได้ 400 กลับมา)
+    ...(config.selector === 'amount'
+      ? { [config.amountField]: Number(draft.amount) }
+      : isNew ? { [config.amountField]: draft.amount } : {}),
     start_date: toIsoStartOfDay(draft.start_date),
     end_date: noExpiry ? PERPETUAL_END_DATE : toIsoEndOfDay(draft.end_date),
     reference_no: draft.reference_no,
@@ -859,6 +975,13 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
   // เจ้าของที่มาทาง query param ได้ คลัสเตอร์ไม่ถูกส่งมาทาง URL เลย ช่องจะไม่ขึ้นทั้งช่อง
   // แทนที่จะขึ้นเป็นช่องว่าง (ผู้สร้างใบเลือก BU มาแล้ว คลัสเตอร์ตามมาเองตอนบันทึก)
   const cluster = clusterFromRow(config, detail);
+  // ป้ายกลุ่มของใบที่ออกแล้ว — `group` เป็นสรุปที่ backend join มาให้ ไม่ต้องยิงหาชื่อเอง
+  const interfaceRow = config.selector === 'feature-group' ? (detail as InterfaceLicenseRow | null) : null;
+  const groupLabel = interfaceRow?.group ? `${interfaceRow.group.code} · ${interfaceRow.group.name}` : '';
+  // "ถูกครอบด้วยสัญญา" อ่านจาก `in_force` ของแถวล้วน ๆ — เป็นความจริงของ backend ที่รวมสถานะ
+  // สัญญาแม่ไว้แล้ว ห้ามคำนวณซ้ำฝั่ง FE (ดู doc ของ InterfaceLicense ใน types) · โชว์เฉพาะตอน
+  // วันของใบยังใช้ได้อยู่ ไม่งั้นจะไปแย่งพูดกับป้าย "หมดอายุ" ที่ตอบคำถามเดียวกันอยู่แล้ว
+  const cappedByContract = !!interfaceRow && interfaceRow.in_force === false && status === 'active';
 
   return (
     <Layout>
@@ -886,7 +1009,11 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 ownerId={ownerId}
                 cluster={null}
                 isNew
+                groupOptions={groupOptions}
+                groupOptionsState={groupOptionsState}
+                groupLabel={groupLabel}
                 onChange={handleChange}
+                onAmountChange={handleAmountChange}
                 onBlur={handleBlur}
                 onFocus={handleFocus}
                 onNoExpiryChange={handleNoExpiryChange}
@@ -924,7 +1051,8 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
             {status && statusBadge && (
               <IssuedLicensePlate
                 amountLabel={t(AMOUNT_LABEL_KEYS[config.kind])}
-                amount={draft.amount}
+                // ใบกลุ่มสิทธิ์โชว์รหัสกลุ่ม ไม่ใช่ `draft.amount` ที่เป็น uuid ดิบ
+                amount={interfaceRow?.group ? interfaceRow.group.code : draft.amount}
                 startDate={draft.start_date}
                 endDate={draft.end_date}
                 noExpiry={noExpiry}
@@ -937,6 +1065,14 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
                 used={ownerUsage}
                 cancellation={cancellationOf(detail)}
               />
+            )}
+
+            {cappedByContract && interfaceRow && (
+              <p className="text-xs text-warning">
+                {t('pages.licenses.cappedByContract', {
+                  state: t(`common.status.${interfaceRow.contract_state}` as TKey),
+                })}
+              </p>
             )}
 
             {/* ทำไมช่องข้างล่างถึงแข็งหมด — บอกที่นี่ ไม่ใช่ปล่อยให้ผู้ใช้ค้นพบเองตอนคลิกแล้วพิมพ์
@@ -960,7 +1096,11 @@ const LicensePurchaseForm: React.FC<LicensePurchaseFormProps> = ({ config, mode 
               cluster={cluster}
               licenseNumber={licenseNumber}
               isNew={false}
+              groupOptions={groupOptions}
+              groupOptionsState={groupOptionsState}
+              groupLabel={groupLabel}
               onChange={handleChange}
+              onAmountChange={handleAmountChange}
               onBlur={handleBlur}
               onFocus={handleFocus}
               onNoExpiryChange={handleNoExpiryChange}

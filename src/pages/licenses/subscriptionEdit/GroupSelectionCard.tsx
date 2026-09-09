@@ -9,7 +9,7 @@ import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { FetchErrorState } from '../../../components/FetchErrorState';
-import { ChevronRight, ChevronDown, ExternalLink } from 'lucide-react';
+import { ChevronRight, ChevronDown, ExternalLink, X } from 'lucide-react';
 
 export interface GroupSelectionCardProps {
   /** กลุ่มที่ใบนี้เลือกไว้ — id ล้วน */
@@ -58,6 +58,10 @@ export function GroupSelectionCard({
         subscriptionService.getFeatureCatalog(),
       ]);
       if (list.status === 'rejected') throw list.reason;
+      // เก็บ **ทั้งหมด** ไว้ที่นี่ แล้วค่อยแยกตอน render — กลุ่ม interface ถูกกันออกจาก *รายการที่เลือกได้*
+      // (ขายบนใบ INF ใบสัญญาห้ามถือ backend 400 ตั้งแต่เฟส 4) แต่ถ้ากรองทิ้งตั้งแต่ตรงนี้ สัญญาที่
+      // ยังค้างกลุ่ม interface อยู่จะไม่เห็นมันที่ไหนเลย นับไม่เข้าสรุป และเอาออกไม่ได้ — บันทึกก็ 400
+      // ทุกครั้ง กลายเป็นสัญญาที่ซ่อมผ่านหน้าจอไม่ได้ (ดู `leftoverGroups`)
       setGroups(Array.isArray(list.value?.data) ? list.value.data : []);
       // catalog ใช้แค่แปลง key เป็นชื่อที่อ่านออก — ล้มได้โดยไม่ทำให้การ์ดพัง
       if (cat.status === 'fulfilled') {
@@ -95,6 +99,23 @@ export function GroupSelectionCard({
 
   const selected = useMemo(() => new Set(groupIds), [groupIds]);
 
+  /** กลุ่มที่ให้ติ๊กได้จริง — เฉพาะ standard (กลุ่มไม่ระบุชนิด = standard ตามค่าเริ่มต้นของ backend) */
+  const selectableGroups = useMemo(
+    () => groups.filter((g) => (g.kind ?? 'standard') === 'standard'),
+    [groups],
+  );
+
+  /** กลุ่ม interface ที่ยัง "ค้าง" อยู่บนสัญญานี้ — แสดงอ่านอย่างเดียวพร้อมปุ่มนำออกเท่านั้น */
+  const leftoverGroups = useMemo(
+    () => groups.filter((g) => g.kind === 'interface' && selected.has(g.id)),
+    [groups, selected],
+  );
+
+  const removeGroup = (id: string) => {
+    if (readOnly) return;
+    onChange(groupIds.filter((g) => g !== id));
+  };
+
   const toggleGroup = (id: string) => {
     if (readOnly) return;
     // Array.from ไม่ใช่ spread — tsconfig ของโปรเจกต์ target ต่ำกว่า es2015 จึง iterate Set ตรง ๆ ไม่ได้
@@ -129,6 +150,8 @@ export function GroupSelectionCard({
    * ถ้าสองกลุ่มมี feature ตัวเดียวกัน จึงแสดงเป็น "จากกลุ่ม N กลุ่ม" คู่กันเสมอ ไม่ใช่ตัวเลขเดี่ยว ๆ
    * ที่ชวนให้เข้าใจว่าเป็นจำนวนสิทธิ์สุทธิ · ตัวเลขสุทธิจริงมาจาก backend หลังบันทึก
    */
+  // นับจาก `groups` ทั้งก้อน (รวมกลุ่ม interface ที่ค้าง) — สรุปที่ไม่นับของที่ยังติดอยู่บนสัญญา
+  // คือสรุปที่โกหก และทำให้คนขายไม่รู้ว่ายังมีอะไรต้องเอาออกก่อนกดบันทึก
   const selectedGroups = useMemo(
     () => groups.filter((g) => selected.has(g.id)),
     [groups, selected],
@@ -158,7 +181,33 @@ export function GroupSelectionCard({
         </div>
       )}
 
-      {groups.length === 0 ? (
+      {leftoverGroups.length > 0 && (
+        <div className="space-y-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2">
+          <p className="text-xs text-foreground">{t('pages.subscriptions.interfaceGroupLeftover')}</p>
+          {leftoverGroups.map((g) => (
+            <div key={g.id} className="flex items-center gap-2">
+              <span className="truncate text-sm">{g.name}</span>
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{g.code}</span>
+              <Badge variant="secondary" className="shrink-0">
+                {g.feature_count}
+              </Badge>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="ml-auto shrink-0"
+                disabled={readOnly}
+                onClick={() => removeGroup(g.id)}
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t('pages.subscriptions.removeLeftoverGroup')}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selectableGroups.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {t('pages.subscriptions.noGroupsAvailable')}{' '}
           <Link to="/license-feature-groups" className="text-primary hover:underline">
@@ -167,7 +216,7 @@ export function GroupSelectionCard({
         </p>
       ) : (
         <div className="rounded-md border">
-          {groups.map((g) => {
+          {selectableGroups.map((g) => {
             const isOpen = expanded.has(g.id);
             const isPicked = selected.has(g.id);
             const keys = featuresByGroup[g.id];
