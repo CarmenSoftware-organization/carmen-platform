@@ -273,7 +273,7 @@ const RoleManagement: React.FC = () => {
     {
       id: 'permission_count',
       header: t('pages.roles.columnPermissions'),
-      enableSorting: false,
+      accessorFn: (row) => row.permission_count ?? 0,
       meta: { headerClassName: 'w-56', cellClassName: 'w-56' },
       cell: ({ row }) => (
         <RoleReachCell
