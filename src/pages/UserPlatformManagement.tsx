@@ -329,9 +329,9 @@ const UserPlatformManagement: React.FC = () => {
       },
     },
     {
-      id: 'roles',
+      id: 'role_count',
       header: t('pages.userPlatform.columnRolesScope'),
-      enableSorting: false,
+      accessorFn: (row) => row.roles?.length ?? 0,
       // The one flexible column: `w-full` under auto layout hands it every pixel the
       // fixed-width neighbours don't claim.
       meta: { headerClassName: 'w-full' },

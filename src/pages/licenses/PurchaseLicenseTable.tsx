@@ -45,6 +45,12 @@ const STATUS_VARIANT: Record<StatusFilterValue, StatusBadgeVariant> = {
   expired: 'destructive',
 };
 
+/** ลำดับเดียวกับ bucket ฝั่ง backend — ใช้แค่ให้ accessorFn มีค่า ไม่ได้ใช้เรียงจริง · superseded อยู่กับ active
+ *  เพราะ backend ไม่แยก (ใบที่ถูกแทนที่ยังอยู่ในช่วงวันของตัวเอง) */
+const STATUS_SORT_RANK: Record<StatusFilterValue, number> = {
+  active: 0, superseded: 0, scheduled: 1, expired: 2, cancelled: 3,
+};
+
 // Catalog KEYS only — resolved with `t` inside the component (see `statusLabel`). Reuses
 // common.status.* (Task 1) rather than a page-local key: every value this table's two
 // status badges (and this filter list) can render already has one.
@@ -513,8 +519,10 @@ export function PurchaseLicenseTable({ config }: PurchaseLicenseTableProps) {
       {
         id: 'status',
         header: t('common.status.label'),
-        // คำนวณฝั่ง FE จากวันที่ ไม่ใช่คอลัมน์จริงบน backend (controller ruling R21) — เรียงไม่ได้
-        enableSorting: false,
+        // เรียงได้แล้ว (2026-09-09): backend คำนวณสถานะจากวันที่ด้วยกติกาเดียวกับ utils/buLicense.ts และ
+        // แบ่งหน้าเป็น bucket active → scheduled → expired → cancelled (business-unit-license.service.ts
+        // และพี่น้อง) — ค่าที่ accessor คืนไม่ถูกใช้เรียง แต่ต้องมีเพื่อเปิดปุ่มที่หัวคอลัมน์
+        accessorFn: (row) => STATUS_SORT_RANK[row.status],
         // การ์ดมือถือ: เหมือน SubscriptionTable.tsx's `state` column — badge ไปโผล่ที่หัวการ์ดคู่กับ
         // title แทนที่จะตกลงไปเป็นแถว "Status: [badge]" ใน <dl> เฉย ๆ — สองแท็บของหน้าเดียวกันต้อง
         // เรนเดอร์การ์ดแบบเดียวกัน

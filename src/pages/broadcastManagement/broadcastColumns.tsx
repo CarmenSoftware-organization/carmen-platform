@@ -84,7 +84,8 @@ export const createBroadcastColumns = ({
       id: 'severity',
       header: t('common.field.severity'),
       meta: { headerClassName: 'w-28', cellClassName: 'w-28', card: 'hidden' },
-      enableSorting: false,
+      // server-side: broadcast-admin.service.ts เรียงเป็น bucket CRITICAL → WARNING → INFO → MAINTENANCE → ว่าง
+      accessorFn: (row) => row.severity ?? '',
       cell: ({ row }) => {
         // `translate` returns '' for an unknown key, so the `|| raw.toUpperCase()`
         // fallback is load-bearing — without it an unrecognised severity value

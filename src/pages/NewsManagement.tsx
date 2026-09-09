@@ -395,7 +395,8 @@ const NewsManagement: React.FC = () => {
     {
       id: 'target',
       header: t('pages.news.target'),
-      enableSorting: false,
+      // Global (อาร์เรย์ว่าง) มาก่อนตอน asc แล้วตามจำนวน BU — นิยามเดียวกับ news.service.ts `target`
+      accessorFn: (row) => row.business_unit_ids?.length ?? 0,
       cell: ({ row }) => {
         const ids = row.original.business_unit_ids;
         if (ids && ids.length > 0) {
@@ -417,7 +418,7 @@ const NewsManagement: React.FC = () => {
     {
       id: 'tags',
       header: t('pages.news.tags'),
-      enableSorting: false,
+      accessorFn: (row) => row.tags?.length ?? 0,
       cell: ({ row }) => {
         const tags = row.original.tags ?? [];
         if (tags.length === 0) return <span className="text-muted-foreground">-</span>;
@@ -443,7 +444,7 @@ const NewsManagement: React.FC = () => {
     {
       id: 'updated_at',
       header: t('common.audit.updatedDate'),
-      enableSorting: false,
+      accessorKey: 'updated_at',
       cell: ({ row }) => <AuditMeta variant="cell" actor={normalizeAudit(row.original).updated} />,
     },
     {

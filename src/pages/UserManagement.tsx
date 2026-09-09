@@ -482,7 +482,8 @@ const UserManagement: React.FC = () => {
       {
         id: "bu_count",
         header: t('pages.users.buColumn'),
-        enableSorting: false,
+        // เรียงตาม total (ตัวเลขหลัง /) — backend ใช้ _count ของ relation เดียวกับที่ประกอบ business_unit
+        accessorFn: (row) => row.business_unit?.length ?? 0,
         meta: { headerClassName: "w-16" },
         cell: ({ row }) => {
           const bus = row.original.business_unit || [];
