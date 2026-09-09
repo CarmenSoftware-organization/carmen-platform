@@ -9,6 +9,7 @@ import { useI18n } from '../../hooks/useI18n';
 import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { BusinessUnitLicense, Subscription } from '../../types';
 import type { BusinessUnitSubscriptions } from './useBusinessUnitSubscriptions';
+import { LicenseTimeline, useCoverageWindow } from './LicenseTimeline';
 
 interface BusinessUnitLicensesCardProps {
   licenses: BusinessUnitLicense[];
@@ -54,11 +55,13 @@ export default function BusinessUnitLicensesCard({
   const activeCount = licenses.filter((l) => licenseStatus(l, now) === 'active').length;
   const soon = licenses.filter((l) => isExpiringSoon(l, thresholds.seat_days, now));
   const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
+  const window = useCoverageWindow(now);
+  const subItems = subscriptions?.items ?? [];
 
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <h3 className="text-sm font-semibold">{t('pages.businessUnits.userLicensesTitle')}</h3>
           {loading ? (
             <p className="text-xs text-muted-foreground">{t('common.busy.loadingEllipsis')}</p>
@@ -73,6 +76,16 @@ export default function BusinessUnitLicensesCard({
             <p className={`text-xs ${over ? 'text-destructive' : 'text-muted-foreground'}`}>
               {t('pages.businessUnits.clusterPoolSeatsUsed', { used: clusterSeat.used, cap: clusterSeat.cap })}
             </p>
+          )}
+          {/* แกนเวลาของทุกสัญญาในการ์ด — ช่องโหว่/การทับซ้อนระหว่างใบมองเห็นได้ทันที
+              ขึ้นเฉพาะเมื่อมีรายการ: shell ของ cluster admin ไม่ส่ง `subscriptions` มา */}
+          {subscriptions && !subscriptions.loading && subItems.length > 0 && (
+            <LicenseTimeline
+              variant="group"
+              items={subItems.map((sub) => ({ start_date: sub.start_date, end_date: sub.end_date, live: sub.state === 'active' }))}
+              window={window}
+              now={now}
+            />
           )}
           {soon.map((l) => (
             <Badge key={l.id} variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>
@@ -130,6 +143,13 @@ export default function BusinessUnitLicensesCard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <LicenseTimeline
+                      variant="item"
+                      items={[{ start_date: sub.start_date, end_date: sub.end_date, live: sub.state === 'active' }]}
+                      window={window}
+                      now={now}
+                      label={t('pages.licenses.coverageBarLabel', { text: `${fmtDate(sub.start_date)} – ${fmtDate(sub.end_date)}` })}
+                    />
                     {soon && <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(sub.end_date, now) })}</Badge>}
                     <Badge variant={stateVariant(sub.state)}>{t(`common.status.${sub.state}`)}</Badge>
                     <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
