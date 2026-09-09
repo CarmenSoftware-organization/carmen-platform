@@ -5,6 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { daysLeft, fmtDate } from '../licenses/licenseDates';
 import { useI18n } from '../../hooks/useI18n';
+import { LicenseTimeline, useCoverageWindow } from './LicenseTimeline';
 import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { InterfaceLicense } from '../../types';
 
@@ -42,6 +43,8 @@ export default function BusinessUnitInterfaceLicensesCard({
   // ใบที่ช่วงวันที่ยัง active แต่ backend บอกว่าใช้ไม่ได้ = ถูกครอบด้วยสัญญาหลัก
   const capped = licenses.filter((l) => l.state === 'active' && !l.in_force);
   const soonMs = thresholds.interface_days * 24 * 60 * 60 * 1000;
+  const window = useCoverageWindow(now);
+  const toItem = (l: InterfaceLicense) => ({ start_date: l.start_date, end_date: l.end_date, live: l.in_force });
 
   const badgeOf = (l: InterfaceLicense) => {
     if (l.in_force) return <Badge variant="success">{t('common.status.active')}</Badge>;
@@ -53,13 +56,16 @@ export default function BusinessUnitInterfaceLicensesCard({
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <h3 className="text-sm font-semibold">{t('pages.businessUnits.interfaceLicensesTitle')}</h3>
           <p className="text-muted-foreground text-xs">
             {loading
               ? t('common.busy.loadingEllipsis')
               : t('pages.businessUnits.interfaceInForceCount', { count: inForce.length, total: licenses.length })}
           </p>
+          {!loading && licenses.length > 0 && (
+            <LicenseTimeline variant="group" items={licenses.map(toItem)} window={window} now={now} />
+          )}
           {capped.length > 0 && (
             <p className="text-warning text-xs">
               {t('pages.businessUnits.interfaceCappedHint', {
@@ -108,6 +114,13 @@ export default function BusinessUnitInterfaceLicensesCard({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <LicenseTimeline
+                  variant="item"
+                  items={[toItem(l)]}
+                  window={window}
+                  now={now}
+                  label={t('pages.licenses.coverageBarLabel', { text: `${fmtDate(l.start_date)} – ${fmtDate(l.end_date)}` })}
+                />
                 {soon && <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>}
                 {badgeOf(l)}
                 {editHref && (
