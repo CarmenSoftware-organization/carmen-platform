@@ -1794,6 +1794,18 @@ export const th: Translations = {
 
       // --- Task 5: SummaryCardHeader.tsx ---
       viewAll: 'ดูทั้งหมด',
+
+      // --- ClusterAdminLicenses.tsx: SubscriptionsCard / InterfaceLicensesCard (CoverageCard) ---
+      licensesSummary: 'สัญญาที่ใช้อยู่ {{subs}} ใบ · ใบสิทธิ์ interface ที่ใช้ได้จริง {{inf}} ใบ',
+      coverageSubscriptionsLabel: 'สัญญา',
+      coverageInterfaceLabel: 'ใบสิทธิ์ interface',
+      coverageLiveCount: 'ใช้ได้จริง {{count}} จาก {{total}} ใบ',
+      coverageExpiringSoonCount: 'ใกล้หมดอายุ {{count}} ใบ',
+      coverageLoadFailedPartial: 'โหลดไม่สำเร็จ {{count}} หน่วยธุรกิจ',
+      subscriptionsLoadFailed: 'โหลดสัญญาไม่สำเร็จ',
+      noSubscriptionsInCluster: 'ยังไม่มีสัญญาของคลัสเตอร์นี้',
+      noInterfaceLicensesInCluster: 'ยังไม่มีใบสิทธิ์ interface ในคลัสเตอร์นี้',
+      openBusinessUnitLicences: 'เปิดไลเซนส์ของ {{name}}',
     },
 
     // See en.ts for the cross-file rationale behind each key here (Task 1, catalog-only —

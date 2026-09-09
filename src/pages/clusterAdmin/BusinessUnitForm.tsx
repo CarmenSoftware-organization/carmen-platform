@@ -34,7 +34,10 @@ import businessUnitLicenseService from '../../services/businessUnitLicenseServic
 import { useLicenseLedger } from '../licenses/useLicenseLedger';
 import BusinessUnitUsersCard from '../businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from '../businessUnitEdit/BusinessUnitLicensesCard';
-import type { BusinessUnitLicense } from '../../types';
+import BusinessUnitInterfaceLicensesCard from '../businessUnitEdit/BusinessUnitInterfaceLicensesCard';
+import businessUnitInterfaceLicenseService from '../../services/businessUnitInterfaceLicenseService';
+import { useBusinessUnitSubscriptions } from '../businessUnitEdit/useBusinessUnitSubscriptions';
+import type { BusinessUnitLicense, InterfaceLicense } from '../../types';
 import type { TKey } from '../../i18n/types';
 
 // Text-valued fields eligible for the generic edit/read-only field renderer below.
@@ -169,6 +172,9 @@ const BusinessUnitForm: React.FC = () => {
 
   const users = useBusinessUnitUsers(buId, formData.cluster_id, false, refreshClusterSeat);
   const licenses = useLicenseLedger<BusinessUnitLicense>(buId, businessUnitLicenseService);
+  const interfaceLicenses = useLicenseLedger<InterfaceLicense>(buId, businessUnitInterfaceLicenseService);
+  // ผ่าน route ราย cluster ที่ตรวจด้วยสมาชิกภาพ — shell นี้ไม่มี `subscription.read`
+  const buSubscriptions = useBusinessUnitSubscriptions(buId, { clusterId });
 
   // สิทธิ์เท่าเดิมเป๊ะ: ใครเข้า route ได้ก็แก้ได้ (route คุมด้วย ClusterAdminRoute)
   // การเปลี่ยนขอบเขตสิทธิ์เป็นงานคนละชิ้นที่ต้องมีสเปกของตัวเอง — spec §5.3
@@ -189,6 +195,11 @@ const BusinessUnitForm: React.FC = () => {
       { id: 'hotel', label: t('common.section.hotel') },
       { id: 'company', label: t('common.section.company') },
       { id: 'configuration', label: t('common.section.configuration') },
+      {
+        id: 'licenses',
+        label: t('pages.businessUnits.licensesTab'),
+        count: buSubscriptions.items.length + interfaceLicenses.licenses.length,
+      },
     ];
     return base.map((tab) => ({ ...tab, hasError: errored.includes(tab.id) }));
   })();
@@ -542,6 +553,14 @@ const BusinessUnitForm: React.FC = () => {
       value: [formData.timezone, formData.calculation_method && getCalculationMethodLabel(formData.calculation_method)]
         .filter(Boolean).join(' · ') || t('pages.clusterAdmin.configDefaults'),
     },
+    {
+      id: 'licenses',
+      label: t('pages.businessUnits.licensesTab'),
+      value: t('pages.clusterAdmin.licensesSummary', {
+        subs: buSubscriptions.items.filter((sub) => sub.state === 'active').length,
+        inf: interfaceLicenses.licenses.filter((l) => l.in_force).length,
+      }),
+    },
   ];
 
   /**
@@ -638,19 +657,24 @@ const BusinessUnitForm: React.FC = () => {
             avatarUrl={avatarUrl}
             onUploadLogo={handleUploadLogo}
             onUploadAvatar={handleUploadAvatar}
-            peopleSlot={
+            peopleSlot={<BusinessUnitUsersCard users={users} canEdit={canEdit} />}
+            licensesSlot={
               <div className="space-y-4">
-                <BusinessUnitUsersCard users={users} canEdit={canEdit} />
-                {/* The card is permanently read-only now — seats are issued and changed in the
-                    License Center only, never here. `manageHref` points at this shell's own
-                    licenses route because cluster admin does not hold `subscription.read` and
-                    cannot pass `PrivateRoute` on `/licenses/*`; the platform Business Unit page
-                    links to `/licenses/:clusterId` instead. */}
+                {/* ทั้งสองการ์ดอ่านอย่างเดียว — ออก/แก้/ลบทำที่ License Center ซึ่ง shell นี้เข้าไม่ได้
+                    (`/licenses/*` บังคับ `subscription.read`) `manageHref` จึงชี้ route ไลเซนส์ของ shell เอง
+                    ไม่ส่ง createHref/editHref/subscriptionHref: ปุ่มหรือแถวที่พาไปชนหน้าที่เตะกลับแย่กว่าไม่มี */}
                 {/* ไม่ส่ง clusterSeat: แผ่นป้ายด้านบนบอก 11 / 15 ไปแล้วและเห็นจากทุก tab
                     การพิมพ์ซ้ำในการ์ดนี้คือตัวเลขเดียวกันสองที่บนจอเดียว */}
                 <BusinessUnitLicensesCard
                   licenses={licenses.licenses}
                   loading={licenses.loading}
+                  subscriptions={buSubscriptions}
+                  manageHref={`/cluster-admin/${clusterId}/licenses`}
+                  subscriptionHref={() => undefined}
+                />
+                <BusinessUnitInterfaceLicensesCard
+                  licenses={interfaceLicenses.licenses}
+                  loading={interfaceLicenses.loading}
                   manageHref={`/cluster-admin/${clusterId}/licenses`}
                 />
               </div>

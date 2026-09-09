@@ -13,7 +13,11 @@ import { CapacityStrip } from './CapacityStrip';
 import { SeatsByBuTable } from './licenses/SeatsByBuTable';
 import { QuotaLedgerCard } from './licenses/QuotaLedgerCard';
 import { BuRankingCard } from './licenses/BuRankingCard';
+import { SubscriptionsCard } from './licenses/SubscriptionsCard';
+import { InterfaceLicensesCard } from './licenses/InterfaceLicensesCard';
 import { useLicenseLedger } from '../licenses/useLicenseLedger';
+import { useClusterSubscriptions } from '../licenses/useClusterSubscriptions';
+import { useClusterInterfaceLicenses } from '../licenses/useClusterInterfaceLicenses';
 import { useClusterSeatLicenses } from '../licenses/useClusterSeatLicenses';
 import { useI18n } from '../../hooks/useI18n';
 import type { BusinessUnit, Cluster, ClusterLicense } from '../../types';
@@ -43,6 +47,10 @@ export default function ClusterAdminLicenses() {
 
   const quota = useLicenseLedger<ClusterLicense>(clusterId, clusterLicenseService);
   const seats = useClusterSeatLicenses(clusterId, bus);
+  // ยิง `/clusters/:id/subscriptions` ซึ่งตรวจด้วยสมาชิกภาพผู้ดูแลคลัสเตอร์ (ด่านเดียวกับ
+  // ClusterAdminRoute) ไม่ใช่ `/platform/subscriptions` ที่ 403 ใส่ cluster admin ทุกคน
+  const subscriptions = useClusterSubscriptions(clusterId, 'cluster');
+  const interfaces = useClusterInterfaceLicenses(clusterId, bus);
 
   useEffect(() => {
     if (!clusterId) return;
@@ -137,6 +145,25 @@ export default function ClusterAdminLicenses() {
             seats={{ used: cluster?.users_count ?? 0, cap: cluster?.total_max_license_users ?? null }}
           />
         )}
+
+        {/* ช่วงคุ้มครองสองชนิดคู่กัน — ทั้งคู่ตอบ "ใบไหนต้องต่อก่อน" บนแกนเวลาเดียวกัน */}
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <SubscriptionsCard
+            items={subscriptions.items}
+            loading={subscriptions.loading}
+            failed={subscriptions.failed}
+            businessUnits={bus}
+            clusterId={clusterId!}
+            onRetry={() => void subscriptions.reload()}
+          />
+          <InterfaceLicensesCard
+            rows={interfaces.rows}
+            failedBus={interfaces.failedBus}
+            loading={interfaces.loading}
+            clusterId={clusterId!}
+            onRetry={() => void interfaces.reload()}
+          />
+        </div>
 
         <SeatsByBuTable
           rows={seats.rows}

@@ -16,8 +16,16 @@ import type { Subscription } from '../../types';
  *
  * `failed` แยกจาก `items.length === 0` โดยตั้งใจ ตามเหตุผลเดียวกับ `useLicenseLedger.loadFailed`
  * — "ไม่มีสัญญา" กับ "ดูไม่ได้ว่ามีสัญญาไหม" นำไปสู่การตัดสินใจคนละอย่าง
+ *
+ * `scope` เลือก route ตามสิทธิ์ของ shell ที่เรียก: `'platform'` (ค่าตั้งต้น) ยิง `/platform/subscriptions`
+ * ซึ่งบังคับ `subscription.read` · `'cluster'` ยิง `/clusters/:id/subscriptions` ที่ตรวจด้วยสมาชิกภาพ
+ * ผู้ดูแลคลัสเตอร์แทน — shell ของ cluster admin **ต้อง**ใช้ตัวนี้ เพราะ 401/403 จาก route แรกจะ
+ * เตะเขาออกจากระบบ (`tokenRefresh.ts` แยกจาก token หมดอายุไม่ออก) ทั้งสองคืนแถวและ summary รูปเดียวกัน
  */
-export function useClusterSubscriptions(clusterId: string | undefined) {
+export function useClusterSubscriptions(
+  clusterId: string | undefined,
+  scope: 'platform' | 'cluster' = 'platform',
+) {
   const { t } = useI18n();
   const { thresholds } = useExpiryThresholds();
   const [items, setItems] = useState<Subscription[]>([]);
@@ -33,14 +41,17 @@ export function useClusterSubscriptions(clusterId: string | undefined) {
     setLoading(true);
     setFailed(false);
     try {
-      const res = await subscriptionService.getAll({
+      const paginate = {
         perpage: -1,
         sort: 'end_date:desc',
         advance: buildAdvance(
           { search: '', states: [], expiringSoon: false, clusterId },
           thresholds.subscription_days,
         ),
-      });
+      };
+      const res = scope === 'cluster'
+        ? await subscriptionService.listForCluster(clusterId, paginate)
+        : await subscriptionService.getAll(paginate);
       if (mine !== reqId.current) return;
       setItems(res?.data ?? []);
     } catch (err) {
@@ -51,7 +62,7 @@ export function useClusterSubscriptions(clusterId: string | undefined) {
     } finally {
       if (mine === reqId.current) setLoading(false);
     }
-  }, [clusterId, t, thresholds.subscription_days]);
+  }, [clusterId, scope, t, thresholds.subscription_days]);
 
   useEffect(() => { void reload(); }, [reload]);
 

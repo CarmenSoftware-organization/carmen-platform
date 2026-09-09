@@ -23,9 +23,18 @@ export interface BusinessUnitSubscriptions {
  * Cluster Edit: ผู้ใช้ที่ไม่มีสิทธิ์ (cluster admin เปิดหน้า BU ผ่าน shell ของตัวเอง) จะได้ 401
  * จาก gateway ซึ่ง `tokenRefresh.ts` แยกจาก token หมดอายุไม่ออก แล้วเตะออกจากระบบทั้งที่ยังใช้งานได้
  */
-export function useBusinessUnitSubscriptions(buId: string | undefined): BusinessUnitSubscriptions {
+export function useBusinessUnitSubscriptions(
+  buId: string | undefined,
+  /**
+   * ส่ง `clusterId` = ยิงผ่าน `/clusters/:id/subscriptions` ที่ตรวจด้วยสมาชิกภาพผู้ดูแลคลัสเตอร์
+   * (shell ของ cluster admin) โดยไม่สนใจ `subscription.read` — backend AND ตัวกรอง BU ของเราไว้ใต้
+   * `cluster_id` ของมันเอง · ไม่ส่ง = ทางเดิมของ shell platform ที่ต้องมี `subscription.read`
+   */
+  opts?: { clusterId?: string },
+): BusinessUnitSubscriptions {
   const { hasPermission } = useAuth();
-  const canRead = hasPermission('subscription.read');
+  const clusterId = opts?.clusterId;
+  const canRead = !!clusterId || hasPermission('subscription.read');
   const [items, setItems] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(canRead);
   const [failed, setFailed] = useState(false);
@@ -40,14 +49,16 @@ export function useBusinessUnitSubscriptions(buId: string | undefined): Business
     const mine = ++reqId.current;
     setLoading(true);
     setFailed(false);
-    subscriptionService
-      .getAll({
-        perpage: -1,
-        sort: 'end_date:desc',
-        advance: JSON.stringify({
-          where: { tb_subscription_bu: { some: { business_unit_id: buId, deleted_at: null } } },
-        }),
-      })
+    const paginate = {
+      perpage: -1,
+      sort: 'end_date:desc',
+      advance: JSON.stringify({
+        where: { tb_subscription_bu: { some: { business_unit_id: buId, deleted_at: null } } },
+      }),
+    };
+    (clusterId
+      ? subscriptionService.listForCluster(clusterId, paginate)
+      : subscriptionService.getAll(paginate))
       .then((res) => {
         if (mine !== reqId.current) return;
         setItems(res?.data ?? []);
@@ -60,7 +71,7 @@ export function useBusinessUnitSubscriptions(buId: string | undefined): Business
       .finally(() => {
         if (mine === reqId.current) setLoading(false);
       });
-  }, [buId, canRead]);
+  }, [buId, canRead, clusterId]);
 
   return { items, loading, failed };
 }
