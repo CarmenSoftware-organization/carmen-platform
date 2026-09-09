@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { RefreshCw, Pencil, ChevronsUpDown } from 'lucide-react';
+import { RefreshCw, Pencil } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import {
@@ -12,8 +12,9 @@ import {
 } from '../../../components/ui/table';
 import Can from '../../../components/Can';
 import { AuditMeta } from '../../../components/AuditMeta';
+import { SortableTableHead } from '../../../components/SortableTableHead';
 import { TableToolbar } from '../TableToolbar';
-import { cycleSort, sortRows, type SortState } from '../tableSort';
+import { cycleSort, sortRows, type SortState } from '../../../utils/tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import { latestActor } from '../../../utils/audit';
@@ -112,22 +113,22 @@ export function BusinessUnitsSection({
           <Table className="table-sticky-right [--sticky-right-bg:var(--card)]">
             <TableHeader>
               <TableRow>
-                {(['code', 'name'] as const).map((key) => (
-                  /* Code is a 5-character chip, so it takes a fixed lane. Left to share the
-                     auto layout it was handed 230px for 40px of content and pushed the name —
-                     the thing you actually read the row by — a hand's width to the right, so
-                     the row scanned as three islands instead of one line. Name keeps the
-                     slack: its second line (the audit trail) is what genuinely wants it. */
-                  <TableHead key={key} className={key === 'code' ? 'w-32' : 'w-96'}>
-                    <button type="button" className="inline-flex items-center gap-1" onClick={() => setSort((s) => cycleSort(s, key))}>
-                      {key === 'code' ? t('common.field.code') : t('common.field.name')}
-                      <ChevronsUpDown className="h-3 w-3 opacity-50" />
-                    </button>
-                  </TableHead>
-                ))}
+                {/* Code is a 5-character chip, so it takes a fixed lane. Left to share the
+                   auto layout it was handed 230px for 40px of content and pushed the name —
+                   the thing you actually read the row by — a hand's width to the right, so
+                   the row scanned as three islands instead of one line. Name keeps the
+                   slack: its second line (the audit trail) is what genuinely wants it. */}
+                <SortableTableHead sortKey="code" sort={sort} onSort={(k) => setSort((s) => cycleSort(s, k))} className="w-32">
+                  {t('common.field.code')}
+                </SortableTableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={(k) => setSort((s) => cycleSort(s, k))} className="w-96">
+                  {t('common.field.name')}
+                </SortableTableHead>
                 {/* กว้างคงที่: ปล่อยให้ยืด แล้วคอลัมน์ชื่อจะถูกบีบขณะที่ช่องว่างไปกองอยู่
-                    ระหว่างสถานะกับปุ่มแก้ไข */}
-                <TableHead className="w-32">{t('common.status.label')}</TableHead>
+                    ระหว่างสถานะกับปุ่มแก้ไข · active (1) มาก่อน inactive (0) เมื่อเรียง desc */}
+                <SortableTableHead sortKey="status" sort={sort} onSort={(k) => setSort((s) => cycleSort(s, k))} className="w-32">
+                  {t('common.status.label')}
+                </SortableTableHead>
                 {/* Slack absorber — same move as the users table under the next tab, and the
                     same `w-96` name lane, so switching tabs does not re-flow the row shape the
                     eye has just learned. Without it the name column ate the leftover width and

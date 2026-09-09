@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Button } from '../../../components/ui/button';
@@ -15,6 +15,8 @@ import { CollapsibleSection, selectClassName } from '../shared';
 import { useI18n } from '../../../hooks/useI18n';
 import type { BusinessUnitConfig } from '../../../types';
 import type { SectionFieldProps } from '../types';
+import { SortableTableHead } from '../../../components/SortableTableHead';
+import { cycleSort, sortRows, type SortState } from '../../../utils/tableSort';
 
 interface ConfigurationSectionProps extends SectionFieldProps {
   onConfigChange: (index: number, field: keyof BusinessUnitConfig, value: string) => void;
@@ -22,8 +24,19 @@ interface ConfigurationSectionProps extends SectionFieldProps {
   onRemoveConfigRow: (index: number) => void;
 }
 
+const sortAccessor = (item: BusinessUnitConfig, key: string): unknown => {
+  if (key === 'key') return item.key ?? '';
+  if (key === 'label') return item.label ?? '';
+  if (key === 'datatype') return item.datatype ?? '';
+  return '';
+};
+
 const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({ formData, editing, onConfigChange, onAddConfigRow, onRemoveConfigRow }) => {
   const { t } = useI18n();
+  const [sort, setSort] = useState<SortState | null>(null);
+  const onSort = (k: string) => setSort((s) => cycleSort(s, k));
+  // เฉพาะมุมมองอ่านอย่างเดียว — ตอนแก้ไขแถวผูกกับ index ของ formData.config จึงห้ามเรียง
+  const viewRows = useMemo(() => sortRows(formData.config, sort, sortAccessor), [formData.config, sort]);
   return (
   <CollapsibleSection title={t('common.section.configuration')} description={t('pages.businessUnits.configDescription')} forceOpen>
     <div className="space-y-4">
@@ -93,14 +106,14 @@ const ConfigurationSection: React.FC<ConfigurationSectionProps> = ({ formData, e
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('pages.businessUnits.configKeyLabel')}</TableHead>
-                    <TableHead>{t('pages.businessUnits.configLabelField')}</TableHead>
-                    <TableHead>{t('common.field.type')}</TableHead>
+                    <SortableTableHead sortKey="key" sort={sort} onSort={onSort}>{t('pages.businessUnits.configKeyLabel')}</SortableTableHead>
+                    <SortableTableHead sortKey="label" sort={sort} onSort={onSort}>{t('pages.businessUnits.configLabelField')}</SortableTableHead>
+                    <SortableTableHead sortKey="datatype" sort={sort} onSort={onSort}>{t('common.field.type')}</SortableTableHead>
                     <TableHead>{t('pages.businessUnits.configValueLabel')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {formData.config.map((item, index) => (
+                  {viewRows.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.key || '-'}</TableCell>
                       <TableCell>{item.label || '-'}</TableCell>

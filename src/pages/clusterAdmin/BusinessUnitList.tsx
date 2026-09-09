@@ -259,7 +259,6 @@ const BusinessUnitList: React.FC = () => {
         header: t('common.label.hq'),
         meta: { headerClassName: 'w-20', cellClassName: 'w-20' },
         cell: ({ row }) => (row.original.is_hq ? <Badge variant="secondary">{t('common.label.hq')}</Badge> : null),
-        enableSorting: false,
       },
       {
         accessorKey: 'is_active',

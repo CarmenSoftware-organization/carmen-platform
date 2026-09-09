@@ -221,6 +221,8 @@ const CronJobManagement: React.FC = () => {
       id: 'bu',
       // เรียงจากเซิร์ฟเวอร์ไม่ได้ (ค่าอยู่ใน JSON ของ job_config) จึงไม่เปิด enableSorting
       accessorFn: (r) => buCodesOf(r).join(', '),
+      // accessorFn อยู่เพื่อการ์ดมือถือ/ค้นหา แต่ทำให้ TanStack ถือว่าเรียงได้ — ต้องปิดชัด ๆ
+      enableSorting: false,
       header: t('cronjob.column.businessUnit'),
       cell: ({ row }) => {
         const job = row.original;
