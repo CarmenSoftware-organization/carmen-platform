@@ -14,6 +14,8 @@ import {
 import { TableToolbar } from '../TableToolbar';
 import { BulkActionBar, type BulkAction } from '../BulkActionBar';
 import { InlineCell } from '../InlineCell';
+import { SortableTableHead } from '../../../components/SortableTableHead';
+import { cycleSort, sortRows, type SortState } from '../../../utils/tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import type { ClusterUser } from '../../../types';
 import { useI18n } from '../../../hooks/useI18n';
@@ -37,6 +39,15 @@ function displayName(u: ClusterUser): string {
   return parts.length ? parts.join(' ') : (u.name || u.email || '');
 }
 
+// คีย์ที่หัวคอลัมน์ส่งมา → ค่าที่ใช้เรียง · role ส่งค่าดิบ (admin < user) ซึ่งเรียงตรงกับป้ายทั้งสองภาษา
+// · status: active (1) ก่อน inactive (0) เมื่อ desc
+const sortAccessor = (u: ClusterUser, key: string): unknown => {
+  if (key === 'name') return displayName(u);
+  if (key === 'role') return u.role ?? 'user';
+  if (key === 'status') return u.is_active !== false ? 1 : 0;
+  return '';
+};
+
 export function UsersSection({
   users, loading, canEdit,
   onRefresh, onAddUser, onUpdateUser, onRemoveUser, onBulkRemove,
@@ -48,10 +59,11 @@ export function UsersSection({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false);
   const [confirmRemoveOne, setConfirmRemoveOne] = useState<ClusterUser | null>(null);
+  const [sort, setSort] = useState<SortState | null>(null);
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return users.filter((u) => {
+    const filtered = users.filter((u) => {
       if (term) {
         const hay = `${displayName(u)} ${u.email ?? ''} ${u.username ?? ''}`.toLowerCase();
         if (!hay.includes(term)) return false;
@@ -61,7 +73,8 @@ export function UsersSection({
       if (inactiveOnly && active) return false;
       return true;
     });
-  }, [users, search, activeOnly, inactiveOnly]);
+    return sortRows(filtered, sort, sortAccessor);
+  }, [users, search, activeOnly, inactiveOnly, sort]);
 
   // Selection is scoped to the currently-filtered set; reset it whenever filters change.
   const resetSelection = () => setSelected(new Set());
@@ -140,9 +153,15 @@ export function UsersSection({
                     status two more gaps out — so a row read as four separate readings instead
                     of one. Identity is one fact on two lines now (the shape the business-unit
                     table beside it already uses), and only that column stretches. */}
-                <TableHead className="w-96">{t('common.field.name')}</TableHead>
-                <TableHead className="w-40">{t('pages.clusters.columnRole')}</TableHead>
-                <TableHead className="w-28 text-center">{t('common.status.label')}</TableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={(k) => setSort((s) => cycleSort(s, k))} className="w-96">
+                  {t('common.field.name')}
+                </SortableTableHead>
+                <SortableTableHead sortKey="role" sort={sort} onSort={(k) => setSort((s) => cycleSort(s, k))} className="w-40">
+                  {t('pages.clusters.columnRole')}
+                </SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={(k) => setSort((s) => cycleSort(s, k))} className="w-28 text-center">
+                  {t('common.status.label')}
+                </SortableTableHead>
                 {/* Slack absorber. Every real column is now sized to its content, so without
                     somewhere to put the leftover width the name column swallowed it and left
                     ~650px between a person and their role. Parking it here packs the three
