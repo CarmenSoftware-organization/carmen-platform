@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -15,6 +15,11 @@ interface BusinessUnitInterfaceLicensesCardProps {
   manageHref: string;
   /** ปุ่มออกใบใหม่ — ไม่ส่ง = ไม่มีปุ่ม ผู้เรียกครอบสิทธิ์ subscription.manage เอง */
   createHref?: string;
+  /**
+   * ปลายทางเมื่อกดแถวใบหนึ่ง — ผู้เรียกตัดสิน URL เช่นเดียวกับ `manageHref` (route
+   * `/licenses/interface/:id/edit` บังคับ `subscription.read`) ไม่ส่ง = แถวไม่เป็นลิงก์
+   */
+  editHref?: (id: string) => string;
   now?: Date;
 }
 
@@ -28,6 +33,7 @@ export default function BusinessUnitInterfaceLicensesCard({
   loading,
   manageHref,
   createHref,
+  editHref,
   now = new Date(),
 }: BusinessUnitInterfaceLicensesCardProps) {
   const { t } = useI18n();
@@ -84,18 +90,18 @@ export default function BusinessUnitInterfaceLicensesCard({
           const left = new Date(l.end_date).getTime() - now.getTime();
           // ป้าย "เหลืออีกกี่วัน" ขึ้นเฉพาะใบที่ใช้ได้จริง — ใบที่ถูกครอบอยู่แล้วไม่มีอะไรให้นับถอยหลัง
           const soon = l.in_force && left <= soonMs;
-          return (
-            <div
-              key={l.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
-            >
+          const rowClass = 'flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs';
+          const body = (
+            <>
               <div className="min-w-0 space-y-0.5">
                 {/* อ่าน `group` แบบกันพลาดเหมือนที่ตาราง/ฟอร์มทำ — endpoint ราย BU อาจไม่ pack
                     `group` มาให้สักแถว แล้ว map ทั้งก้อนจะ throw ตอน render ทำให้แท็บ Licenses
                     ทั้งแท็บขาวทั้งหน้า ไม่ใช่แค่แถวเดียวหาย */}
                 <div className="font-mono">
                   {l.group?.code ?? l.license_feature_group_id}{' '}
-                  <span className="text-muted-foreground">· {l.license_number}</span>
+                  <span className={editHref ? 'text-muted-foreground group-hover:underline' : 'text-muted-foreground'}>
+                    · {l.license_number}
+                  </span>
                 </div>
                 <div className="text-muted-foreground">
                   {l.group?.name ?? ''} · {fmtDate(l.start_date)} – {fmtDate(l.end_date)}
@@ -104,8 +110,25 @@ export default function BusinessUnitInterfaceLicensesCard({
               <div className="flex items-center gap-2">
                 {soon && <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>}
                 {badgeOf(l)}
+                {editHref && (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                )}
               </div>
-            </div>
+            </>
+          );
+          // ทั้งแถวเป็นลิงก์ (ไม่ใช่แค่เลขที่) รูปเดียวกับแถวสัญญาใน BusinessUnitLicensesCard —
+          // ยังเป็น <a> จริงจึงเปิดแท็บใหม่/คลิกกลางได้
+          return editHref ? (
+            <Link
+              key={l.id}
+              to={editHref(l.id)}
+              aria-label={t('pages.businessUnits.openInterfaceLicense', { number: l.license_number })}
+              className={`group ${rowClass} transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+            >
+              {body}
+            </Link>
+          ) : (
+            <div key={l.id} className={rowClass}>{body}</div>
           );
         })}
       </CardContent>
