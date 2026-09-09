@@ -406,7 +406,9 @@ const TenantMigrationManagement: React.FC = () => {
     {
       id: 'status',
       header: t('common.status.label'),
+      // accessorFn มีไว้เปิดปุ่มเรียงเท่านั้น — ห้ามให้ค่าอันดับ/เวลาไปติดช่องค้นหา (TanStack เปิด global filter ให้ทุกคอลัมน์ที่มี accessor)
       accessorFn: (row) => STATUS_RANK[rowStatusOf(rowState[row.id])],
+      enableGlobalFilter: false,
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
@@ -452,7 +454,9 @@ const TenantMigrationManagement: React.FC = () => {
       id: 'last_checked',
       header: t('pages.tenantMigration.columnLastChecked'),
       // 'HH:mm:ss' เรียงเป็นสตริงได้ตรงตามเวลา; แถวที่ยังไม่เคยเช็คไปหัวด้วย '' ตอน asc
+      // accessorFn มีไว้เปิดปุ่มเรียงเท่านั้น — ห้ามให้ค่าอันดับ/เวลาไปติดช่องค้นหา (TanStack เปิด global filter ให้ทุกคอลัมน์ที่มี accessor)
       accessorFn: (row) => rowState[row.id]?.lastChecked ?? '',
+      enableGlobalFilter: false,
       // เวลา 8 ตัวอักษรไม่ต้องการ 175px — ตรึงความกว้างไว้ ไม่ให้ auto layout แจกที่ว่างให้
       meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
       cell: ({ row }) => {

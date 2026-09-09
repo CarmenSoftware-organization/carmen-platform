@@ -74,7 +74,8 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
   const [sort, setSort] = useState<SortState | null>(null);
   const onSort = (k: string) => setSort((s) => cycleSort(s, k));
   // เรียงตามค่าเริ่มต้นก่อนเสมอ แล้วค่อยทับด้วยหัวคอลัมน์ที่กด — Array.prototype.sort เป็น stable
-  // sort จึงคงลำดับชื่อ→อีเมลไว้เป็น tie-break ให้แถวที่ค่าเท่ากัน
+  // sort จึงคงลำดับชื่อ→อีเมลไว้เป็น tie-break ให้แถวที่ค่าเท่ากัน เฉพาะตอนเรียง asc เท่านั้น —
+  // sortRows ทำ desc ด้วย .reverse() ผลลัพธ์ tie-break จึงกลับด้านตามไปด้วยตอน desc
   const sortedUsers = useMemo(
     () => sortRows([...users.buUsers].sort(defaultOrder), sort, sortAccessor),
     [users.buUsers, sort],
