@@ -140,17 +140,13 @@ export const createBroadcastColumns = ({
         );
       },
     },
-    // เดิมเขียนเองอ่าน created_at/created_by ตรง ๆ — เปลี่ยนมาใช้ของกลาง (normalizeAudit รองรับ
-    // created_by แบบ object { id, name } ของ BroadcastListItem อยู่แล้วตั้งแต่ Task 6) คง
-    // headerClassName/cellClassName/card: 'hidden' ของเดิมไว้ — คอลัมน์นี้ไม่เคยแสดงบนการ์ดมือถือ
-    // คง enableSorting: false ของเดิมไว้ด้วย (auditColumns เปิด sort ให้เป็นค่าเริ่มต้นผ่าน
-    // accessorFn) เพราะ apps/micro-notification/src/notification/broadcast.service.ts ฝั่ง
-    // backend ไม่มีโค้ดจัดการ query param `sort`/`orderBy` เลย — หน้านี้เป็น server-side table
-    // (BroadcastManagement.tsx ส่ง prop serverSide) คลิกหัวคอลัมน์จะยิง sort=created_at ไปยัง
-    // endpoint ที่ไม่รู้จักพารามิเตอร์นั้น กลายเป็นหัวคอลัมน์กดได้แต่ไม่มีอะไรเกิดขึ้นจริง
+    // ใช้ของกลาง (normalizeAudit รองรับ created_by แบบ object { id, name } ของ BroadcastListItem)
+    // คง headerClassName/cellClassName/card: 'hidden' ไว้ — คอลัมน์นี้ไม่เคยแสดงบนการ์ดมือถือ ·
+    // เรียงได้: รายการฝั่ง admin อยู่ที่ broadcast-admin.service.ts ซึ่งมี whitelist
+    // created_at/scheduled_at/end_at/title และ created_at เป็น default อยู่แล้ว (comment เดิมชี้ไปที่
+    // broadcast.service.ts ซึ่งเป็น feed ฝั่งผู้รับ ไม่ใช่ endpoint ของหน้านี้)
     {
       ...createdColumn,
-      enableSorting: false,
       meta: { ...createdColumn.meta, headerClassName: 'w-32', cellClassName: 'w-32', card: 'hidden' },
     },
   ];

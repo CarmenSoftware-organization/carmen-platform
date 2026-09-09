@@ -67,6 +67,9 @@ export const rowStatusOf = (rs?: RowState): RowStatus => {
   return 'unknown';
 };
 
+// ลำดับสถานะสำหรับเรียงคอลัมน์: ปัญหาก่อน (error) → ค้าง → ไม่รู้ → ทันสมัย — asc คือ "ต้องดูก่อน"
+const STATUS_RANK: Record<RowStatus, number> = { error: 0, pending: 1, unknown: 2, up_to_date: 3 };
+
 // Wrap a (possibly disabled) button so its tooltip still fires — Fluent UI tooltips
 // don't fire over a disabled button, so the trigger wraps a focusable span.
 export const withTooltip = (el: ReactElement, reason: string | null): ReactElement =>
@@ -403,7 +406,7 @@ const TenantMigrationManagement: React.FC = () => {
     {
       id: 'status',
       header: t('common.status.label'),
-      enableSorting: false,
+      accessorFn: (row) => STATUS_RANK[rowStatusOf(rowState[row.id])],
       meta: { headerClassName: 'w-32', cellClassName: 'w-32' },
       cell: ({ row }) => {
         const rs = rowState[row.original.id];
@@ -448,7 +451,8 @@ const TenantMigrationManagement: React.FC = () => {
     {
       id: 'last_checked',
       header: t('pages.tenantMigration.columnLastChecked'),
-      enableSorting: false,
+      // 'HH:mm:ss' เรียงเป็นสตริงได้ตรงตามเวลา; แถวที่ยังไม่เคยเช็คไปหัวด้วย '' ตอน asc
+      accessorFn: (row) => rowState[row.id]?.lastChecked ?? '',
       // เวลา 8 ตัวอักษรไม่ต้องการ 175px — ตรึงความกว้างไว้ ไม่ให้ auto layout แจกที่ว่างให้
       meta: { headerClassName: 'w-28', cellClassName: 'w-28' },
       cell: ({ row }) => {
