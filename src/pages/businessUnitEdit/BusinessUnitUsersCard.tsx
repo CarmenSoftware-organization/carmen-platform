@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -21,6 +21,8 @@ import { BU_ROLES } from './types';
 import { useBusinessUnitUsers } from './useBusinessUnitUsers';
 import { useI18n } from '../../hooks/useI18n';
 import { ROLE_LABEL_KEYS, roleLabel } from '../../utils/roleLabels';
+import { SortableTableHead } from '../../components/SortableTableHead';
+import { cycleSort, sortRows, type SortState } from '../../utils/tableSort';
 
 interface BusinessUnitUsersCardProps {
   users: ReturnType<typeof useBusinessUnitUsers>;
@@ -32,6 +34,31 @@ interface BusinessUnitUsersCardProps {
   clusterSeat?: { used: number; cap: number };
 }
 
+type BuUserRow = ReturnType<typeof useBusinessUnitUsers>['buUsers'][number];
+
+const fullName = (u: BuUserRow): string =>
+  [u.firstname, u.middlename, u.lastname].filter(Boolean).join(' ').toLowerCase();
+
+/** ลำดับเดิมของตาราง (ชื่อ → อีเมล → username) ใช้เมื่อยังไม่กดหัวคอลัมน์ใด */
+const defaultOrder = (a: BuUserRow, b: BuUserRow): number => {
+  const nameA = fullName(a);
+  const nameB = fullName(b);
+  if (nameA !== nameB) return nameA.localeCompare(nameB);
+  const emailA = (a.email || '').toLowerCase();
+  const emailB = (b.email || '').toLowerCase();
+  if (emailA !== emailB) return emailA.localeCompare(emailB);
+  return (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase());
+};
+
+const sortAccessor = (u: BuUserRow, key: string): unknown => {
+  if (key === 'name') return fullName(u);
+  if (key === 'email') return u.email ?? '';
+  if (key === 'username') return u.username ?? '';
+  if (key === 'role') return u.role ?? '';
+  if (key === 'status') return u.is_active ? 1 : 0;
+  return '';
+};
+
 const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, canEdit = false, clusterSeat }) => {
   const { t } = useI18n();
   const over = clusterSeat ? clusterSeat.used > clusterSeat.cap : false;
@@ -42,6 +69,15 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
   // (แถวเดียวที่ต่างก็พอให้คอลัมน์นี้มีความหมาย จึงยังแสดง)
   const showUsernameColumn = users.buUsers.some(
     (u) => (u.username || '').trim().toLowerCase() !== (u.email || '').trim().toLowerCase(),
+  );
+
+  const [sort, setSort] = useState<SortState | null>(null);
+  const onSort = (k: string) => setSort((s) => cycleSort(s, k));
+  // เรียงตามค่าเริ่มต้นก่อนเสมอ แล้วค่อยทับด้วยหัวคอลัมน์ที่กด — Array.prototype.sort เป็น stable
+  // sort จึงคงลำดับชื่อ→อีเมลไว้เป็น tie-break ให้แถวที่ค่าเท่ากัน
+  const sortedUsers = useMemo(
+    () => sortRows([...users.buUsers].sort(defaultOrder), sort, sortAccessor),
+    [users.buUsers, sort],
   );
 
   return (
@@ -88,24 +124,20 @@ const BusinessUnitUsersCard: React.FC<BusinessUnitUsersCardProps> = ({ users, ca
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10 text-center">#</TableHead>
-                <TableHead>{t('common.field.name')}</TableHead>
-                <TableHead>{t('common.field.email')}</TableHead>
-                {showUsernameColumn && <TableHead>{t('common.field.username')}</TableHead>}
-                <TableHead>{t('common.label.buRole')}</TableHead>
-                <TableHead className="text-center">{t('pages.businessUnits.buStatusLabel')}</TableHead>
+                <SortableTableHead sortKey="name" sort={sort} onSort={onSort}>{t('common.field.name')}</SortableTableHead>
+                <SortableTableHead sortKey="email" sort={sort} onSort={onSort}>{t('common.field.email')}</SortableTableHead>
+                {showUsernameColumn && (
+                  <SortableTableHead sortKey="username" sort={sort} onSort={onSort}>{t('common.field.username')}</SortableTableHead>
+                )}
+                <SortableTableHead sortKey="role" sort={sort} onSort={onSort}>{t('common.label.buRole')}</SortableTableHead>
+                <SortableTableHead sortKey="status" sort={sort} onSort={onSort} className="text-center">
+                  {t('pages.businessUnits.buStatusLabel')}
+                </SortableTableHead>
                 {canEdit && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...users.buUsers].sort((a, b) => {
-                const nameA = [a.firstname, a.middlename, a.lastname].filter(Boolean).join(' ').toLowerCase();
-                const nameB = [b.firstname, b.middlename, b.lastname].filter(Boolean).join(' ').toLowerCase();
-                if (nameA !== nameB) return nameA.localeCompare(nameB);
-                const emailA = (a.email || '').toLowerCase();
-                const emailB = (b.email || '').toLowerCase();
-                if (emailA !== emailB) return emailA.localeCompare(emailB);
-                return (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase());
-              }).map((u, idx) => (
+              {sortedUsers.map((u, idx) => (
                 <TableRow key={u.id}>
                   <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                   <TableCell>
