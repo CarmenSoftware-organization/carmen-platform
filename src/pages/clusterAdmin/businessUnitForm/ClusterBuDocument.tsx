@@ -39,6 +39,8 @@ export interface ClusterBuDocumentProps {
   peopleSlot?: React.ReactNode;
   /** timezone, รูปแบบตัวเลข/วันที่, config (tab Configuration) */
   configurationSlot?: React.ReactNode;
+  /** การ์ดสัญญา/ที่นั่ง + การ์ดใบ interface (tab Licenses) — อ่านอย่างเดียว */
+  licensesSlot?: React.ReactNode;
 }
 
 /**
@@ -82,7 +84,7 @@ function TabJumpList({ summaries, onJump }: { summaries: TabSummary[]; onJump: (
 export function ClusterBuDocument({
   formData: f, fieldErrors, canEdit, onCommit, onValidate, onChange, onCopyHotelAddress,
   logoUrl, avatarUrl, onUploadLogo, onUploadAvatar,
-  tabs, activeTab, onTabChange, summaries, peopleSlot, configurationSlot,
+  tabs, activeTab, onTabChange, summaries, peopleSlot, configurationSlot, licensesSlot,
 }: ClusterBuDocumentProps) {
   const { t } = useI18n();
 
@@ -188,6 +190,8 @@ export function ClusterBuDocument({
       )}
 
       {activeTab === 'configuration' && configurationSlot}
+
+      {activeTab === 'licenses' && licensesSlot}
     </div>
   );
 }

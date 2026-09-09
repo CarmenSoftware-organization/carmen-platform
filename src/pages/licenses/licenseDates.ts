@@ -46,6 +46,14 @@ export const fmtDate = (v?: string): string => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
+/**
+ * ช่วงคุ้มครองเป็นข้อความ "เริ่ม – สิ้นสุด" — ใบที่ไม่มีวันหมดอายุ (sentinel 2099) พิมพ์ `noExpiryLabel`
+ * แทนวันที่ ไม่งั้นทุกแถวจะโชว์ 2099-12-31 ราวกับเป็นวันจริง · ผู้เรียกส่งข้อความที่แปลแล้วเข้ามา
+ * เพราะไฟล์นี้ไม่รู้จัก `t()`
+ */
+export const fmtCoverageRange = (start: string, end: string, noExpiryLabel: string): string =>
+  `${fmtDate(start)} – ${isPerpetual(end) ? noExpiryLabel : fmtDate(end)}`;
+
 /** เหลืออีกกี่วัน — ปัดขึ้น */
 export const daysLeft = (end: string, now: Date): number =>
   Math.ceil((new Date(end).getTime() - now.getTime()) / DAY_MS);

@@ -2470,6 +2470,18 @@ export const en = {
       // call sites (ClusterBusinessUnitsCard.tsx, ClusterPeopleCard.tsx) already pass in as an
       // aria-label (viewAllBusinessUnitsAria above / this object's own viewAllClusterUsers).
       viewAll: 'View all',
+
+      // --- ClusterAdminLicenses.tsx: SubscriptionsCard / InterfaceLicensesCard (CoverageCard) ---
+      licensesSummary: '{{subs}} active {{subs#subscription|subscriptions}} · {{inf}} interface {{inf#licence|licences}} in force',
+      coverageSubscriptionsLabel: 'Subscriptions',
+      coverageInterfaceLabel: 'Interface licences',
+      coverageLiveCount: '{{count}} of {{total}} in force',
+      coverageExpiringSoonCount: '{{count}} expiring soon',
+      coverageLoadFailedPartial: 'Could not load {{count}} business {{count#unit|units}}',
+      subscriptionsLoadFailed: 'Could not load subscriptions',
+      noSubscriptionsInCluster: 'No subscription has been issued for this cluster yet',
+      noInterfaceLicensesInCluster: 'No interface licence has been issued in this cluster yet',
+      openBusinessUnitLicences: 'Open licences of {{name}}',
     },
 
     // Slice 5 (Business Unit surfaces — 18 files: BusinessUnitManagement.tsx,

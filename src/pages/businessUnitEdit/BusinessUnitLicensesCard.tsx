@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { sumActiveLicenses, licenseStatus, isExpiringSoon } from '../../utils/buLicense';
-import { daysLeft, fmtDate } from '../licenses/licenseDates';
+import { daysLeft, fmtCoverageRange } from '../licenses/licenseDates';
 import { useI18n } from '../../hooks/useI18n';
 import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
 import type { BusinessUnitLicense, Subscription } from '../../types';
@@ -35,6 +35,12 @@ interface BusinessUnitLicensesCardProps {
    * ไม่ได้ จึงไม่ส่งมา — แต่ละแถวมีลิงก์ไปหน้าสัญญานั้น
    */
   subscriptions?: BusinessUnitSubscriptions;
+  /**
+   * ปลายทางของแถวสัญญา — ค่าตั้งต้นคือหน้าสัญญา `/licenses/subscriptions/:id/edit` (shell platform)
+   * shell ของ cluster admin เข้า route นั้นไม่ได้ (บังคับ `subscription.read`) จึงส่ง `() => undefined`
+   * ให้แถวเป็นข้อความเฉย ๆ — ผู้เรียกตัดสิน URL เองเหมือน `manageHref`/`createHref`
+   */
+  subscriptionHref?: (sub: Subscription) => string | undefined;
   now?: Date;
 }
 
@@ -47,6 +53,7 @@ const stateVariant = (s: Subscription['state']) =>
  */
 export default function BusinessUnitLicensesCard({
   licenses, loading, clusterSeat, manageHref, createHref, subscriptions, now = new Date(),
+  subscriptionHref = (sub) => `/licenses/subscriptions/${sub.id}/edit`,
 }: BusinessUnitLicensesCardProps) {
   const { t } = useI18n();
   const { thresholds } = useExpiryThresholds();
@@ -121,19 +128,14 @@ export default function BusinessUnitLicensesCard({
               const left = new Date(sub.end_date).getTime() - now.getTime();
               // ป้ายนับถอยหลังขึ้นเฉพาะสัญญาที่ยังใช้ได้ — ใบที่หมด/ปิดแล้วไม่มีอะไรให้นับ
               const soon = sub.state === 'active' && left <= soonMs;
-              return (
-                /* ทั้งแถวเป็นลิงก์ไปหน้าสัญญา ไม่ใช่แค่เลขที่ — เป้ากดกว้างกว่าและตรงกับที่ผู้ใช้คาด
-                   จากแถวรายการ · ยังเป็น <a> จริงจึงเปิดแท็บใหม่/คลิกกลางได้ */
-                <Link
-                  key={sub.id}
-                  to={`/licenses/subscriptions/${sub.id}/edit`}
-                  aria-label={t('pages.businessUnits.openSubscription', { number: sub.subscription_number })}
-                  className="group flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
+              const href = subscriptionHref(sub);
+              const rowClass = 'flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs';
+              const body = (
+                <>
                   <div className="min-w-0 space-y-0.5">
-                    <div className="font-mono group-hover:underline">{sub.subscription_number}</div>
+                    <div className={href ? 'font-mono group-hover:underline' : 'font-mono'}>{sub.subscription_number}</div>
                     <div className="text-muted-foreground">
-                      {fmtDate(sub.start_date)} – {fmtDate(sub.end_date)}
+                      {fmtCoverageRange(sub.start_date, sub.end_date, t('common.state.noExpiry'))}
                       {' · '}
                       {/* ไม่โชว์ที่นั่งรายแถว: `seat_used/seat_cap` ของสัญญาคือพูลระดับ cluster ซึ่งขึ้นเป็น
                           บรรทัด "Cluster pool" บนหัวการ์ดอยู่แล้ว ซ้ำทุกแถวจะอ่านผิดว่าเป็นของใบนั้น */}
@@ -148,13 +150,30 @@ export default function BusinessUnitLicensesCard({
                       items={[{ start_date: sub.start_date, end_date: sub.end_date, live: sub.state === 'active' }]}
                       window={window}
                       now={now}
-                      label={t('pages.licenses.coverageBarLabel', { text: `${fmtDate(sub.start_date)} – ${fmtDate(sub.end_date)}` })}
+                      label={t('pages.licenses.coverageBarLabel', { text: fmtCoverageRange(sub.start_date, sub.end_date, t('common.state.noExpiry')) })}
                     />
                     {soon && <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(sub.end_date, now) })}</Badge>}
                     <Badge variant={stateVariant(sub.state)}>{t(`common.status.${sub.state}`)}</Badge>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    {href && (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    )}
                   </div>
+                </>
+              );
+              /* ทั้งแถวเป็นลิงก์ไปหน้าสัญญา ไม่ใช่แค่เลขที่ — เป้ากดกว้างกว่าและตรงกับที่ผู้ใช้คาด
+                 จากแถวรายการ · ยังเป็น <a> จริงจึงเปิดแท็บใหม่/คลิกกลางได้ · ไม่มี href = shell นี้
+                 ไปหน้าสัญญาไม่ได้ วาดเป็นแถวเฉย ๆ */
+              return href ? (
+                <Link
+                  key={sub.id}
+                  to={href}
+                  aria-label={t('pages.businessUnits.openSubscription', { number: sub.subscription_number })}
+                  className={`group ${rowClass} transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                >
+                  {body}
                 </Link>
+              ) : (
+                <div key={sub.id} className={rowClass}>{body}</div>
               );
             })}
           </>

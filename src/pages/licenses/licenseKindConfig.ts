@@ -121,7 +121,9 @@ export const BU_QUOTA_CONFIG: LicenseKindConfig = {
 
 /**
  * ใบสิทธิ์ interface — ใบชนิดที่สาม · เจ้าของคือ BU เหมือนที่นั่ง แต่ค่าหลักคือ "กลุ่มสิทธิ์" ไม่ใช่จำนวน
- * ไม่มีสวิตช์ไม่มีวันหมดอายุ: สิทธิ์จริงถูกครอบด้วยสัญญาหลักอยู่แล้ว ใบอมตะเป็นคำโกหก (สเปก §3.2)
+ * มีสวิตช์ไม่มีวันหมดอายุ (sentinel 2099 เหมือนใบโควตา BU) — เปิดตามที่ผู้ใช้เคาะ 2026-09-09 แทนที่
+ * สเปก §3.2 เดิมที่ปิดไว้ · ใบอมตะยังไม่ได้แปลว่าใช้ได้ตลอด: `in_force` ยังถูกครอบด้วยสถานะสัญญาหลัก
+ * (`contract_state`) ป้าย "ถูกครอบด้วยสัญญาหลัก" จึงยังขึ้นตามเดิมเมื่อสัญญาหมด
  * ยกเลิกไม่ได้ (เหมือนที่นั่ง) · `readUsage` ไม่มี — ใบนี้ไม่มีตัวหาร
  */
 export const INTERFACE_CONFIG: LicenseKindConfig = {
@@ -129,7 +131,7 @@ export const INTERFACE_CONFIG: LicenseKindConfig = {
   selector: 'feature-group',
   amountField: 'license_feature_group_id',
   ownerParam: 'bu',
-  showNoExpiry: false,
+  showNoExpiry: true,
   showNote: true,
   showCluster: true,
   ownerSortKey: 'tb_business_unit.name',

@@ -3,7 +3,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { daysLeft, fmtDate } from '../licenses/licenseDates';
+import { daysLeft, fmtCoverageRange } from '../licenses/licenseDates';
 import { useI18n } from '../../hooks/useI18n';
 import { LicenseTimeline, useCoverageWindow } from './LicenseTimeline';
 import { useExpiryThresholds } from '../../context/ExpiryThresholdContext';
@@ -110,7 +110,7 @@ export default function BusinessUnitInterfaceLicensesCard({
                   </span>
                 </div>
                 <div className="text-muted-foreground">
-                  {l.group?.name ?? ''} · {fmtDate(l.start_date)} – {fmtDate(l.end_date)}
+                  {l.group?.name ?? ''} · {fmtCoverageRange(l.start_date, l.end_date, t('common.state.noExpiry'))}
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -119,7 +119,7 @@ export default function BusinessUnitInterfaceLicensesCard({
                   items={[toItem(l)]}
                   window={window}
                   now={now}
-                  label={t('pages.licenses.coverageBarLabel', { text: `${fmtDate(l.start_date)} – ${fmtDate(l.end_date)}` })}
+                  label={t('pages.licenses.coverageBarLabel', { text: fmtCoverageRange(l.start_date, l.end_date, t('common.state.noExpiry')) })}
                 />
                 {soon && <Badge variant="warning">{t('common.state.daysLeft', { count: daysLeft(l.end_date, now) })}</Badge>}
                 {badgeOf(l)}

@@ -24,6 +24,19 @@ const subscriptionService = {
   },
 
   /**
+   * สัญญาของ cluster เดียว ผ่าน route ที่ตรวจสิทธิ์ด้วย**สมาชิกภาพผู้ดูแลคลัสเตอร์** ไม่ใช่ `subscription.read`
+   * — ทางเดียวที่ shell ของ cluster admin ยิงได้ (`/platform/subscriptions` ตอบ 403 เสมอสำหรับเขา)
+   * backend บังคับตัวกรอง `cluster_id` เอง `advance.where` ที่ส่งไปถูก AND ไว้ใต้มัน แถวและ summary
+   * รูปเดียวกับ `getAll` ทุกประการ
+   */
+  listForCluster: async (clusterId: string, paginate: PaginateParams = {}): Promise<SubscriptionsResponse> => {
+    const response = await api.get(
+      `/api-system/clusters/${clusterId}/subscriptions?${buildQuery(paginate, defaultSearchFields)}`,
+    );
+    return response.data;
+  },
+
+  /**
    * ค่าสรุป 5 ตัวเลขของสัญญา **ทั้งหมด** ไม่ผ่านตัวกรองใด ๆ
    *
    * ต่างจาก `summary` ที่ติดมากับ `getAll` ซึ่งถูกจำกัดด้วยตัวกรองของคำขอนั้น — ตัวนั้นตอบคำถาม
