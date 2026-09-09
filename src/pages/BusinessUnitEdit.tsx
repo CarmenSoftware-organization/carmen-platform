@@ -37,6 +37,7 @@ import BusinessUnitBrandingCard from './businessUnitEdit/BusinessUnitBrandingCar
 import BusinessUnitUsersCard from './businessUnitEdit/BusinessUnitUsersCard';
 import BusinessUnitLicensesCard from './businessUnitEdit/BusinessUnitLicensesCard';
 import BusinessUnitInterfaceLicensesCard from './businessUnitEdit/BusinessUnitInterfaceLicensesCard';
+import { useBusinessUnitSubscriptions } from './businessUnitEdit/useBusinessUnitSubscriptions';
 import BusinessUnitDebugSheet from './businessUnitEdit/BusinessUnitDebugSheet';
 import BusinessUnitDocument from './businessUnitEdit/BusinessUnitDocument';
 import { HeroName } from './businessUnitEdit/HeroName';
@@ -90,6 +91,8 @@ const BusinessUnitEdit: React.FC = () => {
   // ใบสิทธิ์ interface เป็น ledger คนละก้อนกับที่นั่ง (คนละ endpoint คนละกติกาสถานะ) —
   // ใช้ hook ตัวเดียวกันซ้ำได้เพราะ service มี getAll/delete รูปเดียวกัน
   const interfaceLicenses = useLicenseLedger<InterfaceLicense>(id, businessUnitInterfaceLicenseService);
+  // สัญญาของ BU นี้ — hook กันสิทธิ์ `subscription.read` เองก่อนยิง (ดูคอมเมนต์ใน hook)
+  const buSubscriptions = useBusinessUnitSubscriptions(id);
   // hook เดิมคืน activeSeats/activeLicenseCount มาให้ ส่วนหัวเอกสารใช้สองค่านี้ —
   // คำนวณที่นี่แทน (ฟังก์ชันเดิม อินพุตเดิม ผลลัพธ์เดิม)
   const activeSeats = sumActiveLicenses(licenses.licenses);
@@ -780,6 +783,7 @@ const BusinessUnitEdit: React.FC = () => {
                 licenses={licenses.licenses}
                 loading={licenses.loading}
                 clusterSeat={clusterSeat}
+                subscriptions={buSubscriptions}
                 manageHref={formData.cluster_id ? `/licenses/${formData.cluster_id}#seats` : '/licenses'}
                 /* ออกสัญญาใบใหม่ให้ BU นี้ — ฟอร์มสร้างรับ cluster/BU จาก query เพื่อไม่ต้องเลือกซ้ำ
                    สิ่งที่ผู้ใช้เพิ่งเปิดอยู่. ไม่มี cluster ก็ไม่มีปุ่ม: สัญญาผูกกับคลัสเตอร์เสมอ และ
@@ -800,6 +804,7 @@ const BusinessUnitEdit: React.FC = () => {
                 licenses={interfaceLicenses.licenses}
                 loading={interfaceLicenses.loading}
                 manageHref="/licenses?tab=interface"
+                editHref={(licId) => `/licenses/interface/${encodeURIComponent(licId)}/edit`}
                 /* ปุ่มออกใบใหม่ผูกกับ `subscription.manage` ตัวเดียวกับ `PrivateRoute` ของ
                    `/licenses/interface/new` — ไม่งั้นปุ่มจะพาผู้ใช้ไปชนหน้าที่เตะกลับ */
                 createHref={

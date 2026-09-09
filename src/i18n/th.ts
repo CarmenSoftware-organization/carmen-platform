@@ -1927,6 +1927,12 @@ export const th: Translations = {
       seatsFromActiveLicenseMany: '{{count}} ที่นั่ง จาก {{activeCount}} ไลเซนส์ที่ใช้งานอยู่',
       clusterPoolSeatsUsed: 'พูลระดับ cluster: ใช้ไป {{used}} / {{cap}} ที่นั่ง',
       seatsManagedInLicenseCenter: 'จัดการที่นั่งได้ที่ License Center',
+      noSubscriptions: 'ยังไม่มีสัญญาของหน่วยธุรกิจนี้',
+      subscriptionsLoadFailed: 'โหลดรายการสัญญาไม่สำเร็จ',
+      openSubscription: 'เปิดสัญญา {{number}}',
+      openInterfaceLicense: 'เปิดใบสิทธิ์ interface {{number}}',
+      subscriptionRowOne: '{{count}} ฟีเจอร์',
+      subscriptionRowMany: '{{count}} ฟีเจอร์',
 
       // --- Task B3: BusinessUnitInterfaceLicensesCard.tsx ---
       interfaceLicensesTitle: 'ใบสิทธิ์ interface',

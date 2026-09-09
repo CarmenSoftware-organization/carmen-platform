@@ -2737,6 +2737,13 @@ export const en = {
       // clusterSeatsUsed for the full reasoning.
       clusterPoolSeatsUsed: 'Cluster pool: {{used}} / {{cap}} seats used',
       seatsManagedInLicenseCenter: 'Seats are managed in the License Center.',
+      // --- BusinessUnitLicensesCard.tsx: per-BU subscription list ---
+      noSubscriptions: 'No subscription has been issued for this business unit',
+      subscriptionsLoadFailed: 'Could not load subscriptions',
+      openSubscription: 'Open subscription {{number}}',
+      openInterfaceLicense: 'Open interface license {{number}}',
+      subscriptionRowOne: '{{count}} feature',
+      subscriptionRowMany: '{{count}} features',
 
       // --- Task B3: BusinessUnitInterfaceLicensesCard.tsx ---
       // "license" spelt American here to match every neighbouring key in this file
