@@ -365,12 +365,12 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         ),
       },
       {
-        id: 'cluster',
+        // id คือคีย์ sort บนสาย: `tb_cluster.name` เป็นคีย์แบบจุดที่ QueryParams.orderBy ฝั่ง backend
+        // แปลงเป็น `{ tb_cluster: { name } }` ให้ Prisma (แบบเดียวกับคอลัมน์ Cluster ของ /business-units)
+        // — cluster_name ไม่ใช่คอลัมน์ของ tb_subscription ส่งชื่อนั้นตรง ๆ backend จะเรียงไม่ได้
+        id: 'tb_cluster.name',
         accessorKey: 'cluster_name',
         header: t('common.label.cluster'),
-        // cluster_name/cluster_code มาจาก join กับ tb_cluster ไม่ใช่คอลัมน์จริงของ tb_subscription —
-        // เรียงด้วยคอลัมน์นี้ backend throw 400 (phase-b-backend-contract.md §8.3)
-        enableSorting: false,
         // mobile card header: both Subscription and Cluster are 'title' — the same dual-title
         // pattern as ClusterManagement's Code+Name columns (data-table.tsx joins multiple title
         // cells with a middot). Cluster must be one of them per the B2 review corrections.
@@ -383,11 +383,12 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         ),
       },
       {
-        id: 'bu',
+        // `bu_code` เป็นคีย์ sort ที่ backend คำนวณให้ (DERIVED_SORT_KEYS ใน subscription.service.ts —
+        // เรียงในหน่วยความจำแล้วค่อยตัดหน้า เพราะ BU มาจาก relation to-many ที่ Prisma orderBy ไม่รับ)
+        // เรียงด้วยรหัสไม่ใช่ชื่อ เพราะรหัสคือบรรทัดเด่นที่เซลล์นี้แสดง
+        id: 'bu_code',
+        accessorKey: 'bu_code',
         header: t('entity.businessUnit.title'),
-        // bu_code/bu_name มาจากความสัมพันธ์ tb_subscription_bu ที่ backend compose ตอนสร้างแถว
-        // ไม่ใช่คอลัมน์จริงของ tb_subscription — เรียงแล้วได้ 400 (phase-b-backend-contract.md §8.3)
-        enableSorting: false,
         // ต่างจาก bu_count เดิมที่ซ่อนบนมือถือ (ตัวเลขล้วนไม่มีบริบท): BU คือคู่สัญญา ไม่ใช่ตัวนับ
         // การ์ดที่ไม่บอกว่าใบนี้ของใครทำให้ต้องเปิดทีละใบเพื่อหา
         cell: ({ row }) =>
@@ -405,9 +406,10 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         // "State" ไม่ใช่ "Status": ค่าที่แสดงคือ `state` ที่ backend คำนวณให้ และตัวกรองในฟิลเตอร์ชีต
         // ก็ใช้ชุดเดียวกัน — ป้ายสองที่บนจอเดียวกันต้องเรียกของสิ่งเดียวกันด้วยชื่อเดียวกัน (review I1)
         header: t('pages.subscriptions.state'),
+        accessorKey: 'state',
         meta: { card: 'badge' },
-        // `state` backend คำนวณให้ ไม่ใช่คอลัมน์จริงเช่นกัน — ห้ามเรียง
-        enableSorting: false,
+        // `state` ไม่ใช่คอลัมน์จริง แต่ backend รับเป็นคีย์ sort ที่คำนวณให้ (DERIVED_SORT_KEYS) — ลำดับ
+        // asc คือ active → inactive → expired ตามวงจรชีวิต ตรงกับลำดับปุ่มกรอง STATE_OPTIONS ไม่ใช่ตัวอักษร
         cell: ({ row }) => {
           const { state, end_date } = row.original;
           const soon = isExpiringSoon(state, end_date, thresholds.subscription_days);
@@ -426,9 +428,10 @@ const SubscriptionTable: React.FC<SubscriptionTableProps> = ({ embedded = false 
         },
       },
       {
+        // คีย์ sort ที่ backend คำนวณให้เช่นกัน (นับ feature distinct ข้ามทุกกลุ่มของสัญญา)
         id: 'feature_count',
+        accessorKey: 'feature_count',
         header: t('pages.subscriptions.features'),
-        enableSorting: false,
         meta: { card: 'hidden' },
         cell: ({ row }) => <span className="tabular-nums">{row.original.feature_count}</span>,
       },

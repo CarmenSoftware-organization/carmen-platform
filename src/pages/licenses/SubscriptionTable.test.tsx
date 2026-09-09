@@ -491,12 +491,23 @@ describe('SubscriptionTable — BU and Features columns', () => {
     expect(screen.getByText('5')).toBeInTheDocument();       // feature_count
   });
 
-  it('does not offer sorting on either — they are backend aggregates, not columns (400)', async () => {
+  // Both are backend-derived values, not tb_subscription columns — the backend now accepts them
+  // as sort keys it computes in memory (DERIVED_SORT_KEYS in subscription.service.ts). The wire
+  // key must be the same field name the row carries, plus the unique tiebreaker like every sort.
+  // Features starts descending: TanStack's `sortDescFirst` defaults to true for a numeric
+  // accessor, and "most features first" is the reading a count column is for.
+  it.each([
+    ['Business Unit', 'bu_code:asc'],
+    ['Features', 'feature_count:desc'],
+    ['State', 'state:asc'],
+    ['Cluster', 'tb_cluster.name:asc'],
+  ])('sorts by the %s header, sending `%s` as the wire key with the id tiebreaker', async (header, term) => {
+    const user = userEvent.setup();
     renderPage();
     await screen.findByText('SUB-0001');
 
-    expect(screen.queryByRole('button', { name: /^Business Unit$/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Features$/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: new RegExp(`^${header}$`) }));
+    await waitFor(() => expect(lastCall().sort).toBe(`${term},id:asc`));
   });
 });
 
