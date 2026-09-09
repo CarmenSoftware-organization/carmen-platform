@@ -13,7 +13,7 @@ import {
 import Can from '../../../components/Can';
 import { AuditMeta } from '../../../components/AuditMeta';
 import { TableToolbar } from '../TableToolbar';
-import { cycleSort, sortRows, type SortState } from '../tableSort';
+import { cycleSort, sortRows, type SortState } from '../../../utils/tableSort';
 import { HIT_SLOP_44 } from '../../../lib/hitSlop';
 import { rankBusinessUnits, countOverLimit } from '../../../utils/businessUnitRank';
 import { latestActor } from '../../../utils/audit';
