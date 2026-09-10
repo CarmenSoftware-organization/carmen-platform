@@ -15,12 +15,12 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/graft-hooks.cjs\" post-edit",
-            "timeout": 10000
+            "timeout": 20000
           }
         ]
       },
       {
-        "matcher": "Bash|mcp__graft__",
+        "matcher": "Bash|mcp__graft__|Read|Grep|Glob",
         "hooks": [
           {
             "type": "command",
