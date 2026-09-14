@@ -38,6 +38,7 @@ jobs:
           REACT_APP_API_BASE_URL=${{ vars.REACT_APP_API_BASE_URL }}
           REACT_APP_API_APP_ID=${{ vars.REACT_APP_API_APP_ID }}
           REACT_APP_ENV=production
+          REACT_APP_OTEL_ENABLED=${{ vars.REACT_APP_OTEL_ENABLED }}
           EOF
 
       - name: Authenticate to Google Cloud (Workload Identity Federation)
