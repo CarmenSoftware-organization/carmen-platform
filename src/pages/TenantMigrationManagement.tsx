@@ -15,14 +15,15 @@ import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Tooltip } from '../components/ui/tooltip';
-import { Download, Database, RefreshCw, Loader2, Play } from 'lucide-react';
+import { TenantMigrationResolveDialog } from '../components/TenantMigrationResolveDialog';
+import { Download, Database, RefreshCw, Loader2, Play, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
 import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import tenantMigrationService from '../services/tenantMigrationService';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { handleMigrationError } from '../utils/migrationError';
+import { handleMigrationError, parseFailedMigration } from '../utils/migrationError';
 import { mapWithConcurrency } from '../utils/concurrent';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FleetSync } from './tenantMigration/FleetSync';
@@ -38,6 +39,12 @@ export interface RowState {
   progress?: { applied: number; total: number; current: string | null };
   lastChecked?: string;
   errorMsg?: string;
+  /**
+   * ชื่อ migration ที่ prisma รายงานว่าล้มเหลว แกะมาจากข้อความ error ดิบของ /status
+   * (ดู parseFailedMigration) ใช้เติมช่องในกล่อง Resolve ให้ล่วงหน้าเท่านั้น —
+   * ไม่มีก็ยังกด Resolve ได้ แค่ต้องพิมพ์ชื่อเอง
+   */
+  failedMigration?: string;
 }
 
 export interface BatchProgress {
@@ -100,7 +107,7 @@ const iconAction = ({
   onClick: () => void;
   disabled: boolean;
   reason: string | null;
-  variant?: 'outline' | 'destructive';
+  variant?: 'outline' | 'destructive' | 'secondary';
 }): ReactElement => {
   const btn = (
     <Button variant={variant} size="icon" className="h-8 w-8" aria-label={label} onClick={onClick} disabled={disabled}>
@@ -136,6 +143,7 @@ const TenantMigrationManagement: React.FC = () => {
   const [applyTarget, setApplyTarget] = useState<BusinessUnit | null>(null);
   const [batch, setBatch] = useState<BatchProgress | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
+  const [resolveTarget, setResolveTarget] = useState<BusinessUnit | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Tracks in-flight deploy stream requests so they can be aborted on unmount/navigation
@@ -172,13 +180,26 @@ const TenantMigrationManagement: React.FC = () => {
       const status = await tenantMigrationService.getStatus(bu.id);
       setRowState((prev) => ({
         ...prev,
-        [bu.id]: { ...prev[bu.id], status, checking: false, lastChecked: nowTime(), errorMsg: undefined },
+        [bu.id]: {
+          ...prev[bu.id],
+          status,
+          checking: false,
+          lastChecked: nowTime(),
+          errorMsg: undefined,
+          failedMigration: undefined,
+        },
       }));
     } catch (err) {
       handleMigrationError(err, t);
       setRowState((prev) => ({
         ...prev,
-        [bu.id]: { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() },
+        [bu.id]: {
+          ...prev[bu.id],
+          checking: false,
+          errorMsg: getErrorDetail(err, t),
+          failedMigration: parseFailedMigration(err),
+          lastChecked: nowTime(),
+        },
       }));
     }
   }, [t]);
@@ -199,8 +220,21 @@ const TenantMigrationManagement: React.FC = () => {
           setRowState((prev) => ({
             ...prev,
             [bu.id]: err
-              ? { ...prev[bu.id], checking: false, errorMsg: getErrorDetail(err), lastChecked: nowTime() }
-              : { ...prev[bu.id], status: result, checking: false, lastChecked: nowTime(), errorMsg: undefined },
+              ? {
+                  ...prev[bu.id],
+                  checking: false,
+                  errorMsg: getErrorDetail(err, t),
+                  failedMigration: parseFailedMigration(err),
+                  lastChecked: nowTime(),
+                }
+              : {
+                  ...prev[bu.id],
+                  status: result,
+                  checking: false,
+                  lastChecked: nowTime(),
+                  errorMsg: undefined,
+                  failedMigration: undefined,
+                },
           }));
         },
       );
@@ -212,7 +246,7 @@ const TenantMigrationManagement: React.FC = () => {
         return next;
       });
     }
-  }, [bus]);
+  }, [bus, t]);
 
   const applyOne = useCallback(async (bu: BusinessUnit) => {
     // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Apply button.
@@ -256,7 +290,7 @@ const TenantMigrationManagement: React.FC = () => {
       handleMigrationError(err, t);
       setRowState((prev) => ({
         ...prev,
-        [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
+        [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err, t) },
       }));
     } finally {
       if (activeStreamControllersRef.current.get(bu.id) === controller) activeStreamControllersRef.current.delete(bu.id);
@@ -509,6 +543,11 @@ const TenantMigrationManagement: React.FC = () => {
         const rs = rowState[bu.id];
         const busy = !!rs?.checking || !!rs?.deploying;
         const disabled = !!disabledReason || busy || batchRunning;
+        // ปุ่ม Resolve โผล่บนแถวที่สถานะเป็น error ทุกแถว ไม่ใช่เฉพาะแถวที่แกะชื่อ migration ได้:
+        // ถ้าผูกการโผล่ไว้กับการแกะชื่อสำเร็จ วันที่ prisma เปลี่ยนถ้อยคำสักนิด ปุ่มจะหายไป
+        // ตอนที่ต้องใช้พอดี แลกกับการที่แถวซึ่ง error เพราะเชื่อมต่อ DB ไม่ได้ (ยังไม่ผูก pool,
+        // ยังไม่ตั้ง schema, pool ถูกปิด) ก็มีปุ่มนี้ด้วย — กดแล้ว backend จะตอบกลับตามจริง
+        const isError = rowStatusOf(rs) === 'error';
         return (
           <div className="flex items-center justify-end gap-1.5">
             {iconAction({
@@ -527,6 +566,15 @@ const TenantMigrationManagement: React.FC = () => {
                 disabled,
                 reason: disabledReason,
                 variant: 'destructive',
+              })}
+            {isError &&
+              iconAction({
+                label: t('pages.tenantMigration.resolve'),
+                icon: <Wrench className="h-4 w-4" />,
+                onClick: () => setResolveTarget(bu),
+                disabled,
+                reason: disabledReason,
+                variant: 'secondary',
               })}
           </div>
         );
@@ -667,6 +715,14 @@ const TenantMigrationManagement: React.FC = () => {
         confirmText={t('pages.tenantMigration.deployAll')}
         confirmVariant="destructive"
         onConfirm={deployAll}
+      />
+
+      <TenantMigrationResolveDialog
+        bu={resolveTarget}
+        defaultMigrationName={resolveTarget ? rowState[resolveTarget.id]?.failedMigration : undefined}
+        onOpenChange={(open) => { if (!open) setResolveTarget(null); }}
+        onResolved={() => (resolveTarget ? checkOne(resolveTarget) : undefined)}
+        disabledReason={disabledReason}
       />
 
       <DevDebugSheet title="API Response" endpoint="GET /api-system/business-units" data={rawResponse} />

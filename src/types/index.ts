@@ -258,6 +258,20 @@ export interface TenantMigrationStatus {
   raw: string;
 }
 
+export type TenantMigrationResolveAction = 'applied' | 'rolled-back';
+
+// ผลของ `prisma migrate resolve` บน DB ของ BU เดียว — แก้บันทึกใน _prisma_migrations
+// เท่านั้น ไม่ได้รัน SQL ของ migration นั้น ทุกฟิลด์เป็น optional เพราะ backend อาจเพิ่ม/ลด
+// ได้โดยไม่ทำให้หน้าเว็บพัง (กฎข้อ 11)
+export interface TenantMigrationResolveResult {
+  bu_id?: string;
+  bu_code?: string;
+  success?: boolean;
+  migration_name?: string;
+  action?: string;
+  raw?: string;
+}
+
 export interface TenantMigrationDeployResult {
   bu_id: string;
   bu_code: string;

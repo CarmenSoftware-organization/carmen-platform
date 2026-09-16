@@ -1,12 +1,14 @@
 import { useState, type ReactElement } from 'react';
-import { Database, Loader2, RefreshCw, Play } from 'lucide-react';
+import { Database, Loader2, RefreshCw, Play, Wrench } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ConfirmDialog } from './ui/confirm-dialog';
 import { Tooltip } from './ui/tooltip';
 import { toast } from 'sonner';
-import { handleMigrationError } from '../utils/migrationError';
+import { handleMigrationError, parseFailedMigration } from '../utils/migrationError';
+import { getErrorDetail } from '../utils/errorParser';
+import { TenantMigrationResolveDialog } from './TenantMigrationResolveDialog';
 import tenantMigrationService from '../services/tenantMigrationService';
 import type { TenantMigrationStatus, ProgressEvent } from '../types';
 import { useI18n } from '../hooks/useI18n';
@@ -35,6 +37,12 @@ export const TenantMigrationCard = ({
   const [showRaw, setShowRaw] = useState(false);
   const [progress, setProgress] = useState<{ applied: number; total: number; current: string | null } | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
+  // การ์ดนี้เคยกลืน error ของ /status ทิ้งทั้งก้อน (มีแค่ toast ที่หายไปใน 4 วินาที) BU ที่มี
+  // migration ค้างจึงค้างป้าย "ยังไม่ได้ตรวจ" ตลอดกาล เหมือนไม่มีอะไรผิด ต้องเก็บไว้ให้เห็น
+  // ไม่งั้นปุ่มแก้สถานะข้างล่างไม่มีอะไรให้เกาะ และไม่มีชื่อ migration ไปเติมในช่อง
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [failedMigration, setFailedMigration] = useState<string | undefined>(undefined);
+  const [resolveOpen, setResolveOpen] = useState(false);
 
   const disabledReason = !isSuperAdmin
     ? t('common.state.superAdminRequired')
@@ -52,8 +60,16 @@ export const TenantMigrationCard = ({
       const d = new Date();
       const p = (n: number) => String(n).padStart(2, '0');
       setLastChecked(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
+      setErrorMsg(null);
+      setFailedMigration(undefined);
     } catch (err) {
       handleMigrationError(err, t);
+      setStatus(null);
+      setErrorMsg(getErrorDetail(err, t));
+      setFailedMigration(parseFailedMigration(err));
+      const d = new Date();
+      const p = (n: number) => String(n).padStart(2, '0');
+      setLastChecked(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`);
     } finally {
       setLoadingStatus(false);
     }
@@ -137,10 +153,13 @@ export const TenantMigrationCard = ({
 
           {/* Before the first check the card said nothing about state, which reads as
               "nothing wrong". An explicit "not checked" badge distinguishes unknown from ok. */}
-          {!status && !loadingStatus && (
+          {!status && !errorMsg && !loadingStatus && (
             <Badge variant="outline" className="text-muted-foreground">
               {t('common.state.notCheckedYet')}
             </Badge>
+          )}
+          {errorMsg && !loadingStatus && (
+            <Badge variant="destructive">{t('pages.tenantMigration.errored')}</Badge>
           )}
           {status?.up_to_date && <Badge variant="success">{t('components.tenantMigrationCard.upToDate')}</Badge>}
           {status?.has_pending && (
@@ -178,6 +197,33 @@ export const TenantMigrationCard = ({
               >
                 <Play className="mr-2 h-4 w-4" />
                 {t('components.tenantMigrationCard.applyMigrationsButton', { count: pending.length })}
+              </Button>,
+            )}
+          </div>
+        )}
+
+        {/* ปุ่มแก้สถานะโผล่เมื่อ /status ล้มเหลวทุกกรณี ไม่ใช่เฉพาะตอนแกะชื่อ migration ได้:
+            ถ้าผูกการโผล่ไว้กับการแกะชื่อสำเร็จ วันที่ prisma เปลี่ยนถ้อยคำสักนิด ปุ่มจะหายไป
+            ตอนที่ต้องใช้พอดี แลกกับการที่ error เรื่องเชื่อมต่อ DB ไม่ได้ก็มีปุ่มนี้ด้วย —
+            กดแล้ว backend จะตอบกลับตามจริง */}
+        {errorMsg && !loadingStatus && (
+          <div className="space-y-2">
+            <pre
+              role="alert"
+              className="max-h-60 w-full overflow-auto whitespace-pre-wrap break-all rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 font-mono text-xs text-destructive"
+            >
+              {errorMsg}
+            </pre>
+            {withTooltip(
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setResolveOpen(true)}
+                disabled={actionsDisabled}
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                {t('pages.tenantMigration.resolve')}
               </Button>,
             )}
           </div>
@@ -248,6 +294,14 @@ export const TenantMigrationCard = ({
         confirmText={t('components.tenantMigrationCard.applyButton')}
         confirmVariant="destructive"
         onConfirm={runDeploy}
+      />
+
+      <TenantMigrationResolveDialog
+        bu={resolveOpen ? { id: buId, code: buCode, name: buName } : null}
+        defaultMigrationName={failedMigration}
+        onOpenChange={setResolveOpen}
+        onResolved={fetchStatus}
+        disabledReason={disabledReason}
       />
     </Card>
   );
