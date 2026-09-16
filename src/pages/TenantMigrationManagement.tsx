@@ -244,7 +244,7 @@ const TenantMigrationManagement: React.FC = () => {
         [bu.id]: {
           ...prev[bu.id],
           checking: false,
-          errorMsg: getErrorDetail(err),
+          errorMsg: getErrorDetail(err, t),
           failedMigration: parseFailedMigration(err),
           lastChecked: nowTime(),
         },
@@ -271,7 +271,7 @@ const TenantMigrationManagement: React.FC = () => {
               ? {
                   ...prev[bu.id],
                   checking: false,
-                  errorMsg: getErrorDetail(err),
+                  errorMsg: getErrorDetail(err, t),
                   failedMigration: parseFailedMigration(err),
                   lastChecked: nowTime(),
                 }
@@ -294,7 +294,7 @@ const TenantMigrationManagement: React.FC = () => {
         return next;
       });
     }
-  }, [bus]);
+  }, [bus, t]);
 
   const applyOne = useCallback(async (bu: BusinessUnit) => {
     // Defence-in-depth: mirrors the disabled={!!disabledReason} state on the Apply button.
@@ -338,7 +338,7 @@ const TenantMigrationManagement: React.FC = () => {
       handleMigrationError(err, t);
       setRowState((prev) => ({
         ...prev,
-        [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err) },
+        [bu.id]: { ...prev[bu.id], deploying: false, progress: undefined, errorMsg: getErrorDetail(err, t) },
       }));
     } finally {
       if (activeStreamControllersRef.current.get(bu.id) === controller) activeStreamControllersRef.current.delete(bu.id);
