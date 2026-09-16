@@ -15,28 +15,15 @@ import { DataTable } from '../components/ui/data-table';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { Tooltip } from '../components/ui/tooltip';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../components/ui/select';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from '../components/ui/dialog';
+import { TenantMigrationResolveDialog } from '../components/TenantMigrationResolveDialog';
 import { Download, Database, RefreshCw, Loader2, Play, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { SearchInput } from '../components/SearchInput';
-import type {
-  BusinessUnit,
-  TenantMigrationStatus,
-  TenantMigrationResolveAction,
-  ProgressEvent,
-  BatchDeploySummary,
-} from '../types';
+import type { BusinessUnit, TenantMigrationStatus, ProgressEvent, BatchDeploySummary } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import tenantMigrationService from '../services/tenantMigrationService';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { handleMigrationError } from '../utils/migrationError';
+import { handleMigrationError, parseFailedMigration } from '../utils/migrationError';
 import { mapWithConcurrency } from '../utils/concurrent';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FleetSync } from './tenantMigration/FleetSync';
@@ -85,36 +72,6 @@ export const rowStatusOf = (rs?: RowState): RowStatus => {
   if (rs.status.up_to_date) return 'up_to_date';
   if (rs.status.has_pending) return 'pending';
   return 'unknown';
-};
-
-// ชื่อโฟลเดอร์ migration ของ prisma: timestamp 6 หลักขึ้นไป + '_' + slug
-// ตัวเดียวกับที่หน้า platform และ backend (MIGRATION_NAME_RE ใน tenant_migration.service.ts) ใช้
-const MIGRATION_NAME_RE = /^[0-9]{6,}_[A-Za-z0-9_-]+$/;
-const MIGRATION_NAME_SCAN_RE = /[0-9]{6,}_[A-Za-z0-9_-]+/g;
-
-/**
- * แกะชื่อ migration ที่ล้มเหลวออกจาก error ของ GET /status
- *
- * `prisma migrate status` เจอ migration ค้างแล้ว exit non-zero โดยข้อความไม่มีคำว่า
- * "not yet been applied" backend จึงตอบเป็น error 500 ที่มีข้อความดิบของ prisma ติดมา
- * แทนที่จะเป็น payload สถานะปกติ — ชื่อที่ต้องใช้ resolve อยู่ในข้อความนั้น
- *
- * อ่านจาก `err.response.data.message` ตรง ๆ ไม่ใช่จาก getErrorDetail() เพราะ getErrorDetail
- * redact ข้อความทิ้งทั้งก้อนบน production (errorParser.ts) ถ้าอ่านจากที่นั่นการเติมช่อง
- * อัตโนมัติจะทำงานเฉพาะบนเครื่อง dev แล้วเงียบบน production
- *
- * คืน undefined เมื่อแกะไม่ได้ — ปุ่ม Resolve ยังโผล่ตามเดิม ผู้ใช้พิมพ์ชื่อเองได้
- */
-export const parseFailedMigration = (err: unknown): string | undefined => {
-  const raw =
-    (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-    (err as { message?: string })?.message;
-  if (typeof raw !== 'string' || !/fail/i.test(raw)) return undefined;
-  // เอาตัวที่อยู่หลังคำว่า failed ตัวแรก — ข้อความของ prisma ไล่ชื่อ migration ที่ล้มเหลว
-  // ต่อจากบรรทัด "Following migration have failed:" ส่วนชื่อก่อนหน้านั้นเป็นรายการที่สำเร็จ
-  const tail = raw.slice(raw.search(/fail/i));
-  const m = tail.match(MIGRATION_NAME_SCAN_RE);
-  return m?.[0];
 };
 
 // ลำดับสถานะสำหรับเรียงคอลัมน์: ปัญหาก่อน (error) → ค้าง → ไม่รู้ → ทันสมัย — asc คือ "ต้องดูก่อน"
@@ -187,9 +144,6 @@ const TenantMigrationManagement: React.FC = () => {
   const [batch, setBatch] = useState<BatchProgress | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<BusinessUnit | null>(null);
-  const [resolveName, setResolveName] = useState('');
-  const [resolveAction, setResolveAction] = useState<TenantMigrationResolveAction>('rolled-back');
-  const [resolving, setResolving] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Tracks in-flight deploy stream requests so they can be aborted on unmount/navigation
@@ -214,8 +168,6 @@ const TenantMigrationManagement: React.FC = () => {
   const disabledReason = !isSuperAdmin ? t('pages.tenantMigration.superAdminRequired') : null;
 
   const batchRunning = batch !== null;
-
-  const resolveNameValid = MIGRATION_NAME_RE.test(resolveName.trim());
 
   const anyBusy =
     checkingAll ||
@@ -404,37 +356,6 @@ const TenantMigrationManagement: React.FC = () => {
       if (!controller.signal.aborted) setBatch(null);
     }
   }, [isSuperAdmin, t]);
-
-  // เปิดกล่อง Resolve พร้อมเติมชื่อที่แกะได้จากรอบ check ล่าสุด ค่าเริ่มต้นของ action คือ
-  // 'rolled-back' โดยตั้งใจ — เป็นฝั่งที่ปลอดภัยกว่า ('applied' บอกระบบว่า SQL รันไปแล้ว
-  // ทั้งที่อาจไม่ได้รัน ทำให้ migration ถัดไปต่อยอดจากสคีมาที่ไม่มีอยู่จริง)
-  const openResolve = useCallback((bu: BusinessUnit) => {
-    setResolveName(rowState[bu.id]?.failedMigration ?? '');
-    setResolveAction('rolled-back');
-    setResolveTarget(bu);
-  }, [rowState]);
-
-  const handleResolve = useCallback(async () => {
-    // กันชั้นที่สองแบบเดียวกับ applyOne: ปุ่มถูก disable ไว้สำหรับคนที่ไม่ใช่ super-admin
-    // แต่นั่นเป็นแค่ชั้น UI — ปิดตายตรงนี้ด้วย เผื่อวันหน้ามีการรีแฟกเตอร์ที่เรนเดอร์ปุ่มแบบเปิด
-    if (!isSuperAdmin) return;
-    const bu = resolveTarget;
-    const name = resolveName.trim();
-    if (!bu || !MIGRATION_NAME_RE.test(name)) return;
-    setResolving(true);
-    try {
-      await tenantMigrationService.resolve(bu.id, name, resolveAction);
-      toast.success(t('pages.tenantMigration.resolveSuccess', { name, code: bu.code }));
-      setResolveTarget(null);
-      // ถาม backend ซ้ำทันที — ผลของ resolve คือสถานะใหม่ของแถวนั้น ถ้าไม่เช็คซ้ำ
-      // แถวจะค้างป้าย Error เดิมไว้ทั้งที่แก้ไปแล้ว
-      await checkOne(bu);
-    } catch (err) {
-      handleMigrationError(err, t);
-    } finally {
-      setResolving(false);
-    }
-  }, [checkOne, isSuperAdmin, resolveAction, resolveName, resolveTarget, t]);
 
   useEffect(() => {
     (async () => {
@@ -650,7 +571,7 @@ const TenantMigrationManagement: React.FC = () => {
               iconAction({
                 label: t('pages.tenantMigration.resolve'),
                 icon: <Wrench className="h-4 w-4" />,
-                onClick: () => openResolve(bu),
+                onClick: () => setResolveTarget(bu),
                 disabled,
                 reason: disabledReason,
                 variant: 'secondary',
@@ -659,7 +580,7 @@ const TenantMigrationManagement: React.FC = () => {
         );
       },
     },
-  ], [rowState, disabledReason, checkOne, batchRunning, openResolve, t]);
+  ], [rowState, disabledReason, checkOne, batchRunning, t]);
 
   return (
     <Layout>
@@ -796,80 +717,13 @@ const TenantMigrationManagement: React.FC = () => {
         onConfirm={deployAll}
       />
 
-      <Dialog
-        open={resolveTarget !== null}
-        onOpenChange={(open) => { if (!open && !resolving) setResolveTarget(null); }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('pages.tenantMigration.resolveTitle')}</DialogTitle>
-            <DialogDescription>
-              {resolveTarget
-                ? t('pages.tenantMigration.resolveFor', { name: resolveTarget.name, code: resolveTarget.code })
-                : ''}
-            </DialogDescription>
-          </DialogHeader>
-
-          <p className="text-sm text-muted-foreground">
-            {t('pages.tenantMigration.resolveDescription')}
-          </p>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="tenant-resolve-name">
-                {t('pages.tenantMigration.migrationNameLabel')}
-              </Label>
-              <Input
-                id="tenant-resolve-name"
-                value={resolveName}
-                onChange={(e) => setResolveName(e.target.value)}
-                placeholder={t('pages.tenantMigration.migrationNamePlaceholder')}
-                className="font-mono text-xs"
-                disabled={resolving}
-              />
-              {resolveName.trim() !== '' && !resolveNameValid && (
-                <p className="text-xs text-destructive" role="alert">
-                  {t('pages.tenantMigration.migrationNameInvalid')}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tenant-resolve-action">
-                {t('pages.tenantMigration.actionLabel')}
-              </Label>
-              <Select
-                value={resolveAction}
-                onValueChange={(v) => setResolveAction(v as TenantMigrationResolveAction)}
-                disabled={resolving}
-              >
-                <SelectTrigger id="tenant-resolve-action">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rolled-back">{t('pages.tenantMigration.actionRolledBack')}</SelectItem>
-                  <SelectItem value="applied">{t('pages.tenantMigration.actionApplied')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setResolveTarget(null)} disabled={resolving}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleResolve}
-              disabled={resolving || !resolveNameValid || !!disabledReason}
-            >
-              {resolving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('pages.tenantMigration.resolveButton')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TenantMigrationResolveDialog
+        bu={resolveTarget}
+        defaultMigrationName={resolveTarget ? rowState[resolveTarget.id]?.failedMigration : undefined}
+        onOpenChange={(open) => { if (!open) setResolveTarget(null); }}
+        onResolved={() => (resolveTarget ? checkOne(resolveTarget) : undefined)}
+        disabledReason={disabledReason}
+      />
 
       <DevDebugSheet title="API Response" endpoint="GET /api-system/business-units" data={rawResponse} />
     </Layout>
