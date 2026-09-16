@@ -1,6 +1,13 @@
 import api from './api';
 import { refreshAccessToken } from './tokenRefresh';
-import type { TenantMigrationStatus, TenantMigrationDeployResult, ProgressEvent, DeploySummary } from '../types';
+import type {
+  TenantMigrationStatus,
+  TenantMigrationDeployResult,
+  TenantMigrationResolveAction,
+  TenantMigrationResolveResult,
+  ProgressEvent,
+  DeploySummary,
+} from '../types';
 
 // Tenant DB schema migrations for a single BU. Super-admin only (backend enforces
 // it; the axios interceptor supplies the bearer token + x-app-id). The backend
@@ -13,6 +20,29 @@ const tenantMigrationService = {
   },
   deploy: async (buId: string): Promise<TenantMigrationDeployResult> => {
     const res = await api.post(`/api-system/tenant/migrations/${buId}/deploy`);
+    return res.data.data ?? res.data;
+  },
+
+  /**
+   * ทำเครื่องหมาย migration ที่ค้างของ BU หนึ่งว่า applied หรือ rolled-back
+   * ไม่ได้รัน SQL ของ migration นั้นจริง — แก้บันทึกใน `_prisma_migrations` ของ tenant DB เท่านั้น
+   *
+   * request/response ธรรมดา ไม่ใช่ NDJSON stream อย่าง deploy จึงใช้ axios ได้ตามปกติ
+   * และได้ทั้ง 401 refresh-and-retry กับ x-app-id จาก interceptor
+   *
+   * backend ตรวจซ้ำอีกชั้น: รูปแบบชื่อ (400), โฟลเดอร์ migration ต้องมีอยู่จริง (400),
+   * และกันชนกับ deploy/resolve ของ BU เดียวกันที่กำลังรันอยู่ (409) — ดู
+   * `tenant_migration.service.ts` `resolve` ใน ../carmen-turborepo-backend-v2
+   */
+  resolve: async (
+    buId: string,
+    migrationName: string,
+    action: TenantMigrationResolveAction,
+  ): Promise<TenantMigrationResolveResult> => {
+    const res = await api.post(`/api-system/tenant/migrations/${buId}/resolve`, {
+      migration_name: migrationName,
+      action,
+    });
     return res.data.data ?? res.data;
   },
 

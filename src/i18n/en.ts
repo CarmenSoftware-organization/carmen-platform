@@ -3456,6 +3456,19 @@ export const en = {
       notCheckedYet1: 'Not checked yet. Run',
       notCheckedYetAction: 'Check all',
       notCheckedYet2: 'to see which tenants are behind.',
+      // ── Resolve a stuck migration (per BU) ──
+      resolve: 'Resolve',
+      resolveTitle: 'Resolve a stuck migration',
+      resolveFor: '{{name}} ({{code}})',
+      resolveDescription: 'Marks a row in this tenant database\u2019s _prisma_migrations as applied or rolled back WITHOUT running its SQL. Use it when a failed migration blocks every later one. Choosing wrong records a migration that never ran as if it had.',
+      migrationNameLabel: 'Migration name',
+      migrationNamePlaceholder: '20260612000000_add_doc_version',
+      migrationNameInvalid: 'Invalid format \u2014 expected a migration folder name, e.g. 20260612000000_add_doc_version',
+      actionLabel: 'Mark as',
+      actionApplied: 'Applied',
+      actionRolledBack: 'Rolled back',
+      resolveButton: 'Resolve',
+      resolveSuccess: 'Resolved {{name}} for {{code}}',
     },
     // ── slice 9c: Platform Config ──
     // หน้านี้และการ์ดทั้งหมดเป็น "ไทยล้วน" มาก่อน — ผู้ใช้อังกฤษอ่านไทยมาตลอด
