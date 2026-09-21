@@ -30,6 +30,7 @@ import { BuSummary } from './businessUnitManagement/BuSummary';
 import { auditColumns } from '../components/auditColumns';
 import { AuditMeta } from '../components/AuditMeta';
 import { normalizeAudit, auditCsvFields } from '../utils/audit';
+import { outOfRangePage } from '../utils/pageRange';
 import { useI18n } from '../hooks/useI18n';
 import type { BuSummaryData } from '../types';
 import type { BusinessUnit, PaginateParams } from '../types';
@@ -96,6 +97,10 @@ const BusinessUnitManagement: React.FC = () => {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchBusinessUnits = useCallback(async (params: PaginateParams) => {
+    // Set when the response proves the requested page is past the end of the set. The
+    // refetch that follows owns the spinner, so `loading` must stay true through it —
+    // dropping it here would flash the empty state (which hides the pager) for a beat.
+    let snappingTo: number | null = null;
     try {
       setLoading(true);
       const data = await businessUnitService.getAll(params);
@@ -107,13 +112,22 @@ const BusinessUnitManagement: React.FC = () => {
         const deleted = normalizeAudit(item).deleted;
         return { ...item, deleted_at: deleted?.at, deleted_by_name: deleted?.name };
       });
+      const total = data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0);
       setBusinessUnits(mapped);
-      setTotalRows(data.paginate?.total ?? data.total ?? (Array.isArray(items) ? items.length : 0));
+      setTotalRows(total);
       setError('');
+
+      // A page number persisted from an earlier, larger result set. Snap back rather than
+      // stranding the user on an empty table with no pager to press — see outOfRangePage.
+      snappingTo = outOfRangePage(params.page, params.perpage, total);
+      if (snappingTo !== null) {
+        localStorage.setItem('page_business_units', String(snappingTo));
+        setPaginate(prev => ({ ...prev, page: snappingTo as number }));
+      }
     } catch (err: unknown) {
       setError(t('pages.businessUnits.loadFailedPrefix') + getErrorDetail(err, t));
     } finally {
-      setLoading(false);
+      if (snappingTo === null) setLoading(false);
     }
   }, [t]);
 
