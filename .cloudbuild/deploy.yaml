@@ -10,7 +10,7 @@
 # Rollback: run this trigger again with an older _ARTIFACT_SHA (still within the staging
 # bucket's 30-day retention, carmen-infra-gcp/storage.tf) — identify it from Discord
 # notification history or Cloud Build History, no separate tracking mechanism.
-#   gcloud builds triggers run carmen-platform-deploy --region=asia-southeast3 --branch=main \
+#   gcloud builds triggers run carmen-platform-deploy --region=asia-southeast3 --branch=prod \
 #     --substitutions=_ARTIFACT_SHA=<older-short-sha>
 
 steps:
