@@ -1,0 +1,81 @@
+# Cloud Build config for the "carmen-platform-build" trigger (see carmen-infra-gcp/cloudbuild.tf).
+# Builds the SPA — REACT_APP_* baked into the bundle at build time via .env.prod, same as
+# `bun run build:prod` locally (see scripts/deploy-gcs.sh / CLAUDE.md "Deployment") — then
+# uploads build/ to the shared staging bucket under carmen-platform/${SHORT_SHA}/, then
+# invokes "carmen-platform-deploy" (approval_required=true) with that same SHA.
+#
+# Manual-dispatch only for now — run with:
+#   gcloud builds triggers run carmen-platform-build --region=asia-southeast3 --branch=main
+
+steps:
+  - id: install-and-build
+    name: oven/bun:1
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        cat > .env.prod <<EOF
+        REACT_APP_API_BASE_URL=${_REACT_APP_API_BASE_URL}
+        REACT_APP_API_APP_ID=${_REACT_APP_API_APP_ID}
+        REACT_APP_ENV=production
+        EOF
+        bun install --frozen-lockfile
+        bun run build:prod
+
+  # No gcloud in oven/bun's image — separate step on cloud-sdk, same reasoning as
+  # every other *.cloudbuild/build.yaml in this system splitting build vs. push/upload.
+  - id: upload-artifact
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - storage
+      - rsync
+      - build
+      - gs://${_STAGING_BUCKET}/carmen-platform/${SHORT_SHA}/
+      - --recursive
+    waitFor: ['install-and-build']
+
+  - id: invoke-deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        gcloud builds triggers run carmen-platform-deploy \
+          --region=${_REGION} --branch=main \
+          --substitutions=_ARTIFACT_SHA=${SHORT_SHA}
+        curl -sS -X POST -H "Content-Type: application/json" \
+          -d @- "$$DISCORD_WEBHOOK_URL" <<'PAYLOAD'
+        {
+          "embeds": [{
+            "title": "🔔 carmen-platform build สำเร็จ — รอการอนุมัติ deploy",
+            "color": 16776960,
+            "fields": [
+              {"name": "Commit", "value": "${SHORT_SHA}", "inline": true},
+              {"name": "ผู้มีสิทธิ์อนุมัติ", "value": "${_APPROVER_EMAIL}", "inline": true},
+              {"name": "ไปอนุมัติที่", "value": "[Cloud Build Console](https://console.cloud.google.com/cloud-build/builds;region=${_REGION}?project=${PROJECT_ID})", "inline": false}
+            ]
+          }]
+        }
+        PAYLOAD
+    secretEnv: ['DISCORD_WEBHOOK_URL']
+    waitFor: ['upload-artifact']
+
+substitutions:
+  _REGION: asia-southeast3
+  _APPROVER_EMAIL: (unset)
+  _STAGING_BUCKET: (unset)
+  _REACT_APP_API_BASE_URL: (unset)
+  _REACT_APP_API_APP_ID: (unset)
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/${PROJECT_ID}/secrets/discord-webhook-url/versions/latest
+      env: 'DISCORD_WEBHOOK_URL'
+
+timeout: 1200s
+
+options:
+  logging: CLOUD_LOGGING_ONLY

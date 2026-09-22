@@ -1,0 +1,94 @@
+# Cloud Build config for the "carmen-platform-deploy" trigger (see carmen-infra-gcp/cloudbuild.tf).
+# approval_required=true — never runs until a human with roles/cloudbuild.builds.approver
+# approves it, whether invoked by carmen-platform-build's last step or run standalone.
+#
+# Downloads the exact SHA folder carmen-platform-build staged in the shared GCS bucket and
+# syncs it to the live bucket + invalidates the CDN — the second half of what
+# scripts/deploy-gcs.sh does locally (the build itself already happened in
+# carmen-platform-build; there is no `bun run build:prod` here).
+#
+# Rollback: run this trigger again with an older _ARTIFACT_SHA (still within the staging
+# bucket's 30-day retention, carmen-infra-gcp/storage.tf) — identify it from Discord
+# notification history or Cloud Build History, no separate tracking mechanism.
+#   gcloud builds triggers run carmen-platform-deploy --region=asia-southeast3 --branch=main \
+#     --substitutions=_ARTIFACT_SHA=<older-short-sha>
+
+steps:
+  - id: download-artifact
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - storage
+      - rsync
+      - gs://${_STAGING_BUCKET}/carmen-platform/${_ARTIFACT_SHA}/
+      - build
+      - --recursive
+
+  - id: sync-to-live
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        gcloud storage rsync build gs://${_LIVE_BUCKET} \
+          --recursive \
+          --delete-unmatched-destination-objects \
+          --exclude="^index\.html$$"
+        gcloud storage objects update "gs://${_LIVE_BUCKET}/assets/**" \
+          --cache-control="public,max-age=31536000,immutable"
+        gcloud storage cp build/index.html "gs://${_LIVE_BUCKET}/index.html" \
+          --cache-control="no-cache"
+    waitFor: ['download-artifact']
+
+  - id: invalidate-cdn
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - compute
+      - url-maps
+      - invalidate-cdn-cache
+      - ${_CDN_URL_MAP}
+      - --path=/index.html
+    waitFor: ['sync-to-live']
+
+  # Only reached if everything above actually succeeded — a sync/invalidate failure gets
+  # no Discord notification, same gap noted in build.yaml's invoke-deploy step.
+  - id: notify-deploy-success
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        curl -sS -X POST -H "Content-Type: application/json" \
+          -d @- "$$DISCORD_WEBHOOK_URL" <<'PAYLOAD'
+        {
+          "embeds": [{
+            "title": "✅ carmen-platform deploy สำเร็จ",
+            "color": 3066993,
+            "fields": [
+              {"name": "Commit (SHA)", "value": "${_ARTIFACT_SHA}", "inline": true}
+            ]
+          }]
+        }
+        PAYLOAD
+    secretEnv: ['DISCORD_WEBHOOK_URL']
+    waitFor: ['invalidate-cdn']
+
+substitutions:
+  _STAGING_BUCKET: (unset)
+  _LIVE_BUCKET: (unset)
+  _CDN_URL_MAP: carmen-url-map
+  # Overridden by carmen-platform-build's invoke-deploy step (--substitutions=_ARTIFACT_SHA=...).
+  # "latest" only applies if this trigger is ever run standalone without that override, and
+  # no such folder exists in the staging bucket — pass a real SHA explicitly (see the rollback
+  # note above) rather than relying on this default.
+  _ARTIFACT_SHA: latest
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/${PROJECT_ID}/secrets/discord-webhook-url/versions/latest
+      env: 'DISCORD_WEBHOOK_URL'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
