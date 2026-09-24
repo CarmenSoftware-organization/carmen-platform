@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly REACT_APP_API_APP_ID?: string;
   readonly REACT_APP_ENV?: string;
   readonly REACT_APP_BUILD_DATE?: string;
+  readonly REACT_APP_OTEL_ENVIRONMENT?: string;
 }
 
 interface ImportMeta {

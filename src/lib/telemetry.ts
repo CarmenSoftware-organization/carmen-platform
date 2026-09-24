@@ -46,6 +46,16 @@ export function isTelemetryEnabled(): boolean {
   return import.meta.env.REACT_APP_OTEL_ENABLED === 'true';
 }
 
+/**
+ * ชื่อ environment ที่ติดไปกับทุก trace/error — ไม่ตั้ง = `"dev"` เดิมเป๊ะ
+ *
+ * เคย hardcode เป็น `"dev"` ตรง ๆ ทุก environment จึงรายงานตัวเองว่าเป็น dev
+ * แล้ว error ของ prod กับของเครื่อง dev กองรวมกันใน facet เดียวใน SigNoz
+ */
+function otelEnvironment(): string {
+  return import.meta.env.REACT_APP_OTEL_ENVIRONMENT ?? 'dev';
+}
+
 function backendBase(): string {
   return String(import.meta.env.REACT_APP_API_BASE_URL ?? '').replace(/\/+$/, '');
 }
@@ -79,7 +89,7 @@ export function initTelemetry(version: string): void {
     'service.namespace': 'carmen',
     // คีย์ชื่อเดิม ไม่ใช่ deployment.environment.name ของ semconv ล่าสุด —
     // SigNoz index ตัวนี้
-    'deployment.environment': 'dev',
+    'deployment.environment': otelEnvironment(),
     'browser.user_agent': navigator.userAgent,
   });
 
@@ -147,7 +157,7 @@ export async function reportPreLoginError(
               attributes: [
                 { key: 'service.name', value: { stringValue: SERVICE_NAME } },
                 { key: 'service.namespace', value: { stringValue: 'carmen' } },
-                { key: 'deployment.environment', value: { stringValue: 'dev' } },
+                { key: 'deployment.environment', value: { stringValue: otelEnvironment() } },
               ],
             },
             scopeLogs: [

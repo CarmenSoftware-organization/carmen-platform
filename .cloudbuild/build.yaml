@@ -21,6 +21,8 @@ steps:
         REACT_APP_API_BASE_URL=${_REACT_APP_API_BASE_URL}
         REACT_APP_API_APP_ID=${_REACT_APP_API_APP_ID}
         REACT_APP_ENV=production
+        REACT_APP_OTEL_ENABLED=true
+        REACT_APP_OTEL_ENVIRONMENT=prod
         EOF
         bun install --frozen-lockfile
         bun run build:prod
