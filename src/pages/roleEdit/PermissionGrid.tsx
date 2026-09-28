@@ -2,9 +2,8 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
-import { resourceNavMeta } from '../../components/nav/platformNav';
 import { isEscalationKey } from '../../utils/permissionRisk';
-import { groupGrantRows } from './grantGroups';
+import { groupGrantRows, resourceMeta } from './grantGroups';
 
 export interface PermissionGridAction {
   key: string;
@@ -115,7 +114,7 @@ export function PermissionGrid({ rows, onToggle, onToggleResource, original, com
               {group.rows.map((row) => {
                 const keys = row.actions.map((a) => a.key);
                 const allOn = row.grantedCount === row.total;
-                const meta = resourceNavMeta(row.resource);
+                const meta = resourceMeta(row.resource);
                 const Icon = meta?.icon;
                 // A resource this role cannot touch at all recedes with its verbs — still
                 // counted and still in place, but never competing with the resources the role

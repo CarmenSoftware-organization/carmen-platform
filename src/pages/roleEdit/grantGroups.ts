@@ -1,6 +1,23 @@
-import { resourceNavMeta } from '../../components/nav/platformNav';
+import { History, BadgeCheck } from 'lucide-react';
+import { resourceNavMeta, type ResourceNavMeta } from '../../components/nav/platformNav';
 import type { TKey } from '../../i18n/types';
 import type { PermissionGridRow } from './PermissionGrid';
+
+/**
+ * Names for resources the sidebar has no entry for, so they would otherwise read as a bare key.
+ * Each is named for the feature it gates rather than for a page: `activity_log` is the history
+ * sheet on 12 list/edit pages, and `license` is the second gate on Platform Config's `license`
+ * key — not the Licenses menu, which runs on `subscription.*`. No `groupKey`: they stay under
+ * "Other", since neither belongs to one menu section.
+ */
+const UNMENUED_RESOURCE_META: Record<string, ResourceNavMeta> = {
+  activity_log: { labelKey: 'pages.roles.resourceName.activityLog', icon: History },
+  license: { labelKey: 'pages.roles.resourceName.license', icon: BadgeCheck },
+};
+
+/** The menu's name for a resource, or Role Edit's own name for one the menu lacks. */
+export const resourceMeta = (resource: string): ResourceNavMeta | undefined =>
+  resourceNavMeta(resource) ?? UNMENUED_RESOURCE_META[resource];
 
 export interface GrantGroup {
   /** The sidebar section's heading key; resources with no menu entry share `navGroup.other`. */

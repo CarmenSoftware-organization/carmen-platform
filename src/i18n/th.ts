@@ -2880,6 +2880,10 @@ export const th: Translations = {
       chipAdded: '(เพิ่มใหม่)',
       chipRemoved: '(ถอดออก)',
       accessShapeAria: 'รูปทรงสิทธิ์: {{summary}}',
+      resourceName: {
+        activityLog: 'ประวัติการแก้ไขเรคอร์ด',
+        license: 'การบังคับใช้ใบอนุญาต',
+      },
       noPermissionsGranted: 'ยังไม่ได้ให้สิทธิ์',
       nPermissions: '{{count}} สิทธิ์',
       nPermissionsPlural: '{{count}} สิทธิ์',

@@ -3941,6 +3941,11 @@ export const en = {
       chipAdded: '(added)',
       chipRemoved: '(removed)',
       accessShapeAria: 'Access shape: {{summary}}',
+      // Resources with no menu entry of their own — named for the feature they gate
+      resourceName: {
+        activityLog: 'Record History',
+        license: 'License Enforcement',
+      },
       // grantSummary — ประกอบจากหลายท่อนคั่นด้วย ' · ' เดิมปั้นพหูพจน์ตอนรัน
       noPermissionsGranted: 'No permissions granted',
       nPermissions: '{{count}} permission',
