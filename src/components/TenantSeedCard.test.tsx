@@ -15,7 +15,7 @@ const svc = tenantSeedService as unknown as {
   deployStream: ReturnType<typeof vi.fn>;
 };
 
-const baseProps = { buId: 'bu-1', buCode: 'ZEBRA', buName: 'Zebra Hotel', hasDbConnection: true, isSuperAdmin: true };
+const baseProps = { buId: 'bu-1', buCode: 'ZEBRA', buName: 'Zebra Hotel', hasDbConnection: true, canApply: true };
 
 describe('TenantSeedCard', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -84,9 +84,19 @@ describe('TenantSeedCard', () => {
     );
   });
 
-  it('disables actions and shows a reason when not super-admin', () => {
-    render(<TenantSeedCard {...baseProps} isSuperAdmin={false} />);
-    expect(screen.getByRole('button', { name: /check status/i })).toBeDisabled();
+  it('keeps Check status enabled but disables seeding without tenant_seed.apply', async () => {
+    svc.getStatus.mockResolvedValue({
+      bu_id: 'bu-1', bu_code: 'ZEBRA', all_seeded: false,
+      sets: [
+        { key: 'running-code', label: 'Running codes', defined: 14, present: 12, missing: ['PRODUCT', 'PRICE-LIST'] },
+      ],
+    });
+    render(<TenantSeedCard {...baseProps} canApply={false} />);
+    const check = screen.getByRole('button', { name: /check status/i });
+    expect(check).toBeEnabled();
+    await userEvent.click(check);
+    await waitFor(() => expect(svc.getStatus).toHaveBeenCalledWith('bu-1'));
+    for (const box of await screen.findAllByRole('checkbox')) expect(box).toBeDisabled();
   });
 
   it('renders a complete set with a Seeded badge and a disabled checkbox', async () => {

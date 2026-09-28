@@ -436,10 +436,9 @@ export const th: Translations = {
       // ซอร์สที่แยกเป็นข้อความ aria-label คนละสตริง
       searchBusinessUnitsAria: 'ค้นหาหน่วยธุรกิจ',
       noBusinessUnitsFound: 'ไม่พบหน่วยธุรกิจ',
-      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx ทั้งสาม
-      // เช็ค isSuperAdmin ด้วยข้อความ disabledReason นี้เป๊ะเหมือนกันทุกตัวอักษร จึงใช้คีย์
-      // เดียวร่วมกันแทนที่จะสร้างซ้ำสามที่
-      superAdminRequired: 'ต้องเป็นผู้ดูแลระบบสูงสุดเท่านั้น',
+      // ข้อความ disabledReason ร่วมสำหรับ action ที่กั้นด้วย permission key ของแพลตฟอร์ม
+      // (TenantMigrationCard/TenantSeedCard และหน้า tenant management ทั้งสอง)
+      permissionRequired: 'ต้องมีสิทธิ์ {{permission}}',
       // ข้อความเงื่อนไขร่วมของ TenantSeedCard.tsx / TenantMigrationCard.tsx (เหมือนกันเป๊ะ
       // ทั้งสองไฟล์)
       configureDbPoolFirst: 'กรุณาตั้งค่า database pool และ schema ก่อน',

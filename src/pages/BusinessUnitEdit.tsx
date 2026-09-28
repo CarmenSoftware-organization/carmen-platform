@@ -48,7 +48,7 @@ const BusinessUnitEdit: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isNew = !id;
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const { t } = useI18n();
 
   const [formData, setFormData] = useState<BusinessUnitFormData>({
@@ -758,22 +758,26 @@ const BusinessUnitEdit: React.FC = () => {
           advancedExtraSlot={
             !isNew ? (
               <>
-                <TenantMigrationCard
-                  key={id}
-                  buId={id!}
-                  buCode={formData.code}
-                  buName={formData.name}
-                  hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                  isSuperAdmin={isSuperAdmin}
-                />
-                <TenantSeedCard
-                  key={`seed-${id}`}
-                  buId={id!}
-                  buCode={formData.code}
-                  buName={formData.name}
-                  hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                  isSuperAdmin={isSuperAdmin}
-                />
+                {hasPermission('tenant_migration.read') && (
+                  <TenantMigrationCard
+                    key={id}
+                    buId={id!}
+                    buCode={formData.code}
+                    buName={formData.name}
+                    hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
+                    canApply={hasPermission('tenant_migration.apply')}
+                  />
+                )}
+                {hasPermission('tenant_seed.read') && (
+                  <TenantSeedCard
+                    key={`seed-${id}`}
+                    buId={id!}
+                    buCode={formData.code}
+                    buName={formData.name}
+                    hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
+                    canApply={hasPermission('tenant_seed.apply')}
+                  />
+                )}
               </>
             ) : null
           }

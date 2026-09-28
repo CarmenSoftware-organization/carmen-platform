@@ -16,7 +16,7 @@ interface TenantSeedCardProps {
   buCode: string;
   buName: string;
   hasDbConnection: boolean;
-  isSuperAdmin: boolean;
+  canApply: boolean;
 }
 
 export const TenantSeedCard = ({
@@ -24,7 +24,7 @@ export const TenantSeedCard = ({
   buCode,
   buName,
   hasDbConnection,
-  isSuperAdmin,
+  canApply,
 }: TenantSeedCardProps): ReactElement => {
   const { t } = useI18n();
   const [status, setStatus] = useState<TenantSeedStatus | null>(null);
@@ -37,13 +37,15 @@ export const TenantSeedCard = ({
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
-  const disabledReason = !isSuperAdmin
-    ? t('common.state.superAdminRequired')
-    : !hasDbConnection
-    ? t('common.state.configureDbPoolFirst')
-    : null;
+  // Checking status is a read; seeding writes to the BU schema. They need different
+  // permissions, so each carries its own reason — a read-only user can still check.
+  const checkReason = !hasDbConnection ? t('common.state.configureDbPoolFirst') : null;
+  const applyReason = !canApply
+    ? t('common.state.permissionRequired', { permission: 'tenant_seed.apply' })
+    : checkReason;
   const busy = loadingStatus || seeding;
-  const actionsDisabled = disabledReason !== null || busy;
+  const checkDisabled = checkReason !== null || busy;
+  const applyDisabled = applyReason !== null || busy;
 
   const totalMissing = useMemo(
     () => (status ? status.sets.reduce((acc, s) => acc + s.missing.length, 0) : 0),
@@ -125,9 +127,9 @@ export const TenantSeedCard = ({
 
   // Wrap a (possibly disabled) button so its tooltip still fires — a disabled
   // <button> is removed from the tab order, so wrap it in a focusable span.
-  const withTooltip = (el: ReactElement): ReactElement =>
-    disabledReason ? (
-      <Tooltip content={disabledReason}>
+  const withTooltip = (el: ReactElement, reason: string | null): ReactElement =>
+    reason ? (
+      <Tooltip content={reason}>
         {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
         <span tabIndex={0}>{el}</span>
       </Tooltip>
@@ -148,7 +150,7 @@ export const TenantSeedCard = ({
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           {withTooltip(
-            <Button type="button" size="sm" variant="outline" onClick={fetchStatus} disabled={actionsDisabled}>
+            <Button type="button" size="sm" variant="outline" onClick={fetchStatus} disabled={checkDisabled}>
               {loadingStatus ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -160,6 +162,7 @@ export const TenantSeedCard = ({
                 ? t('common.action.recheckStatus')
                 : t('common.action.checkStatus')}
             </Button>,
+            checkReason,
           )}
 
           {/* Same "unknown ≠ ok" distinction the migration card makes above. */}
@@ -192,7 +195,7 @@ export const TenantSeedCard = ({
                         type="checkbox"
                         className="h-4 w-4"
                         checked={selectedKeys.has(s.key)}
-                        disabled={actionsDisabled || complete}
+                        disabled={applyDisabled || complete}
                         onChange={() => toggleSet(s.key)}
                       />
                       {s.label}{' '}
@@ -242,13 +245,14 @@ export const TenantSeedCard = ({
                 type="button"
                 size="sm"
                 onClick={() => setConfirmOpen(true)}
-                disabled={actionsDisabled || selectedMissing === 0}
+                disabled={applyDisabled || selectedMissing === 0}
               >
                 <Play className="mr-2 h-4 w-4" />
                 {selectedMissing === 0
                   ? t('components.tenantSeedCard.nothingToSeed')
                   : t('components.tenantSeedCard.seedRowsButton', { count: selectedMissing })}
               </Button>,
+              applyReason,
             )}
           </div>
         )}

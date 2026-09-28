@@ -583,10 +583,9 @@ export const en = {
       // none, matching the source's separate aria-label string.
       searchBusinessUnitsAria: 'Search business units',
       noBusinessUnitsFound: 'No business units found.',
-      // TenantSeedCard.tsx / TenantMigrationCard.tsx / InterfaceEntitlementCard.tsx all
-      // gate on isSuperAdmin with this exact disabledReason string — byte-identical
-      // across all three files, so one shared key rather than three copies.
-      superAdminRequired: 'Super-admin required.',
+      // Shared disabled reason for actions gated on a platform permission key
+      // (TenantMigrationCard/TenantSeedCard and the two tenant management pages).
+      permissionRequired: 'Requires the {{permission}} permission.',
       // TenantSeedCard.tsx / TenantMigrationCard.tsx's shared precondition message
       // (byte-identical in both).
       configureDbPoolFirst: 'Configure a database pool and schema first.',
