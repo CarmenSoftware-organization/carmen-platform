@@ -324,6 +324,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     const accessToken = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refresh_token');
+    // TEMP DEBUG — remove once confirmed live: proves whether handleLogout -> logout() is
+    // actually invoked and whether the revoke branch below is entered.
+    console.log('[logout] called', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
 
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
@@ -342,15 +345,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // already cleared by this point regardless of whether the call succeeds — matches the
     // pattern carmen-inventory-frontend-react's logout() already uses.
     if (accessToken || refreshToken) {
+      // TEMP DEBUG — remove once confirmed live.
+      console.log('[logout] sending POST /api/auth/logout');
       api
         .post(
           '/api/auth/logout',
           { refresh_token: refreshToken ?? '' },
           { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}, timeout: 5000 },
         )
-        .catch(() => {
+        .then(() => {
+          console.log('[logout] revoke succeeded'); // TEMP DEBUG
+        })
+        .catch((err) => {
           // Local session is already gone — nothing left to roll back.
+          console.log('[logout] revoke failed', err); // TEMP DEBUG
         });
+    } else {
+      console.log('[logout] no token/refresh_token in localStorage — revoke skipped'); // TEMP DEBUG
     }
     setAdminScope(null);
   };
