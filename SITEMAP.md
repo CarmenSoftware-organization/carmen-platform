@@ -21,7 +21,8 @@ Route guards are **permission-based**: `PrivateRoute` takes `requiredPermission=
 | `/business-units` | `BusinessUnitManagement` | `cluster.read` | Business unit list |
 | `/business-units/new` | `BusinessUnitEdit` | `cluster.create` | Create BU (sectioned form) |
 | `/business-units/:id/edit` | `BusinessUnitEdit` | `cluster.update` | View/edit BU |
-| `/tenant-migrations` | `TenantMigrationManagement` | `cluster.read` | Tenant migration deploy operations |
+| `/tenant-migrations` | `TenantMigrationManagement` | `tenant_migration.read` | Tenant migration status + deploy (apply/resolve need `tenant_migration.apply`, platform scope) |
+| `/tenant-seeds` | `TenantSeedManagement` | `tenant_seed.read` | Tenant seed status + seeding (seed needs `tenant_seed.apply`, platform scope) |
 | `/users` | `UserManagement` | `user.read` | User list (role + status filters) |
 | `/users/new` | `UserEdit` | `user.create` | Create user |
 | `/users/:id/edit` | `UserEdit` | `user.update` | View/edit user + BU assignments |
@@ -55,18 +56,19 @@ Defined in `allNavItems` in `src/components/Layout.tsx`. Items carry a `group` a
 - **Organization**
   1. Clusters — `/clusters` — `cluster.read`
   2. Business Units — `/business-units` — `cluster.read`
-  3. Tenant Migrations — `/tenant-migrations` — `cluster.read`
-  4. Users — `/users` — `user.read`
+  3. Tenant Migrations — `/tenant-migrations` — `tenant_migration.read`
+  4. Tenant Seeds — `/tenant-seeds` — `tenant_seed.read`
+  5. Users — `/users` — `user.read`
 - **Content**
-  5. Report Templates — `/report-templates` — `report_template.read`
-  6. Print Mapping — `/print-template-mapping` — `print_template_mapping.read`
-  7. News — `/news` — `news.read`
-  8. Send Broadcast — `/broadcasts/new` — `broadcast.send`
+  6. Report Templates — `/report-templates` — `report_template.read`
+  7. Print Mapping — `/print-template-mapping` — `print_template_mapping.read`
+  8. News — `/news` — `news.read`
+  9. Send Broadcast — `/broadcasts/new` — `broadcast.send`
 - **Platform**
-  9. Applications — `/applications` — `application.read`
-  10. Roles — `/platform/roles` — `role.read`
-  11. Super Admins — `/platform/super-admins` — super admin only
-  12. User Platform — `/platform/user-platform` — `user_platform.read`
+  10. Applications — `/applications` — `application.read`
+  11. Roles — `/platform/roles` — `role.read`
+  12. Super Admins — `/platform/super-admins` — super admin only
+  13. User Platform — `/platform/user-platform` — `user_platform.read`
 
 Not in the sidebar (reached from within other pages): `/platform/permissions` (from Role pages), `/changelog` (footer/version badge), `/profile` (avatar menu at the sidebar bottom).
 
