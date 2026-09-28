@@ -7,7 +7,7 @@
 **Status:** Draft
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
-**Author:** Claude (from code + live capture on DEV)
+**Author:** Claude (from code + live capture on the local backend `localhost:4000`, 2026-09-29)
 **Parent Flow:** CP-FLOW-002 — Cluster onboarding (Planned)
 ---
 
@@ -80,7 +80,7 @@ that user, with an × ("Clear selected user") to go back to the list.
 **Selection behaviour:**
 - **Single-select.** A click selects the user and swaps the list for the selected-user box.
 - **Members are hidden:** results whose id matches an existing member's `user_id` are filtered out **on the client**.
-- Counter "Showing {shown} of {total} users": `shown` is the count **after** hiding members, `total` is the server total. In the DEV capture this read "Showing 9 of 49 users" with 9 existing members, so the two numbers measure different things.
+- Counter "Showing {shown} of {total} users": `shown` is the count **after** hiding members, `total` is the server total. In the capture (local backend) this read "Showing 9 of 49 users" with 9 existing members, so the two numbers measure different things.
 
 ---
 
