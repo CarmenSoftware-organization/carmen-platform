@@ -313,6 +313,7 @@ const RoleEdit: React.FC = () => {
             .sort((a, b) => actionRank(a.action) - actionRank(b.action));
           return {
             resource,
+            resourceDescription: { en: items[0]?.resource_description, th: items[0]?.resource_description_th },
             actions,
             total: items.length,
             grantedCount: actions.filter((a) => a.granted).length,

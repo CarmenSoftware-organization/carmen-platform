@@ -20,10 +20,10 @@ export const resourceMeta = (resource: string): ResourceNavMeta | undefined =>
   resourceNavMeta(resource) ?? UNMENUED_RESOURCE_META[resource];
 
 /**
- * A one-line description per resource, shown under its name. Written here, not taken from the
- * catalog: the catalog describes each *action* ("Update clusters and business units"), in
- * English only, and it stays in the chip tooltip. A resource added to the catalog later simply
- * renders without a line until it gets one here.
+ * FALLBACK ONLY — the source of truth is the backend's `PLATFORM_PERMISSION_RESOURCE_SEED`,
+ * delivered on each catalog item as `resource_description` / `_th`. This copy covers a backend
+ * deployed before that field existed; delete it (and the `pages.roles.resourceDescription.*`
+ * keys) once every backend the app points at sends it.
  */
 const RESOURCE_DESCRIPTION: Record<string, TKey> = {
   cluster: 'pages.roles.resourceDescription.clusters',

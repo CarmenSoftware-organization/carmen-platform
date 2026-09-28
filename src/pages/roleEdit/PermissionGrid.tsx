@@ -14,6 +14,8 @@ export interface PermissionGridAction {
 
 export interface PermissionGridRow {
   resource: string;
+  /** From the catalog, per language. Absent when the catalog failed or predates the field. */
+  resourceDescription?: { en?: string | null; th?: string | null };
   actions: PermissionGridAction[];
   total: number;
   grantedCount: number;
@@ -60,7 +62,7 @@ interface PermissionGridProps {
  * as the menu names them, with the key kept beneath as the precise identifier.
  */
 export function PermissionGrid({ rows, onToggle, onToggleResource, original, complete = true }: PermissionGridProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const editable = Boolean(onToggle);
   const groups = groupGrantRows(rows);
 
@@ -116,7 +118,11 @@ export function PermissionGrid({ rows, onToggle, onToggleResource, original, com
                 const allOn = row.grantedCount === row.total;
                 const meta = resourceMeta(row.resource);
                 const Icon = meta?.icon;
+                // The catalog's own text wins; the i18n copy only covers a backend that does not
+                // send it yet, and goes once that backend is everywhere.
+                const fromCatalog = (lang === 'th' ? row.resourceDescription?.th : undefined) || row.resourceDescription?.en;
                 const descKey = resourceDescriptionKey(row.resource);
+                const description = fromCatalog || (descKey ? t(descKey) : undefined);
                 // A resource this role cannot touch at all recedes with its verbs — still
                 // counted and still in place, but never competing with the resources the role
                 // actually reaches. It stays legible while editing, where it is a target.
@@ -136,7 +142,7 @@ export function PermissionGrid({ rows, onToggle, onToggleResource, original, com
                             keeps its own element — it is the row's exact identifier. */}
                         <div className="text-muted-foreground text-[11px] leading-snug">
                           <span className={cn('font-mono', !meta && 'text-foreground text-sm')}>{row.resource}</span>
-                          {descKey && <span> · {t(descKey)}</span>}
+                          {description && <span> · {description}</span>}
                         </div>
                       </div>
                     </div>
