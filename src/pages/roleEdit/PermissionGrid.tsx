@@ -37,6 +37,12 @@ interface PermissionGridProps {
    * not only as a count in the save bar.
    */
   original?: ReadonlySet<string>;
+  /**
+   * False when the rows were rebuilt from the role's own keys because the catalog failed. Such
+   * a section only knows the resources the role holds, so its `held/total` would always read
+   * as full (`4/4`) — a claim about the catalog it cannot make. The counter is dropped instead.
+   */
+  complete?: boolean;
 }
 
 /**
@@ -54,7 +60,7 @@ interface PermissionGridProps {
  * the menu by hand, so rows now sit under the menu section they belong to, named and iconed
  * as the menu names them, with the key kept beneath as the precise identifier.
  */
-export function PermissionGrid({ rows, onToggle, onToggleResource, original }: PermissionGridProps) {
+export function PermissionGrid({ rows, onToggle, onToggleResource, original, complete = true }: PermissionGridProps) {
   const { t } = useI18n();
   const editable = Boolean(onToggle);
   const groups = groupGrantRows(rows);
@@ -94,9 +100,11 @@ export function PermissionGrid({ rows, onToggle, onToggleResource, original }: P
               >
                 {t(group.labelKey)}
               </h3>
-              <span className="text-muted-foreground/80 text-[11px] tabular-nums">
-                {group.held}/{group.rows.length}
-              </span>
+              {complete && (
+                <span className="text-muted-foreground/80 text-[11px] tabular-nums">
+                  {group.held}/{group.rows.length}
+                </span>
+              )}
               {editable && <span className="ml-auto">{grantToggle(groupKeys, groupAllOn, t(group.labelKey))}</span>}
             </div>
 
