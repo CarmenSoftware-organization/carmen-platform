@@ -393,6 +393,7 @@ const BusinessUnitForm: React.FC = () => {
     switch (method) {
       case 'average': return t('common.option.average');
       case 'fifo': return t('common.option.fifo');
+      case 'average_per_location': return t('common.option.averagePerLocation');
       default: return '-';
     }
   };

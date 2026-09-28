@@ -441,6 +441,11 @@ export const en = {
       // verbatim from pages.clusterAdmin.fifo (identical to English; FIFO is not translated
       // in either language).
       fifo: 'FIFO',
+      // Third calculation_method value (backend enum_calculation_method gained a third
+      // member). Same two call sites as fifo above: BusinessUnitEdit.tsx's
+      // getCalculationMethodLabel() / CalculationSettingsSection.tsx's <option>, plus
+      // clusterAdmin/BusinessUnitForm.tsx's own getCalculationMethodLabel().
+      averagePerLocation: 'Average per location',
     },
     // Nouns used as labels, headings and column titles — NOT toast-insertable (see entity.*
     // below for the toast-safe forms). Ten of these lived in `entity.*` until the phase-2
