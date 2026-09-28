@@ -116,6 +116,9 @@ const TenantSeedManagement: React.FC = () => {
   // Set on unmount: every async path checks it before touching state or starting the next BU.
   const cancelledRef = useRef(false);
   useEffect(() => {
+    // Reset on (re)mount: StrictMode runs this cleanup once in dev before remounting, and a
+    // flag left at true would silently drop every state update for the life of the page.
+    cancelledRef.current = false;
     const controllers = activeStreamControllersRef.current;
     return () => {
       cancelledRef.current = true;
