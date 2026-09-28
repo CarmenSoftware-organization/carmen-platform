@@ -80,6 +80,7 @@ All templates are in `docs/ui/references/`:
 ## Folder Structure
 ```
 docs/ui/
+  modules/        → Feature Module documents (CP-MOD-{NN}-{slug}.md)
   flows/          → Flow documents
   pages/          → Page documents
   modals/         → Modal documents
@@ -95,6 +96,7 @@ docs/ui/
 
 | Type | Pattern | Example |
 |------|---------|---------|
+| Feature Module | `CP-MOD-{NN}-{slug}.md` | `CP-MOD-02-clusters.md` |
 | Page | `CP-PAGE-{NNN}-{slug}.md` | `CP-PAGE-006-cluster-list.md` |
 | Modal | `CP-MODAL-{NNN}-{slug}.md` | `CP-MODAL-001-confirm-dialog.md` |
 | Flow | `CP-FLOW-{NNN}-{slug}.md` | `CP-FLOW-002-cluster-onboarding.md` |
@@ -117,7 +119,7 @@ docs/ui/
 | Module No. | Module Name | Status | Owner |
 |-----------|-------------|--------|-------|
 | 1 | Auth & App Shell | Planned | — |
-| 2 | Clusters | Planned | — |
+| 2 | Clusters | Draft | — |
 | 3 | Business Units | Planned | — |
 | 4 | Users | Planned | — |
 | 5 | Tenant Operations | Planned | — |

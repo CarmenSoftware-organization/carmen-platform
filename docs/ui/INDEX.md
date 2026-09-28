@@ -14,7 +14,7 @@ path but not enforced · **L** = inferred, confirm with the product owner.
 | No. | Module | Pages | Modals | Flows | Doc | Status |
 |-----|--------|-------|--------|-------|-----|--------|
 | 1 | Auth & App Shell | 001–005, ERR-001–002 | 004, 005, 006, 007 | 001 | — | Planned |
-| 2 | Clusters | 006–007 | 008 | 002 | — | Planned |
+| 2 | Clusters | 006–007 | 008 | 002 | [CP-MOD-02](modules/CP-MOD-02-clusters.md) | Draft |
 | 3 | Business Units | 008–009 | 010 | 002 | — | Planned |
 | 4 | Users | 010–011 | 007, 009, 011 | 002 | — | Planned |
 | 5 | Tenant Operations | 012–014 | 015, 019 | 004 | — | Planned |
@@ -42,8 +42,8 @@ CP-MODAL-003 (Activity Trail Sheet).
 | CP-PAGE-003 | Changelog | `/changelog` | `Changelog` | Public | Planned | — |
 | CP-PAGE-004 | Dashboard | `/dashboard` | `Dashboard` | Authenticated | Planned | — |
 | CP-PAGE-005 | Profile | `/profile`, `/cluster-admin/:clusterId/profile` | `Profile` | Authenticated / cluster admin | Planned | — |
-| CP-PAGE-006 | Cluster List | `/clusters` | `ClusterManagement` | `cluster.read` | Planned | — |
-| CP-PAGE-007 | Cluster Edit | `/clusters/new`, `/clusters/:id/edit` | `ClusterEdit` | `cluster.create` / `cluster.update` | Planned | — |
+| CP-PAGE-006 | Cluster List | `/clusters` | `ClusterManagement` | `cluster.read` | Draft | [file](pages/CP-PAGE-006-cluster-list.md) |
+| CP-PAGE-007 | Cluster Edit | `/clusters/new`, `/clusters/:id/edit` | `ClusterEdit` | `cluster.create` / `cluster.update` | Draft | [file](pages/CP-PAGE-007-cluster-edit.md) |
 | CP-PAGE-008 | Business Unit List | `/business-units` | `BusinessUnitManagement` | `cluster.read` | Planned | — |
 | CP-PAGE-009 | Business Unit Edit | `/business-units/new`, `/business-units/:id/edit` | `BusinessUnitEdit` | `cluster.create` / `cluster.update` | Planned | — |
 | CP-PAGE-010 | User List | `/users` | `UserManagement` | `user.read` | Planned | — |
@@ -114,7 +114,7 @@ Redirect-only routes (no doc): `/subscriptions` → `/licenses`; `/subscriptions
 | CP-MODAL-005 | Cluster Switcher | Dialog | `ClusterSwitcher` | App shell | Planned | — |
 | CP-MODAL-006 | BU Switcher | Dialog | `BuSwitcher` | App shell | Planned | — |
 | CP-MODAL-007 | Change Password | Dialog | inline in `Profile`, `UserEdit` | 005, 011 | Planned | — |
-| CP-MODAL-008 | Add User to Cluster | Dialog | inline in `ClusterEdit` | 007 | Planned | — |
+| CP-MODAL-008 | Add User to Cluster | Dialog | inline in `ClusterEdit` | 007 | Draft | [file](modals/CP-MODAL-008-add-user-to-cluster.md) |
 | CP-MODAL-009 | Add Business Unit to User | Dialog | inline in `UserEdit` | 011 | Planned | — |
 | CP-MODAL-010 | Add / Edit User in BU | Dialog | `businessUnitEdit/BusinessUnitUsersCard` | 009 | Planned | — |
 | CP-MODAL-011 | User Bulk Destructive Action | Dialog | inline in `UserManagement` (2 dialogs) | 010 | Planned | — |
