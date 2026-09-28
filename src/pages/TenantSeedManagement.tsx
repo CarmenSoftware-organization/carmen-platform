@@ -16,19 +16,19 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader } from '../components/ui/card';
 import { DataTable } from '../components/ui/data-table';
 import { Tooltip } from '../components/ui/tooltip';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/TableSkeleton';
 import { SearchInput } from '../components/SearchInput';
 import { withTooltip } from './TenantMigrationManagement';
 import { SeedFleetSummary } from './tenantSeed/SeedFleetSummary';
+import { SeedSetPickerDialog, type SeedSetOption } from './tenantSeed/SeedSetPickerDialog';
 import {
   type SeedRowState,
   type SeedRowStatus,
   hasDb,
-  missingKeys,
   missingCount,
+  pickMissing,
   seedRowStatusOf,
   SEED_STATUS_RANK,
   summarizeFleet,
@@ -231,15 +231,14 @@ const TenantSeedManagement: React.FC = () => {
     }
   }, [t]);
 
-  const seedOne = useCallback(async (bu: BusinessUnit) => {
+  const seedOne = useCallback(async (bu: BusinessUnit, selected: string[]) => {
     if (!isSuperAdmin) return;
     if (activeStreamControllersRef.current.has(bu.id)) return;
     setSeedTarget(null);
-    const status = rowState[bu.id]?.status;
-    const keys = missingKeys(status);
+    const { keys, total } = pickMissing(rowState[bu.id]?.status, selected);
     if (keys.length === 0) return;
     try {
-      const summary = await runSeed(bu, keys, missingCount(status));
+      const summary = await runSeed(bu, keys, total);
       if (summary.created > 0) toast.success(t('pages.tenantSeed.seededOne', { count: summary.created, code: bu.code }));
       else toast.info(t('pages.tenantSeed.nothingCreated', { code: bu.code }));
       await checkRow(bu, false);
@@ -249,21 +248,20 @@ const TenantSeedManagement: React.FC = () => {
     }
   }, [checkRow, isSuperAdmin, rowState, runSeed, t]);
 
-  const seedAll = useCallback(async () => {
+  const seedAll = useCallback(async (selected: string[]) => {
     if (!isSuperAdmin) return;
     if (batch !== null) return;
     setConfirmAll(false);
-    const targets = bus.filter((bu) => seedRowStatusOf(bu, rowState[bu.id]) === 'missing');
-    if (targets.length === 0) {
-      toast.info(t('pages.tenantSeed.nothingToSeed'));
+    // Snapshot keys now: rowState changes as each BU is re-checked. Each BU gets only the
+    // selected sets it is actually missing; a BU missing none of them is left out entirely.
+    const plan = bus
+      .filter((bu) => seedRowStatusOf(bu, rowState[bu.id]) === 'missing')
+      .map((bu) => ({ bu, ...pickMissing(rowState[bu.id]?.status, selected) }))
+      .filter((p) => p.keys.length > 0);
+    if (plan.length === 0) {
+      toast.info(t('pages.tenantSeed.nothingSelectedToSeed'));
       return;
     }
-    // Snapshot keys now: rowState changes as each BU is re-checked.
-    const plan = targets.map((bu) => ({
-      bu,
-      keys: missingKeys(rowState[bu.id]?.status),
-      total: missingCount(rowState[bu.id]?.status),
-    }));
     let ok = 0;
     let failed = 0;
     try {
@@ -474,6 +472,30 @@ const TenantSeedManagement: React.FC = () => {
 
   const batchProgress = batch?.buId ? rowState[batch.buId]?.progress : undefined;
 
+  const seedTargetOptions = useMemo<SeedSetOption[]>(() => {
+    const status = seedTarget ? rowState[seedTarget.id]?.status : undefined;
+    return (status?.sets ?? [])
+      .filter((s) => s.missing.length > 0)
+      .map((s) => ({ key: s.key, label: s.label, count: s.missing.length, items: s.missing }));
+  }, [seedTarget, rowState]);
+
+  // Fleet mode: one option per set, aggregated over every BU currently missing it.
+  const fleetOptions = useMemo<SeedSetOption[]>(() => {
+    const byKey = new Map<string, SeedSetOption>();
+    for (const bu of bus) {
+      if (seedRowStatusOf(bu, rowState[bu.id]) !== 'missing') continue;
+      for (const s of rowState[bu.id]?.status?.sets ?? []) {
+        if (s.missing.length === 0) continue;
+        const o = byKey.get(s.key) ?? { key: s.key, label: s.label, count: 0, buCount: 0, items: [] };
+        o.count += s.missing.length;
+        o.buCount = (o.buCount ?? 0) + 1;
+        o.items.push(`${bu.code} · ${s.missing.length}`);
+        byKey.set(s.key, o);
+      }
+    }
+    return Array.from(byKey.values());
+  }, [bus, rowState]);
+
   return (
     <Layout>
       <div className="space-y-4 sm:space-y-6">
@@ -576,33 +598,22 @@ const TenantSeedManagement: React.FC = () => {
         </Card>
       </div>
 
-      <ConfirmDialog
+      <SeedSetPickerDialog
         open={seedTarget !== null}
         onOpenChange={(open) => { if (!open) setSeedTarget(null); }}
         title={t('pages.tenantSeed.seedTitle')}
-        description={
-          seedTarget
-            ? t('pages.tenantSeed.seedDescription', {
-                count: missingCount(rowState[seedTarget.id]?.status),
-                name: seedTarget.name,
-                code: seedTarget.code,
-              })
-            : ''
-        }
-        confirmText={t('pages.tenantSeed.seed')}
-        // Fire-and-forget: progress lives in the row. Returning the seed promise would keep this
-        // dialog's internal spinner (and its disabled Cancel/Escape) alive for the whole stream,
-        // locking the screen if another row's Seed opens the dialog meanwhile.
-        onConfirm={() => { if (seedTarget) void seedOne(seedTarget); }}
+        description={seedTarget ? t('pages.tenantSeed.seedDescription', { name: seedTarget.name, code: seedTarget.code }) : ''}
+        options={seedTargetOptions}
+        onConfirm={(keys) => { if (seedTarget) void seedOne(seedTarget, keys); }}
       />
 
-      <ConfirmDialog
+      <SeedSetPickerDialog
         open={confirmAll}
         onOpenChange={setConfirmAll}
         title={t('pages.tenantSeed.seedAllTitle')}
-        description={t('pages.tenantSeed.seedAllDescription', { count: counts.missing, rows: counts.missingRows })}
-        confirmText={t('pages.tenantSeed.seedAll')}
-        onConfirm={seedAll}
+        description={t('pages.tenantSeed.seedAllDescription', { count: counts.missing })}
+        options={fleetOptions}
+        onConfirm={(keys) => { void seedAll(keys); }}
       />
 
       <DevDebugSheet
