@@ -599,14 +599,16 @@ const BusinessUnitEdit: React.FC = () => {
     return cluster ? cluster.name : clusterId || '-';
   };
 
-  // Helper to get calculation method label. The domain only ever produces 'average'/'fifo'
-  // (see the <select> in businessUnitEdit/sections/CalculationSettingsSection.tsx) or ''
-  // (unset) — not a closed union in src/types/index.ts (calculation_method is a plain
-  // `string` there), so this stays a switch rather than a Record<Union, TKey>.
+  // Helper to get calculation method label. The domain only ever produces
+  // 'average'/'fifo'/'average_per_location' (see the <select> in
+  // businessUnitEdit/sections/CalculationSettingsSection.tsx) or '' (unset) — not a closed
+  // union in src/types/index.ts (calculation_method is a plain `string` there), so this
+  // stays a switch rather than a Record<Union, TKey>.
   const getCalculationMethodLabel = (method: string): string => {
     switch (method) {
       case 'average': return t('common.option.average');
       case 'fifo': return t('common.option.fifo');
+      case 'average_per_location': return t('common.option.averagePerLocation');
       default: return '-';
     }
   };

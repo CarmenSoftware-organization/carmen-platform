@@ -124,6 +124,7 @@ const CalculationSettingsSection: React.FC<CalculationSettingsSectionProps> = ({
                 <option value="">{t('pages.businessUnits.selectMethodOption')}</option>
                 <option value="average">{t('common.option.average')}</option>
                 <option value="fifo">{t('common.option.fifo')}</option>
+                <option value="average_per_location">{t('common.option.averagePerLocation')}</option>
               </select>
             ) : (
               <ReadOnlyText value={getCalculationMethodLabel(formData.calculation_method)} />

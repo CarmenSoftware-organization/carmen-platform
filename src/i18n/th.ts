@@ -331,6 +331,8 @@ export const th: Translations = {
       // Promoted from pages.clusterAdmin.fifo — identical to English in both languages
       // (FIFO is not translated); copied verbatim. See en.ts for the promotion rationale.
       fifo: 'FIFO',
+      // See en.ts: third calculation_method value.
+      averagePerLocation: 'เฉลี่ยแยกตาม Location',
     },
     label: {
       cluster: 'Cluster',
