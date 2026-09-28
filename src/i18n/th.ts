@@ -2032,13 +2032,11 @@ export const th: Translations = {
       // --- Task 4: NumberFormatsSection.tsx ---
       numberFormatsTitle: 'รูปแบบตัวเลข',
       numberFormatsDescription: 'ตั้งค่ารูปแบบการแสดงตัวเลข',
-      perPageFormatLabel: 'รูปแบบต่อหน้า',
       amountFormatLabel: 'รูปแบบจำนวนเงิน',
       quantityFormatLabel: 'รูปแบบจำนวน',
       recipeFormatLabel: 'รูปแบบสูตร',
       // ตัวอย่างผลลัพธ์สดข้าง JSON แต่ละช่อง (2026-08-31) — ดูเหตุผลที่ en.ts
       formatPreviewSample: '{{sample}} จะแสดงเป็น',
-      formatPreviewPerPage: 'จำนวนแถวต่อหน้า:',
       formatPreviewEmpty: 'ยังไม่ตั้งค่า — ระบบจะใช้ค่าเริ่มต้นของ tenant',
       formatPreviewInvalidJson: 'ไม่ใช่ JSON ที่ถูกต้อง — ค่านี้จะไม่ถูกนำไปใช้',
       formatPreviewInvalidOptions: 'เป็น JSON ที่ถูกต้อง แต่ไม่ใช่รูปแบบที่ใช้ได้ — ค่านี้จะไม่ถูกนำไปใช้',

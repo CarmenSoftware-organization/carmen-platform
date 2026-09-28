@@ -105,7 +105,6 @@ export interface BusinessUnitFormData {
   short_time_format: string;
   timezone: string;
   // Number Formats
-  perpage_format: string;
   amount_format: string;
   quantity_format: string;
   recipe_format: string;
@@ -162,7 +161,6 @@ export const initialFormData: BusinessUnitFormData = {
   long_time_format: '',
   short_time_format: '',
   timezone: '',
-  perpage_format: '{"default":10}',
   amount_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
   quantity_format: '{"locales":"th-TH","minimumIntegerDigits":2}',
   recipe_format: '{"locales":"th-TH","minimumIntegerDigits":2}',

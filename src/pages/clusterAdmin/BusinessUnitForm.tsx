@@ -291,7 +291,6 @@ const BusinessUnitForm: React.FC = () => {
         long_time_format: bu.long_time_format || '',
         short_time_format: bu.short_time_format || '',
         timezone: bu.timezone || '',
-        perpage_format: toJsonString(bu.perpage_format, defaultFormat),
         amount_format: toJsonString(bu.amount_format, defaultFormat),
         quantity_format: toJsonString(bu.quantity_format, defaultFormat),
         recipe_format: toJsonString(bu.recipe_format, defaultFormat),
@@ -480,7 +479,7 @@ const BusinessUnitForm: React.FC = () => {
       }
     }
 
-    for (const key of ['perpage_format', 'amount_format', 'quantity_format', 'recipe_format'] as const) {
+    for (const key of ['amount_format', 'quantity_format', 'recipe_format'] as const) {
       if (data[key]) payload[key] = tryParseJson(data[key]);
     }
 
