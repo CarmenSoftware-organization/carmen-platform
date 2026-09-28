@@ -2,9 +2,8 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import { useI18n } from '../../hooks/useI18n';
-import { resourceNavMeta } from '../../components/nav/platformNav';
 import { isEscalationKey } from '../../utils/permissionRisk';
-import { groupGrantRows } from './grantGroups';
+import { groupGrantRows, resourceMeta, resourceDescriptionKey } from './grantGroups';
 
 export interface PermissionGridAction {
   key: string;
@@ -15,6 +14,8 @@ export interface PermissionGridAction {
 
 export interface PermissionGridRow {
   resource: string;
+  /** From the catalog, per language. Absent when the catalog failed or predates the field. */
+  resourceDescription?: { en?: string | null; th?: string | null };
   actions: PermissionGridAction[];
   total: number;
   grantedCount: number;
@@ -61,7 +62,7 @@ interface PermissionGridProps {
  * as the menu names them, with the key kept beneath as the precise identifier.
  */
 export function PermissionGrid({ rows, onToggle, onToggleResource, original, complete = true }: PermissionGridProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const editable = Boolean(onToggle);
   const groups = groupGrantRows(rows);
 
@@ -111,33 +112,37 @@ export function PermissionGrid({ rows, onToggle, onToggleResource, original, com
             {/* One grid per section with a fixed name track, so the verbs line up across
                 sections as well as within one. Below `sm` each row stacks instead
                 (`sm:contents` hands the pair back to the grid once there is room). */}
-            <div className="grid grid-cols-1 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center sm:gap-x-4 sm:gap-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[16rem_minmax(0,1fr)] sm:items-center sm:gap-x-4 sm:gap-y-2">
               {group.rows.map((row) => {
                 const keys = row.actions.map((a) => a.key);
                 const allOn = row.grantedCount === row.total;
-                const meta = resourceNavMeta(row.resource);
+                const meta = resourceMeta(row.resource);
                 const Icon = meta?.icon;
+                // The catalog's own text wins; the i18n copy only covers a backend that does not
+                // send it yet, and goes once that backend is everywhere.
+                const fromCatalog = (lang === 'th' ? row.resourceDescription?.th : undefined) || row.resourceDescription?.en;
+                const descKey = resourceDescriptionKey(row.resource);
+                const description = fromCatalog || (descKey ? t(descKey) : undefined);
                 // A resource this role cannot touch at all recedes with its verbs — still
                 // counted and still in place, but never competing with the resources the role
                 // actually reaches. It stays legible while editing, where it is a target.
                 const recede = row.grantedCount === 0 && !editable;
                 return (
                   <div key={row.resource} className="mb-3 last:mb-0 sm:contents">
-                    <div className={cn('mb-1 flex min-w-0 items-center gap-2 sm:mb-0', recede && 'opacity-60')}>
+                    <div className={cn('mb-1 flex min-w-0 items-start gap-2 sm:mb-0', recede && 'opacity-60')}>
                       {Icon ? (
-                        <Icon className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+                        <Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                       ) : (
                         <span className="h-4 w-4 shrink-0" aria-hidden />
                       )}
                       <div className="min-w-0 leading-tight">
                         {meta && <div className="truncate text-sm">{t(meta.labelKey)}</div>}
-                        <div
-                          className={cn(
-                            'truncate font-mono',
-                            meta ? 'text-muted-foreground text-[11px]' : 'text-sm',
-                          )}
-                        >
-                          {row.resource}
+                        {/* Key and description share the second line; it wraps rather than
+                            truncates, since a clipped description is worse than none. The key
+                            keeps its own element — it is the row's exact identifier. */}
+                        <div className="text-muted-foreground text-[11px] leading-snug">
+                          <span className={cn('font-mono', !meta && 'text-foreground text-sm')}>{row.resource}</span>
+                          {description && <span> · {description}</span>}
                         </div>
                       </div>
                     </div>
