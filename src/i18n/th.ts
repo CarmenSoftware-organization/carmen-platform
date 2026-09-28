@@ -2386,9 +2386,9 @@ export const th: Translations = {
     },
     tenantMigration: {
       startingDeploy: 'กำลังเริ่ม deploy…',
-      disabledOrSuperAdmin: 'migration ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      disabledOrSuperAdmin: 'ปิดการใช้งาน migration อยู่ หรือคุณไม่มีสิทธิ์ tenant migration',
       alreadyRunning: 'มี migration ทำงานอยู่แล้ว กรุณาลองใหม่ในอีกสักครู่',
-      seedDisabledOrSuperAdmin: 'การ seed ถูกปิดไว้ หรือต้องใช้สิทธิ์ super admin',
+      seedDisabledOrSuperAdmin: 'ปิดการใช้งาน seed อยู่ หรือคุณไม่มีสิทธิ์ tenant seed',
       deployingAll: 'กำลัง deploy ทุก tenant…',
       title: 'Tenant migration',
       subtitle: 'ตรวจว่าฐานข้อมูล tenant ใดตามหลัง schema migration อยู่ แล้วสั่งอัปเดต',

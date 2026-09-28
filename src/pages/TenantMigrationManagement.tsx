@@ -29,6 +29,7 @@ import { DevDebugSheet } from '../components/ui/dev-debug-sheet';
 import { FleetSync } from './tenantMigration/FleetSync';
 import { DeployConsole } from './tenantMigration/DeployConsole';
 import { useI18n } from '../hooks/useI18n';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 
 type RowStatus = 'unknown' | 'up_to_date' | 'pending' | 'error';
 
@@ -133,7 +134,7 @@ const TenantMigrationManagement: React.FC = () => {
   const { hasPermission } = useAuth();
   // Status checks are reads (the route already requires tenant_migration.read); only
   // apply / deploy-all / resolve write to the BU schema.
-  const canApply = hasPermission('tenant_migration.apply');
+  const canApply = hasPermission('tenant_migration.apply', { clusterId: PLATFORM_SCOPED_RECORD });
   const navigate = useNavigate();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);

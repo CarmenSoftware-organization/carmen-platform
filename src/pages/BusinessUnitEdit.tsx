@@ -23,7 +23,7 @@ import { useI18n } from '../hooks/useI18n';
 import { Skeleton } from '../components/ui/skeleton';
 import type { Cluster, BusinessUnitConfig, TenantCurrency, BusinessUnitLicense, InterfaceLicense } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { UNRESOLVED_CLUSTER_ID } from '../utils/permissions';
+import { UNRESOLVED_CLUSTER_ID, PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 import TenantMigrationCard from '../components/TenantMigrationCard';
 import TenantSeedCard from '../components/TenantSeedCard';
 import { initialFormData, aliasBound } from './businessUnitEdit/types';
@@ -758,24 +758,24 @@ const BusinessUnitEdit: React.FC = () => {
           advancedExtraSlot={
             !isNew ? (
               <>
-                {hasPermission('tenant_migration.read') && (
+                {hasPermission('tenant_migration.read', { clusterId: PLATFORM_SCOPED_RECORD }) && (
                   <TenantMigrationCard
                     key={id}
                     buId={id!}
                     buCode={formData.code}
                     buName={formData.name}
                     hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                    canApply={hasPermission('tenant_migration.apply')}
+                    canApply={hasPermission('tenant_migration.apply', { clusterId: PLATFORM_SCOPED_RECORD })}
                   />
                 )}
-                {hasPermission('tenant_seed.read') && (
+                {hasPermission('tenant_seed.read', { clusterId: PLATFORM_SCOPED_RECORD }) && (
                   <TenantSeedCard
                     key={`seed-${id}`}
                     buId={id!}
                     buCode={formData.code}
                     buName={formData.name}
                     hasDbConnection={!!(formData.database_pool_id && formData.db_schema)}
-                    canApply={hasPermission('tenant_seed.apply')}
+                    canApply={hasPermission('tenant_seed.apply', { clusterId: PLATFORM_SCOPED_RECORD })}
                   />
                 )}
               </>

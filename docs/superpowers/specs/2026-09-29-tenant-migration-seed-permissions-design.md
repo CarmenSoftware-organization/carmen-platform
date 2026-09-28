@@ -75,6 +75,13 @@ Constructor injects `KeycloakGuard`, `PlatformPermissionGuard` and `Reflector`; 
 removed — `PlatformPermissionGuard` already owns the super-admin bypass, so the decision lives in one
 place.
 
+**Scope:** step 4's `PlatformPermissionGuard.canActivate` is COARSE — it also accepts the required
+key held in ANY cluster scope (`PlatformPermissionService.has`), which is too wide for these routes:
+they act on any BU and on `'all'` (fleet-wide), previously super-admin only. `TenantMigrationGuard`
+therefore re-checks the effective permissions after step 4 and requires the key at PLATFORM scope
+specifically (or `is_super_admin`) — a cluster-scoped grant is rejected even though the delegated
+guard call above already passed.
+
 ### Controllers
 
 | Handler | Key |

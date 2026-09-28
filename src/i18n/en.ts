@@ -3413,9 +3413,9 @@ export const en = {
     },
     tenantMigration: {
       startingDeploy: 'Starting deploy…',
-      disabledOrSuperAdmin: 'Migrations are disabled or require super-admin.',
+      disabledOrSuperAdmin: 'Migrations are disabled, or you lack the tenant migration permission.',
       alreadyRunning: 'A migration is already running. Try again shortly.',
-      seedDisabledOrSuperAdmin: 'Seeding is disabled or requires super-admin.',
+      seedDisabledOrSuperAdmin: 'Seeding is disabled, or you lack the tenant seed permission.',
       deployingAll: 'Deploying all tenants…',
       // TenantMigrationManagement
       title: 'Tenant migrations',

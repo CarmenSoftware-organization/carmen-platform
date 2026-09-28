@@ -39,6 +39,7 @@ import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { BusinessUnit, SeedDeploySummary, SeedProgressEvent } from '../types';
 import { useI18n } from '../hooks/useI18n';
+import { PLATFORM_SCOPED_RECORD } from '../utils/permissions';
 
 interface SeedBatch {
   index: number;
@@ -97,7 +98,7 @@ const TenantSeedManagement: React.FC = () => {
   const { hasPermission } = useAuth();
   // Status checks are reads (the route already requires tenant_seed.read); only
   // seed / seed-all writes to the BU schema.
-  const canApply = hasPermission('tenant_seed.apply');
+  const canApply = hasPermission('tenant_seed.apply', { clusterId: PLATFORM_SCOPED_RECORD });
   const navigate = useNavigate();
   const [bus, setBus] = useState<BusinessUnit[]>([]);
   const [totalRows, setTotalRows] = useState(0);

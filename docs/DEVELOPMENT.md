@@ -157,7 +157,8 @@ See `src/components/PrivateRoute.tsx` for the route-guard usage and `src/App.tsx
 | `/dashboard` | Dashboard | — | (all authenticated) |
 | `/clusters` | Clusters | Organization | `cluster.read` |
 | `/business-units` | Business Units | Organization | `cluster.read` |
-| `/tenant-migrations` | Tenant Migrations | Organization | `cluster.read` |
+| `/tenant-migrations` | Tenant Migrations | Organization | `tenant_migration.read` |
+| `/tenant-seeds` | Tenant Seeds | Organization | `tenant_seed.read` |
 | `/users` | Users | Organization | `user.read` |
 | `/report-templates` | Report Templates | Content | `report_template.read` |
 | `/print-template-mapping` | Print Mapping | Content | `print_template_mapping.read` |
