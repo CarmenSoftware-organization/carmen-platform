@@ -54,6 +54,8 @@ export const en = {
     // กลุ่มของเมนูฝั่งดูแลคลัสเตอร์ ใช้โดยหน้าสวิตช์ฟีเจอร์เพื่อจัดกลุ่มคีย์ cluster_admin_*
     // ตัว Sidebar ของ ClusterAdminLayout เองไม่ได้ตั้ง groupKey จึงไม่แสดงหัวข้อนี้
     clusterAdmin: 'Cluster administration',
+    // Permission resources with no menu entry of their own (Role Edit groups by menu section)
+    other: 'Other',
   },
   sidebar: {
     collapse: 'Collapse',
@@ -3933,6 +3935,12 @@ export const en = {
       // แทน noAccessOther/-Plural ที่ถูกถอด — เชิงอรรถนั้นบอกจำนวน resource ที่เอื้อมไม่ถึง
       // ตอนนี้แถวเส้นประบอกเองว่าอันไหน ป้ายนี้จึงอธิบายแค่ว่าเส้นประแปลว่าอะไร
       withheldLegend: 'Dashed actions are in the catalog but not granted to this role.',
+      // คีย์ที่ถือแล้วให้สิทธิ์เพิ่มแก่ตัวเองได้ — รายการอยู่ใน utils/permissionRisk.ts
+      escalationWarning: 'Can grant itself more access:',
+      permissionDelta: '+{{added}} −{{removed}} permissions',
+      chipAdded: '(added)',
+      chipRemoved: '(removed)',
+      accessShapeAria: 'Access shape: {{summary}}',
       // grantSummary — ประกอบจากหลายท่อนคั่นด้วย ' · ' เดิมปั้นพหูพจน์ตอนรัน
       noPermissionsGranted: 'No permissions granted',
       nPermissions: '{{count}} permission',
