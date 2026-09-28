@@ -322,6 +322,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const logout = () => {
+    const accessToken = localStorage.getItem('token');
+    const refreshToken = localStorage.getItem('refresh_token');
+
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
@@ -332,6 +335,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setLoginResponse(null);
     setEffectivePermissions(null);
+
+    // Best-effort, fire-and-forget: revoke this session's refresh_token at Keycloak so a
+    // lingering KEYCLOAK_SESSION cookie doesn't collide with a later Google sign-in attempt
+    // (same reasoning as loginWithTokens's access-denied branch above). Local state is
+    // already cleared by this point regardless of whether the call succeeds — matches the
+    // pattern carmen-inventory-frontend-react's logout() already uses.
+    if (accessToken || refreshToken) {
+      api
+        .post(
+          '/api/auth/logout',
+          { refresh_token: refreshToken ?? '' },
+          { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}, timeout: 5000 },
+        )
+        .catch(() => {
+          // Local session is already gone — nothing left to roll back.
+        });
+    }
     setAdminScope(null);
   };
 

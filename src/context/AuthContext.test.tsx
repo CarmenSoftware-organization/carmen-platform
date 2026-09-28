@@ -87,6 +87,33 @@ describe('AuthContext refresh_token handling', () => {
 
     await waitFor(() => expect(localStorage.getItem('refresh_token')).toBeNull());
   });
+
+  it('logout revokes the session at Keycloak via /api/auth/logout (fire-and-forget)', async () => {
+    localStorage.setItem('token', 'acc');
+    localStorage.setItem('refresh_token', 'rfr-1');
+    mockApi.post.mockResolvedValue({ data: {} });
+
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await userEvent.click(screen.getByText('logout'));
+
+    // Local session must already be gone before we even check the revoke call — logout()
+    // clears synchronously so the UI is instant regardless of the network call's outcome.
+    expect(localStorage.getItem('token')).toBeNull();
+    await waitFor(() =>
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/api/auth/logout',
+        { refresh_token: 'rfr-1' },
+        expect.objectContaining({ headers: { Authorization: 'Bearer acc' } }),
+      ),
+    );
+  });
+
+  it('logout does not call /api/auth/logout when there was nothing to revoke', async () => {
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await userEvent.click(screen.getByText('logout'));
+
+    expect(mockApi.post).not.toHaveBeenCalled();
+  });
 });
 
 describe('AuthContext.loginWithTokens (Google sign-in callback)', () => {
