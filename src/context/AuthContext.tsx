@@ -324,9 +324,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     const accessToken = localStorage.getItem('token');
     const refreshToken = localStorage.getItem('refresh_token');
-    // TEMP DEBUG — remove once confirmed live: proves whether handleLogout -> logout() is
-    // actually invoked and whether the revoke branch below is entered.
-    console.log('[logout] called', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
+
+    // Best-effort, fire-and-forget: revoke this session's refresh_token at Keycloak so a
+    // lingering KEYCLOAK_SESSION cookie doesn't collide with a later Google sign-in attempt
+    // (same reasoning as loginWithTokens's access-denied branch above).
+    //
+    // Deliberately raw `fetch()`, NOT the shared `api` axios instance: `api`'s own request
+    // interceptor (services/api.ts) re-reads `localStorage.getItem('token')` on every call and
+    // hard-redirects to `/login` (`window.location.href`, a real page reload) whenever it finds
+    // none — so if this ran through `api` *after* the localStorage.removeItem() calls below,
+    // the interceptor would see no token, reject before the request ever reaches the network,
+    // and force-navigate away before the reject's `.catch()` below even runs. Confirmed via
+    // production console output: the interceptor's own "No access token" error, zero network
+    // entries, and a hard navigation to /login — not the intended revoke call at all.
+    if (accessToken || refreshToken) {
+      fetch(`${import.meta.env.REACT_APP_API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ refresh_token: refreshToken ?? '' }),
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => {
+        // Local session is already gone — nothing left to roll back.
+      });
+    }
 
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
@@ -338,31 +361,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setLoginResponse(null);
     setEffectivePermissions(null);
-
-    // Best-effort, fire-and-forget: revoke this session's refresh_token at Keycloak so a
-    // lingering KEYCLOAK_SESSION cookie doesn't collide with a later Google sign-in attempt
-    // (same reasoning as loginWithTokens's access-denied branch above). Local state is
-    // already cleared by this point regardless of whether the call succeeds — matches the
-    // pattern carmen-inventory-frontend-react's logout() already uses.
-    if (accessToken || refreshToken) {
-      // TEMP DEBUG — remove once confirmed live.
-      console.log('[logout] sending POST /api/auth/logout');
-      api
-        .post(
-          '/api/auth/logout',
-          { refresh_token: refreshToken ?? '' },
-          { headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}, timeout: 5000 },
-        )
-        .then(() => {
-          console.log('[logout] revoke succeeded'); // TEMP DEBUG
-        })
-        .catch((err) => {
-          // Local session is already gone — nothing left to roll back.
-          console.log('[logout] revoke failed', err); // TEMP DEBUG
-        });
-    } else {
-      console.log('[logout] no token/refresh_token in localStorage — revoke skipped'); // TEMP DEBUG
-    }
     setAdminScope(null);
   };
 

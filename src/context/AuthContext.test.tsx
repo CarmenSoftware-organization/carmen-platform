@@ -88,10 +88,17 @@ describe('AuthContext refresh_token handling', () => {
     await waitFor(() => expect(localStorage.getItem('refresh_token')).toBeNull());
   });
 
-  it('logout revokes the session at Keycloak via /api/auth/logout (fire-and-forget)', async () => {
+  it('logout revokes the session at Keycloak via a raw fetch (not the api instance)', async () => {
+    // Deliberately NOT api.post: api's own request interceptor re-reads
+    // localStorage.getItem('token') on every call and hard-redirects to /login when it finds
+    // none — since logout() clears localStorage itself, routing this through `api` would have
+    // the interceptor see no token and rewrite the request into a redirect+reject before it
+    // ever reaches the network. Confirmed in production: zero network entries, an interceptor
+    // "No access token" error, and a hard navigation to /login instead of the revoke call.
     localStorage.setItem('token', 'acc');
     localStorage.setItem('refresh_token', 'rfr-1');
-    mockApi.post.mockResolvedValue({ data: {} });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
 
     render(<AuthProvider><Probe /></AuthProvider>);
     await userEvent.click(screen.getByText('logout'));
@@ -99,20 +106,22 @@ describe('AuthContext refresh_token handling', () => {
     // Local session must already be gone before we even check the revoke call — logout()
     // clears synchronously so the UI is instant regardless of the network call's outcome.
     expect(localStorage.getItem('token')).toBeNull();
-    await waitFor(() =>
-      expect(mockApi.post).toHaveBeenCalledWith(
-        '/api/auth/logout',
-        { refresh_token: 'rfr-1' },
-        expect.objectContaining({ headers: { Authorization: 'Bearer acc' } }),
-      ),
-    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/api/auth/logout');
+    expect(init.method).toBe('POST');
+    expect(init.headers.Authorization).toBe('Bearer acc');
+    expect(JSON.parse(init.body)).toEqual({ refresh_token: 'rfr-1' });
   });
 
-  it('logout does not call /api/auth/logout when there was nothing to revoke', async () => {
+  it('logout does not call fetch when there was nothing to revoke', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
     render(<AuthProvider><Probe /></AuthProvider>);
     await userEvent.click(screen.getByText('logout'));
 
-    expect(mockApi.post).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
