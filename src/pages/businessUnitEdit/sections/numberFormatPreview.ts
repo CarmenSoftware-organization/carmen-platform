@@ -10,38 +10,14 @@
 export const PREVIEW_SAMPLE = 1234.5678;
 
 export type FormatPreview =
-  /** `of` is the number `text` renders. Absent when the value is not a formatted sample
-   *  but the setting itself (a page size), so the caption can say which one it is. */
-  | { kind: 'ok'; text: string; of?: number }
+  /** `of` is the number `text` renders. */
+  | { kind: 'ok'; text: string; of: number }
   | { kind: 'invalid'; reason: 'json' | 'options' }
   | { kind: 'empty' };
 
 interface NumberFormatBlob {
   locales?: string | string[];
   [option: string]: unknown;
-}
-
-/**
- * `perpage_format` holds one of two things. The placeholder advertises `{"default":10}` —
- * a page size — but live BUs (DEMO on DEV, checked 2026-08-31) carry an Intl option bag
- * identical to the other three fields. Both are accepted by the backend today, so the
- * preview must read both: calling the shape that is actually stored "not usable" would be
- * a false alarm on the very rows this preview exists to reassure.
- */
-export function previewPerPage(raw: string): FormatPreview {
-  if (!raw.trim()) return { kind: 'empty' };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return { kind: 'invalid', reason: 'json' };
-  }
-  const value = (parsed as { default?: unknown } | null)?.default;
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return { kind: 'ok', text: String(value) };
-  }
-  // No page size in it — fall through to the number-format reading.
-  return previewNumberFormat(raw);
 }
 
 /**

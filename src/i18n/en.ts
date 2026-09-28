@@ -2920,14 +2920,12 @@ export const en = {
       // --- Task 4: NumberFormatsSection.tsx ---
       numberFormatsTitle: 'Number formats',
       numberFormatsDescription: 'Numeric display format configuration',
-      perPageFormatLabel: 'Per page format',
       amountFormatLabel: 'Amount format',
       quantityFormatLabel: 'Quantity format',
       recipeFormatLabel: 'Recipe format',
       // Live preview beside each JSON blob (2026-08-31). `sample` is the number the format
       // is applied to, so the caption and the rendered value always agree.
       formatPreviewSample: '{{sample}} shows as',
-      formatPreviewPerPage: 'Rows per page:',
       formatPreviewEmpty: 'Not set — the tenant default applies.',
       formatPreviewInvalidJson: "Not valid JSON — this won't apply.",
       formatPreviewInvalidOptions: "Valid JSON, but not a usable format — this won't apply.",

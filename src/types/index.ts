@@ -152,7 +152,6 @@ export interface BusinessUnit {
   short_time_format?: string;
   timezone?: string;
   // Number Formats
-  perpage_format?: string;
   amount_format?: string;
   quantity_format?: string;
   recipe_format?: string;
